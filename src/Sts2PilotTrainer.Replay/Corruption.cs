@@ -86,12 +86,14 @@ public static class Corruption
             {
                 Seq = first.Seq,
                 Args = WithArg(second.Args, "hand_index", secondInitialIndex.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                Evidence = first.Evidence,
                 Note = "reordered by a negative control",
             },
             first with
             {
                 Seq = second.Seq,
                 Args = WithArg(first.Args, "hand_index", firstAfterSecondIndex.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                Evidence = second.Evidence,
                 Note = "reordered by a negative control",
             },
         };

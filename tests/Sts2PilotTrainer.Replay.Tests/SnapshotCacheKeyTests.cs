@@ -159,6 +159,42 @@ public class SnapshotCacheKeyTests
         Assert.Equal(Path.GetFileName(resolved), Path.GetRelativePath(root, resolved));
     }
 
+    [Fact]
+    public void RejectsACacheDirectorySymlinkOutsideTheCacheRoot()
+    {
+        var baseDirectory = Path.GetFullPath(Path.Combine(
+            "build", "test-scratch", Guid.NewGuid().ToString("N")));
+        var root = Path.Combine(baseDirectory, "cache");
+        var outside = Path.Combine(baseDirectory, "outside");
+        Directory.CreateDirectory(root);
+        Directory.CreateDirectory(outside);
+        var key = SnapshotCacheKey.For(Fixtures.ValidManifest(), 1);
+        Directory.CreateSymbolicLink(Path.Combine(root, key.ToCacheDirectoryName()), outside);
+
+        var error = Assert.Throws<InvalidOperationException>(() => key.ResolveCacheDirectory(root));
+
+        Assert.Contains("symbolic link", error.Message, StringComparison.Ordinal);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(outside));
+    }
+
+    [Fact]
+    public void RejectsASymlinkedCacheArtifactBeforeWriting()
+    {
+        var baseDirectory = Path.GetFullPath(Path.Combine(
+            "build", "test-scratch", Guid.NewGuid().ToString("N")));
+        var cacheDirectory = Path.Combine(baseDirectory, "cache");
+        var outside = Path.Combine(baseDirectory, "outside-state.canonical");
+        Directory.CreateDirectory(cacheDirectory);
+        File.WriteAllText(outside, "outside");
+        File.CreateSymbolicLink(Path.Combine(cacheDirectory, "state.canonical"), outside);
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            SnapshotCacheKey.ResolveCacheArtifact(cacheDirectory, "state.canonical"));
+
+        Assert.Contains("symbolic link", error.Message, StringComparison.Ordinal);
+        Assert.Equal("outside", File.ReadAllText(outside));
+    }
+
     private static ReplayManifest WithEnvironment(
         ReplayManifest manifest, Func<EnvironmentIdentity, EnvironmentIdentity> change) =>
         manifest with { Environment = change(manifest.Environment) };

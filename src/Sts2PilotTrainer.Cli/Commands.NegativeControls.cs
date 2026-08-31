@@ -46,11 +46,25 @@ internal static partial class Commands
             var path = Path.Combine(scratchDir, $"{corruption.Name}.manifest.json");
             ManifestJson.Save(corrupted, path);
 
-            var child = SelfProcess.Run("replay", path);
-            var rejected = child.ExitCode != 0;
-            allRejected &= rejected;
+            var replayResultPath = Path.Combine(scratchDir, $"{corruption.Name}.result.json");
+            if (File.Exists(replayResultPath)) File.Delete(replayResultPath);
+            var child = SelfProcess.Run("replay", path, "--out", replayResultPath);
+            var replayReport = File.Exists(replayResultPath)
+                ? ManifestJson.Load(replayResultPath).Verification
+                : null;
+            var arbiterRejected = replayReport is
+            {
+                Status: VerificationStatus.Rejected,
+                Diagnostics.Count: > 0,
+            };
+            var ingestionRejected = replayReport is null && child.ExitCode != 0 &&
+                child.StandardError.Contains("Manifest is not valid", StringComparison.Ordinal);
+            allRejected &= arbiterRejected;
 
-            var reason = FirstDiagnostic(child.StandardOutput) ?? "(no diagnostic line found)";
+            var reason = replayReport?.Diagnostics.FirstOrDefault() ??
+                         FirstDiagnostic(child.StandardOutput) ??
+                         child.StandardError.Split('\n').FirstOrDefault(line => !string.IsNullOrWhiteSpace(line)) ??
+                         "(no diagnostic line found)";
             var digest = Digest(child.StandardOutput);
             bool? endStateChanged = digest is null || baselineDigest is null
                 ? null
@@ -67,11 +81,16 @@ internal static partial class Commands
                 false => "IDENTICAL to the uncorrupted run",
                 null => "UNAVAILABLE - the rejected run produced no final state digest",
             };
+            var arbiterDescription = arbiterRejected
+                ? "REJECTED"
+                : ingestionRejected
+                    ? "NOT RUN - INGESTION REJECTED THE CONTROL"
+                    : "DID NOT REJECT - THIS IS A FAILURE";
 
             Console.WriteLine($"{corruption.Name}");
             Console.WriteLine($"  corruption   : {corruption.What}");
             Console.WriteLine($"  video-only   : {corruption.VideoOnly.ToString().ToUpperInvariant()} - {corruption.WhyVideoOnly}");
-            Console.WriteLine($"  arbiter      : {(rejected ? "REJECTED" : "ACCEPTED - THIS IS A FAILURE")}");
+            Console.WriteLine($"  arbiter      : {arbiterDescription}");
             Console.WriteLine($"  first divergence: {reason}");
             Console.WriteLine($"  end state       : {endStateDescription}");
             Console.WriteLine();
@@ -82,7 +101,10 @@ internal static partial class Commands
                 corruption = corruption.What,
                 video_only_verdict = corruption.VideoOnly.ToString(),
                 video_only_reasoning = corruption.WhyVideoOnly,
-                arbiter_rejected = rejected,
+                arbiter_rejected = arbiterRejected,
+                ingestion_rejected = ingestionRejected,
+                replay_status = replayReport?.Status.ToString() ??
+                                (ingestionRejected ? "IngestionRejected" : "NoResult"),
                 first_divergence = reason,
                 // Recorded because it bounds what the arbiter can claim. Where this is
                 // false, the corruption was caught by a checkpoint bound to a moment

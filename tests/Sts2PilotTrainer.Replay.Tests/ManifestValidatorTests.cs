@@ -162,6 +162,25 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void RejectsActionIntegersOutsideTheInt32Range()
+    {
+        var manifest = Fixtures.ValidManifest();
+        var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["option_index"] = "999999999999999999999",
+        };
+        manifest = manifest with
+        {
+            Actions = [manifest.Actions[0] with { Args = args }, manifest.Actions[1]],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem => problem.Contains("Int32 range", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsAnObservedActionWithNoVideoTimestamp()
     {
         // An observation nobody can re-check is not an observation.

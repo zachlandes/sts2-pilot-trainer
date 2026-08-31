@@ -598,10 +598,18 @@ public static partial class ManifestValidator
 
         foreach (var name in nonNegativeIntegers)
         {
-            if (action.Args.TryGetValue(name, out var value) && !NonNegativeIntegerPattern.IsMatch(value))
+            if (!action.Args.TryGetValue(name, out var value)) continue;
+            if (!NonNegativeIntegerPattern.IsMatch(value))
             {
                 problems.Add(
                     $"actions[{action.Seq}] ({action.Verb}) argument '{name}' must be a canonical non-negative integer.");
+            }
+            else if (!int.TryParse(
+                         value, System.Globalization.NumberStyles.None,
+                         System.Globalization.CultureInfo.InvariantCulture, out _))
+            {
+                problems.Add(
+                    $"actions[{action.Seq}] ({action.Verb}) argument '{name}' exceeds the Int32 range.");
             }
         }
 

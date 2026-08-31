@@ -178,7 +178,12 @@ public class ReplayTests
         Assert.True(report.GetProperty("all_rejected").GetBoolean());
 
         var controls = report.GetProperty("controls").EnumerateArray().ToList();
-        Assert.All(controls, c => Assert.True(c.GetProperty("arbiter_rejected").GetBoolean()));
+        Assert.All(controls, control =>
+        {
+            Assert.True(control.GetProperty("arbiter_rejected").GetBoolean());
+            Assert.False(control.GetProperty("ingestion_rejected").GetBoolean());
+            Assert.Equal("Rejected", control.GetProperty("replay_status").GetString());
+        });
 
         // The two corruptions arithmetic on the footage cannot see must both be here
         // and must both be rejected. Without them the suite would only demonstrate
@@ -189,6 +194,31 @@ public class ReplayTests
             Assert.Equal("Undetected", control.GetProperty("video_only_verdict").GetString());
             Assert.True(control.GetProperty("arbiter_rejected").GetBoolean());
         }
+    }
+
+    [GameFact]
+    public void IngestionFailureDoesNotCountAsArbiterRejection()
+    {
+        var manifest = ManifestJson.Load(Arbiter.SyntheticReplayFixture());
+        var lastPlaySeq = manifest.Actions.Last(action => action.Verb == ActionVerb.PlayCard).Seq;
+        manifest = manifest with
+        {
+            Checkpoints = manifest.Checkpoints.Where(checkpoint => checkpoint.AfterSeq == lastPlaySeq).ToList(),
+        };
+        var path = Temp("ingestion-negative-control.json");
+        ManifestJson.Save(manifest, path);
+        var outDir = TempDir();
+
+        var result = Arbiter.Run("negative-controls", path, "--out", outDir);
+
+        Assert.False(result.Verified);
+        var report = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "negative-controls.json"))).RootElement;
+        Assert.False(report.GetProperty("all_rejected").GetBoolean());
+        var omitted = report.GetProperty("controls").EnumerateArray()
+            .Single(control => control.GetProperty("name").GetString() == "omit-play");
+        Assert.True(omitted.GetProperty("ingestion_rejected").GetBoolean());
+        Assert.False(omitted.GetProperty("arbiter_rejected").GetBoolean());
+        Assert.Equal("IngestionRejected", omitted.GetProperty("replay_status").GetString());
     }
 
     [GameFact]
@@ -227,19 +257,25 @@ public class ReplayTests
     [GameFact]
     public void ReorderingIsCaughtAtTheFirstDivergentCheckpoint()
     {
-        // The reordered cards spend the same energy and produce the same visible
-        // totals. The first bound checkpoint catches their order before the later
-        // discard-pile ordering exposes it in canonical state.
+        // The reordered cards spend the same energy and produce the same final state.
+        // The first bound checkpoint catches their order inside the turn.
         var outDir = TempDir();
-        Arbiter.Run("negative-controls", Arbiter.SyntheticReplayFixture(), "--out", outDir);
+        var result = Arbiter.Run("negative-controls", Arbiter.Manifest, "--out", outDir);
+        Assert.True(result.Verified, result.All);
 
         var report = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "negative-controls.json"))).RootElement;
         var reorder = report.GetProperty("controls").EnumerateArray()
             .Single(c => c.GetProperty("name").GetString() == "reorder-plays");
 
         Assert.True(reorder.GetProperty("arbiter_rejected").GetBoolean());
+        Assert.False(reorder.GetProperty("ingestion_rejected").GetBoolean());
+        Assert.Equal("Rejected", reorder.GetProperty("replay_status").GetString());
         Assert.Equal("Undetected", reorder.GetProperty("video_only_verdict").GetString());
-        Assert.Contains("combat.block", reorder.GetProperty("first_divergence").GetString(), StringComparison.Ordinal);
+        Assert.False(reorder.GetProperty("end_state_differs").GetBoolean());
+        Assert.Contains(
+            "checkpoint 'after-hellraiser'",
+            reorder.GetProperty("first_divergence").GetString(),
+            StringComparison.Ordinal);
     }
 
     private static string Temp(string name)

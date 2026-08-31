@@ -40,7 +40,8 @@ internal static partial class Commands
         Directory.CreateDirectory(outDir);
         var key = SnapshotCacheKey.For(manifest, at);
         var snapshotDir = key.ResolveCacheDirectory(cacheDir);
-        var snapshotPath = Path.Combine(snapshotDir, "state.canonical");
+        var snapshotPath = SnapshotCacheKey.ResolveCacheArtifact(snapshotDir, "state.canonical");
+        var keyPath = SnapshotCacheKey.ResolveCacheArtifact(snapshotDir, "key.json");
 
         // ── Materialise ─────────────────────────────────────────────────────
         var cached = File.Exists(snapshotPath);
@@ -49,9 +50,7 @@ internal static partial class Commands
             Directory.CreateDirectory(snapshotDir);
             var built = ReplayPrefix(manifestPath, at, Path.Combine(outDir, "snapshot-materialise.state"));
             File.WriteAllText(snapshotPath, built);
-            File.WriteAllText(
-                Path.Combine(snapshotDir, "key.json"),
-                JsonSerializer.Serialize(key, Json.Indented) + "\n");
+            File.WriteAllText(keyPath, JsonSerializer.Serialize(key, Json.Indented) + "\n");
         }
 
         var snapshot = File.ReadAllText(snapshotPath);

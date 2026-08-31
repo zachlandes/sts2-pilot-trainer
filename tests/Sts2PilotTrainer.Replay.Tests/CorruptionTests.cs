@@ -73,6 +73,17 @@ public class CorruptionTests
     }
 
     [Fact]
+    public void ReorderingKeepsEvidenceTimestampsInSequenceOrder()
+    {
+        var reordered = Corruption.All.Single(c => c.Name == "reorder-plays").Apply(Playable());
+        var plays = reordered.Actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
+
+        Assert.Equal(3_000, plays[0].Evidence!.VideoTimeMs);
+        Assert.Equal(4_000, plays[1].Evidence!.VideoTimeMs);
+        Assert.True(ManifestValidator.Validate(reordered).IsValid);
+    }
+
+    [Fact]
     public void ReorderingKeepsBothPlaysLegalAtTheirOriginalHandPositions()
     {
         // The reorder has to be caught by state, not by the driver noticing a bad hand
