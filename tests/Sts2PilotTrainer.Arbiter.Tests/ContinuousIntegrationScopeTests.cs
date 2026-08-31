@@ -1,13 +1,9 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Xml.Linq;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
-/// <summary>
-/// Public CI builds the solution filter whose projects do not need the licensed
-/// game assembly. The filter is the shared contract consumed by both CI and this
-/// reference-closure check.
-/// </summary>
 public sealed class ContinuousIntegrationScopeTests
 {
     private static readonly string SolutionFilterPath =
@@ -30,15 +26,11 @@ public sealed class ContinuousIntegrationScopeTests
             Assert.True(File.Exists(path), $"{project} is listed in CI but does not exist.");
             var closure = ReferenceClosure(path).ToList();
             Assert.DoesNotContain(closure, entry =>
-                Path.GetFileNameWithoutExtension(entry) == GameDependentProject);
+                Path.GetFileNameWithoutExtension(entry.ProjectPath) == GameDependentProject);
             Assert.DoesNotContain(closure, ReferencesGameAssembly);
         }
     }
 
-    /// <summary>
-    /// The negative control: the detector must fail the project that genuinely does
-    /// depend on the game, or it has not been shown able to fail at all.
-    /// </summary>
     [Fact]
     public void DetectorRejectsAGameDependentProject()
     {
@@ -46,41 +38,102 @@ public sealed class ContinuousIntegrationScopeTests
             Arbiter.RepoRoot, "src", "Sts2PilotTrainer.Cli", "Sts2PilotTrainer.Cli.csproj");
         var closure = ReferenceClosure(cli).ToList();
         Assert.Contains(closure, entry =>
-            Path.GetFileNameWithoutExtension(entry) == GameDependentProject);
+            Path.GetFileNameWithoutExtension(entry.ProjectPath) == GameDependentProject);
         Assert.Contains(closure, ReferencesGameAssembly);
     }
 
-    private static bool ReferencesGameAssembly(string projectPath) =>
-        XDocument.Load(projectPath).Descendants("Reference")
-            .Select(reference => reference.Attribute("Include")?.Value)
-            .Any(include => include is not null &&
-                include.Contains("sts2", StringComparison.OrdinalIgnoreCase));
+    [Fact]
+    public void DetectorIncludesProjectReferencesFromImportedMsBuildState()
+    {
+        var fixture = Path.Combine(
+            Arbiter.RepoRoot, "build", "test-scratch", "msbuild-graph", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(fixture);
+        var engine = Path.Combine(
+            Arbiter.RepoRoot, "src", "Sts2PilotTrainer.Engine", "Sts2PilotTrainer.Engine.csproj");
+        new XDocument(
+            new XElement("Project",
+                new XElement("ItemGroup",
+                    new XElement("ProjectReference", new XAttribute("Include", engine)))))
+            .Save(Path.Combine(fixture, "Directory.Build.targets"));
+        var entry = Path.Combine(fixture, "ImportedReference.csproj");
+        File.WriteAllText(
+            entry,
+            "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>" +
+            "<TargetFramework>net9.0</TargetFramework></PropertyGroup></Project>\n");
 
-    private static IEnumerable<string> ReferenceClosure(string projectPath)
+        var closure = ReferenceClosure(entry).ToList();
+
+        Assert.Contains(closure, evaluated =>
+            Path.GetFileNameWithoutExtension(evaluated.ProjectPath) == GameDependentProject);
+        Assert.Contains(closure, ReferencesGameAssembly);
+    }
+
+    private static bool ReferencesGameAssembly(EvaluatedProject project) =>
+        project.AssemblyReferences.Any(reference =>
+            string.Equals(
+                reference.Split(',', 2)[0],
+                "sts2",
+                StringComparison.OrdinalIgnoreCase));
+
+    private static IEnumerable<EvaluatedProject> ReferenceClosure(string projectPath)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var pending = new Stack<string>([Path.GetFullPath(projectPath)]);
         while (pending.Count > 0)
         {
             var current = pending.Pop();
-            if (!seen.Add(current) || !File.Exists(current))
+            if (!seen.Add(current))
             {
                 continue;
             }
-            yield return current;
-            var directory = Path.GetDirectoryName(current)!;
-            foreach (var reference in XDocument.Load(current).Descendants("ProjectReference"))
+
+            var evaluated = Evaluate(current);
+            yield return evaluated;
+            foreach (var reference in evaluated.ProjectReferences)
             {
-                var include = reference.Attribute("Include")?.Value;
-                if (include is null)
-                {
-                    continue;
-                }
-                pending.Push(Path.GetFullPath(
-                    Path.Combine(directory, include.Replace('\\', '/'))));
+                pending.Push(reference);
             }
         }
     }
+
+    private static EvaluatedProject Evaluate(string projectPath)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet",
+            WorkingDirectory = Arbiter.RepoRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        startInfo.ArgumentList.Add("msbuild");
+        startInfo.ArgumentList.Add(projectPath);
+        startInfo.ArgumentList.Add("-nologo");
+        startInfo.ArgumentList.Add("-verbosity:quiet");
+        startInfo.ArgumentList.Add("-property:Configuration=Release");
+        startInfo.ArgumentList.Add("-getItem:ProjectReference,Reference");
+
+        using var process = Process.Start(startInfo)!;
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        Assert.True(process.ExitCode == 0, error + output);
+
+        using var document = JsonDocument.Parse(output);
+        var items = document.RootElement.GetProperty("Items");
+        var projectReferences = Items(items, "ProjectReference")
+            .Select(item => item.GetProperty("FullPath").GetString()!)
+            .ToList();
+        var assemblyReferences = Items(items, "Reference")
+            .Select(item => item.GetProperty("Identity").GetString()!)
+            .ToList();
+        return new EvaluatedProject(projectPath, projectReferences, assemblyReferences);
+    }
+
+    private static IEnumerable<JsonElement> Items(JsonElement items, string name) =>
+        items.TryGetProperty(name, out var values)
+            ? values.EnumerateArray().ToList()
+            : [];
 
     private static IReadOnlyList<string> SolutionFilterProjects()
     {
@@ -90,4 +143,9 @@ public sealed class ContinuousIntegrationScopeTests
             .Select(project => project.GetString()!.Replace('\\', '/'))
             .ToList();
     }
+
+    private sealed record EvaluatedProject(
+        string ProjectPath,
+        IReadOnlyList<string> ProjectReferences,
+        IReadOnlyList<string> AssemblyReferences);
 }

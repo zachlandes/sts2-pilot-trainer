@@ -53,12 +53,14 @@ internal static partial class Commands
 
             if (environment.Passed)
             {
-                conditions.Add(Check("game-mode",
+                var modeReportPath = Path.Combine(outDir, "mode-discrimination.json");
+                var modeCondition = Check("game-mode",
                     "Engine evidence establishes the source mode or path-specific parity for every viable mode.",
                     SelfProcess.Run(
                         "mode-discrimination", manifestPath,
-                        "--out", Path.Combine(outDir, "mode-discrimination.json")),
-                    forwardOutput: true));
+                        "--out", modeReportPath),
+                    forwardOutput: true);
+                conditions.Add(modeCondition);
 
                 conditions.Add(Check("seed-topology",
                 "The manifest seed independently reproduces the map observed in the same VOD.",
@@ -75,11 +77,21 @@ internal static partial class Commands
                     "--game-mode", manifest.Environment.GameMode.Value,
                     "--out", outDir)));
 
-                conditions.Add(Check("baselib-path",
-                "The measured BaseLib behavior branch is unreachable in this exact reconstructed history.",
-                SelfProcess.Run(
-                    "baselib-reachability", manifestPath, baseLibPath,
-                    "--out", Path.Combine(outDir, "baselib-reachability.json"))));
+                var baseLibReportPath = Path.Combine(outDir, "baselib-reachability.json");
+                var baseLibCondition = Check("baselib-path",
+                    "The measured BaseLib behavior branch is unreachable in this exact reconstructed history.",
+                    SelfProcess.Run(
+                        "baselib-reachability", manifestPath, baseLibPath,
+                        "--out", baseLibReportPath));
+                conditions.Add(baseLibCondition);
+
+                conditions.Add(modeCondition.Passed && baseLibCondition.Passed
+                    ? CrossBindEvidence(modeReportPath, baseLibReportPath)
+                    : new Condition(
+                        "evidence-binding",
+                        "Mode and BaseLib evidence bind to one build and reconstructed history.",
+                        false,
+                        "Evidence binding requires passing mode-discrimination and BaseLib-reachability reports."));
 
                 conditions.Add(Check("reproduction",
                 "The reconstructed history replays through the real engine and matches every observed value.",
@@ -109,7 +121,11 @@ internal static partial class Commands
         Console.WriteLine();
         foreach (var condition in conditions)
         {
-            Console.WriteLine($"  {(condition.Passed ? "pass" : "FAIL")}  {condition.Name,-13} {condition.Requirement}");
+            Console.WriteLine($"  {(condition.Passed ? "pass" : "FAIL")}  {condition.Name,-16} {condition.Requirement}");
+            if (!condition.Passed && condition.Diagnostic is not null)
+            {
+                Console.WriteLine($"       {condition.Diagnostic}");
+            }
         }
 
         var publishable = conditions.All(c => c.Passed);
@@ -135,6 +151,7 @@ internal static partial class Commands
                     name = c.Name,
                     requirement = c.Requirement,
                     passed = c.Passed,
+                    diagnostic = c.Diagnostic,
                 }),
             }, Json.Indented) + "\n");
 
@@ -149,6 +166,8 @@ internal static partial class Commands
             "The manifest seed independently reproduces the map observed in the same VOD.", false),
         new Condition("baselib-path",
             "The measured BaseLib behavior branch is unreachable in this exact reconstructed history.", false),
+        new Condition("evidence-binding",
+            "Mode and BaseLib evidence bind to one build and reconstructed history.", false),
         new Condition("reproduction",
             "The reconstructed history replays through the real engine and matches every observed value.", false),
         new Condition("determinism",
@@ -171,5 +190,69 @@ internal static partial class Commands
         return new Condition(name, requirement, result.ExitCode == 0);
     }
 
-    private sealed record Condition(string Name, string Requirement, bool Passed);
+    private static Condition CrossBindEvidence(string modeReportPath, string baseLibReportPath)
+    {
+        const string requirement =
+            "Mode and BaseLib evidence bind to one build and reconstructed history.";
+        try
+        {
+            var mode = ReadBinding(modeReportPath, "mode-discrimination", "standard",
+                "path_specific_mode_parity");
+            var baseLib = ReadBinding(baseLibReportPath, "baselib-reachability", "history",
+                "path_specific_parity_established");
+            if (!mode.Passed || !baseLib.Passed)
+            {
+                var failed = new[] { mode, baseLib }
+                    .Where(binding => !binding.Passed)
+                    .Select(binding => $"{binding.Source}.internal_pass")
+                    .ToList();
+                return new Condition(
+                    "evidence-binding", requirement, false,
+                    $"Evidence reports did not pass internally: {string.Join(", ", failed)}.");
+            }
+
+            var comparison = PublicationEvidenceBindingComparer.Compare(mode, baseLib);
+            var diagnostic = comparison.Passed
+                ? null
+                : string.Join("; ", comparison.Mismatches.Select(mismatch =>
+                    $"{mismatch.Field}: {mismatch.LeftSource}='{mismatch.LeftValue}', " +
+                    $"{mismatch.RightSource}='{mismatch.RightValue}'"));
+            return new Condition("evidence-binding", requirement, comparison.Passed, diagnostic);
+        }
+        catch (Exception exception) when (
+            exception is IOException or JsonException or InvalidOperationException or KeyNotFoundException)
+        {
+            return new Condition(
+                "evidence-binding", requirement, false,
+                $"Evidence binding could not read a current report: {exception.Message}");
+        }
+    }
+
+    private static PublicationEvidenceBinding ReadBinding(
+        string path,
+        string source,
+        string evidenceProperty,
+        string passProperty)
+    {
+        using var document = JsonDocument.Parse(File.ReadAllText(path));
+        var report = document.RootElement;
+        var evidence = report.GetProperty(evidenceProperty);
+        return new PublicationEvidenceBinding(
+            source,
+            report.GetProperty("instrument_passed").GetBoolean() &&
+                report.GetProperty(passProperty).GetBoolean(),
+            evidence.GetProperty("RunId").GetString()!,
+            evidence.GetProperty("VideoId").GetString()!,
+            evidence.GetProperty("BuildVersion").GetString()!,
+            evidence.GetProperty("BuildCommit").GetString()!,
+            evidence.GetProperty("Seed").GetString()!,
+            evidence.GetProperty("ActionHistoryHash").GetString()!,
+            evidence.GetProperty("FinalStateSha256").GetString()!);
+    }
+
+    private sealed record Condition(
+        string Name,
+        string Requirement,
+        bool Passed,
+        string? Diagnostic = null);
 }

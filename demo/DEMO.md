@@ -569,14 +569,15 @@ report: build/evidence/mode-discrimination.json
 manifest : navegreed-OJ-6QXhNgdg
 
   pass  publication-source Publication evidence comes from a VOD, never an engine-generated fixture.
-  pass  provenance    The recording is of the run it claims, from that run's start.
-  pass  environment   The declared build and content hash match this machine, and the declared mode is supported.
-  pass  game-mode     Engine evidence establishes the source mode or path-specific parity for every viable mode.
-  pass  seed-topology The manifest seed independently reproduces the map observed in the same VOD.
-  pass  baselib-path  The measured BaseLib behavior branch is unreachable in this exact reconstructed history.
-  pass  reproduction  The reconstructed history replays through the real engine and matches every observed value.
-  pass  determinism   Fresh processes produce byte-identical canonical state.
-  pass  rejection     Corrupted and incomplete histories are refused.
+  pass  provenance       The recording is of the run it claims, from that run's start.
+  pass  environment      The declared build and content hash match this machine, and the declared mode is supported.
+  pass  game-mode        Engine evidence establishes the source mode or path-specific parity for every viable mode.
+  pass  seed-topology    The manifest seed independently reproduces the map observed in the same VOD.
+  pass  baselib-path     The measured BaseLib behavior branch is unreachable in this exact reconstructed history.
+  pass  evidence-binding Mode and BaseLib evidence bind to one build and reconstructed history.
+  pass  reproduction     The reconstructed history replays through the real engine and matches every observed value.
+  pass  determinism      Fresh processes produce byte-identical canonical state.
+  pass  rejection        Corrupted and incomplete histories are refused.
 
 PUBLISHABLE - every condition of the gate holds
 ```
