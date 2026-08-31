@@ -16,6 +16,15 @@ public class ReplayTests
     }
 
     [GameFact]
+    public void PreflightAcceptsACompleteVanillaEnvironment()
+    {
+        var result = Arbiter.Run("preflight", Arbiter.VanillaReplayFixture());
+
+        Assert.True(result.Verified, result.All);
+        Assert.Contains("environment matches", result.Output, StringComparison.Ordinal);
+    }
+
+    [GameFact]
     public void PreflightRefusesAManifestFromADifferentBuild()
     {
         // The negative input for the preflight checker. Replaying into a mismatched
@@ -62,31 +71,33 @@ public class ReplayTests
         Assert.Contains("content_hash", result.Output, StringComparison.Ordinal);
     }
 
-    [GameFact(Skip = "Blocked until executable BaseLib v3.4.5 headless parity A/B evidence exists.")]
+    [GameFact]
     public void ReplayingTheRecordedHistoryReproducesEveryObservationFromTheVideo()
     {
-        var result = Arbiter.Run("replay", Arbiter.Manifest);
+        var result = Arbiter.Run("replay", Arbiter.VanillaReplayFixture());
 
         Assert.True(result.Verified, result.All);
         Assert.Contains("status         : VERIFIED", result.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("FAIL", result.Output, StringComparison.Ordinal);
     }
 
-    [GameFact(Skip = "Blocked until executable BaseLib v3.4.5 headless parity A/B evidence exists.")]
+    [GameFact]
     public void ReplayingTwiceInFreshProcessesProducesByteIdenticalState()
     {
-        var result = Arbiter.Run("determinism", Arbiter.Manifest, "--runs", "2", "--out", TempDir());
+        var result = Arbiter.Run(
+            "determinism", Arbiter.VanillaReplayFixture(), "--runs", "2", "--out", TempDir());
 
         Assert.True(result.Verified, result.All);
         Assert.Contains("byte-identical canonical state", result.Output, StringComparison.Ordinal);
     }
 
-    [GameFact(Skip = "Blocked until executable BaseLib v3.4.5 headless parity A/B evidence exists.")]
+    [GameFact]
     public void EveryCorruptedHistoryIsRejectedAndTheUncorruptedOneIsNot()
     {
         var outDir = TempDir();
 
-        var result = Arbiter.Run("negative-controls", Arbiter.Manifest, "--out", outDir);
+        var result = Arbiter.Run(
+            "negative-controls", Arbiter.VanillaReplayFixture(), "--out", outDir);
 
         Assert.True(result.Verified, result.All);
 
@@ -108,7 +119,7 @@ public class ReplayTests
         }
     }
 
-    [GameFact(Skip = "Blocked until executable BaseLib v3.4.5 headless parity A/B evidence exists.")]
+    [GameFact]
     public void ReorderingIsCaughtByACheckpointRatherThanByTheRunsEndState()
     {
         // A limit, pinned so it cannot quietly stop being true. For these two cards
@@ -118,7 +129,7 @@ public class ReplayTests
         // terminal. If a future change makes the end state diverge too, this test
         // should be revisited rather than deleted.
         var outDir = TempDir();
-        Arbiter.Run("negative-controls", Arbiter.Manifest, "--out", outDir);
+        Arbiter.Run("negative-controls", Arbiter.VanillaReplayFixture(), "--out", outDir);
 
         var report = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "negative-controls.json"))).RootElement;
         var reorder = report.GetProperty("controls").EnumerateArray()

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -47,6 +48,13 @@ public sealed record GameIdentity(
         }
 
         var receipt = JsonNode.Parse(File.ReadAllText(receiptPath))!.AsObject();
+        if (receipt["schema"]?.GetValue<string>() != "sts2-pilot-trainer/prepared-assembly/v2")
+        {
+            throw new EngineException(
+                "The prepared assembly receipt predates output integrity hashes. Re-run ./scripts/bootstrap.sh.");
+        }
+
+        VerifyPreparedOutputs(libDir, receipt);
         var build = receipt["build"]!.AsObject();
 
         var contentHash = EngineHost.ContentHash();
@@ -72,6 +80,53 @@ public sealed record GameIdentity(
             ContentHash: contentHash,
             PristineAssemblySha256: pristine,
             Notes: notes);
+    }
+
+    private static void VerifyPreparedOutputs(string libDir, JsonObject receipt)
+    {
+        var hashes = receipt["prepared_output_sha256"]?.AsObject()
+            ?? throw new EngineException("The prepared assembly receipt has no output hashes.");
+        var assemblies = receipt["assemblies"]?.AsArray()
+            ?? throw new EngineException("The prepared assembly receipt has no assembly list.");
+
+        if (hashes["release_info.json"] is null)
+        {
+            throw new EngineException("The prepared assembly receipt has no release-info hash.");
+        }
+
+        foreach (var node in assemblies)
+        {
+            var name = node?.GetValue<string>()
+                ?? throw new EngineException("The prepared assembly receipt contains an invalid assembly name.");
+            if (Path.GetFileName(name) != name || hashes[name] is null)
+            {
+                throw new EngineException($"The prepared assembly receipt has no valid hash for '{name}'.");
+            }
+        }
+
+        foreach (var (name, expectedNode) in hashes)
+        {
+            if (Path.GetFileName(name) != name || expectedNode is null)
+            {
+                throw new EngineException("The prepared assembly receipt contains an invalid output hash entry.");
+            }
+
+            var path = Path.Combine(libDir, name);
+            if (!File.Exists(path))
+            {
+                throw new EngineException($"Prepared output '{name}' is missing. Re-run ./scripts/bootstrap.sh.");
+            }
+
+            using var stream = File.OpenRead(path);
+            var actual = Convert.ToHexStringLower(SHA256.HashData(stream));
+            var expected = expectedNode.GetValue<string>();
+            if (!string.Equals(actual, expected, StringComparison.Ordinal))
+            {
+                throw new EngineException(
+                    $"Prepared output '{name}' does not match its bootstrap receipt. " +
+                    "The private assembly copy changed; re-run ./scripts/bootstrap.sh.");
+            }
+        }
     }
 }
 

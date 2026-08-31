@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -44,6 +45,29 @@ internal static class Arbiter
 
     internal static string MapObservation =>
         Path.Combine(RepoRoot, "manifests", "navegreed-OJ-6QXhNgdg.map-observation.json");
+
+    internal static string VanillaReplayFixture()
+    {
+        var path = Path.Combine(RepoRoot, "build", "test-scratch", "vanilla-replay-fixture.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var manifest = ManifestJson.Load(Manifest);
+        ManifestJson.Save(
+            manifest with
+            {
+                RunId = "synthetic-vanilla-engine-fixture",
+                Environment = manifest.Environment with
+                {
+                    Mods = Fact<ModEnvironment>.Declared(new ModEnvironment
+                    {
+                        Name = "vanilla",
+                        ReportedCount = 0,
+                        Mods = [],
+                    }),
+                },
+            },
+            path);
+        return path;
+    }
 
     internal static Result Run(params string[] args)
     {

@@ -52,13 +52,13 @@ internal static partial class Commands
                 "--ascension", ascension,
                 "--game-mode", gameMode);
             Console.Write(child.StandardOutput);
-            if (child.ExitCode != 0)
+            var path = Path.Combine(outDir, $"seed-verification-{candidate}.json");
+            if (child.ExitCode is not 0 and not 1 || !File.Exists(path))
             {
                 Console.Error.Write(child.StandardError);
-                return child.ExitCode;
+                return child.ExitCode == 0 ? 1 : child.ExitCode;
             }
 
-            var path = Path.Combine(outDir, $"seed-verification-{candidate}.json");
             results.Add(JsonDocument.Parse(File.ReadAllText(path)).RootElement.Clone());
         }
 
@@ -141,7 +141,7 @@ internal static partial class Commands
             Console.WriteLine($"    ... and {comparison.Problems.Count - 4} more");
         }
 
-        return 0;
+        return comparison.Matches ? 0 : 1;
     }
 
     private static object Identity()

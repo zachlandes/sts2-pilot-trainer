@@ -78,19 +78,19 @@ public static class Preflight
 
     private static PreflightField EvaluateMods(ModEnvironment mods)
     {
-        var waiver = mods.HeadlessParityWaiver;
-        var matches = waiver?.IsEstablished == true;
+        var isVanilla = mods.ReportedCount == 0 && mods.Mods.Count == 0;
 
         return new PreflightField(
             ModEnvironmentField,
             $"{mods.Name} ({mods.ReportedCount} mod(s))",
             "none loaded",
-            matches,
-            matches
+            isVanilla,
+            isVanilla
                 ? null
                 : $"This host loads no mods, while the source environment was {mods.Name}: " +
-                  $"{string.Join("; ", mods.Mods.Select(m => m.Name))}. Publication requires an explicit " +
-                  "headless parity waiver backed by matching executable A/B event digests and state checksums.");
+                  $"{string.Join("; ", mods.Mods.Select(m => m.Name))}. The manifest's parity-waiver fields " +
+                  "are self-attested and cannot establish parity. Publication remains blocked until a " +
+                  "controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.");
     }
 
     private static PreflightField EvaluateGameMode(string gameMode) =>

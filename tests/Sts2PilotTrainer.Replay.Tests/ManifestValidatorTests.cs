@@ -112,7 +112,7 @@ public class ManifestValidatorTests
 
         var result = ManifestValidator.Validate(manifest);
         Assert.False(result.IsValid);
-        Assert.Contains(result.Problems, p => p.Contains("circular", StringComparison.Ordinal));
+        Assert.Contains(result.Problems, p => p.Contains("cannot be produced by the engine", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -257,7 +257,7 @@ public class ManifestValidatorTests
 
         var result = ManifestValidator.Validate(manifest);
         Assert.False(result.IsValid);
-        Assert.Contains(result.Problems, p => p.Contains("always passes and means nothing", StringComparison.Ordinal));
+        Assert.Contains(result.Problems, p => p.Contains("must be source=observed", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -270,6 +270,57 @@ public class ManifestValidatorTests
         };
 
         Assert.False(ManifestValidator.Validate(manifest).IsValid);
+    }
+
+    [Fact]
+    public void RejectsUnsupportedSourceKinds()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with { Source = manifest.Source with { Kind = "declared" } };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("accepts only 'vod'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsDeclaredActionsInAVodReplay()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Actions = [manifest.Actions[0] with { Source = FactSource.Declared }, manifest.Actions[1]],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("must be source=observed", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(2_050_000)]
+    public void RejectsActionTimestampsOutsideTheVideo(int timestamp)
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Actions =
+            [
+                manifest.Actions[0] with
+                {
+                    Evidence = FactEvidence.AtVideoTime(timestamp, "outside video"),
+                },
+                manifest.Actions[1],
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("outside the source video range", StringComparison.Ordinal));
     }
 
     [Fact]

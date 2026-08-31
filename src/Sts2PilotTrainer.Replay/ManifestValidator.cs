@@ -34,12 +34,15 @@ public static partial class ManifestValidator
     {
         var problems = new List<string>();
 
-        ValidateEnvironment(manifest.Environment, problems);
         ValidateSource(manifest.Source, problems);
-        ValidateRunStart(manifest.Source, problems);
-        ValidateRunSummary(manifest, problems);
-        ValidateActions(manifest.Actions, problems);
-        ValidateCheckpoints(manifest.Checkpoints, manifest.Actions, problems);
+        var videoDurationMs = manifest.Source.Video is { DurationSeconds: > 0 } video
+            ? checked(video.DurationSeconds * 1000)
+            : 0;
+        ValidateEnvironment(manifest.Environment, videoDurationMs, problems);
+        ValidateRunStart(manifest.Source, videoDurationMs, problems);
+        ValidateRunSummary(manifest, videoDurationMs, problems);
+        ValidateActions(manifest.Actions, videoDurationMs, problems);
+        ValidateCheckpoints(manifest.Checkpoints, manifest.Actions, videoDurationMs, problems);
 
         if (string.IsNullOrWhiteSpace(manifest.RunId))
         {
@@ -49,7 +52,7 @@ public static partial class ManifestValidator
         return new ValidationResult(problems.Count == 0, problems);
     }
 
-    private static void ValidateEnvironment(EnvironmentIdentity env, List<string> problems)
+    private static void ValidateEnvironment(EnvironmentIdentity env, int videoDurationMs, List<string> problems)
     {
         if (!BuildVersionPattern.IsMatch(env.BuildVersion.Value))
         {
@@ -128,32 +131,23 @@ public static partial class ManifestValidator
             problems.Add($"environment.acts contains '{act}', which is not a model id (expected ACT.*).");
         }
 
-        // The point of recording provenance is that it can be checked. An identity
-        // field nobody claims to have observed or derived is a field somebody typed.
-        foreach (var (name, source) in new (string, FactSource)[]
-                 {
-                     ("build_version", env.BuildVersion.Source),
-                     ("build_date_utc", env.BuildDateUtc.Source),
-                     ("game_mode", env.GameMode.Source),
-                     ("seed", env.Seed.Source),
-                     ("content_hash", env.ContentHash.Source),
-                     ("ascension", env.Ascension.Source),
-                     ("character", env.Character.Source),
-                     ("acts", env.Acts.Source),
-                     ("mods", env.Mods.Source),
-                 })
-        {
-            if (source == FactSource.Engine)
-            {
-                problems.Add(
-                    $"environment.{name} is marked source=engine. Environment identity states what the " +
-                    "engine must be, so it cannot be something the engine produced - that would be circular.");
-            }
-        }
+        ValidateInputFact(env.BuildVersion, "environment.build_version", videoDurationMs, problems);
+        ValidateInputFact(env.BuildDateUtc, "environment.build_date_utc", videoDurationMs, problems);
+        ValidateInputFact(env.GameMode, "environment.game_mode", videoDurationMs, problems);
+        ValidateInputFact(env.Seed, "environment.seed", videoDurationMs, problems);
+        ValidateInputFact(env.ContentHash, "environment.content_hash", videoDurationMs, problems);
+        ValidateInputFact(env.Ascension, "environment.ascension", videoDurationMs, problems);
+        ValidateInputFact(env.Character, "environment.character", videoDurationMs, problems);
+        ValidateInputFact(env.Acts, "environment.acts", videoDurationMs, problems);
+        ValidateInputFact(env.Mods, "environment.mods", videoDurationMs, problems);
     }
 
     private static void ValidateParityWaiver(HeadlessParityWaiver waiver, List<string> problems)
     {
+        problems.Add(
+            "environment.mods.headless_parity_waiver is self-attested and cannot establish parity. " +
+            "No independently verified BaseLib v3.4.5 A/B report is available for this milestone.");
+
         if (string.IsNullOrWhiteSpace(waiver.Justification) ||
             string.IsNullOrWhiteSpace(waiver.ExecutableCommand))
         {
@@ -210,9 +204,18 @@ public static partial class ManifestValidator
 
     private static void ValidateSource(SourceProvenance source, List<string> problems)
     {
-        if (source.Kind == "vod" && source.Video is null)
+        if (source.Kind != "vod")
         {
-            problems.Add("source.kind is 'vod' but source.video is absent, so no reader could re-check any observation.");
+            problems.Add($"source.kind '{source.Kind}' is unsupported. This milestone accepts only 'vod'.");
+        }
+
+        if (source.Video is null)
+        {
+            problems.Add("source.video is absent, so no reader could re-check any observation.");
+        }
+        else if (source.Video.DurationSeconds <= 0)
+        {
+            problems.Add("source.video.duration_s must be positive so observation timestamps can be bounded.");
         }
 
         if (string.IsNullOrWhiteSpace(source.Coverage))
@@ -230,7 +233,7 @@ public static partial class ManifestValidator
     /// this validator can be satisfied by a recording of a run picked up half way
     /// through, because a resumed run carries the same seed, build, hash and acts.
     /// </summary>
-    private static void ValidateRunStart(SourceProvenance source, List<string> problems)
+    private static void ValidateRunStart(SourceProvenance source, int videoDurationMs, List<string> problems)
     {
         if (source.Kind != "vod") return;
 
@@ -243,10 +246,10 @@ public static partial class ManifestValidator
             return;
         }
 
-        RequireObservedVideoFact(start.FirstObservedRunTimeSeconds, "source.run_start.first_observed_run_time_s", problems);
-        RequireObservedVideoFact(start.FirstObservedFloor, "source.run_start.first_observed_floor", problems);
-        RequireObservedVideoFact(start.EnteredFromRunHistory, "source.run_start.entered_from_run_history", problems);
-        RequireObservedVideoFact(start.ResumeModalSeen, "source.run_start.resume_modal_seen", problems);
+        RequireObservedVideoFact(start.FirstObservedRunTimeSeconds, "source.run_start.first_observed_run_time_s", videoDurationMs, problems);
+        RequireObservedVideoFact(start.FirstObservedFloor, "source.run_start.first_observed_floor", videoDurationMs, problems);
+        RequireObservedVideoFact(start.EnteredFromRunHistory, "source.run_start.entered_from_run_history", videoDurationMs, problems);
+        RequireObservedVideoFact(start.ResumeModalSeen, "source.run_start.resume_modal_seen", videoDurationMs, problems);
 
         if (start.EnteredFromRunHistory.Value)
         {
@@ -285,7 +288,7 @@ public static partial class ManifestValidator
     /// recording spliced from two different runs - neither of which any single
     /// reading can catch on its own.
     /// </summary>
-    private static void ValidateRunSummary(ReplayManifest manifest, List<string> problems)
+    private static void ValidateRunSummary(ReplayManifest manifest, int videoDurationMs, List<string> problems)
     {
         if (manifest.Source.Kind != "vod") return;
 
@@ -298,15 +301,16 @@ public static partial class ManifestValidator
             return;
         }
 
-        RequireObservedVideoFact(summary.Seed, "source.run_summary.seed", problems);
-        RequireObservedVideoFact(summary.BuildVersion, "source.run_summary.build_version", problems);
-        RequireObservedVideoFact(summary.BuildDateUtc, "source.run_summary.build_date_utc", problems);
-        RequireObservedVideoFact(summary.ContentHash, "source.run_summary.content_hash", problems);
-        RequireObservedVideoFact(summary.Ascension, "source.run_summary.ascension", problems);
-        RequireObservedVideoFact(summary.FloorsClimbed, "source.run_summary.floors_climbed", problems);
-        RequireObservedVideoFact(summary.PlayerMaxHp, "source.run_summary.player_max_hp", problems);
-        RequireObservedVideoFact(summary.DeckSize, "source.run_summary.deck_size", problems);
-        RequireObservedVideoFact(summary.RelicCount, "source.run_summary.relic_count", problems);
+        ValidateVideoTimestamp(summary.VideoTimeMs, "source.run_summary.video_t_ms", videoDurationMs, problems);
+        RequireObservedVideoFact(summary.Seed, "source.run_summary.seed", videoDurationMs, problems);
+        RequireObservedVideoFact(summary.BuildVersion, "source.run_summary.build_version", videoDurationMs, problems);
+        RequireObservedVideoFact(summary.BuildDateUtc, "source.run_summary.build_date_utc", videoDurationMs, problems);
+        RequireObservedVideoFact(summary.ContentHash, "source.run_summary.content_hash", videoDurationMs, problems);
+        RequireObservedVideoFact(summary.Ascension, "source.run_summary.ascension", videoDurationMs, problems);
+        RequireObservedVideoFact(summary.FloorsClimbed, "source.run_summary.floors_climbed", videoDurationMs, problems);
+        RequireObservedVideoFact(summary.PlayerMaxHp, "source.run_summary.player_max_hp", videoDurationMs, problems);
+        RequireObservedVideoFact(summary.DeckSize, "source.run_summary.deck_size", videoDurationMs, problems);
+        RequireObservedVideoFact(summary.RelicCount, "source.run_summary.relic_count", videoDurationMs, problems);
 
         var env = manifest.Environment;
         foreach (var (field, atStart, atEnd) in new[]
@@ -341,7 +345,7 @@ public static partial class ManifestValidator
         }
     }
 
-    private static void ValidateActions(IReadOnlyList<ActionRecord> actions, List<string> problems)
+    private static void ValidateActions(IReadOnlyList<ActionRecord> actions, int videoDurationMs, List<string> problems)
     {
         if (actions.Count == 0)
         {
@@ -362,24 +366,28 @@ public static partial class ManifestValidator
 
         foreach (var action in actions)
         {
-            if (action.Source == FactSource.Engine)
+            if (action.Source != FactSource.Observed)
             {
-                problems.Add(
-                    $"actions[{action.Seq}] is marked source=engine. Actions are inputs to the replay; " +
-                    "an action the engine produced is not evidence about the run.");
+                problems.Add($"actions[{action.Seq}] ({action.Verb}) must be source=observed for a VOD replay.");
+                continue;
             }
 
-            if (action.Source == FactSource.Observed && action.Evidence?.VideoTimeMs is null)
+            if (action.Evidence?.VideoTimeMs is not { } timestamp)
             {
                 problems.Add(
                     $"actions[{action.Seq}] ({action.Verb}) claims to be observed but carries no video timestamp, " +
                     "so the claim cannot be re-checked against the source.");
             }
+            else
+            {
+                ValidateVideoTimestamp(timestamp, $"actions[{action.Seq}] ({action.Verb})", videoDurationMs, problems);
+            }
         }
     }
 
     private static void ValidateCheckpoints(
-        IReadOnlyList<Checkpoint> checkpoints, IReadOnlyList<ActionRecord> actions, List<string> problems)
+        IReadOnlyList<Checkpoint> checkpoints, IReadOnlyList<ActionRecord> actions,
+        int videoDurationMs, List<string> problems)
     {
         if (checkpoints.Count == 0)
         {
@@ -411,20 +419,51 @@ public static partial class ManifestValidator
 
             foreach (var (field, fact) in checkpoint.Expect)
             {
-                RequireObservedVideoFact(fact, $"checkpoint '{checkpoint.Id}' field '{field}'", problems);
+                RequireObservedVideoFact(
+                    fact, $"checkpoint '{checkpoint.Id}' field '{field}'", videoDurationMs, problems);
             }
         }
     }
 
-    private static void RequireObservedVideoFact<T>(Fact<T> fact, string path, List<string> problems)
+    private static void ValidateInputFact<T>(
+        Fact<T> fact, string path, int videoDurationMs, List<string> problems)
+    {
+        if (fact.Source == FactSource.Engine)
+        {
+            problems.Add(
+                $"{path} is marked source=engine. Replay inputs cannot be produced by the engine being checked.");
+        }
+
+        if (fact.Source == FactSource.Observed)
+        {
+            RequireObservedVideoFact(fact, path, videoDurationMs, problems);
+        }
+    }
+
+    private static void RequireObservedVideoFact<T>(
+        Fact<T> fact, string path, int videoDurationMs, List<string> problems)
     {
         if (fact.Source != FactSource.Observed)
         {
             problems.Add($"{path} must be source=observed because it is evidence about what the video shows.");
         }
-        else if (fact.Evidence?.VideoTimeMs is null)
+        else if (fact.Evidence?.VideoTimeMs is not { } timestamp)
         {
             problems.Add($"{path} is observed but has no video timestamp, so it cannot be re-checked.");
+        }
+        else
+        {
+            ValidateVideoTimestamp(timestamp, path, videoDurationMs, problems);
+        }
+    }
+
+    private static void ValidateVideoTimestamp(
+        int timestamp, string path, int videoDurationMs, List<string> problems)
+    {
+        if (timestamp < 0 || timestamp > videoDurationMs)
+        {
+            problems.Add(
+                $"{path} has video timestamp {timestamp}ms outside the source video range 0-{videoDurationMs}ms.");
         }
     }
 

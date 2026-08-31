@@ -60,16 +60,6 @@ public sealed record HeadlessParityWaiver
 
     [JsonPropertyName("headless_state_checksum")]
     public required string HeadlessStateChecksum { get; init; }
-
-    [JsonIgnore]
-    public bool IsEstablished =>
-        !string.IsNullOrWhiteSpace(Justification) &&
-        ResidualClosed.Contains("BaseLib v3.4.5 PowerCmd.Apply", StringComparison.Ordinal) &&
-        !string.IsNullOrWhiteSpace(ExecutableCommand) &&
-        !string.IsNullOrWhiteSpace(ModdedEventDigest) &&
-        string.Equals(ModdedEventDigest, HeadlessEventDigest, StringComparison.Ordinal) &&
-        !string.IsNullOrWhiteSpace(ModdedStateChecksum) &&
-        string.Equals(ModdedStateChecksum, HeadlessStateChecksum, StringComparison.Ordinal);
 }
 
 /// <summary>

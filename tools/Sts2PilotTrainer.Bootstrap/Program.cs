@@ -54,7 +54,8 @@ internal static class Program
                 return 2;
             }
 
-            gameDir = Path.GetFullPath(gameDir);
+            gameDir = ResolvePath(Path.GetFullPath(gameDir));
+            outDir = ResolvePath(outDir);
             RefuseProtectedOutput(gameDir, outDir);
 
             Console.WriteLine($"game install : {Redact(gameDir)}");
@@ -76,7 +77,8 @@ internal static class Program
             }
             Console.WriteLine($"install sha256 unchanged: {before[..16]}...");
 
-            WriteReceipt(outDir, identity, before, copied, patches);
+            var outputHashes = HashPreparedOutputs(outDir, copied);
+            WriteReceipt(outDir, identity, before, copied, patches, outputHashes);
             Console.WriteLine($"prepared     : {copied.Count} assemblies, {patches.Count} IL patches -> {Relative(outDir)}");
             return 0;
         }
@@ -265,11 +267,11 @@ internal static class Program
 
     private static void WriteReceipt(
         string outDir, InstalledIdentity identity, string installHash,
-        List<string> copied, List<AppliedPatch> patches)
+        List<string> copied, List<AppliedPatch> patches, IReadOnlyDictionary<string, string> outputHashes)
     {
         var receipt = new
         {
-            schema = "sts2-pilot-trainer/prepared-assembly/v1",
+            schema = "sts2-pilot-trainer/prepared-assembly/v2",
             prepared_at_utc = DateTimeOffset.UtcNow.ToString("O"),
             // Deliberately no install path: this file is a build artifact, and a
             // machine-specific absolute path has a habit of ending up in a log,
@@ -284,6 +286,7 @@ internal static class Program
             },
             pristine_sts2_sha256 = installHash,
             assemblies = copied,
+            prepared_output_sha256 = outputHashes,
             il_patches = patches.Select(p => new
             {
                 name = p.Name,
@@ -299,9 +302,22 @@ internal static class Program
 
     // ── Helpers ─────────────────────────────────────────────────────────────
 
-    private static string HashInstall(string gameDir)
+    private static string HashInstall(string gameDir) => HashFile(Path.Combine(gameDir, "sts2.dll"));
+
+    private static SortedDictionary<string, string> HashPreparedOutputs(string outDir, IEnumerable<string> copied)
     {
-        using var stream = File.OpenRead(Path.Combine(gameDir, "sts2.dll"));
+        var names = copied.Append("release_info.json")
+            .Where(name => File.Exists(Path.Combine(outDir, name)))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal);
+        return new SortedDictionary<string, string>(
+            names.ToDictionary(name => name, name => HashFile(Path.Combine(outDir, name)), StringComparer.Ordinal),
+            StringComparer.Ordinal);
+    }
+
+    private static string HashFile(string path)
+    {
+        using var stream = File.OpenRead(path);
         return Convert.ToHexStringLower(SHA256.HashData(stream));
     }
 
@@ -313,6 +329,35 @@ internal static class Program
                 $"Output directory {Redact(outDir)} is inside a protected Steam or Slay the Spire 2 path. " +
                 "Choose an isolated directory inside the project worktree.");
         }
+    }
+
+    private static string ResolvePath(string path)
+    {
+        var full = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(full)!;
+        var current = root;
+        var components = full[root.Length..].Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            StringSplitOptions.RemoveEmptyEntries);
+
+        for (var i = 0; i < components.Length; i++)
+        {
+            var candidate = Path.Combine(current, components[i]);
+            FileSystemInfo? entry = Directory.Exists(candidate)
+                ? new DirectoryInfo(candidate)
+                : File.Exists(candidate) ? new FileInfo(candidate) : null;
+            if (entry is null)
+            {
+                return Path.Combine(current, Path.Combine(components[i..]));
+            }
+
+            current = entry.LinkTarget is null
+                ? entry.FullName
+                : entry.ResolveLinkTarget(returnFinalTarget: true)?.FullName
+                  ?? throw new IOException($"Could not resolve symbolic link {Redact(entry.FullName)}.");
+        }
+
+        return current;
     }
 
     private static bool IsWithin(string path, string parent)

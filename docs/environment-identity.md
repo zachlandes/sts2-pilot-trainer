@@ -86,8 +86,10 @@ separate investigation and the manifest marks them as an inference for that reas
 The validator refuses an environment that lists fewer mods than it reports loaded,
 because an unidentified mod is exactly the gap the hash cannot close.
 
-Naming them does not establish that they changed nothing. What it buys is the
-ability to reason about each one — and, for the dangerous one, to write a check.
+Naming them does not establish that they changed nothing.
+What it buys is the ability to reason about each one — and, for the dangerous one, to write a check.
+The headless host therefore refuses this modded source environment.
+A matching content hash and manifest-authored waiver values cannot clear that refusal; BaseLib v3.4.5's `PowerCmd.Apply` continuation still needs a controlled retail-versus-headless A/B over replay events and canonical checksums.
 
 ## The resumed-run problem
 

@@ -117,8 +117,8 @@ manifest : navegreed-OJ-6QXhNgdg
   ok   content_hash     manifest=1568834832                     local=1568834832
   ok   seed_alphabet    manifest=legal                          local=legal
   ok   game_mode        manifest=standard                       local=standard
-  note mod_environment  manifest=navegreed-2026-08 (3 mod(s))   local=none loaded
-       Reported, not gated. This host loads no mods, which is what makes its content hash the base game's and therefore worth comparing. The source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. A matching content hash covers content ids from mods that declare themselves gameplay-affecting and nothing else.
+  FAIL mod_environment  manifest=navegreed-2026-08 (3 mod(s))   local=none loaded
+       This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. Publication remains blocked until a controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.
 
 acts this build ships:
   0:ACT.OVERGROWTH (default)
@@ -126,7 +126,7 @@ acts this build ships:
   1:ACT.HIVE (default)
   2:ACT.GLORY (default)
 
-environment matches; replay may proceed
+environment does NOT match; refusing to replay
 ```
 
 Look at the act list. This build ships **two acts at index 0**, and
@@ -218,7 +218,27 @@ transcription rather than assumed.
 about the position of the run's shared random stream, because the map does not come
 from that stream — which is exactly how the act-variant mistake survived this check.
 
-## Replaying the run
+## Replaying the engine fixture
+
+The source manifest remains ineligible because mod parity is unproved.
+The replay, determinism, corruption, and snapshot demonstrations below use a generated vanilla fixture to exercise the engine spine without turning that result into evidence about the source environment.
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+source = Path('manifests/navegreed-OJ-6QXhNgdg.replay.json')
+out = Path('build/evidence/vanilla-engine-fixture.json')
+manifest = json.loads(source.read_text())
+manifest['run_id'] = 'synthetic-vanilla-engine-fixture'
+manifest['environment']['mods'] = {
+    'Value': {'name': 'vanilla', 'reported_count': 0, 'mods': []},
+    'Source': 'Declared'
+}
+out.parent.mkdir(parents=True, exist_ok=True)
+out.write_text(json.dumps(manifest, indent=2) + '\n')
+PY
+```
 
 Five actions, reconstructed by hand from the video: the opening blessing, the move
 to the first map node, the two cards played on turn 1, and ending that turn. Each
@@ -226,11 +246,11 @@ carries the timestamp it was read at. Four checkpoints hold 21 values the video
 shows, and the replay has to reproduce every one.
 
 ```bash
-./scripts/arbiter replay manifests/navegreed-OJ-6QXhNgdg.replay.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter replay build/evidence/vanilla-engine-fixture.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
 ```
 
 ```output
-manifest       : navegreed-OJ-6QXhNgdg
+manifest       : synthetic-vanilla-engine-fixture
 actions        : 5
 status         : VERIFIED
 
@@ -296,7 +316,7 @@ front and documented, so a digest mismatch can only be a real divergence and nev
 an artefact of running on a different afternoon.
 
 ```bash
-./scripts/arbiter determinism manifests/navegreed-OJ-6QXhNgdg.replay.json --runs 3 --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter determinism build/evidence/vanilla-engine-fixture.json --runs 3 --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
 ```
 
 ```output
@@ -319,7 +339,7 @@ balances — every check that can be done from the frames says yes. Those are th
 that justify owning an engine at all.
 
 ```bash
-./scripts/arbiter negative-controls manifests/navegreed-OJ-6QXhNgdg.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter negative-controls build/evidence/vanilla-engine-fixture.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
 ```
 
 ```output
@@ -381,7 +401,7 @@ fresh process and refuses unless the digest matches what was cached. That is slo
 than loading a blob and much harder to get quietly wrong.
 
 ```bash
-rm -rf build/snapshots && ./scripts/arbiter snapshot-lines manifests/navegreed-OJ-6QXhNgdg.replay.json --at 1 --line manifests/lines/streamer.line.json --line manifests/lines/aggressive.line.json --out build/evidence --cache build/snapshots 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+rm -rf build/snapshots && ./scripts/arbiter snapshot-lines build/evidence/vanilla-engine-fixture.json --at 1 --line manifests/lines/streamer.line.json --line manifests/lines/aggressive.line.json --out build/evidence --cache build/snapshots 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
 ```
 
 ```output
@@ -494,12 +514,12 @@ every check that is not about the recording itself.
 manifest : navegreed-OJ-6QXhNgdg
 
   pass  provenance    The recording is of the run it claims, from that run's start.
-  pass  environment   The declared build, content hash, mode and seed match this machine.
-  pass  reproduction  The reconstructed history replays through the real engine and matches every observed value.
-  pass  determinism   Fresh processes produce byte-identical canonical state.
-  pass  rejection     Corrupted and incomplete histories are refused.
+  FAIL  environment   The declared build, content hash, mode and seed match this machine.
+  FAIL  reproduction  The reconstructed history replays through the real engine and matches every observed value.
+  FAIL  determinism   Fresh processes produce byte-identical canonical state.
+  FAIL  rejection     Corrupted and incomplete histories are refused.
 
-PUBLISHABLE - every condition of the gate holds
+NOT PUBLISHABLE - see the failing condition above
 ```
 
 The verdict is written to `build/evidence/publication-gate.json` together with the
@@ -508,12 +528,12 @@ than the one that was actually used.
 
 ## What is proved, and what is not
 
-**Proved, on this machine, against this video.**
+**Proved by source-independent checks and the vanilla engine fixture.**
 
 - The seed is `SFXT47K77RFK`. The engine's own map generator reproduces all 61
   transcribed nodes; the seed an optical reader reported with full confidence
   reproduces 12. This does not depend on reading a character.
-- Replaying five reconstructed actions from run start reproduces **21 independently
+- In the vanilla engine fixture, replaying five reconstructed actions from run start reproduces **21 independently
   observed values**, including the enemy's health and telegraphed intent, the ordered
   hand, energy at three points in the turn, block, and the player's health after the
   enemy's turn resolved. The random outcome of the opening blessing's transform is
@@ -542,15 +562,7 @@ than the one that was actually used.
   not. Custom mode is not ruled out by direct evidence. It is the weakest link in the
   environment identity, and the manifest marks it as an inference rather than an
   observation.
-- **The source environment's three mods changed nothing that matters here.** They
-  are now named — a stream-overlay exporter, the community modding framework, and a
-  run-resume mod — and the manifest carries a risk assessment for each. That is
-  better than a count, and it is not proof. The content hash matches, and this host
-  loads no mods, so a match rules out content contributed by mods that declare
-  themselves gameplay-affecting; it rules out nothing about a mod that patches
-  behaviour, and the game's own warning says the hash may omit ids. The one mod that
-  could invalidate a reconstruction outright is handled by a check rather than by
-  this assumption.
+- **Parity with the source environment's three mods is unproved.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume mod — and the manifest carries a risk assessment for each. The content hash cannot cover every behaviour patch. BaseLib v3.4.5's `PowerCmd.Apply` continuation still needs a controlled retail-versus-headless A/B over replay events and canonical checksums, so the publication gate refuses this manifest.
 - **The mod identities themselves are not from the video.** It names no mod
   anywhere; the overlay gives only a count. They came from a separate investigation
   and the manifest marks them as an inference rather than an observation.
