@@ -32,13 +32,19 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   not the run its history describes. That is checked on the recording, along with a
   second reading of the environment taken from the end-of-run screen 2,038 seconds
   after the first.
+- **The source game mode remains unestablished.** Standard, custom with no modifiers,
+  and daily without its date-selected modifiers match every observed checkpoint and
+  the final canonical state for this prefix. Negative controls prove the comparison
+  detects both checkpoint-only and terminal divergence, but the recording cannot
+  bind the actual custom or daily configuration.
 
 Two accepted assumptions turned out to be wrong and are now recorded as identity:
 the act variant (this build ships two different Act 1s) and the player's unlock
 state (which moves the shared RNG stream). See
 [environment identity](docs/environment-identity.md).
 
-**The publication gate.** All of it is one verdict, computed rather than concluded:
+**The publication gate.** All of it is one verdict, computed rather than concluded.
+The selected VOD currently returns `NOT PUBLISHABLE` because its game mode remains unestablished:
 
 ```bash
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json
@@ -56,6 +62,7 @@ recording itself.
 You need the game. It is a read-only input: the bootstrap copies your installed
 assemblies into a gitignored working directory, hashes the installation before and
 after, and fails if anything moved. No game content is in this repository.
+All bootstrap, evidence, state, and snapshot-cache output paths must resolve inside the current worktree, including through symbolic links.
 
 ```bash
 ./scripts/build.sh                      # prepare the assembly copy, build everything

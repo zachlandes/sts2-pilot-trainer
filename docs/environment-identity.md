@@ -23,7 +23,20 @@ trust the list more than the first version of it.
 | `mods` | The overlay reports a **count**; the identities came from a separate investigation | A named environment, kept next to the hash rather than replaced by it. See [the mod environment](#the-mod-environment). |
 | **`acts`** | **The act's name on the map screen** | **See below. This one is easy to miss and produces a completely different run.** |
 
-And one that is not a field, because it cannot be observed at all:
+## The game-mode limit
+
+The source video never renders its game mode.
+The manifest records `standard` as an inference, not an observation.
+
+The real-engine mode-discrimination probe replays the reconstructed prefix under standard, custom with no modifiers, and daily without its date-selected modifiers.
+All three match every observed checkpoint and the final canonical state.
+A behavior-changing custom modifier proves the detector catches terminal divergence, and a reordered-history control proves it catches checkpoint divergence even when the terminal state converges.
+
+Those controls validate the instrument, but they do not identify the source configuration.
+Custom mode may carry other modifiers, and the probe does not bind the date-selected modifiers of a real daily run.
+The publication gate therefore refuses this VOD on game-mode identity rather than treating the manifest's inference as evidence.
+
+And one input is not a field, because it cannot be observed at all:
 
 | Not a field | Why not |
 |---|---|
