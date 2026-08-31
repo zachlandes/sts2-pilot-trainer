@@ -32,6 +32,17 @@ public class ManifestJsonTests
         Assert.Contains("Manifest.environment is required", thrown.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("{")]
+    [InlineData("[]")]
+    [InlineData("{\"manifest_version\":\"two\"}")]
+    public void RefusesMalformedOrMisshapenManifestJson(string json)
+    {
+        var thrown = Assert.Throws<ManifestException>(() => ManifestJson.Deserialize(json));
+
+        Assert.Contains("Manifest JSON is invalid", thrown.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void RefusesAManifestWithNoVersion()
     {

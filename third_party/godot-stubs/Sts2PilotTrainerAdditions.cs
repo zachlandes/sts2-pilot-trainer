@@ -108,36 +108,49 @@ public static class HeadlessSandbox
     {
         if (path.StartsWith("user://", StringComparison.Ordinal))
         {
-            return Path.Combine(Root, path["user://".Length..].Replace('/', Path.DirectorySeparatorChar));
+            return ResolveInsideRoot(path["user://".Length..]);
         }
 
         if (path.StartsWith("res://", StringComparison.Ordinal))
         {
             // Packed game resources. Nothing here can read them, and returning a
             // sandbox path means a miss rather than a hit on something unrelated.
-            return Path.Combine(Root, "res", path["res://".Length..].Replace('/', Path.DirectorySeparatorChar));
+            return ResolveInsideRoot(Path.Combine("res", path["res://".Length..]));
+        }
+
+        if (!Path.IsPathRooted(path))
+        {
+            return ResolveInsideRoot(path);
         }
 
         Guard(path);
-        return path;
+        return Path.GetFullPath(path);
     }
 
-    /// <summary>Refuses a write anywhere that is meant to be read-only.</summary>
+    /// <summary>Refuses a write outside the sandbox.</summary>
     public static void Guard(string path)
     {
-        if (!Path.IsPathRooted(path)) return;
         var full = Path.GetFullPath(path);
-        if (full.StartsWith(Path.GetFullPath(_root), StringComparison.Ordinal)) return;
-
-        foreach (var forbidden in new[] { "SlayTheSpire2", "steamapps" })
+        var root = Path.GetFullPath(_root);
+        var relative = Path.GetRelativePath(root, full);
+        if (relative == "." ||
+            (!Path.IsPathRooted(relative) &&
+             relative != ".." &&
+             !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)))
         {
-            if (full.Contains(forbidden, StringComparison.OrdinalIgnoreCase))
-            {
-                throw new UnauthorizedAccessException(
-                    $"Refusing a headless filesystem operation on '{forbidden}': the installed game and its " +
-                    "saves are read-only inputs to this project. This is a bug in the host, not in the game.");
-            }
+            return;
         }
+
+        throw new UnauthorizedAccessException(
+            $"Refusing a headless filesystem operation outside the sandbox: '{full}'. The installed game and " +
+            "saves are read-only inputs to this project. This is a bug in the host, not in the game.");
+    }
+
+    private static string ResolveInsideRoot(string relativePath)
+    {
+        var full = Path.GetFullPath(Path.Combine(Root, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+        Guard(full);
+        return full;
     }
 }
 
@@ -148,8 +161,8 @@ public partial class DirAccess
     {
         try
         {
-            var target = Path.IsPathRooted(path) ? path : Path.Combine(_path, path);
-            HeadlessSandbox.Guard(target);
+            var target = HeadlessSandbox.Globalize(
+                Path.IsPathRooted(path) ? path : Path.Combine(_path, path));
             if (File.Exists(target)) File.Delete(target);
             else if (Directory.Exists(target)) Directory.Delete(target);
             return Error.Ok;
@@ -169,9 +182,9 @@ public partial class DirAccess
     {
         try
         {
-            HeadlessSandbox.Guard(path);
-            if (File.Exists(path)) File.Delete(path);
-            else if (Directory.Exists(path)) Directory.Delete(path);
+            var target = HeadlessSandbox.Globalize(path);
+            if (File.Exists(target)) File.Delete(target);
+            else if (Directory.Exists(target)) Directory.Delete(target);
             return Error.Ok;
         }
         catch (UnauthorizedAccessException)

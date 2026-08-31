@@ -68,6 +68,12 @@ public sealed record MapObservation
     public static MapObservation Load(string path)
     {
         var json = File.ReadAllText(path);
+        return ManifestJson.RefuseInvalidJson(
+            "Map observation", () => Deserialize(json, Path.GetFileName(path)));
+    }
+
+    private static MapObservation Deserialize(string json, string fileName)
+    {
         using var probe = JsonDocument.Parse(json);
         if (!probe.RootElement.TryGetProperty("schema", out var schemaElement))
         {
@@ -83,7 +89,7 @@ public sealed record MapObservation
         }
 
         var observation = JsonSerializer.Deserialize<MapObservation>(json, ManifestJson.Options)
-            ?? throw new ManifestException($"Map observation at {Path.GetFileName(path)} deserialized to null.");
+            ?? throw new ManifestException($"Map observation at {fileName} deserialized to null.");
         ManifestJson.ValidateRequiredMembers(observation, "Map observation");
 
         var videoProblems = observation.VideoProblems();

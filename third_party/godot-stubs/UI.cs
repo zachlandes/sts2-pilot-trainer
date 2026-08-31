@@ -350,9 +350,24 @@ public class FileAccess : GodotObject, IDisposable
 public partial class DirAccess : GodotObject, IDisposable
 {
     public static bool DirExistsAbsolute(string path) => Directory.Exists(path);
-    public static Error MakeDirAbsolute(string path) { try { Directory.CreateDirectory(path); return Error.Ok; } catch { return Error.Failed; } }
-    public static Error MakeDirRecursiveAbsolute(string path) { try { Directory.CreateDirectory(path); return Error.Ok; } catch { return Error.Failed; } }
-    public Error MakeDirRecursive(string path) { try { Directory.CreateDirectory(Path.Combine(_path, path)); return Error.Ok; } catch { return Error.Failed; } }
+    public static Error MakeDirAbsolute(string path)
+    {
+        try { Directory.CreateDirectory(HeadlessSandbox.Globalize(path)); return Error.Ok; }
+        catch (UnauthorizedAccessException) { throw; }
+        catch { return Error.Failed; }
+    }
+    public static Error MakeDirRecursiveAbsolute(string path)
+    {
+        try { Directory.CreateDirectory(HeadlessSandbox.Globalize(path)); return Error.Ok; }
+        catch (UnauthorizedAccessException) { throw; }
+        catch { return Error.Failed; }
+    }
+    public Error MakeDirRecursive(string path)
+    {
+        try { Directory.CreateDirectory(HeadlessSandbox.Globalize(Path.Combine(_path, path))); return Error.Ok; }
+        catch (UnauthorizedAccessException) { throw; }
+        catch { return Error.Failed; }
+    }
     public static DirAccess? Open(string path) => Directory.Exists(path) ? new DirAccess(path) : null;
     protected readonly string _path;
     private DirAccess(string path) { _path = path; }

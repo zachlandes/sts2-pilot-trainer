@@ -29,6 +29,17 @@ public class MapObservationTests
         Assert.Contains(comparison.Problems, problem => problem.Contains("no nodes", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData("{")]
+    [InlineData("[]")]
+    [InlineData("{\"schema\":42}")]
+    public void LoadRejectsMalformedOrMisshapenJson(string json)
+    {
+        var path = WriteJson(json);
+
+        Assert.Throws<ManifestException>(() => MapObservation.Load(path));
+    }
+
     [Fact]
     public void LoadRejectsAMissingSchema()
     {

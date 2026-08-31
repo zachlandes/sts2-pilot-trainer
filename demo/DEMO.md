@@ -449,8 +449,8 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   113, Skipped:     0, Total:   113 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    34, Skipped:     0, Total:    34 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   119, Skipped:     0, Total:   119 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    35, Skipped:     0, Total:    35 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe

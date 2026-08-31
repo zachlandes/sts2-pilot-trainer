@@ -28,9 +28,12 @@ public static class ManifestJson
     /// ignoring a field added by a newer writer is exactly how a replay ends up
     /// exact-looking and wrong.
     /// </summary>
-    public static ReplayManifest Deserialize(string json)
+    public static ReplayManifest Deserialize(string json) =>
+        RefuseInvalidJson("Manifest", () => DeserializeCore(json));
+
+    private static ReplayManifest DeserializeCore(string json)
     {
-        var probe = JsonDocument.Parse(json);
+        using var probe = JsonDocument.Parse(json);
         if (!probe.RootElement.TryGetProperty("manifest_version", out var versionElement))
         {
             throw new ManifestException("Manifest has no 'manifest_version'. Refusing to guess which format this is.");
@@ -52,6 +55,23 @@ public static class ManifestJson
     }
 
     public static ReplayManifest Load(string path) => Deserialize(File.ReadAllText(path));
+
+    internal static T RefuseInvalidJson<T>(string contractName, Func<T> read)
+    {
+        try
+        {
+            return read();
+        }
+        catch (ManifestException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (
+            exception is JsonException or InvalidOperationException or FormatException)
+        {
+            throw new ManifestException($"{contractName} JSON is invalid: {exception.Message}");
+        }
+    }
 
     public static void Save(ReplayManifest manifest, string path) =>
         File.WriteAllText(path, Serialize(manifest) + "\n");
