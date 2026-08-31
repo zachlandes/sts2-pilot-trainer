@@ -54,6 +54,9 @@ internal static class Program
                 return 2;
             }
 
+            gameDir = Path.GetFullPath(gameDir);
+            RefuseProtectedOutput(gameDir, outDir);
+
             Console.WriteLine($"game install : {Redact(gameDir)}");
             var identity = ReadInstalledIdentity(gameDir);
             Console.WriteLine($"build        : {identity.Version} ({identity.BuildDateUtc}) commit {identity.Commit}");
@@ -300,6 +303,35 @@ internal static class Program
     {
         using var stream = File.OpenRead(Path.Combine(gameDir, "sts2.dll"));
         return Convert.ToHexStringLower(SHA256.HashData(stream));
+    }
+
+    private static void RefuseProtectedOutput(string gameDir, string outDir)
+    {
+        if (IsWithin(outDir, gameDir) || HasProtectedInstallComponent(outDir))
+        {
+            throw new InvalidOperationException(
+                $"Output directory {Redact(outDir)} is inside a protected Steam or Slay the Spire 2 path. " +
+                "Choose an isolated directory inside the project worktree.");
+        }
+    }
+
+    private static bool IsWithin(string path, string parent)
+    {
+        var relative = Path.GetRelativePath(parent, path);
+        return relative == "." ||
+               (!relative.Equals("..", StringComparison.Ordinal) &&
+                !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal));
+    }
+
+    private static bool HasProtectedInstallComponent(string path)
+    {
+        var components = Path.GetFullPath(path)
+            .Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries);
+        return components.Any(component =>
+            component.Equals("Steam", StringComparison.OrdinalIgnoreCase) ||
+            component.Equals("steamapps", StringComparison.OrdinalIgnoreCase) ||
+            component.Equals("Slay the Spire 2", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string? ArgValue(string[] args, string name)

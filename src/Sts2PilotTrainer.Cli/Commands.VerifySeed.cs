@@ -34,6 +34,9 @@ internal static partial class Commands
         var candidates = (Args.Value(args, "--candidates")
                           ?? throw new ManifestException("verify-seed needs --candidates <seed>[,<seed>...] or --seed <seed>."))
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var character = Args.Value(args, "--character") ?? "CHARACTER.IRONCLAD";
+        var ascension = Args.Value(args, "--ascension") ?? "10";
+        var gameMode = Args.Value(args, "--game-mode") ?? "standard";
 
         Directory.CreateDirectory(outDir);
         var results = new List<JsonElement>();
@@ -41,7 +44,13 @@ internal static partial class Commands
         foreach (var candidate in candidates)
         {
             var child = SelfProcess.Run(
-                "verify-seed", observationPath, "--seed", candidate, "--out", outDir, "--acts", string.Join(",", acts));
+                "verify-seed", observationPath,
+                "--seed", candidate,
+                "--out", outDir,
+                "--acts", string.Join(",", acts),
+                "--character", character,
+                "--ascension", ascension,
+                "--game-mode", gameMode);
             Console.Write(child.StandardOutput);
             if (child.ExitCode != 0)
             {

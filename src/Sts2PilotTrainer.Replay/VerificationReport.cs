@@ -48,6 +48,10 @@ public enum VerificationStatus
     /// <summary>Replayed, and every checkpoint agreed.</summary>
     Verified,
 
+    /// <summary>Only a requested prefix was replayed. Unevaluated actions and
+    /// checkpoints prevent this result from verifying the manifest.</summary>
+    Partial,
+
     /// <summary>Not attempted, because the environment did not match. This is a
     /// clean refusal, not a failure - the manifest may be perfectly good elsewhere.</summary>
     Refused,

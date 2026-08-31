@@ -186,6 +186,29 @@ public class ModEnvironmentTests
     }
 
     [Fact]
+    public void RejectsAParityWaiverWithoutMatchingExecutableEvidence()
+    {
+        var mods = Fixtures.ModEnvironment() with
+        {
+            HeadlessParityWaiver = new HeadlessParityWaiver
+            {
+                Justification = "A/B replay",
+                ResidualClosed = "BaseLib v3.4.5 PowerCmd.Apply continuation",
+                ExecutableCommand = "./scripts/parity-ab",
+                ModdedEventDigest = "modded-events",
+                HeadlessEventDigest = "different-events",
+                ModdedStateChecksum = "same-state",
+                HeadlessStateChecksum = "same-state",
+            },
+        };
+
+        var result = ManifestValidator.Validate(WithMods(mods));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("event digests do not match", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsAnUnnamedEnvironment()
     {
         var result = ManifestValidator.Validate(WithMods(Fixtures.ModEnvironment() with { Name = " " }));

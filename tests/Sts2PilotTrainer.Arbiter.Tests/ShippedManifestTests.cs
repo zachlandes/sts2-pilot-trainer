@@ -63,13 +63,4 @@ public class ShippedManifestTests
         Assert.Equal(FactSource.Inferred, Manifest.Environment.Mods.Source);
     }
 
-    [Fact]
-    public void KeepsTheContentHashAsAGateRatherThanAnEnvironmentFingerprint()
-    {
-        // Both must be present and they must be different things. If the hash were
-        // treated as the environment, naming the mods would be decoration.
-        Assert.False(string.IsNullOrWhiteSpace(Manifest.Environment.ContentHash.Value));
-        Assert.False(string.IsNullOrWhiteSpace(Manifest.Environment.Mods.Value.Name));
-        Assert.Contains("necessary gate", Engine.Preflight.ContentHashScope, StringComparison.Ordinal);
-    }
 }

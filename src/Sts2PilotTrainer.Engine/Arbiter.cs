@@ -89,6 +89,10 @@ public static class Arbiter
         }
 
         var finalState = CanonicalStateProjection.Project(session.RunState);
+        var replayedActions = stopAfterSeq is { } stop
+            ? manifest.Actions.Where(a => a.Seq <= stop).ToList()
+            : manifest.Actions;
+        var isPartial = replayedActions.Count < manifest.Actions.Count;
         var failed = results.Where(r => !r.Passed).ToList();
         foreach (var result in failed)
         {
@@ -100,15 +104,24 @@ public static class Arbiter
             }
         }
 
+        if (isPartial)
+        {
+            diagnostics.Add(
+                $"Partial replay stopped after action {stopAfterSeq}; " +
+                $"{manifest.Actions.Count - replayedActions.Count} action(s) and their checkpoints were not evaluated.");
+        }
+
         return new ArbiterOutcome(
             new VerificationReport
             {
-                Status = failed.Count == 0 ? VerificationStatus.Verified : VerificationStatus.Rejected,
+                Status = failed.Count > 0
+                    ? VerificationStatus.Rejected
+                    : isPartial ? VerificationStatus.Partial : VerificationStatus.Verified,
                 ArbiterVersion = Version,
                 Preflight = preflight,
                 Checkpoints = results,
                 FinalStateDigest = finalState.Digest(),
-                ActionHistoryHash = SnapshotCacheKey.HashActions(manifest.Actions),
+                ActionHistoryHash = SnapshotCacheKey.HashActions(replayedActions),
                 Caveats = Caveats(),
                 Diagnostics = diagnostics,
             },

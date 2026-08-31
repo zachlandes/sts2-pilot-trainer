@@ -145,6 +145,72 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void RejectsRunStartFactsThatWereNotObservedInTheVideo()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Source = manifest.Source with
+            {
+                RunStart = manifest.Source.RunStart! with
+                {
+                    FirstObservedFloor = Fact<int>.Declared(1),
+                },
+            },
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("first_observed_floor must be source=observed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsRunSummaryFactsWithoutVideoTimestamps()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Source = manifest.Source with
+            {
+                RunSummary = manifest.Source.RunSummary! with
+                {
+                    Seed = new Fact<string>(manifest.Environment.Seed.Value, FactSource.Observed),
+                },
+            },
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("source.run_summary.seed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsObservedCheckpointFactsWithoutVideoTimestamps()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Checkpoints =
+            [
+                manifest.Checkpoints[0] with
+                {
+                    Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+                    {
+                        ["combat.energy"] = new Fact<string>("3", FactSource.Observed),
+                    },
+                },
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("has no video timestamp", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsAManifestWithNoCheckpoints()
     {
         var manifest = Fixtures.ValidManifest() with { Checkpoints = [] };

@@ -17,10 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj" />
-    <!-- For Preflight.ContentHashScope: one test asserts the hash is described as a
-         gate rather than as an environment fingerprint, and that wording is the
-         thing being pinned. -->
-    <ProjectReference Include="../../src/Sts2PilotTrainer.Engine/Sts2PilotTrainer.Engine.csproj" />
   </ItemGroup>
 
   <ItemGroup>

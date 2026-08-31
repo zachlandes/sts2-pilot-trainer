@@ -32,6 +32,44 @@ public sealed record ModEnvironment
 
     [JsonPropertyName("mods")]
     public required IReadOnlyList<InstalledMod> Mods { get; init; }
+
+    [JsonPropertyName("headless_parity_waiver")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HeadlessParityWaiver? HeadlessParityWaiver { get; init; }
+}
+
+public sealed record HeadlessParityWaiver
+{
+    [JsonPropertyName("justification")]
+    public required string Justification { get; init; }
+
+    [JsonPropertyName("residual_closed")]
+    public required string ResidualClosed { get; init; }
+
+    [JsonPropertyName("executable_command")]
+    public required string ExecutableCommand { get; init; }
+
+    [JsonPropertyName("modded_event_digest")]
+    public required string ModdedEventDigest { get; init; }
+
+    [JsonPropertyName("headless_event_digest")]
+    public required string HeadlessEventDigest { get; init; }
+
+    [JsonPropertyName("modded_state_checksum")]
+    public required string ModdedStateChecksum { get; init; }
+
+    [JsonPropertyName("headless_state_checksum")]
+    public required string HeadlessStateChecksum { get; init; }
+
+    [JsonIgnore]
+    public bool IsEstablished =>
+        !string.IsNullOrWhiteSpace(Justification) &&
+        ResidualClosed.Contains("BaseLib v3.4.5 PowerCmd.Apply", StringComparison.Ordinal) &&
+        !string.IsNullOrWhiteSpace(ExecutableCommand) &&
+        !string.IsNullOrWhiteSpace(ModdedEventDigest) &&
+        string.Equals(ModdedEventDigest, HeadlessEventDigest, StringComparison.Ordinal) &&
+        !string.IsNullOrWhiteSpace(ModdedStateChecksum) &&
+        string.Equals(ModdedStateChecksum, HeadlessStateChecksum, StringComparison.Ordinal);
 }
 
 /// <summary>

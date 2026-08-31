@@ -15,10 +15,7 @@ internal static partial class Commands
         Console.WriteLine();
         foreach (var field in result.Fields)
         {
-            // A reported-only row is neither a pass nor a failure, and marking it as
-            // either would misstate what preflight actually checked.
-            var reported = field.Field == "mod_environment";
-            var mark = reported ? "note" : field.Matches ? "ok  " : "FAIL";
+            var mark = field.Matches ? "ok  " : "FAIL";
             Console.WriteLine($"  {mark} {field.Field,-16} manifest={field.Expected,-30} local={field.Actual}");
             if (!field.Matches) Console.WriteLine($"       {field.Diagnostic}");
         }
@@ -87,7 +84,7 @@ internal static partial class Commands
             Console.WriteLine($"canonical state    : {Paths.Display(statePath)}");
         }
 
-        return report.Status == VerificationStatus.Verified ? 0 : 1;
+        return report.Status is VerificationStatus.Verified or VerificationStatus.Partial ? 0 : 1;
     }
 
     /// <summary>

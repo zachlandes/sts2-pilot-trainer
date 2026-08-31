@@ -110,6 +110,11 @@ public static partial class ManifestValidator
                 "assessments looks like diligence and carries none.");
         }
 
+        if (mods.HeadlessParityWaiver is { } waiver)
+        {
+            ValidateParityWaiver(waiver, problems);
+        }
+
         if (env.Acts.Value.Count == 0)
         {
             problems.Add(
@@ -144,6 +149,35 @@ public static partial class ManifestValidator
                     $"environment.{name} is marked source=engine. Environment identity states what the " +
                     "engine must be, so it cannot be something the engine produced - that would be circular.");
             }
+        }
+    }
+
+    private static void ValidateParityWaiver(HeadlessParityWaiver waiver, List<string> problems)
+    {
+        if (string.IsNullOrWhiteSpace(waiver.Justification) ||
+            string.IsNullOrWhiteSpace(waiver.ExecutableCommand))
+        {
+            problems.Add(
+                "environment.mods.headless_parity_waiver needs a justification and executable A/B command.");
+        }
+
+        if (!waiver.ResidualClosed.Contains("BaseLib v3.4.5 PowerCmd.Apply", StringComparison.Ordinal))
+        {
+            problems.Add(
+                "environment.mods.headless_parity_waiver does not close the BaseLib v3.4.5 " +
+                "PowerCmd.Apply continuation residual.");
+        }
+
+        if (string.IsNullOrWhiteSpace(waiver.ModdedEventDigest) ||
+            !string.Equals(waiver.ModdedEventDigest, waiver.HeadlessEventDigest, StringComparison.Ordinal))
+        {
+            problems.Add("environment.mods.headless_parity_waiver A/B replay event digests do not match.");
+        }
+
+        if (string.IsNullOrWhiteSpace(waiver.ModdedStateChecksum) ||
+            !string.Equals(waiver.ModdedStateChecksum, waiver.HeadlessStateChecksum, StringComparison.Ordinal))
+        {
+            problems.Add("environment.mods.headless_parity_waiver A/B state checksums do not match.");
         }
     }
 
@@ -209,6 +243,11 @@ public static partial class ManifestValidator
             return;
         }
 
+        RequireObservedVideoFact(start.FirstObservedRunTimeSeconds, "source.run_start.first_observed_run_time_s", problems);
+        RequireObservedVideoFact(start.FirstObservedFloor, "source.run_start.first_observed_floor", problems);
+        RequireObservedVideoFact(start.EnteredFromRunHistory, "source.run_start.entered_from_run_history", problems);
+        RequireObservedVideoFact(start.ResumeModalSeen, "source.run_start.resume_modal_seen", problems);
+
         if (start.EnteredFromRunHistory.Value)
         {
             problems.Add(
@@ -258,6 +297,16 @@ public static partial class ManifestValidator
                 "to get wrong than one.");
             return;
         }
+
+        RequireObservedVideoFact(summary.Seed, "source.run_summary.seed", problems);
+        RequireObservedVideoFact(summary.BuildVersion, "source.run_summary.build_version", problems);
+        RequireObservedVideoFact(summary.BuildDateUtc, "source.run_summary.build_date_utc", problems);
+        RequireObservedVideoFact(summary.ContentHash, "source.run_summary.content_hash", problems);
+        RequireObservedVideoFact(summary.Ascension, "source.run_summary.ascension", problems);
+        RequireObservedVideoFact(summary.FloorsClimbed, "source.run_summary.floors_climbed", problems);
+        RequireObservedVideoFact(summary.PlayerMaxHp, "source.run_summary.player_max_hp", problems);
+        RequireObservedVideoFact(summary.DeckSize, "source.run_summary.deck_size", problems);
+        RequireObservedVideoFact(summary.RelicCount, "source.run_summary.relic_count", problems);
 
         var env = manifest.Environment;
         foreach (var (field, atStart, atEnd) in new[]
@@ -362,14 +411,20 @@ public static partial class ManifestValidator
 
             foreach (var (field, fact) in checkpoint.Expect)
             {
-                if (fact.Source == FactSource.Engine)
-                {
-                    problems.Add(
-                        $"checkpoint '{checkpoint.Id}' field '{field}' is marked source=engine. A checkpoint " +
-                        "compares the engine against an independent observation; comparing the engine against " +
-                        "itself always passes and means nothing.");
-                }
+                RequireObservedVideoFact(fact, $"checkpoint '{checkpoint.Id}' field '{field}'", problems);
             }
+        }
+    }
+
+    private static void RequireObservedVideoFact<T>(Fact<T> fact, string path, List<string> problems)
+    {
+        if (fact.Source != FactSource.Observed)
+        {
+            problems.Add($"{path} must be source=observed because it is evidence about what the video shows.");
+        }
+        else if (fact.Evidence?.VideoTimeMs is null)
+        {
+            problems.Add($"{path} is observed but has no video timestamp, so it cannot be re-checked.");
         }
     }
 

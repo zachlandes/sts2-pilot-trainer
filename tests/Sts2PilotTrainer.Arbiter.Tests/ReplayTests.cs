@@ -6,12 +6,13 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 public class ReplayTests
 {
     [GameFact]
-    public void PreflightAcceptsTheEnvironmentTheManifestWasRecordedAgainst()
+    public void PreflightRefusesTheUnprovedHeadlessModMismatch()
     {
         var result = Arbiter.Run("preflight", Arbiter.Manifest);
 
-        Assert.True(result.Verified, result.All);
-        Assert.Contains("environment matches", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Verified);
+        Assert.Contains("mod_environment", result.Output, StringComparison.Ordinal);
+        Assert.Contains("does NOT match", result.Output, StringComparison.Ordinal);
     }
 
     [GameFact]
@@ -61,7 +62,7 @@ public class ReplayTests
         Assert.Contains("content_hash", result.Output, StringComparison.Ordinal);
     }
 
-    [GameFact]
+    [GameFact(Skip = "Blocked until executable BaseLib v3.4.5 headless parity A/B evidence exists.")]
     public void ReplayingTheRecordedHistoryReproducesEveryObservationFromTheVideo()
     {
         var result = Arbiter.Run("replay", Arbiter.Manifest);
@@ -71,7 +72,7 @@ public class ReplayTests
         Assert.DoesNotContain("FAIL", result.Output, StringComparison.Ordinal);
     }
 
-    [GameFact]
+    [GameFact(Skip = "Blocked until executable BaseLib v3.4.5 headless parity A/B evidence exists.")]
     public void ReplayingTwiceInFreshProcessesProducesByteIdenticalState()
     {
         var result = Arbiter.Run("determinism", Arbiter.Manifest, "--runs", "2", "--out", TempDir());
@@ -80,7 +81,7 @@ public class ReplayTests
         Assert.Contains("byte-identical canonical state", result.Output, StringComparison.Ordinal);
     }
 
-    [GameFact]
+    [GameFact(Skip = "Blocked until executable BaseLib v3.4.5 headless parity A/B evidence exists.")]
     public void EveryCorruptedHistoryIsRejectedAndTheUncorruptedOneIsNot()
     {
         var outDir = TempDir();
@@ -107,7 +108,7 @@ public class ReplayTests
         }
     }
 
-    [GameFact]
+    [GameFact(Skip = "Blocked until executable BaseLib v3.4.5 headless parity A/B evidence exists.")]
     public void ReorderingIsCaughtByACheckpointRatherThanByTheRunsEndState()
     {
         // A limit, pinned so it cannot quietly stop being true. For these two cards
@@ -148,12 +149,12 @@ public class ReplayTests
 public class PublicationGateTests
 {
     [GameFact]
-    public void PassesForTheReconstructionThisRepositoryShips()
+    public void RefusesPublicationWithoutHeadlessModParityEvidence()
     {
         var result = Arbiter.Run("gate", Arbiter.Manifest, "--out", TempDir());
 
-        Assert.True(result.Verified, result.All);
-        Assert.Contains("PUBLISHABLE", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Verified);
+        Assert.Contains("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
     }
 
     [GameFact]
