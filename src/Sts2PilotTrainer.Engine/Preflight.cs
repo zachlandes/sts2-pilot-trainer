@@ -90,7 +90,8 @@ public static class Preflight
                 : $"This host loads no mods, while the source environment was {mods.Name}: " +
                   $"{string.Join("; ", mods.Mods.Select(m => m.Name))}. The manifest's parity-waiver fields " +
                   "are self-attested and cannot establish parity. Publication remains blocked until a " +
-                  "controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.");
+                  "the target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, " +
+                  "so full source-environment parity is not established.");
     }
 
     private static PreflightField EvaluateGameMode(string gameMode) =>

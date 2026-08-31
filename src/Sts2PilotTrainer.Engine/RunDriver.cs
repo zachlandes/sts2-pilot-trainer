@@ -93,7 +93,18 @@ public sealed class RunDriver(GameSession session)
             throw new EngineException($"Map node (row {row}, column {column}) is empty in this act.");
         }
 
-        RunManager.Instance.EnterMapCoord(new MapCoord((byte)column, (byte)row)).GetAwaiter().GetResult();
+        var currentCoord = session.RunState.CurrentMapCoord
+            ?? throw new EngineException("The run has no current map node, so reachability cannot be established.");
+        var currentPoint = map.GetPoint(currentCoord.col, currentCoord.row)
+            ?? throw new EngineException($"The current map node {currentCoord} does not exist in this act.");
+        if (!currentPoint.Children.Contains(point))
+        {
+            throw new EngineException(
+                $"Map node (row {row}, column {column}) is not reachable from " +
+                $"(row {currentCoord.row}, column {currentCoord.col}).");
+        }
+
+        RunManager.Instance.EnterMapCoord(new MapCoord(column, row)).GetAwaiter().GetResult();
         Pump.Drain();
     }
 

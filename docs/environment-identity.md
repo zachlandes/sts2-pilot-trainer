@@ -90,8 +90,9 @@ Naming them does not establish that they changed nothing.
 What it buys is the ability to reason about each one — and, for the dangerous one, to write a check.
 The headless host therefore refuses this modded source environment.
 A matching content hash and manifest-authored waiver values cannot clear that refusal.
-The exact BaseLib v3.4.5 continuation probe matches its unwrapped baseline and detects its negative control, but it does not load all three source mods or invoke the retail target through Harmony.
-That bounded result does not establish full environment parity.
+The exact BaseLib v3.4.5 target probe uses Harmony on retail `PowerCmd.Apply` and detects its negative control.
+It also demonstrates that BaseLib clears `SkipNextDurationTick` for a player-applied custom debuff while the unmodded host leaves it set.
+That gameplay difference rules out parity for the exercised branch, while behavior across the complete source run remains unproved.
 
 ## The resumed-run problem
 

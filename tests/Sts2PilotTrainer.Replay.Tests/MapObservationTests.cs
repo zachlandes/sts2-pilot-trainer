@@ -30,6 +30,38 @@ public class MapObservationTests
     }
 
     [Fact]
+    public void RejectsNodesThatAreNotBackedByARecordedFrame()
+    {
+        var observation = Observation("1|0|Monster") with
+        {
+            Frames = [new ObservedFrame(9000, [2])],
+        };
+        var generated = Topology(16, 7, "1|0|Monster", "2|3|Elite");
+
+        var comparison = observation.CompareTo(generated);
+
+        Assert.False(comparison.Matches);
+        Assert.Contains(comparison.Problems, problem =>
+            problem.Contains("no supporting frame", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RequiresCompleteTopologyForEveryFrameBackedRow()
+    {
+        var observation = Observation("1|0|Monster") with
+        {
+            Frames = [new ObservedFrame(9000, [1, 2])],
+        };
+        var generated = Topology(16, 7, "1|0|Monster", "2|3|Elite");
+
+        var comparison = observation.CompareTo(generated);
+
+        Assert.False(comparison.Matches);
+        Assert.Contains(comparison.Problems, problem =>
+            problem.Contains("row 2 column 3", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsANodeOfTheWrongType()
     {
         var observation = Observation("1|0|Monster");

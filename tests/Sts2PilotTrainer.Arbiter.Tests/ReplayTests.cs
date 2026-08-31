@@ -82,6 +82,29 @@ public class ReplayTests
     }
 
     [GameFact]
+    public void ReplayRefusesAnUnreachableMapJump()
+    {
+        var path = Temp("unreachable-map-jump.json");
+        var manifest = ManifestJson.Load(Arbiter.SyntheticReplayFixture());
+        var actions = manifest.Actions.Select(action => action.Seq == 1
+            ? action with
+            {
+                Args = new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["row"] = "2",
+                    ["column"] = "2",
+                },
+            }
+            : action).ToList();
+        ManifestJson.Save(manifest with { Actions = actions }, path);
+
+        var result = Arbiter.Run("replay", path);
+
+        Assert.False(result.Verified);
+        Assert.Contains("not reachable", result.All, StringComparison.Ordinal);
+    }
+
+    [GameFact]
     public void ReplayingTwiceInFreshProcessesProducesByteIdenticalState()
     {
         var result = Arbiter.Run(

@@ -115,7 +115,7 @@ post-processing passes. It comes out identical to what a retail client on a modd
 install produced.
 
 **The headless experiment matched 21 independently observed VOD values** — including the enemy state, ordered hand, pile counts, energy, block, and turn outcome.
-This is evidence that the experiment followed the same path through the opening turn, not proof of exact source reproduction: the source had three mods loaded, and the bounded BaseLib continuation probe does not establish full mod-set parity.
+This is evidence that the experiment followed the same path through the opening turn, not proof of exact source reproduction: the source had three mods loaded, and the target-level BaseLib probe demonstrates a gameplay difference for a player-applied custom debuff.
 
 **The replay machinery has independent synthetic evidence** — a mechanically generated fixture uses a seed and action sequence absent from the VOD artifacts and pins its engine-produced checkpoints.
 Fresh-process determinism, corruption rejection, and snapshot restore are exercised against that fixture, so those checks do not borrow their expected values from the ineligible VOD trace.

@@ -82,6 +82,18 @@ public sealed record MapObservation
                 "Map observation has no topology evidence. At least one node and one observed row are required.");
         }
 
+        var frameBackedRows = observation.Frames.SelectMany(frame => frame.RowsSettled).ToHashSet();
+        var unbackedRows = observation.Nodes.Select(node => node.Row)
+            .Where(row => !frameBackedRows.Contains(row))
+            .Distinct()
+            .OrderBy(row => row)
+            .ToList();
+        if (unbackedRows.Count > 0)
+        {
+            throw new ManifestException(
+                $"Map observation contains node rows with no supporting frame: {string.Join(", ", unbackedRows)}.");
+        }
+
         return observation;
     }
 
@@ -102,9 +114,20 @@ public sealed record MapObservation
             problems.Add("observation contains no nodes, so it cannot verify a generated map");
         }
 
-        if (Frames.SelectMany(frame => frame.RowsSettled).Distinct().Any() == false)
+        var frameBackedRows = Frames.SelectMany(frame => frame.RowsSettled).ToHashSet();
+        if (frameBackedRows.Count == 0)
         {
             problems.Add("observation contains no observed rows");
+        }
+
+        var unbackedRows = Nodes.Select(node => node.Row)
+            .Where(row => !frameBackedRows.Contains(row))
+            .Distinct()
+            .OrderBy(row => row)
+            .ToList();
+        if (unbackedRows.Count > 0)
+        {
+            problems.Add($"node rows have no supporting frame: {string.Join(", ", unbackedRows)}");
         }
 
         if (generated.Rows != Rows || generated.Columns != Columns)
@@ -112,7 +135,7 @@ public sealed record MapObservation
             problems.Add($"grid size differs: observed {Rows}x{Columns}, generated {generated.Rows}x{generated.Columns}");
         }
 
-        var observedRows = Nodes.Select(n => n.Row).ToHashSet();
+        var observedRows = frameBackedRows;
         var generatedByPosition = generated.Nodes.ToDictionary(n => (n.Row, n.Column), n => n.PointType);
         var observedByPosition = Nodes.ToDictionary(n => (n.Row, n.Column), n => n.PointType);
 

@@ -118,7 +118,7 @@ manifest : navegreed-OJ-6QXhNgdg
   ok   seed_alphabet    manifest=legal                          local=legal
   ok   game_mode        manifest=standard                       local=standard
   FAIL mod_environment  manifest=navegreed-2026-08 (3 mod(s))   local=none loaded
-       This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. Publication remains blocked until a controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.
+       This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. The target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, so full source-environment parity is not established.
 
 acts this build ships:
   0:ACT.OVERGROWTH (default)
@@ -435,9 +435,8 @@ No score or recommendation is attached.
 
 ## The tests
 
-Sixty of them. The pure suite needs no game at all and runs anywhere; the
-integration suite drives the built command line, one process per test, and skips
-with an explanation on a machine that cannot run it.
+The pure suite needs no game at all and runs anywhere.
+The integration suite drives the built command line, one process per test, and skips with an explanation on a machine that cannot run it.
 
 Every checker has a demonstrated negative input: the manifest validator has a
 malformed input per rule, the preflight has a mismatched build and a mismatched
@@ -450,14 +449,16 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    89, Skipped:     0, Total:    89 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    21, Skipped:     0, Total:    21 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    91, Skipped:     0, Total:    91 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    22, Skipped:     0, Total:    22 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
-## BaseLib `PowerCmd.Apply` continuation probe
+## BaseLib `PowerCmd.Apply` target probe
 
 The source environment's BaseLib risk is tested against the exact v3.4.5 release DLL, pinned by SHA-256.
-The probe passes an incomplete original task through the released `SelfApplyDebuffPatch.Postfix`, compares canonical state, every RNG stream, replay events, prepared-assembly hashes, seed, action history, and patch IL identity against an unwrapped baseline, then runs a state-changing negative control.
+Harmony installs the released `SelfApplyDebuffPatch` on the retail `PowerCmd.Apply` target, and a player applies a custom debuff while its original `BeforeApplied` task remains incomplete.
+The probe binds canonical state, every RNG stream, replay events, prepared-assembly hashes, seed, action history, target IL, and patch IL identity across fresh processes.
+Its negative control removes that exact postfix before invoking the same target, so the detector fails if the release patch is omitted.
 
 ```bash
 ./scripts/fetch-baselib-parity.sh && ./scripts/arbiter baselib-parity build/parity/BaseLib.dll --out build/evidence/baselib-powercmd-parity.json
@@ -466,14 +467,15 @@ The probe passes an incomplete original task through the released `SelfApplyDebu
 ```output
 BaseLib.dll: OK
 BaseLib.json: OK
-BaseLib PowerCmd continuation residual: PASS
+BaseLib PowerCmd target probe: PASS
+BaseLib behavior parity: DIFFERS
 VOD publication parity: NOT ESTABLISHED
 report: build/evidence/baselib-powercmd-parity.json
 ```
 
-The [typed report](baselib-powercmd-parity.json) closes this bounded continuation residual and demonstrates that the instrument detects a changed game state.
-It does not load all three source mods or invoke the retail `PowerCmd.Apply` target through Harmony, so it cannot establish full source-environment parity.
-The publication gate therefore remains closed.
+The [typed report](baselib-powercmd-parity.json) demonstrates that BaseLib v3.4.5 clears `SkipNextDurationTick` for the exercised player-applied custom debuff while the unmodded baseline leaves it set.
+Removing the released postfix reproduces the baseline result, so the negative control detects failure in the exact behavior under test rather than an unrelated state mutation.
+The unmodded host is not behaviorally identical to this source mod, and the publication gate remains closed.
 
 ## The gate
 
@@ -500,7 +502,7 @@ manifest : navegreed-OJ-6QXhNgdg
   ok   seed_alphabet    manifest=legal                          local=legal
   ok   game_mode        manifest=standard                       local=standard
   FAIL mod_environment  manifest=navegreed-2026-08 (3 mod(s))   local=none loaded
-       This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. Publication remains blocked until a controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.
+       This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. The target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, so full source-environment parity is not established.
 
 acts this build ships:
   0:ACT.OVERGROWTH (default)
@@ -514,7 +516,7 @@ actions        : 5
 status         : REFUSED
 
 
-  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. Publication remains blocked until a controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.
+  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. The target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, so full source-environment parity is not established.
 
 final state digest : (none)
 action history hash: (none)
@@ -524,7 +526,7 @@ actions        : 5
 status         : REFUSED
 
 
-  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. Publication remains blocked until a controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.
+  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. The target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, so full source-environment parity is not established.
 
 final state digest : (none)
 action history hash: (none)
@@ -535,7 +537,7 @@ actions        : 5
 status         : REFUSED
 
 
-  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. Publication remains blocked until a controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.
+  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. The target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, so full source-environment parity is not established.
 
 final state digest : (none)
 action history hash: (none)
@@ -589,7 +591,7 @@ This proves the replay spine against a controlled fixture, not parity with the V
   not. Custom mode is not ruled out by direct evidence. It is the weakest link in the
   environment identity, and the manifest marks it as an inference rather than an
   observation.
-- **Parity with the source environment's three mods is unproved.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume mod — and the manifest carries a risk assessment for each. The content hash cannot cover every behaviour patch. The bounded BaseLib v3.4.5 continuation probe passes, but it does not load the complete source mod set or execute the retail target through Harmony, so the publication gate refuses this manifest.
+- **Parity with the source environment's three mods is disproved for an exercised BaseLib branch and unproved for the complete run.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume mod — and the manifest carries a risk assessment for each. The content hash cannot cover every behaviour patch. The target-level BaseLib v3.4.5 probe changes `SkipNextDurationTick` for a player-applied custom debuff, so the publication gate refuses this manifest.
 - **The mod identities themselves are not from the video.** It names no mod
   anywhere; the overlay gives only a count. They came from a separate investigation
   and the manifest marks them as an inference rather than an observation.

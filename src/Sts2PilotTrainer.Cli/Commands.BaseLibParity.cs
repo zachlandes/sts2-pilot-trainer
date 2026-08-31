@@ -46,41 +46,50 @@ internal static partial class Commands
         var patched = results["patched"];
         var negative = results["negative"];
         var bindingsMatch = Binding(baseline) == Binding(patched) && Binding(patched) == Binding(negative);
-        var continuationPassed =
-            patched.OriginalTaskWasIncomplete && patched.ContinuationWasIncomplete &&
-            baseline.EventsSha256 == patched.EventsSha256;
-        var outputParity =
-            baseline.BeforeStateSha256 == patched.BeforeStateSha256 &&
-            baseline.AfterStateSha256 == patched.AfterStateSha256 &&
+        var targetExercisePassed = new[] { baseline, patched, negative }.All(result =>
+            result.BeforeApplyWasEntered && result.ApplyTaskWasIncomplete && result.PowerApplied &&
+            result.PowerAmount == 1 && result.ApplierIsPlayer);
+        var patchRegistrationPassed =
+            !baseline.PatchRegistered && patched.PatchRegistered && !negative.PatchRegistered;
+        var rngParity =
             baseline.BeforeRng.SequenceEqual(patched.BeforeRng) &&
-            baseline.AfterRng.SequenceEqual(patched.AfterRng);
+            baseline.AfterRng.SequenceEqual(patched.AfterRng) &&
+            baseline.BeforeRng.SequenceEqual(negative.BeforeRng) &&
+            baseline.AfterRng.SequenceEqual(negative.AfterRng);
+        var behaviorParity =
+            baseline.SkipNextDurationTick == patched.SkipNextDurationTick &&
+            baseline.AfterStateSha256 == patched.AfterStateSha256;
         var negativeDetected =
-            negative.AfterStateSha256 != patched.AfterStateSha256 ||
-            !negative.AfterRng.SequenceEqual(patched.AfterRng);
-        var residualPassed = bindingsMatch && continuationPassed && outputParity && negativeDetected;
+            negative.SkipNextDurationTick == baseline.SkipNextDurationTick &&
+            negative.SkipNextDurationTick != patched.SkipNextDurationTick &&
+            negative.AfterStateSha256 == baseline.AfterStateSha256;
+        var instrumentPassed =
+            bindingsMatch && targetExercisePassed && patchRegistrationPassed && rngParity && negativeDetected;
 
         var report = new
         {
-            schema = "sts2-pilot-trainer/baselib-powercmd-parity/v1",
-            residual_passed = residualPassed,
+            schema = "sts2-pilot-trainer/baselib-powercmd-parity/v2",
+            instrument_passed = instrumentPassed,
             publication_parity_established = false,
-            blocker =
-                "The exact v3.4.5 postfix continuation was exercised with an incomplete original task and " +
-                "matched the baseline, but this bounded probe does not load all three source mods or invoke " +
-                "the retail PowerCmd.Apply target through Harmony. It cannot establish full environment parity.",
+            blocker = behaviorParity
+                ? "The target-level BaseLib comparison matched for this branch, but it does not load the complete source mod set or prove that the reconstructed VOD never reaches another patched branch."
+                : "BaseLib v3.4.5 changes SkipNextDurationTick for a player-applied custom debuff at the retail PowerCmd.Apply target. The unmodded host is not behaviorally identical to the source environment.",
             bindings_match = bindingsMatch,
-            continuation_passed = continuationPassed,
-            output_parity = outputParity,
+            target_exercise_passed = targetExercisePassed,
+            patch_registration_passed = patchRegistrationPassed,
+            rng_parity = rngParity,
+            behavior_parity = behaviorParity,
             negative_control_detected = negativeDetected,
             baseline,
             patched,
             negative_control = negative,
         };
         File.WriteAllText(outPath, JsonSerializer.Serialize(report, Json.Indented) + "\n");
-        Console.WriteLine($"BaseLib PowerCmd continuation residual: {(residualPassed ? "PASS" : "FAIL")}");
+        Console.WriteLine($"BaseLib PowerCmd target probe: {(instrumentPassed ? "PASS" : "FAIL")}");
+        Console.WriteLine($"BaseLib behavior parity: {(behaviorParity ? "MATCH" : "DIFFERS")}");
         Console.WriteLine("VOD publication parity: NOT ESTABLISHED");
         Console.WriteLine($"report: {Paths.Display(outPath)}");
-        return residualPassed && negativeDetected ? 0 : 1;
+        return instrumentPassed ? 0 : 1;
     }
 
     private static string Binding(BaseLibParityProbeResult result) => JsonSerializer.Serialize(new
@@ -93,6 +102,10 @@ internal static partial class Commands
         result.BaseLibSha256,
         result.BaseLibManifestSha256,
         result.BaseLibSourceCommit,
+        result.TargetType,
+        result.TargetMethod,
+        result.TargetMetadataToken,
+        result.TargetIlSha256,
         result.PatchType,
         result.PatchMethod,
         result.PatchModuleMvid,
