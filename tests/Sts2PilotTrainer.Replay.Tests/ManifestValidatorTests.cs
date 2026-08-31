@@ -177,6 +177,81 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void RejectsActionTimestampsThatContradictSequenceOrder()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Actions =
+            [
+                manifest.Actions[0] with { Evidence = FactEvidence.AtVideoTime(80_000, "later frame") },
+                manifest.Actions[1] with { Evidence = FactEvidence.AtVideoTime(70_000, "earlier frame") },
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("must be nondecreasing", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsCheckpointEvidenceBeforeItsAction()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Checkpoints =
+            [
+                manifest.Checkpoints[0] with
+                {
+                    Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+                    {
+                        ["combat.energy"] = Fact<string>.Observed(
+                            "3", FactEvidence.AtVideoTime(70_000, "before the map move")),
+                    },
+                },
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("earlier than its after_seq action", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AcceptsEqualActionAndCheckpointTimestamps()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Actions =
+            [
+                manifest.Actions[0] with { Evidence = FactEvidence.AtVideoTime(73_500, "same settled frame") },
+                manifest.Actions[1] with { Evidence = FactEvidence.AtVideoTime(73_500, "same settled frame") },
+            ],
+            Checkpoints =
+            [
+                manifest.Checkpoints[0] with
+                {
+                    Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+                    {
+                        ["combat.energy"] = Fact<string>.Observed(
+                            "3", FactEvidence.AtVideoTime(73_500, "same settled frame")),
+                    },
+                },
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Fact]
     public void RejectsRunStartFactsThatWereNotObservedInTheVideo()
     {
         var manifest = Fixtures.ValidManifest();

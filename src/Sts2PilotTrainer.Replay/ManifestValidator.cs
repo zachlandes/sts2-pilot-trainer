@@ -518,6 +518,24 @@ public static partial class ManifestValidator
                 ValidateVideoTimestamp(timestamp, $"actions[{action.Seq}] ({action.Verb})", videoDurationMs, problems);
             }
         }
+
+        if (sourceKind != "synthetic-engine")
+        {
+            ActionRecord? previousObserved = null;
+            foreach (var action in actions.Where(action =>
+                         action.Source == FactSource.Observed && action.Evidence?.VideoTimeMs is not null))
+            {
+                if (previousObserved?.Evidence?.VideoTimeMs is { } previousTimestamp &&
+                    action.Evidence!.VideoTimeMs is { } timestamp && timestamp < previousTimestamp)
+                {
+                    problems.Add(
+                        $"actions[{action.Seq}] ({action.Verb}) timestamp {timestamp}ms is earlier than " +
+                        $"actions[{previousObserved.Seq}] ({previousObserved.Verb}) timestamp {previousTimestamp}ms. " +
+                        "VOD action timestamps must be nondecreasing in sequence order.");
+                }
+                previousObserved = action;
+            }
+        }
     }
 
     private static void ValidateActionArguments(ActionRecord action, List<string> problems)
@@ -657,6 +675,15 @@ public static partial class ManifestValidator
                 {
                     RequireObservedVideoFact(
                         fact, $"checkpoint '{checkpoint.Id}' field '{field}'", videoDurationMs, problems);
+                    if (checkpoint.AfterSeq >= 0 && checkpoint.AfterSeq < actions.Count &&
+                        actions[checkpoint.AfterSeq].Evidence?.VideoTimeMs is { } actionTimestamp &&
+                        fact.Evidence?.VideoTimeMs is { } checkpointTimestamp &&
+                        checkpointTimestamp < actionTimestamp)
+                    {
+                        problems.Add(
+                            $"checkpoint '{checkpoint.Id}' field '{field}' timestamp {checkpointTimestamp}ms is " +
+                            $"earlier than its after_seq action {checkpoint.AfterSeq} timestamp {actionTimestamp}ms.");
+                    }
                 }
             }
         }
