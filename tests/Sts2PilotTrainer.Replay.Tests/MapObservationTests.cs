@@ -30,6 +30,32 @@ public class MapObservationTests
     }
 
     [Fact]
+    public void LoadRejectsAMissingSchema()
+    {
+        var document = System.Text.Json.Nodes.JsonNode.Parse(
+            System.Text.Json.JsonSerializer.Serialize(Observation("1|0|Monster"), ManifestJson.Options))!.AsObject();
+        document.Remove("schema");
+        var path = WriteJson(document.ToJsonString());
+
+        var error = Assert.Throws<ManifestException>(() => MapObservation.Load(path));
+
+        Assert.Contains("has no 'schema'", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadRejectsAnUnknownSchema()
+    {
+        var document = System.Text.Json.Nodes.JsonNode.Parse(
+            System.Text.Json.JsonSerializer.Serialize(Observation("1|0|Monster"), ManifestJson.Options))!.AsObject();
+        document["schema"] = "sts2-pilot-trainer/map-observation/v99";
+        var path = WriteJson(document.ToJsonString());
+
+        var error = Assert.Throws<ManifestException>(() => MapObservation.Load(path));
+
+        Assert.Contains("Refusing to read it partially", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LoadRejectsMissingVideoIdentity()
     {
         var path = Write(Observation("1|0|Monster") with

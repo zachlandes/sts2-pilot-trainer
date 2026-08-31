@@ -67,15 +67,24 @@ public sealed record MapObservation
 
     public static MapObservation Load(string path)
     {
-        var observation = JsonSerializer.Deserialize<MapObservation>(File.ReadAllText(path), ManifestJson.Options)
-            ?? throw new ManifestException($"Map observation at {Path.GetFileName(path)} deserialized to null.");
-        ManifestJson.ValidateRequiredMembers(observation, "Map observation");
-
-        if (observation.Schema != CurrentSchema)
+        var json = File.ReadAllText(path);
+        using var probe = JsonDocument.Parse(json);
+        if (!probe.RootElement.TryGetProperty("schema", out var schemaElement))
         {
             throw new ManifestException(
-                $"Map observation schema '{observation.Schema}' is not '{CurrentSchema}'. Refusing to read it partially.");
+                "Map observation has no 'schema'. Refusing to guess which format this is.");
         }
+
+        var schema = schemaElement.ValueKind == JsonValueKind.String ? schemaElement.GetString() : null;
+        if (schema != CurrentSchema)
+        {
+            throw new ManifestException(
+                $"Map observation schema '{schema}' is not '{CurrentSchema}'. Refusing to read it partially.");
+        }
+
+        var observation = JsonSerializer.Deserialize<MapObservation>(json, ManifestJson.Options)
+            ?? throw new ManifestException($"Map observation at {Path.GetFileName(path)} deserialized to null.");
+        ManifestJson.ValidateRequiredMembers(observation, "Map observation");
 
         var videoProblems = observation.VideoProblems();
         if (videoProblems.Count > 0)
