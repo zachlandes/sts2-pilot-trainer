@@ -105,8 +105,16 @@ A replay in the wrong environment does not fail. It succeeds at producing a
 different run, and everything checked afterwards then compares the wrong things
 confidently. So the first thing the arbiter does is refuse.
 
+One line is filtered out of every engine transcript below, and it is worth saying
+why rather than hiding it. The arbiter points the engine's data directory at a
+sandbox inside this worktree, so the game cannot reach the player's real save
+directory. It therefore finds no stored progress, tries to write a fresh profile,
+and fails — the file layer underneath it is deliberately inert. That failure is
+the read-only boundary working, and nothing downstream depends on it: unlock state
+is set explicitly by the run setup, not read from a save.
+
 ```bash
-./scripts/arbiter preflight manifests/navegreed-OJ-6QXhNgdg.replay.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter preflight manifests/navegreed-OJ-6QXhNgdg.replay.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
 ```
 
 ```output
@@ -158,7 +166,7 @@ The four candidates are the readings that are visually indistinguishable — `E`
 `F` are not separable in either position at the resolution the video offers.
 
 ```bash
-./scripts/arbiter verify-seed manifests/navegreed-OJ-6QXhNgdg.map-observation.json --candidates SEXT47K77REK,SFXT47K77RFK,SEXT47K77RFK,SFXT47K77REK --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter verify-seed manifests/navegreed-OJ-6QXhNgdg.map-observation.json --candidates SEXT47K77REK,SFXT47K77RFK,SEXT47K77RFK,SFXT47K77REK --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
 ```
 
 ```output
@@ -240,7 +248,7 @@ The separate VOD manifest carries the timestamps and observed provenance.
 Its publication result depends on the history-bound BaseLib reachability evidence demonstrated below, not a claim of general mod parity.
 
 ```bash
-./scripts/arbiter replay build/evidence/synthetic-engine.replay.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter replay build/evidence/synthetic-engine.replay.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
 ```
 
 ```output
@@ -274,7 +282,7 @@ status         : VERIFIED
         combat.turn                  observed=2                      engine=2
 
 final state digest : sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
-action history hash: sha256:a669af21fa7b99e90e035e4e777772074fb198a4873581edeb65e5f0adb344a5
+action history hash: sha256:0ff5f04a18b4ec445448d4435864273193cb755479d32b3b9908c50367c813c0
 ```
 
 Three fields show what the synthetic fixture pins.
@@ -299,7 +307,7 @@ front and documented, so a digest mismatch can only be a real divergence and nev
 an artefact of running on a different afternoon.
 
 ```bash
-./scripts/arbiter determinism build/evidence/synthetic-engine.replay.json --runs 3 --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter determinism build/evidence/synthetic-engine.replay.json --runs 3 --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
 ```
 
 ```output
@@ -322,7 +330,7 @@ balances — every check that can be done from the frames says yes. Those are th
 that justify owning an engine at all.
 
 ```bash
-./scripts/arbiter negative-controls build/evidence/synthetic-engine.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter negative-controls build/evidence/synthetic-engine.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
 ```
 
 ```output
@@ -377,7 +385,7 @@ fresh process and refuses unless the digest matches what was cached. That is slo
 than loading a blob and much harder to get quietly wrong.
 
 ```bash
-rm -rf build/snapshots && ./scripts/arbiter snapshot-lines build/evidence/synthetic-engine.replay.json --at 1 --line build/evidence/synthetic-lines/declared-order.line.json --line build/evidence/synthetic-lines/reordered.line.json --out build/evidence --cache build/snapshots 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+rm -rf build/snapshots && ./scripts/arbiter snapshot-lines build/evidence/synthetic-engine.replay.json --at 1 --line build/evidence/synthetic-lines/declared-order.line.json --line build/evidence/synthetic-lines/reordered.line.json --out build/evidence --cache build/snapshots 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
 ```
 
 ```output
@@ -445,12 +453,12 @@ malformed input per rule, the preflight has a mismatched build and a mismatched
 content hash, required engine initialization has a forced failing step, the map comparison has a wrong node, a missing node, an extra node and a wrong grid size, the arbiter has four corrupted histories, and the cache key has changes that must and must not invalidate it.
 
 ```bash
-dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "Passed!|Failed!|error" | sed -E 's/, Duration: [0-9.]+ (ms|s) - / - /'
+dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "Passed!|Failed!|error" | sed -E 's/, Duration: [^-]+ - / - /'
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   127, Skipped:     0, Total:   127 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    50, Skipped:     0, Total:    50 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   133, Skipped:     0, Total:   133 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    53, Skipped:     0, Total:    53 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -493,6 +501,47 @@ report: build/evidence/baselib-reachability.json
 The [history-bound report](baselib-reachability.json) binds the build, BaseLib release, retail target IL, VOD identity, seed, complete reconstructed action hash, final state, and RNG streams.
 The three dated-build utilities are non-gameplay tooling, and this non-vacuous result closes the measured BaseLib residual for this history only.
 
+## Which mode the run was in
+
+The recording never says. Standard, custom and daily all look the same in the frames,
+and the difference is not cosmetic: daily and custom runs carry modifiers that change
+how a run is built. An earlier version of this manifest excused daily on the grounds
+that daily seeds are date-derived and this one is not. That reasoning was wrong for
+this build — `SeedHelper.GetRandomSeed` has exactly one caller, the lobby path every
+mode shares, and nothing in the assembly derives a seed from a date. A daily's
+modifier set comes from a remote time server, so the real configuration for a given
+date is not knowable here at all.
+
+What *is* knowable is whether any modifier could have been present without showing.
+Every modifier this build offers is replayed as a daily against this history, and each
+one is sorted by what it changes: an observed checkpoint, nothing at all, or the
+resulting state while leaving the checkpoints intact. Only that third case would leave
+the mode genuinely open, because only it is consistent with the recording and
+inconsistent with this replay.
+
+```bash
+./scripts/arbiter mode-discrimination manifests/navegreed-OJ-6QXhNgdg.replay.json --out build/evidence/mode-discrimination.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\]'
+```
+
+```output
+Mode discrimination instrument: PASS
+Custom mode with no modifiers matches every observed checkpoint and the final canonical state.
+Daily mode without its date-selected modifier set matches every observed checkpoint and the final canonical state, which does not bind a real daily run.
+Each of the 17 modifiers this build offers was replayed as a daily: 17 change an observed checkpoint and are therefore excluded by the recording this history already matches, and 0 change nothing observable and nothing in the final canonical state. No single modifier reproduces the observed checkpoints while altering the resulting state.
+Mode identity: UNESTABLISHED
+Path-specific mode parity: ESTABLISHED for this history over every single modifier this build offers; modifier combinations are not enumerated.
+report: build/evidence/mode-discrimination.json
+```
+
+All seventeen land in the first bucket, so a daily carrying any one of them would have
+produced an opening turn the recording does not show. The mode is still not
+*identified* — standard and custom-with-no-modifiers are indistinguishable here, and
+they are indistinguishable because they are byte-identical for this history. That is
+the claim the gate accepts: not that the mode is known, but that every mode
+configuration in the enumerated space either reproduces this history exactly or is
+ruled out by what the video shows. Combinations of modifiers are not enumerated, and
+the report says so.
+
 ## The gate
 
 All of the above is one verdict, and the tools compute it rather than a reader
@@ -506,30 +555,23 @@ arithmetic check available from the frames, and a run resumed from history passe
 every check that is not about the recording itself.
 
 ```bash
-./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
 ```
 
 ```output
-Mode discrimination instrument: PASS
-Custom mode with no modifiers matches every observed checkpoint and the final canonical state.
-Daily mode without its date-selected modifier set matches every observed checkpoint and the final canonical state, which does not bind a real daily run.
-Mode identity: UNESTABLISHED
-report: build/evidence/mode-discrimination.json
 manifest : navegreed-OJ-6QXhNgdg
 
   pass  publication-source Publication evidence comes from a VOD, never an engine-generated fixture.
   pass  provenance    The recording is of the run it claims, from that run's start.
   pass  environment   The declared build and content hash match this machine, and the declared mode is supported.
-  FAIL  game-mode     Engine evidence establishes the source mode or path-specific parity for every viable mode.
+  pass  game-mode     Engine evidence establishes the source mode or path-specific parity for every viable mode.
   pass  seed-topology The manifest seed independently reproduces the map observed in the same VOD.
   pass  baselib-path  The measured BaseLib behavior branch is unreachable in this exact reconstructed history.
   pass  reproduction  The reconstructed history replays through the real engine and matches every observed value.
   pass  determinism   Fresh processes produce byte-identical canonical state.
   pass  rejection     Corrupted and incomplete histories are refused.
 
-NOT PUBLISHABLE - see the failing condition above
-
-[exit status: 1]
+PUBLISHABLE - every condition of the gate holds
 ```
 
 The verdict is written to `build/evidence/publication-gate.json` together with the
@@ -564,10 +606,16 @@ This proves the replay spine against a controlled fixture, not the separate hist
   position 412 to 370 and changes which encounters the act generates — while leaving
   the map byte-identical. Agreement on generated content is the evidence for this
   assumption; it is not independently established.
-- **The game mode remains unestablished.** The real-engine probe compares every observed checkpoint and the final canonical state under standard, custom with no modifiers, daily without its date-selected modifiers, and a behavior-changing custom modifier control.
-A reordered-history control also proves the combined detector catches checkpoint divergence when the terminal canonical state is identical.
-The controls demonstrate that the instrument detects both kinds of divergence, but the recording does not identify the source configuration.
-The publication gate therefore refuses rather than treating manifest-authored reasoning as evidence.
+- **The game mode is not identified, only bounded.** The recording does not show it. The
+real-engine probe compares every observed checkpoint and the final canonical state
+under standard, custom with no modifiers, daily without its date-selected modifiers, a
+behavior-changing custom modifier control, and each of the seventeen modifiers this
+build offers replayed as a daily. A reordered-history control proves the combined
+detector catches checkpoint divergence when the terminal canonical state is identical.
+Every modifier changes an observed checkpoint, so no single-modifier daily is
+consistent with the footage; standard and custom-with-no-modifiers are consistent and
+byte-identical to each other for this history. What is established is parity across
+that space, not the mode itself, and combinations of modifiers are not enumerated.
 - **The three source utilities are non-gameplay tooling, with BaseLib bounded to this history.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume utility — and the manifest carries a risk assessment for each. The content hash cannot cover every behavior patch. The target-level BaseLib v3.4.5 probe changes `SkipNextDurationTick` for a player-applied custom debuff, while the history-bound probe records that the reconstructed VOD actions never reach that branch and detects an injected affected call.
 - **The mod identities themselves are not from the video.** It names no mod
   anywhere; the overlay gives only a count. They came from a separate investigation

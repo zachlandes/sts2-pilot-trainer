@@ -33,8 +33,20 @@ All three match every observed checkpoint and the final canonical state.
 A behavior-changing custom modifier proves the detector catches terminal divergence, and a reordered-history control proves it catches checkpoint divergence even when the terminal state converges.
 
 Those controls validate the instrument, but they do not identify the source configuration.
-Custom mode may carry other modifiers, and the probe does not bind the date-selected modifiers of a real daily run.
-The publication gate therefore refuses this VOD on game-mode identity rather than treating the manifest's inference as evidence.
+Custom mode may carry other modifiers, and the probe cannot bind the date-selected modifiers of a real daily run: a daily's modifier set comes from a remote time server (`TimeServer.FetchDailyTime`), so what a daily on a given date actually carried is not knowable from a local install.
+
+A seed cannot settle it either.
+An earlier version of this manifest excused daily mode on the grounds that daily seeds are date-derived and this one is not.
+That is false for this build.
+`SeedHelper.GetRandomSeed` has exactly one caller — `StartRunLobby.BeginRunForAllPlayersIfAllReady`, the lobby path every mode shares — and no code path anywhere in the assembly derives a seed from a date.
+Daily runs get their seed the same way every other run does.
+
+What the probe can do is bound the space.
+Every modifier the build offers is replayed as a daily against the reconstructed history and sorted by what it changes: an observed checkpoint, nothing at all, or the resulting state while leaving every checkpoint intact.
+Only that third case leaves the mode genuinely open, because only it is consistent with the recording and inconsistent with this replay.
+For this VOD all seventeen change an observed checkpoint, so no single-modifier daily is consistent with the footage, and the gate accepts path-specific parity across the enumerated space.
+It is not an identification: standard and custom-with-no-modifiers remain indistinguishable, precisely because they are byte-identical for this history.
+Combinations of modifiers are not enumerated, and the report records that limit.
 
 And one input is not a field, because it cannot be observed at all:
 

@@ -190,7 +190,7 @@ internal static partial class Commands
             },
             generated,
             comparison,
-        }, Json.Indented) + "\n";
+        }, Json.IndentedKeepingNulls) + "\n";
 
         svgArtifact.WriteAtomic(MapDiagram.Render(observation, generated, seed, comparison));
         jsonArtifact.WriteAtomic(json);
@@ -288,7 +288,9 @@ internal static partial class Commands
                 observation.GetProperty("sha256").GetString() == observationHash,
                 candidate, "map observation");
 
-            var manifest = result.GetProperty("bound_manifest");
+            RequireResult(
+                result.TryGetProperty("bound_manifest", out var manifest),
+                candidate, "bound manifest state");
             if (boundManifest is null)
             {
                 RequireResult(manifest.ValueKind == JsonValueKind.Null, candidate, "unbound manifest state");

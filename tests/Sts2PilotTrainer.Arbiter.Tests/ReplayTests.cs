@@ -316,19 +316,33 @@ public class ReplayTests
 /// </summary>
 public class PublicationGateTests
 {
+    /// <summary>
+    /// The mode condition passes on parity across the enumerated space, never on an
+    /// identification. The recording does not show the mode and nothing here may claim
+    /// it does, so the gate passing and the mode staying unestablished have to hold at
+    /// the same time.
+    /// </summary>
     [GameFact]
-    public void RefusesPublicationWhileSourceModeIsUnestablished()
+    public void PublishesOnModeParityWithoutEstablishingTheSourceMode()
     {
         var outDir = TempDir();
         var result = Arbiter.Run("gate", Arbiter.Manifest, "--out", outDir);
 
-        Assert.False(result.Verified);
-        Assert.Contains("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
+        Assert.True(result.Verified, result.All);
+        Assert.Contains("PUBLISHABLE", result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
+
         var report = JsonDocument.Parse(
             File.ReadAllText(Path.Combine(outDir, "publication-gate.json"))).RootElement;
         var mode = report.GetProperty("conditions").EnumerateArray()
             .Single(condition => condition.GetProperty("name").GetString() == "game-mode");
-        Assert.False(mode.GetProperty("passed").GetBoolean());
+        Assert.True(mode.GetProperty("passed").GetBoolean());
+
+        var modeReport = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "mode-discrimination.json"))).RootElement;
+        Assert.False(modeReport.GetProperty("mode_established").GetBoolean());
+        Assert.True(modeReport.GetProperty("path_specific_mode_parity").GetBoolean());
+        Assert.True(modeReport.GetProperty("combination_space_not_enumerated").GetBoolean());
     }
 
     [GameFact]
@@ -440,7 +454,7 @@ public class PublicationGateTests
         var result = Arbiter.Run(
             "mode-discrimination", Arbiter.Manifest, "--out", reportPath);
 
-        Assert.False(result.Verified);
+        Assert.True(result.Verified, result.All);
         var report = JsonDocument.Parse(File.ReadAllText(reportPath)).RootElement;
         Assert.True(report.GetProperty("instrument_passed").GetBoolean());
         Assert.True(report.GetProperty("negative_control_detected").GetBoolean());
@@ -454,6 +468,16 @@ public class PublicationGateTests
             standard.GetProperty("CheckpointSha256").GetString(),
             checkpointControl.GetProperty("CheckpointSha256").GetString());
         Assert.False(report.GetProperty("mode_established").GetBoolean());
+
+        // Every modifier the build offers is accounted for, and none of them is left in
+        // the one bucket that would keep the source mode open.
+        var outcomes = report.GetProperty("modifier_outcomes").EnumerateArray().ToList();
+        Assert.Equal(
+            report.GetProperty("modifier_space_enumerated").GetInt32(), outcomes.Count);
+        Assert.NotEmpty(outcomes);
+        Assert.All(outcomes, outcome => Assert.NotEqual(
+            "state_only_divergence", outcome.GetProperty("Classification").GetString()));
+        Assert.Empty(report.GetProperty("unbound_modifiers").EnumerateArray());
     }
 
     [GameFact]

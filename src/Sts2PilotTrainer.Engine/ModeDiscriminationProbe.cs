@@ -9,6 +9,7 @@ namespace Sts2PilotTrainer.Engine;
 public static class ModeDiscriminationProbe
 {
     public const string NegativeModifierType = "MegaCrit.Sts2.Core.Models.Modifiers.Terminal";
+    public const string ModifierVariantPrefix = "modifier:";
 
     public static ModeDiscriminationResult Run(ReplayManifest manifest, string variant)
     {
@@ -31,6 +32,10 @@ public static class ModeDiscriminationProbe
             "custom-default" => ("custom", Array.Empty<string>()),
             "daily-default" => ("daily", Array.Empty<string>()),
             "custom-negative" => ("custom", new[] { NegativeModifierType }),
+            // A real daily always carries a server-selected modifier set, so each modifier is
+            // exercised as a daily to learn whether it is observable in this history at all
+            _ when variant.StartsWith(ModifierVariantPrefix, StringComparison.Ordinal)
+                => ("daily", new[] { variant[ModifierVariantPrefix.Length..] }),
             _ => throw new EngineException($"Unknown mode-discrimination variant '{variant}'."),
         };
 

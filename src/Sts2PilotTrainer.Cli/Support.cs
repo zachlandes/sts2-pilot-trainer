@@ -47,6 +47,17 @@ internal static class Json
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
+
+    /// <summary>
+    /// For artifacts where an absent value is itself a claim. Dropping the key would
+    /// make "deliberately unbound" and "the writer forgot" identical on disk, and the
+    /// readers of these artifacts are supposed to be able to tell those apart.
+    /// </summary>
+    internal static readonly JsonSerializerOptions IndentedKeepingNulls = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 }
 
 internal sealed class EvidenceArtifact

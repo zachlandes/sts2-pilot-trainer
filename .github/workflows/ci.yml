@@ -1,0 +1,62 @@
+name: CI
+
+# Covers the parts of the arbiter that build without the licensed game assemblies:
+# the manifest/evidence domain, the vendored Godot stubs, and the bootstrap tool.
+# The replay proof itself - engine reconstruction, map topology, determinism and the
+# negative controls - needs a local Slay the Spire 2 install and cannot run here.
+# See docs/dependencies.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  domain:
+    name: Domain layer (no game assemblies)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: |
+          for project in $PROJECTS; do
+            dotnet restore "$project"
+          done
+
+      - name: Build
+        run: |
+          for project in $PROJECTS; do
+            dotnet build "$project" -c Release --no-restore --nologo
+          done
+
+      - name: Test
+        run: |
+          dotnet test tests/Sts2PilotTrainer.Replay.Tests/Sts2PilotTrainer.Replay.Tests.csproj \
+            -c Release --no-build --nologo --verbosity normal
+          dotnet test tests/Sts2PilotTrainer.Arbiter.Tests/Sts2PilotTrainer.Arbiter.Tests.csproj \
+            -c Release --no-build --nologo --verbosity normal
+
+      - name: Format
+        run: |
+          for project in $PROJECTS; do
+            dotnet format "$project" --verify-no-changes --verbosity minimal
+          done
+
+    env:
+      # Every project whose reference closure excludes sts2.dll. Adding a project that
+      # references the Engine here will fail the build rather than silently skip it.
+      PROJECTS: >-
+        src/Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj
+        src/Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj
+        third_party/godot-stubs/GodotStubs.csproj
+        tools/Sts2PilotTrainer.Bootstrap/Sts2PilotTrainer.Bootstrap.csproj
+        tests/Sts2PilotTrainer.Replay.Tests/Sts2PilotTrainer.Replay.Tests.csproj
+        tests/Sts2PilotTrainer.Arbiter.Tests/Sts2PilotTrainer.Arbiter.Tests.csproj

@@ -9,6 +9,12 @@ namespace Sts2PilotTrainer.Replay.Tests;
 /// </summary>
 public class CorruptionTests
 {
+    // Timed to sit after the fixture's run-start evidence (9,000ms) and around its
+    // combat-start checkpoint (75,600ms, after seq 1), so the manifest is coherent
+    // before any corruption touches it. A corruption has to be rejected by the
+    // engine, which means it must get past ingestion first.
+    private static readonly int[] PlayableTimes = [10_000, 20_000, 76_000, 77_000, 78_000];
+
     private static ReplayManifest Playable()
     {
         var manifest = Fixtures.ValidManifest();
@@ -16,14 +22,19 @@ public class CorruptionTests
         {
             Actions =
             [
-                Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2")),
-                Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3")),
-                Fixtures.Action(2, ActionVerb.PlayCard, ("card_id", "CARD.HELLRAISER"), ("hand_index", "1")),
-                Fixtures.Action(3, ActionVerb.PlayCard, ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "3")),
-                Fixtures.Action(4, ActionVerb.EndTurn),
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard, ("card_id", "CARD.HELLRAISER"), ("hand_index", "1"))),
+                At(3, Fixtures.Action(3, ActionVerb.PlayCard, ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "3"))),
+                At(4, Fixtures.Action(4, ActionVerb.EndTurn)),
             ],
         };
     }
+
+    private static ActionRecord At(int index, ActionRecord action) => action with
+    {
+        Evidence = FactEvidence.AtVideoTime(PlayableTimes[index], "test fixture"),
+    };
 
     [Fact]
     public void EveryCorruptionChangesTheActionHistory()
@@ -78,8 +89,8 @@ public class CorruptionTests
         var reordered = Corruption.All.Single(c => c.Name == "reorder-plays").Apply(Playable());
         var plays = reordered.Actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
 
-        Assert.Equal(3_000, plays[0].Evidence!.VideoTimeMs);
-        Assert.Equal(4_000, plays[1].Evidence!.VideoTimeMs);
+        Assert.Equal(PlayableTimes[2], plays[0].Evidence!.VideoTimeMs);
+        Assert.Equal(PlayableTimes[3], plays[1].Evidence!.VideoTimeMs);
         Assert.True(ManifestValidator.Validate(reordered).IsValid);
     }
 
