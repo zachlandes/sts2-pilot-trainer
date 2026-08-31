@@ -809,6 +809,12 @@ public static partial class ManifestValidator
     private static void ValidateInputFact<T>(
         Fact<T> fact, string path, int videoDurationMs, List<string> problems)
     {
+        if (!Enum.IsDefined(fact.Source))
+        {
+            problems.Add($"{path} has undefined fact source value {(int)fact.Source}.");
+            return;
+        }
+
         if (fact.Source == FactSource.Engine)
         {
             problems.Add(

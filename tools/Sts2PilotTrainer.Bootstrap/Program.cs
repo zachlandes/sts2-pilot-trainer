@@ -56,7 +56,8 @@ internal static class Program
             }
 
             gameDir = PathContainment.ResolveExistingPath(Path.GetFullPath(gameDir));
-            outDir = PathContainment.ResolveExistingPath(outDir);
+            var worktreeRoot = FindWorktreeRoot();
+            outDir = PathContainment.RequireContained(worktreeRoot, outDir);
             RefuseProtectedOutput(gameDir, outDir);
 
             Console.WriteLine($"game install : {Redact(gameDir)}");
@@ -345,6 +346,26 @@ internal static class Program
                 $"Output directory {Redact(outDir)} is inside a protected Steam or Slay the Spire 2 path. " +
                 "Choose an isolated directory inside the project worktree.");
         }
+    }
+
+    private static string FindWorktreeRoot()
+    {
+        foreach (var start in new[] { Directory.GetCurrentDirectory(), AppContext.BaseDirectory })
+        {
+            var directory = new DirectoryInfo(start);
+            while (directory is not null)
+            {
+                var gitPath = Path.Combine(directory.FullName, ".git");
+                if (File.Exists(Path.Combine(directory.FullName, "sts2-pilot-trainer.sln")) &&
+                    (File.Exists(gitPath) || Directory.Exists(gitPath)))
+                {
+                    return directory.FullName;
+                }
+                directory = directory.Parent;
+            }
+        }
+
+        throw new InvalidOperationException("Could not locate the sts2-pilot-trainer worktree root.");
     }
 
     private static bool HasProtectedInstallComponent(string path)

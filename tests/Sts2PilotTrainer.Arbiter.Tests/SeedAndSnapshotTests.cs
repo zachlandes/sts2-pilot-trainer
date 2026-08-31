@@ -51,6 +51,29 @@ public class SeedVerificationTests
     }
 
     [GameFact]
+    public void CandidateCoordinatorRejectsAnOperationalFailureInsteadOfReadingAStaleResult()
+    {
+        var outDir = TempDir();
+        var candidate = "SFXT47K77RFK";
+        var initial = Arbiter.Run(
+            "verify-seed", Arbiter.MapObservation,
+            "--seed", candidate,
+            "--out", outDir);
+        Assert.True(initial.Verified, initial.All);
+
+        var malformedObservation = Path.Combine(outDir, "malformed-map-observation.json");
+        File.WriteAllText(malformedObservation, "{");
+        var result = Arbiter.Run(
+            "verify-seed", malformedObservation,
+            "--candidates", candidate,
+            "--out", outDir);
+
+        Assert.False(result.Verified);
+        Assert.False(File.Exists(Path.Combine(outDir, $"seed-verification-{candidate}.json")));
+        Assert.False(File.Exists(Path.Combine(outDir, "seed-verification-summary.json")));
+    }
+
+    [GameFact]
     public void BoundSeedEvidenceRequiresARejectedAlternativeCandidate()
     {
         var manifest = ManifestJson.Load(Arbiter.Manifest);

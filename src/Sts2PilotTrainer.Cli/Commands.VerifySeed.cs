@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
@@ -36,13 +37,29 @@ internal static partial class Commands
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var character = Args.Value(args, "--character") ?? "CHARACTER.IRONCLAD";
         var ascension = Args.Value(args, "--ascension") ?? "10";
+        if (!int.TryParse(ascension, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out var ascensionValue))
+        {
+            throw new ManifestException($"Ascension '{ascension}' is not an Int32 value.");
+        }
         var gameMode = Args.Value(args, "--game-mode") ?? "standard";
+        var manifestPath = Args.Value(args, "--manifest");
+        var boundManifest = string.IsNullOrWhiteSpace(manifestPath) ? null : ManifestJson.Load(manifestPath);
+        var observationHash = Sha256File(observationPath);
+        var manifestHash = boundManifest is null ? null : Sha256File(manifestPath!);
 
         Directory.CreateDirectory(outDir);
+        var summaryPath = Path.Combine(outDir, "seed-verification-summary.json");
+        if (File.Exists(summaryPath)) File.Delete(summaryPath);
         var results = new List<JsonElement>();
 
         foreach (var candidate in candidates)
         {
+            var path = Path.Combine(outDir, $"seed-verification-{candidate}.json");
+            var svgPath = Path.Combine(outDir, $"seed-verification-{candidate}.svg");
+            if (File.Exists(path)) File.Delete(path);
+            if (File.Exists(svgPath)) File.Delete(svgPath);
+
             var child = SelfProcess.Run(
                 "verify-seed", observationPath,
                 "--seed", candidate,
@@ -51,26 +68,31 @@ internal static partial class Commands
                 "--character", character,
                 "--ascension", ascension,
                 "--game-mode", gameMode,
-                "--manifest", Args.Value(args, "--manifest") ?? "");
+                "--manifest", manifestPath ?? "");
             Console.Write(child.StandardOutput);
-            var path = Path.Combine(outDir, $"seed-verification-{candidate}.json");
             if (child.ExitCode is not 0 and not 1 || !File.Exists(path))
             {
                 Console.Error.Write(child.StandardError);
                 return child.ExitCode == 0 ? 1 : child.ExitCode;
             }
 
-            results.Add(JsonDocument.Parse(File.ReadAllText(path)).RootElement.Clone());
+            var result = RequireCurrentSeedResult(
+                path, candidate, character, ascensionValue, gameMode, acts,
+                observationPath, observationHash, manifestPath, manifestHash, boundManifest);
+            var matches = result.GetProperty("comparison").GetProperty("matches").GetBoolean();
+            if ((child.ExitCode == 0) != matches)
+            {
+                throw new ManifestException(
+                    $"Seed candidate '{candidate}' exit status disagrees with its current comparison artifact.");
+            }
+            results.Add(result);
         }
 
         var matching = results
             .Where(r => r.GetProperty("comparison").GetProperty("matches").GetBoolean())
             .Select(r => r.GetProperty("candidate_seed").GetString()!)
             .ToList();
-        var manifestPath = Args.Value(args, "--manifest");
-        var expectedSeed = string.IsNullOrWhiteSpace(manifestPath)
-            ? null
-            : ManifestJson.Load(manifestPath).Environment.Seed.Value;
+        var expectedSeed = boundManifest?.Environment.Seed.Value;
         var hasRejectedAlternative = expectedSeed is null || results.Any(result =>
             !string.Equals(result.GetProperty("candidate_seed").GetString(), expectedSeed, StringComparison.Ordinal) &&
             !result.GetProperty("comparison").GetProperty("matches").GetBoolean());
@@ -94,7 +116,6 @@ internal static partial class Commands
             results,
         };
 
-        var summaryPath = Path.Combine(outDir, "seed-verification-summary.json");
         File.WriteAllText(summaryPath, JsonSerializer.Serialize(summary, Json.Indented) + "\n");
 
         Console.WriteLine();
@@ -135,7 +156,7 @@ internal static partial class Commands
 
         Directory.CreateDirectory(outDir);
         var jsonPath = Path.Combine(outDir, $"seed-verification-{seed}.json");
-        File.WriteAllText(jsonPath, JsonSerializer.Serialize(new
+        var json = JsonSerializer.Serialize(new
         {
             schema = "sts2-pilot-trainer/seed-verification/v1",
             candidate_seed = seed,
@@ -149,16 +170,24 @@ internal static partial class Commands
                 : new
                 {
                     file = Path.GetFileName(manifestPath),
-                    boundManifest.RunId,
+                    sha256 = Sha256File(manifestPath!),
+                    run_id = boundManifest.RunId,
                     video_id = boundManifest.Source.Video!.VideoId,
                 },
-            observation = new { file = Path.GetFileName(observationPath), observation.Video.VideoId, observation.Method },
+            observation = new
+            {
+                file = Path.GetFileName(observationPath),
+                sha256 = Sha256File(observationPath),
+                video_id = observation.Video.VideoId,
+                method = observation.Method,
+            },
             generated,
             comparison,
-        }, Json.Indented) + "\n");
+        }, Json.Indented) + "\n";
 
         var svgPath = Path.Combine(outDir, $"seed-verification-{seed}.svg");
         File.WriteAllText(svgPath, MapDiagram.Render(observation, generated, seed, comparison));
+        File.WriteAllText(jsonPath, json);
 
         Console.WriteLine(
             $"{seed}: {(comparison.Matches ? "MATCH  " : "MISMATCH")}  " +
@@ -206,6 +235,76 @@ internal static partial class Commands
             throw new ManifestException("Publication seed evidence must generate the standard-mode Act 1 map.");
         }
     }
+
+    private static JsonElement RequireCurrentSeedResult(
+        string path, string candidate, string character, int ascension, string gameMode,
+        IReadOnlyList<string> acts, string observationPath, string observationHash,
+        string? manifestPath, string? manifestHash, ReplayManifest? boundManifest)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var result = document.RootElement;
+            RequireResult(
+                result.GetProperty("schema").GetString() == "sts2-pilot-trainer/seed-verification/v1",
+                candidate, "schema");
+            RequireResult(result.GetProperty("candidate_seed").GetString() == candidate, candidate, "candidate seed");
+            RequireResult(result.GetProperty("character").GetString() == character, candidate, "character");
+            RequireResult(result.GetProperty("ascension").GetInt32() == ascension, candidate, "ascension");
+            RequireResult(result.GetProperty("game_mode").GetString() == gameMode, candidate, "game mode");
+            RequireResult(
+                result.GetProperty("acts").EnumerateArray().Select(element => element.GetString())
+                    .SequenceEqual(acts, StringComparer.Ordinal),
+                candidate, "acts");
+
+            var observation = result.GetProperty("observation");
+            RequireResult(
+                observation.GetProperty("file").GetString() == Path.GetFileName(observationPath) &&
+                observation.GetProperty("sha256").GetString() == observationHash,
+                candidate, "map observation");
+
+            var manifest = result.GetProperty("bound_manifest");
+            if (boundManifest is null)
+            {
+                RequireResult(manifest.ValueKind == JsonValueKind.Null, candidate, "unbound manifest state");
+            }
+            else
+            {
+                RequireResult(
+                    manifest.ValueKind == JsonValueKind.Object &&
+                    manifest.GetProperty("file").GetString() == Path.GetFileName(manifestPath) &&
+                    manifest.GetProperty("sha256").GetString() == manifestHash &&
+                    manifest.GetProperty("run_id").GetString() == boundManifest.RunId &&
+                    manifest.GetProperty("video_id").GetString() == boundManifest.Source.Video!.VideoId,
+                    candidate, "bound manifest");
+            }
+
+            _ = result.GetProperty("comparison").GetProperty("matches").GetBoolean();
+            return result.Clone();
+        }
+        catch (ManifestException)
+        {
+            throw;
+        }
+        catch (Exception exception) when (
+            exception is JsonException or InvalidOperationException or KeyNotFoundException)
+        {
+            throw new ManifestException(
+                $"Seed candidate '{candidate}' did not emit a valid current comparison artifact: {exception.Message}");
+        }
+    }
+
+    private static void RequireResult(bool condition, string candidate, string binding)
+    {
+        if (!condition)
+        {
+            throw new ManifestException(
+                $"Seed candidate '{candidate}' emitted a comparison artifact with stale or incorrect {binding} binding.");
+        }
+    }
+
+    private static string Sha256File(string path) =>
+        Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path)));
 
     internal static string NegativeControlSeed(string seed)
     {

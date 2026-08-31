@@ -100,6 +100,21 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void RejectsAnUndefinedFactSource()
+    {
+        var document = System.Text.Json.Nodes.JsonNode.Parse(
+            ManifestJson.Serialize(Fixtures.ValidManifest()))!.AsObject();
+        document["environment"]!["seed"]!["Source"] = 99;
+        var manifest = ManifestJson.Deserialize(document.ToJsonString());
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("undefined fact source value 99", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsEnvironmentIdentityThatClaimsToComeFromTheEngine()
     {
         // Circular: environment identity states what the engine must be, so it cannot
