@@ -17,7 +17,8 @@ public static class Arbiter
 
     public static ArbiterOutcome Run(
         ReplayManifest manifest, int? stopAfterSeq = null,
-        PlayerProgress progress = PlayerProgress.AllUnlocked, int? lineFromSeq = null)
+        PlayerProgress progress = PlayerProgress.AllUnlocked, int? lineFromSeq = null,
+        string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null)
     {
         var validation = lineFromSeq is { } start
             ? ManifestValidator.ValidateLineReplay(manifest, start)
@@ -50,9 +51,10 @@ public static class Arbiter
             manifest.Environment.Seed.Value,
             manifest.Environment.Character.Value,
             manifest.Environment.Ascension.Value,
-            manifest.Environment.GameMode.Value,
+            gameModeOverride ?? manifest.Environment.GameMode.Value,
             manifest.Environment.Acts.Value,
-            progress);
+            progress,
+            modifierTypeNames ?? []);
 
         var driver = new RunDriver(session);
         driver.EnterFirstRoom();

@@ -450,7 +450,7 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 
 ```output
 Passed!  - Failed:     0, Passed:   127, Skipped:     0, Total:   127 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    50, Skipped:     0, Total:    50 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -510,6 +510,11 @@ every check that is not about the recording itself.
 ```
 
 ```output
+Mode discrimination instrument: PASS
+Custom mode with no modifiers matches every observed checkpoint and the final canonical state.
+Daily mode without its date-selected modifier set matches every observed checkpoint and the final canonical state, which does not bind a real daily run.
+Mode identity: UNESTABLISHED
+report: build/evidence/mode-discrimination.json
 manifest : navegreed-OJ-6QXhNgdg
 
   pass  publication-source Publication evidence comes from a VOD, never an engine-generated fixture.
@@ -523,6 +528,8 @@ manifest : navegreed-OJ-6QXhNgdg
   pass  rejection     Corrupted and incomplete histories are refused.
 
 NOT PUBLISHABLE - see the failing condition above
+
+[exit status: 1]
 ```
 
 The verdict is written to `build/evidence/publication-gate.json` together with the
@@ -557,8 +564,9 @@ This proves the replay spine against a controlled fixture, not the separate hist
   position 412 to 370 and changes which encounters the act generates — while leaving
   the map byte-identical. Agreement on generated content is the evidence for this
   assumption; it is not independently established.
-- **The game mode remains unestablished.** The real-engine probe compares the verified prefix under standard, custom with no modifiers, daily without its date-selected modifiers, and a behavior-changing custom modifier control.
-The control demonstrates that the instrument detects a mode configuration that changes the prefix, but the recording does not identify the source configuration.
+- **The game mode remains unestablished.** The real-engine probe compares every observed checkpoint and the final canonical state under standard, custom with no modifiers, daily without its date-selected modifiers, and a behavior-changing custom modifier control.
+A reordered-history control also proves the combined detector catches checkpoint divergence when the terminal canonical state is identical.
+The controls demonstrate that the instrument detects both kinds of divergence, but the recording does not identify the source configuration.
 The publication gate therefore refuses rather than treating manifest-authored reasoning as evidence.
 - **The three source utilities are non-gameplay tooling, with BaseLib bounded to this history.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume utility — and the manifest carries a risk assessment for each. The content hash cannot cover every behavior patch. The target-level BaseLib v3.4.5 probe changes `SkipNextDurationTick` for a player-applied custom debuff, while the history-bound probe records that the reconstructed VOD actions never reach that branch and detects an injected affected call.
 - **The mod identities themselves are not from the video.** It names no mod

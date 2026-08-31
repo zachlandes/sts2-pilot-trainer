@@ -444,6 +444,15 @@ public class PublicationGateTests
         var report = JsonDocument.Parse(File.ReadAllText(reportPath)).RootElement;
         Assert.True(report.GetProperty("instrument_passed").GetBoolean());
         Assert.True(report.GetProperty("negative_control_detected").GetBoolean());
+        Assert.True(report.GetProperty("checkpoint_negative_control_detected").GetBoolean());
+        var standard = report.GetProperty("standard");
+        var checkpointControl = report.GetProperty("checkpoint_negative_control");
+        Assert.Equal(
+            standard.GetProperty("BehavioralStateSha256").GetString(),
+            checkpointControl.GetProperty("BehavioralStateSha256").GetString());
+        Assert.NotEqual(
+            standard.GetProperty("CheckpointSha256").GetString(),
+            checkpointControl.GetProperty("CheckpointSha256").GetString());
         Assert.False(report.GetProperty("mode_established").GetBoolean());
     }
 

@@ -56,8 +56,7 @@ internal static class Program
             }
 
             gameDir = PathContainment.ResolveExistingPath(Path.GetFullPath(gameDir));
-            var worktreeRoot = WorktreeLocator.Find();
-            outDir = PathContainment.RequireContained(worktreeRoot, outDir);
+            outDir = WorktreePath.Require(outDir);
             RefuseProtectedOutput(gameDir, outDir);
 
             Console.WriteLine($"game install : {Redact(gameDir)}");

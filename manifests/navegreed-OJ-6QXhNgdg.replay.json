@@ -22,7 +22,7 @@
       "Value": "standard",
       "Source": "Inferred",
       "Evidence": {
-        "note": "Not rendered anywhere. Daily runs are excluded because their seeds are date-derived and this one is not, and because a daily shows modifier icons in the top bar which this run does not. Custom mode is not excluded by direct evidence; it is judged unlikely because the seed is generator-shaped rather than typed. This is the weakest link in the environment identity and is recorded as an inference, not an observation."
+        "note": "Not rendered anywhere. The real-engine mode-discrimination report shows that standard, custom with no modifiers, and daily without its date-selected modifiers match at every observed checkpoint and in final canonical state for this reconstructed prefix. That report does not bind the source to an actual custom or daily modifier configuration, so neither daily nor custom mode is excluded by the evidence available here. The mode remains an inference, not an observation."
       }
     },
     "seed": {

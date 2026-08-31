@@ -32,7 +32,7 @@ internal static class EngineInitialization
         var sandboxRoot = libDir is null
             ? Path.Combine(worktreeRoot, "build", "sandbox")
             : Path.Combine(Path.GetDirectoryName(libDir)!, "sandbox");
-        Godot.HeadlessSandbox.SetRoot(PathContainment.RequireContained(worktreeRoot, sandboxRoot));
+        Godot.HeadlessSandbox.SetRoot(WorktreePath.Require(sandboxRoot));
 
         // Platform services first: several gameplay paths reach for the platform
         // layer, and touching it early turns a mid-run null reference into a warning

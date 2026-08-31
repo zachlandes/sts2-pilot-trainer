@@ -98,7 +98,7 @@ public static class HeadlessSandbox
 
     /// <summary>Points the sandbox somewhere else, e.g. a per-test directory.</summary>
     public static void SetRoot(string path) =>
-        _root = PathContainment.RequireContained(WorktreeLocator.Find(), path);
+        _root = WorktreePath.Require(path);
 
     /// <summary>
     /// Turns a Godot virtual path into a real one inside the sandbox. An absolute

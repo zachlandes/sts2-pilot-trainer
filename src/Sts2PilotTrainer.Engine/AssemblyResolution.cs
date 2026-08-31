@@ -45,11 +45,10 @@ internal static class AssemblyResolution
     /// </summary>
     internal static string? ResolveLibDirectory()
     {
-        var worktreeRoot = WorktreeLocator.Find();
         var configured = Environment.GetEnvironmentVariable(LibDirVariable);
         if (!string.IsNullOrWhiteSpace(configured))
         {
-            var full = PathContainment.RequireContained(worktreeRoot, configured.Trim());
+            var full = WorktreePath.Require(configured.Trim());
             if (File.Exists(Path.Combine(full, "sts2.dll"))) return full;
             return null;
         }
@@ -61,7 +60,7 @@ internal static class AssemblyResolution
             {
                 if (File.Exists(Path.Combine(candidate, "sts2.dll")))
                 {
-                    return PathContainment.RequireContained(worktreeRoot, candidate);
+                    return WorktreePath.Require(candidate);
                 }
             }
             dir = Directory.GetParent(dir)?.FullName ?? "";

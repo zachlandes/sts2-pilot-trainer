@@ -99,9 +99,8 @@ public sealed record SnapshotCacheKey(
             throw new ArgumentException("Cache root cannot be empty.", nameof(cacheRoot));
         }
 
-        var root = Path.GetFullPath(cacheRoot);
-        var candidate = PathContainment.RequireContained(
-            root, Path.Combine(root, ToCacheDirectoryName()));
+        var root = WorktreePath.Require(cacheRoot);
+        var candidate = WorktreePath.RequireChild(root, ToCacheDirectoryName());
 
         var candidateEntry = new DirectoryInfo(candidate);
         if (candidateEntry.LinkTarget is not null)
@@ -119,8 +118,8 @@ public sealed record SnapshotCacheKey(
             throw new ArgumentException("Cache artifact name must be a file name.", nameof(fileName));
         }
 
-        var directory = Path.GetFullPath(cacheDirectory);
-        var candidate = PathContainment.RequireContained(directory, Path.Combine(directory, fileName));
+        var directory = WorktreePath.Require(cacheDirectory);
+        var candidate = WorktreePath.RequireChild(directory, fileName);
 
         var entry = new FileInfo(candidate);
         if (entry.LinkTarget is not null)

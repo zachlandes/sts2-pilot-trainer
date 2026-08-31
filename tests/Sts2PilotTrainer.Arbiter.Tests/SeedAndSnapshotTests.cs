@@ -243,6 +243,26 @@ public class SnapshotLineTests
     }
 
     [GameFact]
+    public void RefusesAnOutOfWorktreeSnapshotCacheBeforeWriting()
+    {
+        var outDir = TempDir();
+        var outside = Path.GetFullPath(Path.Combine(
+            Arbiter.RepoRoot, "..", $"snapshot-escape-{Guid.NewGuid():N}"));
+        var lines = Arbiter.SyntheticLines();
+
+        var result = Arbiter.Run(
+            "snapshot-lines", Arbiter.SyntheticReplayFixture(),
+            "--at", "1",
+            "--line", lines[0],
+            "--line", lines[1],
+            "--out", outDir, "--cache", outside);
+
+        Assert.False(result.Verified);
+        Assert.Contains("resolves outside the allowed root", result.All, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(outside));
+    }
+
+    [GameFact]
     public void ReusesTheSnapshotOnASecondRunAndKeysItToTheHistoryThatProducedIt()
     {
         var outDir = TempDir();
