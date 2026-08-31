@@ -617,7 +617,7 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   172, Skipped:     0, Total:   172 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   174, Skipped:     0, Total:   174 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
 Passed!  - Failed:     0, Passed:    72, Skipped:     0, Total:    72 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 

@@ -200,24 +200,24 @@ internal static partial class Commands
                 "path_specific_mode_parity");
             var baseLib = ReadBinding(baseLibReportPath, "baselib-reachability", "history",
                 "path_specific_parity_established");
-            if (!mode.Passed || !baseLib.Passed)
+            var failed = new[] { mode, baseLib }
+                .Where(binding => binding.Fields["internal_pass"] != bool.TrueString)
+                .Select(binding => $"{binding.Source}.internal_pass")
+                .ToList();
+            if (failed.Count > 0)
             {
-                var failed = new[] { mode, baseLib }
-                    .Where(binding => !binding.Passed)
-                    .Select(binding => $"{binding.Source}.internal_pass")
-                    .ToList();
                 return new Condition(
                     "evidence-binding", requirement, false,
                     $"Evidence reports did not pass internally: {string.Join(", ", failed)}.");
             }
 
-            var comparison = PublicationEvidenceBindingComparer.Compare(mode, baseLib);
-            var diagnostic = comparison.Passed
+            var comparison = EvidenceBindingComparer.Compare(mode, baseLib);
+            var diagnostic = comparison.Bound
                 ? null
                 : string.Join("; ", comparison.Mismatches.Select(mismatch =>
                     $"{mismatch.Field}: {mismatch.LeftSource}='{mismatch.LeftValue}', " +
                     $"{mismatch.RightSource}='{mismatch.RightValue}'"));
-            return new Condition("evidence-binding", requirement, comparison.Passed, diagnostic);
+            return new Condition("evidence-binding", requirement, comparison.Bound, diagnostic);
         }
         catch (Exception exception) when (
             exception is IOException or JsonException or InvalidOperationException or KeyNotFoundException)
@@ -228,7 +228,15 @@ internal static partial class Commands
         }
     }
 
-    private static PublicationEvidenceBinding ReadBinding(
+    /// <summary>
+    /// Reduces one probe's report to the values that say which reconstruction it is
+    /// about, plus whether it passed on its own terms.
+    ///
+    /// The two probes have different names for "I passed", which is why that is a
+    /// parameter. Everything else is the same question asked of both reports, and
+    /// binding them is what stops a stale report on disk being read as a fresh one.
+    /// </summary>
+    private static EvidenceBinding ReadBinding(
         string path,
         string source,
         string evidenceProperty,
@@ -237,17 +245,19 @@ internal static partial class Commands
         using var document = JsonDocument.Parse(File.ReadAllText(path));
         var report = document.RootElement;
         var evidence = report.GetProperty(evidenceProperty);
-        return new PublicationEvidenceBinding(
-            source,
-            report.GetProperty("instrument_passed").GetBoolean() &&
-                report.GetProperty(passProperty).GetBoolean(),
-            evidence.GetProperty("RunId").GetString()!,
-            evidence.GetProperty("VideoId").GetString()!,
-            evidence.GetProperty("BuildVersion").GetString()!,
-            evidence.GetProperty("BuildCommit").GetString()!,
-            evidence.GetProperty("Seed").GetString()!,
-            evidence.GetProperty("ActionHistoryHash").GetString()!,
-            evidence.GetProperty("FinalStateSha256").GetString()!);
+        var passed = report.GetProperty("instrument_passed").GetBoolean() &&
+                     report.GetProperty(passProperty).GetBoolean();
+        return EvidenceBinding.Of(source,
+        [
+            ("internal_pass", passed ? bool.TrueString : bool.FalseString),
+            ("run_id", evidence.GetProperty("RunId").GetString()!),
+            ("video_id", evidence.GetProperty("VideoId").GetString()!),
+            ("build_version", evidence.GetProperty("BuildVersion").GetString()!),
+            ("build_commit", evidence.GetProperty("BuildCommit").GetString()!),
+            ("seed", evidence.GetProperty("Seed").GetString()!),
+            ("action_history_hash", evidence.GetProperty("ActionHistoryHash").GetString()!),
+            ("final_state_sha256", evidence.GetProperty("FinalStateSha256").GetString()!),
+        ]);
     }
 
     private sealed record Condition(

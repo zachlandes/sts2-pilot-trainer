@@ -79,7 +79,7 @@ internal static partial class Commands
             .Where(entry => entry.Key != "standard")
             .Select(entry => entry.Value)
             .Concat(modifierResults.Select(entry => entry.Result))
-            .SelectMany(result => ModeProbeBindingComparer.Compare(
+            .SelectMany(result => EvidenceBindingComparer.Compare(
                 baselineBinding, ProbeBinding(result)).Mismatches)
             .ToList();
         var bindingsMatch = bindingMismatches.Count == 0;
@@ -209,18 +209,26 @@ internal static partial class Commands
         SameBehavior(standard, candidate) &&
         !string.Equals(standard.FinalStateSha256, candidate.FinalStateSha256, StringComparison.Ordinal);
 
-    private static ModeProbeBinding ProbeBinding(ModeDiscriminationResult result) => new(
-        result.Variant,
-        result.Schema,
-        result.RunId,
-        result.VideoId,
-        result.BuildVersion,
-        result.BuildCommit,
-        result.Seed,
-        result.ActionHistoryHash,
-        result.AvailableModifierTypes);
+    /// <summary>
+    /// What every mode probe has to agree on before its result may be compared with
+    /// another's. The modifier list is in here because a build that offers a different
+    /// set of modifiers is enumerating a different space, and a parity claim over the
+    /// wrong space is worse than none.
+    /// </summary>
+    private static EvidenceBinding ProbeBinding(ModeDiscriminationResult result) =>
+        EvidenceBinding.Of(result.Variant,
+        [
+            ("schema", result.Schema),
+            ("run_id", result.RunId),
+            ("video_id", result.VideoId),
+            ("build_version", result.BuildVersion),
+            ("build_commit", result.BuildCommit),
+            ("seed", result.Seed),
+            ("action_history_hash", result.ActionHistoryHash),
+            ("available_modifier_types", string.Join("\n", result.AvailableModifierTypes)),
+        ]);
 
-    private static string Describe(ModeProbeBindingMismatch mismatch) =>
-        $"{mismatch.Field}: {mismatch.BaselineSource}='{mismatch.BaselineValue}', " +
-        $"{mismatch.CandidateSource}='{mismatch.CandidateValue}'";
+    private static string Describe(EvidenceMismatch mismatch) =>
+        $"{mismatch.Field}: {mismatch.LeftSource}='{mismatch.LeftValue}', " +
+        $"{mismatch.RightSource}='{mismatch.RightValue}'";
 }
