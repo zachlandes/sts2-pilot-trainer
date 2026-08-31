@@ -1,0 +1,11 @@
+# no-mistakes pre-push gate. commands.{test,lint,format} run on the daemon via
+# `sh -c` and are read ONLY from the default branch (anti-RCE) - land changes to
+# them on main. Leave a command empty to let the gate's agent auto-detect it.
+commands:
+  test: "dotnet test sts2-pilot-trainer.sln -c Release --nologo"
+  lint: "dotnet build sts2-pilot-trainer.sln -c Release --nologo -warnaserror"
+  format: "dotnet format sts2-pilot-trainer.sln --verify-no-changes"
+
+ignore_patterns:
+  - "*.lock"
+  - "build/**"

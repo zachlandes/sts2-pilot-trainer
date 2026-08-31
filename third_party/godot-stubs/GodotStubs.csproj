@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Managed no-op stand-ins for the Godot C# API surface that sts2.dll links
+       against. Vendored from wuhao21/sts2-cli (MIT) - see NOTICE and CHANGES.md.
+       Emits as GodotSharp.dll so the game assembly's references resolve. -->
+  <PropertyGroup>
+    <RootNamespace>Godot</RootNamespace>
+    <AssemblyName>GodotSharp</AssemblyName>
+    <Version>4.5.1.0</Version>
+    <AssemblyVersion>4.5.1.0</AssemblyVersion>
+    <!-- Vendored third-party source: do not gate it on this repo's warnings. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);CS8632;CS0108;CS0114;CS1591;CS8625;CS0067</NoWarn>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Sts2PilotTrainer.Cli</RootNamespace>
+    <AssemblyName>sts2-arbiter</AssemblyName>
+    <RollForward>LatestMajor</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Sts2PilotTrainer.Engine/Sts2PilotTrainer.Engine.csproj" />
+    <ProjectReference Include="../Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj" />
+  </ItemGroup>
+
+</Project>

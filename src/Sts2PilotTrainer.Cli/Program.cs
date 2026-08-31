@@ -1,0 +1,80 @@
+using Sts2PilotTrainer.Engine;
+
+namespace Sts2PilotTrainer.Cli;
+
+/// <summary>
+/// The arbiter's command line. Thin by design: every command is a few lines of
+/// argument handling around a library call, so that what the tool does and what
+/// the tests exercise cannot drift apart.
+/// </summary>
+internal static class Program
+{
+    private static int Main(string[] args)
+    {
+        if (args.Length == 0 || args[0] is "-h" or "--help" or "help")
+        {
+            Usage();
+            return args.Length == 0 ? 2 : 0;
+        }
+
+        try
+        {
+            return args[0] switch
+            {
+                "preflight" => Commands.Preflight(args[1..]),
+                "verify-seed" => Commands.VerifySeed(args[1..]),
+                "replay" => Commands.Replay(args[1..]),
+                "determinism" => Commands.Determinism(args[1..]),
+                "negative-controls" => Commands.NegativeControls(args[1..]),
+                "snapshot-lines" => Commands.SnapshotLines(args[1..]),
+                _ => UnknownCommand(args[0]),
+            };
+        }
+        catch (Exception ex) when (ex is EngineException or Replay.ManifestException)
+        {
+            // These carry a message written for a person; a stack trace would bury it.
+            Console.Error.WriteLine();
+            Console.Error.WriteLine(ex.Message);
+            Console.Error.WriteLine();
+            return 1;
+        }
+    }
+
+    private static int UnknownCommand(string command)
+    {
+        Console.Error.WriteLine($"unknown command: {command}");
+        Usage();
+        return 2;
+    }
+
+    private static void Usage() => Console.WriteLine(
+        """
+        sts2-arbiter - deterministic replay arbiter for Slay the Spire 2
+
+          preflight       <manifest>
+              Compare a manifest's environment identity against this machine's game.
+              Refuses, with diagnostics, rather than replaying into a mismatch.
+
+          verify-seed     <map-observation> --candidates <seed>[,<seed>...] [--out <dir>]
+              Generate each candidate seed's Act 1 map through the real engine and
+              compare its topology against a map read from a video. This is the seed
+              check that does not depend on reading any text.
+
+          replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
+              Replay the manifest's ordered action history from run start and check
+              every checkpoint. Writes the manifest back with its verification filled in.
+
+          determinism     <manifest> --runs <n>
+              Replay the same manifest in n fresh processes and compare canonical state.
+
+          negative-controls <manifest> [--out <dir>]
+              Damage the history in specific ways and show the arbiter rejects each,
+              alongside what a video-only consistency check would have concluded.
+
+          snapshot-lines  <manifest> --at <seq> --line <file> --line <file> [--out <path>]
+              Materialise the verified pre-turn snapshot, restore it once per line,
+              run each line's actions, and report the objective state deltas.
+
+        Every command needs a prepared game assembly: run ./scripts/bootstrap.sh first.
+        """);
+}

@@ -1,0 +1,353 @@
+{
+  "manifest_version": 1,
+  "run_id": "navegreed-OJ-6QXhNgdg",
+  "environment": {
+    "build_version": {
+      "Value": "v0.111.0",
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "read from the game's own version-info overlay, top right, at 3840x2160"
+      }
+    },
+    "build_date_utc": {
+      "Value": "2026.08.14",
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "same overlay line; the game renders the release timestamp in UTC"
+      }
+    },
+    "game_mode": {
+      "Value": "standard",
+      "Source": "Inferred",
+      "Evidence": {
+        "note": "Not rendered anywhere. Daily runs are excluded because their seeds are date-derived and this one is not, and because a daily shows modifier icons in the top bar which this run does not. Custom mode is not excluded by direct evidence; it is judged unlikely because the seed is generator-shaped rather than typed. This is the weakest link in the environment identity and is recorded as an inference, not an observation."
+      }
+    },
+    "seed": {
+      "Value": "SFXT47K77RFK",
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "read from the version-info overlay, then disambiguated by map topology. The overlay's glyphs for E and F are not separable at this rendering; both readings were generated through the engine and compared against the Act 1 map the video shows. SFXT47K77RFK reproduces all 61 observed nodes; SEXT47K77REK reproduces 12.",
+        "note": "An earlier OCR pass reported SEXT47K77REK with per-character confidence 1.0. It was wrong. Agreement between readings that share a source and an engine is not evidence of accuracy."
+      }
+    },
+    "content_hash": {
+      "Value": "1568834832",
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "read from the overlay's HASH line"
+      }
+    },
+    "ascension": {
+      "Value": 10,
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "ascension badge in the top-left corner; the run summary screen states Ascension 10 again at the end"
+      }
+    },
+    "character": {
+      "Value": "CHARACTER.IRONCLAD",
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 75600,
+        "method": "player sprite and starting deck at the first combat"
+      }
+    },
+    "acts": {
+      "Value": [
+        "ACT.UNDERDOCKS",
+        "ACT.HIVE",
+        "ACT.GLORY"
+      ],
+      "Source": "Inferred",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "Act 1's identity is read from the map screen, which titles it 'Underdocks'. This build ships two acts at index 0 - Overgrowth and Underdocks - and Overgrowth is the default, so taking the default would have replayed a different run. Acts 2 and 3 are not read from the video; the build ships exactly one variant at each of those indices, which is why the whole list is marked inferred rather than observed."
+      }
+    }
+  },
+  "source": {
+    "kind": "vod",
+    "video": {
+      "platform": "youtube",
+      "video_id": "OJ-6QXhNgdg",
+      "channel_id": "UCuuDxwofGcur0Lt6iP-aDww",
+      "duration_s": 2049
+    },
+    "extraction_method": "manual",
+    "coverage": "Run start through the first combat's opening turn: Neow's blessing, the move to the first map node, the two cards played on turn 1, and ending that turn. It stops there deliberately - this milestone is about whether a reconstructed history replays exactly, and extending the transcription further would add transcription risk without adding anything to that question."
+  },
+  "actions": [
+    {
+      "seq": 0,
+      "verb": "ChooseNeowBlessing",
+      "args": {
+        "option_index": "2"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 26000,
+        "method": "Neow offers three options in a fixed order: Arcane Scroll, Lost Coffer, Leafy Poultice. Which one was taken is read from its effect rather than from the click: by t=31s max HP has gone 80 -> 68 (Leafy Poultice's -12) and two cards have been transformed, which no other option does."
+      },
+      "consumes_rng": [
+        "Transformations"
+      ],
+      "note": "The transform produced two copies of Hellraiser. That is a specific random outcome, so reproducing it is a sharper test than reproducing the max-HP change."
+    },
+    {
+      "seq": 1,
+      "verb": "MapMove",
+      "args": {
+        "row": "1",
+        "column": "3"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 73500,
+        "method": "the selected node is ringed on the map as the screen fades into the room; its position matches the centre column of row 1, which the generated map has as a Monster node"
+      }
+    },
+    {
+      "seq": 2,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.HELLRAISER",
+        "hand_index": "1"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 76300,
+        "method": "energy falls 3 -> 1 and the hand loses its second card; the played card's name floats above the player"
+      },
+      "consumes_rng": []
+    },
+    {
+      "seq": 3,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "3"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 76750,
+        "method": "energy falls 1 -> 0, the hand loses Defend, and 5 block appears beside the player's health bar. The hand index is 3 rather than 4 because playing Hellraiser already shifted the cards after it."
+      },
+      "consumes_rng": []
+    },
+    {
+      "seq": 4,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 77000,
+        "method": "the turn ends with Strike, Strike and Bash unplayed; the enemy then attacks and the Turn 2 banner appears"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ],
+      "note": "Hellraiser plays every drawn Strike against a random enemy, so the turn-2 draw consumes the combat-targets stream. This turn is squarely in the unforgiving class."
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "floor2-combat-start",
+      "after_seq": 1,
+      "kind": "combat_start",
+      "note": "Everything the video shows at the moment the first combat begins, before any card is played.",
+      "expect": {
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "the End Turn button reads 'End Turn 1'"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "energy orb reads 3/3"
+          }
+        },
+        "combat.max_energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "energy orb reads 3/3"
+          }
+        },
+        "combat.block": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "no block value is shown beside the health bar"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "64",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "read from the combat HUD at 3840x2160"
+          }
+        },
+        "player.max_hp": {
+          "Value": "68",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "read from the combat HUD at 3840x2160"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "the five cards in hand, left to right, by card face and title"
+          }
+        },
+        "combat.draw_pile_count": {
+          "Value": "6",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "draw-pile badge, bottom left"
+          }
+        },
+        "combat.discard_pile_count": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "discard-pile badge, bottom right"
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "one enemy is present"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "42",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "enemy health bar reads 42/42"
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "42",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "enemy health bar reads 42/42"
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:9+Debuff",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "two intent icons are rendered above the enemy: a debuff glyph and an attack arrow, with the number 9 beside them",
+            "note": "Recorded as 'Attack:9' on the first pass, which read the number and the arrow and missed the debuff glyph to their left. The engine reported a second intent component, that frame was re-read at source resolution, and the glyph is plainly there - so this is a corrected reading of the video, not a value taken from the engine. Stated explicitly because it is the one checkpoint the engine prompted a second look at, and a reader should be able to weigh that themselves. The debuff is corroborated independently: the player carries Weak at the start of turn 2."
+          }
+        }
+      }
+    },
+    {
+      "id": "after-hellraiser",
+      "after_seq": 2,
+      "kind": "mid_turn",
+      "expect": {
+        "combat.energy": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 76300,
+            "method": "energy orb reads 1/3"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "4",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 76300,
+            "method": "four cards remain in hand"
+          }
+        }
+      }
+    },
+    {
+      "id": "after-defend",
+      "after_seq": 3,
+      "kind": "mid_turn",
+      "expect": {
+        "combat.energy": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 76900,
+            "method": "energy orb reads 0/3"
+          }
+        },
+        "combat.block": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 76900,
+            "method": "block 5 shown beside the player's health bar"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 76900,
+            "method": "Strike, Strike and Bash remain in hand"
+          }
+        }
+      }
+    },
+    {
+      "id": "turn2-start",
+      "after_seq": 4,
+      "kind": "turn_start",
+      "note": "The enemy's 9-damage attack met 5 block, so 4 got through. This is the arithmetic the video-only checks could close on their own; the point of asserting it here is that the engine agrees.",
+      "expect": {
+        "combat.turn": {
+          "Value": "2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 79200,
+            "method": "the banner reads 'Player Turn / Turn 2'"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "60",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 79200,
+            "method": "health bar reads 60/68"
+          }
+        }
+      }
+    }
+  ]
+}

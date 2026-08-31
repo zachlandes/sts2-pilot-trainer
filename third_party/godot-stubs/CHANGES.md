@@ -1,0 +1,31 @@
+# Changes from upstream
+
+Vendored from [wuhao21/sts2-cli](https://github.com/wuhao21/sts2-cli) `src/GodotStubs`,
+commit `d11aa88`, fetched 2026-08-30. MIT licensed; see `LICENSE`.
+
+## Why vendored rather than referenced
+
+These stubs are a mechanical mirror of the Godot C# API surface that
+`sts2.dll` links against. They are the one part of the headless route that is
+expensive to re-derive and cheap to keep: they compile unchanged against
+Slay the Spire 2 `v0.111.0`, which was verified before vendoring.
+
+Upstream's own caller (`RunSimulator.cs`) does *not* compile against v0.111.0 —
+four call sites have drifted. That drift is confined to the caller, not to
+these stubs, which is exactly why this project vendors the stubs and writes its
+own binding (`src/Sts2PilotTrainer.Engine`) instead of forking the CLI.
+
+Taking the stubs as a pinned copy rather than a submodule also keeps a
+distributable mod free of a build-time dependency on a third-party repository.
+
+## Modifications
+
+| File | Change |
+|---|---|
+| `Core.cs` | Two method bodies. `OS.GetDataDir` / `OS.GetUserDataDir` return the sandbox root instead of `"."`, and `ProjectSettings.GlobalizePath` routes through `HeadlessSandbox.Globalize` instead of returning its argument. Upstream's versions let the engine write into the process working directory; this project treats the player's install and saves as read-only inputs and needs writes confined to a directory it owns. |
+| `UI.cs` | One keyword: `DirAccess` is `partial`, so members this project adds live in its own file rather than inside a vendored one. |
+| `Sts2PilotTrainerAdditions.cs` | **Added by this project.** Supplies `Godot.StringExtensions`, which upstream does not stub. Its five members (`GetBaseDir`, `GetFile`, `PathJoin`, `Capitalize`, `ToSnakeCase`) are the complete set `sts2.dll` v0.111.0 references, enumerated from the assembly rather than guessed. Without the type, every type mentioning it fails to load and the save subsystem does not initialise. |
+
+Record every future divergence here, with the reason. When upstream moves, diff
+against the new revision rather than re-deriving: this table is what makes that
+diff readable.

@@ -1,0 +1,17 @@
+[
+  {
+    "seq": 0,
+    "verb": "PlayCard",
+    "args": { "card_id": "CARD.BASH", "hand_index": "3" },
+    "source": "Inferred",
+    "evidence": { "note": "A legal alternative from the same hand, not something anyone was seen to play. It spends the same three energy on damage instead of on block." }
+  },
+  {
+    "seq": 1,
+    "verb": "PlayCard",
+    "args": { "card_id": "CARD.STRIKE_IRONCLAD", "hand_index": "0" },
+    "source": "Inferred",
+    "evidence": { "note": "The remaining energy spent on the leftmost Strike." }
+  },
+  { "seq": 2, "verb": "EndTurn", "args": {}, "source": "Inferred", "evidence": { "note": "Ends the turn from the same boundary as the other line." } }
+]
