@@ -20,6 +20,7 @@ trust the list more than the first version of it.
 | `content_hash` | The overlay's `HASH` line | The game's own model-id database hash — the value its multiplayer layer compares between peers. See [what the hash covers](#what-the-content-hash-covers). |
 | `ascension` | The in-run badge, and the end-of-run summary | Changes enemy health and intent damage. Measured: the same encounter rolls 57 HP / 4 damage at ascension 0–6 and 59 HP / 6 damage at 7+. |
 | `character` | The player sprite and starting deck | Obvious. |
+| `mods` | The overlay reports a **count**; the identities came from a separate investigation | A named environment, kept next to the hash rather than replaced by it. See [the mod environment](#the-mod-environment). |
 | **`acts`** | **The act's name on the map screen** | **See below. This one is easy to miss and produces a completely different run.** |
 
 And one that is not a field, because it cannot be observed at all:
@@ -67,6 +68,67 @@ agreement is real evidence about content and no evidence at all about behaviour.
 This project's headless host loads **no mods**, which is what makes its hash
 meaningful: it is the base game's hash, so a match says the video's environment
 agreed with the base game on the content that exists.
+
+## The mod environment
+
+The hash cannot serve as an environment fingerprint, so the environment gets a name
+and a membership list instead. For the source video that is `navegreed-2026-08`:
+
+| Mod | Role | Replay risk |
+|---|---|---|
+| Slay the Relics Exporter | Exports relic and HUD state for a stream overlay to read. | Lowest of the three. It reads state and writes it outward; its purpose is incompatible with changing anything. |
+| BaseLib | The community modding framework most StS2 mods build on. | Infrastructure — hooks, config UI, menu surfaces. It adds no gameplay content of its own, but it *is* a patching framework, so "adds nothing" is a claim about this version rather than about the category. |
+| Hindsight | Resumes a past run from a chosen floor in run history. | The one that can invalidate a reconstruction outright. Handled by a check rather than by argument — see below. |
+
+The count is observed (the overlay reads `MODDED (3)` throughout). The identities are
+**not** readable from the video, which names no mod anywhere; they came from a
+separate investigation and the manifest marks them as an inference for that reason.
+The validator refuses an environment that lists fewer mods than it reports loaded,
+because an unidentified mod is exactly the gap the hash cannot close.
+
+Naming them does not establish that they changed nothing. What it buys is the
+ability to reason about each one — and, for the dangerous one, to write a check.
+
+## The resumed-run problem
+
+Hindsight resumes a past run from a chosen floor. A resumed run has the **same seed,
+build, content hash and acts** as a fresh one. Every environment gate passes. The
+replay runs cleanly. And it reconstructs a different run, because the recording does
+not start where the history says it does.
+
+No amount of replaying catches this: a resumed run replays perfectly well. It has to
+be caught at ingestion, on the recording itself, so a video source must carry
+`source.run_start` and it must show all four of:
+
+- the run was not entered from the run history screen;
+- no resume dialog appears;
+- the first floor observed is 1;
+- the first run-timer reading is within 15 seconds of zero.
+
+The game's run timer starts at zero and the map is the first thing shown, so a
+from-start recording reads a handful of seconds. A resumed run reads whatever the
+original had accumulated. The selected video reads `00:04` on floor 1.
+
+`./scripts/arbiter validate <manifest> --show-rejections` demonstrates the gate
+refusing each way a provenance record can be wrong, and
+`./scripts/arbiter gate <manifest>` folds it into the single publication verdict.
+
+## The second reading
+
+The end-of-run summary screen re-states the environment — the version overlay is
+still rendered on it — around 2,038 seconds after the first reading. The validator
+requires the two to agree on seed, build, build date and content hash.
+
+Its value is not legibility; it is the same overlay. Its value is distance. A reading
+that drifted cannot agree with itself across most of an hour of footage, and a
+recording spliced from two different runs cannot agree at both ends.
+
+The screen also states ascension independently of the in-run badge, and the maximum
+health it shows (68) corroborates the opening blessing from the far end of the run:
+the character starts at 80 and the blessing taken at 26 seconds costs 12.
+
+What it does **not** show is recorded too, rather than left as an absence: the game
+mode is not on this screen, which is why the mode remains an inference.
 
 ## The progress problem
 

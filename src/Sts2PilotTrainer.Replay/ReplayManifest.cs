@@ -15,7 +15,7 @@ public sealed record ReplayManifest
 {
     /// <summary>Bumped whenever a change would make an older arbiter misread a
     /// newer manifest. Readers must refuse an unknown version rather than guess.</summary>
-    public const int CurrentManifestVersion = 1;
+    public const int CurrentManifestVersion = 2;
 
     [JsonPropertyName("manifest_version")]
     public int ManifestVersion { get; init; } = CurrentManifestVersion;
@@ -89,6 +89,16 @@ public sealed record EnvironmentIdentity
     public required Fact<string> Character { get; init; }
 
     /// <summary>
+    /// The named set of mods the run was played under.
+    ///
+    /// Recorded alongside the content hash rather than instead of it. The hash gates
+    /// content and is blind to behaviour; this names the environment so each mod can
+    /// be reasoned about individually. Neither is a proof of parity on its own.
+    /// </summary>
+    [JsonPropertyName("mods")]
+    public required Fact<ModEnvironment> Mods { get; init; }
+
+    /// <summary>
     /// The acts this run climbs, in order, as model ids.
     ///
     /// Identity rather than configuration: this build ships two different acts at
@@ -128,6 +138,23 @@ public sealed record SourceProvenance
     /// complete is not.</summary>
     [JsonPropertyName("coverage")]
     public required string Coverage { get; init; }
+
+    /// <summary>
+    /// Evidence that the recording begins at the run's beginning. Required for a
+    /// video source: replaying an ordered history from run start against a recording
+    /// of a *resumed* run reconstructs a different run, and every other gate passes.
+    /// </summary>
+    [JsonPropertyName("run_start")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RunStartEvidence? RunStart { get; init; }
+
+    /// <summary>
+    /// A second reading of the environment, from the end-of-run summary screen. The
+    /// validator requires it to agree with the environment identity.
+    /// </summary>
+    [JsonPropertyName("run_summary")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RunSummaryObservation? RunSummary { get; init; }
 }
 
 /// <summary>

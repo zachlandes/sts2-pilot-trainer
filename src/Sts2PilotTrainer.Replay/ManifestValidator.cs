@@ -36,6 +36,8 @@ public static partial class ManifestValidator
 
         ValidateEnvironment(manifest.Environment, problems);
         ValidateSource(manifest.Source, problems);
+        ValidateRunStart(manifest.Source, problems);
+        ValidateRunSummary(manifest, problems);
         ValidateActions(manifest.Actions, problems);
         ValidateCheckpoints(manifest.Checkpoints, manifest.Actions, problems);
 
@@ -87,6 +89,27 @@ public static partial class ManifestValidator
             problems.Add($"environment.character '{env.Character.Value}' is not a model id (expected CHARACTER.*).");
         }
 
+        var mods = env.Mods.Value;
+        if (string.IsNullOrWhiteSpace(mods.Name))
+        {
+            problems.Add("environment.mods.name is empty. The mod environment needs a name artifacts can refer to.");
+        }
+
+        if (mods.Mods.Count != mods.ReportedCount)
+        {
+            problems.Add(
+                $"environment.mods lists {mods.Mods.Count} mod(s) but reports {mods.ReportedCount} were loaded. " +
+                "An unidentified mod is exactly the gap the content hash cannot close, so the shortfall has to " +
+                "be visible rather than rounded away.");
+        }
+
+        foreach (var mod in mods.Mods.Where(m => string.IsNullOrWhiteSpace(m.ReplayRisk)))
+        {
+            problems.Add(
+                $"environment.mods entry '{mod.Name}' has no replay-risk assessment. A list of names without " +
+                "assessments looks like diligence and carries none.");
+        }
+
         if (env.Acts.Value.Count == 0)
         {
             problems.Add(
@@ -112,6 +135,7 @@ public static partial class ManifestValidator
                      ("ascension", env.Ascension.Source),
                      ("character", env.Character.Source),
                      ("acts", env.Acts.Source),
+                     ("mods", env.Mods.Source),
                  })
         {
             if (source == FactSource.Engine)
@@ -162,6 +186,109 @@ public static partial class ManifestValidator
             problems.Add(
                 "source.coverage is empty. A partial history is acceptable; a partial history that does not " +
                 "say where it stops is not.");
+        }
+    }
+
+    /// <summary>
+    /// A video source must show that its run started at the beginning.
+    ///
+    /// This is the one check that defends against a resumed run. Everything else in
+    /// this validator can be satisfied by a recording of a run picked up half way
+    /// through, because a resumed run carries the same seed, build, hash and acts.
+    /// </summary>
+    private static void ValidateRunStart(SourceProvenance source, List<string> problems)
+    {
+        if (source.Kind != "vod") return;
+
+        if (source.RunStart is not { } start)
+        {
+            problems.Add(
+                "source.run_start is absent. A video source must show that the recording begins at the run's " +
+                "beginning: a run resumed from run history matches on seed, build, content hash and acts, so " +
+                "nothing else here would notice.");
+            return;
+        }
+
+        if (start.EnteredFromRunHistory.Value)
+        {
+            problems.Add(
+                "source.run_start says the run was entered from run history. That is a resumed run, not a run " +
+                "from its start, and an ordered history replayed from run start would reconstruct a different run.");
+        }
+
+        if (start.ResumeModalSeen.Value)
+        {
+            problems.Add(
+                "source.run_start says a resume dialog appears in the recording. The run was picked up rather " +
+                "than started.");
+        }
+
+        if (start.FirstObservedFloor.Value != 1)
+        {
+            problems.Add(
+                $"source.run_start observes floor {start.FirstObservedFloor.Value} first. A run recorded from " +
+                "its start is on floor 1 when it first becomes visible.");
+        }
+
+        if (start.FirstObservedRunTimeSeconds.Value is var seconds &&
+            (seconds < 0 || seconds > RunStartEvidence.MaxRunTimeSecondsAtStart))
+        {
+            problems.Add(
+                $"source.run_start observes the run timer at {seconds}s, outside the " +
+                $"0-{RunStartEvidence.MaxRunTimeSecondsAtStart}s a from-start recording shows. The game's run " +
+                "timer starts at zero, so a larger reading is time the recording did not capture.");
+        }
+    }
+
+    /// <summary>
+    /// The end-of-run summary is a second reading of the environment from the far end
+    /// of the recording. Requiring the two to agree catches a drifted reading and a
+    /// recording spliced from two different runs - neither of which any single
+    /// reading can catch on its own.
+    /// </summary>
+    private static void ValidateRunSummary(ReplayManifest manifest, List<string> problems)
+    {
+        if (manifest.Source.Kind != "vod") return;
+
+        if (manifest.Source.RunSummary is not { } summary)
+        {
+            problems.Add(
+                "source.run_summary is absent. The end-of-run screen re-states the environment thousands of " +
+                "seconds after the first reading, and two readings that agree across that gap are much harder " +
+                "to get wrong than one.");
+            return;
+        }
+
+        var env = manifest.Environment;
+        foreach (var (field, atStart, atEnd) in new[]
+                 {
+                     ("seed", env.Seed.Value, summary.Seed.Value),
+                     ("build_version", env.BuildVersion.Value, summary.BuildVersion.Value),
+                     ("build_date_utc", env.BuildDateUtc.Value, summary.BuildDateUtc.Value),
+                     ("content_hash", env.ContentHash.Value, summary.ContentHash.Value),
+                 })
+        {
+            if (!string.Equals(atStart, atEnd, StringComparison.Ordinal))
+            {
+                problems.Add(
+                    $"source.run_summary reads {field} as '{atEnd}' where environment.{field} is '{atStart}'. " +
+                    "The two ends of the recording disagree, so at least one reading is wrong or the recording " +
+                    "covers more than one run.");
+            }
+        }
+
+        if (summary.Ascension.Value != env.Ascension.Value)
+        {
+            problems.Add(
+                $"source.run_summary reads ascension {summary.Ascension.Value} where environment.ascension is " +
+                $"{env.Ascension.Value}.");
+        }
+
+        if (summary.NotShown.Count == 0)
+        {
+            problems.Add(
+                "source.run_summary.not_shown is empty. This screen does not display everything - the game mode " +
+                "is not on it - and an unstated absence reads as a value that was checked.");
         }
     }
 

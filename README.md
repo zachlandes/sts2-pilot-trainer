@@ -35,10 +35,29 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
 - **A verified snapshot can be restored and replayed down two different lines**, with
   objective state deltas reported and no verdict about which was better.
 
+- **Provenance is gated before any engine starts.** A run resumed from run history
+  matches on seed, build, content hash and acts and replays perfectly — it is just
+  not the run its history describes. That is checked on the recording, along with a
+  second reading of the environment taken from the end-of-run screen 2,038 seconds
+  after the first.
+
 Two accepted assumptions turned out to be wrong and are now recorded as identity:
 the act variant (this build ships two different Act 1s) and the player's unlock
 state (which moves the shared RNG stream). See
 [environment identity](docs/environment-identity.md).
+
+**The publication gate.** All of it is one verdict, computed rather than concluded:
+
+```bash
+./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json
+```
+
+The standard is successful reproduction through the real engine, and no condition
+accepts a cheaper stand-in — not reader confidence, not arithmetic over the footage,
+not a screenshot of a mod list. Those are useful filters and they are not evidence:
+two of the four history corruptions pass every arithmetic check available from the
+frames, and a run resumed from run history passes every check that is not about the
+recording itself.
 
 ## Running it
 
@@ -52,8 +71,9 @@ after, and fails if anything moved. No game content is in this repository.
 ./scripts/arbiter replay     manifests/navegreed-OJ-6QXhNgdg.replay.json
 ```
 
-`./scripts/arbiter` with no arguments lists the rest: `verify-seed`, `determinism`,
-`negative-controls`, `snapshot-lines`.
+`./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
+`verify-seed`, `determinism`, `negative-controls`, `snapshot-lines`. `validate` needs
+no game.
 
 The full walkthrough, with commands and their real output, is in
 [demo/DEMO.md](demo/DEMO.md).

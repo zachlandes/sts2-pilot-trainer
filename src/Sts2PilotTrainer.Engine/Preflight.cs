@@ -45,8 +45,15 @@ public static class Preflight
 
         fields.Add(EvaluateSeed(expected.Seed.Value));
         fields.Add(EvaluateGameMode(expected.GameMode.Value));
+        fields.Add(EvaluateMods(expected.Mods.Value));
 
-        return new PreflightResult(fields.All(f => f.Matches), fields);
+        // The mod-environment row is reported and never gates. It cannot: this host
+        // deliberately loads nothing, so it can never match a modded environment, and
+        // failing on it would mean nothing ever replays. Its job is to keep the
+        // difference in front of the reader rather than let a row of ticks imply a
+        // parity nobody established.
+        var gating = fields.Where(f => f.Field != ModEnvironmentField);
+        return new PreflightResult(gating.All(f => f.Matches), fields);
     }
 
     private static PreflightField Compare(string field, string expected, string actual, string diagnostic) =>
@@ -72,6 +79,22 @@ public static class Preflight
                 "generates - its alphabet omits O and I, rendering them as 0 and 1. A seed like this was " +
                 "misread rather than observed.");
     }
+
+    private const string ModEnvironmentField = "mod_environment";
+
+    /// <summary>
+    /// States the difference between the environment a run was played in and the one
+    /// it is being replayed in. Always a difference: this host loads no mods.
+    /// </summary>
+    private static PreflightField EvaluateMods(ModEnvironment mods) =>
+        new(ModEnvironmentField,
+            $"{mods.Name} ({mods.ReportedCount} mod(s))",
+            "none loaded",
+            Matches: false,
+            $"Reported, not gated. This host loads no mods, which is what makes its content hash the base " +
+            $"game's and therefore worth comparing. The source environment was {mods.Name}: " +
+            $"{string.Join("; ", mods.Mods.Select(m => m.Name))}. A matching content hash covers content ids " +
+            "from mods that declare themselves gameplay-affecting and nothing else.");
 
     private static PreflightField EvaluateGameMode(string gameMode) =>
         gameMode == "standard"

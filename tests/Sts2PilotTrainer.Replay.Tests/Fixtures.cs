@@ -25,6 +25,7 @@ internal static class Fixtures
             Character = Fact<string>.Observed("CHARACTER.IRONCLAD", FactEvidence.AtVideoTime(1000, "sprite")),
             Acts = Fact<IReadOnlyList<string>>.Inferred(
                 ["ACT.UNDERDOCKS"], FactEvidence.Reasoning("map screen title")),
+            Mods = Fact<ModEnvironment>.Inferred(ModEnvironment(), FactEvidence.Reasoning("count observed, identities established elsewhere")),
         },
         Source = new SourceProvenance
         {
@@ -38,6 +39,8 @@ internal static class Fixtures
             },
             ExtractionMethod = "manual",
             Coverage = "opening turn only",
+            RunStart = RunStart(),
+            RunSummary = RunSummary(),
         },
         Actions =
         [
@@ -76,6 +79,39 @@ internal static class Fixtures
             },
         ],
     };
+
+    internal static ModEnvironment ModEnvironment(int reportedCount = 1) => new()
+    {
+        Name = "test-environment",
+        ReportedCount = reportedCount,
+        Mods = [new InstalledMod("Some Mod", "does a thing", "assessed as harmless for this test")],
+    };
+
+    internal static RunStartEvidence RunStart(
+        int runTimeSeconds = 4, int floor = 1, bool fromHistory = false, bool modal = false) => new()
+        {
+            FirstObservedRunTimeSeconds = Fact<int>.Observed(runTimeSeconds, FactEvidence.AtVideoTime(9000, "run timer")),
+            FirstObservedFloor = Fact<int>.Observed(floor, FactEvidence.AtVideoTime(9000, "floor counter")),
+            EnteredFromRunHistory = Fact<bool>.Observed(fromHistory, FactEvidence.AtVideoTime(9000, "no history screen")),
+            ResumeModalSeen = Fact<bool>.Observed(modal, FactEvidence.AtVideoTime(9000, "no resume dialog")),
+        };
+
+    internal static RunSummaryObservation RunSummary(
+        string seed = "SFXT47K77RFK", string build = "v0.111.0", string date = "2026.08.14",
+        string hash = "1568834832", int ascension = 10) => new()
+        {
+            VideoTimeMs = 2047000,
+            Seed = Fact<string>.Observed(seed, FactEvidence.AtVideoTime(2047000, "overlay")),
+            BuildVersion = Fact<string>.Observed(build, FactEvidence.AtVideoTime(2047000, "overlay")),
+            BuildDateUtc = Fact<string>.Observed(date, FactEvidence.AtVideoTime(2047000, "overlay")),
+            ContentHash = Fact<string>.Observed(hash, FactEvidence.AtVideoTime(2047000, "overlay")),
+            Ascension = Fact<int>.Observed(ascension, FactEvidence.AtVideoTime(2047000, "summary line")),
+            FloorsClimbed = Fact<int>.Observed(49, FactEvidence.AtVideoTime(2047000, "summary line")),
+            PlayerMaxHp = Fact<int>.Observed(68, FactEvidence.AtVideoTime(2047000, "top bar")),
+            DeckSize = Fact<int>.Observed(18, FactEvidence.AtVideoTime(2047000, "deck badge")),
+            RelicCount = Fact<int>.Observed(12, FactEvidence.AtVideoTime(2047000, "relic bar")),
+            NotShown = ["the game mode"],
+        };
 
     internal static ActionRecord Action(int seq, ActionVerb verb, params (string Key, string Value)[] args)
     {

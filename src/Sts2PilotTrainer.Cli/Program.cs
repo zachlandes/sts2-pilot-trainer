@@ -21,6 +21,8 @@ internal static class Program
         {
             return args[0] switch
             {
+                "gate" => Commands.Gate(args[1..]),
+                "validate" => Commands.Validate(args[1..]),
                 "preflight" => Commands.Preflight(args[1..]),
                 "verify-seed" => Commands.VerifySeed(args[1..]),
                 "replay" => Commands.Replay(args[1..]),
@@ -50,6 +52,16 @@ internal static class Program
     private static void Usage() => Console.WriteLine(
         """
         sts2-arbiter - deterministic replay arbiter for Slay the Spire 2
+
+          gate            <manifest> [--out <dir>]
+              The publication gate. Runs every condition below and reports one verdict:
+              may this reconstruction be published as exact? Nothing here accepts a
+              cheaper proxy in place of replaying through the real engine.
+
+          validate        <manifest> [--show-rejections]
+              Check a manifest's structure and its account of where the recording came
+              from - including that it starts at the run's start, which nothing
+              downstream can check. No game needed.
 
           preflight       <manifest>
               Compare a manifest's environment identity against this machine's game.

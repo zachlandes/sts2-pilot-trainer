@@ -9,8 +9,9 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
 ```bash
 ./scripts/build.sh          # bootstrap the game assembly copy, then build everything
 dotnet test sts2-pilot-trainer.sln -c Release
-./scripts/arbiter <command> # preflight | verify-seed | replay | determinism |
-                            # negative-controls | snapshot-lines
+./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
+./scripts/arbiter <command> # gate | validate | preflight | verify-seed | replay |
+                            # determinism | negative-controls | snapshot-lines
 ```
 
 `dotnet test` works without the game: the integration suite skips with an explanation
@@ -39,6 +40,12 @@ observed, inferred, engine-produced or declared, and observations carry the vide
 timestamp that lets someone re-check them. The validator enforces the parts it can.
 Do not add a field without deciding which of those it is.
 
+**Real-engine reproduction is the publication standard.** `gate` is where it is
+written down and computed. No condition may be satisfied by a cheaper proxy - not
+reader confidence, not arithmetic over the footage, not a screenshot of a mod list.
+Those are filters worth having and they are not evidence: two of the four history
+corruptions pass every arithmetic check the frames allow.
+
 **Refuse rather than approximate.** An unknown action verb, a card that is not where
 the manifest says, a mismatched environment: each of these fails loudly. A replay
 that quietly does something plausible is the failure mode this whole project exists
@@ -48,6 +55,13 @@ to prevent.
 run setup.** Two fields on that list are there because a replay looked correct and
 was not: the act variant and the player's unlock state. Both change every fight in a
 run while leaving the map identical.
+
+**Some checks cannot be moved downstream.** A run resumed from run history matches on
+seed, build, content hash and acts, and replays perfectly — it is simply not the run
+its history describes. That is caught at ingestion, on the recording, or not at all.
+Same for the end-of-run reading: one reading of the environment cannot catch its own
+drift. Do not weaken `source.run_start` or `source.run_summary` on the grounds that
+the replay would catch it.
 
 **Read [docs/headless-fidelity.md](docs/headless-fidelity.md) before changing what
 the host patches.** Each patch has a stated reason and the set is deliberately small.

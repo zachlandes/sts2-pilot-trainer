@@ -1,5 +1,5 @@
 {
-  "manifest_version": 1,
+  "manifest_version": 2,
   "run_id": "navegreed-OJ-6QXhNgdg",
   "environment": {
     "build_version": {
@@ -69,6 +69,35 @@
         "video_t_ms": 9000,
         "method": "Act 1's identity is read from the map screen, which titles it 'Underdocks'. This build ships two acts at index 0 - Overgrowth and Underdocks - and Overgrowth is the default, so taking the default would have replayed a different run. Acts 2 and 3 are not read from the video; the build ships exactly one variant at each of those indices, which is why the whole list is marked inferred rather than observed."
       }
+    },
+    "mods": {
+      "Value": {
+        "name": "navegreed-2026-08",
+        "reported_count": 3,
+        "mods": [
+          {
+            "name": "Slay the Relics Exporter",
+            "role": "Exports relic and HUD state for a stream overlay to read.",
+            "replay_risk": "Reads game state and writes it outward. No content, no gameplay hooks. The lowest risk of the three, and the only one whose purpose is incompatible with changing anything."
+          },
+          {
+            "name": "BaseLib",
+            "role": "The community modding framework most StS2 mods build on.",
+            "replay_risk": "Infrastructure: hook registration, config UI, menu surfaces. Ships in lockstep with the game. It adds no gameplay content of its own, but it is a patching framework, so 'adds nothing' is a statement about this version rather than about the category."
+          },
+          {
+            "name": "Hindsight",
+            "role": "Resumes a past run from a chosen floor in run history.",
+            "replay_risk": "The one that can invalidate a reconstruction outright. A resumed run has the same seed, build, content hash and acts as a fresh one, so no environment gate would notice - the recording would simply not start where the history says it does. Defended against directly by source.run_start rather than by argument."
+          }
+        ]
+      },
+      "Source": "Inferred",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "The count is observed: the game's version overlay reads MODDED (3) throughout. The three identities were established by a separate investigation of this creator's environment and are not readable from the video, which names no mod anywhere. Recorded as an inference for that reason.",
+        "note": "The content hash is kept as a separate and necessary gate. It checks content ids contributed by mods that declare themselves gameplay-affecting; it is blind to a behaviour patch and to a mod declaring itself non-gameplay. Naming the environment does not make the hash an environment fingerprint, and it does not by itself establish that these three changed nothing."
+      }
     }
   },
   "source": {
@@ -80,7 +109,124 @@
       "duration_s": 2049
     },
     "extraction_method": "manual",
-    "coverage": "Run start through the first combat's opening turn: Neow's blessing, the move to the first map node, the two cards played on turn 1, and ending that turn. It stops there deliberately - this milestone is about whether a reconstructed history replays exactly, and extending the transcription further would add transcription risk without adding anything to that question."
+    "coverage": "Run start through the first combat's opening turn: Neow's blessing, the move to the first map node, the two cards played on turn 1, and ending that turn. It stops there deliberately - this milestone is about whether a reconstructed history replays exactly, and extending the transcription further would add transcription risk without adding anything to that question.",
+    "run_start": {
+      "first_observed_run_time_s": {
+        "Value": 4,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 9000,
+          "method": "the map screen's run timer reads 00:04 at the first frame that renders it"
+        }
+      },
+      "first_observed_floor": {
+        "Value": 1,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 9000,
+          "method": "the floor counter in the top bar reads 1, and the position marker sits at the map's starting node"
+        }
+      },
+      "entered_from_run_history": {
+        "Value": false,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 9000,
+          "method": "the recording opens on the Act 1 map of a run in progress at four seconds; no run-history screen appears before it"
+        }
+      },
+      "resume_modal_seen": {
+        "Value": false,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 9000,
+          "method": "no resume confirmation dialog appears at any point before the first combat",
+          "note": "This matters specifically because one of the three mods in this environment resumes a run from a chosen floor. A resumed run would pass every other gate in this manifest."
+        }
+      }
+    },
+    "run_summary": {
+      "video_t_ms": 2047000,
+      "seed": {
+        "Value": "SFXT47K77RFK",
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "the version overlay is still rendered on the end-of-run screen",
+          "note": "The same overlay as at t=9s, read again 2038 seconds later. Two readings that agree across that gap cannot both be a drifted reading of one moment, and a recording spliced from two runs could not agree at both ends."
+        }
+      },
+      "build_version": {
+        "Value": "v0.111.0",
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "version overlay, first line"
+        }
+      },
+      "build_date_utc": {
+        "Value": "2026.08.14",
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "version overlay, first line"
+        }
+      },
+      "content_hash": {
+        "Value": "1568834832",
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "version overlay, HASH line"
+        }
+      },
+      "ascension": {
+        "Value": 10,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "the summary lists 'Ascension: 10', independently of the in-run badge"
+        }
+      },
+      "floors_climbed": {
+        "Value": 49,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "the summary lists 'Floors Climbed: 49'"
+        }
+      },
+      "player_max_hp": {
+        "Value": 68,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "the health readout in the top bar reads 0/68",
+          "note": "Corroborates the opening blessing from the other end of the run: the character starts at 80 maximum health and the blessing taken at t=26s costs 12."
+        }
+      },
+      "deck_size": {
+        "Value": 18,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "the deck badge in the top bar reads 18"
+        }
+      },
+      "relic_count": {
+        "Value": 12,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "twelve relic icons are shown in the relic bar"
+        }
+      },
+      "not_shown": [
+        "The game mode. This screen does not state whether the run was standard, custom or daily, which is why the manifest carries the mode as an inference. What it does show is an ordinary summary with no daily-run leaderboard or score submission, which is weak evidence against daily and none either way about custom.",
+        "The run timer. It is rendered on the map screen, not here.",
+        "The deck contents and relic identities. Only the counts are legible without opening those screens, which this recording does not do."
+      ]
+    }
   },
   "actions": [
     {

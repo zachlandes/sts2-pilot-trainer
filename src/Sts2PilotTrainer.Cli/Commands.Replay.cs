@@ -15,7 +15,11 @@ internal static partial class Commands
         Console.WriteLine();
         foreach (var field in result.Fields)
         {
-            Console.WriteLine($"  {(field.Matches ? "ok  " : "FAIL")} {field.Field,-16} manifest={field.Expected,-14} local={field.Actual}");
+            // A reported-only row is neither a pass nor a failure, and marking it as
+            // either would misstate what preflight actually checked.
+            var reported = field.Field == "mod_environment";
+            var mark = reported ? "note" : field.Matches ? "ok  " : "FAIL";
+            Console.WriteLine($"  {mark} {field.Field,-16} manifest={field.Expected,-30} local={field.Actual}");
             if (!field.Matches) Console.WriteLine($"       {field.Diagnostic}");
         }
 

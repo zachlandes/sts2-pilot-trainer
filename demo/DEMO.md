@@ -35,6 +35,70 @@ initialiser that finds no native extension. None of it is the arbiter's report, 
 the commands filter it out, and the filter is visible in each command rather than
 applied silently.
 
+## Before any of that: is this a recording of the run it says it is?
+
+One gate has to run before an engine is started, because no amount of replaying can
+stand in for it.
+
+This creator plays with three mods. Two are harmless to a reconstruction — a stream
+overlay exporter and the community modding framework. The third resumes a past run
+from a chosen floor in run history, and **a resumed run has the same seed, build,
+content hash and acts as a fresh one.** Every environment gate below would pass. The
+replay would run cleanly. It would reconstruct a different run, because the recording
+does not start where the history says it does.
+
+So the manifest records what the recording shows about its own beginning, and a
+second reading of the environment taken from the end-of-run screen 2,038 seconds
+later. Both are checked before anything else runs. This command needs no game.
+
+```bash
+./scripts/arbiter validate manifests/navegreed-OJ-6QXhNgdg.replay.json --show-rejections --out build/evidence
+```
+
+```output
+manifest : navegreed-OJ-6QXhNgdg
+structure: VALID
+
+ingestion gates, fed inputs that should be refused:
+
+resumed-from-run-history
+  corruption : Marks the recording as having been entered from the run history screen.
+  why it matters: One of the three mods in this creator's environment resumes a past run from a chosen floor. A resumed run has the same seed, build, content hash and acts as a fresh one, so every environment gate passes and the replay runs cleanly - against a recording that does not start where the history says it does. Nothing downstream can see this.
+  verdict    : REFUSED
+  because    : source.run_start says the run was entered from run history. That is a resumed run, not a run from its start, and an ordered history replayed from run start would reconstruct a different run.
+
+recording-starts-mid-run
+  corruption : Sets the first observed run timer to fifteen minutes and the first floor to 12.
+  why it matters: The fingerprint a resumed run leaves even when nobody saw the history screen: the timer carries the original run's accumulated time instead of starting near zero.
+  verdict    : REFUSED
+  because    : source.run_start observes floor 12 first. A run recorded from its start is on floor 1 when it first becomes visible.
+
+ends-on-a-different-run
+  corruption : Changes the seed read from the end-of-run screen, leaving the opening reading alone.
+  why it matters: What a recording spliced from two runs looks like, and what a reading that drifted looks like. One reading cannot catch either; two readings taken most of an hour apart can.
+  verdict    : REFUSED
+  because    : source.run_summary reads seed as 'MMWN3B7J2JL3' where environment.seed is 'SFXT47K77RFK'. The two ends of the recording disagree, so at least one reading is wrong or the recording covers more than one run.
+
+unidentified-mod
+  corruption : Drops one mod from the environment while leaving the reported count at three.
+  why it matters: An unidentified mod is precisely the gap the content hash cannot close, so a shortfall has to be visible rather than rounded away by a list that looks complete.
+  verdict    : REFUSED
+  because    : environment.mods lists 2 mod(s) but reports 3 were loaded. An unidentified mod is exactly the gap the content hash cannot close, so the shortfall has to be visible rather than rounded away.
+
+all 4 damaged provenance records were refused; the real one is valid
+```
+
+The four rejections are the interesting half. The first two are the resumed run,
+caught two different ways — the history screen, and the fingerprint it leaves even
+when nobody saw that screen: the run timer carrying the original run's accumulated
+time instead of starting near zero. The third is a recording spliced from two runs,
+which one reading of the environment cannot catch and two readings most of an hour
+apart can. The fourth is an unidentified mod, which is precisely the gap the content
+hash cannot close.
+
+The selected recording reads `00:04` on floor 1, with no history screen and no resume
+dialog, so it passes.
+
 ## The environment has to be the right one
 
 A replay in the wrong environment does not fail. It succeeds at producing a
@@ -48,11 +112,13 @@ confidently. So the first thing the arbiter does is refuse.
 ```output
 manifest : navegreed-OJ-6QXhNgdg
 
-  ok   build_version    manifest=v0.111.0       local=v0.111.0
-  ok   build_date_utc   manifest=2026.08.14     local=2026.08.14
-  ok   content_hash     manifest=1568834832     local=1568834832
-  ok   seed_alphabet    manifest=legal          local=legal
-  ok   game_mode        manifest=standard       local=standard
+  ok   build_version    manifest=v0.111.0                       local=v0.111.0
+  ok   build_date_utc   manifest=2026.08.14                     local=2026.08.14
+  ok   content_hash     manifest=1568834832                     local=1568834832
+  ok   seed_alphabet    manifest=legal                          local=legal
+  ok   game_mode        manifest=standard                       local=standard
+  note mod_environment  manifest=navegreed-2026-08 (3 mod(s))   local=none loaded
+       Reported, not gated. This host loads no mods, which is what makes its content hash the base game's and therefore worth comparing. The source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. A matching content hash covers content ids from mods that declare themselves gameplay-affecting and nothing else.
 
 acts this build ships:
   0:ACT.OVERGROWTH (default)
@@ -404,9 +470,41 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    11, Skipped:     0, Total:    11 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    70, Skipped:     0, Total:    70 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    19, Skipped:     0, Total:    19 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
+
+## The gate
+
+All of the above is one verdict, and the tools compute it rather than a reader
+concluding it from a wall of green. The standard is successful reproduction through
+the real engine, and no condition accepts a cheaper stand-in — not reader
+confidence, not arithmetic over the footage, not a screenshot of a mod list.
+
+Those cheaper methods are useful filters and they are not evidence, which this
+document has now shown twice over: two of the four history corruptions pass every
+arithmetic check available from the frames, and a run resumed from history passes
+every check that is not about the recording itself.
+
+```bash
+./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+```
+
+```output
+manifest : navegreed-OJ-6QXhNgdg
+
+  pass  provenance    The recording is of the run it claims, from that run's start.
+  pass  environment   The declared build, content hash, mode and seed match this machine.
+  pass  reproduction  The reconstructed history replays through the real engine and matches every observed value.
+  pass  determinism   Fresh processes produce byte-identical canonical state.
+  pass  rejection     Corrupted and incomplete histories are refused.
+
+PUBLISHABLE - every condition of the gate holds
+```
+
+The verdict is written to `build/evidence/publication-gate.json` together with the
+standard it applied, so an artifact can never be read as having met a weaker bar
+than the one that was actually used.
 
 ## What is proved, and what is not
 
@@ -424,6 +522,9 @@ Passed!  - Failed:     0, Passed:    11, Skipped:     0, Total:    11 - Sts2Pilo
   state, including all fifteen random-stream positions and the full draw-pile order.
 - Four corrupted histories are rejected, two of which every arithmetic check
   available from the footage accepts.
+- Four damaged provenance records are refused before any engine starts, including
+  both fingerprints of a run resumed from history — which replays perfectly and is
+  therefore invisible to every other check here.
 - A verified snapshot is keyed to the history that produced it, restores to a
   digest-checked identical state, and supports two lines being played from it with
   objective deltas and no verdict.
@@ -441,12 +542,18 @@ Passed!  - Failed:     0, Passed:    11, Skipped:     0, Total:    11 - Sts2Pilo
   not. Custom mode is not ruled out by direct evidence. It is the weakest link in the
   environment identity, and the manifest marks it as an inference rather than an
   observation.
-- **The source environment's three mods changed nothing that matters here.** The
-  content hash matches, and this host loads no mods, so a match rules out content
-  contributed by mods that declare themselves gameplay-affecting. It rules out
-  nothing about a mod that patches behaviour, and the game's own warning says the
-  hash may omit ids. Every checkpoint that agrees is evidence against divergence at
-  that point, not proof of parity across a run.
+- **The source environment's three mods changed nothing that matters here.** They
+  are now named — a stream-overlay exporter, the community modding framework, and a
+  run-resume mod — and the manifest carries a risk assessment for each. That is
+  better than a count, and it is not proof. The content hash matches, and this host
+  loads no mods, so a match rules out content contributed by mods that declare
+  themselves gameplay-affecting; it rules out nothing about a mod that patches
+  behaviour, and the game's own warning says the hash may omit ids. The one mod that
+  could invalidate a reconstruction outright is handled by a check rather than by
+  this assumption.
+- **The mod identities themselves are not from the video.** It names no mod
+  anywhere; the overlay gives only a count. They came from a separate investigation
+  and the manifest marks them as an inference rather than an observation.
 
 **Not attempted.**
 

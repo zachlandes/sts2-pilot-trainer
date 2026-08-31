@@ -26,7 +26,10 @@ because nothing here needs it. The gate for taking it later is to name the featu
 confirm it is not already in `sts2.dll` — whose `Modding` namespace is richer than
 its reputation — and only then add it.
 
-**Hindsight** is not used and should not become a user-facing dependency. It is
+**Hindsight** is not used and should not become a user-facing dependency. It is,
+however, present in the source creator's environment, and it is the one mod that can
+invalidate a reconstruction — so the ingestion gates check for its fingerprints. See
+[the resumed-run problem](environment-identity.md#the-resumed-run-problem). It is
 Apache-2.0 and well maintained for its size, but it has roughly 374 GitHub release
 downloads and 655 on Nexus against BaseLib's hundreds of thousands, no Workshop
 presence, a one-person bus factor, and no declared minimum game version. The copy
