@@ -17,6 +17,10 @@ public sealed record SnapshotCacheKey(
     string Seed,
     string ContentHash,
     string GameMode,
+    string Character,
+    int Ascension,
+    string ActsHash,
+    string ModEnvironmentHash,
     string ActionHistoryHash,
     int UpToSeq)
 {
@@ -56,6 +60,10 @@ public sealed record SnapshotCacheKey(
         manifest.Environment.Seed.Value,
         manifest.Environment.ContentHash.Value,
         manifest.Environment.GameMode.Value,
+        manifest.Environment.Character.Value,
+        manifest.Environment.Ascension.Value,
+        HashParts(manifest.Environment.Acts.Value),
+        HashModEnvironment(manifest.Environment.Mods.Value),
         HashActions(manifest.Actions.Where(a => a.Seq <= upToSeq)),
         upToSeq);
 
@@ -63,7 +71,21 @@ public sealed record SnapshotCacheKey(
     /// nobody can read is a cache nobody can audit.</summary>
     public string ToCacheDirectoryName()
     {
-        var shortHash = ActionHistoryHash.Replace("sha256:", "", StringComparison.Ordinal)[..16];
-        return $"{BuildVersion}_{GameMode}_{Seed}_{ContentHash}_seq{UpToSeq}_{shortHash}";
+        var shortActions = ShortHash(ActionHistoryHash);
+        var shortActs = ShortHash(ActsHash);
+        var shortMods = ShortHash(ModEnvironmentHash);
+        return $"{BuildVersion}_{GameMode}_{Character}_a{Ascension}_{Seed}_{ContentHash}_" +
+               $"acts{shortActs}_mods{shortMods}_seq{UpToSeq}_{shortActions}";
     }
+
+    private static string HashModEnvironment(ModEnvironment mods) => HashParts(
+        [mods.Name, mods.ReportedCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+         .. mods.Mods.SelectMany(mod => new[] { mod.Name, mod.Role, mod.ReplayRisk })]);
+
+    private static string HashParts(IEnumerable<string> parts) =>
+        "sha256:" + Convert.ToHexStringLower(SHA256.HashData(
+            Encoding.UTF8.GetBytes(string.Join(Unit, parts))));
+
+    private static string ShortHash(string hash) =>
+        hash.Replace("sha256:", "", StringComparison.Ordinal)[..16];
 }

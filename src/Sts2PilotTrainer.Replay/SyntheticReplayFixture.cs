@@ -2,93 +2,53 @@ namespace Sts2PilotTrainer.Replay;
 
 public static class SyntheticReplayFixture
 {
-    public static ReplayManifest Create() => new()
+    private const string ResourceName =
+        "Sts2PilotTrainer.Replay.Fixtures.synthetic-v0111-pilot-trainer.replay.json";
+
+    public static ReplayManifest Create()
     {
-        RunId = "synthetic-v0111-first-combat",
-        Environment = new EnvironmentIdentity
-        {
-            BuildVersion = Fact<string>.Declared("v0.111.0"),
-            BuildDateUtc = Fact<string>.Declared("2026.08.14"),
-            GameMode = Fact<string>.Declared("standard"),
-            Seed = Fact<string>.Declared("SFXT47K77RFK"),
-            ContentHash = Fact<string>.Declared("1568834832"),
-            Ascension = Fact<int>.Declared(10),
-            Character = Fact<string>.Declared("CHARACTER.IRONCLAD"),
-            Acts = Fact<IReadOnlyList<string>>.Declared(
-                ["ACT.UNDERDOCKS", "ACT.HIVE", "ACT.GLORY"]),
-            Mods = Fact<ModEnvironment>.Declared(new ModEnvironment
-            {
-                Name = "vanilla-headless-v0.111.0",
-                ReportedCount = 0,
-                Mods = [],
-            }),
-        },
-        Source = new SourceProvenance
-        {
-            Kind = "synthetic-engine",
-            Synthetic = new SyntheticSource
-            {
-                FixtureId = "v0111-first-combat",
-                FixtureVersion = 1,
-                Generator = "sts2-pilot-trainer",
-                GeneratedBuild = "v0.111.0",
-            },
-            ExtractionMethod = "engine-generated",
-            Coverage = "Pinned first-combat engine fixture through turn two.",
-        },
-        Actions =
-        [
-            DeclaredAction(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2")),
-            DeclaredAction(1, ActionVerb.MapMove, ("row", "1"), ("column", "3")),
-            DeclaredAction(2, ActionVerb.PlayCard,
-                ("card_id", "CARD.HELLRAISER"), ("hand_index", "1")),
-            DeclaredAction(3, ActionVerb.PlayCard,
-                ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "3")),
-            DeclaredAction(4, ActionVerb.EndTurn),
-        ],
-        Checkpoints =
-        [
-            EngineCheckpoint("combat-start", 1,
-                ("combat.turn", "1"),
-                ("combat.energy", "3"),
-                ("combat.max_energy", "3"),
-                ("combat.block", "0"),
-                ("combat.player_hp", "64"),
-                ("player.max_hp", "68"),
-                ("combat.hand", "CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD"),
-                ("combat.draw_pile_count", "6"),
-                ("combat.discard_pile_count", "0"),
-                ("combat.enemy_count", "1"),
-                ("combat.enemy.0.hp", "42"),
-                ("combat.enemy.0.max_hp", "42"),
-                ("combat.enemy.0.intent", "Attack:9+Debuff")),
-            EngineCheckpoint("after-hellraiser", 2,
-                ("combat.energy", "1"), ("combat.hand_count", "4")),
-            EngineCheckpoint("after-defend", 3,
-                ("combat.energy", "0"), ("combat.block", "5"), ("combat.hand_count", "3")),
-            EngineCheckpoint("turn-two", 4,
-                ("combat.turn", "2"), ("combat.player_hp", "60")),
-        ],
-    };
+        using var stream = typeof(SyntheticReplayFixture).Assembly.GetManifestResourceStream(ResourceName)
+            ?? throw new ManifestException($"Embedded synthetic fixture '{ResourceName}' is missing.");
+        using var reader = new StreamReader(stream);
+        return ManifestJson.Deserialize(reader.ReadToEnd());
+    }
 
-    private static ActionRecord DeclaredAction(
-        int seq, ActionVerb verb, params (string Key, string Value)[] args) => new()
+    public static IReadOnlyDictionary<string, IReadOnlyList<ActionRecord>> CreateLines()
+    {
+        var suffix = Create().Actions.Skip(2).Select((action, index) => action with
         {
-            Seq = seq,
-            Verb = verb,
-            Args = new SortedDictionary<string, string>(
-                args.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
-                StringComparer.Ordinal),
-            Source = FactSource.Declared,
+            Seq = index,
+            Source = FactSource.Inferred,
+            Evidence = FactEvidence.Reasoning("Candidate line for the synthetic engine fixture."),
+            Args = action.Args
+                .Where(pair => !pair.Key.StartsWith("negative_control_", StringComparison.Ordinal))
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
+        }).ToList();
+        var first = suffix[0];
+        var second = suffix[1];
+        var firstIndex = int.Parse(first.Args["hand_index"], System.Globalization.CultureInfo.InvariantCulture);
+        var secondIndex = int.Parse(second.Args["hand_index"], System.Globalization.CultureInfo.InvariantCulture);
+        var secondInitial = secondIndex + (firstIndex <= secondIndex ? 1 : 0);
+        var firstAfterSecond = firstIndex - (secondInitial < firstIndex ? 1 : 0);
+        var reordered = new List<ActionRecord>
+        {
+            second with { Seq = 0, Args = WithIndex(second.Args, secondInitial) },
+            first with { Seq = 1, Args = WithIndex(first.Args, firstAfterSecond) },
+            suffix[2] with { Seq = 2 },
         };
+        return new Dictionary<string, IReadOnlyList<ActionRecord>>(StringComparer.Ordinal)
+        {
+            ["declared-order"] = suffix,
+            ["reordered"] = reordered,
+        };
+    }
 
-    private static Checkpoint EngineCheckpoint(
-        string id, int afterSeq, params (string Field, string Value)[] expected) => new()
-        {
-            Id = id,
-            AfterSeq = afterSeq,
-            Kind = "synthetic-engine",
-            Expect = expected.ToDictionary(
-                pair => pair.Field, pair => Fact<string>.Engine(pair.Value), StringComparer.Ordinal),
-        };
+    private static IReadOnlyDictionary<string, string> WithIndex(
+        IReadOnlyDictionary<string, string> args, int index)
+    {
+        var copy = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (key, value) in args) copy[key] = value;
+        copy["hand_index"] = index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return copy;
+    }
 }

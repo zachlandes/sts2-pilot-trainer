@@ -78,10 +78,24 @@ public static class Corruption
         // each play is individually legal and the driver's card-identity check passes.
         // A corruption the driver catches on a bad index would prove nothing about
         // whether the engine notices the reordering.
+        var firstIndex = int.Parse(first.Args["hand_index"], System.Globalization.CultureInfo.InvariantCulture);
+        var secondIndex = int.Parse(second.Args["hand_index"], System.Globalization.CultureInfo.InvariantCulture);
+        var secondInitialIndex = secondIndex + (firstIndex <= secondIndex ? 1 : 0);
+        var firstAfterSecondIndex = firstIndex - (secondInitialIndex < firstIndex ? 1 : 0);
         var reordered = new List<ActionRecord>
         {
-            second with { Seq = first.Seq, Args = WithArg(second.Args, "hand_index", "4"), Note = "reordered by a negative control" },
-            first with { Seq = second.Seq, Args = WithArg(first.Args, "hand_index", "1"), Note = "reordered by a negative control" },
+            second with
+            {
+                Seq = first.Seq,
+                Args = WithArg(second.Args, "hand_index", secondInitialIndex.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                Note = "reordered by a negative control",
+            },
+            first with
+            {
+                Seq = second.Seq,
+                Args = WithArg(first.Args, "hand_index", firstAfterSecondIndex.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                Note = "reordered by a negative control",
+            },
         };
 
         var index = actions.IndexOf(first);
@@ -96,9 +110,15 @@ public static class Corruption
         var target = actions.LastOrDefault(a => a.Verb == ActionVerb.PlayCard)
             ?? throw new ManifestException("substitute-same-cost needs a card play.");
 
+        var substituteCard = target.Args.GetValueOrDefault(
+            "negative_control_substitute_card_id", "CARD.STRIKE_IRONCLAD");
+        var substituteIndex = target.Args.GetValueOrDefault("negative_control_substitute_hand_index", "0");
+        var args = target.Args
+            .Where(pair => !pair.Key.StartsWith("negative_control_", StringComparison.Ordinal))
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         var replaced = target with
         {
-            Args = WithArg(WithArg(target.Args, "card_id", "CARD.STRIKE_IRONCLAD"), "hand_index", "0"),
+            Args = WithArg(WithArg(args, "card_id", substituteCard), "hand_index", substituteIndex),
             Note = "substituted by a negative control: a different card of the same energy cost",
         };
         actions[actions.IndexOf(target)] = replaced;

@@ -54,6 +54,20 @@ internal static class Arbiter
         return path;
     }
 
+    internal static IReadOnlyList<string> SyntheticLines()
+    {
+        var dir = Path.Combine(RepoRoot, "build", "test-scratch", "synthetic-lines");
+        Directory.CreateDirectory(dir);
+        var paths = new List<string>();
+        foreach (var (name, line) in Sts2PilotTrainer.Replay.SyntheticReplayFixture.CreateLines())
+        {
+            var path = Path.Combine(dir, name + ".line.json");
+            File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(line, ManifestJson.Options));
+            paths.Add(path);
+        }
+        return paths;
+    }
+
     internal static Result Run(params string[] args)
     {
         var startInfo = new ProcessStartInfo

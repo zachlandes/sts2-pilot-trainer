@@ -114,19 +114,11 @@ generation runs through the act model, the room set, and the path pruning and
 post-processing passes. It comes out identical to what a retail client on a modded
 install produced.
 
-**The opening turn matches the source video exactly** — 21 independently observed
-values, including the enemy's health and telegraphed intent, the ordered hand, the
-draw and discard pile counts, energy at three points in the turn, block, and the
-player's health after the enemy's turn resolved. That last one is the whole enemy
-turn agreeing: intent 9, less 5 block, is the 4 damage the video shows.
+**The headless experiment matched 21 independently observed VOD values** — including the enemy state, ordered hand, pile counts, energy, block, and turn outcome.
+This is evidence that the experiment followed the same path through the opening turn, not proof of exact source reproduction: the source had three mods loaded and no controlled parity A/B exists.
 
-**The Neow transform's random outcome matches** — the opening blessing transforms one
-Strike and one Defend into random cards, and the video's run famously got two copies
-of the same rare card. The replay produces the same two.
-
-**Determinism holds across processes** — the same manifest, replayed in fresh
-processes, produces byte-identical canonical state including all fifteen RNG stream
-positions.
+**The replay machinery has independent synthetic evidence** — a mechanically generated fixture uses a seed and action sequence absent from the VOD artifacts and pins its engine-produced checkpoints.
+Fresh-process determinism, corruption rejection, and snapshot restore are exercised against that fixture, so those checks do not borrow their expected values from the ineligible VOD trace.
 
 ## What is still not established
 

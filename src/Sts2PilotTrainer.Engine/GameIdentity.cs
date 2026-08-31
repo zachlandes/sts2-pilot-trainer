@@ -104,6 +104,22 @@ public sealed record GameIdentity(
             }
         }
 
+        var receiptedDlls = hashes
+            .Where(entry => entry.Key.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            .Select(entry => entry.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var unreceiptedDlls = Directory.GetFiles(libDir, "*.dll", SearchOption.TopDirectoryOnly)
+            .Select(Path.GetFileName)
+            .OfType<string>()
+            .Where(name => !receiptedDlls.Contains(name))
+            .ToList();
+        if (unreceiptedDlls.Count > 0)
+        {
+            throw new EngineException(
+                $"Prepared assembly directory contains unreceipted DLLs: " +
+                $"{string.Join(", ", unreceiptedDlls)}. Re-run ./scripts/bootstrap.sh.");
+        }
+
         foreach (var (name, expectedNode) in hashes)
         {
             if (Path.GetFileName(name) != name || expectedNode is null)

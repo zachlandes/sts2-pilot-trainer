@@ -66,7 +66,7 @@ public static class Arbiter
 
         foreach (var action in manifest.Actions.OrderBy(a => a.Seq))
         {
-            if (stopAfterSeq is { } stop && action.Seq > stop) break;
+            if (stopAfterSeq is { } actionLimit && action.Seq > actionLimit) break;
 
             try
             {

@@ -120,14 +120,11 @@ public class ReplayTests
     }
 
     [GameFact]
-    public void ReorderingIsCaughtByACheckpointRatherThanByTheRunsEndState()
+    public void ReorderingIsCaughtAtTheFirstDivergentCheckpoint()
     {
-        // A limit, pinned so it cannot quietly stop being true. For these two cards
-        // the reorder produces an identical end state, so comparing only digests
-        // would have accepted it. Checkpoints bound to moments inside the turn are
-        // what catch it, which is the argument for them being dense rather than
-        // terminal. If a future change makes the end state diverge too, this test
-        // should be revisited rather than deleted.
+        // The reordered cards spend the same energy and produce the same visible
+        // totals. The first bound checkpoint catches their order before the later
+        // discard-pile ordering exposes it in canonical state.
         var outDir = TempDir();
         Arbiter.Run("negative-controls", Arbiter.SyntheticReplayFixture(), "--out", outDir);
 
@@ -136,7 +133,8 @@ public class ReplayTests
             .Single(c => c.GetProperty("name").GetString() == "reorder-plays");
 
         Assert.True(reorder.GetProperty("arbiter_rejected").GetBoolean());
-        Assert.False(reorder.GetProperty("end_state_differs").GetBoolean());
+        Assert.Equal("Undetected", reorder.GetProperty("video_only_verdict").GetString());
+        Assert.Contains("combat.block", reorder.GetProperty("first_divergence").GetString(), StringComparison.Ordinal);
     }
 
     private static string Temp(string name)

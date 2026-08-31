@@ -70,6 +70,10 @@ public class SnapshotCacheKeyTests
     [InlineData("seed")]
     [InlineData("content_hash")]
     [InlineData("game_mode")]
+    [InlineData("character")]
+    [InlineData("ascension")]
+    [InlineData("acts")]
+    [InlineData("mods")]
     public void ChangesWhenAnyEnvironmentIdentityFieldChanges(string field)
     {
         var manifest = Fixtures.ValidManifest();
@@ -87,9 +91,30 @@ public class SnapshotCacheKeyTests
             {
                 ContentHash = Fact<string>.Observed("999", FactEvidence.AtVideoTime(1, "t")),
             }),
-            _ => WithEnvironment(manifest, e => e with
+            "game_mode" => WithEnvironment(manifest, e => e with
             {
                 GameMode = Fact<string>.Inferred("custom", FactEvidence.Reasoning("t")),
+            }),
+            "character" => WithEnvironment(manifest, e => e with
+            {
+                Character = Fact<string>.Observed("CHARACTER.NECROBINDER", FactEvidence.AtVideoTime(1, "t")),
+            }),
+            "ascension" => WithEnvironment(manifest, e => e with
+            {
+                Ascension = Fact<int>.Observed(11, FactEvidence.AtVideoTime(1, "t")),
+            }),
+            "acts" => WithEnvironment(manifest, e => e with
+            {
+                Acts = Fact<IReadOnlyList<string>>.Declared(["ACT.OVERGROWTH"]),
+            }),
+            _ => WithEnvironment(manifest, e => e with
+            {
+                Mods = Fact<ModEnvironment>.Declared(new ModEnvironment
+                {
+                    Name = "different-environment",
+                    ReportedCount = 0,
+                    Mods = [],
+                }),
             }),
         };
 

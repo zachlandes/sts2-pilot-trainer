@@ -8,4 +8,8 @@
     <AssemblyName>Sts2PilotTrainer.Replay</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/synthetic-v0111-pilot-trainer.replay.json" />
+  </ItemGroup>
+
 </Project>

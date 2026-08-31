@@ -24,16 +24,8 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   candidate's Act 1 map through the game and comparing topology against the map the
   video shows resolves it: `SFXT47K77RFK` reproduces all 61 transcribed nodes, the
   next best candidate reproduces 19.
-- **The opening turn replays exactly.** 21 independently observed values agree,
-  including the enemy's health and telegraphed intent, the ordered hand, energy at
-  three points, block, and the player's health after the enemy's turn resolved.
-- **Determinism holds across processes.** The same manifest in fresh processes
-  produces byte-identical canonical state, RNG stream positions included.
-- **Corrupted histories are rejected** — including the two kinds that arithmetic on
-  the footage alone accepts: reordering two plays, and substituting a card of the
-  same energy cost.
-- **A verified snapshot can be restored and replayed down two different lines**, with
-  objective state deltas reported and no verdict about which was better.
+- **The headless experiment matched 21 VOD values, but source reproduction remains open.** The enemy state, ordered hand, energy, block, and turn outcome agreed. The source had three mods and the headless host had none, so matching content hashes cannot establish environment parity and the publication gate refuses the VOD manifest.
+- **Replay machinery is exercised by an independent synthetic fixture.** A mechanically generated seed and action sequence, distinct from the VOD trace, pin engine-produced checkpoints. Fresh-process determinism, corrupted-history rejection, and two-line snapshot restore are claims about that fixture only.
 
 - **Provenance is gated before any engine starts.** A run resumed from run history
   matches on seed, build, content hash and acts and replays perfectly — it is just
@@ -68,7 +60,8 @@ after, and fails if anything moved. No game content is in this repository.
 ```bash
 ./scripts/build.sh                      # prepare the assembly copy, build everything
 ./scripts/arbiter preflight  manifests/navegreed-OJ-6QXhNgdg.replay.json
-./scripts/arbiter replay     manifests/navegreed-OJ-6QXhNgdg.replay.json
+./scripts/arbiter synthetic-fixture --out build/evidence/synthetic.replay.json
+./scripts/arbiter replay     build/evidence/synthetic.replay.json
 ```
 
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,

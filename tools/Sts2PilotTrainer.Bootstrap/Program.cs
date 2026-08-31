@@ -65,6 +65,7 @@ internal static class Program
             var before = HashInstall(gameDir);
 
             Directory.CreateDirectory(outDir);
+            RemovePriorPreparedOutputs(outDir);
             var copied = CopyAssemblies(gameDir, outDir);
             CopyReleaseInfo(gameDir, outDir);
             var patches = PatchAssembly(Path.Combine(outDir, "sts2.dll"));
@@ -155,6 +156,20 @@ internal static class Program
     }
 
     // ── Copy and patch ──────────────────────────────────────────────────────
+
+    private static void RemovePriorPreparedOutputs(string outDir)
+    {
+        foreach (var name in RequiredAssemblies.Append("release_info.json").Append("prepared-assembly.json"))
+        {
+            var path = Path.Combine(outDir, name);
+            if (File.Exists(path)) File.Delete(path);
+        }
+
+        foreach (var path in Directory.GetFiles(outDir, "*.patched", SearchOption.TopDirectoryOnly))
+        {
+            File.Delete(path);
+        }
+    }
 
     private static List<string> CopyAssemblies(string gameDir, string outDir)
     {

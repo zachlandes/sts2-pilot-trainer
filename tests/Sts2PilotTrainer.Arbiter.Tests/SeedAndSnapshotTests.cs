@@ -85,11 +85,12 @@ public class SnapshotLineTests
         var outDir = TempDir();
         var cacheDir = Path.Combine(outDir, "snapshots");
 
+        var lines = Arbiter.SyntheticLines();
         var result = Arbiter.Run(
             "snapshot-lines", Arbiter.SyntheticReplayFixture(),
             "--at", "1",
-            "--line", Path.Combine(Arbiter.RepoRoot, "manifests", "lines", "streamer.line.json"),
-            "--line", Path.Combine(Arbiter.RepoRoot, "manifests", "lines", "aggressive.line.json"),
+            "--line", lines[0],
+            "--line", lines[1],
             "--out", outDir, "--cache", cacheDir);
 
         Assert.True(result.Verified, result.All);
@@ -97,15 +98,15 @@ public class SnapshotLineTests
         var report = JsonDocument.Parse(
             File.ReadAllText(Path.Combine(outDir, "snapshot-lines.json"))).RootElement;
 
-        var lines = report.GetProperty("lines").EnumerateArray().ToList();
-        Assert.Equal(2, lines.Count);
-        Assert.All(lines, l => Assert.True(l.GetProperty("restore_verified").GetBoolean()));
+        var lineReports = report.GetProperty("lines").EnumerateArray().ToList();
+        Assert.Equal(2, lineReports.Count);
+        Assert.All(lineReports, l => Assert.True(l.GetProperty("restore_verified").GetBoolean()));
 
         // Both lines start from the same state and end somewhere different. If the
         // deltas were equal, the comparison would be showing nothing.
-        var deltas = lines.Select(l => l.GetProperty("deltas").ToString()).ToList();
+        var deltas = lineReports.Select(l => l.GetProperty("deltas").ToString()).ToList();
         Assert.NotEqual(deltas[0], deltas[1]);
-        Assert.All(lines, l => Assert.NotEmpty(l.GetProperty("deltas").EnumerateArray()));
+        Assert.All(lineReports, l => Assert.NotEmpty(l.GetProperty("deltas").EnumerateArray()));
 
         // Objective deltas only. No score, no ranking, no verdict about which line was
         // better - that is a question about a game, not about a replay.
@@ -119,11 +120,7 @@ public class SnapshotLineTests
     {
         var outDir = TempDir();
         var cacheDir = Path.Combine(outDir, "snapshots");
-        var lines = new[]
-        {
-            Path.Combine(Arbiter.RepoRoot, "manifests", "lines", "streamer.line.json"),
-            Path.Combine(Arbiter.RepoRoot, "manifests", "lines", "aggressive.line.json"),
-        };
+        var lines = Arbiter.SyntheticLines();
 
         var first = Arbiter.Run(
             "snapshot-lines", Arbiter.SyntheticReplayFixture(), "--at", "1",
@@ -135,16 +132,20 @@ public class SnapshotLineTests
             "--line", lines[0], "--line", lines[1], "--out", outDir, "--cache", cacheDir);
         Assert.Contains("cache hit", second.Output, StringComparison.Ordinal);
 
-        // Changing an action before the snapshot point must produce a different key,
-        // so the cached snapshot cannot be served for a run that would not produce it.
+        // A distinct declared environment receives its own cache entry even when the
+        // zero-mod host produces the same state for both names.
         var altered = Path.Combine(outDir, "altered.json");
         var manifest = ManifestJson.Load(Arbiter.SyntheticReplayFixture());
-        var move = manifest.Actions.Single(a => a.Verb == ActionVerb.MapMove);
-        var args = new SortedDictionary<string, string>(StringComparer.Ordinal);
-        foreach (var (k, v) in move.Args) args[k] = v;
-        args["column"] = "0";
-        var alteredActions = manifest.Actions.Select(a => a.Seq == move.Seq ? a with { Args = args } : a).ToList();
-        ManifestJson.Save(manifest with { Actions = alteredActions }, altered);
+        ManifestJson.Save(
+            manifest with
+            {
+                Environment = manifest.Environment with
+                {
+                    Mods = Fact<ModEnvironment>.Declared(
+                        manifest.Environment.Mods.Value with { Name = "vanilla-headless-renamed" }),
+                },
+            },
+            altered);
 
         var third = Arbiter.Run(
             "snapshot-lines", altered, "--at", "1",

@@ -224,15 +224,17 @@ The source manifest remains ineligible because mod parity is unproved.
 The replay, determinism, corruption, and snapshot demonstrations below use a generated vanilla fixture to exercise the engine spine without turning that result into evidence about the source environment.
 
 ```bash
-./scripts/arbiter synthetic-fixture --out build/evidence/synthetic-engine.replay.json
+./scripts/arbiter synthetic-fixture --out build/evidence/synthetic-engine.replay.json --lines-out build/evidence/synthetic-lines
 ```
 
 ```output
 synthetic fixture: build/evidence/synthetic-engine.replay.json
+synthetic line: build/evidence/synthetic-lines/declared-order.line.json
+synthetic line: build/evidence/synthetic-lines/reordered.line.json
 ```
 
 The synthetic fixture pins five declared actions: the opening blessing, the move to the first map node, the two cards played on turn 1, and ending that turn.
-Four engine-produced checkpoints hold 21 values, and replay has to reproduce every one.
+Four engine-produced checkpoints pin the generated state, and replay has to reproduce every one.
 The separate VOD manifest carries the timestamps and observed provenance, but remains ineligible for replay until mod parity is proved.
 
 ```bash
@@ -240,37 +242,37 @@ The separate VOD manifest carries the timestamps and observed provenance, but re
 ```
 
 ```output
-manifest       : synthetic-v0111-first-combat
+manifest       : synthetic-v0111-pilot-trainer
 actions        : 5
 status         : VERIFIED
 
-  ok   checkpoint floor2-combat-start (after action 1)
-        combat.block                 observed=0                      engine=0
-        combat.discard_pile_count    observed=0                      engine=0
-        combat.draw_pile_count       observed=6                      engine=6
-        combat.enemy.0.hp            observed=42                     engine=42
-        combat.enemy.0.intent        observed=Attack:9+Debuff        engine=Attack:9+Debuff
-        combat.enemy.0.max_hp        observed=42                     engine=42
-        combat.enemy_count           observed=1                      engine=1
+  ok   checkpoint combat-start (after action 1)
+        combat.enemy.0.hp            observed=57                     engine=57
+        combat.enemy.0.intent        observed=Attack:4               engine=Attack:4
+        combat.enemy.0.model         observed=MONSTER.FUZZY_WURM_CRAWLER engine=MONSTER.FUZZY_WURM_CRAWLER
         combat.energy                observed=3                      engine=3
-        combat.hand                  observed=CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD engine=CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD
-        combat.max_energy            observed=3                      engine=3
-        combat.player_hp             observed=64                     engine=64
+        combat.hand                  observed=CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD engine=CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD
+        combat.player_hp             observed=80                     engine=80
         combat.turn                  observed=1                      engine=1
-        player.max_hp                observed=68                     engine=68
-  ok   checkpoint after-hellraiser (after action 2)
-        combat.energy                observed=1                      engine=1
-        combat.hand_count            observed=4                      engine=4
-  ok   checkpoint after-defend (after action 3)
+  ok   checkpoint after-defend (after action 2)
         combat.block                 observed=5                      engine=5
-        combat.energy                observed=0                      engine=0
+        combat.enemy.0.hp            observed=57                     engine=57
+        combat.energy                observed=2                      engine=2
+        combat.hand_count            observed=4                      engine=4
+  ok   checkpoint after-strike (after action 3)
+        combat.enemy.0.hp            observed=51                     engine=51
+        combat.energy                observed=1                      engine=1
         combat.hand_count            observed=3                      engine=3
-  ok   checkpoint turn2-start (after action 4)
-        combat.player_hp             observed=60                     engine=60
+  ok   checkpoint turn-two (after action 4)
+        combat.discard_pile          observed=CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD engine=CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD
+        combat.draw_pile_count       observed=1                      engine=1
+        combat.enemy.0.hp            observed=51                     engine=51
+        combat.hand                  observed=CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD engine=CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD
+        combat.player_hp             observed=80                     engine=80
         combat.turn                  observed=2                      engine=2
 
-final state digest : sha256:ad7d3d164d73b5cefdf47622ee51089a66b44bf610b122142f972401d5815cff
-action history hash: sha256:59bbd9b144eb85d53eebadd2784fb1f456d7a8f4fa0367f55f6d007c01a0367a
+final state digest : sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
+action history hash: sha256:a669af21fa7b99e90e035e4e777772074fb198a4873581edeb65e5f0adb344a5
 ```
 
 Three of those lines are worth stopping on.
@@ -310,9 +312,9 @@ an artefact of running on a different afternoon.
 ```
 
 ```output
-run 0: sha256:ad7d3d164d73b5cefdf47622ee51089a66b44bf610b122142f972401d5815cff
-run 1: sha256:ad7d3d164d73b5cefdf47622ee51089a66b44bf610b122142f972401d5815cff
-run 2: sha256:ad7d3d164d73b5cefdf47622ee51089a66b44bf610b122142f972401d5815cff
+run 0: sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
+run 1: sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
+run 2: sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
 
 all 3 fresh processes produced byte-identical canonical state
 ```
@@ -339,28 +341,28 @@ reorder-plays
   corruption   : Plays the same two cards in the opposite order, adjusting hand indices so both remain valid.
   video-only   : UNDETECTED - Energy spent is unchanged (1 + 2 = 2 + 1), the hand still goes from five cards to three, and the damage arithmetic is untouched. Nothing measurable in a frame distinguishes the two orders - yet order is exactly what the game's run-persistent RNG streams are sensitive to.
   arbiter      : REJECTED
-  first divergence: combat.energy                observed=1                      engine=2
-  end state       : IDENTICAL to the uncorrupted run
+  first divergence: combat.block                 observed=5                      engine=0
+  end state       : differs from the uncorrupted run
 
 substitute-same-cost
   corruption   : Replaces the Defend with the Strike beside it. Both cost 1.
   video-only   : UNDETECTED - Energy conservation and hand accounting both balance, because the substitute costs the same. The damage arithmetic balances too unless the enemy's health is read frame by frame, which the earlier video-only pipeline did not do.
   arbiter      : REJECTED
-  first divergence: combat.block                 observed=5                      engine=0
+  first divergence: combat.enemy.0.hp            observed=51                     engine=57
   end state       : differs from the uncorrupted run
 
 omit-play
   corruption   : Drops the Defend entirely.
   video-only   : DETECTED - Energy would be left at 1 with nothing to account for it, and the hand would end at four cards instead of three. Included as a control on the control: an arbiter that rejected only the subtle corruptions and let this one through would be broken in an interesting way.
   arbiter      : REJECTED
-  first divergence: combat.player_hp             observed=60                     engine=55
+  first divergence: combat.enemy.0.hp            observed=51                     engine=57
   end state       : differs from the uncorrupted run
 
 wrong-opening-choice
   corruption   : Takes a different blessing at the run's opening event.
   video-only   : DETECTED - The chosen blessing changes maximum health on screen within seconds. Included because it corrupts the history far from the turn being checked, which tests that a divergence is caught where it surfaces rather than where it happened.
   arbiter      : REJECTED
-  first divergence: combat.draw_pile_count       observed=6                      engine=7
+  first divergence: combat.hand                  observed=CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD engine=CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD
   end state       : differs from the uncorrupted run
 
 all 4 corrupted histories were rejected; the uncorrupted one verified
@@ -391,56 +393,45 @@ fresh process and refuses unless the digest matches what was cached. That is slo
 than loading a blob and much harder to get quietly wrong.
 
 ```bash
-rm -rf build/snapshots && ./scripts/arbiter snapshot-lines build/evidence/synthetic-engine.replay.json --at 1 --line manifests/lines/streamer.line.json --line manifests/lines/aggressive.line.json --out build/evidence --cache build/snapshots 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+rm -rf build/snapshots && ./scripts/arbiter snapshot-lines build/evidence/synthetic-engine.replay.json --at 1 --line build/evidence/synthetic-lines/declared-order.line.json --line build/evidence/synthetic-lines/reordered.line.json --out build/evidence --cache build/snapshots 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
 ```
 
 ```output
-snapshot key   : v0.111.0_standard_SFXT47K77RFK_1568834832_seq1_bf2cbf0b27d9c546
+snapshot key   : v0.111.0_standard_CHARACTER.IRONCLAD_a0_P1L0TTRA1NER_1568834832_acts94bfe051bab74948_mods5356f7a9938490b1_seq1_ac863b95ef9bbe81
 snapshot source: materialised now
-snapshot digest: sha256:437c6a9aab9529ab171b0a4500c13492b4963dd1a7ccbaef14f42ce8ea49aa31
+snapshot digest: sha256:579b37b764a8428a02df53e2baf851065e5e188878e2e831898f88acdd3a9474
 
-line streamer.line  (3 action(s))
+line declared-order.line  (3 action(s))
   restore verified against snapshot digest: yes
-    PlayCard card_id=CARD.HELLRAISER hand_index=1
-    PlayCard card_id=CARD.DEFEND_IRONCLAD hand_index=3
-    EndTurn 
-    delta combat.discard_pile              ->  CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD
-    delta combat.discard_pile_count      0  ->  6
-    delta combat.draw_pile               CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.ASCENDERS_BANE|CARD.DEFEND_IRONCLAD|CARD.HELLRAISER  ->  CARD.HELLRAISER
-    delta combat.draw_pile_count         6  ->  1
-    delta combat.enemy.0.hp              42  ->  34
-    delta combat.enemy.0.intent          Attack:9+Debuff  ->  Attack:12
-    delta combat.enemy.0.next_move       OIL_SPRAY_MOVE  ->  SLAM_MOVE
-    delta combat.hand                    CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD  ->  CARD.DEFEND_IRONCLAD|CARD.ASCENDERS_BANE|CARD.DEFEND_IRONCLAD
-    delta combat.hand_count              5  ->  3
-    delta combat.player_hp               64  ->  60
-    delta combat.player_powers             ->  POWER.HELLRAISER_POWER:1|POWER.WEAK_POWER:1
-    delta combat.round                   1  ->  2
-    delta combat.turn                    1  ->  2
-    delta player.hp                      64  ->  60
-    delta run.rng.CombatTargets          0  ->  2
-    delta run.rng.MonsterAi              0  ->  1
-
-line aggressive.line  (3 action(s))
-  restore verified against snapshot digest: yes
-    PlayCard card_id=CARD.BASH hand_index=3
+    PlayCard card_id=CARD.DEFEND_IRONCLAD hand_index=0
     PlayCard card_id=CARD.STRIKE_IRONCLAD hand_index=0
     EndTurn 
-    delta combat.discard_pile              ->  CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD
+    delta combat.discard_pile              ->  CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD
     delta combat.discard_pile_count      0  ->  5
-    delta combat.draw_pile               CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.ASCENDERS_BANE|CARD.DEFEND_IRONCLAD|CARD.HELLRAISER  ->  CARD.HELLRAISER
+    delta combat.draw_pile               CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD  ->  CARD.STRIKE_IRONCLAD
     delta combat.draw_pile_count         6  ->  1
-    delta combat.enemy.0.hp              42  ->  25
-    delta combat.enemy.0.intent          Attack:9+Debuff  ->  Attack:12
-    delta combat.enemy.0.next_move       OIL_SPRAY_MOVE  ->  SLAM_MOVE
-    delta combat.enemy.0.powers            ->  POWER.VULNERABLE_POWER:1
-    delta combat.hand                    CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD  ->  CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.ASCENDERS_BANE|CARD.DEFEND_IRONCLAD
-    delta combat.player_hp               64  ->  55
-    delta combat.player_powers             ->  POWER.WEAK_POWER:1
+    delta combat.enemy.0.hp              57  ->  51
+    delta combat.enemy.0.intent          Attack:4  ->  Buff
+    delta combat.enemy.0.next_move       FIRST_ACID_GOOP  ->  INHALE
+    delta combat.hand                    CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD  ->  CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD
     delta combat.round                   1  ->  2
     delta combat.turn                    1  ->  2
-    delta player.hp                      64  ->  55
-    delta run.rng.MonsterAi              0  ->  1
+
+line reordered.line  (3 action(s))
+  restore verified against snapshot digest: yes
+    PlayCard card_id=CARD.STRIKE_IRONCLAD hand_index=1
+    PlayCard card_id=CARD.DEFEND_IRONCLAD hand_index=0
+    EndTurn 
+    delta combat.discard_pile              ->  CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD
+    delta combat.discard_pile_count      0  ->  5
+    delta combat.draw_pile               CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD  ->  CARD.STRIKE_IRONCLAD
+    delta combat.draw_pile_count         6  ->  1
+    delta combat.enemy.0.hp              57  ->  51
+    delta combat.enemy.0.intent          Attack:4  ->  Buff
+    delta combat.enemy.0.next_move       FIRST_ACID_GOOP  ->  INHALE
+    delta combat.hand                    CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD  ->  CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD
+    delta combat.round                   1  ->  2
+    delta combat.turn                    1  ->  2
 
 diagram: build/evidence/snapshot-lines.svg
 ```
@@ -480,8 +471,8 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    70, Skipped:     0, Total:    70 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    19, Skipped:     0, Total:    19 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    88, Skipped:     0, Total:    88 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    21, Skipped:     0, Total:    21 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## The gate
@@ -501,6 +492,54 @@ every check that is not about the recording itself.
 ```
 
 ```output
+manifest : navegreed-OJ-6QXhNgdg
+
+  ok   build_version    manifest=v0.111.0                       local=v0.111.0
+  ok   build_date_utc   manifest=2026.08.14                     local=2026.08.14
+  ok   content_hash     manifest=1568834832                     local=1568834832
+  ok   seed_alphabet    manifest=legal                          local=legal
+  ok   game_mode        manifest=standard                       local=standard
+  FAIL mod_environment  manifest=navegreed-2026-08 (3 mod(s))   local=none loaded
+       This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. Publication remains blocked until a controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.
+
+acts this build ships:
+  0:ACT.OVERGROWTH (default)
+  0:ACT.UNDERDOCKS
+  1:ACT.HIVE (default)
+  2:ACT.GLORY (default)
+
+environment does NOT match; refusing to replay
+manifest       : navegreed-OJ-6QXhNgdg
+actions        : 5
+status         : REFUSED
+
+
+  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. Publication remains blocked until a controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.
+
+final state digest : (none)
+action history hash: (none)
+verified manifest  : build/evidence/verified-manifest.json
+manifest       : navegreed-OJ-6QXhNgdg
+actions        : 5
+status         : REFUSED
+
+
+  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. Publication remains blocked until a controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.
+
+final state digest : (none)
+action history hash: (none)
+run 0 did not verify; determinism is not meaningful until it does.
+baseline (uncorrupted): DID NOT VERIFY
+manifest       : navegreed-OJ-6QXhNgdg
+actions        : 5
+status         : REFUSED
+
+
+  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. Publication remains blocked until a controlled v0.111.0 BaseLib PowerCmd.Apply A/B report is independently verified.
+
+final state digest : (none)
+action history hash: (none)
+The uncorrupted history does not verify, so rejecting a corrupted one proves nothing.
 manifest : navegreed-OJ-6QXhNgdg
 
   pass  publication-source Publication evidence comes from a VOD, never an engine-generated fixture.
@@ -524,7 +563,7 @@ than the one that was actually used.
 - The seed is `SFXT47K77RFK`. The engine's own map generator reproduces all 61
   transcribed nodes; the seed an optical reader reported with full confidence
   reproduces 12. This does not depend on reading a character.
-- In the synthetic engine fixture, replaying five declared actions from run start reproduces **21 pinned engine values**, including the enemy's health and telegraphed intent, the ordered hand, energy at three points in the turn, block, and the player's health after the enemy's turn resolves.
+- In the synthetic engine fixture, replaying a mechanically generated action sequence from run start reproduces its pinned engine checkpoints.
 This proves the replay spine against a controlled fixture, not parity with the VOD's modded source environment.
 - The same manifest in three fresh processes produces byte-identical canonical
   state, including all fifteen random-stream positions and the full draw-pile order.
@@ -589,4 +628,3 @@ rasterised from them:
     magick -density 160 -background white build/evidence/seed-verification-SFXT47K77RFK.svg demo/map-topology-match.png
     magick -density 160 -background white build/evidence/seed-verification-SEXT47K77REK.svg demo/map-topology-mismatch.png
     magick -density 150 -background white build/evidence/snapshot-lines.svg demo/snapshot-two-lines.png
-
