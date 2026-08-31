@@ -219,8 +219,10 @@ from that stream — which is exactly how the act-variant mistake survived this 
 
 ## Replaying the engine fixture
 
-The source manifest remains ineligible because mod parity is unproved.
-The replay, determinism, corruption, and snapshot demonstrations below use a generated vanilla fixture to exercise the engine spine without turning that result into evidence about the source environment.
+General environment parity is not proved: the A/B below measures that the BaseLib residual changes `SkipNextDurationTick` for a player-applied custom debuff.
+Path-specific parity is proved for this reconstructed history: the reachability probe measures that the affected branch is never reached, while its negative control does reach it.
+The publication verdict rests on that history-bound result, bound to the build, BaseLib hash, target IL hash, seed, action-history hash, and final state.
+The replay, determinism, corruption, and snapshot demonstrations below use a generated vanilla fixture to exercise the engine spine independently of that source-environment result.
 
 ```bash
 ./scripts/arbiter synthetic-fixture --out build/evidence/synthetic-engine.replay.json --lines-out build/evidence/synthetic-lines
@@ -234,7 +236,8 @@ synthetic line: build/evidence/synthetic-lines/reordered.line.json
 
 The synthetic fixture pins five declared actions: the opening blessing, the move to the first map node, the two cards played on turn 1, and ending that turn.
 Four engine-produced checkpoints pin the generated state, and replay has to reproduce every one.
-The separate VOD manifest carries the timestamps and observed provenance, but remains ineligible for replay until mod parity is proved.
+The separate VOD manifest carries the timestamps and observed provenance.
+Its publication result depends on the history-bound BaseLib reachability evidence demonstrated below, not a claim of general mod parity.
 
 ```bash
 ./scripts/arbiter replay build/evidence/synthetic-engine.replay.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
@@ -329,28 +332,28 @@ reorder-plays
   corruption   : Plays the same two cards in the opposite order, adjusting hand indices so both remain valid.
   video-only   : UNDETECTED - The same cards are played, aggregate energy and hand counts are unchanged, and the final visible damage and block totals agree. The intermediate state and hidden pile order still depend on order.
   arbiter      : REJECTED
-  first divergence: combat.block                 observed=5                      engine=0
+  first divergence: checkpoint 'after-defend' (after action 2): combat.block observed '5', engine produced '0'
   end state       : differs from the uncorrupted run
 
 substitute-same-cost
   corruption   : Replaces the final played card with a different same-cost card selected by the control.
   video-only   : UNDETECTED - Energy conservation and hand accounting both balance, because the substitute costs the same. The damage arithmetic balances too unless the enemy's health is read frame by frame, which the earlier video-only pipeline did not do.
   arbiter      : REJECTED
-  first divergence: combat.enemy.0.hp            observed=51                     engine=57
+  first divergence: checkpoint 'after-strike' (after action 3): combat.enemy.0.hp observed '51', engine produced '57'
   end state       : differs from the uncorrupted run
 
 omit-play
   corruption   : Drops the final card play entirely.
   video-only   : DETECTED - Energy and hand counts no longer balance against the declared line. Included as a control on the control: an arbiter that rejected only the subtle corruptions and let this one through would be broken in an interesting way.
   arbiter      : REJECTED
-  first divergence: combat.enemy.0.hp            observed=51                     engine=57
+  first divergence: checkpoint 'turn-two' (after action 3): combat.enemy.0.hp observed '51', engine produced '57'
   end state       : differs from the uncorrupted run
 
 wrong-opening-choice
   corruption   : Takes a different blessing at the run's opening event.
   video-only   : DETECTED - The different opening option changes generated setup before combat. Included because it corrupts the history far from the turn being checked, which tests that divergence is caught where it surfaces.
   arbiter      : REJECTED
-  first divergence: combat.hand                  observed=CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD engine=CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD
+  first divergence: checkpoint 'combat-start' (after action 1): combat.hand observed 'CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD', engine produced 'CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD'
   end state       : differs from the uncorrupted run
 
 all 4 corrupted histories were rejected; the uncorrupted one verified
@@ -378,7 +381,7 @@ rm -rf build/snapshots && ./scripts/arbiter snapshot-lines build/evidence/synthe
 ```
 
 ```output
-snapshot key   : v0.111.0_standard_CHARACTER.IRONCLAD_a0_P1L0TTRA1NER_1568834832_acts94bfe051bab74948_mods5356f7a9938490b1_seq1_ac863b95ef9bbe81
+snapshot key   : v0.111.0_standard_CHARACTER.IRONCLAD_a0_P1L0TTRA1NER_1568834832_seq1_fa6c25365719e14b153879446a45e4044c4ca1b3b3be1594bd9a54126ba5b330
 snapshot source: materialised now
 snapshot digest: sha256:579b37b764a8428a02df53e2baf851065e5e188878e2e831898f88acdd3a9474
 
@@ -421,7 +424,7 @@ diagram: build/evidence/snapshot-lines.svg
 ![Two lines played from the same verified snapshot, with objective state deltas for each and no verdict about which was better](snapshot-two-lines.png)
 ```
 
-![Two lines played from the same verified snapshot, with objective state deltas for each and no verdict about which was better](6b741a12-2026-08-30.png)
+![Two lines played from the same verified snapshot, with objective state deltas for each and no verdict about which was better](05a87928-2026-08-31.png)
 
 Deltas and nothing else. No score, no ranking, no highlight on the "better" outcome —
 which line is better is a question about a game, and answering it here would turn a
@@ -446,8 +449,8 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    91, Skipped:     0, Total:    91 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    23, Skipped:     0, Total:    23 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   106, Skipped:     0, Total:   106 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    32, Skipped:     0, Total:    32 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -511,8 +514,8 @@ manifest : navegreed-OJ-6QXhNgdg
 
   pass  publication-source Publication evidence comes from a VOD, never an engine-generated fixture.
   pass  provenance    The recording is of the run it claims, from that run's start.
-  pass  seed-topology The manifest seed independently reproduces the map observed in the same VOD.
   pass  environment   The declared build, content hash and mode match this machine.
+  pass  seed-topology The manifest seed independently reproduces the map observed in the same VOD.
   pass  baselib-path  The measured BaseLib behavior branch is unreachable in this exact reconstructed history.
   pass  reproduction  The reconstructed history replays through the real engine and matches every observed value.
   pass  determinism   Fresh processes produce byte-identical canonical state.

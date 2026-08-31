@@ -42,8 +42,16 @@ internal static partial class Commands
             Check("provenance",
                 "The recording is of the run it claims, from that run's start.",
                 SelfProcess.Run("validate", manifestPath, "--show-rejections", "--out", outDir)),
+        };
 
-            Check("seed-topology",
+        var environment = Check("environment",
+            "The declared build, content hash and mode match this machine.",
+            SelfProcess.Run("preflight", manifestPath));
+        conditions.Add(environment);
+
+        if (environment.Passed)
+        {
+            conditions.Add(Check("seed-topology",
                 "The manifest seed independently reproduces the map observed in the same VOD.",
                 SelfProcess.Run(
                     "verify-seed", mapObservationPath,
@@ -54,30 +62,42 @@ internal static partial class Commands
                     "--ascension", manifest.Environment.Ascension.Value.ToString(
                         System.Globalization.CultureInfo.InvariantCulture),
                     "--game-mode", manifest.Environment.GameMode.Value,
-                    "--out", outDir)),
+                    "--out", outDir)));
 
-            Check("environment",
-                "The declared build, content hash and mode match this machine.",
-                SelfProcess.Run("preflight", manifestPath)),
-
-            Check("baselib-path",
+            conditions.Add(Check("baselib-path",
                 "The measured BaseLib behavior branch is unreachable in this exact reconstructed history.",
                 SelfProcess.Run(
                     "baselib-reachability", manifestPath, baseLibPath,
-                    "--out", Path.Combine(outDir, "baselib-reachability.json"))),
+                    "--out", Path.Combine(outDir, "baselib-reachability.json"))));
 
-            Check("reproduction",
+            conditions.Add(Check("reproduction",
                 "The reconstructed history replays through the real engine and matches every observed value.",
-                SelfProcess.Run("replay", manifestPath, "--out", Path.Combine(outDir, "verified-manifest.json"))),
+                SelfProcess.Run("replay", manifestPath, "--out", Path.Combine(outDir, "verified-manifest.json"))));
 
-            Check("determinism",
+            conditions.Add(Check("determinism",
                 "Fresh processes produce byte-identical canonical state.",
-                SelfProcess.Run("determinism", manifestPath, "--runs", "2", "--out", outDir)),
+                SelfProcess.Run("determinism", manifestPath, "--runs", "2", "--out", outDir)));
 
-            Check("rejection",
+            conditions.Add(Check("rejection",
                 "Corrupted and incomplete histories are refused.",
-                SelfProcess.Run("negative-controls", manifestPath, "--out", outDir)),
-        };
+                SelfProcess.Run("negative-controls", manifestPath, "--out", outDir)));
+        }
+        else
+        {
+            conditions.AddRange(
+            [
+                new Condition("seed-topology",
+                    "The manifest seed independently reproduces the map observed in the same VOD.", false),
+                new Condition("baselib-path",
+                    "The measured BaseLib behavior branch is unreachable in this exact reconstructed history.", false),
+                new Condition("reproduction",
+                    "The reconstructed history replays through the real engine and matches every observed value.", false),
+                new Condition("determinism",
+                    "Fresh processes produce byte-identical canonical state.", false),
+                new Condition("rejection",
+                    "Corrupted and incomplete histories are refused.", false),
+            ]);
+        }
 
         Console.WriteLine($"manifest : {manifest.RunId}");
         Console.WriteLine();

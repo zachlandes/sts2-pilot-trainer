@@ -371,6 +371,41 @@ public class PublicationGateTests
     }
 
     [GameFact]
+    public void BaseLibReachabilityRefusesAMismatchedEnvironment()
+    {
+        var outDir = TempDir();
+        var manifest = ManifestJson.Load(Arbiter.Manifest);
+        const string wrongHash = "1234567890";
+        manifest = manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                ContentHash = manifest.Environment.ContentHash with { Value = wrongHash },
+            },
+            Source = manifest.Source with
+            {
+                RunSummary = manifest.Source.RunSummary! with
+                {
+                    ContentHash = manifest.Source.RunSummary.ContentHash with { Value = wrongHash },
+                },
+            },
+        };
+        var path = Path.Combine(outDir, "wrong-reachability-environment.json");
+        ManifestJson.Save(manifest, path);
+        var reportPath = Path.Combine(outDir, "baselib-reachability.json");
+
+        var result = Arbiter.Run(
+            "baselib-reachability", path,
+            Path.Combine(Arbiter.RepoRoot, "build", "parity", "BaseLib.dll"),
+            "--out", reportPath);
+
+        Assert.False(result.Verified);
+        Assert.Contains("matching environment preflight", result.All, StringComparison.Ordinal);
+        Assert.Contains("content_hash", result.All, StringComparison.Ordinal);
+        Assert.False(File.Exists(reportPath));
+    }
+
+    [GameFact]
     public void RefusesPublicationWhenRequiredEngineInitializationFails()
     {
         var outDir = TempDir();
@@ -410,7 +445,10 @@ public class PublicationGateTests
             path);
 
         var result = Arbiter.Run(
-            "gate", path, "--map-observation", Arbiter.MapObservation, "--out", outDir);
+            "gate", path,
+            "--map-observation", Arbiter.MapObservation,
+            "--baselib", Path.Combine(outDir, "must-not-be-read.dll"),
+            "--out", outDir);
 
         Assert.False(result.Verified);
         Assert.Contains("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
@@ -421,6 +459,8 @@ public class PublicationGateTests
         var environment = report.GetProperty("conditions").EnumerateArray()
             .Single(c => c.GetProperty("name").GetString() == "environment");
         Assert.False(environment.GetProperty("passed").GetBoolean());
+        Assert.False(File.Exists(Path.Combine(outDir, "baselib-reachability.json")));
+        Assert.DoesNotContain("must-not-be-read.dll", result.All, StringComparison.Ordinal);
     }
 
     [GameFact]

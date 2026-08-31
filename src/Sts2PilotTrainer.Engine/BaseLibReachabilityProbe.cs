@@ -31,6 +31,17 @@ public static class BaseLibReachabilityProbe
             throw new ManifestException("BaseLib reachability evidence must replay a VOD manifest.");
         }
 
+        var preflight = Preflight.Evaluate(manifest.Environment);
+        if (!preflight.Matches)
+        {
+            var mismatches = preflight.Fields
+                .Where(field => !field.Matches)
+                .Select(field => $"{field.Field}: manifest '{field.Expected}', local '{field.Actual}'");
+            throw new EngineException(
+                "BaseLib reachability requires a matching environment preflight: " +
+                string.Join("; ", mismatches));
+        }
+
         var fullBaseLibPath = Path.GetFullPath(baseLibPath);
         const string expectedHash =
             "sha256:ad2f89e43e8b31debfab65d783353d9429eba59a2cfe904ff933a894ce79d32e";

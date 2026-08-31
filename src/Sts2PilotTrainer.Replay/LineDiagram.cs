@@ -44,7 +44,7 @@ public static class LineDiagram
              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
              <rect width="{width}" height="{height}" fill="#fbfaf7"/>
              <text x="{Margin}" y="34" font-size="15" font-weight="700" fill="#22262b">Two lines from one verified snapshot</text>
-             <text x="{Margin}" y="56" font-size="11" fill="#5a6169">snapshot {Escape(snapshotKey)}</text>
+             <text x="{Margin}" y="56" font-size="11" fill="#5a6169">snapshot {Escape(ShortenMiddle(snapshotKey, 128))}</text>
              <text x="{Margin}" y="74" font-size="11" fill="#8a9098">{Escape(snapshotDigest)}</text>
              <text x="{Margin}" y="96" font-size="11" fill="#5a6169">Both lines start from this identical state. Objective deltas only - no score, no ranking, no verdict.</text>
              """);
@@ -93,6 +93,14 @@ public static class LineDiagram
     /// beside it, so nothing is lost - only the picture is made readable.</summary>
     private static string Shorten(string value, int max) =>
         value.Length <= max ? value : value[..(max - 1)] + "…";
+
+    private static string ShortenMiddle(string value, int max)
+    {
+        if (value.Length <= max) return value;
+        var left = max * 2 / 3;
+        var right = max - left - 1;
+        return value[..left] + "…" + value[^right..];
+    }
 
     private static string Escape(string value) =>
         value.Replace("&", "&amp;", StringComparison.Ordinal)
