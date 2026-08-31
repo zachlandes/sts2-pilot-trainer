@@ -43,6 +43,17 @@ public class MapObservationTests
     }
 
     [Fact]
+    public void LoadRejectsDuplicateNodeCoordinates()
+    {
+        var path = Write(Observation("1|0|Monster", "1|0|Elite"));
+
+        var error = Assert.Throws<ManifestException>(() => MapObservation.Load(path));
+
+        Assert.Contains("duplicate node coordinates", error.Message, StringComparison.Ordinal);
+        Assert.Contains("row 1 column 0", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LoadRejectsFrameTimestampsOutsideTheVideo()
     {
         var path = Write(Observation("1|0|Monster") with

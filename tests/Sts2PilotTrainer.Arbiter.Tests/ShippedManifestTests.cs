@@ -18,6 +18,14 @@ public class ShippedManifestTests
     }
 
     [Fact]
+    public void ShippedMapObservationPassesIngestion()
+    {
+        var observation = MapObservation.Load(Arbiter.MapObservation);
+
+        Assert.NotEmpty(observation.Nodes);
+    }
+
+    [Fact]
     public void ShowsTheRecordingBeginsAtTheRunsStart()
     {
         // The specific defence against a run resumed from history. One of the three

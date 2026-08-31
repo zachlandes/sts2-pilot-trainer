@@ -242,6 +242,33 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void RejectsCheckpointEvidenceAfterTheNextAction()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Checkpoints =
+            [
+                manifest.Checkpoints[0] with
+                {
+                    AfterSeq = 0,
+                    Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+                    {
+                        ["combat.energy"] = Fact<string>.Observed(
+                            "3", FactEvidence.AtVideoTime(100_000, "after the following action")),
+                    },
+                },
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("later than action 1 timestamp", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void AcceptsEqualActionAndCheckpointTimestamps()
     {
         var manifest = Fixtures.ValidManifest();
@@ -256,6 +283,7 @@ public class ManifestValidatorTests
             [
                 manifest.Checkpoints[0] with
                 {
+                    AfterSeq = 0,
                     Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
                     {
                         ["combat.energy"] = Fact<string>.Observed(

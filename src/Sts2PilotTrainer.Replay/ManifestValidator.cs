@@ -692,6 +692,18 @@ public static partial class ManifestValidator
                             $"checkpoint '{checkpoint.Id}' field '{field}' timestamp {checkpointTimestamp}ms is " +
                             $"earlier than its after_seq action {checkpoint.AfterSeq} timestamp {actionTimestamp}ms.");
                     }
+
+                    var nextActionIndex = checkpoint.AfterSeq + 1;
+                    if (nextActionIndex >= 0 && nextActionIndex < actions.Count &&
+                        actions[nextActionIndex].Evidence?.VideoTimeMs is { } nextActionTimestamp &&
+                        fact.Evidence?.VideoTimeMs is { } checkpointEvidenceTimestamp &&
+                        checkpointEvidenceTimestamp > nextActionTimestamp)
+                    {
+                        problems.Add(
+                            $"checkpoint '{checkpoint.Id}' field '{field}' timestamp " +
+                            $"{checkpointEvidenceTimestamp}ms is later than action {nextActionIndex} timestamp " +
+                            $"{nextActionTimestamp}ms, which follows its after_seq position.");
+                    }
                 }
             }
         }

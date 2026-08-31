@@ -88,6 +88,18 @@ public sealed record MapObservation
                 "Map observation has no topology evidence. At least one node and one observed row are required.");
         }
 
+        var duplicatePositions = observation.Nodes
+            .GroupBy(node => (node.Row, node.Column))
+            .Where(group => group.Count() > 1)
+            .Select(group => $"row {group.Key.Row} column {group.Key.Column}")
+            .OrderBy(position => position, StringComparer.Ordinal)
+            .ToList();
+        if (duplicatePositions.Count > 0)
+        {
+            throw new ManifestException(
+                $"Map observation contains duplicate node coordinates: {string.Join(", ", duplicatePositions)}.");
+        }
+
         var frameBackedRows = observation.Frames.SelectMany(frame => frame.RowsSettled).ToHashSet();
         var unbackedRows = observation.Nodes.Select(node => node.Row)
             .Where(row => !frameBackedRows.Contains(row))
