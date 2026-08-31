@@ -253,6 +253,27 @@ public class PublicationGateTests
     }
 
     [GameFact]
+    public void RefusesPublicationWhenRequiredEngineInitializationFails()
+    {
+        var outDir = TempDir();
+        var result = Arbiter.RunWithEnvironment(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["STS2_PILOT_TRAINER_TEST_REQUIRED_INIT_FAILURE"] = "negative-control",
+            },
+            "gate", Arbiter.Manifest, "--out", outDir);
+
+        Assert.False(result.Verified);
+        Assert.Contains("Required engine initialization failed", result.All, StringComparison.Ordinal);
+        var report = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "publication-gate.json"))).RootElement;
+        Assert.False(report.GetProperty("publishable").GetBoolean());
+        Assert.Contains(
+            report.GetProperty("conditions").EnumerateArray(),
+            condition => !condition.GetProperty("passed").GetBoolean());
+    }
+
+    [GameFact]
     public void RefusesWhenTheEnvironmentDoesNotMatch()
     {
         // The cheapest way to make a condition fail without touching the history.

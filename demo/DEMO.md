@@ -439,9 +439,7 @@ The integration suite drives the built command line, one process per test, and s
 
 Every checker has a demonstrated negative input: the manifest validator has a
 malformed input per rule, the preflight has a mismatched build and a mismatched
-content hash, the map comparison has a wrong node, a missing node, an extra node and
-a wrong grid size, the arbiter has four corrupted histories, and the cache key has
-changes that must and must not invalidate it.
+content hash, required engine initialization has a forced failing step, the map comparison has a wrong node, a missing node, an extra node and a wrong grid size, the arbiter has four corrupted histories, and the cache key has changes that must and must not invalidate it.
 
 ```bash
 dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "Passed!|Failed!|error" | sed -E 's/, Duration: [0-9.]+ (ms|s) - / - /'
@@ -449,7 +447,7 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 
 ```output
 Passed!  - Failed:     0, Passed:    91, Skipped:     0, Total:    91 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    22, Skipped:     0, Total:    22 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    23, Skipped:     0, Total:    23 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe

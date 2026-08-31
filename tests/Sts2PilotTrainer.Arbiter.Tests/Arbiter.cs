@@ -68,7 +68,11 @@ internal static class Arbiter
         return paths;
     }
 
-    internal static Result Run(params string[] args)
+    internal static Result Run(params string[] args) =>
+        RunWithEnvironment(new Dictionary<string, string>(StringComparer.Ordinal), args);
+
+    internal static Result RunWithEnvironment(
+        IReadOnlyDictionary<string, string> environment, params string[] args)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -80,6 +84,7 @@ internal static class Arbiter
         };
         startInfo.ArgumentList.Add(CliPath);
         foreach (var arg in args) startInfo.ArgumentList.Add(arg);
+        foreach (var (name, value) in environment) startInfo.Environment[name] = value;
 
         using var process = Process.Start(startInfo)!;
         var output = process.StandardOutput.ReadToEnd();

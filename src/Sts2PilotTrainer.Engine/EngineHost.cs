@@ -25,6 +25,10 @@ public static class EngineHost
         lock (Gate)
         {
             if (_started) return Startup!;
+            if (Startup is { Ready: false } failed)
+            {
+                throw StartupFailure(failed);
+            }
 
             // The game's async code posts continuations to the current context and
             // then waits for them. With no frame loop to pump a real context, those
@@ -35,10 +39,17 @@ public static class EngineHost
 
             var report = EngineInitialization.InitializeOnce();
             Startup = report;
+            if (!report.Ready) throw StartupFailure(report);
+
             _started = true;
             return report;
         }
     }
+
+    private static EngineException StartupFailure(EngineStartupReport report) =>
+        new(
+            "Required engine initialization failed; refusing to run:\n" +
+            string.Join("\n", report.Failures.Select(failure => $"  - {failure}")));
 
     /// <summary>
     /// The game's own content-database hash - the value its multiplayer layer
@@ -95,7 +106,11 @@ public static class EngineHost
 public sealed record EngineStartupReport(
     int ModelsRegistered,
     int ModelsFailed,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<string> Failures)
+{
+    public bool Ready => ModelsRegistered > 0 && ModelsFailed == 0 && Failures.Count == 0;
+}
 
 /// <summary>
 /// Runs posted continuations immediately on the calling thread, draining anything

@@ -156,7 +156,7 @@ public sealed record GameIdentity(
 /// </summary>
 internal static class ReleaseInfoBinding
 {
-    internal static void Install(List<string> warnings)
+    internal static void Install(List<string> failures)
     {
         try
         {
@@ -164,7 +164,7 @@ internal static class ReleaseInfoBinding
             var path = libDir is null ? null : Path.Combine(libDir, "release_info.json");
             if (path is null || !File.Exists(path))
             {
-                warnings.Add("release info: not found beside the prepared assembly; the engine will report a default build");
+                failures.Add("release info: not found beside the prepared assembly");
                 return;
             }
 
@@ -173,7 +173,7 @@ internal static class ReleaseInfoBinding
             var managerType = assembly.GetType("MegaCrit.Sts2.Core.Debug.ReleaseInfoManager");
             if (releaseInfoType is null || managerType is null)
             {
-                warnings.Add("release info: ReleaseInfo/ReleaseInfoManager absent from this build");
+                failures.Add("release info: ReleaseInfo/ReleaseInfoManager absent from this build");
                 return;
             }
 
@@ -183,24 +183,29 @@ internal static class ReleaseInfoBinding
                 new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower });
             if (releaseInfo is null)
             {
-                warnings.Add("release info: file present but did not deserialize");
+                failures.Add("release info: file present but did not deserialize");
                 return;
             }
 
             var instance = managerType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
             if (instance is null)
             {
-                warnings.Add("release info: ReleaseInfoManager.Instance was null");
+                failures.Add("release info: ReleaseInfoManager.Instance was null");
                 return;
             }
 
-            managerType
-                .GetField("<ReleaseInfo>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)
-                ?.SetValue(instance, releaseInfo);
+            var field = managerType.GetField(
+                "<ReleaseInfo>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic);
+            if (field is null)
+            {
+                failures.Add("release info: ReleaseInfo backing field is absent");
+                return;
+            }
+            field.SetValue(instance, releaseInfo);
         }
         catch (Exception ex)
         {
-            warnings.Add($"release info: {ex.GetType().Name}: {ex.Message}");
+            failures.Add($"release info: {ex.GetType().Name}: {ex.Message}");
         }
     }
 }

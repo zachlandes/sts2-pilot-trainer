@@ -17,6 +17,11 @@ internal static class EngineInitialization
     internal static EngineStartupReport InitializeOnce()
     {
         var warnings = new List<string>();
+        var failures = new List<string>();
+        if (Environment.GetEnvironmentVariable("STS2_PILOT_TRAINER_TEST_REQUIRED_INIT_FAILURE") is { Length: > 0 } forced)
+        {
+            failures.Add($"forced required-step failure: {forced}");
+        }
 
         // Confine every write the engine makes to a directory this project owns.
         // The player's install and saves are read-only inputs, and the engine has
@@ -30,14 +35,13 @@ internal static class EngineInitialization
         // Platform services first: several gameplay paths reach for the platform
         // layer, and touching it early turns a mid-run null reference into a warning
         // here where it can be reported.
-        Try(warnings, "platform", () => _ = MegaCrit.Sts2.Core.Platform.PlatformUtil.PrimaryPlatform);
+        TryOptional(warnings, "platform", () => _ = MegaCrit.Sts2.Core.Platform.PlatformUtil.PrimaryPlatform);
 
         // A profile id and preferences must exist before any run is created. The
         // preferences object in particular is read from gameplay code, so a null one
         // is a crash rather than a default.
-        Try(warnings, "profile", () => SaveManager.Instance.InitProfileId(0));
-        Try(warnings, "prefs", () => SaveManager.Instance.InitPrefsDataForTest());
-        Try(warnings, "progress", () => SaveManager.Instance.InitProgressData());
+        TryRequired(failures, "profile", () => SaveManager.Instance.InitProfileId(0));
+        TryRequired(failures, "prefs", () => SaveManager.Instance.InitPrefsDataForTest());
 
         // Tell the engine it is running headless.
         //
@@ -67,18 +71,25 @@ internal static class EngineInitialization
         // content that video was played against matches this environment, whatever
         // mods were installed there.
         // The setter is internal to the game, so the backing field is set directly.
-        typeof(ModManager)
-            .GetField("<State>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic)
-            ?.SetValue(null, ModManagerState.Skipped);
+        var modManagerState = typeof(ModManager)
+            .GetField("<State>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic);
+        if (modManagerState is null)
+        {
+            failures.Add("mod loader: ModManager.State backing field is absent");
+        }
+        else
+        {
+            modManagerState.SetValue(null, ModManagerState.Skipped);
+        }
 
         // Asset preloading pulls textures, audio and animations out of the resource
         // pack. There is no renderer here to want them, and the engine exposes this
         // as a supported switch - which is preferable to patching the loader.
-        Try(warnings, "preload-off", () => MegaCrit.Sts2.Core.Assets.PreloadManager.Enabled = false);
+        TryRequired(failures, "preload-off", () => MegaCrit.Sts2.Core.Assets.PreloadManager.Enabled = false);
 
-        HeadlessPatches.Apply(warnings);
-        Localization.Initialize(warnings);
-        ReleaseInfoBinding.Install(warnings);
+        HeadlessPatches.Apply(failures);
+        Localization.Initialize(failures);
+        ReleaseInfoBinding.Install(failures);
 
         var subtypes = AbstractModelSubtypes.All;
         int registered = 0, failed = 0;
@@ -92,21 +103,25 @@ internal static class EngineInitialization
             catch (Exception ex)
             {
                 failed++;
-                if (failed <= 5) warnings.Add($"model {subtypes[i].Name}: {ex.GetType().Name}: {ex.Message}");
+                if (failed <= 5) failures.Add($"model {subtypes[i].Name}: {ex.GetType().Name}: {ex.Message}");
             }
         }
+
+        TryRequired(failures, "progress", () => SaveManager.Instance.InitProgressData());
 
         // The id-serialization cache sorts content by owning assembly, which means
         // the mod/base-game map has to exist first. Without this the cache refuses to
         // initialise and the content hash comes back as a perfectly stable zero.
-        Try(warnings, "assembly-info", MegaCrit.Sts2.Core.Modding.AssemblyInfo.Init);
+        TryRequired(failures, "assembly-info", MegaCrit.Sts2.Core.Modding.AssemblyInfo.Init);
 
         // Combat actions serialize model ids by index, and the index table is built
         // once from the registered database. Without it, the first card play throws.
         // It also computes the content hash this project gates on.
-        Try(warnings, "model-id-cache", ModelIdSerializationCache.Init);
+        TryRequired(failures, "model-id-cache", ModelIdSerializationCache.Init);
+        if (registered == 0) failures.Add("model injection registered zero models");
+        if (failed > 5) failures.Add($"model injection: {failed - 5} additional model(s) failed");
 
-        return new EngineStartupReport(registered, failed, warnings);
+        return new EngineStartupReport(registered, failed, warnings, failures);
     }
 
     /// <summary>
@@ -154,7 +169,19 @@ internal static class EngineInitialization
         field.SetValue(null, on);
     }
 
-    private static void Try(List<string> warnings, string what, Action action)
+    private static void TryRequired(List<string> failures, string what, Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception ex)
+        {
+            failures.Add($"{what}: {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private static void TryOptional(List<string> warnings, string what, Action action)
     {
         try
         {
@@ -211,7 +238,7 @@ internal static class HeadlessPatches
         // reaches for the save subsystem on room entry to persist progress. This host
         // must not write a save at all: the player's save directory is a read-only
         // input, and a headless run is not a run they played.
-        foreach (var saver in new[] { "SaveRun", "SaveProgressFile", "SavePrefsFile", "SaveProfileFile" })
+        foreach (var saver in new[] { "SaveRun", "SaveProgressFile", "SavePrefsFile", "SaveProfile" })
         {
             Neutralize(harmony, assembly, "MegaCrit.Sts2.Core.Saves.SaveManager", saver, warnings);
         }
