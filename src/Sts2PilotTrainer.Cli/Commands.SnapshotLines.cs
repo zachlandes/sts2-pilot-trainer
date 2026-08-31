@@ -77,7 +77,7 @@ internal static partial class Commands
             var scratchManifest = Path.Combine(outDir, $"line-{Path.GetFileNameWithoutExtension(linePath)}.manifest.json");
             ManifestJson.Save(extended, scratchManifest);
 
-            var restored = ReplayPrefix(scratchManifest, at, Path.Combine(outDir, "restore-check.state"));
+            var restored = ReplayPrefix(manifestPath, at, Path.Combine(outDir, "restore-check.state"));
             if (!string.Equals(restored, snapshot, StringComparison.Ordinal))
             {
                 Console.Error.WriteLine(
@@ -87,7 +87,8 @@ internal static partial class Commands
                 return 1;
             }
 
-            var after = ReplayPrefix(scratchManifest, at + line.Count, Path.Combine(outDir, "line-after.state"));
+            var after = ReplayPrefix(
+                scratchManifest, at + line.Count, Path.Combine(outDir, "line-after.state"), at + 1);
             var deltas = Diff(snapshot, after);
 
             Console.WriteLine($"line {Path.GetFileNameWithoutExtension(linePath)}  ({line.Count} action(s))");
@@ -140,9 +141,25 @@ internal static partial class Commands
     }
 
     /// <summary>Replays a manifest up to a sequence number and returns its canonical state.</summary>
-    private static string ReplayPrefix(string manifestPath, int upToSeq, string statePath)
+    private static string ReplayPrefix(
+        string manifestPath, int upToSeq, string statePath, int? lineFromSeq = null)
     {
-        var child = SelfProcess.Run("replay", manifestPath, "--state-out", statePath, "--stop-after", upToSeq.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        var command = lineFromSeq is null ? "replay" : "replay-line";
+        var arguments = new List<string>
+        {
+            command,
+            manifestPath,
+            "--state-out",
+            statePath,
+            "--stop-after",
+            upToSeq.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        };
+        if (lineFromSeq is { } start)
+        {
+            arguments.Add("--line-from");
+            arguments.Add(start.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
+        var child = SelfProcess.Run([.. arguments]);
         if (child.ExitCode != 0)
         {
             Console.Write(child.StandardOutput);

@@ -117,15 +117,18 @@ public sealed record EnvironmentIdentity
 /// <summary>Where the reconstruction came from, in enough detail to re-check it.</summary>
 public sealed record SourceProvenance
 {
-    /// <summary><c>vod</c> today. Left explicit because a creator-supplied run file
-    /// or action log is a different kind of evidence and must not be confusable
-    /// with a video reading.</summary>
+    /// <summary><c>vod</c> for publication evidence and <c>synthetic-engine</c> for
+    /// pinned engine fixtures that exercise replay without making a source claim.</summary>
     [JsonPropertyName("kind")]
     public required string Kind { get; init; }
 
     [JsonPropertyName("video")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public VideoSource? Video { get; init; }
+
+    [JsonPropertyName("synthetic")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SyntheticSource? Synthetic { get; init; }
 
     /// <summary>How the ordered history was produced. <c>manual</c> means a human
     /// read the frames; that is the honest label for this milestone and it should
@@ -155,6 +158,21 @@ public sealed record SourceProvenance
     [JsonPropertyName("run_summary")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public RunSummaryObservation? RunSummary { get; init; }
+}
+
+public sealed record SyntheticSource
+{
+    [JsonPropertyName("fixture_id")]
+    public required string FixtureId { get; init; }
+
+    [JsonPropertyName("fixture_version")]
+    public required int FixtureVersion { get; init; }
+
+    [JsonPropertyName("generator")]
+    public required string Generator { get; init; }
+
+    [JsonPropertyName("generated_build")]
+    public required string GeneratedBuild { get; init; }
 }
 
 /// <summary>

@@ -224,33 +224,23 @@ The source manifest remains ineligible because mod parity is unproved.
 The replay, determinism, corruption, and snapshot demonstrations below use a generated vanilla fixture to exercise the engine spine without turning that result into evidence about the source environment.
 
 ```bash
-python3 - <<'PY'
-import json
-from pathlib import Path
-source = Path('manifests/navegreed-OJ-6QXhNgdg.replay.json')
-out = Path('build/evidence/vanilla-engine-fixture.json')
-manifest = json.loads(source.read_text())
-manifest['run_id'] = 'synthetic-vanilla-engine-fixture'
-manifest['environment']['mods'] = {
-    'Value': {'name': 'vanilla', 'reported_count': 0, 'mods': []},
-    'Source': 'Declared'
-}
-out.parent.mkdir(parents=True, exist_ok=True)
-out.write_text(json.dumps(manifest, indent=2) + '\n')
-PY
-```
-
-Five actions, reconstructed by hand from the video: the opening blessing, the move
-to the first map node, the two cards played on turn 1, and ending that turn. Each
-carries the timestamp it was read at. Four checkpoints hold 21 values the video
-shows, and the replay has to reproduce every one.
-
-```bash
-./scripts/arbiter replay build/evidence/vanilla-engine-fixture.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter synthetic-fixture --out build/evidence/synthetic-engine.replay.json
 ```
 
 ```output
-manifest       : synthetic-vanilla-engine-fixture
+synthetic fixture: build/evidence/synthetic-engine.replay.json
+```
+
+The synthetic fixture pins five declared actions: the opening blessing, the move to the first map node, the two cards played on turn 1, and ending that turn.
+Four engine-produced checkpoints hold 21 values, and replay has to reproduce every one.
+The separate VOD manifest carries the timestamps and observed provenance, but remains ineligible for replay until mod parity is proved.
+
+```bash
+./scripts/arbiter replay build/evidence/synthetic-engine.replay.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+```
+
+```output
+manifest       : synthetic-v0111-first-combat
 actions        : 5
 status         : VERIFIED
 
@@ -316,7 +306,7 @@ front and documented, so a digest mismatch can only be a real divergence and nev
 an artefact of running on a different afternoon.
 
 ```bash
-./scripts/arbiter determinism build/evidence/vanilla-engine-fixture.json --runs 3 --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter determinism build/evidence/synthetic-engine.replay.json --runs 3 --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
 ```
 
 ```output
@@ -339,7 +329,7 @@ balances — every check that can be done from the frames says yes. Those are th
 that justify owning an engine at all.
 
 ```bash
-./scripts/arbiter negative-controls build/evidence/vanilla-engine-fixture.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+./scripts/arbiter negative-controls build/evidence/synthetic-engine.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
 ```
 
 ```output
@@ -401,7 +391,7 @@ fresh process and refuses unless the digest matches what was cached. That is slo
 than loading a blob and much harder to get quietly wrong.
 
 ```bash
-rm -rf build/snapshots && ./scripts/arbiter snapshot-lines build/evidence/vanilla-engine-fixture.json --at 1 --line manifests/lines/streamer.line.json --line manifests/lines/aggressive.line.json --out build/evidence --cache build/snapshots 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
+rm -rf build/snapshots && ./scripts/arbiter snapshot-lines build/evidence/synthetic-engine.replay.json --at 1 --line manifests/lines/streamer.line.json --line manifests/lines/aggressive.line.json --out build/evidence --cache build/snapshots 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached'
 ```
 
 ```output
@@ -513,6 +503,7 @@ every check that is not about the recording itself.
 ```output
 manifest : navegreed-OJ-6QXhNgdg
 
+  pass  publication-source Publication evidence comes from a VOD, never an engine-generated fixture.
   pass  provenance    The recording is of the run it claims, from that run's start.
   FAIL  environment   The declared build, content hash, mode and seed match this machine.
   FAIL  reproduction  The reconstructed history replays through the real engine and matches every observed value.
@@ -533,11 +524,8 @@ than the one that was actually used.
 - The seed is `SFXT47K77RFK`. The engine's own map generator reproduces all 61
   transcribed nodes; the seed an optical reader reported with full confidence
   reproduces 12. This does not depend on reading a character.
-- In the vanilla engine fixture, replaying five reconstructed actions from run start reproduces **21 independently
-  observed values**, including the enemy's health and telegraphed intent, the ordered
-  hand, energy at three points in the turn, block, and the player's health after the
-  enemy's turn resolved. The random outcome of the opening blessing's transform is
-  among them.
+- In the synthetic engine fixture, replaying five declared actions from run start reproduces **21 pinned engine values**, including the enemy's health and telegraphed intent, the ordered hand, energy at three points in the turn, block, and the player's health after the enemy's turn resolves.
+This proves the replay spine against a controlled fixture, not parity with the VOD's modded source environment.
 - The same manifest in three fresh processes produces byte-identical canonical
   state, including all fifteen random-stream positions and the full draw-pile order.
 - Four corrupted histories are rejected, two of which every arithmetic check

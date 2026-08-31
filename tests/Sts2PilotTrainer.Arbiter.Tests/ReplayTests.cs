@@ -18,7 +18,7 @@ public class ReplayTests
     [GameFact]
     public void PreflightAcceptsACompleteVanillaEnvironment()
     {
-        var result = Arbiter.Run("preflight", Arbiter.VanillaReplayFixture());
+        var result = Arbiter.Run("preflight", Arbiter.SyntheticReplayFixture());
 
         Assert.True(result.Verified, result.All);
         Assert.Contains("environment matches", result.Output, StringComparison.Ordinal);
@@ -72,9 +72,9 @@ public class ReplayTests
     }
 
     [GameFact]
-    public void ReplayingTheRecordedHistoryReproducesEveryObservationFromTheVideo()
+    public void SyntheticReplayReproducesEveryPinnedEngineCheckpoint()
     {
-        var result = Arbiter.Run("replay", Arbiter.VanillaReplayFixture());
+        var result = Arbiter.Run("replay", Arbiter.SyntheticReplayFixture());
 
         Assert.True(result.Verified, result.All);
         Assert.Contains("status         : VERIFIED", result.Output, StringComparison.Ordinal);
@@ -85,7 +85,7 @@ public class ReplayTests
     public void ReplayingTwiceInFreshProcessesProducesByteIdenticalState()
     {
         var result = Arbiter.Run(
-            "determinism", Arbiter.VanillaReplayFixture(), "--runs", "2", "--out", TempDir());
+            "determinism", Arbiter.SyntheticReplayFixture(), "--runs", "2", "--out", TempDir());
 
         Assert.True(result.Verified, result.All);
         Assert.Contains("byte-identical canonical state", result.Output, StringComparison.Ordinal);
@@ -97,7 +97,7 @@ public class ReplayTests
         var outDir = TempDir();
 
         var result = Arbiter.Run(
-            "negative-controls", Arbiter.VanillaReplayFixture(), "--out", outDir);
+            "negative-controls", Arbiter.SyntheticReplayFixture(), "--out", outDir);
 
         Assert.True(result.Verified, result.All);
 
@@ -129,7 +129,7 @@ public class ReplayTests
         // terminal. If a future change makes the end state diverge too, this test
         // should be revisited rather than deleted.
         var outDir = TempDir();
-        Arbiter.Run("negative-controls", Arbiter.VanillaReplayFixture(), "--out", outDir);
+        Arbiter.Run("negative-controls", Arbiter.SyntheticReplayFixture(), "--out", outDir);
 
         var report = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "negative-controls.json"))).RootElement;
         var reorder = report.GetProperty("controls").EnumerateArray()
@@ -166,6 +166,20 @@ public class PublicationGateTests
 
         Assert.False(result.Verified);
         Assert.Contains("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void RefusesSyntheticEngineFixturesAsPublicationEvidence()
+    {
+        var outDir = TempDir();
+        var result = Arbiter.Run("gate", Arbiter.SyntheticReplayFixture(), "--out", outDir);
+
+        Assert.False(result.Verified);
+        var report = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "publication-gate.json"))).RootElement;
+        var source = report.GetProperty("conditions").EnumerateArray()
+            .Single(condition => condition.GetProperty("name").GetString() == "publication-source");
+        Assert.False(source.GetProperty("passed").GetBoolean());
     }
 
     [GameFact]

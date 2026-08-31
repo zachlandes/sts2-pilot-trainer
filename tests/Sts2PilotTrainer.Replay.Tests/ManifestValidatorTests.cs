@@ -211,6 +211,33 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void DedicatedLineReplayAcceptsReasonedInferredSuffixes()
+    {
+        var manifest = Fixtures.SyntheticManifest();
+        var prefix = manifest.Actions.Take(2).ToList();
+        var lineAction = new ActionRecord
+        {
+            Seq = 2,
+            Verb = ActionVerb.PlayCard,
+            Args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["card_id"] = "CARD.BASH",
+                ["hand_index"] = "3",
+            },
+            Source = FactSource.Inferred,
+            Evidence = FactEvidence.Reasoning("hypothetical line"),
+        };
+        manifest = manifest with
+        {
+            Actions = [.. prefix, lineAction],
+            Checkpoints = manifest.Checkpoints.Where(checkpoint => checkpoint.AfterSeq < 2).ToList(),
+        };
+
+        Assert.False(ManifestValidator.Validate(manifest).IsValid);
+        Assert.True(ManifestValidator.ValidateLineReplay(manifest, 2).IsValid);
+    }
+
+    [Fact]
     public void RejectsAManifestWithNoCheckpoints()
     {
         var manifest = Fixtures.ValidManifest() with { Checkpoints = [] };
@@ -273,6 +300,50 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void AcceptsStrictSyntheticEngineProvenance()
+    {
+        var result = ManifestValidator.Validate(Fixtures.SyntheticManifest());
+
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Fact]
+    public void RejectsSyntheticProvenanceWithVideoEvidence()
+    {
+        var manifest = Fixtures.SyntheticManifest();
+        manifest = manifest with
+        {
+            Source = manifest.Source with
+            {
+                Video = Fixtures.ValidManifest().Source.Video,
+            },
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("cannot carry video", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsSyntheticFixtureFromADifferentBuild()
+    {
+        var manifest = Fixtures.SyntheticManifest();
+        manifest = manifest with
+        {
+            Source = manifest.Source with
+            {
+                Synthetic = manifest.Source.Synthetic! with { GeneratedBuild = "v0.110.0" },
+            },
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("must match environment.build_version", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsUnsupportedSourceKinds()
     {
         var manifest = Fixtures.ValidManifest();
@@ -281,7 +352,7 @@ public class ManifestValidatorTests
         var result = ManifestValidator.Validate(manifest);
 
         Assert.False(result.IsValid);
-        Assert.Contains(result.Problems, p => p.Contains("accepts only 'vod'", StringComparison.Ordinal));
+        Assert.Contains(result.Problems, p => p.Contains("is unsupported", StringComparison.Ordinal));
     }
 
     [Fact]

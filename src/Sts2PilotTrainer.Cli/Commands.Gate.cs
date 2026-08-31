@@ -25,9 +25,15 @@ internal static partial class Commands
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
         Directory.CreateDirectory(outDir);
+        var manifest = ManifestJson.Load(manifestPath);
 
         var conditions = new List<Condition>
         {
+            new(
+                "publication-source",
+                "Publication evidence comes from a VOD, never an engine-generated fixture.",
+                manifest.Source.Kind == "vod"),
+
             Check("provenance",
                 "The recording is of the run it claims, from that run's start.",
                 SelfProcess.Run("validate", manifestPath, "--show-rejections", "--out", outDir)),
@@ -49,7 +55,7 @@ internal static partial class Commands
                 SelfProcess.Run("negative-controls", manifestPath, "--out", outDir)),
         };
 
-        Console.WriteLine($"manifest : {ManifestJson.Load(manifestPath).RunId}");
+        Console.WriteLine($"manifest : {manifest.RunId}");
         Console.WriteLine();
         foreach (var condition in conditions)
         {

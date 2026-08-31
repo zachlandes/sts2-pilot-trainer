@@ -31,7 +31,11 @@ internal static partial class Commands
         return result.Matches ? 0 : 1;
     }
 
-    internal static int Replay(string[] args)
+    internal static int Replay(string[] args) => Replay(args, lineReplay: false);
+
+    internal static int ReplayLine(string[] args) => Replay(args, lineReplay: true);
+
+    private static int Replay(string[] args, bool lineReplay)
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var manifest = ManifestJson.Load(manifestPath);
@@ -41,7 +45,13 @@ internal static partial class Commands
             : (int?)null;
 
         var progress = Enum.Parse<PlayerProgress>(Args.Value(args, "--progress") ?? "AllUnlocked", ignoreCase: true);
-        var outcome = Arbiter.Run(manifest, stopAfter, progress);
+        var lineFromSeq = lineReplay
+            ? int.Parse(
+                Args.Value(args, "--line-from")
+                ?? throw new ManifestException("replay-line needs --line-from <seq>."),
+                System.Globalization.CultureInfo.InvariantCulture)
+            : (int?)null;
+        var outcome = Arbiter.Run(manifest, stopAfter, progress, lineFromSeq);
         var report = outcome.Report;
 
         Console.WriteLine($"manifest       : {manifest.RunId}");

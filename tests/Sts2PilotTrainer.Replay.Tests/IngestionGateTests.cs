@@ -137,6 +137,30 @@ public class RunSummaryGateTests
     }
 
     [Fact]
+    public void RejectsASummaryAtTheOpeningObservation()
+    {
+        var result = ManifestValidator.Validate(WithSummary(SummaryAt(9000)));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("must occur after every opening observation", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsASummaryFactFromADifferentTimestamp()
+    {
+        var summary = Fixtures.RunSummary() with
+        {
+            Seed = Fact<string>.Observed(
+                "SFXT47K77RFK", FactEvidence.AtVideoTime(2046000, "different frame")),
+        };
+
+        var result = ManifestValidator.Validate(WithSummary(summary));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("does not match the summary checkpoint", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsASummaryThatDoesNotSayWhatItLeftOut()
     {
         // The game mode is not on this screen. An unstated absence reads as a value
@@ -153,6 +177,24 @@ public class RunSummaryGateTests
     {
         var manifest = Fixtures.ValidManifest();
         return manifest with { Source = manifest.Source with { RunSummary = summary } };
+    }
+
+    private static RunSummaryObservation SummaryAt(int timestamp)
+    {
+        var summary = Fixtures.RunSummary();
+        return summary with
+        {
+            VideoTimeMs = timestamp,
+            Seed = Fact<string>.Observed(summary.Seed.Value, FactEvidence.AtVideoTime(timestamp, "summary")),
+            BuildVersion = Fact<string>.Observed(summary.BuildVersion.Value, FactEvidence.AtVideoTime(timestamp, "summary")),
+            BuildDateUtc = Fact<string>.Observed(summary.BuildDateUtc.Value, FactEvidence.AtVideoTime(timestamp, "summary")),
+            ContentHash = Fact<string>.Observed(summary.ContentHash.Value, FactEvidence.AtVideoTime(timestamp, "summary")),
+            Ascension = Fact<int>.Observed(summary.Ascension.Value, FactEvidence.AtVideoTime(timestamp, "summary")),
+            FloorsClimbed = Fact<int>.Observed(summary.FloorsClimbed.Value, FactEvidence.AtVideoTime(timestamp, "summary")),
+            PlayerMaxHp = Fact<int>.Observed(summary.PlayerMaxHp.Value, FactEvidence.AtVideoTime(timestamp, "summary")),
+            DeckSize = Fact<int>.Observed(summary.DeckSize.Value, FactEvidence.AtVideoTime(timestamp, "summary")),
+            RelicCount = Fact<int>.Observed(summary.RelicCount.Value, FactEvidence.AtVideoTime(timestamp, "summary")),
+        };
     }
 }
 

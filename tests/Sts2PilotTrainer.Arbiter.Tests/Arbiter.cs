@@ -46,26 +46,11 @@ internal static class Arbiter
     internal static string MapObservation =>
         Path.Combine(RepoRoot, "manifests", "navegreed-OJ-6QXhNgdg.map-observation.json");
 
-    internal static string VanillaReplayFixture()
+    internal static string SyntheticReplayFixture()
     {
-        var path = Path.Combine(RepoRoot, "build", "test-scratch", "vanilla-replay-fixture.json");
+        var path = Path.Combine(RepoRoot, "build", "test-scratch", "synthetic-engine.replay.json");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var manifest = ManifestJson.Load(Manifest);
-        ManifestJson.Save(
-            manifest with
-            {
-                RunId = "synthetic-vanilla-engine-fixture",
-                Environment = manifest.Environment with
-                {
-                    Mods = Fact<ModEnvironment>.Declared(new ModEnvironment
-                    {
-                        Name = "vanilla",
-                        ReportedCount = 0,
-                        Mods = [],
-                    }),
-                },
-            },
-            path);
+        ManifestJson.Save(Sts2PilotTrainer.Replay.SyntheticReplayFixture.Create(), path);
         return path;
     }
 

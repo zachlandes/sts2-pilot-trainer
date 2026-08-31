@@ -30,7 +30,12 @@ public static partial class ManifestValidator
     [GeneratedRegex(@"^\d+$")]
     private static partial Regex ContentHashPattern { get; }
 
-    public static ValidationResult Validate(ReplayManifest manifest)
+    public static ValidationResult Validate(ReplayManifest manifest) => Validate(manifest, null);
+
+    public static ValidationResult ValidateLineReplay(ReplayManifest manifest, int lineFromSeq) =>
+        Validate(manifest, lineFromSeq);
+
+    private static ValidationResult Validate(ReplayManifest manifest, int? lineFromSeq)
     {
         var problems = new List<string>();
 
@@ -38,11 +43,27 @@ public static partial class ManifestValidator
         var videoDurationMs = manifest.Source.Video is { DurationSeconds: > 0 } video
             ? checked(video.DurationSeconds * 1000)
             : 0;
-        ValidateEnvironment(manifest.Environment, videoDurationMs, problems);
+        ValidateEnvironment(manifest.Environment, manifest.Source.Kind, videoDurationMs, problems);
+        if (manifest.Source.Synthetic is { } synthetic &&
+            !string.Equals(
+                synthetic.GeneratedBuild, manifest.Environment.BuildVersion.Value, StringComparison.Ordinal))
+        {
+            problems.Add(
+                "source.synthetic.generated_build must match environment.build_version for the pinned fixture.");
+        }
         ValidateRunStart(manifest.Source, videoDurationMs, problems);
         ValidateRunSummary(manifest, videoDurationMs, problems);
-        ValidateActions(manifest.Actions, videoDurationMs, problems);
-        ValidateCheckpoints(manifest.Checkpoints, manifest.Actions, videoDurationMs, problems);
+        ValidateActions(manifest.Actions, manifest.Source.Kind, videoDurationMs, lineFromSeq, problems);
+        ValidateCheckpoints(
+            manifest.Checkpoints, manifest.Actions, manifest.Source.Kind, videoDurationMs, problems);
+
+        if (lineFromSeq is { } start &&
+            (start <= 0 || start >= manifest.Actions.Count || manifest.Checkpoints.Any(c => c.AfterSeq >= start)))
+        {
+            problems.Add(
+                "line replay must retain a validated prefix, append at least one line action, and carry no " +
+                "checkpoints into the hypothetical suffix.");
+        }
 
         if (string.IsNullOrWhiteSpace(manifest.RunId))
         {
@@ -52,7 +73,8 @@ public static partial class ManifestValidator
         return new ValidationResult(problems.Count == 0, problems);
     }
 
-    private static void ValidateEnvironment(EnvironmentIdentity env, int videoDurationMs, List<string> problems)
+    private static void ValidateEnvironment(
+        EnvironmentIdentity env, string sourceKind, int videoDurationMs, List<string> problems)
     {
         if (!BuildVersionPattern.IsMatch(env.BuildVersion.Value))
         {
@@ -140,6 +162,33 @@ public static partial class ManifestValidator
         ValidateInputFact(env.Character, "environment.character", videoDurationMs, problems);
         ValidateInputFact(env.Acts, "environment.acts", videoDurationMs, problems);
         ValidateInputFact(env.Mods, "environment.mods", videoDurationMs, problems);
+
+        if (sourceKind == "synthetic-engine")
+        {
+            foreach (var (name, source) in new (string, FactSource)[]
+                     {
+                         ("build_version", env.BuildVersion.Source),
+                         ("build_date_utc", env.BuildDateUtc.Source),
+                         ("game_mode", env.GameMode.Source),
+                         ("seed", env.Seed.Source),
+                         ("content_hash", env.ContentHash.Source),
+                         ("ascension", env.Ascension.Source),
+                         ("character", env.Character.Source),
+                         ("acts", env.Acts.Source),
+                         ("mods", env.Mods.Source),
+                     })
+            {
+                if (source != FactSource.Declared)
+                {
+                    problems.Add($"environment.{name} in a synthetic fixture must be declared.");
+                }
+            }
+
+            if (mods.ReportedCount != 0 || mods.Mods.Count != 0 || mods.HeadlessParityWaiver is not null)
+            {
+                problems.Add("a synthetic-engine fixture must declare the unmodded headless environment.");
+            }
+        }
     }
 
     private static void ValidateParityWaiver(HeadlessParityWaiver waiver, List<string> problems)
@@ -204,18 +253,50 @@ public static partial class ManifestValidator
 
     private static void ValidateSource(SourceProvenance source, List<string> problems)
     {
-        if (source.Kind != "vod")
+        if (source.Kind is not ("vod" or "synthetic-engine"))
         {
-            problems.Add($"source.kind '{source.Kind}' is unsupported. This milestone accepts only 'vod'.");
+            problems.Add(
+                $"source.kind '{source.Kind}' is unsupported. This milestone accepts 'vod' and " +
+                "'synthetic-engine'.");
         }
 
-        if (source.Video is null)
+        if (source.Kind == "vod")
         {
-            problems.Add("source.video is absent, so no reader could re-check any observation.");
+            if (source.Video is null)
+            {
+                problems.Add("source.video is absent, so no reader could re-check any observation.");
+            }
+            else if (source.Video.DurationSeconds <= 0)
+            {
+                problems.Add("source.video.duration_s must be positive so observation timestamps can be bounded.");
+            }
+
+            if (source.Synthetic is not null)
+            {
+                problems.Add("source.synthetic must be absent for a VOD manifest.");
+            }
         }
-        else if (source.Video.DurationSeconds <= 0)
+        else if (source.Kind == "synthetic-engine")
         {
-            problems.Add("source.video.duration_s must be positive so observation timestamps can be bounded.");
+            if (source.Video is not null || source.RunStart is not null || source.RunSummary is not null)
+            {
+                problems.Add("a synthetic-engine source cannot carry video, run-start, or run-summary evidence.");
+            }
+
+            if (source.Synthetic is not { } synthetic ||
+                string.IsNullOrWhiteSpace(synthetic.FixtureId) ||
+                synthetic.FixtureVersion != 1 ||
+                synthetic.Generator != "sts2-pilot-trainer" ||
+                string.IsNullOrWhiteSpace(synthetic.GeneratedBuild))
+            {
+                problems.Add(
+                    "source.synthetic must identify a version-1 sts2-pilot-trainer engine fixture and its build.");
+            }
+
+            if (source.ExtractionMethod != "engine-generated")
+            {
+                problems.Add("a synthetic-engine source must use extraction_method 'engine-generated'.");
+            }
         }
 
         if (string.IsNullOrWhiteSpace(source.Coverage))
@@ -312,6 +393,24 @@ public static partial class ManifestValidator
         RequireObservedVideoFact(summary.DeckSize, "source.run_summary.deck_size", videoDurationMs, problems);
         RequireObservedVideoFact(summary.RelicCount, "source.run_summary.relic_count", videoDurationMs, problems);
 
+        foreach (var (name, factTimestamp) in SummaryFactTimestamps(summary))
+        {
+            if (factTimestamp != summary.VideoTimeMs)
+            {
+                problems.Add(
+                    $"source.run_summary.{name} timestamp {factTimestamp}ms does not match the summary " +
+                    $"checkpoint timestamp {summary.VideoTimeMs}ms.");
+            }
+        }
+
+        var latestEarlierTimestamp = EarlierVideoTimestamps(manifest).DefaultIfEmpty(-1).Max();
+        if (summary.VideoTimeMs <= latestEarlierTimestamp)
+        {
+            problems.Add(
+                $"source.run_summary at {summary.VideoTimeMs}ms must occur after every opening observation " +
+                $"and action; the latest earlier evidence is at {latestEarlierTimestamp}ms.");
+        }
+
         var env = manifest.Environment;
         foreach (var (field, atStart, atEnd) in new[]
                  {
@@ -345,7 +444,9 @@ public static partial class ManifestValidator
         }
     }
 
-    private static void ValidateActions(IReadOnlyList<ActionRecord> actions, int videoDurationMs, List<string> problems)
+    private static void ValidateActions(
+        IReadOnlyList<ActionRecord> actions, string sourceKind, int videoDurationMs,
+        int? lineFromSeq, List<string> problems)
     {
         if (actions.Count == 0)
         {
@@ -366,6 +467,38 @@ public static partial class ManifestValidator
 
         foreach (var action in actions)
         {
+            var isLineAction = lineFromSeq is { } start && action.Seq >= start;
+            if (isLineAction)
+            {
+                if (action.Source == FactSource.Inferred && string.IsNullOrWhiteSpace(action.Evidence?.Note))
+                {
+                    problems.Add($"actions[{action.Seq}] ({action.Verb}) inferred line action has no reasoning.");
+                }
+                else if (action.Source == FactSource.Observed &&
+                         (action.Evidence?.VideoTimeMs is not { } lineTimestamp || lineTimestamp < 0))
+                {
+                    problems.Add(
+                        $"actions[{action.Seq}] ({action.Verb}) observed line action has no valid timestamp.");
+                }
+                else if (action.Source is not (FactSource.Observed or FactSource.Inferred))
+                {
+                    problems.Add(
+                        $"actions[{action.Seq}] ({action.Verb}) line action must be observed or inferred.");
+                }
+                continue;
+            }
+
+            if (sourceKind == "synthetic-engine")
+            {
+                if (action.Source != FactSource.Declared || action.Evidence is not null)
+                {
+                    problems.Add(
+                        $"actions[{action.Seq}] ({action.Verb}) in a synthetic fixture must be declared " +
+                        "and carry no video evidence.");
+                }
+                continue;
+            }
+
             if (action.Source != FactSource.Observed)
             {
                 problems.Add($"actions[{action.Seq}] ({action.Verb}) must be source=observed for a VOD replay.");
@@ -387,7 +520,7 @@ public static partial class ManifestValidator
 
     private static void ValidateCheckpoints(
         IReadOnlyList<Checkpoint> checkpoints, IReadOnlyList<ActionRecord> actions,
-        int videoDurationMs, List<string> problems)
+        string sourceKind, int videoDurationMs, List<string> problems)
     {
         if (checkpoints.Count == 0)
         {
@@ -419,8 +552,77 @@ public static partial class ManifestValidator
 
             foreach (var (field, fact) in checkpoint.Expect)
             {
-                RequireObservedVideoFact(
-                    fact, $"checkpoint '{checkpoint.Id}' field '{field}'", videoDurationMs, problems);
+                if (sourceKind == "synthetic-engine")
+                {
+                    if (fact.Source != FactSource.Engine || fact.Evidence is not null)
+                    {
+                        problems.Add(
+                            $"checkpoint '{checkpoint.Id}' field '{field}' in a synthetic fixture must be " +
+                            "engine-produced and carry no video evidence.");
+                    }
+                }
+                else
+                {
+                    RequireObservedVideoFact(
+                        fact, $"checkpoint '{checkpoint.Id}' field '{field}'", videoDurationMs, problems);
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<(string Name, int Timestamp)> SummaryFactTimestamps(
+        RunSummaryObservation summary)
+    {
+        foreach (var (name, timestamp) in new (string Name, int? Timestamp)[]
+                 {
+                     ("seed", summary.Seed.Evidence?.VideoTimeMs),
+                     ("build_version", summary.BuildVersion.Evidence?.VideoTimeMs),
+                     ("build_date_utc", summary.BuildDateUtc.Evidence?.VideoTimeMs),
+                     ("content_hash", summary.ContentHash.Evidence?.VideoTimeMs),
+                     ("ascension", summary.Ascension.Evidence?.VideoTimeMs),
+                     ("floors_climbed", summary.FloorsClimbed.Evidence?.VideoTimeMs),
+                     ("player_max_hp", summary.PlayerMaxHp.Evidence?.VideoTimeMs),
+                     ("deck_size", summary.DeckSize.Evidence?.VideoTimeMs),
+                     ("relic_count", summary.RelicCount.Evidence?.VideoTimeMs),
+                 })
+        {
+            if (timestamp is { } value) yield return (name, value);
+        }
+    }
+
+    private static IEnumerable<int> EarlierVideoTimestamps(ReplayManifest manifest)
+    {
+        var env = manifest.Environment;
+        foreach (var timestamp in new int?[]
+                 {
+                     env.BuildVersion.Evidence?.VideoTimeMs,
+                     env.BuildDateUtc.Evidence?.VideoTimeMs,
+                     env.GameMode.Evidence?.VideoTimeMs,
+                     env.Seed.Evidence?.VideoTimeMs,
+                     env.ContentHash.Evidence?.VideoTimeMs,
+                     env.Ascension.Evidence?.VideoTimeMs,
+                     env.Character.Evidence?.VideoTimeMs,
+                     env.Acts.Evidence?.VideoTimeMs,
+                     env.Mods.Evidence?.VideoTimeMs,
+                     manifest.Source.RunStart?.FirstObservedRunTimeSeconds.Evidence?.VideoTimeMs,
+                     manifest.Source.RunStart?.FirstObservedFloor.Evidence?.VideoTimeMs,
+                     manifest.Source.RunStart?.EnteredFromRunHistory.Evidence?.VideoTimeMs,
+                     manifest.Source.RunStart?.ResumeModalSeen.Evidence?.VideoTimeMs,
+                 })
+        {
+            if (timestamp is { } value) yield return value;
+        }
+
+        foreach (var action in manifest.Actions)
+        {
+            if (action.Evidence?.VideoTimeMs is { } timestamp) yield return timestamp;
+        }
+
+        foreach (var checkpoint in manifest.Checkpoints)
+        {
+            foreach (var fact in checkpoint.Expect.Values)
+            {
+                if (fact.Evidence?.VideoTimeMs is { } timestamp) yield return timestamp;
             }
         }
     }

@@ -80,6 +80,8 @@ internal static class Fixtures
         ],
     };
 
+    internal static ReplayManifest SyntheticManifest() => SyntheticReplayFixture.Create();
+
     internal static ModEnvironment ModEnvironment(int reportedCount = 1) => new()
     {
         Name = "test-environment",

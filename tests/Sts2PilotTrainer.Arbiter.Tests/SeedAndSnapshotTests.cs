@@ -86,7 +86,7 @@ public class SnapshotLineTests
         var cacheDir = Path.Combine(outDir, "snapshots");
 
         var result = Arbiter.Run(
-            "snapshot-lines", Arbiter.VanillaReplayFixture(),
+            "snapshot-lines", Arbiter.SyntheticReplayFixture(),
             "--at", "1",
             "--line", Path.Combine(Arbiter.RepoRoot, "manifests", "lines", "streamer.line.json"),
             "--line", Path.Combine(Arbiter.RepoRoot, "manifests", "lines", "aggressive.line.json"),
@@ -126,19 +126,19 @@ public class SnapshotLineTests
         };
 
         var first = Arbiter.Run(
-            "snapshot-lines", Arbiter.VanillaReplayFixture(), "--at", "1",
+            "snapshot-lines", Arbiter.SyntheticReplayFixture(), "--at", "1",
             "--line", lines[0], "--line", lines[1], "--out", outDir, "--cache", cacheDir);
         Assert.Contains("materialised now", first.Output, StringComparison.Ordinal);
 
         var second = Arbiter.Run(
-            "snapshot-lines", Arbiter.VanillaReplayFixture(), "--at", "1",
+            "snapshot-lines", Arbiter.SyntheticReplayFixture(), "--at", "1",
             "--line", lines[0], "--line", lines[1], "--out", outDir, "--cache", cacheDir);
         Assert.Contains("cache hit", second.Output, StringComparison.Ordinal);
 
         // Changing an action before the snapshot point must produce a different key,
         // so the cached snapshot cannot be served for a run that would not produce it.
         var altered = Path.Combine(outDir, "altered.json");
-        var manifest = ManifestJson.Load(Arbiter.VanillaReplayFixture());
+        var manifest = ManifestJson.Load(Arbiter.SyntheticReplayFixture());
         var move = manifest.Actions.Single(a => a.Verb == ActionVerb.MapMove);
         var args = new SortedDictionary<string, string>(StringComparer.Ordinal);
         foreach (var (k, v) in move.Args) args[k] = v;

@@ -16,9 +16,12 @@ public static class Arbiter
     public const string Version = "sts2-pilot-trainer/arbiter/0.1.0";
 
     public static ArbiterOutcome Run(
-        ReplayManifest manifest, int? stopAfterSeq = null, PlayerProgress progress = PlayerProgress.AllUnlocked)
+        ReplayManifest manifest, int? stopAfterSeq = null,
+        PlayerProgress progress = PlayerProgress.AllUnlocked, int? lineFromSeq = null)
     {
-        var validation = ManifestValidator.Validate(manifest);
+        var validation = lineFromSeq is { } start
+            ? ManifestValidator.ValidateLineReplay(manifest, start)
+            : ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
         {
             throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
@@ -92,7 +95,7 @@ public static class Arbiter
         var replayedActions = stopAfterSeq is { } stop
             ? manifest.Actions.Where(a => a.Seq <= stop).ToList()
             : manifest.Actions;
-        var isPartial = replayedActions.Count < manifest.Actions.Count;
+        var isPartial = lineFromSeq is not null || replayedActions.Count < manifest.Actions.Count;
         var failed = results.Where(r => !r.Passed).ToList();
         foreach (var result in failed)
         {
@@ -104,7 +107,12 @@ public static class Arbiter
             }
         }
 
-        if (isPartial)
+        if (lineFromSeq is { } lineStart)
+        {
+            diagnostics.Add(
+                $"Hypothetical line replay begins at action {lineStart}; this result cannot verify the source manifest.");
+        }
+        else if (isPartial)
         {
             diagnostics.Add(
                 $"Partial replay stopped after action {stopAfterSeq}; " +
