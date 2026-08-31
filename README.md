@@ -2,12 +2,10 @@
 
 A deterministic replay arbiter for Slay the Spire 2.
 
-Given a video of somebody's run, it reconstructs the ordered history of what they
-did, replays it through the real shipped game engine, and checks the result against
-what the video actually shows. If everything agrees, the run has been reproduced
-exactly — including the hidden state no video can show, like the position of every
-random-number stream and the order of the draw pile. If anything disagrees, it says
-which field, at which moment, and stops.
+Given a video of somebody's run, it reconstructs the ordered history of what they did, replays it through the real shipped game engine, and checks the result against what the video actually shows.
+If everything agrees, the run's verified gameplay history has been reproduced exactly — including hidden gameplay state no video can show, like the position of every random-number stream and the order of the draw pile.
+This does not identify an unobserved source configuration when multiple configurations reproduce that history; the report states that limit.
+If anything disagrees, it says which field, at which moment, and stops.
 
 This is the foundation for a training tool: once a mid-run position can be
 reconstructed exactly, it can be handed to a player as a puzzle, and two different
