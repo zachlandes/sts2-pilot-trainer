@@ -7,6 +7,11 @@ public static class SyntheticFixtureGenerator
     public static ReplayManifest Generate()
     {
         var identity = GameIdentity.Read();
+        if (identity.BuildVersion != "v0.111.0")
+        {
+            throw new EngineException(
+                $"Synthetic fixture generation supports v0.111.0, not {identity.BuildVersion}.");
+        }
         const string seed = "P1L0TTRA1NER";
         string[] acts = ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"];
         var session = new GameSession();

@@ -21,6 +21,15 @@ public class MapObservationTests
     }
 
     [Fact]
+    public void RejectsAnObservationWithNoTopologyEvidence()
+    {
+        var comparison = Observation().CompareTo(Topology(16, 7, "1|0|Monster"));
+
+        Assert.False(comparison.Matches);
+        Assert.Contains(comparison.Problems, problem => problem.Contains("no nodes", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsANodeOfTheWrongType()
     {
         var observation = Observation("1|0|Monster");

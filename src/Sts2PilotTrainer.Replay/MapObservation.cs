@@ -76,6 +76,12 @@ public sealed record MapObservation
                 $"Map observation schema '{observation.Schema}' is not '{CurrentSchema}'. Refusing to read it partially.");
         }
 
+        if (observation.Nodes.Count == 0 || observation.Frames.SelectMany(frame => frame.RowsSettled).Distinct().Any() == false)
+        {
+            throw new ManifestException(
+                "Map observation has no topology evidence. At least one node and one observed row are required.");
+        }
+
         return observation;
     }
 
@@ -90,6 +96,16 @@ public sealed record MapObservation
     public MapComparison CompareTo(MapTopology generated)
     {
         var problems = new List<string>();
+
+        if (Nodes.Count == 0)
+        {
+            problems.Add("observation contains no nodes, so it cannot verify a generated map");
+        }
+
+        if (Frames.SelectMany(frame => frame.RowsSettled).Distinct().Any() == false)
+        {
+            problems.Add("observation contains no observed rows");
+        }
 
         if (generated.Rows != Rows || generated.Columns != Columns)
         {

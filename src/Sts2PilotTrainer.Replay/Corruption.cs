@@ -35,13 +35,12 @@ public static class Corruption
         new("reorder-plays",
             "Plays the same two cards in the opposite order, adjusting hand indices so both remain valid.",
             VideoOnlyVerdict.Undetected,
-            "Energy spent is unchanged (1 + 2 = 2 + 1), the hand still goes from five cards to three, and the " +
-            "damage arithmetic is untouched. Nothing measurable in a frame distinguishes the two orders - yet " +
-            "order is exactly what the game's run-persistent RNG streams are sensitive to.",
+            "The same cards are played, aggregate energy and hand counts are unchanged, and the final visible " +
+            "damage and block totals agree. The intermediate state and hidden pile order still depend on order.",
             ReorderPlays),
 
         new("substitute-same-cost",
-            "Replaces the Defend with the Strike beside it. Both cost 1.",
+            "Replaces the final played card with a different same-cost card selected by the control.",
             VideoOnlyVerdict.Undetected,
             "Energy conservation and hand accounting both balance, because the substitute costs the same. The " +
             "damage arithmetic balances too unless the enemy's health is read frame by frame, which the earlier " +
@@ -49,19 +48,18 @@ public static class Corruption
             SubstituteSameCost),
 
         new("omit-play",
-            "Drops the Defend entirely.",
+            "Drops the final card play entirely.",
             VideoOnlyVerdict.Detected,
-            "Energy would be left at 1 with nothing to account for it, and the hand would end at four cards " +
-            "instead of three. Included as a control on the control: an arbiter that rejected only the subtle " +
+            "Energy and hand counts no longer balance against the declared line. Included as a control on the " +
+            "control: an arbiter that rejected only the subtle " +
             "corruptions and let this one through would be broken in an interesting way.",
             OmitPlay),
 
         new("wrong-opening-choice",
             "Takes a different blessing at the run's opening event.",
             VideoOnlyVerdict.Detected,
-            "The chosen blessing changes maximum health on screen within seconds. Included because it corrupts " +
-            "the history far from the turn being checked, which tests that a divergence is caught where it " +
-            "surfaces rather than where it happened.",
+            "The different opening option changes generated setup before combat. Included because it corrupts " +
+            "the history far from the turn being checked, which tests that divergence is caught where it surfaces.",
             WrongOpeningChoice),
     ];
 

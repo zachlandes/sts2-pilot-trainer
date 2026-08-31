@@ -195,7 +195,7 @@ public static partial class ManifestValidator
     {
         problems.Add(
             "environment.mods.headless_parity_waiver is self-attested and cannot establish parity. " +
-            "No independently verified BaseLib v3.4.5 A/B report is available for this milestone.");
+            "No full source-mod-set parity report is accepted by this milestone.");
 
         if (string.IsNullOrWhiteSpace(waiver.Justification) ||
             string.IsNullOrWhiteSpace(waiver.ExecutableCommand))

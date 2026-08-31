@@ -275,25 +275,14 @@ final state digest : sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad
 action history hash: sha256:a669af21fa7b99e90e035e4e777772074fb198a4873581edeb65e5f0adb344a5
 ```
 
-Three of those lines are worth stopping on.
+Three fields show what the synthetic fixture pins.
 
-**The hand, in order.** `Strike, Hellraiser, Strike, Bash, Defend` — and there are
-two Hellraisers in this deck because the opening blessing transforms one Strike and
-one Defend into *random* cards, and this run famously drew the same rare card twice.
-Reproducing that is reproducing a specific random outcome, not a deterministic
-consequence of the seed.
+**The hand, in order.** `Defend, Strike, Defend, Strike, Strike` is generated from seed `P1L0TTRA1NER`, which appears nowhere in the VOD artifacts.
 
-**The enemy's telegraphed intent, `Attack:9+Debuff`.** This is the one checkpoint
-the engine prompted a second look at. It was first transcribed as `Attack:9` — the
-number and the attack arrow were read, and the debuff glyph beside them was missed.
-The engine reported a second intent component, that frame was re-read at source
-resolution, and the glyph is plainly there. The manifest records that sequence in
-the checkpoint's own note, because a reader should be able to weigh it. It is
-corroborated independently: the player is carrying Weak at the start of turn 2.
+**The enemy's telegraphed intent, `Attack:4`.** The generated first room contains a Fuzzy Wurm Crawler at 57 health.
 
-**`combat.player_hp 60` after ending the turn.** That is the whole enemy turn
-agreeing. Intent 9, less the 5 block from the Defend, is the 4 damage the video
-shows.
+**`combat.player_hp 80` after ending the turn.** The generated enemy does not damage the player on this turn, while the played Strike moves the enemy from 57 to 51 health.
+These are pinned engine outputs for machinery tests, not observations from the source video.
 
 ## Determinism
 
@@ -339,28 +328,28 @@ baseline (uncorrupted): VERIFIED
 
 reorder-plays
   corruption   : Plays the same two cards in the opposite order, adjusting hand indices so both remain valid.
-  video-only   : UNDETECTED - Energy spent is unchanged (1 + 2 = 2 + 1), the hand still goes from five cards to three, and the damage arithmetic is untouched. Nothing measurable in a frame distinguishes the two orders - yet order is exactly what the game's run-persistent RNG streams are sensitive to.
+  video-only   : UNDETECTED - The same cards are played, aggregate energy and hand counts are unchanged, and the final visible damage and block totals agree. The intermediate state and hidden pile order still depend on order.
   arbiter      : REJECTED
   first divergence: combat.block                 observed=5                      engine=0
   end state       : differs from the uncorrupted run
 
 substitute-same-cost
-  corruption   : Replaces the Defend with the Strike beside it. Both cost 1.
+  corruption   : Replaces the final played card with a different same-cost card selected by the control.
   video-only   : UNDETECTED - Energy conservation and hand accounting both balance, because the substitute costs the same. The damage arithmetic balances too unless the enemy's health is read frame by frame, which the earlier video-only pipeline did not do.
   arbiter      : REJECTED
   first divergence: combat.enemy.0.hp            observed=51                     engine=57
   end state       : differs from the uncorrupted run
 
 omit-play
-  corruption   : Drops the Defend entirely.
-  video-only   : DETECTED - Energy would be left at 1 with nothing to account for it, and the hand would end at four cards instead of three. Included as a control on the control: an arbiter that rejected only the subtle corruptions and let this one through would be broken in an interesting way.
+  corruption   : Drops the final card play entirely.
+  video-only   : DETECTED - Energy and hand counts no longer balance against the declared line. Included as a control on the control: an arbiter that rejected only the subtle corruptions and let this one through would be broken in an interesting way.
   arbiter      : REJECTED
   first divergence: combat.enemy.0.hp            observed=51                     engine=57
   end state       : differs from the uncorrupted run
 
 wrong-opening-choice
   corruption   : Takes a different blessing at the run's opening event.
-  video-only   : DETECTED - The chosen blessing changes maximum health on screen within seconds. Included because it corrupts the history far from the turn being checked, which tests that a divergence is caught where it surfaces rather than where it happened.
+  video-only   : DETECTED - The different opening option changes generated setup before combat. Included because it corrupts the history far from the turn being checked, which tests that divergence is caught where it surfaces.
   arbiter      : REJECTED
   first divergence: combat.hand                  observed=CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD engine=CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD
   end state       : differs from the uncorrupted run
@@ -368,16 +357,9 @@ wrong-opening-choice
 all 4 corrupted histories were rejected; the uncorrupted one verified
 ```
 
-Read the `end state` line on the reordering. It is **identical to the uncorrupted
-run**: for these two particular cards, playing them in the other order lands in the
-same place, so comparing only the run's final digest would have accepted it. What
-caught it was a checkpoint bound to a moment *inside* the turn — energy was 2 where
-the video shows 1.
-
-That is a real limit and it is pinned by a test so it cannot quietly stop being
-true. Digest comparison alone is not sufficient; checkpoints need to be dense rather
-than terminal. An arbiter that only compared end states would have a blind spot
-exactly where the video-only checks have theirs.
+The reordering first diverges at the bound `combat.block` checkpoint: Defend has not yet run in the reordered line.
+Its final canonical state also differs because the discard pile preserves play order.
+The checkpoint identifies the first divergence instead of waiting for that hidden end-state difference.
 
 ## A verified snapshot, and two lines from it
 
@@ -447,12 +429,9 @@ which line is better is a question about a game, and answering it here would tur
 measurement into an opinion. A test asserts the report contains no score, rank or
 verdict field.
 
-The interesting differences are visible without any judgement being offered. The
-streamer's line ends at 60 health with the enemy on 34 and a Hellraiser power in
-play; the other ends at 55 with the enemy on 25 and Vulnerable applied. Note
-`run.rng.CombatTargets` advancing by 2 on the first line only: that is Hellraiser
-playing drawn Strikes at a random enemy, consuming a random stream the other line
-never touches. Two lines from the same position are not in the same fight for long.
+The current fixture's two lines reach the same visible totals and differ in the ordered discard pile.
+That is an objective state delta: `Defend, Strike, ...` in the declared order and `Strike, Defend, ...` in the reordered line.
+No score or recommendation is attached.
 
 ## The tests
 
@@ -471,9 +450,30 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    88, Skipped:     0, Total:    88 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    89, Skipped:     0, Total:    89 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
 Passed!  - Failed:     0, Passed:    21, Skipped:     0, Total:    21 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
+
+## BaseLib `PowerCmd.Apply` continuation probe
+
+The source environment's BaseLib risk is tested against the exact v3.4.5 release DLL, pinned by SHA-256.
+The probe passes an incomplete original task through the released `SelfApplyDebuffPatch.Postfix`, compares canonical state, every RNG stream, replay events, prepared-assembly hashes, seed, action history, and patch IL identity against an unwrapped baseline, then runs a state-changing negative control.
+
+```bash
+./scripts/fetch-baselib-parity.sh && ./scripts/arbiter baselib-parity build/parity/BaseLib.dll --out build/evidence/baselib-powercmd-parity.json
+```
+
+```output
+BaseLib.dll: OK
+BaseLib.json: OK
+BaseLib PowerCmd continuation residual: PASS
+VOD publication parity: NOT ESTABLISHED
+report: build/evidence/baselib-powercmd-parity.json
+```
+
+The [typed report](baselib-powercmd-parity.json) closes this bounded continuation residual and demonstrates that the instrument detects a changed game state.
+It does not load all three source mods or invoke the retail `PowerCmd.Apply` target through Harmony, so it cannot establish full source-environment parity.
+The publication gate therefore remains closed.
 
 ## The gate
 
@@ -589,7 +589,7 @@ This proves the replay spine against a controlled fixture, not parity with the V
   not. Custom mode is not ruled out by direct evidence. It is the weakest link in the
   environment identity, and the manifest marks it as an inference rather than an
   observation.
-- **Parity with the source environment's three mods is unproved.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume mod — and the manifest carries a risk assessment for each. The content hash cannot cover every behaviour patch. BaseLib v3.4.5's `PowerCmd.Apply` continuation still needs a controlled retail-versus-headless A/B over replay events and canonical checksums, so the publication gate refuses this manifest.
+- **Parity with the source environment's three mods is unproved.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume mod — and the manifest carries a risk assessment for each. The content hash cannot cover every behaviour patch. The bounded BaseLib v3.4.5 continuation probe passes, but it does not load the complete source mod set or execute the retail target through Harmony, so the publication gate refuses this manifest.
 - **The mod identities themselves are not from the video.** It names no mod
   anywhere; the overlay gives only a count. They came from a separate investigation
   and the manifest marks them as an inference rather than an observation.

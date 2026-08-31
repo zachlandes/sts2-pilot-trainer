@@ -89,7 +89,9 @@ because an unidentified mod is exactly the gap the hash cannot close.
 Naming them does not establish that they changed nothing.
 What it buys is the ability to reason about each one — and, for the dangerous one, to write a check.
 The headless host therefore refuses this modded source environment.
-A matching content hash and manifest-authored waiver values cannot clear that refusal; BaseLib v3.4.5's `PowerCmd.Apply` continuation still needs a controlled retail-versus-headless A/B over replay events and canonical checksums.
+A matching content hash and manifest-authored waiver values cannot clear that refusal.
+The exact BaseLib v3.4.5 continuation probe matches its unwrapped baseline and detects its negative control, but it does not load all three source mods or invoke the retail target through Harmony.
+That bounded result does not establish full environment parity.
 
 ## The resumed-run problem
 

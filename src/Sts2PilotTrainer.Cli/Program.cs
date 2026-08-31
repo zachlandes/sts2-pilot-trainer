@@ -27,6 +27,8 @@ internal static class Program
                 "verify-seed" => Commands.VerifySeed(args[1..]),
                 "synthetic-fixture" => Commands.SyntheticFixture(args[1..]),
                 "generate-synthetic-fixture" => Commands.GenerateSyntheticFixture(args[1..]),
+                "baselib-parity" => Commands.BaseLibParity(args[1..]),
+                "baselib-parity-probe" => Commands.BaseLibParityProbe(args[1..]),
                 "replay" => Commands.Replay(args[1..]),
                 "replay-line" => Commands.ReplayLine(args[1..]),
                 "determinism" => Commands.Determinism(args[1..]),
