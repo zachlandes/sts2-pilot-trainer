@@ -22,44 +22,52 @@ internal static partial class Commands
         var acts = (Args.Value(args, "--acts") ?? "ACT.UNDERDOCKS,ACT.HIVE,ACT.GLORY")
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
+        var summaryArtifact = EvidenceArtifact.Prepare(outDir, "seed-verification-summary.json");
 
         // One candidate per invocation, in its own process: see SelfProcess.
         var single = Args.Value(args, "--seed");
         if (single is not null)
         {
+            RequireCandidate(single);
+            var jsonArtifact = EvidenceArtifact.Prepare(outDir, $"seed-verification-{single}.json");
+            var svgArtifact = EvidenceArtifact.Prepare(outDir, $"seed-verification-{single}.svg");
             return VerifyOne(observationPath, single, Args.Value(args, "--character") ?? "CHARACTER.IRONCLAD",
-                int.Parse(Args.Value(args, "--ascension") ?? "10", System.Globalization.CultureInfo.InvariantCulture),
-                Args.Value(args, "--game-mode") ?? "standard", acts, outDir, Args.Value(args, "--manifest"));
+                ParseAscension(Args.Value(args, "--ascension") ?? "10"),
+                Args.Value(args, "--game-mode") ?? "standard", acts,
+                Args.Value(args, "--manifest"), jsonArtifact, svgArtifact);
         }
 
         var candidates = (Args.Value(args, "--candidates")
                           ?? throw new ManifestException("verify-seed needs --candidates <seed>[,<seed>...] or --seed <seed>."))
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (candidates.Length == 0)
+        {
+            throw new ManifestException("verify-seed needs at least one candidate seed.");
+        }
+        foreach (var candidate in candidates) RequireCandidate(candidate);
+        if (candidates.Distinct(StringComparer.Ordinal).Count() != candidates.Length)
+        {
+            throw new ManifestException("verify-seed candidate seeds must be distinct.");
+        }
+        var candidateArtifacts = candidates.ToDictionary(
+            candidate => candidate,
+            candidate => (
+                Json: EvidenceArtifact.Prepare(outDir, $"seed-verification-{candidate}.json"),
+                Svg: EvidenceArtifact.Prepare(outDir, $"seed-verification-{candidate}.svg")),
+            StringComparer.Ordinal);
         var character = Args.Value(args, "--character") ?? "CHARACTER.IRONCLAD";
         var ascension = Args.Value(args, "--ascension") ?? "10";
-        if (!int.TryParse(ascension, System.Globalization.NumberStyles.Integer,
-                System.Globalization.CultureInfo.InvariantCulture, out var ascensionValue))
-        {
-            throw new ManifestException($"Ascension '{ascension}' is not an Int32 value.");
-        }
+        var ascensionValue = ParseAscension(ascension);
         var gameMode = Args.Value(args, "--game-mode") ?? "standard";
         var manifestPath = Args.Value(args, "--manifest");
         var boundManifest = string.IsNullOrWhiteSpace(manifestPath) ? null : ManifestJson.Load(manifestPath);
         var observationHash = Sha256File(observationPath);
         var manifestHash = boundManifest is null ? null : Sha256File(manifestPath!);
-
-        Directory.CreateDirectory(outDir);
-        var summaryPath = Path.Combine(outDir, "seed-verification-summary.json");
-        if (File.Exists(summaryPath)) File.Delete(summaryPath);
         var results = new List<JsonElement>();
 
         foreach (var candidate in candidates)
         {
-            var path = Path.Combine(outDir, $"seed-verification-{candidate}.json");
-            var svgPath = Path.Combine(outDir, $"seed-verification-{candidate}.svg");
-            if (File.Exists(path)) File.Delete(path);
-            if (File.Exists(svgPath)) File.Delete(svgPath);
-
+            var path = candidateArtifacts[candidate].Json.Path;
             var child = SelfProcess.Run(
                 "verify-seed", observationPath,
                 "--seed", candidate,
@@ -116,7 +124,7 @@ internal static partial class Commands
             results,
         };
 
-        File.WriteAllText(summaryPath, JsonSerializer.Serialize(summary, Json.Indented) + "\n");
+        summaryArtifact.WriteAtomic(JsonSerializer.Serialize(summary, Json.Indented) + "\n");
 
         Console.WriteLine();
         Console.WriteLine($"candidates tested : {candidates.Length}");
@@ -124,14 +132,15 @@ internal static partial class Commands
         Console.WriteLine(resolved
             ? $"resolved seed     : {matching[0]}"
             : "resolved seed     : NOT RESOLVED - see the summary for why");
-        Console.WriteLine($"summary           : {Paths.Display(summaryPath)}");
+        Console.WriteLine($"summary           : {Paths.Display(summaryArtifact.Path)}");
 
         return resolved ? 0 : 1;
     }
 
     private static int VerifyOne(
         string observationPath, string seed, string character, int ascension, string gameMode,
-        IReadOnlyList<string> acts, string outDir, string? manifestPath)
+        IReadOnlyList<string> acts, string? manifestPath,
+        EvidenceArtifact jsonArtifact, EvidenceArtifact svgArtifact)
     {
         var observation = MapObservation.Load(observationPath);
         ReplayManifest? boundManifest = null;
@@ -154,8 +163,6 @@ internal static partial class Commands
 
         var comparison = observation.CompareTo(generated);
 
-        Directory.CreateDirectory(outDir);
-        var jsonPath = Path.Combine(outDir, $"seed-verification-{seed}.json");
         var json = JsonSerializer.Serialize(new
         {
             schema = "sts2-pilot-trainer/seed-verification/v1",
@@ -185,9 +192,8 @@ internal static partial class Commands
             comparison,
         }, Json.Indented) + "\n";
 
-        var svgPath = Path.Combine(outDir, $"seed-verification-{seed}.svg");
-        File.WriteAllText(svgPath, MapDiagram.Render(observation, generated, seed, comparison));
-        File.WriteAllText(jsonPath, json);
+        svgArtifact.WriteAtomic(MapDiagram.Render(observation, generated, seed, comparison));
+        jsonArtifact.WriteAtomic(json);
 
         Console.WriteLine(
             $"{seed}: {(comparison.Matches ? "MATCH  " : "MISMATCH")}  " +
@@ -234,6 +240,25 @@ internal static partial class Commands
         {
             throw new ManifestException("Publication seed evidence must generate the standard-mode Act 1 map.");
         }
+    }
+
+    private static void RequireCandidate(string candidate)
+    {
+        if (candidate.Length == 0 || candidate.Any(character =>
+                !ManifestValidator.SeedAlphabet.Contains(character, StringComparison.Ordinal)))
+        {
+            throw new ManifestException($"Seed candidate '{candidate}' is not in the game's seed alphabet.");
+        }
+    }
+
+    private static int ParseAscension(string value)
+    {
+        if (!int.TryParse(value, System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out var ascension))
+        {
+            throw new ManifestException($"Ascension '{value}' is not an Int32 value.");
+        }
+        return ascension;
     }
 
     private static JsonElement RequireCurrentSeedResult(

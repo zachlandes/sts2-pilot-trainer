@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Sts2PilotTrainer.IO;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Cli;
@@ -46,6 +47,43 @@ internal static class Json
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
+}
+
+internal sealed class EvidenceArtifact
+{
+    private EvidenceArtifact(string path) => Path = path;
+
+    internal string Path { get; }
+
+    internal static EvidenceArtifact Prepare(string directory, string fileName)
+    {
+        if (System.IO.Path.GetFileName(fileName) != fileName)
+        {
+            throw new ManifestException("Evidence artifact name must be a file name.");
+        }
+
+        Directory.CreateDirectory(directory);
+        var root = System.IO.Path.GetFullPath(directory);
+        var path = PathContainment.RequireContained(root, System.IO.Path.Combine(root, fileName));
+        if (File.Exists(path)) File.Delete(path);
+        return new EvidenceArtifact(path);
+    }
+
+    internal void WriteAtomic(string content)
+    {
+        var directory = System.IO.Path.GetDirectoryName(Path)!;
+        var temporary = PathContainment.RequireContained(
+            directory, System.IO.Path.Combine(directory, $".{System.IO.Path.GetFileName(Path)}.{Guid.NewGuid():N}.tmp"));
+        try
+        {
+            File.WriteAllText(temporary, content);
+            File.Move(temporary, Path, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporary)) File.Delete(temporary);
+        }
+    }
 }
 
 internal static class Paths

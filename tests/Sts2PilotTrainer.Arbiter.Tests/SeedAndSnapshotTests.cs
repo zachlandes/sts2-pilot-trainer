@@ -51,6 +51,24 @@ public class SeedVerificationTests
     }
 
     [GameFact]
+    public void RejectsATraversingCandidateBeforeTouchingItsDerivedPath()
+    {
+        var outDir = TempDir();
+        const string candidate = "x/../../../victim";
+        Directory.CreateDirectory(Path.Combine(outDir, "seed-verification-x"));
+        var victim = Path.GetFullPath(Path.Combine(outDir, $"seed-verification-{candidate}.json"));
+        File.WriteAllText(victim, "must remain");
+
+        var result = Arbiter.Run(
+            "verify-seed", Arbiter.MapObservation,
+            "--candidates", candidate,
+            "--out", outDir);
+
+        Assert.False(result.Verified);
+        Assert.Equal("must remain", File.ReadAllText(victim));
+    }
+
+    [GameFact]
     public void CandidateCoordinatorRejectsAnOperationalFailureInsteadOfReadingAStaleResult()
     {
         var outDir = TempDir();
@@ -71,6 +89,29 @@ public class SeedVerificationTests
         Assert.False(result.Verified);
         Assert.False(File.Exists(Path.Combine(outDir, $"seed-verification-{candidate}.json")));
         Assert.False(File.Exists(Path.Combine(outDir, "seed-verification-summary.json")));
+    }
+
+    [GameFact]
+    public void SingleCandidateFailureClearsEarlierResultArtifacts()
+    {
+        var outDir = TempDir();
+        var candidate = "SFXT47K77RFK";
+        var initial = Arbiter.Run(
+            "verify-seed", Arbiter.MapObservation,
+            "--seed", candidate,
+            "--out", outDir);
+        Assert.True(initial.Verified, initial.All);
+
+        var malformedObservation = Path.Combine(outDir, "malformed-single-observation.json");
+        File.WriteAllText(malformedObservation, "{");
+        var result = Arbiter.Run(
+            "verify-seed", malformedObservation,
+            "--seed", candidate,
+            "--out", outDir);
+
+        Assert.False(result.Verified);
+        Assert.False(File.Exists(Path.Combine(outDir, $"seed-verification-{candidate}.json")));
+        Assert.False(File.Exists(Path.Combine(outDir, $"seed-verification-{candidate}.svg")));
     }
 
     [GameFact]

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Sts2PilotTrainer.Engine/Sts2PilotTrainer.Engine.csproj" />
+    <ProjectReference Include="../Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj" />
     <ProjectReference Include="../Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj" />
   </ItemGroup>
 

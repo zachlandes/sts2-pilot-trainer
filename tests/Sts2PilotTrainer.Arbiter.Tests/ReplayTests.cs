@@ -308,6 +308,60 @@ public class PublicationGateTests
     }
 
     [GameFact]
+    public void ProvenanceRefusalSkipsPreflightAndEveryEngineCondition()
+    {
+        var outDir = TempDir();
+        var manifest = ManifestJson.Load(Arbiter.Manifest);
+        var path = Path.Combine(outDir, "resumed-run.json");
+        ManifestJson.Save(
+            manifest with
+            {
+                Source = manifest.Source with
+                {
+                    RunStart = manifest.Source.RunStart! with
+                    {
+                        ResumeModalSeen = manifest.Source.RunStart.ResumeModalSeen with { Value = true },
+                    },
+                },
+            },
+            path);
+
+        var result = Arbiter.Run(
+            "gate", path,
+            "--map-observation", Path.Combine(outDir, "must-not-be-read.json"),
+            "--baselib", Path.Combine(outDir, "must-not-be-read.dll"),
+            "--out", outDir);
+
+        Assert.False(result.Verified);
+        Assert.DoesNotContain("must-not-be-read", result.All, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(outDir, "baselib-reachability.json")));
+        Assert.False(File.Exists(Path.Combine(outDir, "seed-verification-summary.json")));
+        var report = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "publication-gate.json"))).RootElement;
+        Assert.False(report.GetProperty("conditions").EnumerateArray()
+            .Single(condition => condition.GetProperty("name").GetString() == "provenance")
+            .GetProperty("passed").GetBoolean());
+        Assert.False(report.GetProperty("conditions").EnumerateArray()
+            .Single(condition => condition.GetProperty("name").GetString() == "environment")
+            .GetProperty("passed").GetBoolean());
+    }
+
+    [GameFact]
+    public void ParentFailureClearsAnEarlierPublishableGateArtifact()
+    {
+        var outDir = TempDir();
+        var gatePath = Path.Combine(outDir, "publication-gate.json");
+        File.WriteAllText(gatePath, "{\"publishable\":true}");
+        var malformedManifest = Path.Combine(outDir, "malformed-manifest.json");
+        File.WriteAllText(malformedManifest, "{");
+
+        var result = Arbiter.Run("gate", malformedManifest, "--out", outDir);
+
+        Assert.False(result.Verified);
+        Assert.False(File.Exists(gatePath));
+    }
+
+    [GameFact]
     public void RefusesSyntheticEngineFixturesAsPublicationEvidence()
     {
         var outDir = TempDir();
