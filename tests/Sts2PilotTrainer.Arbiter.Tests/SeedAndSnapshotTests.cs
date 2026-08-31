@@ -208,14 +208,14 @@ public class SeedVerificationTests
 /// The combat-start snapshot: that it is derived, cached, re-derived to be read, and
 /// keyed to the history that produced it.
 ///
-/// The boundary is combat start and the unit is the whole fight. There is no
-/// mid-combat restore here and nothing designed around one, which is a product
-/// decision recorded in docs/comparison-direction.md rather than a gap.
+/// The boundary is combat start. There is no mid-combat restore here and nothing
+/// designed around one, which is a product decision recorded in
+/// docs/comparison-direction.md rather than a gap.
 /// </summary>
 public class CombatSnapshotTests
 {
     [GameFact]
-    public void MaterialisesTheCombatStartSnapshotAndDescribesTheWholeCombat()
+    public void MaterialisesTheCombatStartSnapshotAndBoundsTheCoveredHistory()
     {
         var outDir = TempDir();
         var result = Arbiter.Run(
@@ -228,7 +228,10 @@ public class CombatSnapshotTests
             File.ReadAllText(Path.Combine(outDir, "combat-snapshot.json"))).RootElement;
 
         Assert.True(report.GetProperty("restore_verified").GetBoolean());
-        Assert.Equal("Verified", report.GetProperty("whole_combat_status").GetString());
+        Assert.Equal("Verified", report.GetProperty("covered_history_status").GetString());
+        Assert.Equal(5, report.GetProperty("covered_action_count").GetInt32());
+        Assert.Equal(4, report.GetProperty("covered_through_seq").GetInt32());
+        Assert.True(report.GetProperty("combat_active_at_history_end").GetBoolean());
         Assert.NotEmpty(report.GetProperty("turns").EnumerateArray());
 
         // The boundary is a fact about what the engine did, so it is located rather

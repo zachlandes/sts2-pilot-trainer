@@ -10,9 +10,9 @@ The processed comparison contract is owned by a separate work item, and nothing 
 ## The boundary: combat start, and the whole fight
 
 The supported reset and replay boundary is **the start of a combat**, and the unit of
-work is the complete fight. A solution is computed and verified by replaying the whole
-combat from that boundary, which is what keeps the engine's state aligned with the
-run that produced it.
+work is the complete fight.
+A future solution must be computed and verified by replaying the whole combat from that boundary, which is what keeps the engine's state aligned with the run that produced it.
+The current milestone's fixture stops after the opening turn while combat remains active, so it proves the boundary and covered history but not a completed fight.
 
 That is a product decision with teeth, so here is what it rules out. No turn-level
 state reset. No pre-turn branching into an alternative line. No turn-level solver.
@@ -24,9 +24,9 @@ What survives the boundary is the ordered per-turn record. Players will eventual
 want to walk through a solution turn by turn, and that walkthrough is **read-only
 presentation of the already-computed whole-combat solution** - it re-solves nothing
 and resets nothing. So the ordered actions, the turn boundaries, and the resulting
-state either side of each step are all kept. `combat-snapshot` materialises the
-combat-start snapshot, re-derives it to read it, and describes the fight turn by turn
-without ranking anything.
+state either side of each step are all kept.
+`combat-snapshot` materialises the combat-start snapshot, re-derives it to read it, and describes only the manifest's covered history turn by turn without ranking anything.
+Its report states whether combat remains active at the end of that history.
 
 ## The two projections, kept apart
 
@@ -96,5 +96,5 @@ which is exactly the kind of question the comparison-contract task exists to set
 ## What is deliberately not built yet
 
 No comparison UI. No scoring. No verdict about which of two lines was better.
-`combat-snapshot` describes one completed combat and stops; that restraint is
-deliberate, not an accident of an unfinished milestone.
+`combat-snapshot` describes only the covered action history and says whether combat remains active at its end.
+It does not present the current opening-turn fixture as a completed fight.

@@ -23,7 +23,10 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   video shows resolves it: `SFXT47K77RFK` reproduces all 61 transcribed nodes, the
   next best candidate reproduces 19.
 - **The headless replay matches 21 VOD values and the source-tooling residual is history-bound.** The enemy state, ordered hand, energy, block, and turn outcome agree. The three visible-build utilities are non-gameplay tooling. BaseLib can change `SkipNextDurationTick` for a player-applied custom debuff, so the gate instruments every `PowerCmd.Apply` in this exact history and requires a negative control before accepting that the affected branch is unreachable.
-- **Replay machinery is exercised by an independent synthetic fixture.** A mechanically generated seed and action sequence, distinct from the VOD trace, pin engine-produced checkpoints. Fresh-process determinism, corrupted-history rejection, and two-line snapshot restore are claims about that fixture only.
+- **Replay machinery is exercised by an independent synthetic fixture.**
+  A mechanically generated seed and action sequence, distinct from the VOD trace, pin engine-produced checkpoints.
+  Fresh-process determinism, corrupted-history rejection, and combat-start snapshot re-derivation are claims about that fixture only.
+  The fixture covers the opening turn and leaves combat active; it does not prove a completed fight.
 
 - **Provenance is gated before any engine starts.** A run resumed from run history
   matches on seed, build, content hash and acts and replays perfectly — it is just
@@ -64,7 +67,7 @@ All bootstrap, evidence, state, and snapshot-cache output paths must resolve ins
 ```bash
 ./scripts/build.sh                      # prepare the assembly copy, build everything
 ./scripts/arbiter preflight      manifests/navegreed-OJ-6QXhNgdg.replay.json
-./scripts/arbiter preflight-live manifests/navegreed-OJ-6QXhNgdg.replay.json
+./scripts/arbiter preflight-live manifests/navegreed-OJ-6QXhNgdg.replay.json # reads the local profile and active run
 ./scripts/arbiter synthetic-fixture --out build/evidence/synthetic.replay.json
 ./scripts/arbiter replay     build/evidence/synthetic.replay.json
 ```

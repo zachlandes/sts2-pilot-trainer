@@ -14,7 +14,7 @@ namespace Sts2PilotTrainer.Replay;
 /// Two gates, because they answer different questions at different moments:
 /// <see cref="Prerequisites"/> asks whether a matching run could be played here at
 /// all, and <see cref="RunIdentity"/> asks whether the run that now exists is the
-/// right one. The mod runs both against the player's live game. The arbiter runs
+/// right one. An eventual mod entry point must run both against the player's live game. The arbiter runs
 /// the first before it constructs a run and the second after, which is how it
 /// learns that the engine built what the manifest asked for.
 ///

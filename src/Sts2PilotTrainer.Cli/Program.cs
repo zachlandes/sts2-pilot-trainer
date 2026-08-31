@@ -80,12 +80,11 @@ internal static class Program
               diagnostics and in-game remediation, rather than replaying into a
               mismatch. Nothing here writes to a save, a profile or the install.
 
-          preflight-live  <manifest> [--seed <s>] [--game-mode <m>] [--ascension <n>]
-                                     [--character <id>] [--acts <id>[,<id>...]]
-              The same gate a mod runs against a live game. Starts a run at the given
-              identity - standing in for the player having started one - then reads it
-              back out of RunManager and compares seed, mode, ascension, character and
-              acts against the manifest. Pass a different seed and it refuses.
+          preflight-live  <manifest> [--progress local-profile|all-unlocked|none-unlocked]
+              Read the current profile and existing active run, then compare build,
+              content, unlocks, seed, mode, ascension, character and acts against the
+              manifest. Refuses when no run is active. Synthetic startup and identity
+              overrides are available only with --demo-start-run for tests and demos.
 
           verify-seed     <map-observation> --candidates <seed>[,<seed>...] [--out <dir>]
               Generate each candidate seed's Act 1 map through the real engine and
@@ -116,9 +115,9 @@ internal static class Program
 
           combat-snapshot <manifest> [--cache <dir>] [--out <dir>]
               Materialise the verified combat-start snapshot, restore it by
-              re-deriving it in a fresh process, and describe the whole combat that
-              replays through it turn by turn. Combat start is the supported
-              boundary; nothing here resets state mid-fight or replays an
+              re-deriving it in a fresh process, and describe exactly the action
+              history the manifest contains. The report says whether combat remains
+              active at the end. Nothing here resets state mid-fight or replays an
               alternative line. See docs/comparison-direction.md.
 
         Every command needs a prepared game assembly: run ./scripts/bootstrap.sh first.

@@ -26,8 +26,8 @@ public static class Preflight
     /// run's generation will read.
     /// </summary>
     /// <param name="progress">
-    /// Which unlock state to check. The mod passes
-    /// <see cref="PlayerProgress.LocalProfile"/> and so gates on what the player
+    /// Which unlock state to check. The eventual mod entry point must pass
+    /// <see cref="PlayerProgress.LocalProfile"/> and so gate on what the player
     /// actually has; the headless arbiter passes the state it will construct the run
     /// with, which is the same question asked of a host rather than a person.
     /// </param>
@@ -38,7 +38,7 @@ public static class Preflight
     /// <summary>
     /// The gate on the run that now exists, read back out of the game.
     ///
-    /// For the mod this is the player's own run. For the arbiter it is the run it
+    /// For the eventual mod this is the player's own run. For the arbiter it is the run it
     /// just constructed, and checking it is not a formality: it is how we learn the
     /// engine built the run the manifest asked for rather than something adjacent to
     /// it - a seed the engine normalised differently, or an act that quietly
@@ -47,7 +47,7 @@ public static class Preflight
     public static PreflightResult EvaluateStartedRun(EnvironmentIdentity expected) =>
         EnvironmentPreflight.RunIdentity(expected, LocalEnvironment.ReadStartedRun());
 
-    /// <summary>Both gates, which is how the mod asks the question of a live game.</summary>
+    /// <summary>Both gates, which an eventual mod entry point must ask of a live game.</summary>
     public static PreflightResult EvaluateLiveGame(
         EnvironmentIdentity expected, PlayerProgress progress = PlayerProgress.LocalProfile) =>
         EnvironmentPreflight.Combine(Evaluate(expected, progress), EvaluateStartedRun(expected));

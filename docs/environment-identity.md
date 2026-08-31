@@ -205,12 +205,12 @@ take the other variant shipped at the same index, and generate different content
 behind an identical map.
 
 Where the reading comes from is reported next to the verdict rather than assumed.
-`--progress local-profile` reads the save progress of whichever profile the process
-has - inside the retail client that is the player's own, and inside the headless
-arbiter it is the empty sandbox profile, because the player's save is a read-only
-input the host never opens. `--progress all-unlocked`, the arbiter's default, is the
-state the host will construct the run with, and the report says so rather than
-calling it a reading of anybody.
+`--progress local-profile` reads the save progress of whichever profile the process has.
+Inside the retail client that is the player's own, and inside the headless arbiter it is the empty sandbox profile, because the player's save is a read-only input the host never opens.
+`preflight-live` defaults to that local profile and reads an existing active run; it refuses when no run is in progress.
+The explicit `--demo-start-run` path constructs a synthetic run only for tests and demonstrations.
+An eventual in-game mod entry point must invoke this same live preflight before presenting a VOD replay or advice; no mod host is built in this milestone, so the repository does not yet enforce that integration.
+`--progress all-unlocked`, the arbiter's ordinary replay default, is the state the host will construct the run with, and the report says so rather than calling it a reading of anybody.
 
 The remediation is always the same and always the game's: unlock the rest by playing.
 Nothing in this project writes to a save, a profile, an unlock or an installed build,

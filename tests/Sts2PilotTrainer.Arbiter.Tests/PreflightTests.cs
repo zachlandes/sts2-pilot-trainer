@@ -88,9 +88,21 @@ public class PreflightTests
     // ---- run identity, read back out of the engine -------------------------
 
     [GameFact]
-    public void ARunStartedAtTheManifestsIdentityIsReadBackAndMatches()
+    public void NoActiveRunIsRefusedByDefault()
     {
         var result = Arbiter.Run("preflight-live", Arbiter.Manifest);
+
+        Assert.False(result.Verified, result.All);
+        Assert.Contains("progress : LocalProfile", result.Output, StringComparison.Ordinal);
+        Assert.Contains("FAIL run_present", result.Output, StringComparison.Ordinal);
+        Assert.Contains("no run in progress", result.Output, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void ADemoRunStartedAtTheManifestsIdentityIsReadBackAndMatches()
+    {
+        var result = Arbiter.Run(
+            "preflight-live", Arbiter.Manifest, "--demo-start-run", "--progress", "all-unlocked");
 
         Assert.True(result.Verified, result.All);
         Assert.Contains("run in progress, read from RunManager.State", result.Output, StringComparison.Ordinal);
@@ -107,7 +119,8 @@ public class PreflightTests
     public void ARunStartedAtADifferentIdentityIsRefusedOnThatDimension(
         string option, string value, string expectedField)
     {
-        var result = Arbiter.Run("preflight-live", Arbiter.Manifest, option, value);
+        var result = Arbiter.Run(
+            "preflight-live", Arbiter.Manifest, "--demo-start-run", "--progress", "all-unlocked", option, value);
 
         Assert.False(result.Verified, result.All);
         Assert.Contains($"FAIL {expectedField}", result.Output, StringComparison.Ordinal);
@@ -120,7 +133,9 @@ public class PreflightTests
         // Worth its own test because it is the substitution nothing downstream sees:
         // both index-0 acts generate the same map from the same seed, so the map
         // comparison that catches a wrong seed says nothing at all about this.
-        var result = Arbiter.Run("preflight-live", Arbiter.Manifest, "--acts", "ACT.OVERGROWTH,ACT.HIVE,ACT.GLORY");
+        var result = Arbiter.Run(
+            "preflight-live", Arbiter.Manifest, "--demo-start-run", "--progress", "all-unlocked",
+            "--acts", "ACT.OVERGROWTH,ACT.HIVE,ACT.GLORY");
 
         Assert.False(result.Verified);
         Assert.Contains("ACT.OVERGROWTH", result.Output, StringComparison.Ordinal);

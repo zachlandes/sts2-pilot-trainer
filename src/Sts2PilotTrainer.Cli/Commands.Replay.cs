@@ -10,8 +10,8 @@ internal static partial class Commands
     /// The prerequisite gate: is this the machine, with the progress, that could
     /// replay this run at all?
     ///
-    /// <c>--progress</c> chooses whose unlock state is checked. The mod passes
-    /// <c>local-profile</c> and gates on what the player actually has. The headless
+    /// <c>--progress</c> chooses whose unlock state is checked. The eventual mod
+    /// entry point must pass <c>local-profile</c> and gate on what the player actually has. The headless
     /// arbiter defaults to <c>all-unlocked</c>, which is the state it will construct
     /// the run with - the same question asked of a host rather than of a person, and
     /// reported as such rather than as a reading of anybody's save.
@@ -39,60 +39,67 @@ internal static partial class Commands
     }
 
     /// <summary>
-    /// The mod's gate, run against a real run: start a run at a stated identity - the
-    /// stand-in for the player having started one - then read it back out of the game
-    /// and compare every dimension against the manifest.
-    ///
-    /// The point of driving it this way is that nothing is taken on trust. The run
-    /// identity reported is the one the engine holds, not the one this command was
-    /// asked for, so passing a different seed here produces a genuine refusal rather
-    /// than a rehearsed one.
+    /// The live gate reads the player's current profile and existing active run.
+    /// Synthetic run startup exists only for the explicit demo/test path.
     /// </summary>
     internal static int PreflightLive(string[] args)
     {
         var manifest = ManifestJson.Load(Args.Positional(args, 0, "manifest path"));
         var environment = manifest.Environment;
-        var progress = ParseProgress(args);
-
-        var seed = Args.Value(args, "--seed") ?? environment.Seed.Value;
-        var gameMode = Args.Value(args, "--game-mode") ?? environment.GameMode.Value;
-        var character = Args.Value(args, "--character") ?? environment.Character.Value;
-        var ascension = Args.Value(args, "--ascension") is { } raw
-            ? int.Parse(raw, System.Globalization.CultureInfo.InvariantCulture)
-            : environment.Ascension.Value;
-        var acts = Args.Value(args, "--acts") is { } actList
-            ? actList.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            : environment.Acts.Value.ToArray();
-
-        var prerequisites = Engine.Preflight.Evaluate(environment, progress);
+        var demoStartRun = Args.Has(args, "--demo-start-run");
+        var progress = ParseProgress(args, PlayerProgress.LocalProfile);
+        var identityOverrides = new[] { "--seed", "--game-mode", "--character", "--ascension", "--acts" };
+        if (!demoStartRun && identityOverrides.Any(option => Args.Value(args, option) is not null))
+        {
+            throw new ManifestException(
+                "Run identity overrides require --demo-start-run. Live preflight reads the active run and " +
+                "does not replace it.");
+        }
 
         Console.WriteLine($"manifest : {manifest.RunId}");
         Console.WriteLine($"progress : {progress}");
-        Console.WriteLine($"started  : seed={seed} mode={gameMode} ascension={ascension} character={character}");
+        Console.WriteLine($"run      : {(demoStartRun ? "synthetic demo/test run" : "existing active run")}");
         Console.WriteLine();
-        PrintFields(prerequisites);
 
-        // The run is started even when the prerequisites failed, so that the run
-        // identity is reported too. A refusal that stops at the first failing field
-        // sends someone back for a second run to find the next one.
-        PreflightResult runIdentity;
-        try
+        PreflightResult combined;
+        if (demoStartRun)
         {
-            new GameSession().StartRun(seed, character, ascension, gameMode, acts, progress);
-            runIdentity = Engine.Preflight.EvaluateStartedRun(environment);
+            var prerequisites = Engine.Preflight.Evaluate(environment, progress);
+            PrintFields(prerequisites);
+
+            var seed = Args.Value(args, "--seed") ?? environment.Seed.Value;
+            var gameMode = Args.Value(args, "--game-mode") ?? environment.GameMode.Value;
+            var character = Args.Value(args, "--character") ?? environment.Character.Value;
+            var ascension = Args.Value(args, "--ascension") is { } raw
+                ? int.Parse(raw, System.Globalization.CultureInfo.InvariantCulture)
+                : environment.Ascension.Value;
+            var acts = Args.Value(args, "--acts") is { } actList
+                ? actList.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                : environment.Acts.Value.ToArray();
+
+            PreflightResult runIdentity;
+            try
+            {
+                new GameSession().StartRun(seed, character, ascension, gameMode, acts, progress);
+                runIdentity = Engine.Preflight.EvaluateStartedRun(environment);
+            }
+            catch (EngineException ex)
+            {
+                runIdentity = new PreflightResult(false,
+                [
+                    new PreflightField("run_present", "a run matching this manifest", "could not be started", false,
+                        ex.Message),
+                ]);
+            }
+
+            PrintFields(runIdentity);
+            combined = EnvironmentPreflight.Combine(prerequisites, runIdentity);
         }
-        catch (EngineException ex)
+        else
         {
-            runIdentity = new PreflightResult(false,
-            [
-                new PreflightField("run_present", "a run matching this manifest", "could not be started", false,
-                    ex.Message),
-            ]);
+            combined = Engine.Preflight.EvaluateLiveGame(environment, progress);
+            PrintFields(combined);
         }
-
-        PrintFields(runIdentity);
-
-        var combined = EnvironmentPreflight.Combine(prerequisites, runIdentity);
         Console.WriteLine();
         Console.WriteLine(combined.Matches
             ? "environment and run match; replay may proceed"
@@ -100,9 +107,11 @@ internal static partial class Commands
         return combined.Matches ? 0 : 1;
     }
 
-    private static PlayerProgress ParseProgress(string[] args) =>
+    private static PlayerProgress ParseProgress(
+        string[] args, PlayerProgress defaultProgress = PlayerProgress.AllUnlocked) =>
         Enum.Parse<PlayerProgress>(
-            (Args.Value(args, "--progress") ?? "AllUnlocked").Replace("-", string.Empty, StringComparison.Ordinal),
+            (Args.Value(args, "--progress") ?? defaultProgress.ToString())
+                .Replace("-", string.Empty, StringComparison.Ordinal),
             ignoreCase: true);
 
     private static void PrintFields(PreflightResult result)

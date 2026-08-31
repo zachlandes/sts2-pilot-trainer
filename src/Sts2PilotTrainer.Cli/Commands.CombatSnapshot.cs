@@ -6,10 +6,10 @@ namespace Sts2PilotTrainer.Cli;
 internal static partial class Commands
 {
     /// <summary>
-    /// Materialises the verified combat-start snapshot and replays the whole combat
-    /// through it.
+    /// Materialises and verifies the combat-start snapshot, then describes exactly
+    /// the action history the manifest contains.
     ///
-    /// Combat start is the supported boundary, and the whole fight is the unit. That
+    /// Combat start is the supported boundary, and the whole fight is the intended unit. That
     /// is a product decision with a technical consequence worth stating: resuming
     /// mid-combat would need state to be reset at a turn boundary, and nothing here
     /// does that or is designed around it. See docs/comparison-direction.md.
@@ -21,7 +21,7 @@ internal static partial class Commands
     /// considerably harder to get quietly wrong: a cache that can only be read by
     /// reproducing it cannot drift away from the run it claims to be.
     ///
-    /// Nothing here scores anything. The report describes the combat and stops.
+    /// Nothing here scores anything. The report describes only the covered history.
     /// </summary>
     internal static int CombatSnapshot(string[] args)
     {
@@ -31,15 +31,14 @@ internal static partial class Commands
         var manifest = ManifestJson.Load(manifestPath);
         var cacheDir = Args.Value(args, "--cache") ?? "build/snapshots";
 
-        // ── Replay the whole thing once, to have something to be right about ──
         var verifiedPath = Path.Combine(outDir, "combat-snapshot.verified.json");
-        var wholeStatePath = Path.Combine(outDir, "combat-snapshot.whole.state");
-        var whole = SelfProcess.Run(
-            "replay", manifestPath, "--out", verifiedPath, "--state-out", wholeStatePath);
-        if (whole.ExitCode != 0)
+        var coveredStatePath = Path.Combine(outDir, "combat-snapshot.covered.state");
+        var covered = SelfProcess.Run(
+            "replay", manifestPath, "--out", verifiedPath, "--state-out", coveredStatePath);
+        if (covered.ExitCode != 0)
         {
-            Console.Write(whole.StandardOutput);
-            Console.Error.Write(whole.StandardError);
+            Console.Write(covered.StandardOutput);
+            Console.Error.Write(covered.StandardError);
             Console.Error.WriteLine();
             Console.Error.WriteLine(
                 "The manifest does not replay cleanly, so there is no verified combat to snapshot. " +
@@ -87,8 +86,11 @@ internal static partial class Commands
             return 1;
         }
 
-        var wholeState = File.ReadAllText(wholeStatePath);
+        var coveredState = File.ReadAllText(coveredStatePath);
+        var combatActive = ParseState(coveredState).GetValueOrDefault("combat.in_progress") == "true";
         var turns = TurnBoundaries(trace, combatStart);
+        var lastSeq = manifest.Actions[^1].Seq;
+        var combatState = combatActive ? "combat remains active" : "no combat active at history end";
 
         Console.WriteLine($"manifest        : {manifest.RunId}");
         Console.WriteLine($"combat starts   : after action {combatStart}");
@@ -96,10 +98,11 @@ internal static partial class Commands
         Console.WriteLine($"snapshot source : {(cached ? "cache hit" : "materialised now")}");
         Console.WriteLine($"snapshot digest : {DigestOf(snapshot)}");
         Console.WriteLine($"restore         : re-derived in a fresh process, digest matches");
-        Console.WriteLine($"whole combat    : {report.Status.ToString().ToUpperInvariant()}, " +
-                          $"end state {DigestOf(wholeState)}");
+        Console.WriteLine($"covered history : {report.Status.ToString().ToUpperInvariant()} through action " +
+                          $"{lastSeq} ({manifest.Actions.Count} actions), {combatState}, " +
+                          $"end state {DigestOf(coveredState)}");
         Console.WriteLine();
-        Console.WriteLine("combat, turn by turn (description, not a verdict):");
+        Console.WriteLine("covered combat history, turn by turn (description, not a verdict):");
         foreach (var turn in turns)
         {
             Console.WriteLine(
@@ -110,20 +113,22 @@ internal static partial class Commands
         reportArtifact.WriteAtomic(
             JsonSerializer.Serialize(new
             {
-                schema = "sts2-pilot-trainer/combat-snapshot/v1",
+                schema = "sts2-pilot-trainer/combat-snapshot/v2",
                 manifest = Path.GetFileName(manifestPath),
                 combat_start_seq = combatStart,
                 snapshot_key = key,
                 snapshot_digest = DigestOf(snapshot),
                 snapshot_source = cached ? "cache hit" : "materialised now",
                 restore_verified = true,
-                whole_combat_status = report.Status.ToString(),
-                whole_combat_end_state_digest = DigestOf(wholeState),
+                covered_history_status = report.Status.ToString(),
+                covered_action_count = manifest.Actions.Count,
+                covered_through_seq = lastSeq,
+                combat_active_at_history_end = combatActive,
+                covered_history_end_state_digest = DigestOf(coveredState),
                 turns,
-                // Said out loud in the artifact, not only in the docs.
                 comparison_policy =
-                    "Ordered description of one completed combat. No score, ranking, or verdict is computed, " +
-                    "and no alternative line is replayed: the supported boundary is combat start.",
+                    "Ordered description of only the manifest's covered history. No score, ranking, or verdict " +
+                    "is computed, and no alternative line is replayed: the supported boundary is combat start.",
             }, Json.Indented) + "\n");
 
         Console.WriteLine();

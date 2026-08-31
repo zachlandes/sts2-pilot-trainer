@@ -218,15 +218,17 @@ replay was evidence about.
 ### And the run in front of you has to be the right run
 
 The two gates above are about *whether* a matching run could be played here. The last
-one is about the run that actually exists. This is the gate a mod runs: the player has
-a run in progress, and the question is whether it is the one the manifest describes.
+one is about the run that actually exists.
+This is the gate an eventual mod entry point must run when the player has a run in progress, asking whether it is the one the manifest describes.
 
-`preflight-live` starts a run at a stated identity — standing in for the player having
-started one — then reads it back out of `RunManager` and compares. Nothing is taken on
-trust: what it reports is the run the engine holds, not the run it was asked for.
+`preflight-live` normally reads the local profile and an existing active run, refusing when either prerequisite is unavailable.
+The eventual in-game mod entry point must invoke this same gate before presenting a VOD replay or advice; no mod host is built in this milestone.
+For this headless demonstration, `--demo-start-run` explicitly starts a synthetic run at a stated identity, and `--progress all-unlocked` names its synthetic progress model.
+The command then reads the run out of `RunManager` and compares it.
+Nothing is taken on trust: what it reports is the run the engine holds, not the run it was asked for.
 
 ```bash
-./scripts/arbiter preflight-live manifests/navegreed-OJ-6QXhNgdg.replay.json --seed SFXT47K77RFX 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed -n '/run_present/,$p'
+./scripts/arbiter preflight-live manifests/navegreed-OJ-6QXhNgdg.replay.json --demo-start-run --progress all-unlocked --seed SFXT47K77RFX 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed -n '/run_present/,$p'
 ```
 
 ```output
@@ -551,11 +553,10 @@ The checkpoint identifies the first divergence instead of waiting for that hidde
 This is the point of the whole apparatus. Once the start of a fight can be reproduced
 exactly, the fight can be replayed from it and described.
 
-Combat start is the supported boundary, and the whole fight is the unit. That is a
-product decision rather than an unfinished edge: resuming part-way through a combat
-would need state reset at a turn boundary, and nothing here does that or is designed
-around it. [docs/comparison-direction.md](../docs/comparison-direction.md) records the
-boundary and what it rules out.
+Combat start is the supported boundary, and the whole fight is the intended future comparison unit.
+The current fixture stops after the opening turn while combat remains active, so this milestone does not claim a completed fight.
+Resuming part-way through a combat would need state reset at a turn boundary, and nothing here does that or is designed around it.
+[docs/comparison-direction.md](../docs/comparison-direction.md) records the boundary and what it rules out.
 
 The snapshot is a **derived cache**, never a source of truth. It is keyed by the
 build, seed, content hash, game mode and the hash of the exact action history that
@@ -575,9 +576,9 @@ snapshot key    : v0.111.0_standard_CHARACTER.IRONCLAD_a0_P1L0TTRA1NER_156883483
 snapshot source : materialised now
 snapshot digest : sha256:579b37b764a8428a02df53e2baf851065e5e188878e2e831898f88acdd3a9474
 restore         : re-derived in a fresh process, digest matches
-whole combat    : VERIFIED, end state sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
+covered history : VERIFIED through action 4 (5 actions), combat remains active, end state sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
 
-combat, turn by turn (description, not a verdict):
+covered combat history, turn by turn (description, not a verdict):
   turn 1  actions 2..4  player hp 80 -> 80
 
 report: build/evidence/combat-snapshot.json
@@ -587,10 +588,10 @@ Where the fight begins is located, not declared: it is read out of the replay's 
 trace as the first step after which the engine reports a combat in progress. Asking
 the manifest instead would let the two disagree.
 
-The turn-by-turn lines are description and nothing else. No score, no ranking, no
-highlight on a "better" outcome — which line is better is a question about a game, and
-answering it here would turn a measurement into an opinion. A test asserts the report
-contains no score, rank or verdict field, and no alternative line at all.
+The fixture's covered history ends after the opening turn while combat remains active.
+The turn-by-turn lines describe only that history and nothing else.
+There is no score, ranking, or highlight on a "better" outcome — which line is better is a question about a game, and answering it here would turn a measurement into an opinion.
+A test asserts the report contains no score, rank or verdict field, and no alternative line at all.
 
 That ordered per-turn record is what a walkthrough will read later: stepping a player
 through an already-computed solution is presentation, and it re-solves nothing and
@@ -606,8 +607,8 @@ malformed input per rule; the preflight has one per dimension — a mismatched b
 build date and content hash, an illegal seed, an unreplayable mode, an unrecognised
 mod set, an uncheckable unlock requirement, a shortfall in each of the seven unlock
 categories, a locked act, a profile below the manifest's ascension, no run in
-progress at all, and a started run differing in seed, mode, ascension, character and
-act variant; required engine initialization has a forced failing step; the map
+progress at all, and an explicitly synthetic demo run differing in seed, mode,
+ascension, character and act variant; required engine initialization has a forced failing step; the map
 comparison has a wrong node, a missing node, an extra node and a wrong grid size; the
 arbiter has four corrupted histories; and the cache key has changes that must and
 must not invalidate it.
@@ -618,7 +619,7 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 
 ```output
 Passed!  - Failed:     0, Passed:   174, Skipped:     0, Total:   174 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    72, Skipped:     0, Total:    72 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    73, Skipped:     0, Total:    73 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -759,13 +760,11 @@ This proves the replay spine against a controlled fixture, not the separate hist
 - Four damaged provenance records are refused before any engine starts, including
   both fingerprints of a run resumed from history — which replays perfectly and is
   therefore invisible to every other check here.
-- The combat-start snapshot is keyed to the history that produced it, restores to a
-  digest-checked identical state by being re-derived rather than deserialised, and the
-  whole combat replays through it. The fight is described turn by turn and nothing is
-  ranked.
+- The combat-start snapshot is keyed to the history that produced it and restores to a digest-checked identical state by being re-derived rather than deserialised.
+  The fixture covers the opening turn, reports that combat remains active, and ranks nothing.
 - The preflight refuses on every dimension it claims to check, including each unlock
   category, a locked act variant, a profile below the manifest's ascension, and a
-  started run differing in seed, mode, ascension, character or acts.
+  existing active run differing in seed, mode, ascension, character or acts, and it refuses when no run is active.
 
 **Assumed, and doing real work.**
 
