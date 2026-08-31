@@ -559,6 +559,13 @@ every check that is not about the recording itself.
 ```
 
 ```output
+Mode discrimination instrument: PASS
+Custom mode with no modifiers matches every observed checkpoint and the final canonical state.
+Daily mode without its date-selected modifier set matches every observed checkpoint and the final canonical state, which does not bind a real daily run.
+Each of the 17 modifiers this build offers was replayed as a daily: 17 change an observed checkpoint and are therefore excluded by the recording this history already matches, and 0 change nothing observable and nothing in the final canonical state. No single modifier reproduces the observed checkpoints while altering the resulting state.
+Mode identity: UNESTABLISHED
+Path-specific mode parity: ESTABLISHED for this history over every single modifier this build offers; modifier combinations are not enumerated.
+report: build/evidence/mode-discrimination.json
 manifest : navegreed-OJ-6QXhNgdg
 
   pass  publication-source Publication evidence comes from a VOD, never an engine-generated fixture.

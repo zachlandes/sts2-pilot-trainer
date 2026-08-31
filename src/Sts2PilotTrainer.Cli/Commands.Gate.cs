@@ -57,7 +57,8 @@ internal static partial class Commands
                     "Engine evidence establishes the source mode or path-specific parity for every viable mode.",
                     SelfProcess.Run(
                         "mode-discrimination", manifestPath,
-                        "--out", Path.Combine(outDir, "mode-discrimination.json"))));
+                        "--out", Path.Combine(outDir, "mode-discrimination.json")),
+                    forwardOutput: true));
 
                 conditions.Add(Check("seed-topology",
                 "The manifest seed independently reproduces the map observed in the same VOD.",
@@ -156,9 +157,13 @@ internal static partial class Commands
             "Corrupted and incomplete histories are refused.", false),
     ]);
 
-    private static Condition Check(string name, string requirement, SelfProcess.Result result)
+    private static Condition Check(
+        string name,
+        string requirement,
+        SelfProcess.Result result,
+        bool forwardOutput = false)
     {
-        if (result.ExitCode != 0)
+        if (forwardOutput || result.ExitCode != 0)
         {
             Console.Write(result.StandardOutput);
             Console.Error.Write(result.StandardError);

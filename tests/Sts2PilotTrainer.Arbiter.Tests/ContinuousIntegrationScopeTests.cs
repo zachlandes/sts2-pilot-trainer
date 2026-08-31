@@ -1,31 +1,30 @@
-using System.Text.RegularExpressions;
+using System.Text.Json;
 using System.Xml.Linq;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
 /// <summary>
-/// The CI workflow builds a hand-listed subset of the solution, because the engine
-/// half needs the licensed game assembly and cannot run on a public runner. That
-/// subset is only meaningful while every project in it really is free of the game
-/// dependency, so the closure is computed here rather than trusted as a comment.
+/// Public CI builds the solution filter whose projects do not need the licensed
+/// game assembly. The filter is the shared contract consumed by both CI and this
+/// reference-closure check.
 /// </summary>
 public sealed class ContinuousIntegrationScopeTests
 {
-    private static readonly string WorkflowPath =
-        Path.Combine(Arbiter.RepoRoot, ".github", "workflows", "ci.yml");
+    private static readonly string SolutionFilterPath =
+        Path.Combine(Arbiter.RepoRoot, "sts2-pilot-trainer.domain.slnf");
 
     private const string GameDependentProject = "Sts2PilotTrainer.Engine";
 
     [Fact]
-    public void WorkflowListsProjects()
+    public void SolutionFilterListsProjects()
     {
-        Assert.NotEmpty(WorkflowProjects());
+        Assert.NotEmpty(SolutionFilterProjects());
     }
 
     [Fact]
-    public void EveryWorkflowProjectBuildsWithoutTheGameAssembly()
+    public void EverySolutionFilterProjectBuildsWithoutTheGameAssembly()
     {
-        foreach (var project in WorkflowProjects())
+        foreach (var project in SolutionFilterProjects())
         {
             var path = Path.Combine(Arbiter.RepoRoot, project);
             Assert.True(File.Exists(path), $"{project} is listed in CI but does not exist.");
@@ -83,14 +82,12 @@ public sealed class ContinuousIntegrationScopeTests
         }
     }
 
-    /// <summary>Reads the workflow's PROJECTS list as the list it is, not as text.</summary>
-    private static IReadOnlyList<string> WorkflowProjects()
+    private static IReadOnlyList<string> SolutionFilterProjects()
     {
-        var workflow = File.ReadAllText(WorkflowPath);
-        var block = Regex.Match(workflow, @"PROJECTS:\s*>-\s*\n(?<body>(?:\s+\S+\.csproj\s*\n)+)");
-        Assert.True(block.Success, "The CI workflow no longer declares a PROJECTS list.");
-        return block.Groups["body"].Value
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        using var document = JsonDocument.Parse(File.ReadAllText(SolutionFilterPath));
+        return document.RootElement.GetProperty("solution").GetProperty("projects")
+            .EnumerateArray()
+            .Select(project => project.GetString()!.Replace('\\', '/'))
             .ToList();
     }
 }

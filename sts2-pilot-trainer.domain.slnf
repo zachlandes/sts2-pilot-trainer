@@ -1,0 +1,13 @@
+{
+  "solution": {
+    "path": "sts2-pilot-trainer.sln",
+    "projects": [
+      "src/Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj",
+      "src/Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj",
+      "tests/Sts2PilotTrainer.Arbiter.Tests/Sts2PilotTrainer.Arbiter.Tests.csproj",
+      "tests/Sts2PilotTrainer.Replay.Tests/Sts2PilotTrainer.Replay.Tests.csproj",
+      "third_party/godot-stubs/GodotStubs.csproj",
+      "tools/Sts2PilotTrainer.Bootstrap/Sts2PilotTrainer.Bootstrap.csproj"
+    ]
+  }
+}

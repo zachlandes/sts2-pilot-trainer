@@ -32,11 +32,10 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   not the run its history describes. That is checked on the recording, along with a
   second reading of the environment taken from the end-of-run screen 2,038 seconds
   after the first.
-- **The source game mode remains unestablished.** Standard, custom with no modifiers,
-  and daily without its date-selected modifiers match every observed checkpoint and
-  the final canonical state for this prefix. Negative controls prove the comparison
-  detects both checkpoint-only and terminal divergence, but the recording cannot
-  bind the actual custom or daily configuration.
+- **The source game mode remains unestablished, while path-specific parity is established over the enumerated mode configurations.**
+  Standard and custom with no modifiers are byte-identical for this history.
+  Every one of the build's 17 modifiers changes an observed checkpoint when replayed alone as a daily, so no single-modifier daily fits the footage.
+  Modifier combinations are not enumerated, and the gate does not identify the source mode.
 
 Two accepted assumptions turned out to be wrong and are now recorded as identity:
 the act variant (this build ships two different Act 1s) and the player's unlock
@@ -44,7 +43,7 @@ state (which moves the shared RNG stream). See
 [environment identity](docs/environment-identity.md).
 
 **The publication gate.** All of it is one verdict, computed rather than concluded.
-The selected VOD currently returns `NOT PUBLISHABLE` because its game mode remains unestablished:
+The selected VOD currently returns `PUBLISHABLE` on path-specific parity across the enumerated mode configurations, not on identification of its source mode:
 
 ```bash
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json

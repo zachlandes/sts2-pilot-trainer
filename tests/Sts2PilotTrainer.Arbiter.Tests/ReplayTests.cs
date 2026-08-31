@@ -331,6 +331,11 @@ public class PublicationGateTests
         Assert.True(result.Verified, result.All);
         Assert.Contains("PUBLISHABLE", result.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Mode identity: UNESTABLISHED", result.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "Path-specific mode parity: ESTABLISHED",
+            result.Output,
+            StringComparison.Ordinal);
 
         var report = JsonDocument.Parse(
             File.ReadAllText(Path.Combine(outDir, "publication-gate.json"))).RootElement;
