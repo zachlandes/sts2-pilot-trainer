@@ -43,6 +43,19 @@ public class MapObservationTests
     }
 
     [Fact]
+    public void LoadRejectsANullRequiredMapMember()
+    {
+        var document = System.Text.Json.Nodes.JsonNode.Parse(
+            System.Text.Json.JsonSerializer.Serialize(Observation("1|0|Monster"), ManifestJson.Options))!.AsObject();
+        document["frames"] = null;
+        var path = WriteJson(document.ToJsonString());
+
+        var error = Assert.Throws<ManifestException>(() => MapObservation.Load(path));
+
+        Assert.Contains("Map observation.frames is required", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void LoadRejectsDuplicateNodeCoordinates()
     {
         var path = Write(Observation("1|0|Monster", "1|0|Elite"));
@@ -164,7 +177,7 @@ public class MapObservationTests
     }
 
     [Fact]
-    public void AcceptsAPopulatedGeneratedRowOmittedWithAReason()
+    public void RejectsAnAuthorJustifiedOmissionOutsideTheStructuralAllowlist()
     {
         var observation = Observation("1|0|Monster") with
         {
@@ -172,6 +185,23 @@ public class MapObservationTests
             NotObserved = ["Row 9, hidden behind the map scroll in every recorded frame."],
         };
         var generated = Topology(16, 7, "1|0|Monster", "9|4|Treasure");
+
+        var comparison = observation.CompareTo(generated);
+
+        Assert.False(comparison.Matches);
+        Assert.Contains(comparison.Problems, problem =>
+            problem.Contains("not the structurally hidden run-start row 0", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AllowsOnlyTheStructurallyHiddenRunStartRow()
+    {
+        var observation = Observation("1|0|Monster") with
+        {
+            Frames = [new ObservedFrame(9000, [1])],
+            NotObserved = ["edges"],
+        };
+        var generated = Topology(16, 7, "0|3|Unknown", "1|0|Monster");
 
         var comparison = observation.CompareTo(generated);
 
@@ -212,12 +242,15 @@ public class MapObservationTests
     private static MapTopology Topology(int rows, int columns, params string[] nodes) =>
         new(0, rows, columns, nodes.Select(Parse).ToList(), []);
 
-    private static string Write(MapObservation observation)
+    private static string Write(MapObservation observation) =>
+        WriteJson(System.Text.Json.JsonSerializer.Serialize(observation, ManifestJson.Options));
+
+    private static string WriteJson(string json)
     {
         var directory = Path.GetFullPath(Path.Combine("build", "test-scratch"));
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, $"map-observation-{Guid.NewGuid():N}.json");
-        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(observation, ManifestJson.Options));
+        File.WriteAllText(path, json);
         return path;
     }
 

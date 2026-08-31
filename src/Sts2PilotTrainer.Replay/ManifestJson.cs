@@ -1,3 +1,6 @@
+using System.Collections;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -7,6 +10,8 @@ namespace Sts2PilotTrainer.Replay;
 /// a manifest is meant to be read by a person and diffed in review.</summary>
 public static class ManifestJson
 {
+    private static readonly NullabilityInfoContext Nullability = new();
+
     public static readonly JsonSerializerOptions Options = new()
     {
         WriteIndented = true,
@@ -40,14 +45,74 @@ public static class ManifestJson
                 "Refusing rather than reading it partially.");
         }
 
-        return JsonSerializer.Deserialize<ReplayManifest>(json, Options)
-               ?? throw new ManifestException("Manifest deserialized to null.");
+        var manifest = JsonSerializer.Deserialize<ReplayManifest>(json, Options)
+            ?? throw new ManifestException("Manifest deserialized to null.");
+        ValidateRequiredMembers(manifest, "Manifest");
+        return manifest;
     }
 
     public static ReplayManifest Load(string path) => Deserialize(File.ReadAllText(path));
 
     public static void Save(ReplayManifest manifest, string path) =>
         File.WriteAllText(path, Serialize(manifest) + "\n");
+
+    internal static void ValidateRequiredMembers(object value, string contractName)
+    {
+        var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        ValidateRequiredMembers(value, contractName, visited);
+    }
+
+    private static void ValidateRequiredMembers(object value, string path, HashSet<object> visited)
+    {
+        var type = value.GetType();
+        if (type.IsValueType || value is string || !visited.Add(value)) return;
+
+        if (value is IDictionary dictionary)
+        {
+            foreach (DictionaryEntry entry in dictionary)
+            {
+                if (entry.Value is null)
+                {
+                    throw new ManifestException($"{path} contains a null value.");
+                }
+                ValidateRequiredMembers(entry.Value, $"{path}[{entry.Key}]", visited);
+            }
+            return;
+        }
+
+        if (value is IEnumerable sequence)
+        {
+            var index = 0;
+            foreach (var item in sequence)
+            {
+                if (item is null)
+                {
+                    throw new ManifestException($"{path}[{index}] is null.");
+                }
+                ValidateRequiredMembers(item, $"{path}[{index}]", visited);
+                index++;
+            }
+            return;
+        }
+
+        foreach (var property in type.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                     .Where(property => property.CanRead && property.GetIndexParameters().Length == 0))
+        {
+            var propertyValue = property.GetValue(value);
+            var propertyName = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? property.Name;
+            var propertyPath = $"{path}.{propertyName}";
+            if (propertyValue is null)
+            {
+                if (property.GetCustomAttribute<RequiredMemberAttribute>() is not null ||
+                    Nullability.Create(property).ReadState == NullabilityState.NotNull)
+                {
+                    throw new ManifestException($"{propertyPath} is required and cannot be null.");
+                }
+                continue;
+            }
+            ValidateRequiredMembers(propertyValue, propertyPath, visited);
+        }
+    }
 }
 
 public sealed class ManifestException(string message) : Exception(message);

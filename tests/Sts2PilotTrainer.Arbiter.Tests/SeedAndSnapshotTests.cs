@@ -51,6 +51,29 @@ public class SeedVerificationTests
     }
 
     [GameFact]
+    public void BoundSeedEvidenceRequiresARejectedAlternativeCandidate()
+    {
+        var manifest = ManifestJson.Load(Arbiter.Manifest);
+        var outDir = TempDir();
+        var result = Arbiter.Run(
+            "verify-seed", Arbiter.MapObservation,
+            "--candidates", manifest.Environment.Seed.Value,
+            "--manifest", Arbiter.Manifest,
+            "--acts", string.Join(",", manifest.Environment.Acts.Value),
+            "--character", manifest.Environment.Character.Value,
+            "--ascension", manifest.Environment.Ascension.Value.ToString(
+                System.Globalization.CultureInfo.InvariantCulture),
+            "--game-mode", manifest.Environment.GameMode.Value,
+            "--out", outDir);
+
+        Assert.False(result.Verified);
+        var summary = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "seed-verification-summary.json"))).RootElement;
+        Assert.False(summary.GetProperty("resolved").GetBoolean());
+        Assert.False(summary.GetProperty("rejected_alternative_demonstrated").GetBoolean());
+    }
+
+    [GameFact]
     public void AWrongSingleCandidateReturnsFailure()
     {
         var result = Arbiter.Run(

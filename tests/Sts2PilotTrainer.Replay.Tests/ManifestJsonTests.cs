@@ -21,6 +21,18 @@ public class ManifestJsonTests
     }
 
     [Fact]
+    public void RefusesANullRequiredManifestMember()
+    {
+        var document = System.Text.Json.Nodes.JsonNode.Parse(
+            ManifestJson.Serialize(Fixtures.ValidManifest()))!.AsObject();
+        document["environment"] = null;
+
+        var thrown = Assert.Throws<ManifestException>(() => ManifestJson.Deserialize(document.ToJsonString()));
+
+        Assert.Contains("Manifest.environment is required", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RefusesAManifestWithNoVersion()
     {
         var thrown = Assert.Throws<ManifestException>(() => ManifestJson.Deserialize("""{"run_id":"x"}"""));

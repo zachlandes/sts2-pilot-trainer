@@ -67,6 +67,16 @@ internal static partial class Commands
             .Where(r => r.GetProperty("comparison").GetProperty("matches").GetBoolean())
             .Select(r => r.GetProperty("candidate_seed").GetString()!)
             .ToList();
+        var manifestPath = Args.Value(args, "--manifest");
+        var expectedSeed = string.IsNullOrWhiteSpace(manifestPath)
+            ? null
+            : ManifestJson.Load(manifestPath).Environment.Seed.Value;
+        var hasRejectedAlternative = expectedSeed is null || results.Any(result =>
+            !string.Equals(result.GetProperty("candidate_seed").GetString(), expectedSeed, StringComparison.Ordinal) &&
+            !result.GetProperty("comparison").GetProperty("matches").GetBoolean());
+        var resolved = matching.Count == 1 &&
+            (expectedSeed is null || string.Equals(matching[0], expectedSeed, StringComparison.Ordinal)) &&
+            hasRejectedAlternative;
 
         var summary = new
         {
@@ -78,8 +88,9 @@ internal static partial class Commands
             // map is not a discriminating fingerprint for this pair, and zero would
             // mean the true seed is not among the candidates - neither is a result
             // to paper over by picking the closest one.
-            resolved = matching.Count == 1,
-            resolved_seed = matching.Count == 1 ? matching[0] : null,
+            resolved,
+            resolved_seed = resolved ? matching[0] : null,
+            rejected_alternative_demonstrated = hasRejectedAlternative,
             results,
         };
 
@@ -89,12 +100,12 @@ internal static partial class Commands
         Console.WriteLine();
         Console.WriteLine($"candidates tested : {candidates.Length}");
         Console.WriteLine($"matching          : {(matching.Count == 0 ? "(none)" : string.Join(", ", matching))}");
-        Console.WriteLine(matching.Count == 1
+        Console.WriteLine(resolved
             ? $"resolved seed     : {matching[0]}"
             : "resolved seed     : NOT RESOLVED - see the summary for why");
         Console.WriteLine($"summary           : {Paths.Display(summaryPath)}");
 
-        return matching.Count == 1 ? 0 : 1;
+        return resolved ? 0 : 1;
     }
 
     private static int VerifyOne(
@@ -111,11 +122,6 @@ internal static partial class Commands
                 throw new ManifestException("Seed topology evidence can only bind to a VOD manifest.");
             }
             observation.RequireSameVideo(boundManifest.Source.Video);
-            if (!string.Equals(seed, boundManifest.Environment.Seed.Value, StringComparison.Ordinal))
-            {
-                throw new ManifestException(
-                    $"Candidate seed '{seed}' does not match manifest seed '{boundManifest.Environment.Seed.Value}'.");
-            }
             RequireBoundGenerationIdentity(
                 observation, character, ascension, gameMode, acts, boundManifest.Environment);
         }
@@ -199,6 +205,23 @@ internal static partial class Commands
         {
             throw new ManifestException("Publication seed evidence must generate the standard-mode Act 1 map.");
         }
+    }
+
+    internal static string NegativeControlSeed(string seed)
+    {
+        if (string.IsNullOrEmpty(seed))
+        {
+            throw new ManifestException("Cannot derive a seed negative control from an empty seed.");
+        }
+
+        var index = ManifestValidator.SeedAlphabet.IndexOf(seed[0]);
+        if (index < 0)
+        {
+            throw new ManifestException($"Cannot derive a seed negative control from illegal seed '{seed}'.");
+        }
+
+        var replacement = ManifestValidator.SeedAlphabet[(index + 1) % ManifestValidator.SeedAlphabet.Length];
+        return replacement + seed[1..];
     }
 
     private static object Identity()

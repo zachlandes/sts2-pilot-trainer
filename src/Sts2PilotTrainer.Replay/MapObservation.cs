@@ -69,6 +69,7 @@ public sealed record MapObservation
     {
         var observation = JsonSerializer.Deserialize<MapObservation>(File.ReadAllText(path), ManifestJson.Options)
             ?? throw new ManifestException($"Map observation at {Path.GetFileName(path)} deserialized to null.");
+        ManifestJson.ValidateRequiredMembers(observation, "Map observation");
 
         if (observation.Schema != CurrentSchema)
         {
@@ -150,8 +151,8 @@ public sealed record MapObservation
     /// Compares a generated map against this observation, on nodes only.
     ///
     /// Grid size must agree and every observed node must be present with the same
-    /// type. Every populated generated row must either be frame-backed and match
-    /// completely or be named with a reason in <see cref="NotObserved"/>.
+    /// type. Every populated generated row except the structurally hidden run-start
+    /// row must be frame-backed and match completely.
     /// </summary>
     public MapComparison CompareTo(MapTopology generated)
     {
@@ -185,29 +186,12 @@ public sealed record MapObservation
 
         var observedRows = frameBackedRows;
         var generatedRows = generated.Nodes.Select(node => node.Row).Distinct().ToHashSet();
-        var omittedRows = new Dictionary<int, string>();
-        foreach (var omission in NotObserved)
-        {
-            if (TryParseOmittedRow(omission, out var row, out var reason))
-            {
-                omittedRows[row] = reason;
-            }
-        }
 
         foreach (var row in generatedRows.OrderBy(row => row))
         {
-            if (frameBackedRows.Contains(row))
+            if (!frameBackedRows.Contains(row) && row != 0)
             {
-                if (omittedRows.ContainsKey(row))
-                {
-                    problems.Add($"row {row} is both frame-backed and declared not observed");
-                }
-                continue;
-            }
-
-            if (!omittedRows.TryGetValue(row, out var reason) || string.IsNullOrWhiteSpace(reason))
-            {
-                problems.Add($"generated row {row} has no frame coverage and no justified not_observed entry");
+                problems.Add($"generated row {row} has no frame coverage and is not the structurally hidden run-start row 0");
             }
         }
 
@@ -251,26 +235,6 @@ public sealed record MapObservation
             Problems: problems);
     }
 
-    private static bool TryParseOmittedRow(string omission, out int row, out string reason)
-    {
-        row = default;
-        reason = string.Empty;
-        if (!omission.StartsWith("Row ", StringComparison.OrdinalIgnoreCase)) return false;
-
-        var separator = omission.IndexOf(',', StringComparison.Ordinal);
-        if (separator < 5 ||
-            !int.TryParse(
-                omission.AsSpan(4, separator - 4),
-                System.Globalization.NumberStyles.None,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out row))
-        {
-            return false;
-        }
-
-        reason = omission[(separator + 1)..].Trim();
-        return reason.Length > 0;
-    }
 }
 
 public sealed record ObservedFrame(

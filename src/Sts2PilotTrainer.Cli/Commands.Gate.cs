@@ -55,7 +55,9 @@ internal static partial class Commands
                 "The manifest seed independently reproduces the map observed in the same VOD.",
                 SelfProcess.Run(
                     "verify-seed", mapObservationPath,
-                    "--seed", manifest.Environment.Seed.Value,
+                    "--candidates", string.Join(",",
+                        manifest.Environment.Seed.Value,
+                        NegativeControlSeed(manifest.Environment.Seed.Value)),
                     "--manifest", manifestPath,
                     "--acts", string.Join(",", manifest.Environment.Acts.Value),
                     "--character", manifest.Environment.Character.Value,
