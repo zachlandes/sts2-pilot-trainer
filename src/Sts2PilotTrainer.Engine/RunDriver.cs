@@ -39,7 +39,8 @@ public sealed class RunDriver(GameSession session)
                 break;
 
             case ActionVerb.MapMove:
-                MoveToMapNode(Arg.Int(action, "row"), Arg.Int(action, "column"));
+                MoveToMapNode(
+                    Arg.Int(action, "act"), Arg.Int(action, "row"), Arg.Int(action, "column"));
                 break;
 
             case ActionVerb.PlayCard:
@@ -80,8 +81,14 @@ public sealed class RunDriver(GameSession session)
         Pump.Drain();
     }
 
-    private void MoveToMapNode(int row, int column)
+    private void MoveToMapNode(int act, int row, int column)
     {
+        if (act != session.RunState.CurrentActIndex)
+        {
+            throw new EngineException(
+                $"Map move names act {act}, but the run is in act {session.RunState.CurrentActIndex}.");
+        }
+
         var map = session.RunState.Map
             ?? throw new EngineException("The current act has no map, so no node can be entered.");
 

@@ -39,7 +39,7 @@ internal static partial class Commands
 
         Directory.CreateDirectory(outDir);
         var key = SnapshotCacheKey.For(manifest, at);
-        var snapshotDir = Path.Combine(cacheDir, key.ToCacheDirectoryName());
+        var snapshotDir = key.ResolveCacheDirectory(cacheDir);
         var snapshotPath = Path.Combine(snapshotDir, "state.canonical");
 
         // ── Materialise ─────────────────────────────────────────────────────

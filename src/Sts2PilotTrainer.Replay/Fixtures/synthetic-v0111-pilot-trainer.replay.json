@@ -72,6 +72,7 @@
       "seq": 1,
       "verb": "MapMove",
       "args": {
+        "act": "0",
         "column": "3",
         "row": "1"
       },

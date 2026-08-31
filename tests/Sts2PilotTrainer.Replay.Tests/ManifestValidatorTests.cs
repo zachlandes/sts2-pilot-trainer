@@ -129,6 +129,38 @@ public class ManifestValidatorTests
         Assert.Contains(result.Problems, p => p.Contains("dense", StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("unknown")]
+    [InlineData("malformed")]
+    public void RejectsInvalidVerbSpecificActionArguments(string defect)
+    {
+        var manifest = Fixtures.ValidManifest();
+        var args = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (name, value) in manifest.Actions[1].Args) args[name] = value;
+        switch (defect)
+        {
+            case "missing":
+                args.Remove("act");
+                break;
+            case "unknown":
+                args["floor"] = "1";
+                break;
+            default:
+                args["act"] = "01";
+                break;
+        }
+        manifest = manifest with
+        {
+            Actions = [manifest.Actions[0], manifest.Actions[1] with { Args = args }],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem => problem.Contains("actions[1] (MapMove)", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void RejectsAnObservedActionWithNoVideoTimestamp()
     {

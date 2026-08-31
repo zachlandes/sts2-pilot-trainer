@@ -91,6 +91,7 @@ public class ReplayTests
             {
                 Args = new Dictionary<string, string>(StringComparer.Ordinal)
                 {
+                    ["act"] = "0",
                     ["row"] = "2",
                     ["column"] = "2",
                 },
@@ -102,6 +103,26 @@ public class ReplayTests
 
         Assert.False(result.Verified);
         Assert.Contains("not reachable", result.All, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void ReplayRefusesAMapMoveNamingADifferentAct()
+    {
+        var path = Temp("wrong-map-act.json");
+        var manifest = ManifestJson.Load(Arbiter.SyntheticReplayFixture());
+        var actions = manifest.Actions.Select(action =>
+        {
+            if (action.Seq != 1) return action;
+            var changedArgs = action.Args.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            changedArgs["act"] = "1";
+            return action with { Args = changedArgs };
+        }).ToList();
+        ManifestJson.Save(manifest with { Actions = actions }, path);
+
+        var result = Arbiter.Run("replay", path);
+
+        Assert.False(result.Verified);
+        Assert.Contains("names act 1, but the run is in act 0", result.All, StringComparison.Ordinal);
     }
 
     [GameFact]

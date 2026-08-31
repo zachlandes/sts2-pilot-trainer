@@ -17,7 +17,7 @@ public class CorruptionTests
             Actions =
             [
                 Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2")),
-                Fixtures.Action(1, ActionVerb.MapMove, ("row", "1"), ("column", "3")),
+                Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3")),
                 Fixtures.Action(2, ActionVerb.PlayCard, ("card_id", "CARD.HELLRAISER"), ("hand_index", "1")),
                 Fixtures.Action(3, ActionVerb.PlayCard, ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "3")),
                 Fixtures.Action(4, ActionVerb.EndTurn),

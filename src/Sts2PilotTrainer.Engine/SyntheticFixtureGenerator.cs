@@ -30,6 +30,7 @@ public static class SyntheticFixtureGenerator
             .OrderBy(candidate => candidate.ToColumn)
             .First();
         Apply(driver, actions, ActionVerb.MapMove,
+            ("act", session.RunState.CurrentActIndex.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             ("row", edge.ToRow.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             ("column", edge.ToColumn.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         checkpoints.Add(Capture("combat-start", actions[^1].Seq, session,

@@ -467,6 +467,8 @@ public static partial class ManifestValidator
 
         foreach (var action in actions)
         {
+            ValidateActionArguments(action, problems);
+
             var isLineAction = lineFromSeq is { } start && action.Seq >= start;
             if (isLineAction)
             {
@@ -517,6 +519,96 @@ public static partial class ManifestValidator
             }
         }
     }
+
+    private static void ValidateActionArguments(ActionRecord action, List<string> problems)
+    {
+        if (action.Args is null)
+        {
+            problems.Add($"actions[{action.Seq}] ({action.Verb}) has null args.");
+            return;
+        }
+
+        string[] required;
+        string[] allowed;
+        string[] nonNegativeIntegers;
+
+        switch (action.Verb)
+        {
+            case ActionVerb.ChooseNeowBlessing:
+                required = ["option_index"];
+                allowed = required;
+                nonNegativeIntegers = required;
+                break;
+            case ActionVerb.MapMove:
+                required = ["act", "row", "column"];
+                allowed = required;
+                nonNegativeIntegers = required;
+                break;
+            case ActionVerb.PlayCard:
+                required = ["card_id", "hand_index"];
+                allowed =
+                [
+                    .. required,
+                    "target_index",
+                    "negative_control_substitute_card_id",
+                    "negative_control_substitute_hand_index",
+                ];
+                nonNegativeIntegers =
+                ["hand_index", "target_index", "negative_control_substitute_hand_index"];
+                break;
+            case ActionVerb.EndTurn:
+                required = [];
+                allowed = [];
+                nonNegativeIntegers = [];
+                break;
+            default:
+                problems.Add(
+                    $"actions[{action.Seq}] uses verb '{action.Verb}', which this manifest version does not implement.");
+                return;
+        }
+
+        var allowedSet = new HashSet<string>(allowed, StringComparer.Ordinal);
+        foreach (var name in required.Where(name => !action.Args.ContainsKey(name)))
+        {
+            problems.Add($"actions[{action.Seq}] ({action.Verb}) is missing required argument '{name}'.");
+        }
+
+        foreach (var name in action.Args.Keys.Where(name => !allowedSet.Contains(name)))
+        {
+            problems.Add($"actions[{action.Seq}] ({action.Verb}) has unknown argument '{name}'.");
+        }
+
+        foreach (var name in nonNegativeIntegers)
+        {
+            if (action.Args.TryGetValue(name, out var value) && !NonNegativeIntegerPattern.IsMatch(value))
+            {
+                problems.Add(
+                    $"actions[{action.Seq}] ({action.Verb}) argument '{name}' must be a canonical non-negative integer.");
+            }
+        }
+
+        if (action.Args.TryGetValue("card_id", out var cardId) && string.IsNullOrWhiteSpace(cardId))
+        {
+            problems.Add($"actions[{action.Seq}] ({action.Verb}) argument 'card_id' is empty.");
+        }
+
+        var hasSubstituteCard = action.Args.ContainsKey("negative_control_substitute_card_id");
+        var hasSubstituteIndex = action.Args.ContainsKey("negative_control_substitute_hand_index");
+        if (hasSubstituteCard != hasSubstituteIndex)
+        {
+            problems.Add(
+                $"actions[{action.Seq}] ({action.Verb}) negative-control substitute card and hand index must appear together.");
+        }
+        if (action.Args.TryGetValue("negative_control_substitute_card_id", out var substituteCardId) &&
+            string.IsNullOrWhiteSpace(substituteCardId))
+        {
+            problems.Add(
+                $"actions[{action.Seq}] ({action.Verb}) argument 'negative_control_substitute_card_id' is empty.");
+        }
+    }
+
+    [GeneratedRegex(@"^(0|[1-9]\d*)$")]
+    private static partial Regex NonNegativeIntegerPattern { get; }
 
     private static void ValidateCheckpoints(
         IReadOnlyList<Checkpoint> checkpoints, IReadOnlyList<ActionRecord> actions,

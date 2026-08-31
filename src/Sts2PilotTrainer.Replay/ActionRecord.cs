@@ -67,7 +67,7 @@ public enum ActionVerb
     MapMove,
 
     /// <summary>Play a card from hand. Args: <c>card_id</c>, <c>hand_index</c>,
-    /// and <c>target</c> when the card needs one.</summary>
+    /// and <c>target_index</c> when choosing among multiple enemies.</summary>
     PlayCard,
 
     /// <summary>End the player's turn.</summary>

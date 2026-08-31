@@ -71,11 +71,44 @@ public sealed record SnapshotCacheKey(
     /// nobody can read is a cache nobody can audit.</summary>
     public string ToCacheDirectoryName()
     {
-        var shortActions = ShortHash(ActionHistoryHash);
-        var shortActs = ShortHash(ActsHash);
-        var shortMods = ShortHash(ModEnvironmentHash);
-        return $"{BuildVersion}_{GameMode}_{Character}_a{Ascension}_{Seed}_{ContentHash}_" +
-               $"acts{shortActs}_mods{shortMods}_seq{UpToSeq}_{shortActions}";
+        var identityHash = HashParts(
+        [
+            BuildVersion,
+            Seed,
+            ContentHash,
+            GameMode,
+            Character,
+            Ascension.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ActsHash,
+            ModEnvironmentHash,
+            ActionHistoryHash,
+            UpToSeq.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        ]).Replace("sha256:", "", StringComparison.Ordinal);
+
+        return $"{ReadablePart(BuildVersion, 24)}_{ReadablePart(GameMode, 16)}_" +
+               $"{ReadablePart(Character, 32)}_a{Ascension}_" +
+               $"{ReadablePart(Seed, 24)}_{ReadablePart(ContentHash, 24)}_" +
+               $"seq{UpToSeq}_{identityHash}";
+    }
+
+    public string ResolveCacheDirectory(string cacheRoot)
+    {
+        if (string.IsNullOrWhiteSpace(cacheRoot))
+        {
+            throw new ArgumentException("Cache root cannot be empty.", nameof(cacheRoot));
+        }
+
+        var root = Path.GetFullPath(cacheRoot);
+        var candidate = Path.GetFullPath(Path.Combine(root, ToCacheDirectoryName()));
+        var rootPrefix = root.EndsWith(Path.DirectorySeparatorChar)
+            ? root
+            : root + Path.DirectorySeparatorChar;
+        if (!candidate.StartsWith(rootPrefix, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Resolved snapshot cache directory is outside the cache root.");
+        }
+
+        return candidate;
     }
 
     private static string HashModEnvironment(ModEnvironment mods) => HashParts(
@@ -86,6 +119,14 @@ public sealed record SnapshotCacheKey(
         "sha256:" + Convert.ToHexStringLower(SHA256.HashData(
             Encoding.UTF8.GetBytes(string.Join(Unit, parts))));
 
-    private static string ShortHash(string hash) =>
-        hash.Replace("sha256:", "", StringComparison.Ordinal)[..16];
+    private static string ReadablePart(string value, int maxLength)
+    {
+        var safe = new string(value
+            .Take(maxLength)
+            .Select(character => char.IsAsciiLetterOrDigit(character) || character is '.' or '-'
+                ? character
+                : '-')
+            .ToArray());
+        return string.IsNullOrEmpty(safe) ? "empty" : safe;
+    }
 }

@@ -58,6 +58,7 @@ internal static class Fixtures
                 Verb = ActionVerb.MapMove,
                 Args = new SortedDictionary<string, string>(StringComparer.Ordinal)
                 {
+                    ["act"] = "0",
                     ["row"] = "1",
                     ["column"] = "3",
                 },

@@ -16,7 +16,7 @@
     "BaseLibSha256": "sha256:ad2f89e43e8b31debfab65d783353d9429eba59a2cfe904ff933a894ce79d32e",
     "TargetIlSha256": "sha256:5aabd119585880b94d7d39e4102406cdd396e83ea668499ec52a11188d81e4c9",
     "Seed": "SFXT47K77RFK",
-    "ActionHistoryHash": "sha256:59bbd9b144eb85d53eebadd2784fb1f456d7a8f4fa0367f55f6d007c01a0367a",
+    "ActionHistoryHash": "sha256:e09210ed5816126ae557e8330ef7244271a0d01a138ec3a3edea42255790dbaf",
     "FinalStateSha256": "sha256:ad7d3d164d73b5cefdf47622ee51089a66b44bf610b122142f972401d5815cff",
     "FinalRng": {
       "run.rng.CombatCardGeneration": "0",
@@ -67,7 +67,7 @@
     "BaseLibSha256": "sha256:ad2f89e43e8b31debfab65d783353d9429eba59a2cfe904ff933a894ce79d32e",
     "TargetIlSha256": "sha256:5aabd119585880b94d7d39e4102406cdd396e83ea668499ec52a11188d81e4c9",
     "Seed": "SFXT47K77RFK",
-    "ActionHistoryHash": "sha256:59bbd9b144eb85d53eebadd2784fb1f456d7a8f4fa0367f55f6d007c01a0367a",
+    "ActionHistoryHash": "sha256:e09210ed5816126ae557e8330ef7244271a0d01a138ec3a3edea42255790dbaf",
     "FinalStateSha256": "sha256:d9924ce5090bbbf546744ab267512145aa5fa66bc56ee0bf5fc9311440ecf3a3",
     "FinalRng": {
       "run.rng.CombatCardGeneration": "0",

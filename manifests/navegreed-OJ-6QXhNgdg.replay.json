@@ -249,6 +249,7 @@
       "seq": 1,
       "verb": "MapMove",
       "args": {
+        "act": "0",
         "row": "1",
         "column": "3"
       },

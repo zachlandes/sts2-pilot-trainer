@@ -23,7 +23,7 @@ public class SnapshotCacheKeyTests
             Actions =
             [
                 manifest.Actions[0],
-                Fixtures.Action(1, ActionVerb.MapMove, ("row", "1"), ("column", "0")),
+                Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "0")),
             ],
         };
 
@@ -137,6 +137,26 @@ public class SnapshotCacheKeyTests
         Assert.Contains("SFXT47K77RFK", name, StringComparison.Ordinal);
         Assert.Contains("standard", name, StringComparison.Ordinal);
         Assert.DoesNotContain(Path.DirectorySeparatorChar, name);
+    }
+
+    [Fact]
+    public void KeepsManifestDerivedDirectoryNamesInsideTheCacheRoot()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Character = Fact<string>.Observed(
+                    "CHARACTER.X/../../../../target", FactEvidence.AtVideoTime(1, "test")),
+            },
+        };
+        var root = Path.GetFullPath(Path.Combine("build", "snapshot-cache-test"));
+
+        var resolved = SnapshotCacheKey.For(manifest, 1).ResolveCacheDirectory(root);
+
+        Assert.StartsWith(root + Path.DirectorySeparatorChar, resolved, StringComparison.Ordinal);
+        Assert.Equal(Path.GetFileName(resolved), Path.GetRelativePath(root, resolved));
     }
 
     private static ReplayManifest WithEnvironment(
