@@ -164,6 +164,24 @@ public class ReplayTests
     }
 
     [GameFact]
+    public void FailedDeterminismRunClearsAnEarlierIdenticalResult()
+    {
+        var outDir = TempDir();
+        var initial = Arbiter.Run(
+            "determinism", Arbiter.SyntheticReplayFixture(), "--runs", "2", "--out", outDir);
+        Assert.True(initial.Verified, initial.All);
+        var reportPath = Path.Combine(outDir, "determinism.json");
+        Assert.True(File.Exists(reportPath));
+
+        var malformed = Path.Combine(outDir, "malformed-manifest.json");
+        File.WriteAllText(malformed, "{");
+        var result = Arbiter.Run("determinism", malformed, "--runs", "2", "--out", outDir);
+
+        Assert.False(result.Verified);
+        Assert.False(File.Exists(reportPath));
+    }
+
+    [GameFact]
     public void EveryCorruptedHistoryIsRejectedAndTheUncorruptedOneIsNot()
     {
         var outDir = TempDir();

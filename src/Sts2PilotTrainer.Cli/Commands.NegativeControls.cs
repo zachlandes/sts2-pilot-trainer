@@ -17,8 +17,9 @@ internal static partial class Commands
     internal static int NegativeControls(string[] args)
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
-        var manifest = ManifestJson.Load(manifestPath);
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
+        var reportArtifact = EvidenceArtifact.Prepare(outDir, "negative-controls.json");
+        var manifest = ManifestJson.Load(manifestPath);
         var scratchDir = Path.Combine(outDir, "negative-controls");
         Directory.CreateDirectory(scratchDir);
 
@@ -118,8 +119,7 @@ internal static partial class Commands
             });
         }
 
-        File.WriteAllText(
-            Path.Combine(outDir, "negative-controls.json"),
+        reportArtifact.WriteAtomic(
             JsonSerializer.Serialize(new
             {
                 schema = "sts2-pilot-trainer/negative-controls/v1",

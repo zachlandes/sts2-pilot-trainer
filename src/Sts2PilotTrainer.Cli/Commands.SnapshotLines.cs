@@ -23,12 +23,14 @@ internal static partial class Commands
     internal static int SnapshotLines(string[] args)
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
+        var outDir = Args.Value(args, "--out") ?? "build/evidence";
+        var reportArtifact = EvidenceArtifact.Prepare(outDir, "snapshot-lines.json");
+        var diagramArtifact = EvidenceArtifact.Prepare(outDir, "snapshot-lines.svg");
         var manifest = ManifestJson.Load(manifestPath);
         var at = int.Parse(
             Args.Value(args, "--at") ?? throw new ManifestException("snapshot-lines needs --at <seq>."),
             System.Globalization.CultureInfo.InvariantCulture);
         var linePaths = Args.Values(args, "--line");
-        var outDir = Args.Value(args, "--out") ?? "build/evidence";
         var cacheDir = Args.Value(args, "--cache") ?? "build/snapshots";
 
         if (linePaths.Count < 2)
@@ -37,7 +39,6 @@ internal static partial class Commands
                 "snapshot-lines needs at least two --line files. One line has nothing to be compared against.");
         }
 
-        Directory.CreateDirectory(outDir);
         var key = SnapshotCacheKey.For(manifest, at);
         var snapshotDir = key.ResolveCacheDirectory(cacheDir);
         var snapshotPath = SnapshotCacheKey.ResolveCacheArtifact(snapshotDir, "state.canonical");
@@ -116,12 +117,10 @@ internal static partial class Commands
             });
         }
 
-        File.WriteAllText(
-            Path.Combine(outDir, "snapshot-lines.svg"),
+        diagramArtifact.WriteAtomic(
             LineDiagram.Render(key.ToCacheDirectoryName(), DigestOf(snapshot), diagramLines));
 
-        File.WriteAllText(
-            Path.Combine(outDir, "snapshot-lines.json"),
+        reportArtifact.WriteAtomic(
             JsonSerializer.Serialize(new
             {
                 schema = "sts2-pilot-trainer/snapshot-lines/v1",
@@ -135,7 +134,7 @@ internal static partial class Commands
                 lines = lineReports,
             }, Json.Indented) + "\n");
 
-        Console.WriteLine($"diagram: {Paths.Display(Path.Combine(outDir, "snapshot-lines.svg"))}");
+        Console.WriteLine($"diagram: {Paths.Display(diagramArtifact.Path)}");
         return 0;
     }
 

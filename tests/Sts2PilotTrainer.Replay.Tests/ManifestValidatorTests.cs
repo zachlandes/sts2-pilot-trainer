@@ -313,6 +313,30 @@ public class ManifestValidatorTests
         Assert.True(result.IsValid, result.Describe());
     }
 
+    [Theory]
+    [InlineData("platform")]
+    [InlineData("video_id")]
+    [InlineData("channel_id")]
+    public void RejectsAnEmptyVodVideoIdentityField(string field)
+    {
+        var manifest = Fixtures.ValidManifest();
+        var video = manifest.Source.Video!;
+        var changed = field switch
+        {
+            "platform" => video with { Platform = "" },
+            "video_id" => video with { VideoId = "" },
+            "channel_id" => video with { ChannelId = "" },
+            _ => throw new InvalidOperationException(),
+        };
+        manifest = manifest with { Source = manifest.Source with { Video = changed } };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains($"source.video.{field} is empty", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void RejectsRunStartEvidenceAtOrAfterTheFirstObservedAction()
     {

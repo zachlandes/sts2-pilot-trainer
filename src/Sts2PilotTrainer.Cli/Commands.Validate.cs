@@ -16,8 +16,12 @@ internal static partial class Commands
     internal static int Validate(string[] args)
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
-        var manifest = ManifestJson.Load(manifestPath);
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
+        var showRejections = Array.IndexOf(args, "--show-rejections") >= 0;
+        var reportArtifact = showRejections
+            ? EvidenceArtifact.Prepare(outDir, "ingestion-gates.json")
+            : null;
+        var manifest = ManifestJson.Load(manifestPath);
 
         var result = ManifestValidator.Validate(manifest);
         Console.WriteLine($"manifest : {manifest.RunId}");
@@ -25,7 +29,7 @@ internal static partial class Commands
         if (!result.IsValid) Console.WriteLine(result.Describe());
         Console.WriteLine();
 
-        if (Array.IndexOf(args, "--show-rejections") < 0)
+        if (!showRejections)
         {
             return result.IsValid ? 0 : 1;
         }
@@ -65,9 +69,7 @@ internal static partial class Commands
             });
         }
 
-        Directory.CreateDirectory(outDir);
-        File.WriteAllText(
-            Path.Combine(outDir, "ingestion-gates.json"),
+        reportArtifact!.WriteAtomic(
             JsonSerializer.Serialize(new
             {
                 schema = "sts2-pilot-trainer/ingestion-gates/v1",

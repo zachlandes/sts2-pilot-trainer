@@ -267,9 +267,24 @@ public static partial class ManifestValidator
             {
                 problems.Add("source.video is absent, so no reader could re-check any observation.");
             }
-            else if (source.Video.DurationSeconds <= 0)
+            else
             {
-                problems.Add("source.video.duration_s must be positive so observation timestamps can be bounded.");
+                if (string.IsNullOrWhiteSpace(source.Video.Platform))
+                {
+                    problems.Add("source.video.platform is empty.");
+                }
+                if (string.IsNullOrWhiteSpace(source.Video.VideoId))
+                {
+                    problems.Add("source.video.video_id is empty.");
+                }
+                if (string.IsNullOrWhiteSpace(source.Video.ChannelId))
+                {
+                    problems.Add("source.video.channel_id is empty.");
+                }
+                if (source.Video.DurationSeconds <= 0)
+                {
+                    problems.Add("source.video.duration_s must be positive so observation timestamps can be bounded.");
+                }
             }
 
             if (source.Synthetic is not null)

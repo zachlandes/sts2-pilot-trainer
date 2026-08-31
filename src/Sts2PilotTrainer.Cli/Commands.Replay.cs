@@ -38,8 +38,9 @@ internal static partial class Commands
     private static int Replay(string[] args, bool lineReplay)
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
-        var manifest = ManifestJson.Load(manifestPath);
         var outPath = Args.Value(args, "--out");
+        var outArtifact = outPath is null ? null : EvidenceArtifact.PreparePath(outPath);
+        var manifest = ManifestJson.Load(manifestPath);
         var stopAfter = Args.Value(args, "--stop-after") is { } raw
             ? int.Parse(raw, System.Globalization.CultureInfo.InvariantCulture)
             : (int?)null;
@@ -79,10 +80,10 @@ internal static partial class Commands
         Console.WriteLine($"final state digest : {report.FinalStateDigest ?? "(none)"}");
         Console.WriteLine($"action history hash: {report.ActionHistoryHash ?? "(none)"}");
 
-        if (outPath is not null)
+        if (outArtifact is not null)
         {
-            ManifestJson.Save(manifest with { Verification = report }, outPath);
-            Console.WriteLine($"verified manifest  : {Paths.Display(outPath)}");
+            outArtifact.WriteAtomic(ManifestJson.Serialize(manifest with { Verification = report }) + "\n");
+            Console.WriteLine($"verified manifest  : {Paths.Display(outArtifact.Path)}");
         }
 
         // The canonical state is written beside the manifest so a divergence can be
@@ -108,15 +109,15 @@ internal static partial class Commands
     internal static int Determinism(string[] args)
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
-        var runs = int.Parse(Args.Value(args, "--runs") ?? "2", System.Globalization.CultureInfo.InvariantCulture);
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
+        var determinismArtifact = EvidenceArtifact.Prepare(outDir, "determinism.json");
+        var runs = int.Parse(Args.Value(args, "--runs") ?? "2", System.Globalization.CultureInfo.InvariantCulture);
 
         if (runs < 2)
         {
             throw new ManifestException("determinism needs --runs 2 or more; one run cannot disagree with anything.");
         }
 
-        Directory.CreateDirectory(outDir);
         var states = new List<string>();
         var digests = new List<string>();
 
@@ -160,8 +161,7 @@ internal static partial class Commands
             }
         }
 
-        File.WriteAllText(
-            Path.Combine(outDir, "determinism.json"),
+        determinismArtifact.WriteAtomic(
             JsonSerializer.Serialize(new
             {
                 schema = "sts2-pilot-trainer/determinism/v1",

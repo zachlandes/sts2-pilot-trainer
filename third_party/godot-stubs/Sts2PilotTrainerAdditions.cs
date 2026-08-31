@@ -84,7 +84,7 @@ public static class StringExtensions
 /// </summary>
 public static class HeadlessSandbox
 {
-    private static string _root = Path.Combine(Path.GetTempPath(), "sts2-pilot-trainer-sandbox");
+    private static string _root = Path.Combine(WorktreeLocator.Find(), "build", "sandbox");
 
     /// <summary>The sandbox directory. Created on demand; safe to delete between runs.</summary>
     public static string Root
@@ -97,7 +97,8 @@ public static class HeadlessSandbox
     }
 
     /// <summary>Points the sandbox somewhere else, e.g. a per-test directory.</summary>
-    public static void SetRoot(string path) => _root = Path.GetFullPath(path);
+    public static void SetRoot(string path) =>
+        _root = PathContainment.RequireContained(WorktreeLocator.Find(), path);
 
     /// <summary>
     /// Turns a Godot virtual path into a real one inside the sandbox. An absolute

@@ -10,17 +10,18 @@ internal static partial class Commands
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var baseLibPath = Args.Positional(args, 1, "BaseLib.dll path");
+        var outPath = Args.Value(args, "--out")
+            ?? throw new ManifestException("baselib-reachability-probe needs --out <path>.");
+        var artifact = EvidenceArtifact.PreparePath(outPath);
         var mode = Args.Value(args, "--mode")
             ?? throw new ManifestException("baselib-reachability-probe needs --mode history|negative.");
         if (mode is not ("history" or "negative"))
         {
             throw new ManifestException($"Unknown BaseLib reachability mode '{mode}'.");
         }
-        var outPath = Args.Value(args, "--out")
-            ?? throw new ManifestException("baselib-reachability-probe needs --out <path>.");
         var result = Engine.BaseLibReachabilityProbe.Run(
             ManifestJson.Load(manifestPath), baseLibPath, injectAffectedCall: mode == "negative");
-        File.WriteAllText(outPath, JsonSerializer.Serialize(result, Json.Indented) + "\n");
+        artifact.WriteAtomic(JsonSerializer.Serialize(result, Json.Indented) + "\n");
         return 0;
     }
 
@@ -30,8 +31,8 @@ internal static partial class Commands
         var baseLibPath = Args.Positional(args, 1, "BaseLib.dll path");
         var outPath = Args.Value(args, "--out")
             ?? throw new ManifestException("baselib-reachability needs --out <path>.");
-        var outDir = Path.GetDirectoryName(Path.GetFullPath(outPath))!;
-        Directory.CreateDirectory(outDir);
+        var reportArtifact = EvidenceArtifact.PreparePath(outPath);
+        var outDir = Path.GetDirectoryName(reportArtifact.Path)!;
 
         var results = new Dictionary<string, BaseLibReachabilityResult>(StringComparer.Ordinal);
         foreach (var mode in new[] { "history", "negative" })
@@ -76,7 +77,7 @@ internal static partial class Commands
             history,
             negative_control = negative,
         };
-        File.WriteAllText(outPath, JsonSerializer.Serialize(report, Json.Indented) + "\n");
+        reportArtifact.WriteAtomic(JsonSerializer.Serialize(report, Json.Indented) + "\n");
         Console.WriteLine($"BaseLib reachability instrument: {(instrumentPassed ? "PASS" : "FAIL")}");
         Console.WriteLine($"Affected branch in reconstructed history: {(branchReachable ? "REACHED" : "NOT REACHED")}");
         Console.WriteLine($"report: {Paths.Display(outPath)}");

@@ -55,6 +55,12 @@ internal sealed class EvidenceArtifact
 
     internal string Path { get; }
 
+    internal static EvidenceArtifact PreparePath(string path)
+    {
+        var full = System.IO.Path.GetFullPath(path);
+        return Prepare(System.IO.Path.GetDirectoryName(full)!, System.IO.Path.GetFileName(full));
+    }
+
     internal static EvidenceArtifact Prepare(string directory, string fileName)
     {
         if (System.IO.Path.GetFileName(fileName) != fileName)

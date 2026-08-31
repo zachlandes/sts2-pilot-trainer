@@ -1,5 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
+using Sts2PilotTrainer.IO;
 
 namespace Sts2PilotTrainer.Engine;
 
@@ -44,11 +45,13 @@ internal static class AssemblyResolution
     /// </summary>
     internal static string? ResolveLibDirectory()
     {
+        var worktreeRoot = WorktreeLocator.Find();
         var configured = Environment.GetEnvironmentVariable(LibDirVariable);
         if (!string.IsNullOrWhiteSpace(configured))
         {
-            var full = Path.GetFullPath(configured.Trim());
+            var full = PathContainment.RequireContained(worktreeRoot, configured.Trim());
             if (File.Exists(Path.Combine(full, "sts2.dll"))) return full;
+            return null;
         }
 
         var dir = AppContext.BaseDirectory;
@@ -56,7 +59,10 @@ internal static class AssemblyResolution
         {
             foreach (var candidate in new[] { Path.Combine(dir, "lib"), Path.Combine(dir, "build", "lib") })
             {
-                if (File.Exists(Path.Combine(candidate, "sts2.dll"))) return Path.GetFullPath(candidate);
+                if (File.Exists(Path.Combine(candidate, "sts2.dll")))
+                {
+                    return PathContainment.RequireContained(worktreeRoot, candidate);
+                }
             }
             dir = Directory.GetParent(dir)?.FullName ?? "";
         }

@@ -9,12 +9,13 @@ internal static partial class Commands
     internal static int BaseLibParityProbe(string[] args)
     {
         var baseLibPath = Args.Positional(args, 0, "BaseLib.dll path");
-        var mode = Args.Value(args, "--mode")
-            ?? throw new ManifestException("baselib-parity-probe needs --mode baseline|patched|negative.");
         var outPath = Args.Value(args, "--out")
             ?? throw new ManifestException("baselib-parity-probe needs --out <path>.");
+        var artifact = EvidenceArtifact.PreparePath(outPath);
+        var mode = Args.Value(args, "--mode")
+            ?? throw new ManifestException("baselib-parity-probe needs --mode baseline|patched|negative.");
         var result = Engine.BaseLibParityProbe.Run(baseLibPath, mode);
-        File.WriteAllText(outPath, JsonSerializer.Serialize(result, Json.Indented) + "\n");
+        artifact.WriteAtomic(JsonSerializer.Serialize(result, Json.Indented) + "\n");
         return 0;
     }
 
@@ -23,8 +24,8 @@ internal static partial class Commands
         var baseLibPath = Args.Positional(args, 0, "BaseLib.dll path");
         var outPath = Args.Value(args, "--out")
             ?? throw new ManifestException("baselib-parity needs --out <path>.");
-        var outDir = Path.GetDirectoryName(Path.GetFullPath(outPath))!;
-        Directory.CreateDirectory(outDir);
+        var reportArtifact = EvidenceArtifact.PreparePath(outPath);
+        var outDir = Path.GetDirectoryName(reportArtifact.Path)!;
 
         var results = new Dictionary<string, BaseLibParityProbeResult>(StringComparer.Ordinal);
         foreach (var mode in new[] { "baseline", "patched", "negative" })
@@ -84,7 +85,7 @@ internal static partial class Commands
             patched,
             negative_control = negative,
         };
-        File.WriteAllText(outPath, JsonSerializer.Serialize(report, Json.Indented) + "\n");
+        reportArtifact.WriteAtomic(JsonSerializer.Serialize(report, Json.Indented) + "\n");
         Console.WriteLine($"BaseLib PowerCmd target probe: {(instrumentPassed ? "PASS" : "FAIL")}");
         Console.WriteLine($"BaseLib behavior parity: {(behaviorParity ? "MATCH" : "DIFFERS")}");
         Console.WriteLine("VOD publication parity: NOT ESTABLISHED");

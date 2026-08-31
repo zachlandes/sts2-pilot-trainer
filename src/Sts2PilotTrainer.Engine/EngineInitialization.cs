@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Multiplayer.Serialization;
 using MegaCrit.Sts2.Core.Saves;
+using Sts2PilotTrainer.IO;
 
 namespace Sts2PilotTrainer.Engine;
 
@@ -26,11 +27,12 @@ internal static class EngineInitialization
         // Confine every write the engine makes to a directory this project owns.
         // The player's install and saves are read-only inputs, and the engine has
         // no idea that is the arrangement.
+        var worktreeRoot = WorktreeLocator.Find();
         var libDir = AssemblyResolution.ResolveLibDirectory();
-        if (libDir is not null)
-        {
-            Godot.HeadlessSandbox.SetRoot(Path.Combine(Path.GetDirectoryName(libDir)!, "sandbox"));
-        }
+        var sandboxRoot = libDir is null
+            ? Path.Combine(worktreeRoot, "build", "sandbox")
+            : Path.Combine(Path.GetDirectoryName(libDir)!, "sandbox");
+        Godot.HeadlessSandbox.SetRoot(PathContainment.RequireContained(worktreeRoot, sandboxRoot));
 
         // Platform services first: several gameplay paths reach for the platform
         // layer, and touching it early turns a mid-run null reference into a warning
