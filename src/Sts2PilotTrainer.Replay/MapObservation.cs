@@ -76,6 +76,12 @@ public sealed record MapObservation
                 $"Map observation schema '{observation.Schema}' is not '{CurrentSchema}'. Refusing to read it partially.");
         }
 
+        var videoProblems = observation.VideoProblems();
+        if (videoProblems.Count > 0)
+        {
+            throw new ManifestException("Map observation video provenance is invalid: " + string.Join("; ", videoProblems));
+        }
+
         if (observation.Nodes.Count == 0 || observation.Frames.SelectMany(frame => frame.RowsSettled).Distinct().Any() == false)
         {
             throw new ManifestException(
@@ -95,6 +101,37 @@ public sealed record MapObservation
         }
 
         return observation;
+    }
+
+    public void RequireSameVideo(VideoSource expected)
+    {
+        if (!string.Equals(Video.Platform, expected.Platform, StringComparison.Ordinal) ||
+            !string.Equals(Video.VideoId, expected.VideoId, StringComparison.Ordinal) ||
+            !string.Equals(Video.ChannelId, expected.ChannelId, StringComparison.Ordinal) ||
+            Video.DurationSeconds != expected.DurationSeconds)
+        {
+            throw new ManifestException(
+                $"Map observation video '{Video.VideoId}' does not match manifest video '{expected.VideoId}'.");
+        }
+    }
+
+    private IReadOnlyList<string> VideoProblems()
+    {
+        var problems = new List<string>();
+        if (string.IsNullOrWhiteSpace(Video.Platform)) problems.Add("platform is empty");
+        if (string.IsNullOrWhiteSpace(Video.VideoId)) problems.Add("video_id is empty");
+        if (string.IsNullOrWhiteSpace(Video.ChannelId)) problems.Add("channel_id is empty");
+        if (Video.DurationSeconds <= 0) problems.Add("duration_s must be positive");
+
+        var durationMs = (long)Video.DurationSeconds * 1000;
+        foreach (var frame in Frames)
+        {
+            if (frame.VideoTimeMs < 0 || frame.VideoTimeMs > durationMs)
+            {
+                problems.Add($"frame timestamp {frame.VideoTimeMs}ms is outside video duration {durationMs}ms");
+            }
+        }
+        return problems;
     }
 
     /// <summary>

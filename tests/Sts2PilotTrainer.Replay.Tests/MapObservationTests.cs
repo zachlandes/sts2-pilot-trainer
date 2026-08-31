@@ -30,6 +30,43 @@ public class MapObservationTests
     }
 
     [Fact]
+    public void LoadRejectsMissingVideoIdentity()
+    {
+        var path = Write(Observation("1|0|Monster") with
+        {
+            Video = Observation("1|0|Monster").Video with { VideoId = "" },
+        });
+
+        var error = Assert.Throws<ManifestException>(() => MapObservation.Load(path));
+
+        Assert.Contains("video_id is empty", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LoadRejectsFrameTimestampsOutsideTheVideo()
+    {
+        var path = Write(Observation("1|0|Monster") with
+        {
+            Frames = [new ObservedFrame(2_050_000, [1])],
+        });
+
+        var error = Assert.Throws<ManifestException>(() => MapObservation.Load(path));
+
+        Assert.Contains("outside video duration", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesBindingToADifferentManifestVideo()
+    {
+        var observation = Observation("1|0|Monster");
+        var other = observation.Video with { VideoId = "different-public-video" };
+
+        var error = Assert.Throws<ManifestException>(() => observation.RequireSameVideo(other));
+
+        Assert.Contains("does not match", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void RejectsNodesThatAreNotBackedByARecordedFrame()
     {
         var observation = Observation("1|0|Monster") with
@@ -143,6 +180,15 @@ public class MapObservationTests
 
     private static MapTopology Topology(int rows, int columns, params string[] nodes) =>
         new(0, rows, columns, nodes.Select(Parse).ToList(), []);
+
+    private static string Write(MapObservation observation)
+    {
+        var directory = Path.GetFullPath(Path.Combine("build", "test-scratch"));
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, $"map-observation-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(observation, ManifestJson.Options));
+        return path;
+    }
 
     private static MapNode Parse(string spec)
     {

@@ -90,13 +90,12 @@ public static class BaseLibParityProbe
         var creature = session.RunState.Players[0].Creature;
         var before = CanonicalStateProjection.Project(session.RunState);
 
-        _beforeApplyEntered = false;
-        _beforeApplyCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        BeginIncompletePowerApply();
         var applyTask = PowerCmd.Apply(
             null!, power, creature, 1m, creature, cardSource: null, silent: true);
         var applyTaskWasIncomplete = !applyTask.IsCompleted;
         var beforeApplyWasEntered = _beforeApplyEntered;
-        _beforeApplyCompletion.SetResult();
+        CompleteIncompletePowerApply();
         applyTask.GetAwaiter().GetResult();
         Pump.Drain();
 
@@ -163,7 +162,17 @@ public static class BaseLibParityProbe
             ?? throw new EngineException("BaseLib parity probe completion source is not initialized.");
     }
 
-    private static PowerModel CreateCustomDebuff(Assembly baseLibAssembly)
+    internal static void BeginIncompletePowerApply()
+    {
+        _beforeApplyEntered = false;
+        _beforeApplyCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    internal static void CompleteIncompletePowerApply() =>
+        (_beforeApplyCompletion ?? throw new EngineException(
+            "BaseLib parity probe completion source is not initialized.")).SetResult();
+
+    internal static PowerModel CreateCustomDebuff(Assembly baseLibAssembly)
     {
         var baseType = baseLibAssembly.GetType("BaseLib.Abstracts.CustomPowerModel", throwOnError: true)!;
         var assembly = AssemblyBuilder.DefineDynamicAssembly(

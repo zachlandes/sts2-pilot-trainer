@@ -26,6 +26,11 @@ internal static partial class Commands
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
         Directory.CreateDirectory(outDir);
         var manifest = ManifestJson.Load(manifestPath);
+        var mapObservationPath = Args.Value(args, "--map-observation") ??
+            (manifestPath.EndsWith(".replay.json", StringComparison.Ordinal)
+                ? manifestPath[..^".replay.json".Length] + ".map-observation.json"
+                : manifestPath + ".map-observation.json");
+        var baseLibPath = Args.Value(args, "--baselib") ?? "build/parity/BaseLib.dll";
 
         var conditions = new List<Condition>
         {
@@ -38,9 +43,28 @@ internal static partial class Commands
                 "The recording is of the run it claims, from that run's start.",
                 SelfProcess.Run("validate", manifestPath, "--show-rejections", "--out", outDir)),
 
+            Check("seed-topology",
+                "The manifest seed independently reproduces the map observed in the same VOD.",
+                SelfProcess.Run(
+                    "verify-seed", mapObservationPath,
+                    "--seed", manifest.Environment.Seed.Value,
+                    "--manifest", manifestPath,
+                    "--acts", string.Join(",", manifest.Environment.Acts.Value),
+                    "--character", manifest.Environment.Character.Value,
+                    "--ascension", manifest.Environment.Ascension.Value.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture),
+                    "--game-mode", manifest.Environment.GameMode.Value,
+                    "--out", outDir)),
+
             Check("environment",
-                "The declared build, content hash, mode and seed match this machine.",
+                "The declared build, content hash and mode match this machine.",
                 SelfProcess.Run("preflight", manifestPath)),
+
+            Check("baselib-path",
+                "The measured BaseLib behavior branch is unreachable in this exact reconstructed history.",
+                SelfProcess.Run(
+                    "baselib-reachability", manifestPath, baseLibPath,
+                    "--out", Path.Combine(outDir, "baselib-reachability.json"))),
 
             Check("reproduction",
                 "The reconstructed history replays through the real engine and matches every observed value.",

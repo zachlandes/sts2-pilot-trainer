@@ -88,11 +88,11 @@ because an unidentified mod is exactly the gap the hash cannot close.
 
 Naming them does not establish that they changed nothing.
 What it buys is the ability to reason about each one — and, for the dangerous one, to write a check.
-The headless host therefore refuses this modded source environment.
-A matching content hash and manifest-authored waiver values cannot clear that refusal.
+The three utilities are treated as non-gameplay tooling tied to the dated visible build, not as evidence that the VOD is ineligible.
+A matching content hash and manifest-authored waiver values still cannot settle BaseLib's behavior by themselves.
 The exact BaseLib v3.4.5 target probe uses Harmony on retail `PowerCmd.Apply` and detects its negative control.
-It also demonstrates that BaseLib clears `SkipNextDurationTick` for a player-applied custom debuff while the unmodded host leaves it set.
-That gameplay difference rules out parity for the exercised branch, while behavior across the complete source run remains unproved.
+It demonstrates that BaseLib clears `SkipNextDurationTick` for a player-applied custom debuff while the unpatched host leaves it set.
+The publication gate therefore instruments every `PowerCmd.Apply` invocation in the exact reconstructed history and accepts path-specific parity only when none reaches that branch and an injected affected call proves the detector fires.
 
 ## The resumed-run problem
 

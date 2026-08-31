@@ -29,6 +29,8 @@ internal static class Program
                 "generate-synthetic-fixture" => Commands.GenerateSyntheticFixture(args[1..]),
                 "baselib-parity" => Commands.BaseLibParity(args[1..]),
                 "baselib-parity-probe" => Commands.BaseLibParityProbe(args[1..]),
+                "baselib-reachability" => Commands.BaseLibReachability(args[1..]),
+                "baselib-reachability-probe" => Commands.BaseLibReachabilityProbe(args[1..]),
                 "replay" => Commands.Replay(args[1..]),
                 "replay-line" => Commands.ReplayLine(args[1..]),
                 "determinism" => Commands.Determinism(args[1..]),
@@ -58,7 +60,7 @@ internal static class Program
         """
         sts2-arbiter - deterministic replay arbiter for Slay the Spire 2
 
-          gate            <manifest> [--out <dir>]
+          gate            <manifest> [--map-observation <path>] [--baselib <path>] [--out <dir>]
               The publication gate. Runs every condition below and reports one verdict:
               may this reconstruction be published as exact? Nothing here accepts a
               cheaper proxy in place of replaying through the real engine.
@@ -76,6 +78,10 @@ internal static class Program
               Generate each candidate seed's Act 1 map through the real engine and
               compare its topology against a map read from a video. This is the seed
               check that does not depend on reading any text.
+
+          baselib-reachability <manifest> <BaseLib.dll> --out <path>
+              Record every PowerCmd.Apply in the exact history and prove the measured
+              BaseLib branch detector with an injected affected-call negative control.
 
           replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
               Replay the manifest's ordered action history from run start and check

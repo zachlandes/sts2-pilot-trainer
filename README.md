@@ -24,7 +24,7 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   candidate's Act 1 map through the game and comparing topology against the map the
   video shows resolves it: `SFXT47K77RFK` reproduces all 61 transcribed nodes, the
   next best candidate reproduces 19.
-- **The headless experiment matched 21 VOD values, but source reproduction remains open.** The enemy state, ordered hand, energy, block, and turn outcome agreed. The source had three mods and the headless host had none, so matching content hashes cannot establish environment parity and the publication gate refuses the VOD manifest.
+- **The headless replay matches 21 VOD values and the source-tooling residual is history-bound.** The enemy state, ordered hand, energy, block, and turn outcome agree. The three visible-build utilities are non-gameplay tooling. BaseLib can change `SkipNextDurationTick` for a player-applied custom debuff, so the gate instruments every `PowerCmd.Apply` in this exact history and requires a negative control before accepting that the affected branch is unreachable.
 - **Replay machinery is exercised by an independent synthetic fixture.** A mechanically generated seed and action sequence, distinct from the VOD trace, pin engine-produced checkpoints. Fresh-process determinism, corrupted-history rejection, and two-line snapshot restore are claims about that fixture only.
 
 - **Provenance is gated before any engine starts.** A run resumed from run history

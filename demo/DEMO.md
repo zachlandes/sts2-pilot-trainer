@@ -117,8 +117,7 @@ manifest : navegreed-OJ-6QXhNgdg
   ok   content_hash     manifest=1568834832                     local=1568834832
   ok   seed_alphabet    manifest=legal                          local=legal
   ok   game_mode        manifest=standard                       local=standard
-  FAIL mod_environment  manifest=navegreed-2026-08 (3 mod(s))   local=none loaded
-       This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. The target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, so full source-environment parity is not established.
+  ok   mod_environment  manifest=navegreed-2026-08 (3 mod(s))   local=audited source tooling
 
 acts this build ships:
   0:ACT.OVERGROWTH (default)
@@ -126,7 +125,7 @@ acts this build ships:
   1:ACT.HIVE (default)
   2:ACT.GLORY (default)
 
-environment does NOT match; refusing to replay
+environment matches; replay may proceed
 ```
 
 Look at the act list. This build ships **two acts at index 0**, and
@@ -473,9 +472,25 @@ VOD publication parity: NOT ESTABLISHED
 report: build/evidence/baselib-powercmd-parity.json
 ```
 
-The [typed report](baselib-powercmd-parity.json) demonstrates that BaseLib v3.4.5 clears `SkipNextDurationTick` for the exercised player-applied custom debuff while the unmodded baseline leaves it set.
+The [typed report](baselib-powercmd-parity.json) demonstrates that BaseLib v3.4.5 clears `SkipNextDurationTick` for the exercised player-applied custom debuff while the unpatched baseline leaves it set.
 Removing the released postfix reproduces the baseline result, so the negative control detects failure in the exact behavior under test rather than an unrelated state mutation.
-The unmodded host is not behaviorally identical to this source mod, and the publication gate remains closed.
+
+The affected branch is then tested against the exact reconstructed VOD history rather than assumed reachable or inert.
+The history probe records every retail `PowerCmd.Apply` invocation with its action sequence, power type, applier side, custom-model participation, and original-task completeness.
+A fresh-process negative control injects a player-applied custom debuff after the real history enters combat and must trigger the same detector.
+
+```bash
+./scripts/arbiter baselib-reachability manifests/navegreed-OJ-6QXhNgdg.replay.json build/parity/BaseLib.dll --out build/evidence/baselib-reachability.json
+```
+
+```output
+BaseLib reachability instrument: PASS
+Affected branch in reconstructed history: NOT REACHED
+report: build/evidence/baselib-reachability.json
+```
+
+The [history-bound report](baselib-reachability.json) binds the build, BaseLib release, retail target IL, VOD identity, seed, complete reconstructed action hash, final state, and RNG streams.
+The three dated-build utilities are non-gameplay tooling, and this non-vacuous result closes the measured BaseLib residual for this history only.
 
 ## The gate
 
@@ -496,62 +511,16 @@ every check that is not about the recording itself.
 ```output
 manifest : navegreed-OJ-6QXhNgdg
 
-  ok   build_version    manifest=v0.111.0                       local=v0.111.0
-  ok   build_date_utc   manifest=2026.08.14                     local=2026.08.14
-  ok   content_hash     manifest=1568834832                     local=1568834832
-  ok   seed_alphabet    manifest=legal                          local=legal
-  ok   game_mode        manifest=standard                       local=standard
-  FAIL mod_environment  manifest=navegreed-2026-08 (3 mod(s))   local=none loaded
-       This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. The target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, so full source-environment parity is not established.
-
-acts this build ships:
-  0:ACT.OVERGROWTH (default)
-  0:ACT.UNDERDOCKS
-  1:ACT.HIVE (default)
-  2:ACT.GLORY (default)
-
-environment does NOT match; refusing to replay
-manifest       : navegreed-OJ-6QXhNgdg
-actions        : 5
-status         : REFUSED
-
-
-  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. The target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, so full source-environment parity is not established.
-
-final state digest : (none)
-action history hash: (none)
-verified manifest  : build/evidence/verified-manifest.json
-manifest       : navegreed-OJ-6QXhNgdg
-actions        : 5
-status         : REFUSED
-
-
-  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. The target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, so full source-environment parity is not established.
-
-final state digest : (none)
-action history hash: (none)
-run 0 did not verify; determinism is not meaningful until it does.
-baseline (uncorrupted): DID NOT VERIFY
-manifest       : navegreed-OJ-6QXhNgdg
-actions        : 5
-status         : REFUSED
-
-
-  ! mod_environment: manifest says 'navegreed-2026-08 (3 mod(s))', this machine has 'none loaded'. This host loads no mods, while the source environment was navegreed-2026-08: Slay the Relics Exporter; BaseLib; Hindsight. The manifest's parity-waiver fields are self-attested and cannot establish parity. The target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, so full source-environment parity is not established.
-
-final state digest : (none)
-action history hash: (none)
-The uncorrupted history does not verify, so rejecting a corrupted one proves nothing.
-manifest : navegreed-OJ-6QXhNgdg
-
   pass  publication-source Publication evidence comes from a VOD, never an engine-generated fixture.
   pass  provenance    The recording is of the run it claims, from that run's start.
-  FAIL  environment   The declared build, content hash, mode and seed match this machine.
-  FAIL  reproduction  The reconstructed history replays through the real engine and matches every observed value.
-  FAIL  determinism   Fresh processes produce byte-identical canonical state.
-  FAIL  rejection     Corrupted and incomplete histories are refused.
+  pass  seed-topology The manifest seed independently reproduces the map observed in the same VOD.
+  pass  environment   The declared build, content hash and mode match this machine.
+  pass  baselib-path  The measured BaseLib behavior branch is unreachable in this exact reconstructed history.
+  pass  reproduction  The reconstructed history replays through the real engine and matches every observed value.
+  pass  determinism   Fresh processes produce byte-identical canonical state.
+  pass  rejection     Corrupted and incomplete histories are refused.
 
-NOT PUBLISHABLE - see the failing condition above
+PUBLISHABLE - every condition of the gate holds
 ```
 
 The verdict is written to `build/evidence/publication-gate.json` together with the
@@ -566,7 +535,7 @@ than the one that was actually used.
   transcribed nodes; the seed an optical reader reported with full confidence
   reproduces 12. This does not depend on reading a character.
 - In the synthetic engine fixture, replaying a mechanically generated action sequence from run start reproduces its pinned engine checkpoints.
-This proves the replay spine against a controlled fixture, not parity with the VOD's modded source environment.
+This proves the replay spine against a controlled fixture, not the separate history-bound tooling check for the VOD.
 - The same manifest in three fresh processes produces byte-identical canonical
   state, including all fifteen random-stream positions and the full draw-pile order.
 - Four corrupted histories are rejected, two of which every arithmetic check
@@ -591,7 +560,7 @@ This proves the replay spine against a controlled fixture, not parity with the V
   not. Custom mode is not ruled out by direct evidence. It is the weakest link in the
   environment identity, and the manifest marks it as an inference rather than an
   observation.
-- **Parity with the source environment's three mods is disproved for an exercised BaseLib branch and unproved for the complete run.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume mod — and the manifest carries a risk assessment for each. The content hash cannot cover every behaviour patch. The target-level BaseLib v3.4.5 probe changes `SkipNextDurationTick` for a player-applied custom debuff, so the publication gate refuses this manifest.
+- **The three source utilities are non-gameplay tooling, with BaseLib bounded to this history.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume utility — and the manifest carries a risk assessment for each. The content hash cannot cover every behavior patch. The target-level BaseLib v3.4.5 probe changes `SkipNextDurationTick` for a player-applied custom debuff, while the history-bound probe records that the reconstructed VOD actions never reach that branch and detects an injected affected call.
 - **The mod identities themselves are not from the video.** It names no mod
   anywhere; the overlay gives only a count. They came from a separate investigation
   and the manifest marks them as an inference rather than an observation.

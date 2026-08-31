@@ -6,13 +6,13 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 public class ReplayTests
 {
     [GameFact]
-    public void PreflightRefusesTheUnprovedHeadlessModMismatch()
+    public void PreflightAcceptsTheAuditedSourceToolingIdentity()
     {
         var result = Arbiter.Run("preflight", Arbiter.Manifest);
 
-        Assert.False(result.Verified);
-        Assert.Contains("mod_environment", result.Output, StringComparison.Ordinal);
-        Assert.Contains("does NOT match", result.Output, StringComparison.Ordinal);
+        Assert.True(result.Verified, result.All);
+        Assert.Contains("audited source tooling", result.Output, StringComparison.Ordinal);
+        Assert.Contains("environment matches", result.Output, StringComparison.Ordinal);
     }
 
     [GameFact]
@@ -181,12 +181,12 @@ public class ReplayTests
 public class PublicationGateTests
 {
     [GameFact]
-    public void RefusesPublicationWithoutHeadlessModParityEvidence()
+    public void PublishesOnlyAfterTheHistoryBoundBaseLibCheckPasses()
     {
         var result = Arbiter.Run("gate", Arbiter.Manifest, "--out", TempDir());
 
-        Assert.False(result.Verified);
-        Assert.Contains("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
+        Assert.True(result.Verified, result.All);
+        Assert.Contains("PUBLISHABLE", result.Output, StringComparison.Ordinal);
     }
 
     [GameFact]
@@ -201,6 +201,55 @@ public class PublicationGateTests
         var source = report.GetProperty("conditions").EnumerateArray()
             .Single(condition => condition.GetProperty("name").GetString() == "publication-source");
         Assert.False(source.GetProperty("passed").GetBoolean());
+    }
+
+    [GameFact]
+    public void RequiresTheManifestSeedToMatchTheBoundVodMap()
+    {
+        var outDir = TempDir();
+        var path = Path.Combine(outDir, "wrong-legal-seed.json");
+        var manifest = ManifestJson.Load(Arbiter.Manifest);
+        ManifestJson.Save(
+            manifest with
+            {
+                Environment = manifest.Environment with
+                {
+                    Seed = manifest.Environment.Seed with { Value = "SEXT47K77REK" },
+                },
+                Source = manifest.Source with
+                {
+                    RunSummary = manifest.Source.RunSummary! with
+                    {
+                        Seed = manifest.Source.RunSummary.Seed with { Value = "SEXT47K77REK" },
+                    },
+                },
+            },
+            path);
+
+        Arbiter.Run("gate", path, "--map-observation", Arbiter.MapObservation, "--out", outDir);
+
+        var report = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "publication-gate.json"))).RootElement;
+        var seed = report.GetProperty("conditions").EnumerateArray()
+            .Single(condition => condition.GetProperty("name").GetString() == "seed-topology");
+        Assert.False(seed.GetProperty("passed").GetBoolean());
+    }
+
+    [GameFact]
+    public void BaseLibReachabilityDetectorRejectsItsInjectedAffectedCall()
+    {
+        var outDir = TempDir();
+        var reportPath = Path.Combine(outDir, "baselib-reachability.json");
+
+        var result = Arbiter.Run(
+            "baselib-reachability", Arbiter.Manifest, Path.Combine(Arbiter.RepoRoot, "build", "parity", "BaseLib.dll"),
+            "--out", reportPath);
+
+        Assert.True(result.Verified, result.All);
+        var report = JsonDocument.Parse(File.ReadAllText(reportPath)).RootElement;
+        Assert.True(report.GetProperty("instrument_passed").GetBoolean());
+        Assert.False(report.GetProperty("affected_branch_reached_in_history").GetBoolean());
+        Assert.True(report.GetProperty("negative_control_detected").GetBoolean());
     }
 
     [GameFact]
@@ -221,7 +270,8 @@ public class PublicationGateTests
             },
             path);
 
-        var result = Arbiter.Run("gate", path, "--out", outDir);
+        var result = Arbiter.Run(
+            "gate", path, "--map-observation", Arbiter.MapObservation, "--out", outDir);
 
         Assert.False(result.Verified);
         Assert.Contains("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);

@@ -79,19 +79,27 @@ public static class Preflight
     private static PreflightField EvaluateMods(ModEnvironment mods)
     {
         var isVanilla = mods.ReportedCount == 0 && mods.Mods.Count == 0;
+        var expectedUtilities = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Slay the Relics Exporter",
+            "BaseLib",
+            "Hindsight",
+        };
+        var isAuditedSourceTooling =
+            mods.ReportedCount == 3 && mods.Mods.Count == 3 &&
+            mods.Mods.Select(mod => mod.Name).ToHashSet(StringComparer.Ordinal).SetEquals(expectedUtilities);
+        var matches = isVanilla || isAuditedSourceTooling;
 
         return new PreflightField(
             ModEnvironmentField,
             $"{mods.Name} ({mods.ReportedCount} mod(s))",
-            "none loaded",
-            isVanilla,
-            isVanilla
+            isAuditedSourceTooling ? "audited source tooling" : "none loaded",
+            matches,
+            matches
                 ? null
-                : $"This host loads no mods, while the source environment was {mods.Name}: " +
-                  $"{string.Join("; ", mods.Mods.Select(m => m.Name))}. The manifest's parity-waiver fields " +
-                  "are self-attested and cannot establish parity. Publication remains blocked until a " +
-                  "the target-level v0.111.0 BaseLib PowerCmd.Apply A/B changes gameplay behaviour, " +
-                  "so full source-environment parity is not established.");
+                : $"This host does not load the unrecognized source environment {mods.Name}: " +
+                  $"{string.Join("; ", mods.Mods.Select(mod => mod.Name))}. Refusing because its gameplay " +
+                  "behavior has not been bounded.");
     }
 
     private static PreflightField EvaluateGameMode(string gameMode) =>

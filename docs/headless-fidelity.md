@@ -115,7 +115,9 @@ post-processing passes. It comes out identical to what a retail client on a modd
 install produced.
 
 **The headless experiment matched 21 independently observed VOD values** — including the enemy state, ordered hand, pile counts, energy, block, and turn outcome.
-This is evidence that the experiment followed the same path through the opening turn, not proof of exact source reproduction: the source had three mods loaded, and the target-level BaseLib probe demonstrates a gameplay difference for a player-applied custom debuff.
+This is evidence that the experiment followed the same path through the opening turn.
+The source's three visible-build utilities are non-gameplay tooling, but the target-level BaseLib probe demonstrates a behavior difference for a player-applied custom debuff.
+A separate history-bound probe therefore records every `PowerCmd.Apply` call in the reconstructed actions and must prove that branch unreachable with an injected affected-call negative control.
 
 **The replay machinery has independent synthetic evidence** — a mechanically generated fixture uses a seed and action sequence absent from the VOD artifacts and pins its engine-produced checkpoints.
 Fresh-process determinism, corruption rejection, and snapshot restore are exercised against that fixture, so those checks do not borrow their expected values from the ineligible VOD trace.
@@ -124,7 +126,7 @@ Fresh-process determinism, corruption rejection, and snapshot restore are exerci
 
 - **This is not the retail client.** Everything above is agreement at points a video
   could show. It is strong evidence and it is not the same as running the game.
-- **The source environment had three mods loaded and this one has none.** The content
+- **The source had three non-gameplay utilities loaded and this host has none.** The content
   hash matches, which rules out gameplay-declared content differences and nothing
   else. See [environment identity](environment-identity.md).
 - **Unlock state is assumed complete.** It demonstrably changes generated content,

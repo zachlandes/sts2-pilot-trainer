@@ -28,7 +28,7 @@ internal static partial class Commands
         {
             return VerifyOne(observationPath, single, Args.Value(args, "--character") ?? "CHARACTER.IRONCLAD",
                 int.Parse(Args.Value(args, "--ascension") ?? "10", System.Globalization.CultureInfo.InvariantCulture),
-                Args.Value(args, "--game-mode") ?? "standard", acts, outDir);
+                Args.Value(args, "--game-mode") ?? "standard", acts, outDir, Args.Value(args, "--manifest"));
         }
 
         var candidates = (Args.Value(args, "--candidates")
@@ -50,7 +50,8 @@ internal static partial class Commands
                 "--acts", string.Join(",", acts),
                 "--character", character,
                 "--ascension", ascension,
-                "--game-mode", gameMode);
+                "--game-mode", gameMode,
+                "--manifest", Args.Value(args, "--manifest") ?? "");
             Console.Write(child.StandardOutput);
             var path = Path.Combine(outDir, $"seed-verification-{candidate}.json");
             if (child.ExitCode is not 0 and not 1 || !File.Exists(path))
@@ -98,9 +99,24 @@ internal static partial class Commands
 
     private static int VerifyOne(
         string observationPath, string seed, string character, int ascension, string gameMode,
-        IReadOnlyList<string> acts, string outDir)
+        IReadOnlyList<string> acts, string outDir, string? manifestPath)
     {
         var observation = MapObservation.Load(observationPath);
+        ReplayManifest? boundManifest = null;
+        if (!string.IsNullOrWhiteSpace(manifestPath))
+        {
+            boundManifest = ManifestJson.Load(manifestPath);
+            if (boundManifest.Source.Kind != "vod" || boundManifest.Source.Video is null)
+            {
+                throw new ManifestException("Seed topology evidence can only bind to a VOD manifest.");
+            }
+            observation.RequireSameVideo(boundManifest.Source.Video);
+            if (!string.Equals(seed, boundManifest.Environment.Seed.Value, StringComparison.Ordinal))
+            {
+                throw new ManifestException(
+                    $"Candidate seed '{seed}' does not match manifest seed '{boundManifest.Environment.Seed.Value}'.");
+            }
+        }
 
         var session = new GameSession();
         session.StartRun(seed, character, ascension, gameMode, acts);
@@ -120,6 +136,14 @@ internal static partial class Commands
             game_mode = gameMode,
             acts,
             environment = Identity(),
+            bound_manifest = boundManifest is null
+                ? null
+                : new
+                {
+                    file = Path.GetFileName(manifestPath),
+                    boundManifest.RunId,
+                    video_id = boundManifest.Source.Video!.VideoId,
+                },
             observation = new { file = Path.GetFileName(observationPath), observation.Video.VideoId, observation.Method },
             generated,
             comparison,
