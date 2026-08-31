@@ -52,7 +52,13 @@ public sealed class GameSession
     /// </param>
     public void StartRun(
         string seed, string characterModelId, int ascension, string gameMode,
-        IReadOnlyList<string> actModelIds, PlayerProgress progress)
+        IReadOnlyList<string> actModelIds, PlayerProgress progress) =>
+        StartRun(seed, characterModelId, ascension, gameMode, actModelIds, progress, []);
+
+    public void StartRun(
+        string seed, string characterModelId, int ascension, string gameMode,
+        IReadOnlyList<string> actModelIds, PlayerProgress progress,
+        IReadOnlyList<string> modifierTypeNames)
     {
         EngineHost.Start();
 
@@ -82,10 +88,11 @@ public sealed class GameSession
             throw new EngineException("No acts were named, so no run can be constructed.");
         }
 
+        var modifiers = modifierTypeNames.Select(FindModifier).Select(modifier => modifier.ToMutable()).ToList();
         var runState = RunState.CreateForNewRun(
             players: [player],
             acts: acts,
-            modifiers: [],
+            modifiers: modifiers,
             gameMode: ParseGameMode(gameMode),
             ascensionLevel: ascension,
             seed: seed);
@@ -238,6 +245,14 @@ public sealed class GameSession
         ?? throw new EngineException(
             $"No act with model id '{modelId}'. This build ships: " +
             string.Join(", ", ModelDb.Acts.OrderBy(a => a.Index).Select(a => $"{a.Index}:{a.Id}")));
+
+    private static ModifierModel FindModifier(string typeName) =>
+        ModelDb.All.OfType<ModifierModel>().FirstOrDefault(modifier =>
+            string.Equals(modifier.GetType().FullName, typeName, StringComparison.Ordinal))
+        ?? throw new EngineException(
+            $"No modifier with type '{typeName}'. Known: " +
+            string.Join(", ", ModelDb.All.OfType<ModifierModel>()
+                .Select(modifier => modifier.GetType().FullName).Order(StringComparer.Ordinal)));
 
     private static CharacterModel FindCharacter(string modelId) =>
         ModelDb.AllCharacters.FirstOrDefault(c => c.Id.ToString() == modelId)

@@ -68,9 +68,10 @@ internal sealed class EvidenceArtifact
             throw new ManifestException("Evidence artifact name must be a file name.");
         }
 
-        Directory.CreateDirectory(directory);
-        var root = System.IO.Path.GetFullPath(directory);
-        var path = PathContainment.RequireContained(root, System.IO.Path.Combine(root, fileName));
+        var worktree = WorktreeLocator.Find();
+        var root = PathContainment.RequireContained(worktree, directory);
+        Directory.CreateDirectory(root);
+        var path = PathContainment.RequireContained(worktree, System.IO.Path.Combine(root, fileName));
         if (File.Exists(path)) File.Delete(path);
         return new EvidenceArtifact(path);
     }

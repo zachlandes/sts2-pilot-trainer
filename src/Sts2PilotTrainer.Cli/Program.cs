@@ -31,6 +31,8 @@ internal static class Program
                 "baselib-parity-probe" => Commands.BaseLibParityProbe(args[1..]),
                 "baselib-reachability" => Commands.BaseLibReachability(args[1..]),
                 "baselib-reachability-probe" => Commands.BaseLibReachabilityProbe(args[1..]),
+                "mode-discrimination" => Commands.ModeDiscrimination(args[1..]),
+                "mode-discrimination-probe" => Commands.ModeDiscriminationProbe(args[1..]),
                 "replay" => Commands.Replay(args[1..]),
                 "replay-line" => Commands.ReplayLine(args[1..]),
                 "determinism" => Commands.Determinism(args[1..]),
@@ -82,6 +84,10 @@ internal static class Program
           baselib-reachability <manifest> <BaseLib.dll> --out <path>
               Record every PowerCmd.Apply in the exact history and prove the measured
               BaseLib branch detector with an injected affected-call negative control.
+
+          mode-discrimination <manifest> --out <path>
+              Compare the verified prefix under the real build's standard, custom and
+              daily run construction, with a behavior-changing modifier control.
 
           replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
               Replay the manifest's ordered action history from run start and check

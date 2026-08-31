@@ -40,6 +40,8 @@ internal static partial class Commands
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var outPath = Args.Value(args, "--out");
         var outArtifact = outPath is null ? null : EvidenceArtifact.PreparePath(outPath);
+        var statePath = Args.Value(args, "--state-out");
+        var stateArtifact = statePath is null ? null : EvidenceArtifact.PreparePath(statePath);
         var manifest = ManifestJson.Load(manifestPath);
         var stopAfter = Args.Value(args, "--stop-after") is { } raw
             ? int.Parse(raw, System.Globalization.CultureInfo.InvariantCulture)
@@ -88,11 +90,10 @@ internal static partial class Commands
 
         // The canonical state is written beside the manifest so a divergence can be
         // read as a diff rather than guessed at from a digest that simply differs.
-        var statePath = Args.Value(args, "--state-out");
-        if (statePath is not null && outcome.FinalState is not null)
+        if (stateArtifact is not null && outcome.FinalState is not null)
         {
-            File.WriteAllText(statePath, outcome.FinalState.Render());
-            Console.WriteLine($"canonical state    : {Paths.Display(statePath)}");
+            stateArtifact.WriteAtomic(outcome.FinalState.Render());
+            Console.WriteLine($"canonical state    : {Paths.Display(stateArtifact.Path)}");
         }
 
         return report.Status is VerificationStatus.Verified or VerificationStatus.Partial ? 0 : 1;

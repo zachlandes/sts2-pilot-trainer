@@ -450,7 +450,7 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 
 ```output
 Passed!  - Failed:     0, Passed:   127, Skipped:     0, Total:   127 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    45, Skipped:     0, Total:    45 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    49, Skipped:     0, Total:    49 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -514,14 +514,15 @@ manifest : navegreed-OJ-6QXhNgdg
 
   pass  publication-source Publication evidence comes from a VOD, never an engine-generated fixture.
   pass  provenance    The recording is of the run it claims, from that run's start.
-  pass  environment   The declared build, content hash and mode match this machine.
+  pass  environment   The declared build and content hash match this machine, and the declared mode is supported.
+  FAIL  game-mode     Engine evidence establishes the source mode or path-specific parity for every viable mode.
   pass  seed-topology The manifest seed independently reproduces the map observed in the same VOD.
   pass  baselib-path  The measured BaseLib behavior branch is unreachable in this exact reconstructed history.
   pass  reproduction  The reconstructed history replays through the real engine and matches every observed value.
   pass  determinism   Fresh processes produce byte-identical canonical state.
   pass  rejection     Corrupted and incomplete histories are refused.
 
-PUBLISHABLE - every condition of the gate holds
+NOT PUBLISHABLE - see the failing condition above
 ```
 
 The verdict is written to `build/evidence/publication-gate.json` together with the
@@ -556,11 +557,9 @@ This proves the replay spine against a controlled fixture, not the separate hist
   position 412 to 370 and changes which encounters the act generates — while leaving
   the map byte-identical. Agreement on generated content is the evidence for this
   assumption; it is not independently established.
-- **The game mode is standard.** Daily runs are ruled out — their seeds are
-  date-derived and this one is not, and a daily shows modifier icons this run does
-  not. Custom mode is not ruled out by direct evidence. It is the weakest link in the
-  environment identity, and the manifest marks it as an inference rather than an
-  observation.
+- **The game mode remains unestablished.** The real-engine probe compares the verified prefix under standard, custom with no modifiers, daily without its date-selected modifiers, and a behavior-changing custom modifier control.
+The control demonstrates that the instrument detects a mode configuration that changes the prefix, but the recording does not identify the source configuration.
+The publication gate therefore refuses rather than treating manifest-authored reasoning as evidence.
 - **The three source utilities are non-gameplay tooling, with BaseLib bounded to this history.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume utility — and the manifest carries a risk assessment for each. The content hash cannot cover every behavior patch. The target-level BaseLib v3.4.5 probe changes `SkipNextDurationTick` for a player-applied custom debuff, while the history-bound probe records that the reconstructed VOD actions never reach that branch and detects an injected affected call.
 - **The mod identities themselves are not from the video.** It names no mod
   anywhere; the overlay gives only a count. They came from a separate investigation

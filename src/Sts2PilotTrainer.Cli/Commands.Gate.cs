@@ -47,12 +47,18 @@ internal static partial class Commands
         if (conditions.All(condition => condition.Passed))
         {
             var environment = Check("environment",
-                "The declared build, content hash and mode match this machine.",
+                "The declared build and content hash match this machine, and the declared mode is supported.",
                 SelfProcess.Run("preflight", manifestPath));
             conditions.Add(environment);
 
             if (environment.Passed)
             {
+                conditions.Add(Check("game-mode",
+                    "Engine evidence establishes the source mode or path-specific parity for every viable mode.",
+                    SelfProcess.Run(
+                        "mode-discrimination", manifestPath,
+                        "--out", Path.Combine(outDir, "mode-discrimination.json"))));
+
                 conditions.Add(Check("seed-topology",
                 "The manifest seed independently reproduces the map observed in the same VOD.",
                 SelfProcess.Run(
@@ -94,7 +100,7 @@ internal static partial class Commands
         else
         {
             conditions.Add(new Condition(
-                "environment", "The declared build, content hash and mode match this machine.", false));
+                "environment", "The declared build and content hash match this machine, and the declared mode is supported.", false));
             AddSkippedEngineConditions(conditions);
         }
 
@@ -136,6 +142,8 @@ internal static partial class Commands
 
     private static void AddSkippedEngineConditions(List<Condition> conditions) => conditions.AddRange(
     [
+        new Condition("game-mode",
+            "Engine evidence establishes the source mode or path-specific parity for every viable mode.", false),
         new Condition("seed-topology",
             "The manifest seed independently reproduces the map observed in the same VOD.", false),
         new Condition("baselib-path",

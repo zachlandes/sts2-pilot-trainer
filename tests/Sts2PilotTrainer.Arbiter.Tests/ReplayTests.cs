@@ -317,12 +317,18 @@ public class ReplayTests
 public class PublicationGateTests
 {
     [GameFact]
-    public void PublishesOnlyAfterTheHistoryBoundBaseLibCheckPasses()
+    public void RefusesPublicationWhileSourceModeIsUnestablished()
     {
-        var result = Arbiter.Run("gate", Arbiter.Manifest, "--out", TempDir());
+        var outDir = TempDir();
+        var result = Arbiter.Run("gate", Arbiter.Manifest, "--out", outDir);
 
-        Assert.True(result.Verified, result.All);
-        Assert.Contains("PUBLISHABLE", result.Output, StringComparison.Ordinal);
+        Assert.False(result.Verified);
+        Assert.Contains("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
+        var report = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "publication-gate.json"))).RootElement;
+        var mode = report.GetProperty("conditions").EnumerateArray()
+            .Single(condition => condition.GetProperty("name").GetString() == "game-mode");
+        Assert.False(mode.GetProperty("passed").GetBoolean());
     }
 
     [GameFact]
@@ -426,6 +432,22 @@ public class PublicationGateTests
     }
 
     [GameFact]
+    public void ModeDiscriminationDetectsItsBehaviorChangingControl()
+    {
+        var outDir = TempDir();
+        var reportPath = Path.Combine(outDir, "mode-discrimination.json");
+
+        var result = Arbiter.Run(
+            "mode-discrimination", Arbiter.Manifest, "--out", reportPath);
+
+        Assert.False(result.Verified);
+        var report = JsonDocument.Parse(File.ReadAllText(reportPath)).RootElement;
+        Assert.True(report.GetProperty("instrument_passed").GetBoolean());
+        Assert.True(report.GetProperty("negative_control_detected").GetBoolean());
+        Assert.False(report.GetProperty("mode_established").GetBoolean());
+    }
+
+    [GameFact]
     public void BaseLibReachabilityDetectorRejectsItsInjectedAffectedCall()
     {
         var outDir = TempDir();
@@ -475,6 +497,38 @@ public class PublicationGateTests
         Assert.Contains("matching environment preflight", result.All, StringComparison.Ordinal);
         Assert.Contains("content_hash", result.All, StringComparison.Ordinal);
         Assert.False(File.Exists(reportPath));
+    }
+
+    [GameFact]
+    public void FailedReplayClearsAnEarlierCanonicalState()
+    {
+        var outDir = TempDir();
+        var statePath = Path.Combine(outDir, "canonical.state");
+        File.WriteAllText(statePath, "stale success");
+
+        var result = Arbiter.Run(
+            "replay", Path.Combine(outDir, "missing-manifest.json"), "--state-out", statePath);
+
+        Assert.False(result.Verified);
+        Assert.False(File.Exists(statePath));
+    }
+
+    [GameFact]
+    public void FailedGeneratedFixtureClearsAnEarlierManifest()
+    {
+        var outDir = TempDir();
+        var fixturePath = Path.Combine(outDir, "generated.replay.json");
+        File.WriteAllText(fixturePath, "stale success");
+
+        var result = Arbiter.RunWithEnvironment(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["STS2_PILOT_TRAINER_TEST_REQUIRED_INIT_FAILURE"] = "negative-control",
+            },
+            "generate-synthetic-fixture", "--out", fixturePath);
+
+        Assert.False(result.Verified);
+        Assert.False(File.Exists(fixturePath));
     }
 
     [GameFact]
