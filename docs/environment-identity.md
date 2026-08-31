@@ -29,7 +29,7 @@ The source video never renders its game mode.
 The manifest records `standard` as an inference, not an observation.
 
 The real-engine mode-discrimination probe replays the reconstructed prefix under standard, custom with no modifiers, and daily without its date-selected modifiers.
-All three match every observed checkpoint and the final canonical state.
+All three match every observed checkpoint and every canonical field except the recorded `run.game_mode`; their full final-state digests differ.
 A behavior-changing custom modifier proves the detector catches terminal divergence, and a reordered-history control proves it catches checkpoint divergence even when the terminal state converges.
 
 Those controls validate the instrument, but they do not identify the source configuration.
@@ -42,10 +42,10 @@ That is false for this build.
 Daily runs get their seed the same way every other run does.
 
 What the probe can do is bound the space.
-Every modifier the build offers is replayed as a daily against the reconstructed history and sorted by what it changes: an observed checkpoint, nothing at all, or the resulting state while leaving every checkpoint intact.
+Every modifier the build offers is replayed as a daily against the reconstructed history and sorted by what it changes: an observed checkpoint, no canonical field beyond the recorded `run.game_mode`, or another canonical field while leaving every checkpoint intact.
 Only that third case leaves the mode genuinely open, because only it is consistent with the recording and inconsistent with this replay.
 For this VOD all seventeen change an observed checkpoint, so no single-modifier daily is consistent with the footage, and the gate accepts path-specific parity across the enumerated space.
-It is not an identification: standard and custom-with-no-modifiers remain indistinguishable, precisely because they are byte-identical for this history.
+It is not an identification: standard and custom-with-no-modifiers remain indistinguishable in the recording and agree in every canonical field except the recorded `run.game_mode`, which makes their full final-state digests differ.
 Combinations of modifiers are not enumerated, and the report records that limit.
 
 And one input is not a field, because it cannot be observed at all:

@@ -49,7 +49,7 @@ internal static partial class Commands
         }
 
         var standard = results["standard"];
-        var modifierOutcomes = new List<ModifierOutcome>();
+        var modifierResults = new List<(string Type, ModeDiscriminationResult Result)>();
         foreach (var modifierType in standard.AvailableModifierTypes)
         {
             var variant = Engine.ModeDiscriminationProbe.ModifierVariantPrefix + modifierType;
@@ -64,32 +64,45 @@ internal static partial class Commands
                 Console.Error.Write(child.StandardError);
                 return child.ExitCode;
             }
-            var result = JsonSerializer.Deserialize<ModeDiscriminationResult>(
-                File.ReadAllText(probePath), ManifestJson.Options)!;
-            modifierOutcomes.Add(new ModifierOutcome(
+            modifierResults.Add((
                 modifierType,
-                Classify(standard, result),
-                result.CompletedHistory,
-                result.AllCheckpointsPassed,
-                result.CheckpointSha256,
-                result.BehavioralStateSha256));
+                JsonSerializer.Deserialize<ModeDiscriminationResult>(
+                    File.ReadAllText(probePath), ManifestJson.Options)!));
         }
 
         var custom = results["custom-default"];
         var daily = results["daily-default"];
         var negative = results["custom-negative"];
         var checkpointNegative = results["checkpoint-negative"];
-        var bindingsMatch = results.Values.All(result => Binding(result) == Binding(standard));
+        var baselineBinding = ProbeBinding(standard);
+        var bindingMismatches = results
+            .Where(entry => entry.Key != "standard")
+            .Select(entry => entry.Value)
+            .Concat(modifierResults.Select(entry => entry.Result))
+            .SelectMany(result => ModeProbeBindingComparer.Compare(
+                baselineBinding, ProbeBinding(result)).Mismatches)
+            .ToList();
+        var bindingsMatch = bindingMismatches.Count == 0;
+        var modifierOutcomes = bindingsMatch
+            ? modifierResults.Select(entry => new ModifierOutcome(
+                entry.Type,
+                Classify(standard, entry.Result),
+                entry.Result.CompletedHistory,
+                entry.Result.AllCheckpointsPassed,
+                entry.Result.CheckpointSha256,
+                entry.Result.BehavioralStateSha256,
+                entry.Result.FinalStateSha256)).ToList()
+            : [];
         var unboundModifiers = modifierOutcomes
             .Where(outcome => outcome.Classification == StateOnlyDivergence)
             .Select(outcome => outcome.Type)
             .ToList();
         var singleModifierParity = modifierOutcomes.Count > 0 && unboundModifiers.Count == 0;
-        var customDefaultMatches = SameBehavior(standard, custom);
-        var dailyDefaultMatches = SameBehavior(standard, daily);
-        var negativeDetected = !SameBehavior(standard, negative);
+        var customDefaultMatches = bindingsMatch && SameBehaviorExceptRecordedMode(standard, custom);
+        var dailyDefaultMatches = bindingsMatch && SameBehaviorExceptRecordedMode(standard, daily);
+        var negativeDetected = bindingsMatch && !SameBehavior(standard, negative);
         var checkpointNegativeDetected =
-            checkpointNegative.CompletedHistory &&
+            bindingsMatch && checkpointNegative.CompletedHistory &&
             checkpointNegative.BehavioralStateSha256 == standard.BehavioralStateSha256 &&
             checkpointNegative.CheckpointSha256 != standard.CheckpointSha256 &&
             !checkpointNegative.AllCheckpointsPassed;
@@ -97,16 +110,18 @@ internal static partial class Commands
             bindingsMatch && standard.CompletedHistory && standard.AllCheckpointsPassed &&
             negativeDetected && checkpointNegativeDetected;
         var customFinding = customDefaultMatches
-            ? "Custom mode with no modifiers matches every observed checkpoint and the final canonical state."
-            : "Custom mode with no modifiers changes an observed checkpoint, the final canonical state, or action completion.";
+            ? "Custom mode with no modifiers matches every observed checkpoint and every canonical field except the recorded run.game_mode; its full final-state digest therefore differs from standard."
+            : "Custom mode with no modifiers changes an observed checkpoint, a canonical field other than run.game_mode, or action completion.";
         var dailyFinding = dailyDefaultMatches
-            ? "Daily mode without its date-selected modifier set matches every observed checkpoint and the final canonical state, which does not bind a real daily run."
-            : "Daily mode without its date-selected modifier set changes an observed checkpoint, the final canonical state, or action completion, but this does not bind the real daily configuration.";
+            ? "Daily mode without its date-selected modifier set matches every observed checkpoint and every canonical field except the recorded run.game_mode; its full final-state digest therefore differs from standard, and this does not bind a real daily run."
+            : "Daily mode without its date-selected modifier set changes an observed checkpoint, a canonical field other than run.game_mode, or action completion, but this does not bind the real daily configuration.";
         var visibleCount = modifierOutcomes.Count(outcome => outcome.Classification == CheckpointVisible);
         var invisibleCount = modifierOutcomes.Count(outcome => outcome.Classification == Invisible);
         var modifierFinding = singleModifierParity
-            ? $"Each of the {modifierOutcomes.Count} modifiers this build offers was replayed as a daily: {visibleCount} change an observed checkpoint and are therefore excluded by the recording this history already matches, and {invisibleCount} change nothing observable and nothing in the final canonical state. No single modifier reproduces the observed checkpoints while altering the resulting state."
-            : $"These modifiers reproduce every observed checkpoint while changing the final canonical state, so a daily carrying one is consistent with the recording and not with this replay: {string.Join(", ", unboundModifiers)}.";
+            ? $"Each of the {modifierOutcomes.Count} modifiers this build offers was replayed as a daily: {visibleCount} change an observed checkpoint and are therefore excluded by the recording this history already matches, and {invisibleCount} leave every checkpoint and every canonical field other than the recorded run.game_mode unchanged. No single modifier reproduces the observed checkpoints while altering another canonical field."
+            : bindingsMatch
+                ? $"These modifiers reproduce every observed checkpoint while changing canonical state beyond run.game_mode, so a daily carrying one is consistent with the recording and not with this replay: {string.Join(", ", unboundModifiers)}."
+                : "Modifier outcomes were not classified because probe bindings disagree.";
         var pathSpecificParity = instrumentPassed && customDefaultMatches && singleModifierParity;
 
         var report = new
@@ -117,21 +132,26 @@ internal static partial class Commands
             path_specific_custom_default_parity = instrumentPassed && customDefaultMatches,
             path_specific_mode_parity = pathSpecificParity,
             single_modifier_parity = singleModifierParity,
-            modifier_space_enumerated = modifierOutcomes.Count,
+            modifier_space_enumerated = modifierResults.Count,
             modifier_outcomes = modifierOutcomes,
+            modifier_probes = modifierResults.Select(entry => entry.Result),
             unbound_modifiers = unboundModifiers,
             combination_space_not_enumerated = true,
             custom_default_matches_standard_prefix = customDefaultMatches,
             daily_default_matches_standard_prefix = dailyDefaultMatches,
             negative_control_detected = negativeDetected,
             checkpoint_negative_control_detected = checkpointNegativeDetected,
+            behavioral_state_excluded_fields = new[] { "run.game_mode" },
             blocker = pathSpecificParity
                 ? null
-                : unboundModifiers.Count > 0
-                    ? $"A daily carrying any of these modifiers reproduces the observed checkpoints while changing the resulting state: {string.Join(", ", unboundModifiers)}."
-                    : "The recording does not identify the mode, and the engine probe did not establish parity across the enumerated mode configurations.",
+                : !bindingsMatch
+                    ? $"Probe binding mismatch: {Describe(bindingMismatches[0])}."
+                    : unboundModifiers.Count > 0
+                        ? $"A daily carrying any of these modifiers reproduces the observed checkpoints while changing canonical state beyond run.game_mode: {string.Join(", ", unboundModifiers)}."
+                        : "The recording does not identify the mode, and the engine probe did not establish parity across the enumerated mode configurations.",
             findings = new[] { customFinding, dailyFinding, modifierFinding },
             bindings_match = bindingsMatch,
+            binding_mismatches = bindingMismatches,
             standard,
             custom_default = custom,
             daily_default = daily,
@@ -140,6 +160,10 @@ internal static partial class Commands
         };
         reportArtifact.WriteAtomic(JsonSerializer.Serialize(report, Json.Indented) + "\n");
         Console.WriteLine($"Mode discrimination instrument: {(instrumentPassed ? "PASS" : "FAIL")}");
+        if (!bindingsMatch)
+        {
+            Console.WriteLine($"Probe binding mismatch: {Describe(bindingMismatches[0])}.");
+        }
         Console.WriteLine(customFinding);
         Console.WriteLine(dailyFinding);
         Console.WriteLine(modifierFinding);
@@ -170,7 +194,8 @@ internal static partial class Commands
         bool CompletedHistory,
         bool AllCheckpointsPassed,
         string CheckpointSha256,
-        string BehavioralStateSha256);
+        string BehavioralStateSha256,
+        string FinalStateSha256);
 
     private static bool SameBehavior(ModeDiscriminationResult left, ModeDiscriminationResult right) =>
         left.CompletedHistory == right.CompletedHistory &&
@@ -178,8 +203,14 @@ internal static partial class Commands
         string.Equals(left.CheckpointSha256, right.CheckpointSha256, StringComparison.Ordinal) &&
         string.Equals(left.BehavioralStateSha256, right.BehavioralStateSha256, StringComparison.Ordinal);
 
-    private static string Binding(ModeDiscriminationResult result) => JsonSerializer.Serialize(new
-    {
+    private static bool SameBehaviorExceptRecordedMode(
+        ModeDiscriminationResult standard,
+        ModeDiscriminationResult candidate) =>
+        SameBehavior(standard, candidate) &&
+        !string.Equals(standard.FinalStateSha256, candidate.FinalStateSha256, StringComparison.Ordinal);
+
+    private static ModeProbeBinding ProbeBinding(ModeDiscriminationResult result) => new(
+        result.Variant,
         result.Schema,
         result.RunId,
         result.VideoId,
@@ -187,6 +218,9 @@ internal static partial class Commands
         result.BuildCommit,
         result.Seed,
         result.ActionHistoryHash,
-        result.AvailableModifierTypes,
-    }, Json.Indented);
+        result.AvailableModifierTypes);
+
+    private static string Describe(ModeProbeBindingMismatch mismatch) =>
+        $"{mismatch.Field}: {mismatch.BaselineSource}='{mismatch.BaselineValue}', " +
+        $"{mismatch.CandidateSource}='{mismatch.CandidateValue}'";
 }

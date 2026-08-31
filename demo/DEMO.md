@@ -514,10 +514,8 @@ date is not knowable here at all.
 
 What *is* knowable is whether any modifier could have been present without showing.
 Every modifier this build offers is replayed as a daily against this history, and each
-one is sorted by what it changes: an observed checkpoint, nothing at all, or the
-resulting state while leaving the checkpoints intact. Only that third case would leave
-the mode genuinely open, because only it is consistent with the recording and
-inconsistent with this replay.
+one is sorted by what it changes: an observed checkpoint, no canonical field beyond the recorded `run.game_mode`, or another canonical field while leaving the checkpoints intact.
+Only that third case would leave the mode genuinely open, because only it is consistent with the recording and inconsistent with this replay.
 
 ```bash
 ./scripts/arbiter mode-discrimination manifests/navegreed-OJ-6QXhNgdg.replay.json --out build/evidence/mode-discrimination.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\]'
@@ -525,9 +523,9 @@ inconsistent with this replay.
 
 ```output
 Mode discrimination instrument: PASS
-Custom mode with no modifiers matches every observed checkpoint and the final canonical state.
-Daily mode without its date-selected modifier set matches every observed checkpoint and the final canonical state, which does not bind a real daily run.
-Each of the 17 modifiers this build offers was replayed as a daily: 17 change an observed checkpoint and are therefore excluded by the recording this history already matches, and 0 change nothing observable and nothing in the final canonical state. No single modifier reproduces the observed checkpoints while altering the resulting state.
+Custom mode with no modifiers matches every observed checkpoint and every canonical field except the recorded run.game_mode; its full final-state digest therefore differs from standard.
+Daily mode without its date-selected modifier set matches every observed checkpoint and every canonical field except the recorded run.game_mode; its full final-state digest therefore differs from standard, and this does not bind a real daily run.
+Each of the 17 modifiers this build offers was replayed as a daily: 17 change an observed checkpoint and are therefore excluded by the recording this history already matches, and 0 leave every checkpoint and every canonical field other than the recorded run.game_mode unchanged. No single modifier reproduces the observed checkpoints while altering another canonical field.
 Mode identity: UNESTABLISHED
 Path-specific mode parity: ESTABLISHED for this history over every single modifier this build offers; modifier combinations are not enumerated.
 report: build/evidence/mode-discrimination.json
@@ -535,9 +533,8 @@ report: build/evidence/mode-discrimination.json
 
 All seventeen land in the first bucket, so a daily carrying any one of them would have
 produced an opening turn the recording does not show. The mode is still not
-*identified* — standard and custom-with-no-modifiers are indistinguishable here, and
-they are indistinguishable because they are byte-identical for this history. That is
-the claim the gate accepts: not that the mode is known, but that every mode
+*identified* — standard and custom-with-no-modifiers are indistinguishable in the recording and agree in every canonical field except the recorded `run.game_mode`; their full final-state digests differ.
+That is the claim the gate accepts: not that the mode is known, but that every mode
 configuration in the enumerated space either reproduces this history exactly or is
 ruled out by what the video shows. Combinations of modifiers are not enumerated, and
 the report says so.
@@ -560,9 +557,9 @@ every check that is not about the recording itself.
 
 ```output
 Mode discrimination instrument: PASS
-Custom mode with no modifiers matches every observed checkpoint and the final canonical state.
-Daily mode without its date-selected modifier set matches every observed checkpoint and the final canonical state, which does not bind a real daily run.
-Each of the 17 modifiers this build offers was replayed as a daily: 17 change an observed checkpoint and are therefore excluded by the recording this history already matches, and 0 change nothing observable and nothing in the final canonical state. No single modifier reproduces the observed checkpoints while altering the resulting state.
+Custom mode with no modifiers matches every observed checkpoint and every canonical field except the recorded run.game_mode; its full final-state digest therefore differs from standard.
+Daily mode without its date-selected modifier set matches every observed checkpoint and every canonical field except the recorded run.game_mode; its full final-state digest therefore differs from standard, and this does not bind a real daily run.
+Each of the 17 modifiers this build offers was replayed as a daily: 17 change an observed checkpoint and are therefore excluded by the recording this history already matches, and 0 leave every checkpoint and every canonical field other than the recorded run.game_mode unchanged. No single modifier reproduces the observed checkpoints while altering another canonical field.
 Mode identity: UNESTABLISHED
 Path-specific mode parity: ESTABLISHED for this history over every single modifier this build offers; modifier combinations are not enumerated.
 report: build/evidence/mode-discrimination.json
@@ -614,16 +611,12 @@ This proves the replay spine against a controlled fixture, not the separate hist
   position 412 to 370 and changes which encounters the act generates — while leaving
   the map byte-identical. Agreement on generated content is the evidence for this
   assumption; it is not independently established.
-- **The game mode is not identified, only bounded.** The recording does not show it. The
-real-engine probe compares every observed checkpoint and the final canonical state
-under standard, custom with no modifiers, daily without its date-selected modifiers, a
-behavior-changing custom modifier control, and each of the seventeen modifiers this
-build offers replayed as a daily. A reordered-history control proves the combined
-detector catches checkpoint divergence when the terminal canonical state is identical.
-Every modifier changes an observed checkpoint, so no single-modifier daily is
-consistent with the footage; standard and custom-with-no-modifiers are consistent and
-byte-identical to each other for this history. What is established is parity across
-that space, not the mode itself, and combinations of modifiers are not enumerated.
+- **The game mode is not identified, only bounded.** The recording does not show it.
+The real-engine probe compares every observed checkpoint and every canonical field except the recorded `run.game_mode` under standard, custom with no modifiers, daily without its date-selected modifiers, a behavior-changing custom modifier control, and each of the seventeen modifiers this build offers replayed as a daily.
+The report also emits each probe's full final-state digest, which includes `run.game_mode` and therefore differs between standard and custom.
+A reordered-history control proves the combined detector catches checkpoint divergence when the terminal behavioral state is identical.
+Every modifier changes an observed checkpoint, so no single-modifier daily is consistent with the footage; standard and custom-with-no-modifiers agree in every canonical field except `run.game_mode`.
+What is established is parity across that space, not the mode itself, and combinations of modifiers are not enumerated.
 - **The three source utilities are non-gameplay tooling, with BaseLib bounded to this history.** They are named — a stream-overlay exporter, the community modding framework, and a run-resume utility — and the manifest carries a risk assessment for each. The content hash cannot cover every behavior patch. The target-level BaseLib v3.4.5 probe changes `SkipNextDurationTick` for a player-applied custom debuff, while the history-bound probe records that the reconstructed VOD actions never reach that branch and detects an injected affected call.
 - **The mod identities themselves are not from the video.** It names no mod
   anywhere; the overlay gives only a count. They came from a separate investigation

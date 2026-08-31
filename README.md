@@ -33,7 +33,7 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   second reading of the environment taken from the end-of-run screen 2,038 seconds
   after the first.
 - **The source game mode remains unestablished, while path-specific parity is established over the enumerated mode configurations.**
-  Standard and custom with no modifiers are byte-identical for this history.
+  Standard and custom with no modifiers agree at every observed checkpoint and in every canonical field except the recorded `run.game_mode`; their full final-state digests differ.
   Every one of the build's 17 modifiers changes an observed checkpoint when replayed alone as a daily, so no single-modifier daily fits the footage.
   Modifier combinations are not enumerated, and the gate does not identify the source mode.
 

@@ -465,6 +465,19 @@ public class PublicationGateTests
         Assert.True(report.GetProperty("negative_control_detected").GetBoolean());
         Assert.True(report.GetProperty("checkpoint_negative_control_detected").GetBoolean());
         var standard = report.GetProperty("standard");
+        var custom = report.GetProperty("custom_default");
+        Assert.Equal(
+            standard.GetProperty("BehavioralStateSha256").GetString(),
+            custom.GetProperty("BehavioralStateSha256").GetString());
+        Assert.NotEqual(
+            standard.GetProperty("FinalStateSha256").GetString(),
+            custom.GetProperty("FinalStateSha256").GetString());
+        Assert.Equal(
+            ["run.game_mode"],
+            report.GetProperty("behavioral_state_excluded_fields").EnumerateArray()
+                .Select(field => field.GetString()).ToList());
+        Assert.True(report.GetProperty("bindings_match").GetBoolean());
+        Assert.Empty(report.GetProperty("binding_mismatches").EnumerateArray());
         var checkpointControl = report.GetProperty("checkpoint_negative_control");
         Assert.Equal(
             standard.GetProperty("BehavioralStateSha256").GetString(),
@@ -480,8 +493,15 @@ public class PublicationGateTests
         Assert.Equal(
             report.GetProperty("modifier_space_enumerated").GetInt32(), outcomes.Count);
         Assert.NotEmpty(outcomes);
-        Assert.All(outcomes, outcome => Assert.NotEqual(
-            "state_only_divergence", outcome.GetProperty("Classification").GetString()));
+        Assert.All(outcomes, outcome =>
+        {
+            Assert.NotEqual(
+                "state_only_divergence", outcome.GetProperty("Classification").GetString());
+            Assert.StartsWith(
+                "sha256:", outcome.GetProperty("BehavioralStateSha256").GetString());
+            Assert.StartsWith(
+                "sha256:", outcome.GetProperty("FinalStateSha256").GetString());
+        });
         Assert.Empty(report.GetProperty("unbound_modifiers").EnumerateArray());
     }
 
