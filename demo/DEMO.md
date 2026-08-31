@@ -110,8 +110,10 @@ why rather than hiding it. The arbiter points the engine's data directory at a
 sandbox inside this worktree, so the game cannot reach the player's real save
 directory. It therefore finds no stored progress, tries to write a fresh profile,
 and fails — the file layer underneath it is deliberately inert. That failure is
-the read-only boundary working, and nothing downstream depends on it: unlock state
-is set explicitly by the run setup, not read from a save.
+the read-only boundary working. It is also why the profile this host reads is empty,
+which matters below: `--progress local-profile` genuinely reads a profile, and here
+that profile is the sandbox's rather than the player's Steam save, which the host
+never opens.
 
 ```bash
 ./scripts/arbiter preflight manifests/navegreed-OJ-6QXhNgdg.replay.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
@@ -119,13 +121,25 @@ is set explicitly by the run setup, not read from a save.
 
 ```output
 manifest : navegreed-OJ-6QXhNgdg
+progress : AllUnlocked
 
-  ok   build_version    manifest=v0.111.0                       local=v0.111.0
-  ok   build_date_utc   manifest=2026.08.14                     local=2026.08.14
-  ok   content_hash     manifest=1568834832                     local=1568834832
-  ok   seed_alphabet    manifest=legal                          local=legal
-  ok   game_mode        manifest=standard                       local=standard
-  ok   mod_environment  manifest=navegreed-2026-08 (3 mod(s))   local=audited source tooling
+  ok   build_version          manifest=v0.111.0                       local=v0.111.0
+  ok   build_date_utc         manifest=2026.08.14                     local=2026.08.14
+  ok   content_hash           manifest=1568834832                     local=1568834832
+  ok   seed_alphabet          manifest=legal                          local=legal
+  ok   game_mode_supported    manifest=standard                       local=standard
+  ok   mod_environment        manifest=navegreed-2026-08 (3 mod(s))   local=audited source tooling
+  ok   unlocks_requirement    manifest=complete                       local=UnlockState.all, supplied by the host in place of the source player's profile
+  ok   unlocks_characters     manifest=5                              local=5
+  ok   unlocks_cards          manifest=596                            local=596
+  ok   unlocks_card_pools     manifest=12                             local=12
+  ok   unlocks_character_card_pools manifest=5                              local=5
+  ok   unlocks_relics         manifest=299                            local=299
+  ok   unlocks_potions        manifest=66                             local=66
+  ok   unlocks_shared_ancients manifest=1                              local=1
+  ok   unlocks_epochs         manifest=57                             local=57
+  ok   acts_unlocked          manifest=ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY local=all unlocked
+  ok   ascension_unlocked     manifest=ascension 10 available         local=not gated: UnlockState.all, supplied by the host in place of the source player's profile
 
 acts this build ships:
   0:ACT.OVERGROWTH (default)
@@ -150,6 +164,87 @@ random stream at all — the act map is built from a **fresh generator seeded fr
 run seed**. So the map cannot detect a substituted act, and a cross-check that looks
 decisive can be blind to the thing that matters. The act is now part of the
 environment's identity, read from the name the game prints on the map screen.
+
+### The prerequisites a player has to actually have
+
+Everything above is about the installation. The rest of that list is about the
+player, and it is the half a video cannot show: the game builds a run's content
+pools from the player's unlocks, so the same seed on the same build gives someone
+with less unlocked a different run. Measured, on one seed, changing nothing but the
+unlock state: the shared upfront random stream lands on position 412 against 370,
+and the act draws different encounters.
+
+The manifest therefore records a *requirement* — complete — rather than an
+observation, and the preflight checks the environment about to replay meets it. Ask
+it about an environment with nothing unlocked and it refuses category by category:
+
+```bash
+./scripts/arbiter preflight manifests/navegreed-OJ-6QXhNgdg.replay.json --progress none-unlocked 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | grep -A1 'FAIL unlocks_characters\|FAIL acts_unlocked'
+./scripts/arbiter preflight manifests/navegreed-OJ-6QXhNgdg.replay.json --progress local-profile 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | grep -A1 'FAIL ascension_unlocked'
+```
+
+```output
+  FAIL unlocks_characters     manifest=5                              local=1
+       This environment has 1 of the 5 characters this build ships, so its generation pools are smaller than the source run's and the same seed produces a different run. Missing, for example: CHARACTER.DEFECT, CHARACTER.NECROBINDER, CHARACTER.REGENT, CHARACTER.SILENT. Unlock the remaining content by playing the game. This tool never writes to your save, your progress, your unlocks or your installed build, and there is no supported flag that would.
+--
+  FAIL acts_unlocked          manifest=ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY local=locked: ACT.UNDERDOCKS
+       This environment cannot climb ACT.UNDERDOCKS: the game reports the act locked under the unlock state a run here would be generated against. An act that is not unlocked is not merely unavailable - the run would take the other variant shipped at the same index, which generates different content from the same seed while producing the same map. Unlock the remaining content by playing the game. This tool never writes to your save, your progress, your unlocks or your installed build, and there is no supported flag that would.
+  FAIL ascension_unlocked     manifest=ascension 10 available         local=profile ceiling 0 for CHARACTER.IRONCLAD
+       This profile's highest available ascension for CHARACTER.IRONCLAD is 0, and the manifest records ascension 10. The game raises that ceiling when you finish a run at the level below it. Unlock the remaining content by playing the game. This tool never writes to your save, your progress, your unlocks or your installed build, and there is no supported flag that would.
+```
+
+Three things are worth pulling out of that.
+
+The counts are read off the build, not written down here — 596 cards is whatever
+`UnlockState.all` holds on this install — so a game update that adds content raises
+the bar without anyone editing a list.
+
+`acts_unlocked` is asked of the act model rather than derived from an epoch's name,
+and it is the shortfall a total cannot show. `ACT.UNDERDOCKS` reports itself locked
+under an empty unlock state. That is also what turns the manifest's unlock claim from
+an assumption into something partly measured: the run on screen is played through
+Underdocks, so the creator had that unlock, whatever else they had.
+
+`ascension_unlocked` only appears as a measurement when a real profile was read. The
+second command reads one — this host's own, which lives in the sandbox and is empty —
+and reports a ceiling of 0 against the manifest's Ascension 10. Loaded inside the
+retail client, the same reader sees the player's own progress instead.
+
+And the remediation is always the game's. Nothing in this project writes to a save, a
+profile, an unlock or an install, and there is no flag that would: a tool that edited
+a player's progress to make a replay possible would have destroyed the thing the
+replay was evidence about.
+
+### And the run in front of you has to be the right run
+
+The two gates above are about *whether* a matching run could be played here. The last
+one is about the run that actually exists. This is the gate a mod runs: the player has
+a run in progress, and the question is whether it is the one the manifest describes.
+
+`preflight-live` starts a run at a stated identity — standing in for the player having
+started one — then reads it back out of `RunManager` and compares. Nothing is taken on
+trust: what it reports is the run the engine holds, not the run it was asked for.
+
+```bash
+./scripts/arbiter preflight-live manifests/navegreed-OJ-6QXhNgdg.replay.json --seed SFXT47K77RFX 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed -n '/run_present/,$p'
+```
+
+```output
+  ok   run_present            manifest=a run matching this manifest   local=run in progress, read from RunManager.State
+  FAIL run_seed               manifest=SFXT47K77RFK                   local=SFXT47K77RFX
+       This run was generated from a different seed, so it is a different run from the first floor onward. Abandon it and start a run on the manifest's seed; nothing can convert one into the other after the fact.
+  ok   run_game_mode          manifest=standard                       local=standard
+  ok   run_ascension          manifest=10                             local=10
+  ok   run_character          manifest=CHARACTER.IRONCLAD             local=CHARACTER.IRONCLAD
+  ok   run_acts               manifest=ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY local=ACT.UNDERDOCKS, ACT.HIVE, ACT.GLORY
+
+environment or run does NOT match; refusing to replay
+```
+
+One character of the seed, and it refuses. Run it with no overrides and every line
+reads `ok`. The arbiter runs the same check on itself immediately after it constructs
+a run, which is not a formality: a seed the engine normalised differently, or an act
+that quietly defaulted, would otherwise replay perfectly and be a different run.
 
 ## Verifying the seed without reading it
 
@@ -233,13 +328,11 @@ The publication verdict rests on that history-bound result, bound to the build, 
 The replay, determinism, corruption, and snapshot demonstrations below use a generated vanilla fixture to exercise the engine spine independently of that source-environment result.
 
 ```bash
-./scripts/arbiter synthetic-fixture --out build/evidence/synthetic-engine.replay.json --lines-out build/evidence/synthetic-lines
+./scripts/arbiter synthetic-fixture --out build/evidence/synthetic-engine.replay.json
 ```
 
 ```output
 synthetic fixture: build/evidence/synthetic-engine.replay.json
-synthetic line: build/evidence/synthetic-lines/declared-order.line.json
-synthetic line: build/evidence/synthetic-lines/reordered.line.json
 ```
 
 The synthetic fixture pins five declared actions: the opening blessing, the move to the first map node, the two cards played on turn 1, and ending that turn.
@@ -293,6 +386,88 @@ Three fields show what the synthetic fixture pins.
 
 **`combat.player_hp 80` after ending the turn.** The generated enemy does not damage the player on this turn, while the played Strike moves the enemy from 57 to 51 health.
 These are pinned engine outputs for machinery tests, not observations from the source video.
+
+## What the result keeps besides the verdict
+
+A verified replay's end state answers "was it exact". It cannot answer the question
+this product exists to serve next — how a played combat compares with an alternative
+line — because that question is about the shape of the fight, not its last frame.
+Total turns, health lost, which consumable was drunk on which turn, damage dealt and
+taken each turn: every one of those is a difference between two moments, and a report
+that kept only the final moment has thrown all of them away.
+
+So the report also carries a trace: the canonical state sampled either side of every
+action, both samples kept. It computes nothing and ranks nothing. `--show-trace`
+prints what changed at each step, as an inspection view of the stored data:
+
+```bash
+./scripts/arbiter replay manifests/navegreed-OJ-6QXhNgdg.replay.json --show-trace 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed -n '/^trace (/,/^final state/p' | sed '/^final state/d' | sed '/^$/d'
+```
+
+```output
+trace (sampled fields that changed at each step):
+   -1 run_start
+        (nothing sampled changed)
+    0 ChooseNeowBlessing
+        player.deck CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.BASH|CARD.ASCENDERS_BANE -> CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.BASH|CARD.ASCENDERS_BANE|CARD.HELLRAISER|CARD.HELLRAISER
+        player.max_hp 80 -> 68
+        player.relics RELIC.BURNING_BLOOD -> RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE
+    1 MapMove
+        combat.block - -> 0
+        combat.encounter - -> ENCOUNTER.SLUDGE_SPINNER_WEAK
+        combat.enemy.0.alive - -> true
+        combat.enemy.0.block - -> 0
+        combat.enemy.0.hp - -> 42
+        combat.enemy.0.intent - -> Attack:9+Debuff
+        combat.enemy.0.max_hp - -> 42
+        combat.enemy.0.max_hp_unscaled - -> 42
+        combat.enemy.0.model - -> MONSTER.SLUDGE_SPINNER
+        combat.enemy.0.next_move - -> OIL_SPRAY_MOVE
+        combat.enemy.0.powers - -> 
+        combat.enemy_count - -> 1
+        combat.energy - -> 3
+        combat.hand - -> CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD
+        combat.in_progress false -> true
+        combat.player_hp - -> 64
+        combat.player_powers - -> 
+        combat.round - -> 1
+        combat.turn - -> 1
+        run.act_floor 1 -> 2
+        run.total_floor 1 -> 2
+    2 PlayCard
+        combat.energy 3 -> 1
+        combat.hand CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD -> CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD
+        combat.player_powers  -> POWER.HELLRAISER_POWER:1
+    3 PlayCard
+        combat.block 0 -> 5
+        combat.energy 1 -> 0
+        combat.hand CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD -> CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH
+    4 EndTurn
+        combat.block 5 -> 0
+        combat.enemy.0.hp 42 -> 34
+        combat.enemy.0.intent Attack:9+Debuff -> Attack:12
+        combat.enemy.0.next_move OIL_SPRAY_MOVE -> SLAM_MOVE
+        combat.energy 0 -> 3
+        combat.hand CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH -> CARD.DEFEND_IRONCLAD|CARD.ASCENDERS_BANE|CARD.DEFEND_IRONCLAD
+        combat.player_hp 64 -> 60
+        combat.player_powers POWER.HELLRAISER_POWER:1 -> POWER.HELLRAISER_POWER:1|POWER.WEAK_POWER:1
+        combat.round 1 -> 2
+        combat.turn 1 -> 2
+        player.hp 64 -> 60
+```
+
+Read that as the run rather than as a log and it says things the checkpoints do not.
+Neow's blessing at step 0 transformed two Strikes into Hellraisers and cost 12 maximum
+health. Both cards at steps 2 and 3 move no hit points at all; everything lands when
+the turn ends, where the enemy drops 42 to 34 and its 9-damage attack arrives as 4
+through the 5 block Defend put up — and the player picks up Weak on the way.
+
+Aggregate and turn-level views are two projections of this, and they stay separate:
+the combat summary says which consumables were used, the total turns and the health
+outcome; the chronology says which turn each use happened on and what that turn cost.
+Neither is built here, and the trace does not pre-judge either.
+[docs/comparison-direction.md](../docs/comparison-direction.md) is where that
+direction is written down.
 
 ## Determinism
 
@@ -371,77 +546,55 @@ The reordering first diverges at the bound `combat.block` checkpoint: Defend has
 Its final canonical state also differs because the discard pile preserves play order.
 The checkpoint identifies the first divergence instead of waiting for that hidden end-state difference.
 
-## A verified snapshot, and two lines from it
+## A verified snapshot at combat start
 
-This is the point of the whole apparatus. Once a mid-run position can be reproduced
-exactly, it can be handed to a player, and two different lines can be played from
-the identical position and compared.
+This is the point of the whole apparatus. Once the start of a fight can be reproduced
+exactly, the fight can be replayed from it and described.
+
+Combat start is the supported boundary, and the whole fight is the unit. That is a
+product decision rather than an unfinished edge: resuming part-way through a combat
+would need state reset at a turn boundary, and nothing here does that or is designed
+around it. [docs/comparison-direction.md](../docs/comparison-direction.md) records the
+boundary and what it rules out.
 
 The snapshot is a **derived cache**, never a source of truth. It is keyed by the
 build, seed, content hash, game mode and the hash of the exact action history that
 produced it — so it can never be served for a run that would not produce it. And
-"restore" here means re-derive and verify: each restore replays the same prefix in a
+"restore" here means re-derive and verify: a restore replays the same prefix in a
 fresh process and refuses unless the digest matches what was cached. That is slower
 than loading a blob and much harder to get quietly wrong.
 
 ```bash
-rm -rf build/snapshots && ./scripts/arbiter snapshot-lines build/evidence/synthetic-engine.replay.json --at 1 --line build/evidence/synthetic-lines/declared-order.line.json --line build/evidence/synthetic-lines/reordered.line.json --out build/evidence --cache build/snapshots 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
+rm -rf build/snapshots && ./scripts/arbiter combat-snapshot build/evidence/synthetic-engine.replay.json --out build/evidence --cache build/snapshots 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
 ```
 
 ```output
-snapshot key   : v0.111.0_standard_CHARACTER.IRONCLAD_a0_P1L0TTRA1NER_1568834832_seq1_fa6c25365719e14b153879446a45e4044c4ca1b3b3be1594bd9a54126ba5b330
-snapshot source: materialised now
-snapshot digest: sha256:579b37b764a8428a02df53e2baf851065e5e188878e2e831898f88acdd3a9474
+manifest        : synthetic-v0111-pilot-trainer
+combat starts   : after action 1
+snapshot key    : v0.111.0_standard_CHARACTER.IRONCLAD_a0_P1L0TTRA1NER_1568834832_seq1_fa6c25365719e14b153879446a45e4044c4ca1b3b3be1594bd9a54126ba5b330
+snapshot source : materialised now
+snapshot digest : sha256:579b37b764a8428a02df53e2baf851065e5e188878e2e831898f88acdd3a9474
+restore         : re-derived in a fresh process, digest matches
+whole combat    : VERIFIED, end state sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
 
-line declared-order.line  (3 action(s))
-  restore verified against snapshot digest: yes
-    PlayCard card_id=CARD.DEFEND_IRONCLAD hand_index=0
-    PlayCard card_id=CARD.STRIKE_IRONCLAD hand_index=0
-    EndTurn 
-    delta combat.discard_pile              ->  CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD
-    delta combat.discard_pile_count      0  ->  5
-    delta combat.draw_pile               CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD  ->  CARD.STRIKE_IRONCLAD
-    delta combat.draw_pile_count         6  ->  1
-    delta combat.enemy.0.hp              57  ->  51
-    delta combat.enemy.0.intent          Attack:4  ->  Buff
-    delta combat.enemy.0.next_move       FIRST_ACID_GOOP  ->  INHALE
-    delta combat.hand                    CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD  ->  CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD
-    delta combat.round                   1  ->  2
-    delta combat.turn                    1  ->  2
+combat, turn by turn (description, not a verdict):
+  turn 1  actions 2..4  player hp 80 -> 80
 
-line reordered.line  (3 action(s))
-  restore verified against snapshot digest: yes
-    PlayCard card_id=CARD.STRIKE_IRONCLAD hand_index=1
-    PlayCard card_id=CARD.DEFEND_IRONCLAD hand_index=0
-    EndTurn 
-    delta combat.discard_pile              ->  CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD
-    delta combat.discard_pile_count      0  ->  5
-    delta combat.draw_pile               CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD  ->  CARD.STRIKE_IRONCLAD
-    delta combat.draw_pile_count         6  ->  1
-    delta combat.enemy.0.hp              57  ->  51
-    delta combat.enemy.0.intent          Attack:4  ->  Buff
-    delta combat.enemy.0.next_move       FIRST_ACID_GOOP  ->  INHALE
-    delta combat.hand                    CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD  ->  CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD
-    delta combat.round                   1  ->  2
-    delta combat.turn                    1  ->  2
-
-diagram: build/evidence/snapshot-lines.svg
+report: build/evidence/combat-snapshot.json
 ```
 
-```bash {image}
-![Two lines played from the same verified snapshot, with objective state deltas for each and no verdict about which was better](snapshot-two-lines.png)
-```
+Where the fight begins is located, not declared: it is read out of the replay's own
+trace as the first step after which the engine reports a combat in progress. Asking
+the manifest instead would let the two disagree.
 
-![Two lines played from the same verified snapshot, with objective state deltas for each and no verdict about which was better](05a87928-2026-08-31.png)
+The turn-by-turn lines are description and nothing else. No score, no ranking, no
+highlight on a "better" outcome — which line is better is a question about a game, and
+answering it here would turn a measurement into an opinion. A test asserts the report
+contains no score, rank or verdict field, and no alternative line at all.
 
-Deltas and nothing else. No score, no ranking, no highlight on the "better" outcome —
-which line is better is a question about a game, and answering it here would turn a
-measurement into an opinion. A test asserts the report contains no score, rank or
-verdict field.
-
-The current fixture's two lines reach the same visible totals and differ in the ordered discard pile.
-That is an objective state delta: `Defend, Strike, ...` in the declared order and `Strike, Defend, ...` in the reordered line.
-No score or recommendation is attached.
+That ordered per-turn record is what a walkthrough will read later: stepping a player
+through an already-computed solution is presentation, and it re-solves nothing and
+resets nothing.
 
 ## The tests
 
@@ -449,16 +602,23 @@ The pure suite needs no game at all and runs anywhere.
 The integration suite drives the built command line, one process per test, and skips with an explanation on a machine that cannot run it.
 
 Every checker has a demonstrated negative input: the manifest validator has a
-malformed input per rule, the preflight has a mismatched build and a mismatched
-content hash, required engine initialization has a forced failing step, the map comparison has a wrong node, a missing node, an extra node and a wrong grid size, the arbiter has four corrupted histories, and the cache key has changes that must and must not invalidate it.
+malformed input per rule; the preflight has one per dimension — a mismatched build,
+build date and content hash, an illegal seed, an unreplayable mode, an unrecognised
+mod set, an uncheckable unlock requirement, a shortfall in each of the seven unlock
+categories, a locked act, a profile below the manifest's ascension, no run in
+progress at all, and a started run differing in seed, mode, ascension, character and
+act variant; required engine initialization has a forced failing step; the map
+comparison has a wrong node, a missing node, an extra node and a wrong grid size; the
+arbiter has four corrupted histories; and the cache key has changes that must and
+must not invalidate it.
 
 ```bash
 dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "Passed!|Failed!|error" | sed -E 's/, Duration: [^-]+ - / - /'
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   133, Skipped:     0, Total:   133 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    53, Skipped:     0, Total:    53 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   172, Skipped:     0, Total:   172 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    72, Skipped:     0, Total:    72 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -599,9 +759,13 @@ This proves the replay spine against a controlled fixture, not the separate hist
 - Four damaged provenance records are refused before any engine starts, including
   both fingerprints of a run resumed from history — which replays perfectly and is
   therefore invisible to every other check here.
-- A verified snapshot is keyed to the history that produced it, restores to a
-  digest-checked identical state, and supports two lines being played from it with
-  objective deltas and no verdict.
+- The combat-start snapshot is keyed to the history that produced it, restores to a
+  digest-checked identical state by being re-derived rather than deserialised, and the
+  whole combat replays through it. The fight is described turn by turn and nothing is
+  ranked.
+- The preflight refuses on every dimension it claims to check, including each unlock
+  category, a locked act variant, a profile below the manifest's ascension, and a
+  started run differing in seed, mode, ascension, character or acts.
 
 **Assumed, and doing real work.**
 
@@ -609,8 +773,14 @@ This proves the replay spine against a controlled fixture, not the separate hist
   against the player's unlock state, and nothing in a video shows it. Measured, on
   this seed: changing only that assumption moves the shared random stream from
   position 412 to 370 and changes which encounters the act generates — while leaving
-  the map byte-identical. Agreement on generated content is the evidence for this
-  assumption; it is not independently established.
+  the map byte-identical. One part of it is no longer an assumption: the run is
+  played through `ACT.UNDERDOCKS`, which the engine reports locked under an empty
+  unlock state, so the creator had at least that. The rest is an inference about an
+  experienced player, recorded as `environment.unlocks` with its reasoning, and
+  agreement on generated content is its evidence rather than an independent
+  establishment of it. What is *not* assumed is the environment replaying it: the
+  preflight reads the unlock state a run here would be generated against and refuses
+  a shortfall category by category.
 - **The game mode is not identified, only bounded.** The recording does not show it.
 The real-engine probe compares every observed checkpoint and every canonical field except the recorded `run.game_mode` under standard, custom with no modifiers, daily without its date-selected modifiers, a behavior-changing custom modifier control, and each of the seventeen modifiers this build offers replayed as a daily.
 The report also emits each probe's full final-state digest, which includes `run.game_mode` and therefore differs between standard and custom.
@@ -655,4 +825,3 @@ rasterised from them:
 
     magick -density 160 -background white build/evidence/seed-verification-SFXT47K77RFK.svg demo/map-topology-match.png
     magick -density 160 -background white build/evidence/seed-verification-SEXT47K77REK.svg demo/map-topology-mismatch.png
-    magick -density 150 -background white build/evidence/snapshot-lines.svg demo/snapshot-two-lines.png

@@ -27,6 +27,9 @@ internal static class Args
         return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
     }
 
+    /// <summary>Whether a value-less flag is present.</summary>
+    internal static bool Has(string[] args, string name) => Array.IndexOf(args, name) >= 0;
+
     /// <summary>All values for a flag that may be repeated.</summary>
     internal static IReadOnlyList<string> Values(string[] args, string name)
     {

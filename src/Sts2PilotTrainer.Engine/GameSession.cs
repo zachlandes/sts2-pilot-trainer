@@ -2,7 +2,6 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
-using MegaCrit.Sts2.Core.Unlocks;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
@@ -68,7 +67,7 @@ public sealed class GameSession
         }
 
         var character = FindCharacter(characterModelId);
-        var unlockState = ResolveUnlockState(progress);
+        var unlockState = LocalEnvironment.ResolveUnlockState(progress);
         var player = Player.CreateForNewRun(character, unlockState, 1uL);
 
         // The acts, named explicitly rather than taken as the default at each index.
@@ -188,42 +187,6 @@ public sealed class GameSession
             map.GetColumnCount(),
             nodes.OrderBy(n => n.Row).ThenBy(n => n.Column).ToList(),
             edges.OrderBy(e => e.FromRow).ThenBy(e => e.FromColumn).ThenBy(e => e.ToColumn).ToList());
-    }
-
-    /// <summary>
-    /// Builds the unlock state a run is generated against.
-    ///
-    /// The retail client derives this from the player's save progress. That is not
-    /// available for someone else's run, so a model has to be chosen and named, and
-    /// the choice has to be visible in the artifact rather than buried here.
-    /// </summary>
-    private static UnlockState ResolveUnlockState(PlayerProgress progress) => progress switch
-    {
-        PlayerProgress.AllUnlocked => UnlockState.all,
-        PlayerProgress.NoneUnlocked => UnlockState.none,
-        PlayerProgress.LocalProfile => LocalProfileUnlockState(),
-        _ => throw new EngineException($"Unknown player-progress model '{progress}'."),
-    };
-
-    /// <summary>
-    /// This machine's own progress, as the retail client would compute it.
-    ///
-    /// Diagnostic only, and deliberately not portable: it makes a replay depend on
-    /// whoever happens to own this install, which is the opposite of what a shared
-    /// artifact needs. It exists so that "does progress state change this run?" can
-    /// be answered by measurement rather than argument.
-    /// </summary>
-    private static UnlockState LocalProfileUnlockState()
-    {
-        var method = typeof(MegaCrit.Sts2.Core.Saves.SaveManager).GetMethod(
-            "GenerateUnlockStateFromProgress",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static |
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic)
-            ?? throw new EngineException("SaveManager.GenerateUnlockStateFromProgress is absent from this build.");
-
-        var target = method.IsStatic ? null : MegaCrit.Sts2.Core.Saves.SaveManager.Instance;
-        return method.Invoke(target, null) as UnlockState
-               ?? throw new EngineException("GenerateUnlockStateFromProgress returned no unlock state.");
     }
 
     /// <summary>

@@ -30,12 +30,7 @@ public static partial class ManifestValidator
     [GeneratedRegex(@"^\d+$")]
     private static partial Regex ContentHashPattern { get; }
 
-    public static ValidationResult Validate(ReplayManifest manifest) => Validate(manifest, null);
-
-    public static ValidationResult ValidateLineReplay(ReplayManifest manifest, int lineFromSeq) =>
-        Validate(manifest, lineFromSeq);
-
-    private static ValidationResult Validate(ReplayManifest manifest, int? lineFromSeq)
+    public static ValidationResult Validate(ReplayManifest manifest)
     {
         var problems = new List<string>();
 
@@ -53,18 +48,10 @@ public static partial class ManifestValidator
         }
         ValidateRunStart(manifest.Source, videoDurationMs, problems);
         ValidateRunSummary(manifest, videoDurationMs, problems);
-        ValidateActions(manifest.Actions, manifest.Source.Kind, videoDurationMs, lineFromSeq, problems);
+        ValidateActions(manifest.Actions, manifest.Source.Kind, videoDurationMs, problems);
         ValidateCheckpoints(
             manifest.Checkpoints, manifest.Actions, manifest.Source.Kind, videoDurationMs, problems);
         ValidateEvidenceTimeline(manifest, problems);
-
-        if (lineFromSeq is { } start &&
-            (start <= 0 || start >= manifest.Actions.Count || manifest.Checkpoints.Any(c => c.AfterSeq >= start)))
-        {
-            problems.Add(
-                "line replay must retain a validated prefix, append at least one line action, and carry no " +
-                "checkpoints into the hypothetical suffix.");
-        }
 
         if (string.IsNullOrWhiteSpace(manifest.RunId))
         {
@@ -108,6 +95,22 @@ public static partial class ManifestValidator
         if (env.Ascension.Value is < 0 or > 20)
         {
             problems.Add($"environment.ascension {env.Ascension.Value} is outside the range the game offers.");
+        }
+
+        var unlocks = env.Unlocks.Value;
+        if (!unlocks.IsComplete)
+        {
+            problems.Add(
+                $"environment.unlocks.completeness '{unlocks.Completeness}' is not " +
+                $"'{UnlockRequirement.CompleteCompleteness}'. Completeness is the only requirement a build can " +
+                "enumerate for itself; a partial one would name unlock ids nobody read off the video.");
+        }
+
+        if (string.IsNullOrWhiteSpace(unlocks.Basis))
+        {
+            problems.Add(
+                "environment.unlocks.basis is empty. Nothing in a video shows a creator's unlock state, so the " +
+                "reason for the claim has to travel with it.");
         }
 
         if (!env.Character.Value.StartsWith("CHARACTER.", StringComparison.Ordinal))
@@ -160,6 +163,7 @@ public static partial class ManifestValidator
         ValidateInputFact(env.Seed, "environment.seed", videoDurationMs, problems);
         ValidateInputFact(env.ContentHash, "environment.content_hash", videoDurationMs, problems);
         ValidateInputFact(env.Ascension, "environment.ascension", videoDurationMs, problems);
+        ValidateInputFact(env.Unlocks, "environment.unlocks", videoDurationMs, problems);
         ValidateInputFact(env.Character, "environment.character", videoDurationMs, problems);
         ValidateInputFact(env.Acts, "environment.acts", videoDurationMs, problems);
         ValidateInputFact(env.Mods, "environment.mods", videoDurationMs, problems);
@@ -174,6 +178,7 @@ public static partial class ManifestValidator
                          ("seed", env.Seed.Source),
                          ("content_hash", env.ContentHash.Source),
                          ("ascension", env.Ascension.Source),
+                         ("unlocks", env.Unlocks.Source),
                          ("character", env.Character.Source),
                          ("acts", env.Acts.Source),
                          ("mods", env.Mods.Source),
@@ -461,8 +466,7 @@ public static partial class ManifestValidator
     }
 
     private static void ValidateActions(
-        IReadOnlyList<ActionRecord> actions, string sourceKind, int videoDurationMs,
-        int? lineFromSeq, List<string> problems)
+        IReadOnlyList<ActionRecord> actions, string sourceKind, int videoDurationMs, List<string> problems)
     {
         if (actions.Count == 0)
         {
@@ -484,27 +488,6 @@ public static partial class ManifestValidator
         foreach (var action in actions)
         {
             ValidateActionArguments(action, problems);
-
-            var isLineAction = lineFromSeq is { } start && action.Seq >= start;
-            if (isLineAction)
-            {
-                if (action.Source == FactSource.Inferred && string.IsNullOrWhiteSpace(action.Evidence?.Note))
-                {
-                    problems.Add($"actions[{action.Seq}] ({action.Verb}) inferred line action has no reasoning.");
-                }
-                else if (action.Source == FactSource.Observed &&
-                         (action.Evidence?.VideoTimeMs is not { } lineTimestamp || lineTimestamp < 0))
-                {
-                    problems.Add(
-                        $"actions[{action.Seq}] ({action.Verb}) observed line action has no valid timestamp.");
-                }
-                else if (action.Source is not (FactSource.Observed or FactSource.Inferred))
-                {
-                    problems.Add(
-                        $"actions[{action.Seq}] ({action.Verb}) line action must be observed or inferred.");
-                }
-                continue;
-            }
 
             if (sourceKind == "synthetic-engine")
             {

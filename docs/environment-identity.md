@@ -48,11 +48,11 @@ For this VOD all seventeen change an observed checkpoint, so no single-modifier 
 It is not an identification: standard and custom-with-no-modifiers remain indistinguishable in the recording and agree in every canonical field except the recorded `run.game_mode`, which makes their full final-state digests differ.
 Combinations of modifiers are not enumerated, and the report records that limit.
 
-And one input is not a field, because it cannot be observed at all:
+And one input is a field that no video can fill in:
 
-| Not a field | Why not |
+| Field | Why it is identity |
 |---|---|
-| **player progress** | The game generates a run's content against the player's unlock state. Nothing in a video shows it. See [the progress problem](#the-progress-problem). |
+| **unlocks** | The game generates a run's content against the player's unlock state. Nothing in a video shows it, so the manifest records a *requirement* - complete - rather than an observation, and the preflight checks the environment that is about to replay actually meets it. See [the progress problem](#the-progress-problem). |
 
 ## The act variant
 
@@ -176,14 +176,46 @@ Measured, on one seed, changing nothing but the progress model:
 
 The map was byte-identical in both cases.
 
-Nothing in a video shows a creator's unlock state. This project therefore assumes
-**everything unlocked**, records that assumption as a caveat on every verification
-report, and treats agreement on generated content as the evidence for it. That is a
-real assumption doing real work, and it is not independently established.
+Nothing in a video shows a creator's unlock state, so the two halves of the problem
+are answered differently and kept apart.
 
-It is a mild assumption for an experienced player on a current build, and it would
-be a poor one for a newer player's run. A future version should record the progress
-model in the manifest rather than defaulting it.
+**What the source player had** is an inference, and stays one. The manifest records
+it as `environment.unlocks` with `source: inferred` and the reasoning next to it: the
+run on screen is Ascension 10 on Ironclad, through the Underdocks act variant, on a
+typed seed. The act variant is the part that is measured rather than argued -
+`ACT.UNDERDOCKS.IsUnlocked` returns false under `UnlockState.none` and true under
+`UnlockState.all` - so the run being watched could not have been played without that
+unlock. The rest is an assumption about an experienced creator, it does real work,
+and it is recorded as a caveat on every verification report.
+
+**What the replaying environment has** is not an assumption at all. `Preflight`
+reads it and refuses a shortfall, category by category:
+
+```
+FAIL unlocks_cards       manifest=596   local=232
+FAIL acts_unlocked       manifest=ACT.UNDERDOCKS, ...   local=locked: ACT.UNDERDOCKS
+FAIL ascension_unlocked  manifest=ascension 10 available   local=profile ceiling 0 for CHARACTER.IRONCLAD
+```
+
+The required counts are read off the build - whatever `UnlockState.all` holds here -
+so a game update that adds cards raises the bar without anyone editing a list. The
+act check is asked of the act model rather than derived from an epoch name, which
+matters because a locked act is the one shortfall a total cannot show: the run would
+take the other variant shipped at the same index, and generate different content
+behind an identical map.
+
+Where the reading comes from is reported next to the verdict rather than assumed.
+`--progress local-profile` reads the save progress of whichever profile the process
+has - inside the retail client that is the player's own, and inside the headless
+arbiter it is the empty sandbox profile, because the player's save is a read-only
+input the host never opens. `--progress all-unlocked`, the arbiter's default, is the
+state the host will construct the run with, and the report says so rather than
+calling it a reading of anybody.
+
+The remediation is always the same and always the game's: unlock the rest by playing.
+Nothing in this project writes to a save, a profile, an unlock or an installed build,
+and there is no flag that would - a tool that edited a player's progress to make a
+replay possible would have destroyed the thing the replay was evidence about.
 
 ## Verifying a seed without reading it
 

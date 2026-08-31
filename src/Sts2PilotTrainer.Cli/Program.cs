@@ -24,6 +24,7 @@ internal static class Program
                 "gate" => Commands.Gate(args[1..]),
                 "validate" => Commands.Validate(args[1..]),
                 "preflight" => Commands.Preflight(args[1..]),
+                "preflight-live" => Commands.PreflightLive(args[1..]),
                 "verify-seed" => Commands.VerifySeed(args[1..]),
                 "synthetic-fixture" => Commands.SyntheticFixture(args[1..]),
                 "generate-synthetic-fixture" => Commands.GenerateSyntheticFixture(args[1..]),
@@ -34,10 +35,9 @@ internal static class Program
                 "mode-discrimination" => Commands.ModeDiscrimination(args[1..]),
                 "mode-discrimination-probe" => Commands.ModeDiscriminationProbe(args[1..]),
                 "replay" => Commands.Replay(args[1..]),
-                "replay-line" => Commands.ReplayLine(args[1..]),
                 "determinism" => Commands.Determinism(args[1..]),
                 "negative-controls" => Commands.NegativeControls(args[1..]),
-                "snapshot-lines" => Commands.SnapshotLines(args[1..]),
+                "combat-snapshot" => Commands.CombatSnapshot(args[1..]),
                 _ => UnknownCommand(args[0]),
             };
         }
@@ -72,9 +72,20 @@ internal static class Program
               from - including that it starts at the run's start, which nothing
               downstream can check. No game needed.
 
-          preflight       <manifest>
-              Compare a manifest's environment identity against this machine's game.
-              Refuses, with diagnostics, rather than replaying into a mismatch.
+          preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile]
+              Compare a manifest's environment identity and its player prerequisites
+              against this machine's game: build, content hash, unlocks category by
+              category, whether the run's acts are unlocked at all, and - reading a
+              real profile - whether its ascension is available. Refuses, with
+              diagnostics and in-game remediation, rather than replaying into a
+              mismatch. Nothing here writes to a save, a profile or the install.
+
+          preflight-live  <manifest> [--seed <s>] [--game-mode <m>] [--ascension <n>]
+                                     [--character <id>] [--acts <id>[,<id>...]]
+              The same gate a mod runs against a live game. Starts a run at the given
+              identity - standing in for the player having started one - then reads it
+              back out of RunManager and compares seed, mode, ascension, character and
+              acts against the manifest. Pass a different seed and it refuses.
 
           verify-seed     <map-observation> --candidates <seed>[,<seed>...] [--out <dir>]
               Generate each candidate seed's Act 1 map through the real engine and
@@ -90,8 +101,11 @@ internal static class Program
               daily run construction, with a behavior-changing modifier control.
 
           replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
+                                     [--progress <model>] [--show-trace]
               Replay the manifest's ordered action history from run start and check
-              every checkpoint. Writes the manifest back with its verification filled in.
+              every checkpoint. Writes the manifest back with its verification filled
+              in, including the step-by-step trace. --show-trace prints what changed at
+              each step; see docs/comparison-direction.md for what the trace is for.
 
           determinism     <manifest> --runs <n>
               Replay the same manifest in n fresh processes and compare canonical state.
@@ -100,9 +114,12 @@ internal static class Program
               Damage the history in specific ways and show the arbiter rejects each,
               alongside what a video-only consistency check would have concluded.
 
-          snapshot-lines  <manifest> --at <seq> --line <file> --line <file> [--out <path>]
-              Materialise the verified pre-turn snapshot, restore it once per line,
-              run each line's actions, and report the objective state deltas.
+          combat-snapshot <manifest> [--cache <dir>] [--out <dir>]
+              Materialise the verified combat-start snapshot, restore it by
+              re-deriving it in a fresh process, and describe the whole combat that
+              replays through it turn by turn. Combat start is the supported
+              boundary; nothing here resets state mid-fight or replays an
+              alternative line. See docs/comparison-direction.md.
 
         Every command needs a prepared game assembly: run ./scripts/bootstrap.sh first.
         """);

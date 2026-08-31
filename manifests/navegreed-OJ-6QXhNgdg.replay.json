@@ -1,5 +1,5 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "run_id": "navegreed-OJ-6QXhNgdg",
   "environment": {
     "build_version": {
@@ -48,6 +48,16 @@
       "Evidence": {
         "video_t_ms": 9000,
         "method": "ascension badge in the top-left corner; the run summary screen states Ascension 10 again at the end"
+      }
+    },
+    "unlocks": {
+      "Value": {
+        "completeness": "complete",
+        "basis": "Nothing in the video shows an unlock screen, so this is an inference from what the run itself displays: Ascension 10 on Ironclad, the Underdocks act variant, and a seeded standard run. The act variant is the part that is measured rather than argued - this build's ACT.UNDERDOCKS reports itself locked under UnlockState.none and unlocked under UnlockState.all - so the run on screen could not have been played without it. A creator that far in is assumed to have the rest. The assumption is load-bearing and is recorded as a caveat on every verification this manifest produces."
+      },
+      "Source": "Inferred",
+      "Evidence": {
+        "note": "Unlock state is never rendered on screen. Measured effect of getting it wrong: replaying this run against UnlockState.none instead of UnlockState.all moves the upfront RNG counter from 412 to 370, changes the act's generated encounters, and locks ACT.UNDERDOCKS outright."
       }
     },
     "character": {

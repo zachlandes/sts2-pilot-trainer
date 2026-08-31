@@ -5,7 +5,7 @@ using Sts2PilotTrainer.IO;
 namespace Sts2PilotTrainer.Replay;
 
 /// <summary>
-/// Identity of a materialised pre-turn snapshot.
+/// Identity of a materialised combat-start snapshot.
 ///
 /// A snapshot is a derived cache and never a source of truth: it is only ever the
 /// result of replaying an action history from run start in a matching environment.

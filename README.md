@@ -63,13 +63,14 @@ All bootstrap, evidence, state, and snapshot-cache output paths must resolve ins
 
 ```bash
 ./scripts/build.sh                      # prepare the assembly copy, build everything
-./scripts/arbiter preflight  manifests/navegreed-OJ-6QXhNgdg.replay.json
+./scripts/arbiter preflight      manifests/navegreed-OJ-6QXhNgdg.replay.json
+./scripts/arbiter preflight-live manifests/navegreed-OJ-6QXhNgdg.replay.json
 ./scripts/arbiter synthetic-fixture --out build/evidence/synthetic.replay.json
 ./scripts/arbiter replay     build/evidence/synthetic.replay.json
 ```
 
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
-`verify-seed`, `determinism`, `negative-controls`, `snapshot-lines`. `validate` needs
+`verify-seed`, `determinism`, `negative-controls`, `combat-snapshot`. `validate` needs
 no game.
 
 The full walkthrough, with commands and their real output, is in

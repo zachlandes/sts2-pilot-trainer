@@ -430,32 +430,6 @@ public class ManifestValidatorTests
         Assert.Contains(result.Problems, p => p.Contains("has no video timestamp", StringComparison.Ordinal));
     }
 
-    [Fact]
-    public void DedicatedLineReplayAcceptsReasonedInferredSuffixes()
-    {
-        var manifest = Fixtures.SyntheticManifest();
-        var prefix = manifest.Actions.Take(2).ToList();
-        var lineAction = new ActionRecord
-        {
-            Seq = 2,
-            Verb = ActionVerb.PlayCard,
-            Args = new SortedDictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["card_id"] = "CARD.BASH",
-                ["hand_index"] = "3",
-            },
-            Source = FactSource.Inferred,
-            Evidence = FactEvidence.Reasoning("hypothetical line"),
-        };
-        manifest = manifest with
-        {
-            Actions = [.. prefix, lineAction],
-            Checkpoints = manifest.Checkpoints.Where(checkpoint => checkpoint.AfterSeq < 2).ToList(),
-        };
-
-        Assert.False(ManifestValidator.Validate(manifest).IsValid);
-        Assert.True(ManifestValidator.ValidateLineReplay(manifest, 2).IsValid);
-    }
 
     [Fact]
     public void RejectsAManifestWithNoCheckpoints()

@@ -17,18 +17,16 @@ public static class Arbiter
 
     public static ArbiterOutcome Run(
         ReplayManifest manifest, int? stopAfterSeq = null,
-        PlayerProgress progress = PlayerProgress.AllUnlocked, int? lineFromSeq = null,
+        PlayerProgress progress = PlayerProgress.AllUnlocked,
         string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null)
     {
-        var validation = lineFromSeq is { } start
-            ? ManifestValidator.ValidateLineReplay(manifest, start)
-            : ManifestValidator.Validate(manifest);
+        var validation = ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
         {
             throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
         }
 
-        var preflight = Preflight.Evaluate(manifest.Environment);
+        var preflight = Preflight.Evaluate(manifest.Environment, progress);
         if (!preflight.Matches)
         {
             return new ArbiterOutcome(
@@ -56,20 +54,67 @@ public static class Arbiter
             progress,
             modifierTypeNames ?? []);
 
+        // Read the run back out of the engine before touching it.
+        //
+        // Not a formality: everything above is what we asked the engine for, and this
+        // is what it built. A seed the engine normalised differently, or an act that
+        // quietly defaulted, would otherwise replay perfectly and be a different run.
+        //
+        // Compared against the identity actually requested, which differs from the
+        // manifest's only when a caller deliberately overrides the mode to ask what a
+        // different one would produce. Comparing that against the manifest would fail
+        // by construction and prove nothing; comparing it against what was asked for
+        // still catches the engine building something else. The substitution is
+        // recorded in the diagnostics below, and such a result never verifies the
+        // manifest.
+        var requestedIdentity = gameModeOverride is null || gameModeOverride == manifest.Environment.GameMode.Value
+            ? manifest.Environment
+            : manifest.Environment with { GameMode = Fact<string>.Declared(gameModeOverride) };
+        var runIdentity = Preflight.EvaluateStartedRun(requestedIdentity);
+        preflight = EnvironmentPreflight.Combine(preflight, runIdentity);
+        if (!runIdentity.Matches)
+        {
+            return new ArbiterOutcome(
+                new VerificationReport
+                {
+                    Status = VerificationStatus.Refused,
+                    ArbiterVersion = Version,
+                    Preflight = preflight,
+                    Caveats = Caveats(),
+                    Diagnostics = runIdentity.Fields
+                        .Where(f => !f.Matches)
+                        .Select(f =>
+                            $"{f.Field}: manifest says '{f.Expected}', the started run has '{f.Actual}'. {f.Diagnostic}")
+                        .ToList(),
+                },
+                FinalState: null);
+        }
+
         var driver = new RunDriver(session);
         driver.EnterFirstRoom();
 
         var checkpointsBySeq = manifest.Checkpoints.ToLookup(c => c.AfterSeq);
         var results = new List<CheckpointResult>();
         var diagnostics = new List<string>();
+        var steps = new List<ReplayStep>();
 
         // Checkpoints bound to -1 are evaluated before any action runs.
         results.AddRange(Evaluate(checkpointsBySeq[-1], session));
+
+        var state = CanonicalStateProjection.Project(session.RunState);
+        steps.Add(new ReplayStep
+        {
+            Seq = -1,
+            Verb = "run_start",
+            Before = Sample(state),
+            After = Sample(state),
+        });
 
         foreach (var action in manifest.Actions.OrderBy(a => a.Seq))
         {
             if (stopAfterSeq is { } actionLimit && action.Seq > actionLimit) break;
 
+            var before = Sample(CanonicalStateProjection.Project(session.RunState));
             try
             {
                 driver.Apply(action);
@@ -77,6 +122,15 @@ public static class Arbiter
             catch (EngineException ex)
             {
                 diagnostics.Add($"action {action.Seq} ({action.Verb}): {ex.Message}");
+                var refusedState = CanonicalStateProjection.Project(session.RunState);
+                steps.Add(new ReplayStep
+                {
+                    Seq = action.Seq,
+                    Verb = action.Verb.ToString(),
+                    Args = action.Args,
+                    Before = before,
+                    After = Sample(refusedState),
+                });
                 return new ArbiterOutcome(
                     new VerificationReport
                     {
@@ -84,11 +138,21 @@ public static class Arbiter
                         ArbiterVersion = Version,
                         Preflight = preflight,
                         Checkpoints = results,
+                        Trace = new ReplayTrace { Steps = steps },
                         Caveats = Caveats(),
                         Diagnostics = diagnostics,
                     },
-                    FinalState: CanonicalStateProjection.Project(session.RunState));
+                    FinalState: refusedState);
             }
+
+            steps.Add(new ReplayStep
+            {
+                Seq = action.Seq,
+                Verb = action.Verb.ToString(),
+                Args = action.Args,
+                Before = before,
+                After = Sample(CanonicalStateProjection.Project(session.RunState)),
+            });
 
             results.AddRange(Evaluate(checkpointsBySeq[action.Seq], session));
         }
@@ -97,7 +161,7 @@ public static class Arbiter
         var replayedActions = stopAfterSeq is { } stop
             ? manifest.Actions.Where(a => a.Seq <= stop).ToList()
             : manifest.Actions;
-        var isPartial = lineFromSeq is not null || replayedActions.Count < manifest.Actions.Count;
+        var isPartial = replayedActions.Count < manifest.Actions.Count;
         var failed = results.Where(r => !r.Passed).ToList();
         foreach (var result in failed)
         {
@@ -109,12 +173,14 @@ public static class Arbiter
             }
         }
 
-        if (lineFromSeq is { } lineStart)
+        if (gameModeOverride is { } overriddenMode && overriddenMode != manifest.Environment.GameMode.Value)
         {
             diagnostics.Add(
-                $"Hypothetical line replay begins at action {lineStart}; this result cannot verify the source manifest.");
+                $"Run identity was compared against the requested mode '{overriddenMode}', not the manifest's " +
+                $"'{manifest.Environment.GameMode.Value}'. This result cannot verify the source manifest.");
         }
-        else if (isPartial)
+
+        if (isPartial)
         {
             diagnostics.Add(
                 $"Partial replay stopped after action {stopAfterSeq}; " +
@@ -130,6 +196,7 @@ public static class Arbiter
                 ArbiterVersion = Version,
                 Preflight = preflight,
                 Checkpoints = results,
+                Trace = new ReplayTrace { Steps = steps },
                 FinalStateDigest = finalState.Digest(),
                 ActionHistoryHash = SnapshotCacheKey.HashActions(replayedActions),
                 Caveats = Caveats(),
@@ -137,6 +204,20 @@ public static class Arbiter
             },
             finalState);
     }
+
+    /// <summary>
+    /// The part of a canonical state the trace keeps.
+    ///
+    /// Filtering here rather than projecting differently keeps one owner for what the
+    /// engine's state is: the trace and the checkpoints read the same projection, so
+    /// a field cannot mean one thing in a comparison and another in the trace.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string> Sample(CanonicalState state) =>
+        new SortedDictionary<string, string>(
+            state.Fields
+                .Where(field => ReplayTrace.IsSampled(field.Key))
+                .ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal),
+            StringComparer.Ordinal);
 
     /// <summary>
     /// Compares a checkpoint's observations against the engine's canonical state.
@@ -186,8 +267,10 @@ public static class Arbiter
         "against divergence at that point, not a proof of parity across the run.",
 
         "Unlock state is assumed to be complete. The game derives a run's content pools from the player's " +
-        "progress, and the source player's progress is not observable from a video. Agreement on generated " +
-        "content is the evidence for this assumption; it is not independently established.",
+        "progress, and the source player's progress is not observable from a video. The preflight checks " +
+        "that the environment replaying this run has the complete unlock state the manifest requires; that " +
+        "the source player did is the inference recorded in environment.unlocks, and agreement on generated " +
+        "content is its evidence rather than an independent establishment of it.",
     ];
 }
 

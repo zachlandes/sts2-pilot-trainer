@@ -3,111 +3,52 @@ using Sts2PilotTrainer.Replay;
 namespace Sts2PilotTrainer.Engine;
 
 /// <summary>
-/// Decides whether this machine's game is the one a manifest was recorded against.
+/// Decides whether this machine's game is the one a manifest was recorded against,
+/// and whether the run in front of us is the run it describes.
 ///
-/// Reads the local identity and compares it; it changes nothing, and it refuses
-/// rather than approximating. Refusing is the useful behaviour: replaying a run in
-/// the wrong environment does not fail, it succeeds at producing a different run,
-/// and every downstream check would then be comparing the wrong things confidently.
+/// The owner of that decision. It reads through <see cref="LocalEnvironment"/> and
+/// judges through <see cref="EnvironmentPreflight"/>, so that what is read and what
+/// is required stay separable: the reading knows about v0.111.0, and the rules
+/// outlive it.
+///
+/// It changes nothing, and it refuses rather than approximating. Refusing is the
+/// useful behaviour: replaying a run in the wrong environment does not fail, it
+/// succeeds at producing a different run, and every downstream check would then be
+/// comparing the wrong things confidently.
 /// </summary>
 public static class Preflight
 {
+    /// <inheritdoc cref="EnvironmentPreflight.ContentHashScope"/>
+    public const string ContentHashScope = EnvironmentPreflight.ContentHashScope;
+
     /// <summary>
-    /// What a matching content hash does and does not establish.
+    /// The gate before a run exists: build, content, and the player prerequisites a
+    /// run's generation will read.
+    /// </summary>
+    /// <param name="progress">
+    /// Which unlock state to check. The mod passes
+    /// <see cref="PlayerProgress.LocalProfile"/> and so gates on what the player
+    /// actually has; the headless arbiter passes the state it will construct the run
+    /// with, which is the same question asked of a host rather than a person.
+    /// </param>
+    public static PreflightResult Evaluate(
+        EnvironmentIdentity expected, PlayerProgress progress = PlayerProgress.AllUnlocked) =>
+        EnvironmentPreflight.Prerequisites(expected, LocalEnvironment.ReadPrerequisites(expected, progress));
+
+    /// <summary>
+    /// The gate on the run that now exists, read back out of the game.
     ///
-    /// It is a checksum over the model-id database. Mods that declare themselves
-    /// gameplay-affecting contribute their ids to it, so a match rules out that
-    /// class of divergence. It says nothing about a mod that patches behaviour
-    /// without adding content, or one that declares itself non-gameplay - the
-    /// game's own warning about the hash omitting ids says as much. So the hash is
-    /// a necessary gate and never, on its own, proof of behavioural parity.
+    /// For the mod this is the player's own run. For the arbiter it is the run it
+    /// just constructed, and checking it is not a formality: it is how we learn the
+    /// engine built the run the manifest asked for rather than something adjacent to
+    /// it - a seed the engine normalised differently, or an act that quietly
+    /// defaulted.
     /// </summary>
-    public const string ContentHashScope =
-        "The content hash is a checksum over the model-id database. It covers content added by mods that " +
-        "declare themselves gameplay-affecting, and does not cover behaviour patches or mods that declare " +
-        "themselves non-gameplay. Hash equality is a necessary gate, not proof of environment parity.";
+    public static PreflightResult EvaluateStartedRun(EnvironmentIdentity expected) =>
+        EnvironmentPreflight.RunIdentity(expected, LocalEnvironment.ReadStartedRun());
 
-    public static PreflightResult Evaluate(EnvironmentIdentity expected)
-    {
-        var actual = GameIdentity.Read();
-        var fields = new List<PreflightField>
-        {
-            Compare("build_version", expected.BuildVersion.Value, actual.BuildVersion,
-                "Replaying on a different build means different content and different balance. There is no " +
-                "migration path: record the build a run came from and refuse anything else."),
-
-            Compare("build_date_utc", expected.BuildDateUtc.Value, actual.BuildDateUtc,
-                "The game's version overlay renders the release timestamp in UTC. A mismatch here with a " +
-                "matching version usually means the date was compared in local time."),
-
-            Compare("content_hash", expected.ContentHash.Value, actual.ContentHash, ContentHashScope),
-        };
-
-        fields.Add(EvaluateSeed(expected.Seed.Value));
-        fields.Add(EvaluateGameMode(expected.GameMode.Value));
-        fields.Add(EvaluateMods(expected.Mods.Value));
-
-        return new PreflightResult(fields.All(f => f.Matches), fields);
-    }
-
-    private static PreflightField Compare(string field, string expected, string actual, string diagnostic) =>
-        new(field, expected, actual, string.Equals(expected, actual, StringComparison.Ordinal),
-            string.Equals(expected, actual, StringComparison.Ordinal) ? null : diagnostic);
-
-    /// <summary>
-    /// Checks the seed against the alphabet the game can actually produce, which is
-    /// a real check and not a formality: the two characters missing from that
-    /// alphabet are exactly the two an OCR reader invents.
-    /// </summary>
-    private static PreflightField EvaluateSeed(string seed)
-    {
-        var illegal = seed.Where(c => !ManifestValidator.SeedAlphabet.Contains(c, StringComparison.Ordinal))
-            .Distinct()
-            .ToArray();
-
-        return illegal.Length == 0
-            ? new PreflightField("seed_alphabet", "legal", "legal", true)
-            : new PreflightField(
-                "seed_alphabet", "legal", $"illegal: {string.Join(",", illegal)}", false,
-                $"The seed contains {string.Join(", ", illegal.Select(c => $"'{c}'"))}, which this game never " +
-                "generates - its alphabet omits O and I, rendering them as 0 and 1. A seed like this was " +
-                "misread rather than observed.");
-    }
-
-    private const string ModEnvironmentField = "mod_environment";
-
-    private static PreflightField EvaluateMods(ModEnvironment mods)
-    {
-        var isVanilla = mods.ReportedCount == 0 && mods.Mods.Count == 0;
-        var expectedUtilities = new HashSet<string>(StringComparer.Ordinal)
-        {
-            "Slay the Relics Exporter",
-            "BaseLib",
-            "Hindsight",
-        };
-        var isAuditedSourceTooling =
-            mods.ReportedCount == 3 && mods.Mods.Count == 3 &&
-            mods.Mods.Select(mod => mod.Name).ToHashSet(StringComparer.Ordinal).SetEquals(expectedUtilities);
-        var matches = isVanilla || isAuditedSourceTooling;
-
-        return new PreflightField(
-            ModEnvironmentField,
-            $"{mods.Name} ({mods.ReportedCount} mod(s))",
-            isAuditedSourceTooling ? "audited source tooling" : "none loaded",
-            matches,
-            matches
-                ? null
-                : $"This host does not load the unrecognized source environment {mods.Name}: " +
-                  $"{string.Join("; ", mods.Mods.Select(mod => mod.Name))}. Refusing because its gameplay " +
-                  "behavior has not been bounded.");
-    }
-
-    private static PreflightField EvaluateGameMode(string gameMode) =>
-        gameMode == "standard"
-            ? new PreflightField("game_mode", "standard", "standard", true)
-            : new PreflightField(
-                "game_mode", gameMode, "only 'standard' is implemented", false,
-                $"Game mode '{gameMode}' is recorded but this milestone only replays standard runs. " +
-                "Daily and custom runs carry modifiers that change run setup, so replaying one as standard " +
-                "would produce a different run under the same seed.");
+    /// <summary>Both gates, which is how the mod asks the question of a live game.</summary>
+    public static PreflightResult EvaluateLiveGame(
+        EnvironmentIdentity expected, PlayerProgress progress = PlayerProgress.LocalProfile) =>
+        EnvironmentPreflight.Combine(Evaluate(expected, progress), EvaluateStartedRun(expected));
 }

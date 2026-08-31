@@ -204,42 +204,43 @@ public class SeedVerificationTests
     }
 }
 
-public class SnapshotLineTests
+/// <summary>
+/// The combat-start snapshot: that it is derived, cached, re-derived to be read, and
+/// keyed to the history that produced it.
+///
+/// The boundary is combat start and the unit is the whole fight. There is no
+/// mid-combat restore here and nothing designed around one, which is a product
+/// decision recorded in docs/comparison-direction.md rather than a gap.
+/// </summary>
+public class CombatSnapshotTests
 {
     [GameFact]
-    public void RestoresTheSameVerifiedSnapshotForEachLineAndReportsOnlyDeltas()
+    public void MaterialisesTheCombatStartSnapshotAndDescribesTheWholeCombat()
     {
         var outDir = TempDir();
-        var cacheDir = Path.Combine(outDir, "snapshots");
-
-        var lines = Arbiter.SyntheticLines();
         var result = Arbiter.Run(
-            "snapshot-lines", Arbiter.SyntheticReplayFixture(),
-            "--at", "1",
-            "--line", lines[0],
-            "--line", lines[1],
-            "--out", outDir, "--cache", cacheDir);
+            "combat-snapshot", Arbiter.SyntheticReplayFixture(),
+            "--out", outDir, "--cache", Path.Combine(outDir, "snapshots"));
 
         Assert.True(result.Verified, result.All);
 
         var report = JsonDocument.Parse(
-            File.ReadAllText(Path.Combine(outDir, "snapshot-lines.json"))).RootElement;
+            File.ReadAllText(Path.Combine(outDir, "combat-snapshot.json"))).RootElement;
 
-        var lineReports = report.GetProperty("lines").EnumerateArray().ToList();
-        Assert.Equal(2, lineReports.Count);
-        Assert.All(lineReports, l => Assert.True(l.GetProperty("restore_verified").GetBoolean()));
+        Assert.True(report.GetProperty("restore_verified").GetBoolean());
+        Assert.Equal("Verified", report.GetProperty("whole_combat_status").GetString());
+        Assert.NotEmpty(report.GetProperty("turns").EnumerateArray());
 
-        // Both lines start from the same state and end somewhere different. If the
-        // deltas were equal, the comparison would be showing nothing.
-        var deltas = lineReports.Select(l => l.GetProperty("deltas").ToString()).ToList();
-        Assert.NotEqual(deltas[0], deltas[1]);
-        Assert.All(lineReports, l => Assert.NotEmpty(l.GetProperty("deltas").EnumerateArray()));
+        // The boundary is a fact about what the engine did, so it is located rather
+        // than declared: combat starts after the action that entered the room.
+        Assert.True(report.GetProperty("combat_start_seq").GetInt32() >= 0);
 
-        // Objective deltas only. No score, no ranking, no verdict about which line was
-        // better - that is a question about a game, not about a replay.
-        Assert.DoesNotContain("\"score\"", report.ToString(), StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("\"better\"", report.ToString(), StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("\"rank\"", report.ToString(), StringComparison.OrdinalIgnoreCase);
+        // Description only. No score, no ranking, no verdict - and no alternative line,
+        // because the supported boundary is combat start.
+        foreach (var forbidden in new[] { "\"score\"", "\"better\"", "\"rank\"", "\"lines\"" })
+        {
+            Assert.DoesNotContain(forbidden, report.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [GameFact]
@@ -248,13 +249,9 @@ public class SnapshotLineTests
         var outDir = TempDir();
         var outside = Path.GetFullPath(Path.Combine(
             Arbiter.RepoRoot, "..", $"snapshot-escape-{Guid.NewGuid():N}"));
-        var lines = Arbiter.SyntheticLines();
 
         var result = Arbiter.Run(
-            "snapshot-lines", Arbiter.SyntheticReplayFixture(),
-            "--at", "1",
-            "--line", lines[0],
-            "--line", lines[1],
+            "combat-snapshot", Arbiter.SyntheticReplayFixture(),
             "--out", outDir, "--cache", outside);
 
         Assert.False(result.Verified);
@@ -267,22 +264,18 @@ public class SnapshotLineTests
     {
         var outDir = TempDir();
         var cacheDir = Path.Combine(outDir, "snapshots");
-        var lines = Arbiter.SyntheticLines();
+        var fixture = Arbiter.SyntheticReplayFixture();
 
-        var first = Arbiter.Run(
-            "snapshot-lines", Arbiter.SyntheticReplayFixture(), "--at", "1",
-            "--line", lines[0], "--line", lines[1], "--out", outDir, "--cache", cacheDir);
+        var first = Arbiter.Run("combat-snapshot", fixture, "--out", outDir, "--cache", cacheDir);
         Assert.Contains("materialised now", first.Output, StringComparison.Ordinal);
 
-        var second = Arbiter.Run(
-            "snapshot-lines", Arbiter.SyntheticReplayFixture(), "--at", "1",
-            "--line", lines[0], "--line", lines[1], "--out", outDir, "--cache", cacheDir);
+        var second = Arbiter.Run("combat-snapshot", fixture, "--out", outDir, "--cache", cacheDir);
         Assert.Contains("cache hit", second.Output, StringComparison.Ordinal);
 
         // A distinct declared environment receives its own cache entry even when the
         // zero-mod host produces the same state for both names.
         var altered = Path.Combine(outDir, "altered.json");
-        var manifest = ManifestJson.Load(Arbiter.SyntheticReplayFixture());
+        var manifest = ManifestJson.Load(fixture);
         ManifestJson.Save(
             manifest with
             {
@@ -294,10 +287,7 @@ public class SnapshotLineTests
             },
             altered);
 
-        var third = Arbiter.Run(
-            "snapshot-lines", altered, "--at", "1",
-            "--line", lines[0], "--line", lines[1], "--out", outDir, "--cache", cacheDir);
-
+        var third = Arbiter.Run("combat-snapshot", altered, "--out", outDir, "--cache", cacheDir);
         Assert.Contains("materialised now", third.Output, StringComparison.Ordinal);
         Assert.DoesNotContain(KeyOf(second.Output), KeyOf(third.Output), StringComparison.Ordinal);
     }

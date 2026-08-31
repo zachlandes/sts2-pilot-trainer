@@ -22,6 +22,8 @@ internal static class Fixtures
             Seed = Fact<string>.Observed("SFXT47K77RFK", FactEvidence.AtVideoTime(1000, "overlay")),
             ContentHash = Fact<string>.Observed("1568834832", FactEvidence.AtVideoTime(1000, "overlay")),
             Ascension = Fact<int>.Observed(10, FactEvidence.AtVideoTime(1000, "badge")),
+            Unlocks = Fact<UnlockRequirement>.Inferred(
+                UnlockRequirement.Complete("experienced creator"), FactEvidence.Reasoning("not shown on screen")),
             Character = Fact<string>.Observed("CHARACTER.IRONCLAD", FactEvidence.AtVideoTime(1000, "sprite")),
             Acts = Fact<IReadOnlyList<string>>.Inferred(
                 ["ACT.UNDERDOCKS"], FactEvidence.Reasoning("map screen title")),

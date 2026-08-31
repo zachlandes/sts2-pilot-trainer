@@ -26,6 +26,15 @@ public sealed record VerificationReport
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? FinalStateDigest { get; init; }
 
+    /// <summary>
+    /// What happened along the way, as data rather than as a summary. Present on any
+    /// replay that started, including a rejected one - a history that diverged is
+    /// exactly the one whose intermediate states are worth reading.
+    /// </summary>
+    [JsonPropertyName("trace")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ReplayTrace? Trace { get; init; }
+
     [JsonPropertyName("action_history_hash")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ActionHistoryHash { get; init; }

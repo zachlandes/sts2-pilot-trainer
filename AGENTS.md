@@ -11,7 +11,7 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
 dotnet test sts2-pilot-trainer.sln -c Release
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
 ./scripts/arbiter <command> # gate | validate | preflight | verify-seed | replay |
-                            # determinism | negative-controls | snapshot-lines
+                            # determinism | negative-controls | combat-snapshot
 ```
 
 `dotnet test` works without the game: the integration suite skips with an explanation
@@ -55,6 +55,23 @@ to prevent.
 run setup.** Two fields on that list are there because a replay looked correct and
 was not: the act variant and the player's unlock state. Both change every fight in a
 run while leaving the map identical.
+
+**The preflight reads; it never assumes, and it never writes.** `Preflight` in
+`Sts2PilotTrainer.Engine` owns the decision and splits in two on purpose: the reading
+lives in `LocalEnvironment`, which is the only thing that knows where v0.111.0 keeps
+a run and a profile, and the rules live in `EnvironmentPreflight` in
+`Sts2PilotTrainer.Replay`, which has no game code and so has a test for every
+dimension on a machine with no game. Every prerequisite it refuses is remediated by
+playing the game. Do not add a path that edits a save, a profile, an unlock, a build
+or a game mode.
+
+**Read [docs/comparison-direction.md](docs/comparison-direction.md) before changing
+what a verification report keeps or where a replay can start.** The supported
+boundary is combat start and the unit is the whole fight - no turn-level reset, no
+pre-turn branching, no turn-level solver. The product's next question is about the
+shape of a fight, not its last frame, so `VerificationReport.Trace` samples state
+either side of every action and computes nothing. Do not collapse it into final
+snapshots or prose, and do not bake turn chronology into a summary.
 
 **Some checks cannot be moved downstream.** A run resumed from run history matches on
 seed, build, content hash and acts, and replays perfectly — it is simply not the run

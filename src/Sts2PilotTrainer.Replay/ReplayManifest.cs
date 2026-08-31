@@ -15,7 +15,7 @@ public sealed record ReplayManifest
 {
     /// <summary>Bumped whenever a change would make an older arbiter misread a
     /// newer manifest. Readers must refuse an unknown version rather than guess.</summary>
-    public const int CurrentManifestVersion = 2;
+    public const int CurrentManifestVersion = 3;
 
     [JsonPropertyName("manifest_version")]
     public int ManifestVersion { get; init; } = CurrentManifestVersion;
@@ -83,6 +83,18 @@ public sealed record EnvironmentIdentity
 
     [JsonPropertyName("ascension")]
     public required Fact<int> Ascension { get; init; }
+
+    /// <summary>
+    /// The unlock state the run was generated against.
+    ///
+    /// Identity rather than player detail: the game builds a run's content pools
+    /// from the player's unlocks, so the same seed on the same build gives a player
+    /// with less unlocked a different run. Measured, not argued - see
+    /// <c>docs/environment-identity.md</c>. The preflight compares this against what
+    /// the replaying environment actually has, and refuses a shortfall.
+    /// </summary>
+    [JsonPropertyName("unlocks")]
+    public required Fact<UnlockRequirement> Unlocks { get; init; }
 
     /// <summary>Model id, e.g. <c>CHARACTER.IRONCLAD</c>.</summary>
     [JsonPropertyName("character")]
