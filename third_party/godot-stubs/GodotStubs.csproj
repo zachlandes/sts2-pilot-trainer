@@ -13,4 +13,8 @@
     <NoWarn>$(NoWarn);CS8632;CS0108;CS0114;CS1591;CS8625;CS0067</NoWarn>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../../src/Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj" />
+  </ItemGroup>
+
 </Project>

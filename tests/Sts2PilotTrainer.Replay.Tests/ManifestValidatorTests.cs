@@ -299,6 +299,33 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void RejectsRunStartEvidenceAtOrAfterTheFirstObservedAction()
+    {
+        var manifest = Fixtures.ValidManifest();
+        var runStart = manifest.Source.RunStart!;
+        var late = FactEvidence.AtVideoTime(90_000, "after the first action");
+        manifest = manifest with
+        {
+            Source = manifest.Source with
+            {
+                RunStart = runStart with
+                {
+                    FirstObservedRunTimeSeconds = runStart.FirstObservedRunTimeSeconds with { Evidence = late },
+                    FirstObservedFloor = runStart.FirstObservedFloor with { Evidence = late },
+                    EnteredFromRunHistory = runStart.EnteredFromRunHistory with { Evidence = late },
+                    ResumeModalSeen = runStart.ResumeModalSeen with { Evidence = late },
+                },
+            },
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Equal(4, result.Problems.Count(problem =>
+            problem.Contains("must precede the first observed action", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public void RejectsRunStartFactsThatWereNotObservedInTheVideo()
     {
         var manifest = Fixtures.ValidManifest();

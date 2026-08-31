@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+    <ProjectReference Include="../../src/Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj" />
   </ItemGroup>
 
 </Project>

@@ -11,6 +11,7 @@
 // would fail somewhere far from here.
 
 using System.Text;
+using Sts2PilotTrainer.IO;
 
 namespace Godot;
 
@@ -130,20 +131,17 @@ public static class HeadlessSandbox
     /// <summary>Refuses a write outside the sandbox.</summary>
     public static void Guard(string path)
     {
-        var full = Path.GetFullPath(path);
-        var root = Path.GetFullPath(_root);
-        var relative = Path.GetRelativePath(root, full);
-        if (relative == "." ||
-            (!Path.IsPathRooted(relative) &&
-             relative != ".." &&
-             !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)))
+        try
         {
-            return;
+            PathContainment.RequireContained(_root, path);
         }
-
-        throw new UnauthorizedAccessException(
-            $"Refusing a headless filesystem operation outside the sandbox: '{full}'. The installed game and " +
-            "saves are read-only inputs to this project. This is a bug in the host, not in the game.");
+        catch (PathContainmentException)
+        {
+            throw new UnauthorizedAccessException(
+                $"Refusing a headless filesystem operation outside the sandbox: '{Path.GetFullPath(path)}'. " +
+                "The installed game and saves are read-only inputs to this project. This is a bug in the host, " +
+                "not in the game.");
+        }
     }
 
     private static string ResolveInsideRoot(string relativePath)

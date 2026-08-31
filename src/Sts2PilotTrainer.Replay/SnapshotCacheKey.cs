@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using Sts2PilotTrainer.IO;
 
 namespace Sts2PilotTrainer.Replay;
 
@@ -99,8 +100,8 @@ public sealed record SnapshotCacheKey(
         }
 
         var root = Path.GetFullPath(cacheRoot);
-        var candidate = Path.GetFullPath(Path.Combine(root, ToCacheDirectoryName()));
-        RequireWithin(candidate, root);
+        var candidate = PathContainment.RequireContained(
+            root, Path.Combine(root, ToCacheDirectoryName()));
 
         var candidateEntry = new DirectoryInfo(candidate);
         if (candidateEntry.LinkTarget is not null)
@@ -108,9 +109,6 @@ public sealed record SnapshotCacheKey(
             throw new InvalidOperationException("Snapshot cache directory cannot be a symbolic link.");
         }
 
-        var resolvedRoot = ResolveExistingPath(root);
-        var resolvedCandidate = ResolveExistingPath(candidate);
-        RequireWithin(resolvedCandidate, resolvedRoot);
         return candidate;
     }
 
@@ -122,8 +120,7 @@ public sealed record SnapshotCacheKey(
         }
 
         var directory = Path.GetFullPath(cacheDirectory);
-        var candidate = Path.GetFullPath(Path.Combine(directory, fileName));
-        RequireWithin(candidate, directory);
+        var candidate = PathContainment.RequireContained(directory, Path.Combine(directory, fileName));
 
         var entry = new FileInfo(candidate);
         if (entry.LinkTarget is not null)
@@ -131,52 +128,7 @@ public sealed record SnapshotCacheKey(
             throw new InvalidOperationException($"Snapshot cache artifact '{fileName}' cannot be a symbolic link.");
         }
 
-        var resolvedDirectory = ResolveExistingPath(directory);
-        var resolvedCandidate = ResolveExistingPath(candidate);
-        RequireWithin(resolvedCandidate, resolvedDirectory);
         return candidate;
-    }
-
-    private static string ResolveExistingPath(string path)
-    {
-        var full = Path.GetFullPath(path);
-        var root = Path.GetPathRoot(full)!;
-        var current = root;
-        var components = full[root.Length..].Split(
-            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
-            StringSplitOptions.RemoveEmptyEntries);
-
-        for (var i = 0; i < components.Length; i++)
-        {
-            var candidate = Path.Combine(current, components[i]);
-            FileSystemInfo? entry = Directory.Exists(candidate)
-                ? new DirectoryInfo(candidate)
-                : File.Exists(candidate) ? new FileInfo(candidate) : null;
-            if (entry is null)
-            {
-                return Path.Combine(current, Path.Combine(components[i..]));
-            }
-
-            current = entry.LinkTarget is null
-                ? entry.FullName
-                : entry.ResolveLinkTarget(returnFinalTarget: true)?.FullName
-                  ?? throw new IOException("Could not resolve symbolic link in snapshot cache path.");
-        }
-
-        return current;
-    }
-
-    private static void RequireWithin(string path, string root)
-    {
-        var relative = Path.GetRelativePath(root, path);
-        if (relative == "." ||
-            (!relative.Equals("..", StringComparison.Ordinal) &&
-             !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)))
-        {
-            return;
-        }
-
-        throw new InvalidOperationException("Resolved snapshot cache path is outside the cache root.");
     }
 
     private static string HashModEnvironment(ModEnvironment mods) => HashParts(

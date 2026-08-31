@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
+using Sts2PilotTrainer.IO;
 
 namespace Sts2PilotTrainer.Bootstrap;
 
@@ -54,8 +55,8 @@ internal static class Program
                 return 2;
             }
 
-            gameDir = ResolvePath(Path.GetFullPath(gameDir));
-            outDir = ResolvePath(outDir);
+            gameDir = PathContainment.ResolveExistingPath(Path.GetFullPath(gameDir));
+            outDir = PathContainment.ResolveExistingPath(outDir);
             RefuseProtectedOutput(gameDir, outDir);
 
             Console.WriteLine($"game install : {Redact(gameDir)}");
@@ -338,49 +339,12 @@ internal static class Program
 
     private static void RefuseProtectedOutput(string gameDir, string outDir)
     {
-        if (IsWithin(outDir, gameDir) || HasProtectedInstallComponent(outDir))
+        if (PathContainment.IsResolvedWithin(outDir, gameDir) || HasProtectedInstallComponent(outDir))
         {
             throw new InvalidOperationException(
                 $"Output directory {Redact(outDir)} is inside a protected Steam or Slay the Spire 2 path. " +
                 "Choose an isolated directory inside the project worktree.");
         }
-    }
-
-    private static string ResolvePath(string path)
-    {
-        var full = Path.GetFullPath(path);
-        var root = Path.GetPathRoot(full)!;
-        var current = root;
-        var components = full[root.Length..].Split(
-            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
-            StringSplitOptions.RemoveEmptyEntries);
-
-        for (var i = 0; i < components.Length; i++)
-        {
-            var candidate = Path.Combine(current, components[i]);
-            FileSystemInfo? entry = Directory.Exists(candidate)
-                ? new DirectoryInfo(candidate)
-                : File.Exists(candidate) ? new FileInfo(candidate) : null;
-            if (entry is null)
-            {
-                return Path.Combine(current, Path.Combine(components[i..]));
-            }
-
-            current = entry.LinkTarget is null
-                ? entry.FullName
-                : entry.ResolveLinkTarget(returnFinalTarget: true)?.FullName
-                  ?? throw new IOException($"Could not resolve symbolic link {Redact(entry.FullName)}.");
-        }
-
-        return current;
-    }
-
-    private static bool IsWithin(string path, string parent)
-    {
-        var relative = Path.GetRelativePath(parent, path);
-        return relative == "." ||
-               (!relative.Equals("..", StringComparison.Ordinal) &&
-                !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal));
     }
 
     private static bool HasProtectedInstallComponent(string path)

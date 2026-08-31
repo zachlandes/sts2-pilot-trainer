@@ -56,6 +56,7 @@ public static partial class ManifestValidator
         ValidateActions(manifest.Actions, manifest.Source.Kind, videoDurationMs, lineFromSeq, problems);
         ValidateCheckpoints(
             manifest.Checkpoints, manifest.Actions, manifest.Source.Kind, videoDurationMs, problems);
+        ValidateEvidenceTimeline(manifest, problems);
 
         if (lineFromSeq is { } start &&
             (start <= 0 || start >= manifest.Actions.Count || manifest.Checkpoints.Any(c => c.AfterSeq >= start)))
@@ -518,24 +519,6 @@ public static partial class ManifestValidator
                 ValidateVideoTimestamp(timestamp, $"actions[{action.Seq}] ({action.Verb})", videoDurationMs, problems);
             }
         }
-
-        if (sourceKind != "synthetic-engine")
-        {
-            ActionRecord? previousObserved = null;
-            foreach (var action in actions.Where(action =>
-                         action.Source == FactSource.Observed && action.Evidence?.VideoTimeMs is not null))
-            {
-                if (previousObserved?.Evidence?.VideoTimeMs is { } previousTimestamp &&
-                    action.Evidence!.VideoTimeMs is { } timestamp && timestamp < previousTimestamp)
-                {
-                    problems.Add(
-                        $"actions[{action.Seq}] ({action.Verb}) timestamp {timestamp}ms is earlier than " +
-                        $"actions[{previousObserved.Seq}] ({previousObserved.Verb}) timestamp {previousTimestamp}ms. " +
-                        "VOD action timestamps must be nondecreasing in sequence order.");
-                }
-                previousObserved = action;
-            }
-        }
     }
 
     private static void ValidateActionArguments(ActionRecord action, List<string> problems)
@@ -683,29 +666,86 @@ public static partial class ManifestValidator
                 {
                     RequireObservedVideoFact(
                         fact, $"checkpoint '{checkpoint.Id}' field '{field}'", videoDurationMs, problems);
-                    if (checkpoint.AfterSeq >= 0 && checkpoint.AfterSeq < actions.Count &&
-                        actions[checkpoint.AfterSeq].Evidence?.VideoTimeMs is { } actionTimestamp &&
-                        fact.Evidence?.VideoTimeMs is { } checkpointTimestamp &&
-                        checkpointTimestamp < actionTimestamp)
-                    {
-                        problems.Add(
-                            $"checkpoint '{checkpoint.Id}' field '{field}' timestamp {checkpointTimestamp}ms is " +
-                            $"earlier than its after_seq action {checkpoint.AfterSeq} timestamp {actionTimestamp}ms.");
-                    }
-
-                    var nextActionIndex = checkpoint.AfterSeq + 1;
-                    if (nextActionIndex >= 0 && nextActionIndex < actions.Count &&
-                        actions[nextActionIndex].Evidence?.VideoTimeMs is { } nextActionTimestamp &&
-                        fact.Evidence?.VideoTimeMs is { } checkpointEvidenceTimestamp &&
-                        checkpointEvidenceTimestamp > nextActionTimestamp)
-                    {
-                        problems.Add(
-                            $"checkpoint '{checkpoint.Id}' field '{field}' timestamp " +
-                            $"{checkpointEvidenceTimestamp}ms is later than action {nextActionIndex} timestamp " +
-                            $"{nextActionTimestamp}ms, which follows its after_seq position.");
-                    }
                 }
             }
+        }
+    }
+
+    private static void ValidateEvidenceTimeline(ReplayManifest manifest, List<string> problems)
+    {
+        if (manifest.Source.Kind != "vod") return;
+
+        var observedActions = manifest.Actions
+            .Where(action => action.Source == FactSource.Observed && action.Evidence?.VideoTimeMs is not null)
+            .ToList();
+        if (observedActions.FirstOrDefault()?.Evidence?.VideoTimeMs is { } firstActionTimestamp &&
+            manifest.Source.RunStart is { } runStart)
+        {
+            foreach (var (name, timestamp) in RunStartFactTimestamps(runStart))
+            {
+                if (timestamp >= firstActionTimestamp)
+                {
+                    problems.Add(
+                        $"source.run_start.{name} timestamp {timestamp}ms must precede the first observed action " +
+                        $"timestamp {firstActionTimestamp}ms.");
+                }
+            }
+        }
+
+        ActionRecord? previousObserved = null;
+        foreach (var action in observedActions)
+        {
+            if (previousObserved?.Evidence?.VideoTimeMs is { } previousTimestamp &&
+                action.Evidence!.VideoTimeMs is { } timestamp && timestamp < previousTimestamp)
+            {
+                problems.Add(
+                    $"actions[{action.Seq}] ({action.Verb}) timestamp {timestamp}ms is earlier than " +
+                    $"actions[{previousObserved.Seq}] ({previousObserved.Verb}) timestamp {previousTimestamp}ms. " +
+                    "VOD action timestamps must be nondecreasing in sequence order.");
+            }
+            previousObserved = action;
+        }
+
+        foreach (var checkpoint in manifest.Checkpoints)
+        {
+            foreach (var (field, fact) in checkpoint.Expect)
+            {
+                if (checkpoint.AfterSeq >= 0 && checkpoint.AfterSeq < manifest.Actions.Count &&
+                    manifest.Actions[checkpoint.AfterSeq].Evidence?.VideoTimeMs is { } actionTimestamp &&
+                    fact.Evidence?.VideoTimeMs is { } checkpointTimestamp &&
+                    checkpointTimestamp < actionTimestamp)
+                {
+                    problems.Add(
+                        $"checkpoint '{checkpoint.Id}' field '{field}' timestamp {checkpointTimestamp}ms is " +
+                        $"earlier than its after_seq action {checkpoint.AfterSeq} timestamp {actionTimestamp}ms.");
+                }
+
+                var nextActionIndex = checkpoint.AfterSeq + 1;
+                if (nextActionIndex >= 0 && nextActionIndex < manifest.Actions.Count &&
+                    manifest.Actions[nextActionIndex].Evidence?.VideoTimeMs is { } nextActionTimestamp &&
+                    fact.Evidence?.VideoTimeMs is { } checkpointEvidenceTimestamp &&
+                    checkpointEvidenceTimestamp > nextActionTimestamp)
+                {
+                    problems.Add(
+                        $"checkpoint '{checkpoint.Id}' field '{field}' timestamp " +
+                        $"{checkpointEvidenceTimestamp}ms is later than action {nextActionIndex} timestamp " +
+                        $"{nextActionTimestamp}ms, which follows its after_seq position.");
+                }
+            }
+        }
+    }
+
+    private static IEnumerable<(string Name, int Timestamp)> RunStartFactTimestamps(RunStartEvidence runStart)
+    {
+        foreach (var (name, timestamp) in new (string Name, int? Timestamp)[]
+                 {
+                     ("first_observed_run_time_s", runStart.FirstObservedRunTimeSeconds.Evidence?.VideoTimeMs),
+                     ("first_observed_floor", runStart.FirstObservedFloor.Evidence?.VideoTimeMs),
+                     ("entered_from_run_history", runStart.EnteredFromRunHistory.Evidence?.VideoTimeMs),
+                     ("resume_modal_seen", runStart.ResumeModalSeen.Evidence?.VideoTimeMs),
+                 })
+        {
+            if (timestamp is { } value) yield return (name, value);
         }
     }
 

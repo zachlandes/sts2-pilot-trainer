@@ -56,6 +56,15 @@ public static class ManifestJson
 
     public static ReplayManifest Load(string path) => Deserialize(File.ReadAllText(path));
 
+    public static T DeserializeRequired<T>(string json, string contractName) where T : class =>
+        RefuseInvalidJson(contractName, () =>
+        {
+            var value = JsonSerializer.Deserialize<T>(json, Options)
+                ?? throw new ManifestException($"{contractName} deserialized to null.");
+            ValidateRequiredMembers(value, contractName);
+            return value;
+        });
+
     internal static T RefuseInvalidJson<T>(string contractName, Func<T> read)
     {
         try

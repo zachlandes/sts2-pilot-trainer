@@ -5,6 +5,22 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 public class SandboxSafetyTests
 {
     [Fact]
+    public void RefusesASymlinkUnderTheSandboxThatTargetsOutside()
+    {
+        var parent = Path.GetFullPath(Path.Combine("build", "test-scratch", Guid.NewGuid().ToString("N")));
+        var root = Path.Combine(parent, "sandbox");
+        var outside = Path.Combine(parent, "outside");
+        Directory.CreateDirectory(root);
+        Directory.CreateDirectory(outside);
+        Directory.CreateSymbolicLink(Path.Combine(root, "link"), outside);
+        HeadlessSandbox.SetRoot(root);
+
+        Assert.Throws<UnauthorizedAccessException>(() => HeadlessSandbox.Globalize("user://link/file"));
+        Assert.Throws<UnauthorizedAccessException>(() => DirAccess.MakeDirAbsolute(Path.Combine(root, "link", "created")));
+        Assert.False(Directory.Exists(Path.Combine(outside, "created")));
+    }
+
+    [Fact]
     public void RefusesTraversalSiblingAndAbsoluteWritesOutsideTheSandbox()
     {
         var parent = Path.GetFullPath(Path.Combine("build", "test-scratch", Guid.NewGuid().ToString("N")));

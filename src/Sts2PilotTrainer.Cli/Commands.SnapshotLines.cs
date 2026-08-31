@@ -169,8 +169,8 @@ internal static partial class Commands
     }
 
     private static IReadOnlyList<ActionRecord> LoadLine(string path) =>
-        JsonSerializer.Deserialize<List<ActionRecord>>(File.ReadAllText(path), ManifestJson.Options)
-        ?? throw new ManifestException($"Line file {Path.GetFileName(path)} did not deserialize to a list of actions.");
+        ManifestJson.DeserializeRequired<List<ActionRecord>>(
+            File.ReadAllText(path), $"Line file {Path.GetFileName(path)}");
 
     private static IEnumerable<ActionRecord> Renumber(IReadOnlyList<ActionRecord> line, int startSeq) =>
         line.Select((action, index) => action with { Seq = startSeq + index });

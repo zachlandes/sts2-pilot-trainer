@@ -12,4 +12,8 @@
     <EmbeddedResource Include="Fixtures/synthetic-v0111-pilot-trainer.replay.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj" />
+  </ItemGroup>
+
 </Project>

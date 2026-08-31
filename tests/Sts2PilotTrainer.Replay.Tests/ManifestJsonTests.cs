@@ -43,6 +43,18 @@ public class ManifestJsonTests
         Assert.Contains("Manifest JSON is invalid", thrown.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("{")]
+    [InlineData("[null]")]
+    [InlineData("[{\"seq\":0,\"verb\":\"Unknown\",\"source\":\"Observed\"}]")]
+    public void RefusesMalformedLineArtifacts(string json)
+    {
+        var thrown = Assert.Throws<ManifestException>(() =>
+            ManifestJson.DeserializeRequired<List<ActionRecord>>(json, "Line file test.line.json"));
+
+        Assert.Contains("Line file test.line.json", thrown.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void RefusesAManifestWithNoVersion()
     {
