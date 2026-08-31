@@ -126,6 +126,34 @@ public class ReplayTests
     }
 
     [GameFact]
+    public void ReplayRefusesATargetForACardThatDoesNotConsumeIt()
+    {
+        var path = Temp("false-card-target.json");
+        var manifest = ManifestJson.Load(Arbiter.SyntheticReplayFixture());
+        var changed = false;
+        var actions = manifest.Actions.Select(action =>
+        {
+            if (changed || action.Verb != ActionVerb.PlayCard ||
+                action.Args.GetValueOrDefault("card_id") != "CARD.DEFEND_IRONCLAD")
+            {
+                return action;
+            }
+
+            changed = true;
+            var changedArgs = action.Args.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            changedArgs["target_index"] = "999";
+            return action with { Args = changedArgs };
+        }).ToList();
+        Assert.True(changed);
+        ManifestJson.Save(manifest with { Actions = actions }, path);
+
+        var result = Arbiter.Run("replay", path);
+
+        Assert.False(result.Verified);
+        Assert.Contains("does not target an enemy", result.All, StringComparison.Ordinal);
+    }
+
+    [GameFact]
     public void ReplayingTwiceInFreshProcessesProducesByteIdenticalState()
     {
         var result = Arbiter.Run(

@@ -138,9 +138,8 @@ public sealed record MapObservation
     /// Compares a generated map against this observation, on nodes only.
     ///
     /// Grid size must agree and every observed node must be present with the same
-    /// type. Generated nodes in rows the observation never covered are not counted
-    /// against the match - but rows it did cover must match completely, so a
-    /// generated map cannot pass by being a superset.
+    /// type. Every populated generated row must either be frame-backed and match
+    /// completely or be named with a reason in <see cref="NotObserved"/>.
     /// </summary>
     public MapComparison CompareTo(MapTopology generated)
     {
@@ -173,6 +172,33 @@ public sealed record MapObservation
         }
 
         var observedRows = frameBackedRows;
+        var generatedRows = generated.Nodes.Select(node => node.Row).Distinct().ToHashSet();
+        var omittedRows = new Dictionary<int, string>();
+        foreach (var omission in NotObserved)
+        {
+            if (TryParseOmittedRow(omission, out var row, out var reason))
+            {
+                omittedRows[row] = reason;
+            }
+        }
+
+        foreach (var row in generatedRows.OrderBy(row => row))
+        {
+            if (frameBackedRows.Contains(row))
+            {
+                if (omittedRows.ContainsKey(row))
+                {
+                    problems.Add($"row {row} is both frame-backed and declared not observed");
+                }
+                continue;
+            }
+
+            if (!omittedRows.TryGetValue(row, out var reason) || string.IsNullOrWhiteSpace(reason))
+            {
+                problems.Add($"generated row {row} has no frame coverage and no justified not_observed entry");
+            }
+        }
+
         var generatedByPosition = generated.Nodes.ToDictionary(n => (n.Row, n.Column), n => n.PointType);
         var observedByPosition = Nodes.ToDictionary(n => (n.Row, n.Column), n => n.PointType);
 
@@ -211,6 +237,27 @@ public sealed record MapObservation
             MatchedNodeCount: matched,
             ObservedRows: observedRows.OrderBy(r => r).ToList(),
             Problems: problems);
+    }
+
+    private static bool TryParseOmittedRow(string omission, out int row, out string reason)
+    {
+        row = default;
+        reason = string.Empty;
+        if (!omission.StartsWith("Row ", StringComparison.OrdinalIgnoreCase)) return false;
+
+        var separator = omission.IndexOf(',', StringComparison.Ordinal);
+        if (separator < 5 ||
+            !int.TryParse(
+                omission.AsSpan(4, separator - 4),
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out row))
+        {
+            return false;
+        }
+
+        reason = omission[(separator + 1)..].Trim();
+        return reason.Length > 0;
     }
 }
 

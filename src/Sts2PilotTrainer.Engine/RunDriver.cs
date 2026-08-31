@@ -165,7 +165,15 @@ public sealed class RunDriver(GameSession session)
 
     private Creature? ResolveTarget(ActionRecord action, CardModel card)
     {
-        if (card.TargetType != TargetType.AnyEnemy) return null;
+        if (card.TargetType != TargetType.AnyEnemy)
+        {
+            if (action.Args.ContainsKey("target_index"))
+            {
+                throw new EngineException(
+                    $"Action {action.Seq} supplies target_index for {card.Id}, but that card does not target an enemy.");
+            }
+            return null;
+        }
 
         var enemies = CombatManager.Instance.DebugOnlyGetState()?.Enemies
             .Where(e => e is { IsAlive: true })

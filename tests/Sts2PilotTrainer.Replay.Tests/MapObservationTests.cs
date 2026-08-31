@@ -137,14 +137,34 @@ public class MapObservationTests
     }
 
     [Fact]
-    public void IgnoresGeneratedRowsTheObservationNeverCovered()
+    public void RejectsAPopulatedGeneratedRowSilentlyOmittedFromTheObservation()
     {
-        // The map scrolls, so a transcription legitimately covers only part of it.
-        // Rows nobody read are not evidence against a candidate.
-        var observation = Observation("1|0|Monster");
+        var observation = Observation("1|0|Monster") with
+        {
+            Frames = [new ObservedFrame(9000, [1])],
+        };
         var generated = Topology(16, 7, "1|0|Monster", "9|4|Treasure");
 
-        Assert.True(observation.CompareTo(generated).Matches);
+        var comparison = observation.CompareTo(generated);
+
+        Assert.False(comparison.Matches);
+        Assert.Contains(comparison.Problems, problem =>
+            problem.Contains("generated row 9 has no frame coverage", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AcceptsAPopulatedGeneratedRowOmittedWithAReason()
+    {
+        var observation = Observation("1|0|Monster") with
+        {
+            Frames = [new ObservedFrame(9000, [1])],
+            NotObserved = ["Row 9, hidden behind the map scroll in every recorded frame."],
+        };
+        var generated = Topology(16, 7, "1|0|Monster", "9|4|Treasure");
+
+        var comparison = observation.CompareTo(generated);
+
+        Assert.True(comparison.Matches, string.Join("; ", comparison.Problems));
     }
 
     [Fact]
