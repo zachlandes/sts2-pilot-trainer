@@ -52,14 +52,28 @@ internal static partial class Commands
 
             var reason = FirstDiagnostic(child.StandardOutput) ?? "(no diagnostic line found)";
             var digest = Digest(child.StandardOutput);
-            var endStateChanged = digest is not null && baselineDigest is not null && digest != baselineDigest;
+            bool? endStateChanged = digest is null || baselineDigest is null
+                ? null
+                : digest != baselineDigest;
+            var endStateComparison = endStateChanged switch
+            {
+                true => "Differs",
+                false => "Identical",
+                null => "Unavailable",
+            };
+            var endStateDescription = endStateChanged switch
+            {
+                true => "differs from the uncorrupted run",
+                false => "IDENTICAL to the uncorrupted run",
+                null => "UNAVAILABLE - the rejected run produced no final state digest",
+            };
 
             Console.WriteLine($"{corruption.Name}");
             Console.WriteLine($"  corruption   : {corruption.What}");
             Console.WriteLine($"  video-only   : {corruption.VideoOnly.ToString().ToUpperInvariant()} - {corruption.WhyVideoOnly}");
             Console.WriteLine($"  arbiter      : {(rejected ? "REJECTED" : "ACCEPTED - THIS IS A FAILURE")}");
             Console.WriteLine($"  first divergence: {reason}");
-            Console.WriteLine($"  end state       : {(endStateChanged ? "differs from the uncorrupted run" : "IDENTICAL to the uncorrupted run")}");
+            Console.WriteLine($"  end state       : {endStateDescription}");
             Console.WriteLine();
 
             results.Add(new
@@ -75,7 +89,10 @@ internal static partial class Commands
                 // inside the turn, and comparing only the run's end state would have
                 // accepted it. That is a real limit of digest comparison, and it is the
                 // argument for checkpoints being dense rather than terminal.
-                end_state_differs = endStateChanged,
+                end_state_differs = endStateChanged is { } value
+                    ? JsonSerializer.SerializeToElement(value)
+                    : JsonSerializer.SerializeToElement<object?>(null),
+                end_state_comparison = endStateComparison,
             });
         }
 
@@ -97,10 +114,13 @@ internal static partial class Commands
         return allRejected ? 0 : 1;
     }
 
-    private static string? Digest(string output) =>
-        output.Split('\n')
-            .FirstOrDefault(l => l.StartsWith("final state digest", StringComparison.Ordinal))
+    private static string? Digest(string output)
+    {
+        var value = output.Split('\n')
+            .FirstOrDefault(line => line.StartsWith("final state digest", StringComparison.Ordinal))
             ?.Split(':', 2)[1].Trim();
+        return value is null or "(none)" ? null : value;
+    }
 
     /// <summary>Pulls the arbiter's first divergence line out of a child run's output.</summary>
     private static string? FirstDiagnostic(string output) =>

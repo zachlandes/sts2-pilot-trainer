@@ -116,6 +116,8 @@ internal static partial class Commands
                 throw new ManifestException(
                     $"Candidate seed '{seed}' does not match manifest seed '{boundManifest.Environment.Seed.Value}'.");
             }
+            RequireBoundGenerationIdentity(
+                observation, character, ascension, gameMode, acts, boundManifest.Environment);
         }
 
         var session = new GameSession();
@@ -166,6 +168,37 @@ internal static partial class Commands
         }
 
         return comparison.Matches ? 0 : 1;
+    }
+
+    private static void RequireBoundGenerationIdentity(
+        MapObservation observation, string character, int ascension, string gameMode,
+        IReadOnlyList<string> acts, EnvironmentIdentity environment)
+    {
+        if (observation.ActIndex != 0)
+        {
+            throw new ManifestException(
+                $"Publication seed evidence must observe Act 1 at act_index 0, not {observation.ActIndex}.");
+        }
+        if (environment.Acts.Value.Count == 0)
+        {
+            throw new ManifestException("The manifest declares no first act for the Act 1 seed check.");
+        }
+        if (!acts.SequenceEqual(environment.Acts.Value, StringComparer.Ordinal))
+        {
+            throw new ManifestException(
+                "Seed generation acts do not match the manifest, so act_index 0 is not bound to its first declared act.");
+        }
+        if (!string.Equals(character, environment.Character.Value, StringComparison.Ordinal) ||
+            ascension != environment.Ascension.Value ||
+            !string.Equals(gameMode, environment.GameMode.Value, StringComparison.Ordinal))
+        {
+            throw new ManifestException(
+                "Seed generation character, ascension, and game mode must match the bound manifest environment.");
+        }
+        if (!string.Equals(gameMode, "standard", StringComparison.Ordinal))
+        {
+            throw new ManifestException("Publication seed evidence must generate the standard-mode Act 1 map.");
+        }
     }
 
     private static object Identity()

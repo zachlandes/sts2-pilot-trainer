@@ -192,6 +192,39 @@ public class ReplayTests
     }
 
     [GameFact]
+    public void MissingRejectedStateIsReportedAsUnavailable()
+    {
+        var manifest = ManifestJson.Load(Arbiter.SyntheticReplayFixture());
+        var actions = manifest.Actions.Select(action =>
+        {
+            if (!action.Args.ContainsKey("negative_control_substitute_hand_index")) return action;
+            var changedArgs = action.Args.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            changedArgs["negative_control_substitute_hand_index"] = "999";
+            return action with { Args = changedArgs };
+        }).ToList();
+        var path = Temp("unavailable-negative-state.json");
+        ManifestJson.Save(manifest with { Actions = actions }, path);
+        var outDir = TempDir();
+
+        var result = Arbiter.Run("negative-controls", path, "--out", outDir);
+
+        Assert.True(result.Verified, result.All);
+        Assert.Contains("end state       : UNAVAILABLE", result.Output, StringComparison.Ordinal);
+        var report = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "negative-controls.json"))).RootElement;
+        var controls = report.GetProperty("controls").EnumerateArray().ToList();
+        var unavailable = controls.Single(control =>
+            control.GetProperty("name").GetString() == "substitute-same-cost");
+        Assert.Equal(JsonValueKind.Null, unavailable.GetProperty("end_state_differs").ValueKind);
+        Assert.Equal("Unavailable", unavailable.GetProperty("end_state_comparison").GetString());
+
+        var completed = controls.Single(control => control.GetProperty("name").GetString() == "reorder-plays");
+        Assert.Contains(
+            completed.GetProperty("end_state_differs").ValueKind,
+            new[] { JsonValueKind.True, JsonValueKind.False });
+        Assert.NotEqual("Unavailable", completed.GetProperty("end_state_comparison").GetString());
+    }
+
+    [GameFact]
     public void ReorderingIsCaughtAtTheFirstDivergentCheckpoint()
     {
         // The reordered cards spend the same energy and produce the same visible

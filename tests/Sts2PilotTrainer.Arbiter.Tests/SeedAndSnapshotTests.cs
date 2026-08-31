@@ -63,10 +63,50 @@ public class SeedVerificationTests
     }
 
     [GameFact]
+    public void BoundSeedEvidenceRefusesAnObservationFromAnotherAct()
+    {
+        var observation = MapObservation.Load(Arbiter.MapObservation) with { ActIndex = 1 };
+        var observationPath = WriteObservation(observation);
+        var manifest = ManifestJson.Load(Arbiter.Manifest);
+
+        var result = Arbiter.Run(
+            "verify-seed", observationPath,
+            "--seed", manifest.Environment.Seed.Value,
+            "--manifest", Arbiter.Manifest,
+            "--out", TempDir());
+
+        Assert.False(result.Verified);
+        Assert.Contains("must observe Act 1 at act_index 0", result.All, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void BoundSeedEvidenceRefusesDifferentDeclaredActs()
+    {
+        var manifest = ManifestJson.Load(Arbiter.Manifest);
+
+        var result = Arbiter.Run(
+            "verify-seed", Arbiter.MapObservation,
+            "--seed", manifest.Environment.Seed.Value,
+            "--manifest", Arbiter.Manifest,
+            "--acts", "ACT.OVERGROWTH,ACT.HIVE,ACT.GLORY",
+            "--out", TempDir());
+
+        Assert.False(result.Verified);
+        Assert.Contains("acts do not match the manifest", result.All, StringComparison.Ordinal);
+    }
+
+    [GameFact]
     public void TheMatchingSeedIsTheOneTheManifestRecords()
     {
         var manifest = ManifestJson.Load(Arbiter.Manifest);
         Assert.Equal("SFXT47K77RFK", manifest.Environment.Seed.Value);
+    }
+
+    private static string WriteObservation(MapObservation observation)
+    {
+        var path = Path.Combine(TempDir(), "map-observation.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(observation, ManifestJson.Options));
+        return path;
     }
 
     private static string TempDir()
