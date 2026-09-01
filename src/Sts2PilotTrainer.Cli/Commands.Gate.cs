@@ -93,9 +93,17 @@ internal static partial class Commands
                         false,
                         "Evidence binding requires passing mode-discrimination and BaseLib-reachability reports."));
 
-                conditions.Add(Check("reproduction",
+                var verifiedPath = Path.Combine(outDir, "verified-manifest.json");
+                var reproduction = Check("reproduction",
                 "The reconstructed history replays through the real engine and matches every observed value.",
-                SelfProcess.Run("replay", manifestPath, "--out", Path.Combine(outDir, "verified-manifest.json"))));
+                SelfProcess.Run("replay", manifestPath, "--out", verifiedPath));
+                conditions.Add(reproduction);
+
+                conditions.Add(reproduction.Passed
+                    ? CoveredFightIsComplete(verifiedPath)
+                    : new Condition(
+                        "covered-fight", CoveredFightRequirement, false,
+                        "A completed fight can only be read out of a verified reproduction."));
 
                 conditions.Add(Check("determinism",
                 "Fresh processes produce byte-identical canonical state.",
@@ -170,11 +178,45 @@ internal static partial class Commands
             "Mode and BaseLib evidence bind to one build and reconstructed history.", false),
         new Condition("reproduction",
             "The reconstructed history replays through the real engine and matches every observed value.", false),
+        new Condition("covered-fight", CoveredFightRequirement, false),
         new Condition("determinism",
             "Fresh processes produce byte-identical canonical state.", false),
         new Condition("rejection",
             "Corrupted and incomplete histories are refused.", false),
     ]);
+
+    private const string CoveredFightRequirement =
+        "The reproduced history covers a whole fight, from its combat start to the end of that fight.";
+
+    /// <summary>
+    /// Whether the verified history covers a fight that finished.
+    ///
+    /// The unit of the product is the whole fight and the boundary is combat start,
+    /// so a reconstruction that stops mid-combat is not publishable as a solution to
+    /// one - every quantity the comparison reports is defined at the end of a fight.
+    /// Read from the trace the reproduction just wrote, and asked through the type
+    /// that owns the question, so the gate and the projection cannot disagree about
+    /// whether a fight ended. See docs/comparison-direction.md.
+    /// </summary>
+    private static Condition CoveredFightIsComplete(string verifiedManifestPath)
+    {
+        try
+        {
+            var trace = ManifestJson.Load(verifiedManifestPath).Verification?.Trace
+                ?? throw new InvalidOperationException(
+                    "the verified manifest carries no trace, so the fight cannot be read out of it");
+            var coverage = CombatProjection.CoverageOf(trace);
+            return new Condition(
+                "covered-fight", CoveredFightRequirement, coverage.IsCompletedFight, coverage.Refusal);
+        }
+        catch (Exception exception) when (
+            exception is IOException or JsonException or ManifestException or InvalidOperationException)
+        {
+            return new Condition(
+                "covered-fight", CoveredFightRequirement, false,
+                $"The covered fight could not be read: {exception.Message}");
+        }
+    }
 
     private static Condition Check(
         string name,

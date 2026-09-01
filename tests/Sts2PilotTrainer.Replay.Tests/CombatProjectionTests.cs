@@ -57,6 +57,53 @@ public class CombatProjectionTests
         Assert.Contains("still in progress", thrown.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The gate asks whether a history covers a whole fight and the projection asks
+    /// the same thing before it derives anything, so they go through one reader. If
+    /// these ever diverge, a publishable reconstruction could be one the comparison
+    /// then refuses.
+    /// </summary>
+    [Fact]
+    public void ReportsFightCoverageWithTheSameAnswerTheProjectionRefusesOn()
+    {
+        var completed = CombatProjection.CoverageOf(CompletedFight());
+        Assert.True(completed.IsCompletedFight);
+        Assert.True(completed.ReachedCombat);
+        Assert.True(completed.Finished);
+        Assert.Equal("victory", completed.Outcome);
+        Assert.Equal(0, completed.CombatStartSeq);
+        Assert.Null(completed.Refusal);
+
+        var unfinished = CombatProjection.CoverageOf(Trace(
+            Step(-1, "run_start", Outside(), Outside()),
+            Step(0, "MapMove", Outside(), InCombat(turn: 1, playerHp: 80, enemyHp: 40)),
+            Step(1, "PlayCard", InCombat(1, 80, 40), InCombat(1, 80, 34))));
+        Assert.False(unfinished.IsCompletedFight);
+        Assert.True(unfinished.ReachedCombat);
+        Assert.False(unfinished.Finished);
+        Assert.Equal("in_progress", unfinished.Outcome);
+        Assert.Contains("still in progress", unfinished.Refusal!, StringComparison.Ordinal);
+
+        var noFight = CombatProjection.CoverageOf(Trace(Step(-1, "run_start", Outside(), Outside())));
+        Assert.False(noFight.ReachedCombat);
+        Assert.Contains("never enters combat", noFight.Refusal!, StringComparison.Ordinal);
+
+        var unreadable = CombatProjection.CoverageOf(new ReplayTrace
+        {
+            Steps =
+            [
+                new ReplayStep
+                {
+                    Seq = -1, Verb = "run_start",
+                    Before = new Dictionary<string, string> { ["combat.in_progress"] = "false" },
+                    After = new Dictionary<string, string> { ["combat.in_progress"] = "false" },
+                },
+            ],
+        });
+        Assert.Equal("unreadable", unreadable.Outcome);
+        Assert.Contains("combat.outcome", unreadable.Refusal!, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ProjectsTheCombatSummaryWithNoChronology()
     {

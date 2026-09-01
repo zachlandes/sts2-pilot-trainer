@@ -118,8 +118,8 @@ generation runs through the act model, the room set, and the path pruning and
 post-processing passes. It comes out identical to what a retail client on a modded
 install produced.
 
-**The headless experiment matched 21 independently observed VOD values** — including the enemy state, ordered hand, pile counts, energy, block, and turn outcome.
-This is evidence that the experiment followed the same path through the opening turn.
+**The headless experiment matched 47 independently observed VOD values** — including the enemy state, ordered hand, pile counts, energy, block, and the outcome of every turn of the fight.
+This is evidence that the experiment followed the same path through the whole first combat, from its opening hand to the killing blow.
 The source's three visible-build utilities are non-gameplay tooling, but the target-level BaseLib probe demonstrates a behavior difference for a player-applied custom debuff.
 A separate history-bound probe therefore records every `PowerCmd.Apply` call in the reconstructed actions and must prove that branch unreachable with an injected affected-call negative control.
 
@@ -135,5 +135,6 @@ Fresh-process determinism, corruption rejection, and snapshot restore are exerci
   else. See [environment identity](environment-identity.md).
 - **Unlock state is assumed complete.** It demonstrably changes generated content,
   and it is not observable from a video. See the same document.
-- **Only the first turn of the first combat is covered.** Every claim here is about
-  the part of the run that was transcribed.
+- **Only the first combat is covered.** Every claim here is about the part of the run
+  that was transcribed: run start through the end of that fight, and nothing after
+  the victory.
