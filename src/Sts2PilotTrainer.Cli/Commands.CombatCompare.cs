@@ -92,14 +92,22 @@ internal static partial class Commands
         var trace = manifest.Verification?.Trace
             ?? throw new ManifestException(
                 $"The replay of {Path.GetFileName(manifestPath)} wrote no trace, so its fight cannot be projected.");
-        return CombatProjection.FromTrace(manifest.RunId, trace);
+        var combatStart = CombatStartSeq(trace)
+            ?? throw new ManifestException(
+                $"The replay of {Path.GetFileName(manifestPath)} never entered combat, so it has no " +
+                "combat-start snapshot to compare.");
+        var snapshot = ReplayPrefix(
+            manifestPath,
+            combatStart,
+            Path.Combine(outDir, $"combat-comparison.{side}.start.state"));
+        return CombatProjection.FromTrace(manifest.RunId, trace, DigestOf(snapshot));
     }
 
     private static string Show(string value) => value.Length == 0 ? "(none)" : value;
 
     private static string Describe(CombatTurn? turn) => turn is null
         ? "(this line's fight was already over)"
-        : $"dealt {turn.DamageDealt,3}  lost {turn.HealthLost,3}  " +
+        : $"enemy hp lost {turn.EnemyHealthLost,3}  player hp lost {turn.HealthLost,3}  " +
           $"consumables {(turn.ConsumablesUsed.Count == 0 ? "none" : string.Join(",", turn.ConsumablesUsed))}  " +
           $"actions {string.Join(" ", turn.Actions.Select(Describe))}";
 

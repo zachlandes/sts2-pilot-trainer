@@ -29,6 +29,8 @@ and resets nothing. So the ordered actions, the turn boundaries, and the resulti
 state either side of each step are all kept.
 `combat-snapshot` materialises the combat-start snapshot, re-derives it to read it, and describes only the manifest's covered history turn by turn without ranking anything.
 Its report states whether combat remains active at the end of that history, and how the fight ended when it is over.
+`CombatComparison` requires the digest of that complete canonical snapshot to match on both sides before comparing them.
+The smaller sampled boundary in each trace remains descriptive; it is not treated as identity because it omits hidden state such as draw-pile order and RNG positions.
 
 ## The two projections, kept apart
 
@@ -40,7 +42,7 @@ They are two projections of the same events, and they stay separate:
 | projection | says |
 | --- | --- |
 | **combat summary** | which consumables were used, total turns, and the health outcome - how much was lost and what it ended at |
-| **turn chronology** | the exact turn each consumable was used, and that turn's damage dealt and damage received |
+| **turn chronology** | the exact turn each consumable was used, and that turn's enemy health lost and player health lost |
 
 Turn chronology does not get baked into the summary.
 The summary answers "what happened in this fight"; a summary that carried turn numbers would be answering the other question badly, and every later consumer would have to decide which half to trust.
@@ -56,7 +58,7 @@ It is rare, it matters when it happens, and it is not worth designing a screen a
 ## What that requires of the replay result
 
 Every quantity above is a *difference between two moments*.
-Total turns is the last turn number minus the first; health lost is a subtraction; damage dealt in a turn is an enemy's hit points before that turn against after it; a consumable use is a potion slot that held something and then did not; a permanent removal is a card that was in the deck and then was not.
+Total turns is the last turn number minus the first; health lost is a subtraction; enemy health lost in a turn is an enemy's hit points before that turn against after it; a consumable use is a potion slot that held something and then did not; a permanent removal is a card that was in the deck and then was not.
 
 A result that keeps only the final state has kept none of these.
 It has the answer to "was it exact" and nothing else, and no amount of re-reading it recovers the rest - the run would have to be replayed again, which is precisely the expensive thing a stored result exists to avoid.
@@ -71,8 +73,8 @@ Adding a derivation to the direction above means adding its inputs to that list,
 ## A recorded interface hypothesis, and what it needs kept
 
 One shape has been floated for the turn-level view and is explicitly *not* a
-commitment: a turn-indexed chart plotting the player's damage dealt and received
-against the VOD solution's, with potion artwork at the turn it was drunk and an
+commitment: a turn-indexed chart plotting enemy health lost and player health lost
+for the player and VOD solution, with potion artwork at the turn it was drunk and an
 immediately legible visual distinction between the player's line and the VOD's.
 
 It is written down here only so the data it would need survives long enough to test
@@ -100,13 +102,14 @@ With more than one enemy alive, damage *received* cannot be attributed to a part
 Intent and next-move are what is available.
 If the interface needs firm attribution, that is a new thing to capture, not something to infer after the fact.
 
-Damage *dealt* has the mirror problem, and the contract refuses rather than guesses.
+Enemy health lost has the mirror problem, and the contract refuses rather than guesses.
 The engine takes a dead enemy out of the combat state instead of leaving it at zero health, so a step that kills one of several enemies re-indexes the survivors, and a hit-point delta taken by index across that step is a number about two different creatures.
 `CombatProjection` refuses such a step by name.
 A fight that ends with every enemy dead is the one case the sampled state still resolves exactly, because each one's remaining health is what that step dealt.
 
-Damage absorbed by block is not separately observable at all.
-Block is reset at the start of a turn and the trace samples either side of an action rather than inside one, so the turn detail reports health lost - the damage that got through - and is named for what it measures.
+Damage absorbed by block is not included in either health-loss measurement.
+Enemy health lost is the decrease in enemy hit points, so enemy block depletion is not counted.
+Player block is reset at the start of a turn and the trace samples either side of an action rather than inside one, so player health lost likewise reports only the damage that got through.
 
 ## What is deliberately not built yet
 

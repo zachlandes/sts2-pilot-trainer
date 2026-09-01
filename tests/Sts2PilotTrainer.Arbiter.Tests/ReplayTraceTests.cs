@@ -63,7 +63,7 @@ public class ReplayTraceTests
     [GameFact]
     public void TheTurnChronologyProjectionIsDerivable()
     {
-        // The same events read the other way: per turn, damage dealt and received.
+        // The same events read the other way: per-turn enemy and player health lost.
         var byTurn = new SortedDictionary<int, (int Dealt, int Received)>();
         foreach (var step in Trace().Steps.Where(s => s.Before.GetValueOrDefault("combat.in_progress") == "true"))
         {

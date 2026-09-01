@@ -29,7 +29,7 @@ public class CombatProjectionTests
             ],
         };
 
-        var thrown = Assert.Throws<ManifestException>(() => CombatProjection.FromTrace("old", trace));
+        var thrown = Assert.Throws<ManifestException>(() => Project("old", trace));
         Assert.Contains("combat.outcome", thrown.Message, StringComparison.Ordinal);
     }
 
@@ -38,7 +38,7 @@ public class CombatProjectionTests
     {
         var trace = Trace(Step(-1, "run_start", Outside(), Outside()));
 
-        var thrown = Assert.Throws<ManifestException>(() => CombatProjection.FromTrace("no-fight", trace));
+        var thrown = Assert.Throws<ManifestException>(() => Project("no-fight", trace));
         Assert.Contains("never enters combat", thrown.Message, StringComparison.Ordinal);
     }
 
@@ -53,14 +53,14 @@ public class CombatProjectionTests
             Step(0, "MapMove", Outside(), InCombat(turn: 1, playerHp: 80, enemyHp: 40)),
             Step(1, "PlayCard", InCombat(1, 80, 40), InCombat(1, 80, 34)));
 
-        var thrown = Assert.Throws<ManifestException>(() => CombatProjection.FromTrace("unfinished", trace));
+        var thrown = Assert.Throws<ManifestException>(() => Project("unfinished", trace));
         Assert.Contains("still in progress", thrown.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void ProjectsTheCombatSummaryWithNoChronology()
     {
-        var projection = CombatProjection.FromTrace("fight", CompletedFight());
+        var projection = Project("fight", CompletedFight());
 
         Assert.Equal("victory", projection.Summary.Outcome);
         Assert.Equal(2, projection.Summary.TotalTurns);
@@ -81,12 +81,12 @@ public class CombatProjectionTests
     [Fact]
     public void ProjectsTheTurnDetailWithTheChronologyTheSummaryOmits()
     {
-        var projection = CombatProjection.FromTrace("fight", CompletedFight());
+        var projection = Project("fight", CompletedFight());
 
         Assert.Equal([1, 2], projection.Turns.Select(turn => turn.Turn));
 
         var first = projection.Turns[0];
-        Assert.Equal(6, first.DamageDealt);
+        Assert.Equal(6, first.EnemyHealthLost);
         Assert.Equal(9, first.HealthLost);
         Assert.Empty(first.ConsumablesUsed);
         Assert.Equal(["PlayCard", "EndTurn"], first.Actions.Select(action => action.Verb));
@@ -96,7 +96,11 @@ public class CombatProjectionTests
         // projection exists alongside the summary.
         var second = projection.Turns[1];
         Assert.Equal(["POTION.FIRE"], second.ConsumablesUsed);
-        Assert.Equal(34, second.DamageDealt);
+        Assert.Equal(34, second.EnemyHealthLost);
+
+        var serialized = System.Text.Json.JsonSerializer.Serialize(second);
+        Assert.Contains("\"enemy_health_lost\"", serialized, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"damage_dealt\"", serialized, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -104,11 +108,30 @@ public class CombatProjectionTests
     {
         // A dead enemy is taken out of the combat state rather than left at zero
         // health, so the final step's after-sample has no enemy at all. Its remaining
-        // health is what that step dealt; reading the absent field as zero would lose
+        // health is what that step lost; reading the absent field as zero would lose
         // the killing blow entirely.
-        var projection = CombatProjection.FromTrace("fight", CompletedFight());
+        var projection = Project("fight", CompletedFight());
 
-        Assert.Equal(40, projection.Turns.Sum(turn => turn.DamageDealt));
+        Assert.Equal(40, projection.Turns.Sum(turn => turn.EnemyHealthLost));
+    }
+
+    [Fact]
+    public void EnemyHealthLostExcludesDamageAbsorbedByBlock()
+    {
+        var start = InCombat(1, 80, 40);
+        start["combat.enemy.0.block"] = "5";
+        var after = InCombat(1, 80, 39);
+        after["combat.enemy.0.block"] = "0";
+        var victory = Outside();
+        victory["combat.outcome"] = "victory";
+        victory["player.hp"] = "80";
+
+        var projection = Project("blocked", Trace(
+            Step(-1, "run_start", Outside(), start),
+            Step(0, "PlayCard", start, after),
+            Step(1, "PlayCard", after, victory)));
+
+        Assert.Equal(40, projection.Turns.Sum(turn => turn.EnemyHealthLost));
     }
 
     [Fact]
@@ -121,7 +144,7 @@ public class CombatProjectionTests
         end["player.hp"] = "80";
         end["player.deck"] = "CARD.STRIKE|CARD.DEFEND";
 
-        var projection = CombatProjection.FromTrace("removal", Trace(
+        var projection = Project("removal", Trace(
             Step(-1, "run_start", Outside(), start),
             Step(0, "PlayCard", start, end)));
 
@@ -147,7 +170,7 @@ public class CombatProjectionTests
         end["combat.outcome"] = "victory";
         end["player.hp"] = "80";
 
-        var thrown = Assert.Throws<ManifestException>(() => CombatProjection.FromTrace("multi", Trace(
+        var thrown = Assert.Throws<ManifestException>(() => Project("multi", Trace(
             Step(-1, "run_start", Outside(), before),
             Step(0, "PlayCard", before, after),
             Step(1, "PlayCard", after, end))));
@@ -158,8 +181,8 @@ public class CombatProjectionTests
     [Fact]
     public void ComparesTwoLinesOfTheSameFightWithoutRankingThem()
     {
-        var left = CombatProjection.FromTrace("left", CompletedFight());
-        var right = CombatProjection.FromTrace("right", ShorterFight());
+        var left = Project("left", CompletedFight());
+        var right = Project("right", ShorterFight());
 
         var comparison = CombatComparison.Between(left, right);
 
@@ -188,13 +211,24 @@ public class CombatProjectionTests
         // Two different fights produce a table of differences that looks perfectly
         // reasonable and means nothing, which is exactly why this is checked rather
         // than assumed.
-        var left = CombatProjection.FromTrace("left", CompletedFight());
-        var right = CombatProjection.FromTrace("right", CompletedFight(encounter: "ENCOUNTER.SOMETHING_ELSE"));
+        var left = Project("left", CompletedFight());
+        var right = Project("right", CompletedFight(encounter: "ENCOUNTER.SOMETHING_ELSE"));
 
         var thrown = Assert.Throws<ManifestException>(() => CombatComparison.Between(left, right));
 
         Assert.Contains("not the same fight", thrown.Message, StringComparison.Ordinal);
         Assert.Contains("combat.encounter", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesMatchingVisibleBoundariesWithDifferentSnapshotDigests()
+    {
+        var left = Project("left", CompletedFight(), SnapshotDigest("hidden-state-a"));
+        var right = Project("right", CompletedFight(), SnapshotDigest("hidden-state-b"));
+
+        var thrown = Assert.Throws<ManifestException>(() => CombatComparison.Between(left, right));
+
+        Assert.Contains("combat-start snapshot", thrown.Message, StringComparison.Ordinal);
     }
 
     // ── Hand-written traces ─────────────────────────────────────────────────
@@ -268,6 +302,12 @@ public class CombatProjectionTests
             ["player.relics"] = "RELIC.NONE",
             ["player.potions"] = "POTION.FIRE|empty|empty",
         };
+
+    private static CombatProjection Project(
+        string sourceId, ReplayTrace trace, string? snapshotDigest = null) =>
+        CombatProjection.FromTrace(sourceId, trace, snapshotDigest ?? SnapshotDigest("same-combat-start"));
+
+    private static string SnapshotDigest(string state) => CanonicalState.DigestRendering(state);
 
     private static ReplayTrace Trace(params ReplayStep[] steps) => new() { Steps = steps };
 

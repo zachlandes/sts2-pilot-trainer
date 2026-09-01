@@ -87,8 +87,8 @@ Make a finished fight observable and give its two projections one owner.
   there is a real completed fight to compute over.
 - `CombatProjection` in `Sts2PilotTrainer.Replay`: the combat summary and the turn
   detail, derived from the trace, kept apart, computing nothing that ranks a line.
-- `CombatComparison`: two completed fights from the same combat-start boundary, put
-  side by side.
+- `CombatComparison`: two completed fights whose complete canonical combat-start
+  snapshot digests match, put side by side.
 - `combat-compare`, which does all of that from the command line.
 
 **Runnable now:** `./scripts/arbiter combat-compare <a> <b>` prints the summary and
@@ -145,7 +145,7 @@ reads how his fight differed from NaveGreed's.
 
 ### Later, and only a hypothesis
 
-The turn-indexed chart of player-versus-VOD damage with potion markers is recorded in
+The turn-indexed chart of player-versus-VOD health loss with potion markers is recorded in
 [comparison direction](comparison-direction.md) as an interface hypothesis.
 It is not a commitment, and discarding it is a good outcome.
 
@@ -156,11 +156,11 @@ at every observed checkpoint, and every single modifier of the build's 17 change
 The gate reports path-specific parity across the enumerated configurations, not an
 identification, and it says so.
 
-**Damage absorbed by block is not separately observable** from the sampled canonical
-state, because block is reset at the start of a turn and the trace samples either side
-of an action rather than inside one. The turn detail therefore reports health lost -
-the damage that got through - and names that limit rather than calling it damage
-received.
+**Damage absorbed by block is not included in health lost.** Enemy health lost is the
+decrease in enemy hit points, so enemy block depletion is not counted. Player block
+is reset at the start of a turn and the trace samples either side of an action rather
+than inside one, so player health lost likewise reports only the damage that got
+through.
 
 **Nothing here guarantees a retail player has passed the live gate.** No mod host
 exists yet; that is S3, and until it does every live claim is a claim about a headless

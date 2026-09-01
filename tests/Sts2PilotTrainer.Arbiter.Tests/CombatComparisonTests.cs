@@ -55,6 +55,9 @@ public class CombatComparisonTests
             Assert.Equal("victory", comparison.GetProperty(side).GetProperty("summary")
                 .GetProperty("outcome").GetString());
         }
+        Assert.Equal(
+            comparison.GetProperty("left").GetProperty("combat_start_snapshot_digest").GetString(),
+            comparison.GetProperty("right").GetProperty("combat_start_snapshot_digest").GetString());
 
         var summary = comparison.GetProperty("summary").EnumerateArray().ToList();
         Assert.False(summary.Single(f => f.GetProperty("field").GetString() == "total_turns")
@@ -70,6 +73,9 @@ public class CombatComparisonTests
         Assert.True(turns.Count > 1);
         Assert.Contains(turns, turn =>
             turn.TryGetProperty("left", out _) != turn.TryGetProperty("right", out _));
+        var firstLeft = turns[0].GetProperty("left");
+        Assert.True(firstLeft.TryGetProperty("enemy_health_lost", out _));
+        Assert.False(firstLeft.TryGetProperty("damage_dealt", out _));
 
         // Differences only. Nothing here says which line was better.
         foreach (var forbidden in new[] { "\"score\"", "\"better\"", "\"rank\"", "\"winner\"" })

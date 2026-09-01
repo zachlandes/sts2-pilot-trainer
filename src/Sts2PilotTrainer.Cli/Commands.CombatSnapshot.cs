@@ -207,7 +207,5 @@ internal static partial class Commands
         return File.ReadAllText(statePath);
     }
 
-    private static string DigestOf(string canonical) =>
-        "sha256:" + Convert.ToHexStringLower(
-            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(canonical)));
+    private static string DigestOf(string canonical) => CanonicalState.DigestRendering(canonical);
 }

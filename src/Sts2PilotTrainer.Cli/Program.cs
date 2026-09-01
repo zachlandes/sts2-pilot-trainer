@@ -124,7 +124,7 @@ internal static class Program
               Replay two manifests of the same fight, project each one's completed
               combat, and print the differences. Two projections, kept apart: the
               combat summary carries no chronology, the turn detail carries the
-              ordered actions and what each turn dealt and cost. Nothing is scored or
+              ordered actions and each turn's enemy and player health lost. Nothing is scored or
               ranked. Refuses two fights that did not start from the same boundary,
               and refuses a history whose combat never finishes. See
               docs/comparison-direction.md.

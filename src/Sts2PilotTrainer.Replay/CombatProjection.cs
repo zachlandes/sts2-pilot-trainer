@@ -30,13 +30,23 @@ public sealed record CombatProjection
     public required string SourceId { get; init; }
 
     /// <summary>
-    /// The canonical state at combat start, restricted to what identifies the fight.
+    /// A descriptive subset of canonical state at combat start.
     ///
-    /// Kept because two fights are only comparable if they are the same fight from the
-    /// same boundary, and that is a check somebody has to actually make.
+    /// Kept to explain a mismatch in visible terms, but never used as complete
+    /// identity because hidden combat state is deliberately absent from the trace.
     /// </summary>
     [JsonPropertyName("boundary")]
     public required IReadOnlyDictionary<string, string> Boundary { get; init; }
+
+    /// <summary>
+    /// Digest of the complete canonical state at combat start.
+    ///
+    /// The descriptive boundary above is intentionally not an identity: it omits
+    /// hidden state such as draw-pile order and RNG positions. The snapshot digest
+    /// covers the existing canonical snapshot and is what makes comparison safe.
+    /// </summary>
+    [JsonPropertyName("combat_start_snapshot_digest")]
+    public required string CombatStartSnapshotDigest { get; init; }
 
     [JsonPropertyName("summary")]
     public required CombatSummary Summary { get; init; }
@@ -45,8 +55,8 @@ public sealed record CombatProjection
     public required IReadOnlyList<CombatTurn> Turns { get; init; }
 
     /// <summary>
-    /// The canonical fields that identify which fight this is, sampled at combat
-    /// start. Enemy fields are numbered and so are selected by suffix.
+    /// The canonical fields that describe the fight at combat start. Enemy fields
+    /// are numbered and so are selected by suffix.
     /// </summary>
     private static readonly string[] BoundaryFields =
     [
@@ -64,8 +74,15 @@ public sealed record CombatProjection
     /// step changes the enemy roster in a way the sampled state cannot attribute.
     /// Each of those is refused rather than approximated.
     /// </exception>
-    public static CombatProjection FromTrace(string sourceId, ReplayTrace trace)
+    public static CombatProjection FromTrace(
+        string sourceId, ReplayTrace trace, string combatStartSnapshotDigest)
     {
+        if (string.IsNullOrWhiteSpace(combatStartSnapshotDigest))
+        {
+            throw new ManifestException(
+                "A complete combat-start snapshot digest is required before a fight can be projected for comparison.");
+        }
+
         var steps = trace.Steps.OrderBy(step => step.Seq).ToList();
         if (steps.Count == 0 || !steps[0].After.ContainsKey("combat.outcome"))
         {
@@ -101,6 +118,7 @@ public sealed record CombatProjection
         {
             SourceId = sourceId,
             Boundary = BoundaryOf(boundary),
+            CombatStartSnapshotDigest = combatStartSnapshotDigest,
             Summary = new CombatSummary
             {
                 Outcome = Outcome(fight[^1].After),
@@ -163,7 +181,7 @@ public sealed record CombatProjection
                 {
                     Turn = number,
                     Actions = [],
-                    DamageDealt = 0,
+                    EnemyHealthLost = 0,
                     HealthLost = 0,
                     ConsumablesUsed = [],
                 });
@@ -174,7 +192,7 @@ public sealed record CombatProjection
             turns[index] = turns[index] with
             {
                 Actions = [.. turns[index].Actions, new TurnAction(step.Seq, step.Verb, step.Args)],
-                DamageDealt = turns[index].DamageDealt + DamageDealt(step),
+                EnemyHealthLost = turns[index].EnemyHealthLost + EnemyHealthLost(step),
                 HealthLost = turns[index].HealthLost +
                              Math.Max(0, Int(step.Before, "player.hp") - Int(step.After, "player.hp")),
                 ConsumablesUsed = [.. turns[index].ConsumablesUsed, .. potions],
@@ -185,7 +203,8 @@ public sealed record CombatProjection
     }
 
     /// <summary>
-    /// Hit points taken off the enemies over one step.
+    /// Enemy health taken off over one step. Damage absorbed by enemy block is not
+    /// included because it is not health loss.
     ///
     /// Enemies are matched by index, which is only sound while the roster keeps its
     /// shape. The engine removes a dead enemy from the combat state rather than
@@ -200,7 +219,7 @@ public sealed record CombatProjection
     /// inventing it here is exactly the plausible-looking wrong answer this project
     /// is built to refuse.
     /// </summary>
-    private static int DamageDealt(ReplayStep step)
+    private static int EnemyHealthLost(ReplayStep step)
     {
         var before = Int(step.Before, "combat.enemy_count");
         var after = step.After.TryGetValue("combat.enemy_count", out var raw)
@@ -322,8 +341,10 @@ public sealed record CombatTurn
     [JsonPropertyName("actions")]
     public required IReadOnlyList<TurnAction> Actions { get; init; }
 
-    [JsonPropertyName("damage_dealt")]
-    public required int DamageDealt { get; init; }
+    /// <summary>Enemy health that actually came off. Damage absorbed by enemy block
+    /// is deliberately not included.</summary>
+    [JsonPropertyName("enemy_health_lost")]
+    public required int EnemyHealthLost { get; init; }
 
     [JsonPropertyName("health_lost")]
     public required int HealthLost { get; init; }

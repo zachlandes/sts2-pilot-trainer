@@ -9,7 +9,7 @@ namespace Sts2PilotTrainer.Replay;
 /// answer the question this project exists to serve next - how a played combat
 /// compares with an alternative line - because that question is about the shape of
 /// the fight, not its last frame. Total turns, health lost, which consumable was
-/// drunk on which turn, damage dealt and taken each turn, and cards removed for
+/// drunk on which turn, enemy and player health lost each turn, and cards removed for
 /// good are all differences between two moments, and a report that keeps only the
 /// final moment has thrown every one of them away.
 ///

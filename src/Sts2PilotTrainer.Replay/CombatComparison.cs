@@ -41,6 +41,20 @@ public sealed record CombatComparison
     /// </exception>
     public static CombatComparison Between(CombatProjection left, CombatProjection right)
     {
+        if (!string.Equals(
+                left.CombatStartSnapshotDigest,
+                right.CombatStartSnapshotDigest,
+                StringComparison.Ordinal))
+        {
+            throw new ManifestException(
+                $"'{left.SourceId}' and '{right.SourceId}' have different complete combat-start snapshot " +
+                "digests, so they are not the same fight from the same boundary. Comparing them would " +
+                "produce differences that mean nothing:\n" +
+                $"  combat_start_snapshot_digest: {left.SourceId} has " +
+                $"'{left.CombatStartSnapshotDigest}', {right.SourceId} has " +
+                $"'{right.CombatStartSnapshotDigest}'");
+        }
+
         var boundary = BoundaryDifferences(left, right);
         if (boundary.Count > 0)
         {
@@ -82,8 +96,8 @@ public sealed record CombatComparison
             [
                 "This states differences. It does not score either line, rank them, or say which was better.",
 
-                "Health lost is health that actually came off. Damage a block absorbed is not separately " +
-                "observable from the sampled canonical state, so neither side's number includes it.",
+                "Enemy health lost and player health lost count only health that actually came off. Damage " +
+                "either side's block absorbed is not included in those measurements.",
 
                 "The summary's health outcome is read at the end of the fight and includes anything that " +
                 "resolves as the combat ends, a relic that heals among them. The turn detail's health lost " +

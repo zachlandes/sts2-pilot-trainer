@@ -408,8 +408,8 @@ These are pinned engine outputs for machinery tests, not observations from the s
 A verified replay's end state answers "was it exact". It cannot answer the question
 this product exists to serve next — how a played combat compares with an alternative
 line — because that question is about the shape of the fight, not its last frame.
-Total turns, health lost, which consumable was drunk on which turn, damage dealt and
-taken each turn: every one of those is a difference between two moments, and a report
+Total turns, health lost, which consumable was drunk on which turn, and enemy and
+player health lost each turn: every one of those is a difference between two moments, and a report
 that kept only the final moment has thrown all of them away.
 
 So the report also carries a trace: the canonical state sampled either side of every
@@ -623,8 +623,8 @@ This is what the whole-combat comparison looks like, and it is the last step of 
 product loop that can be shown honestly without a mod host.
 
 Both sides are engine-produced. The generator emits two lines of the same first
-combat: they open from the same boundary, they differ only in which end of the hand
-they play from, and neither is a claim about how to play. Standing them in for a
+combat: their complete canonical combat-start snapshot digests match, they differ
+only in which end of the hand they play from, and neither is a claim about how to play. Standing them in for a
 person's fight against a VOD's is the substitution this milestone makes, and the
 comparison says so in its own output rather than leaving it to be inferred.
 
@@ -656,26 +656,26 @@ combat summary (no chronology - see the turn detail for when):
 
 turn detail:
   turn 1
-    left  dealt   6  lost   0  consumables none  actions CARD.DEFEND_IRONCLAD CARD.STRIKE_IRONCLAD EndTurn
-    right dealt  12  lost   0  consumables none  actions CARD.STRIKE_IRONCLAD CARD.STRIKE_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
+    left  enemy hp lost   6  player hp lost   0  consumables none  actions CARD.DEFEND_IRONCLAD CARD.STRIKE_IRONCLAD EndTurn
+    right enemy hp lost  12  player hp lost   0  consumables none  actions CARD.STRIKE_IRONCLAD CARD.STRIKE_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
   turn 2
-    left  dealt   6  lost   0  consumables none  actions CARD.STRIKE_IRONCLAD CARD.DEFEND_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
-    right dealt   8  lost   0  consumables none  actions CARD.DEFEND_IRONCLAD CARD.BASH EndTurn
+    left  enemy hp lost   6  player hp lost   0  consumables none  actions CARD.STRIKE_IRONCLAD CARD.DEFEND_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
+    right enemy hp lost   8  player hp lost   0  consumables none  actions CARD.DEFEND_IRONCLAD CARD.BASH EndTurn
   turn 3
-    left  dealt  14  lost  11  consumables none  actions CARD.STRIKE_IRONCLAD CARD.BASH EndTurn
-    right dealt  18  lost   6  consumables none  actions CARD.STRIKE_IRONCLAD CARD.STRIKE_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
+    left  enemy hp lost  14  player hp lost  11  consumables none  actions CARD.STRIKE_IRONCLAD CARD.BASH EndTurn
+    right enemy hp lost  18  player hp lost   6  consumables none  actions CARD.STRIKE_IRONCLAD CARD.STRIKE_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
   turn 4
-    left  dealt  23  lost  11  consumables none  actions CARD.TEAR_ASUNDER CARD.STRIKE_IRONCLAD EndTurn
-    right dealt   0  lost   0  consumables none  actions CARD.DEFEND_IRONCLAD CARD.DEFEND_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
+    left  enemy hp lost  23  player hp lost  11  consumables none  actions CARD.TEAR_ASUNDER CARD.STRIKE_IRONCLAD EndTurn
+    right enemy hp lost   0  player hp lost   0  consumables none  actions CARD.DEFEND_IRONCLAD CARD.DEFEND_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
   turn 5
-    left  dealt   8  lost   0  consumables none  actions CARD.STRIKE_IRONCLAD CARD.STRIKE_IRONCLAD
-    right dealt  16  lost   0  consumables none  actions CARD.TEAR_ASUNDER CARD.STRIKE_IRONCLAD EndTurn
+    left  enemy hp lost   8  player hp lost   0  consumables none  actions CARD.STRIKE_IRONCLAD CARD.STRIKE_IRONCLAD
+    right enemy hp lost  16  player hp lost   0  consumables none  actions CARD.TEAR_ASUNDER CARD.STRIKE_IRONCLAD EndTurn
   turn 6
     left  (this line's fight was already over)
-    right dealt   3  lost   0  consumables none  actions CARD.STRIKE_IRONCLAD
+    right enemy hp lost   3  player hp lost   0  consumables none  actions CARD.STRIKE_IRONCLAD
 
   note: This states differences. It does not score either line, rank them, or say which was better.
-  note: Health lost is health that actually came off. Damage a block absorbed is not separately observable from the sampled canonical state, so neither side's number includes it.
+  note: Enemy health lost and player health lost count only health that actually came off. Damage either side's block absorbed is not included in those measurements.
   note: The summary's health outcome is read at the end of the fight and includes anything that resolves as the combat ends, a relic that heals among them. The turn detail's health lost is what came off during that turn. The two are different measurements and do not have to add up.
   note: Both lines were replayed through the real engine from the same combat-start boundary. Nothing here is evidence about a fight played by a person in the retail client: no mod host exists yet, so no live capture has ever been compared.
 
@@ -684,8 +684,8 @@ report: build/evidence/combat-comparison.json
 
 The two projections are kept apart because they answer different questions. The
 summary says what happened in this fight and carries no turn numbers at all; the turn
-detail says when, with the ordered actions, what each turn dealt, what it cost, and
-the exact turn a consumable was drunk. A summary carrying both would make every later
+detail says when, with the ordered actions, each turn's enemy and player health lost,
+and the exact turn a consumable was drunk. A summary carrying both would make every later
 consumer decide which half to trust.
 
 Read them together and they do not add up, on purpose. The reference line's summary
@@ -695,8 +695,8 @@ the fight while the turn detail measures what came off during each turn. Reconci
 them by quietly picking one would throw away something real about the fight, so both
 are reported and the difference is stated. A test pins it.
 
-Nothing here scores or ranks. The left line wins a turn sooner and takes sixteen
-damage; the right takes none and needs an extra turn. Which is better is a question
+Nothing here scores or ranks. The left line wins a turn sooner and loses sixteen
+health; the right loses none and needs an extra turn. Which is better is a question
 about a game, and answering it here would turn a measurement into an opinion.
 
 The contract computes over a fight that finished, and refuses anything else. The
@@ -712,9 +712,10 @@ before it can be one side of a comparison.
 This history's combat is still in progress when the history ends, so it has no completed fight to project. Total turns, health lost and the final health are all defined at the end of a fight; reporting them for one still being fought would be a confident wrong answer.
 ```
 
-Two fights that did not start from the same boundary are refused the same way. A
-comparison of two different fights populates every field and means nothing, which is
-exactly why it is checked rather than assumed.
+Two fights whose complete combat-start snapshot digests differ are refused. That
+digest covers hidden state such as draw-pile order and RNG positions which the sampled
+trace boundary omits. A comparison of different starting states populates every field
+and means nothing, which is exactly why identity is checked rather than assumed.
 
 ## The tests
 
