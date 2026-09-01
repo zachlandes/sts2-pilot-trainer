@@ -473,6 +473,45 @@ public class PublicationGateTests
     }
 
     [GameFact]
+    public void RequiresEveryNegativeControlToApplyAtPublication()
+    {
+        var outDir = TempDir();
+        var manifest = ManifestJson.Load(Arbiter.Manifest);
+        var actions = manifest.Actions.Select(action =>
+        {
+            if (action.Verb != ActionVerb.TakeCard) return action;
+            var args = action.Args
+                .Where(pair => pair.Key != Corruption.AlternativeCardId &&
+                               pair.Key != Corruption.AlternativeOptionIndex)
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            return action with { Args = args };
+        }).ToList();
+        var path = Path.Combine(outDir, "missing-control-nomination.json");
+        ManifestJson.Save(manifest with { Actions = actions }, path);
+
+        var result = Arbiter.Run(
+            "gate", path, "--map-observation", Arbiter.MapObservation, "--out", outDir);
+
+        Assert.False(result.Verified);
+        var report = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "publication-gate.json"))).RootElement;
+        var rejection = report.GetProperty("conditions").EnumerateArray()
+            .Single(condition => condition.GetProperty("name").GetString() == "rejection");
+        Assert.False(rejection.GetProperty("passed").GetBoolean());
+        Assert.Contains(
+            "Every required corruption applies",
+            rejection.GetProperty("requirement").GetString(),
+            StringComparison.Ordinal);
+
+        var controls = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "negative-controls.json"))).RootElement;
+        Assert.False(controls.GetProperty("all_controls_applicable").GetBoolean());
+        Assert.True(
+            controls.GetProperty("applicable_controls").GetInt32() <
+            controls.GetProperty("total_controls").GetInt32());
+    }
+
+    [GameFact]
     public void RequiresTheManifestSeedToMatchTheBoundVodMap()
     {
         var outDir = TempDir();

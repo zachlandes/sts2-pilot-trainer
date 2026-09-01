@@ -19,6 +19,7 @@ internal static partial class Commands
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
         var reportArtifact = EvidenceArtifact.Prepare(outDir, "negative-controls.json");
+        var requireAllControls = Args.Has(args, "--require-all-controls");
         var manifest = ManifestJson.Load(manifestPath);
         var scratchDir = Path.Combine(outDir, "negative-controls");
         Directory.CreateDirectory(scratchDir);
@@ -144,6 +145,11 @@ internal static partial class Commands
             });
         }
 
+        var applied = Corruption.All.Count(corruption => corruption.AppliesTo(manifest));
+        var skipped = Corruption.All.Count - applied;
+        var allControlsApplicable = skipped == 0;
+        var passed = allRejected && (!requireAllControls || allControlsApplicable);
+
         reportArtifact.WriteAtomic(
             JsonSerializer.Serialize(new
             {
@@ -151,18 +157,20 @@ internal static partial class Commands
                 manifest = Path.GetFileName(manifestPath),
                 baseline_verified = baselinePassed,
                 all_rejected = allRejected,
-                applicable_controls = Corruption.All.Count(corruption => corruption.AppliesTo(manifest)),
+                all_controls_applicable = allControlsApplicable,
+                applicable_controls = applied,
+                total_controls = Corruption.All.Count,
                 controls = results,
             }, Json.Indented) + "\n");
 
-        var applied = Corruption.All.Count(corruption => corruption.AppliesTo(manifest));
-        var skipped = Corruption.All.Count - applied;
-        Console.WriteLine(allRejected
-            ? $"all {applied} corrupted histories were rejected; the uncorrupted one verified" +
-              (skipped > 0 ? $" ({skipped} control(s) had nothing in this history to damage)" : "")
-            : "AT LEAST ONE CORRUPTED HISTORY WAS ACCEPTED");
+        Console.WriteLine(!allRejected
+            ? "AT LEAST ONE CORRUPTED HISTORY WAS ACCEPTED"
+            : requireAllControls && !allControlsApplicable
+                ? $"ONLY {applied} OF {Corruption.All.Count} REQUIRED CONTROLS APPLIED"
+                : $"all {applied} corrupted histories were rejected; the uncorrupted one verified" +
+                  (skipped > 0 ? $" ({skipped} control(s) had nothing in this history to damage)" : ""));
 
-        return allRejected ? 0 : 1;
+        return passed ? 0 : 1;
     }
 
     private static string? Digest(string output)

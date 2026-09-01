@@ -686,6 +686,21 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void RejectsATakenCardWithOnlyHalfOfItsNegativeControlAlternative()
+    {
+        var manifest = WithActions(Fixtures.Action(
+            0, ActionVerb.TakeCard,
+            ("card_id", "CARD.POMMEL_STRIKE"), ("option_index", "0"),
+            (Corruption.AlternativeCardId, "CARD.BASH")));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains(
+            "alternative card and option index must appear together", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsAScreenSelectionCarryingAnArgumentTheVerbDoesNotTake()
     {
         var manifest = WithActions(Fixtures.Action(

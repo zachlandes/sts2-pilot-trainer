@@ -16,7 +16,7 @@ internal static partial class Commands
     /// The standard is deliberately narrow and deliberately expensive. Nothing here
     /// may be stood in for by a cheaper proxy - not reader confidence, not arithmetic
     /// on the footage, not a screenshot of a mod list. Those are useful filters and
-    /// they are not evidence: two of the four corruptions in the replay controls pass
+    /// they are not evidence: four of the ten corruptions in the replay controls pass
     /// every arithmetic check available from the frames, and a run resumed from
     /// history passes every check that is not about the recording itself.
     /// </summary>
@@ -109,9 +109,10 @@ internal static partial class Commands
                 "Fresh processes produce byte-identical canonical state.",
                 SelfProcess.Run("determinism", manifestPath, "--runs", "2", "--out", outDir)));
 
-                conditions.Add(Check("rejection",
-                    "Corrupted and incomplete histories are refused.",
-                    SelfProcess.Run("negative-controls", manifestPath, "--out", outDir)));
+                conditions.Add(Check("rejection", RejectionRequirement,
+                    SelfProcess.Run(
+                        "negative-controls", manifestPath, "--out", outDir,
+                        "--require-all-controls")));
             }
             else
             {
@@ -181,9 +182,11 @@ internal static partial class Commands
         new Condition("covered-fight", CoveredFightRequirement, false),
         new Condition("determinism",
             "Fresh processes produce byte-identical canonical state.", false),
-        new Condition("rejection",
-            "Corrupted and incomplete histories are refused.", false),
+        new Condition("rejection", RejectionRequirement, false),
     ]);
+
+    private const string RejectionRequirement =
+        "Every required corruption applies, and corrupted and incomplete histories are refused.";
 
     private const string CoveredFightRequirement =
         "The reproduced history covers a whole fight, from its combat start to the end of that fight.";

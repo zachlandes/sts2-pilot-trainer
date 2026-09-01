@@ -681,6 +681,17 @@ public static partial class ManifestValidator
             }
         }
 
+        if (action.Verb == ActionVerb.TakeCard)
+        {
+            var hasAlternativeCard = action.Args.ContainsKey(Corruption.AlternativeCardId);
+            var hasAlternativeIndex = action.Args.ContainsKey(Corruption.AlternativeOptionIndex);
+            if (hasAlternativeCard != hasAlternativeIndex)
+            {
+                problems.Add(
+                    $"actions[{action.Seq}] ({action.Verb}) negative-control alternative card and option index must appear together.");
+            }
+        }
+
         var hasSubstituteCard = action.Args.ContainsKey("negative_control_substitute_card_id");
         var hasSubstituteIndex = action.Args.ContainsKey("negative_control_substitute_hand_index");
         if (hasSubstituteCard != hasSubstituteIndex)

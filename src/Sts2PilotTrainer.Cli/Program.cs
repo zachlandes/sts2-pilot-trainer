@@ -116,9 +116,10 @@ internal static class Program
           determinism     <manifest> --runs <n>
               Replay the same manifest in n fresh processes and compare canonical state.
 
-          negative-controls <manifest> [--out <dir>]
+          negative-controls <manifest> [--out <dir>] [--require-all-controls]
               Damage the history in specific ways and show the arbiter rejects each,
               alongside what a video-only consistency check would have concluded.
+              --require-all-controls also refuses histories that do not exercise every control.
 
           combat-compare  <manifest> <manifest> [--out <dir>]
               Replay two manifests of the same fight, project each one's completed
