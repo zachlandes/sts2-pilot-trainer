@@ -87,10 +87,18 @@ internal static partial class Commands
         }
 
         var coveredState = File.ReadAllText(coveredStatePath);
-        var combatActive = ParseState(coveredState).GetValueOrDefault("combat.in_progress") == "true";
+        var coveredFields = ParseState(coveredState);
+        var combatActive = coveredFields.GetValueOrDefault("combat.in_progress") == "true";
+        // How the fight ended, not merely that it is no longer running. "Not running"
+        // covers a won fight, a lost one, and a history that never reached combat, and
+        // a report that could not tell them apart would be describing three different
+        // things with one word.
+        var combatOutcome = coveredFields.GetValueOrDefault("combat.outcome", "unknown");
         var turns = TurnBoundaries(trace, combatStart);
         var lastSeq = manifest.Actions[^1].Seq;
-        var combatState = combatActive ? "combat remains active" : "no combat active at history end";
+        var combatState = combatActive
+            ? "combat remains active"
+            : $"combat finished ({combatOutcome})";
 
         Console.WriteLine($"manifest        : {manifest.RunId}");
         Console.WriteLine($"combat starts   : after action {combatStart}");
@@ -124,6 +132,7 @@ internal static partial class Commands
                 covered_action_count = manifest.Actions.Count,
                 covered_through_seq = lastSeq,
                 combat_active_at_history_end = combatActive,
+                combat_outcome_at_history_end = combatOutcome,
                 covered_history_end_state_digest = DigestOf(coveredState),
                 turns,
                 comparison_policy =
@@ -198,7 +207,5 @@ internal static partial class Commands
         return File.ReadAllText(statePath);
     }
 
-    private static string DigestOf(string canonical) =>
-        "sha256:" + Convert.ToHexStringLower(
-            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(canonical)));
+    private static string DigestOf(string canonical) => CanonicalState.DigestRendering(canonical);
 }

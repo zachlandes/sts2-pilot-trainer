@@ -11,7 +11,8 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
 dotnet test sts2-pilot-trainer.sln -c Release
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
 ./scripts/arbiter <command> # gate | validate | preflight | verify-seed | replay |
-                            # determinism | negative-controls | combat-snapshot
+                            # determinism | negative-controls | combat-snapshot |
+                            # combat-compare
 ```
 
 `dotnet test` works without the game: the integration suite skips with an explanation
@@ -60,12 +61,19 @@ Every prerequisite it refuses is remediated by playing the game.
 Do not add a path that edits a save, a profile, an unlock, a build or a game mode.
 
 **Read [docs/comparison-direction.md](docs/comparison-direction.md) before changing
-what a verification report keeps or where a replay can start.** The supported
-boundary is combat start and the unit is the whole fight - no turn-level reset, no
-pre-turn branching, no turn-level solver. The product's next question is about the
-shape of a fight, not its last frame, so `VerificationReport.Trace` samples state
-either side of every action and computes nothing. Do not collapse it into final
-snapshots or prose, and do not bake turn chronology into a summary.
+what a verification report keeps, where a replay can start, or what the comparison
+computes.** The supported boundary is combat start and the unit is the whole fight -
+no turn-level reset, no pre-turn branching, no turn-level solver.
+`VerificationReport.Trace` samples state either side of every action and computes
+nothing; `CombatProjection` and `CombatComparison` do the deriving, over a fight that
+finished and never over one still being fought. Do not collapse the trace into final
+snapshots or prose, do not bake turn chronology into the summary, and do not add a
+score, a ranking or a verdict about which line was better.
+
+**Where this is going, and what is runnable at each step, is
+[docs/proof-of-concept-path.md](docs/proof-of-concept-path.md).** Read it before
+planning work toward the first tryable proof; it names the remaining slices in
+dependency order and what is deliberately not built.
 
 **Some checks cannot be moved downstream.** A run resumed from run history matches on
 seed, build, content hash and acts, and replays perfectly — it is simply not the run

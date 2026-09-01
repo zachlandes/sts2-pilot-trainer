@@ -8,7 +8,8 @@ This does not identify an unobserved source configuration when multiple configur
 If anything disagrees, it says which field, at which moment, and stops.
 
 This is the foundation for a training tool: once a combat-start position can be reconstructed exactly, a completed player fight can eventually be compared with the VOD solution replayed from that same boundary.
-It is not that tool yet.
+It is not that tool yet - nothing here has ever captured a fight played by a person.
+[The proof-of-concept path](docs/proof-of-concept-path.md) is the route from here to one somebody can try, slice by slice.
 
 ## What has been demonstrated
 
@@ -24,7 +25,11 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
 - **Replay machinery is exercised by an independent synthetic fixture.**
   A mechanically generated seed and action sequence, distinct from the VOD trace, pin engine-produced checkpoints.
   Fresh-process determinism, corrupted-history rejection, and combat-start snapshot re-derivation are claims about that fixture only.
-  The fixture covers the opening turn and leaves combat active; it does not prove a completed fight.
+- **A whole combat is replayed to its end, and two lines of it are compared.**
+  The fixture plays its first fight to a victory the canonical state can see, in two mechanically different lines from the same combat-start boundary.
+  `combat-compare` derives the combat summary and the turn detail from each and states the differences, scoring nothing.
+  Both sides are engine-produced: no mod host exists, so no fight played by a person has ever been captured or compared.
+  The shipped VOD reconstruction still covers only the opening turn and is refused by the comparison, which computes only over a fight that finished.
 
 - **Provenance is gated before any engine starts.** A run resumed from run history
   matches on seed, build, content hash and acts and replays perfectly — it is just
@@ -75,6 +80,11 @@ Its user data is redirected to `build/sandbox`, it cannot see the retail `RunMan
 `Preflight.EvaluateLiveGame` is the API an eventual in-game host must call before showing a VOD replay or advice, but no such host exists yet.
 Nothing today guarantees that a retail player has passed this gate.
 
+```bash
+./scripts/arbiter generate-synthetic-fixture --out build/evidence/alternate.replay.json --line alternate
+./scripts/arbiter combat-compare build/evidence/synthetic.replay.json build/evidence/alternate.replay.json
+```
+
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
 `verify-seed`, `determinism`, `negative-controls`, `combat-snapshot`. `validate` needs
 no game.
@@ -90,7 +100,7 @@ The full walkthrough, with commands and their real output, is in
 | `src/Sts2PilotTrainer.Engine` | The only project that knows about a specific game version. |
 | `src/Sts2PilotTrainer.Cli` | The arbiter's commands. |
 | `manifests/` | The reconstructed run, and the map read from the video. Facts only. |
-| `docs/` | [Environment identity](docs/environment-identity.md) · [headless fidelity](docs/headless-fidelity.md) · [dependencies](docs/dependencies.md) · [distribution](docs/distribution.md) · [the engine's own replay format](docs/native-replay-format.md) |
+| `docs/` | [The proof-of-concept path](docs/proof-of-concept-path.md) · [environment identity](docs/environment-identity.md) · [comparison direction](docs/comparison-direction.md) · [headless fidelity](docs/headless-fidelity.md) · [dependencies](docs/dependencies.md) · [distribution](docs/distribution.md) · [the engine's own replay format](docs/native-replay-format.md) |
 
 ## What this repository does not contain
 

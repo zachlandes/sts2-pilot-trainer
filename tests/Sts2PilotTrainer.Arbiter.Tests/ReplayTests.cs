@@ -217,12 +217,17 @@ public class ReplayTests
     [GameFact]
     public void IngestionFailureDoesNotCountAsArbiterRejection()
     {
+        // Only the checkpoint the omission control will detach, so that dropping its
+        // play leaves a manifest with no checkpoints at all - which the validator
+        // refuses before an engine starts. The control names the play it damages
+        // rather than the test guessing at it.
         var manifest = ManifestJson.Load(Arbiter.SyntheticReplayFixture());
-        var lastPlaySeq = manifest.Actions.Last(action => action.Verb == ActionVerb.PlayCard).Seq;
+        var nominatedSeq = Corruption.NominatedPlay(manifest.Actions).Seq;
         manifest = manifest with
         {
-            Checkpoints = manifest.Checkpoints.Where(checkpoint => checkpoint.AfterSeq == lastPlaySeq).ToList(),
+            Checkpoints = manifest.Checkpoints.Where(checkpoint => checkpoint.AfterSeq == nominatedSeq).ToList(),
         };
+        Assert.Single(manifest.Checkpoints);
         var path = Temp("ingestion-negative-control.json");
         ManifestJson.Save(manifest, path);
         var outDir = TempDir();

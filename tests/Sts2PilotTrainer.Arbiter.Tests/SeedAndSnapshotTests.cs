@@ -229,10 +229,16 @@ public class CombatSnapshotTests
 
         Assert.True(report.GetProperty("restore_verified").GetBoolean());
         Assert.Equal("Verified", report.GetProperty("covered_history_status").GetString());
-        Assert.Equal(5, report.GetProperty("covered_action_count").GetInt32());
-        Assert.Equal(4, report.GetProperty("covered_through_seq").GetInt32());
-        Assert.True(report.GetProperty("combat_active_at_history_end").GetBoolean());
-        Assert.NotEmpty(report.GetProperty("turns").EnumerateArray());
+
+        // The fixture plays its fight to the end, so the covered history reaches a
+        // finished combat. Reading that correctly is the whole point of the outcome
+        // field: the player's combat state outlives the fight, and the report used to
+        // call a won fight an active one.
+        Assert.False(report.GetProperty("combat_active_at_history_end").GetBoolean());
+        var actions = report.GetProperty("covered_action_count").GetInt32();
+        Assert.Equal(actions - 1, report.GetProperty("covered_through_seq").GetInt32());
+        Assert.True(report.GetProperty("turns").EnumerateArray().Count() > 1,
+            "a completed fight covers more than one turn");
 
         // The boundary is a fact about what the engine did, so it is located rather
         // than declared: combat starts after the action that entered the room.

@@ -69,9 +69,13 @@ public sealed class CanonicalState
     /// SHA-256 over the canonical rendering. Sorted keys and an explicit, culture-free
     /// encoding, so the digest depends on the state and on nothing else.
     /// </summary>
-    public string Digest()
+    public string Digest() => DigestRendering(Render());
+
+    /// <summary>SHA-256 over an already rendered canonical state, for consumers of
+    /// the canonical state artifact rather than the in-memory projection.</summary>
+    public static string DigestRendering(string canonical)
     {
-        var bytes = Encoding.UTF8.GetBytes(Render());
+        var bytes = Encoding.UTF8.GetBytes(canonical);
         return "sha256:" + Convert.ToHexStringLower(SHA256.HashData(bytes));
     }
 

@@ -40,7 +40,7 @@ public static class Corruption
             ReorderPlays),
 
         new("substitute-same-cost",
-            "Replaces the final played card with a different same-cost card selected by the control.",
+            "Replaces the nominated card play with a different same-cost card selected by the control.",
             VideoOnlyVerdict.Undetected,
             "Energy conservation and hand accounting both balance, because the substitute costs the same. The " +
             "damage arithmetic balances too unless the enemy's health is read frame by frame, which the earlier " +
@@ -48,7 +48,7 @@ public static class Corruption
             SubstituteSameCost),
 
         new("omit-play",
-            "Drops the final card play entirely.",
+            "Drops the nominated card play entirely.",
             VideoOnlyVerdict.Detected,
             "Energy and hand counts no longer balance against the declared line. Included as a control on the " +
             "control: an arbiter that rejected only the subtle " +
@@ -107,12 +107,25 @@ public static class Corruption
     private static ReplayManifest SubstituteSameCost(ReplayManifest manifest)
     {
         var actions = manifest.Actions.ToList();
-        var target = actions.LastOrDefault(a => a.Verb == ActionVerb.PlayCard)
-            ?? throw new ManifestException("substitute-same-cost needs a card play.");
+        var target = NominatedPlay(actions, "substitute-same-cost");
 
         var substituteCard = target.Args.GetValueOrDefault(
             "negative_control_substitute_card_id", "CARD.STRIKE_IRONCLAD");
         var substituteIndex = target.Args.GetValueOrDefault("negative_control_substitute_hand_index", "0");
+
+        // A substitution that puts back the card that was already there damages
+        // nothing, and an arbiter that accepted it would be reported as having failed
+        // to reject a corruption that was never made. Refusing here keeps the control
+        // honest about whether it corrupted anything at all.
+        if (substituteCard == target.Args.GetValueOrDefault("card_id") &&
+            substituteIndex == target.Args.GetValueOrDefault("hand_index"))
+        {
+            throw new ManifestException(
+                $"substitute-same-cost would replace action {target.Seq} with the card it already plays, so " +
+                "it would corrupt nothing. The manifest must mark a play with " +
+                "'negative_control_substitute_card_id' naming a genuinely different card of the same cost.");
+        }
+
         var args = target.Args
             .Where(pair => !pair.Key.StartsWith("negative_control_", StringComparison.Ordinal))
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
@@ -128,8 +141,7 @@ public static class Corruption
     private static ReplayManifest OmitPlay(ReplayManifest manifest)
     {
         var actions = manifest.Actions.ToList();
-        var target = actions.LastOrDefault(a => a.Verb == ActionVerb.PlayCard)
-            ?? throw new ManifestException("omit-play needs a card play.");
+        var target = NominatedPlay(actions, "omit-play");
 
         actions.Remove(target);
         return manifest with
@@ -154,6 +166,26 @@ public static class Corruption
             Note = "changed by a negative control",
         };
         return manifest with { RunId = manifest.RunId + "+wrong-opening-choice", Actions = actions };
+    }
+
+    /// <summary>
+    /// Which play the history controls damage.
+    ///
+    /// A manifest may nominate one, by carrying the substitution pair the fixture
+    /// generator writes onto it, and when it does that nomination wins. The
+    /// alternative - always taking the last play - quietly stops being a corruption
+    /// the moment a history is extended past the moment it was written for: the last
+    /// play of a fight that runs to its end is the killing blow, which no checkpoint
+    /// sits on and whose omission simply leaves a shorter, self-consistent history.
+    /// Falling back to the last play keeps the controls usable on a manifest that
+    /// nominates nothing, which is every reconstructed one.
+    /// </summary>
+    public static ActionRecord NominatedPlay(IReadOnlyList<ActionRecord> actions, string control = "this control")
+    {
+        var plays = actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
+        return plays.LastOrDefault(action => action.Args.ContainsKey("negative_control_substitute_card_id"))
+            ?? plays.LastOrDefault()
+            ?? throw new ManifestException($"{control} needs a card play.");
     }
 
     private static IReadOnlyDictionary<string, string> WithArg(

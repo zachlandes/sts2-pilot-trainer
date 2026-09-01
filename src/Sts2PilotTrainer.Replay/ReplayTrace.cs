@@ -8,15 +8,15 @@ namespace Sts2PilotTrainer.Replay;
 /// A verified replay's end state answers "did it reproduce the run". It cannot
 /// answer the question this project exists to serve next - how a played combat
 /// compares with an alternative line - because that question is about the shape of
-/// the fight, not its last frame. Total turns, health lost, which consumable was
-/// drunk on which turn, damage dealt and taken each turn, and cards removed for
-/// good are all differences between two moments, and a report that keeps only the
-/// final moment has thrown every one of them away.
+/// the fight, not its last frame. A final state can retain final health and the last
+/// combat turn reached. It cannot recover the starting state and chronology needed
+/// for net health change, ordered actions, per-turn health loss, consumable use
+/// timing, or permanent card removals.
 ///
 /// So the trace samples the canonical state either side of every action and keeps
-/// the samples verbatim. It computes nothing and ranks nothing: what a comparison
-/// should say about two lines is a contract nobody has written yet, and a trace
-/// that pre-judged it would have to be unpicked before that contract could be.
+/// the samples verbatim. It computes nothing and ranks nothing: <see
+/// cref="CombatProjection"/> and <see cref="CombatComparison"/> own those derived
+/// readings, and a trace that pre-judged them would have to be unpicked first.
 ///
 /// The samples are drawn from <see cref="CanonicalState"/>, so the trace and the
 /// verification are reading the same engine state through the same projection, and
@@ -38,6 +38,7 @@ public sealed record ReplayTrace
     public static readonly IReadOnlyList<string> SampledFields =
     [
         "combat.in_progress",
+        "combat.outcome",
         "combat.turn",
         "combat.round",
         "combat.encounter",

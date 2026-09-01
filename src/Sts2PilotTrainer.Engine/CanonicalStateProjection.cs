@@ -166,10 +166,13 @@ public static class CanonicalStateProjection
         if (combat is null)
         {
             builder.Add("combat.in_progress", false);
+            builder.Add("combat.outcome", "none");
             return;
         }
 
-        builder.Add("combat.in_progress", true);
+        var outcome = CombatOutcome(player);
+        builder.Add("combat.in_progress", outcome == "in_progress");
+        builder.Add("combat.outcome", outcome);
         builder.Add("combat.turn", combat.TurnNumber);
         builder.Add("combat.phase", combat.Phase.ToString());
         builder.Add("combat.energy", combat.Energy);
@@ -219,6 +222,47 @@ public static class CanonicalStateProjection
             builder.Add($"combat.enemy.{i}.next_move", enemy.Monster?.NextMove?.StateId ?? "none");
             builder.Add($"combat.enemy.{i}.intent", DescribeIntent(enemy, creature));
         }
+    }
+
+    /// <summary>
+    /// Whether the fight is still running, and if it is not, how it ended.
+    ///
+    /// Read from the combat manager rather than from the player's combat state,
+    /// because that state outlives the fight: once the last enemy dies it is still
+    /// there, holding the final hand and pile order, with its turn phase set to None.
+    /// Asking it whether a combat is in progress therefore reports a finished fight as
+    /// an active one - which is exactly the reading that would let a whole-combat
+    /// comparison compute total turns, net health change and final health over a fight
+    /// that had not finished.
+    ///
+    /// The finished fight's other combat fields are still projected, on purpose. The
+    /// last frame of a fight is part of its result, and dropping it the moment the
+    /// fight ended would throw away the end of every quantity the comparison needs.
+    /// </summary>
+    private static string CombatOutcome(Player player)
+    {
+        var manager = CombatManager.Instance
+            ?? throw new EngineException(
+                "The player is in a combat state but this build exposes no CombatManager, so whether the " +
+                "fight is still running cannot be read. Refusing: a finished fight reported as an active " +
+                "one is precisely the error this field exists to prevent.");
+
+        if (manager.IsInProgress) return "in_progress";
+
+        if (player.Creature is { IsAlive: false }) return "defeat";
+
+        // The engine takes a dead enemy out of the combat state rather than leaving it
+        // there at zero health, so a won fight ends with no enemies at all. "No living
+        // enemy" therefore has to cover the empty list, and it is reached only after
+        // the combat manager has already said the fight is over.
+        var enemies = manager.DebugOnlyGetState()?.Enemies.Where(enemy => enemy is not null).ToList() ?? [];
+        if (enemies.TrueForAll(enemy => !enemy.IsAlive)) return "victory";
+
+        // A fight that stopped with the player and an enemy both alive is a real
+        // engine state and not one this milestone has seen. It is named rather than
+        // folded into victory, because a comparison computed over a fight nobody can
+        // characterise should say so rather than pick the flattering reading.
+        return "ended";
     }
 
     /// <summary>
