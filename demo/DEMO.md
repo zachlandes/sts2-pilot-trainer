@@ -1087,7 +1087,7 @@ What is established is parity across that space, not the mode itself, and combin
   would read a retail player's fight does not exist, and nothing in this document is
   evidence that it would work. That is also why the recording is compared against
   itself: there is no second line of that fight to put opposite it.
-- **Nothing is automatically extracted from video.** The eleven actions, seventeen
+- **Nothing is automatically extracted from video.** The eleven actions, ten
   checkpoint moments and 61 map nodes were read by a person off the frames at source
   resolution. Building the extractor is the next problem and was deliberately not
   started: an extractor is only worth building once there is an arbiter that can tell

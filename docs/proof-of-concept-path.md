@@ -95,7 +95,7 @@ turn detail for two completed fights and their differences, and `combat-snapshot
 longer calls a finished fight an active one.
 This is step 4 of the loop, with engine-produced lines standing in for a human's -
 which is what can be honest before a mod host exists.
-S2 replaced one of those lines with the recording's own; both sides are still
+S2 added the recording's own fight as another completed side; every side is still
 engine-replayed, because a human's fight cannot be captured until S3 and S4 land.
 [demo/DEMO.md](../demo/DEMO.md) has it with its real output.
 
