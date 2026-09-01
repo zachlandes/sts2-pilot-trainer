@@ -646,6 +646,7 @@ public class ManifestValidatorTests
     [InlineData("bloody-ink")]
     [InlineData("coins")]
     [InlineData("card")]
+    [InlineData("relic")]
     public void RejectsAKindOfRewardThatIsNotClaimedWithOneClick(string kind)
     {
         // 'card' is on this list on purpose: the card reward opens a second screen, so

@@ -281,7 +281,7 @@ public sealed class RunDriver : IDisposable
     }
 
     /// <summary>
-    /// Takes one reward off the loot screen: the gold, the potion, the relic.
+    /// Takes one reward off the loot screen: the gold or the potion.
     ///
     /// The card reward is deliberately not reachable here - it opens a second screen
     /// and so has its own verb, <see cref="ActionVerb.TakeCard"/>, which records which

@@ -40,14 +40,13 @@ public class RewardAndScreenVerbTests
     }
 
     [GameFact]
-    public void ClaimingAKindOfRewardThisScreenDoesNotOfferIsRefused()
+    public void ClaimingARewardOutsideThisHistoryIsRefusedAtIngestion()
     {
-        // The floor-2 loot is gold, a potion and a card. A relic is a real reward kind
-        // and this screen has none, which is the shape of a misread loot window.
         var result = Replay(Retype(ActionVerb.ClaimReward, ("reward_type", "relic")));
 
-        Assert.Contains("claims a 'relic' reward", result.All, StringComparison.Ordinal);
-        Assert.Contains("gold", result.All, StringComparison.Ordinal);
+        Assert.False(result.Verified, result.All);
+        Assert.Contains("'reward_type' is 'relic'", result.All, StringComparison.Ordinal);
+        Assert.Contains("Known kinds: gold, potion", result.All, StringComparison.Ordinal);
     }
 
     [GameFact]

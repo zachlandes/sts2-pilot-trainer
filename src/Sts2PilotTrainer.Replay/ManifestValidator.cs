@@ -30,11 +30,11 @@ public static partial class ManifestValidator
     private static readonly string[] KnownGameModes = ["standard", "custom", "daily"];
 
     /// <summary>
-    /// The reward kinds a single click on the loot screen claims. The card reward is
-    /// absent on purpose: it opens a card screen, so taking it is
+    /// The reward kinds this history claims with a single click on the loot screen.
+    /// The card reward is absent on purpose: it opens a card screen, so taking it is
     /// <see cref="ActionVerb.TakeCard"/>, which records which card came back.
     /// </summary>
-    public static readonly string[] ClaimableRewardTypes = ["gold", "potion", "relic"];
+    public static readonly string[] ClaimableRewardTypes = ["gold", "potion"];
 
     [GeneratedRegex(@"^v\d+\.\d+\.\d+$")]
     private static partial Regex BuildVersionPattern { get; }
