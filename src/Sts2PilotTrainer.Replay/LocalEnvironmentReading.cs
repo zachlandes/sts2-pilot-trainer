@@ -3,9 +3,11 @@ using System.Text.Json.Serialization;
 namespace Sts2PilotTrainer.Replay;
 
 /// <summary>
-/// What was actually read off the machine that is about to replay - never what the
-/// caller believes about it.
+/// The installation identity and unlock state the replay host reports.
 ///
+/// The unlock state may come from this process's profile or from an explicitly named
+/// host-supplied model; <see cref="UnlockInventory.Origin"/> and
+/// <see cref="UnlockInventory.FromPlayerProfile"/> preserve that distinction.
 /// This type carries no game code so that the preflight rules can be tested without
 /// the game installed. Producing one is the engine's job and the engine's alone; see
 /// <c>Sts2PilotTrainer.Engine.LocalEnvironment</c>.
@@ -37,7 +39,7 @@ public sealed record LocalPrerequisites
     public required IReadOnlyList<string> LockedActs { get; init; }
 
     /// <summary>
-    /// The highest ascension this machine's profile records for the character the
+    /// The highest ascension this process's profile records for the character the
     /// manifest names, or null when the unlock reading did not come from a player
     /// profile and there is therefore no profile ceiling to compare against.
     /// </summary>
@@ -58,7 +60,7 @@ public sealed record UnlockInventory
     [JsonPropertyName("origin")]
     public required string Origin { get; init; }
 
-    /// <summary>True only when the counts came from this machine's own save progress.
+    /// <summary>True only when the counts came from this process's profile progress.
     /// A host-supplied state is a substitute for a player's profile, not a reading of
     /// one, and the two must not be reported as the same kind of evidence.</summary>
     [JsonPropertyName("from_player_profile")]
@@ -74,9 +76,9 @@ public sealed record UnlockInventory
 }
 
 /// <summary>
-/// One unlock category: how much of it this machine has, against how much the build
-/// ships. <paramref name="Required"/> is read from the game rather than written down
-/// here, so it stays correct across builds that add content.
+/// One unlock category: how much the selected unlock state has, against how much the
+/// build ships. <paramref name="Required"/> is read from the game rather than written
+/// down here, so it stays correct across builds that add content.
 /// </summary>
 public sealed record UnlockCategory(
     [property: JsonPropertyName("name")] string Name,
@@ -92,9 +94,9 @@ public sealed record UnlockCategory(
 /// <summary>
 /// The run that exists in the game right now, read back from it.
 ///
-/// The mod reads the player's own run here. The arbiter reads the run it just
-/// constructed, which is not a formality: it is how we learn that the engine built
-/// the run the manifest asked for rather than something adjacent to it.
+/// An eventual in-game host reads the player's own run here. The arbiter reads the
+/// run it just constructed, which is not a formality: it is how we learn that the
+/// engine built the run the manifest asked for rather than something adjacent to it.
 /// </summary>
 public sealed record LocalRunReading
 {

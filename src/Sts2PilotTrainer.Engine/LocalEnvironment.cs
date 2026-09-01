@@ -8,7 +8,7 @@ using Sts2PilotTrainer.Replay;
 namespace Sts2PilotTrainer.Engine;
 
 /// <summary>
-/// Reads this machine's actual state - never assumes it.
+/// Reads this process's game state and names any host-supplied unlock model.
 ///
 /// The one owner of where v0.111.0 keeps the things a preflight compares: the run
 /// in progress, and the unlock state a run here would be generated against. The
@@ -16,9 +16,9 @@ namespace Sts2PilotTrainer.Engine;
 /// <see cref="Sts2PilotTrainer.Replay.EnvironmentPreflight"/>, which has no game
 /// code and can therefore be tested on a machine that does not own the game.
 ///
-/// Everything here reads. Nothing writes: the player's save, progress, unlocks and
-/// installed build are inputs, and a tool that edited them to make a replay
-/// possible would have destroyed the thing the replay was evidence about.
+/// Nothing here writes: the player's save, progress, unlocks and installed build are
+/// inputs, and a tool that edited them to make a replay possible would have destroyed
+/// the thing the replay was evidence about.
 /// </summary>
 public static class LocalEnvironment
 {
@@ -47,8 +47,8 @@ public static class LocalEnvironment
     private const int MissingSampleLimit = 8;
 
     /// <summary>
-    /// Everything checkable before a run exists, read from this installation and
-    /// this profile.
+    /// Everything checkable before a run exists, using this installation and the
+    /// selected, explicitly identified progress source.
     /// </summary>
     /// <param name="expected">
     /// The manifest identity being checked against. Used only to know which

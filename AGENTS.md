@@ -51,19 +51,13 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**Read [docs/environment-identity.md](docs/environment-identity.md) before touching
-run setup.** Two fields on that list are there because a replay looked correct and
-was not: the act variant and the player's unlock state. Both change every fight in a
-run while leaving the map identical.
-
-**The preflight reads; it never assumes, and it never writes.** `Preflight` in
-`Sts2PilotTrainer.Engine` owns the decision and splits in two on purpose: the reading
-lives in `LocalEnvironment`, which is the only thing that knows where v0.111.0 keeps
-a run and a profile, and the rules live in `EnvironmentPreflight` in
-`Sts2PilotTrainer.Replay`, which has no game code and so has a test for every
-dimension on a machine with no game. Every prerequisite it refuses is remediated by
-playing the game. Do not add a path that edits a save, a profile, an unlock, a build
-or a game mode.
+**Read [docs/environment-identity.md](docs/environment-identity.md) before touching run setup or preflight.**
+Two fields on that list are there because a replay looked correct and was not: the act variant and the player's unlock state.
+Both change every fight in a run while leaving the map identical.
+The document also owns the distinction between a runtime reading and an explicitly supplied headless progress model.
+`LocalEnvironment` owns the v0.111.0 adapter, `EnvironmentPreflight` owns the game-free rules, and neither path writes.
+Every prerequisite it refuses is remediated by playing the game.
+Do not add a path that edits a save, a profile, an unlock, a build or a game mode.
 
 **Read [docs/comparison-direction.md](docs/comparison-direction.md) before changing
 what a verification report keeps or where a replay can start.** The supported

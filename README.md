@@ -7,10 +7,8 @@ If everything agrees, the run's verified gameplay history has been reproduced ex
 This does not identify an unobserved source configuration when multiple configurations reproduce that history; the report states that limit.
 If anything disagrees, it says which field, at which moment, and stops.
 
-This is the foundation for a training tool: once a mid-run position can be
-reconstructed exactly, it can be handed to a player as a puzzle, and two different
-lines can be played from the identical position and compared. It is not that tool
-yet.
+This is the foundation for a training tool: once a combat-start position can be reconstructed exactly, a completed player fight can eventually be compared with the VOD solution replayed from that same boundary.
+It is not that tool yet.
 
 ## What has been demonstrated
 
