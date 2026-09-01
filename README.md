@@ -21,15 +21,16 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   candidate's Act 1 map through the game and comparing topology against the map the
   video shows resolves it: `SFXT47K77RFK` reproduces all 61 transcribed nodes, the
   next best candidate reproduces 19.
-- **The headless replay matches 21 VOD values and the source-tooling residual is history-bound.** The enemy state, ordered hand, energy, block, and turn outcome agree. The three visible-build utilities are non-gameplay tooling. BaseLib can change `SkipNextDurationTick` for a player-applied custom debuff, so the gate instruments every `PowerCmd.Apply` in this exact history and requires a negative control before accepting that the affected branch is unreachable.
+- **The headless replay matches 47 VOD values and the source-tooling residual is history-bound.** The enemy state, ordered hand, energy, block, and the outcome of every turn of the first combat agree. The three visible-build utilities are non-gameplay tooling. BaseLib can change `SkipNextDurationTick` for a player-applied custom debuff, so the gate instruments every `PowerCmd.Apply` in this exact history and requires a negative control before accepting that the affected branch is unreachable.
 - **Replay machinery is exercised by an independent synthetic fixture.**
   A mechanically generated seed and action sequence, distinct from the VOD trace, pin engine-produced checkpoints.
   Fresh-process determinism, corrupted-history rejection, and combat-start snapshot re-derivation are claims about that fixture only.
 - **A whole combat is replayed to its end, and two lines of it are compared.**
   The fixture plays its first fight to a victory the canonical state can see, in two mechanically different lines from the same combat-start boundary.
   `combat-compare` derives the combat summary and the turn detail from each and states the differences, scoring nothing.
-  Both sides are engine-produced: no mod host exists, so no fight played by a person has ever been captured or compared.
-  The shipped VOD reconstruction still covers only the opening turn and is refused by the comparison, which computes only over a fight that finished.
+  The shipped VOD reconstruction now covers its whole first combat, read off the video action by action, so the recording is one of those completed sides.
+  A history that stops mid-combat is still refused, which is what the recording used to be.
+  No fight played by a person has ever been captured or compared: no mod host exists, so every side is engine-produced.
 
 - **Provenance is gated before any engine starts.** A run resumed from run history
   matches on seed, build, content hash and acts and replays perfectly — it is just

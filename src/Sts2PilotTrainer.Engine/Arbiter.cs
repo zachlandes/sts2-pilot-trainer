@@ -121,6 +121,11 @@ public static class Arbiter
             }
             catch (EngineException ex)
             {
+                // Checkpoints that already failed come first. The first diagnostic is
+                // read as the first divergence, and an action refusal is often the
+                // downstream consequence of a mismatch several actions earlier - a
+                // refusal reported alone would name the wrong moment.
+                diagnostics.AddRange(CheckpointDiagnostics(results));
                 diagnostics.Add($"action {action.Seq} ({action.Verb}): {ex.Message}");
                 var refusedState = CanonicalStateProjection.Project(session.RunState);
                 steps.Add(new ReplayStep
@@ -163,15 +168,7 @@ public static class Arbiter
             : manifest.Actions;
         var isPartial = replayedActions.Count < manifest.Actions.Count;
         var failed = results.Where(r => !r.Passed).ToList();
-        foreach (var result in failed)
-        {
-            foreach (var comparison in result.Comparisons.Where(c => !c.Matches))
-            {
-                diagnostics.Add(
-                    $"checkpoint '{result.Id}' (after action {result.AfterSeq}): {comparison.Field} " +
-                    $"observed '{comparison.Expected}', engine produced '{comparison.Actual}'");
-            }
-        }
+        diagnostics.AddRange(CheckpointDiagnostics(results));
 
         if (gameModeOverride is { } overriddenMode && overriddenMode != manifest.Environment.GameMode.Value)
         {
@@ -204,6 +201,18 @@ public static class Arbiter
             },
             finalState);
     }
+
+    /// <summary>
+    /// Every field a checkpoint disagreed on, in the order the checkpoints ran.
+    /// </summary>
+    private static IEnumerable<string> CheckpointDiagnostics(IEnumerable<CheckpointResult> results) =>
+        results
+            .Where(result => !result.Passed)
+            .SelectMany(result => result.Comparisons
+                .Where(comparison => !comparison.Matches)
+                .Select(comparison =>
+                    $"checkpoint '{result.Id}' (after action {result.AfterSeq}): {comparison.Field} " +
+                    $"observed '{comparison.Expected}', engine produced '{comparison.Actual}'"));
 
     /// <summary>
     /// The part of a canonical state the trace keeps.

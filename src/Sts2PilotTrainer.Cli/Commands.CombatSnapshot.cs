@@ -149,9 +149,13 @@ internal static partial class Commands
     /// Where the fight begins, read out of the trace rather than declared in the
     /// manifest: the boundary is a fact about what the engine did, and asking the
     /// manifest would let the two disagree.
+    ///
+    /// Delegated so that the boundary has one definition. The comparison contract and
+    /// the publication gate read it through the same call, and a second reading of
+    /// "where the fight started" is a second answer waiting to disagree.
     /// </summary>
-    private static int? CombatStartSeq(ReplayTrace trace) => trace.Steps
-        .FirstOrDefault(step => step.After.GetValueOrDefault("combat.in_progress") == "true")?.Seq;
+    private static int? CombatStartSeq(ReplayTrace trace) =>
+        CombatProjection.CoverageOf(trace).CombatStartSeq;
 
     /// <summary>
     /// The combat's turns, in order, with the actions that fall in each and what the

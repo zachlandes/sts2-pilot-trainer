@@ -58,6 +58,47 @@ public class ShippedManifestTests
         Assert.NotEmpty(summary.NotShown);
     }
 
+    /// <summary>
+    /// The comparison contract computes over a finished fight, so a manifest whose
+    /// history stopped mid-combat could never be one side of a comparison. The gate
+    /// computes this from a real replay; this reads it off the manifest, needs no
+    /// game, and so runs everywhere.
+    /// </summary>
+    [Fact]
+    public void CoversTheFirstCombatThroughItsEnd()
+    {
+        var manifest = Manifest;
+        var last = manifest.Actions[^1];
+        var final = Assert.Single(manifest.Checkpoints, c => c.AfterSeq == last.Seq);
+
+        Assert.Equal("combat_end", final.Kind);
+        Assert.Equal("victory", final.Expect["combat.outcome"].Value);
+        Assert.Equal("false", final.Expect["combat.in_progress"].Value);
+        Assert.All(final.Expect.Values, fact => Assert.Equal(FactSource.Observed, fact.Source));
+    }
+
+    /// <summary>
+    /// The negative controls damage a nominated play. Without a nomination they take
+    /// the last one, which in a fight replayed to its end is the killing blow - and
+    /// omitting the killing blow leaves a shorter history that is self-consistent, so
+    /// the control would stop being a control.
+    /// </summary>
+    [Fact]
+    public void NominatesAPlayForTheNegativeControlsThatIsNotTheKillingBlow()
+    {
+        var manifest = Manifest;
+        var nominated = Corruption.NominatedPlay(manifest.Actions);
+
+        Assert.True(nominated.Args.ContainsKey("negative_control_substitute_card_id"));
+        Assert.NotEqual(manifest.Actions[^1].Seq, nominated.Seq);
+        Assert.NotEqual(
+            nominated.Args["card_id"],
+            nominated.Args["negative_control_substitute_card_id"]);
+        Assert.Contains(
+            manifest.Checkpoints,
+            checkpoint => checkpoint.AfterSeq == nominated.Seq);
+    }
+
     [Fact]
     public void IdentifiesEveryModTheOverlayReported()
     {

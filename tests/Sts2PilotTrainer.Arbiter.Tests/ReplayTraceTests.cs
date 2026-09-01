@@ -41,21 +41,36 @@ public class ReplayTraceTests
         // Total turns, the health outcome, and which consumables were used - with no
         // turn numbers, because the summary does not carry chronology.
         var steps = Trace().Steps;
-        var combat = steps.Where(step => step.After.GetValueOrDefault("combat.in_progress") == "true").ToList();
-        Assert.NotEmpty(combat);
+        var entry = steps.Select((step, index) => (step, index))
+            .Where(pair => pair.step.After.GetValueOrDefault("combat.in_progress") == "true")
+            .Select(pair => pair.index)
+            .DefaultIfEmpty(-1)
+            .First();
+        Assert.True(entry >= 0, "the history enters combat");
+        var fight = steps.Skip(entry + 1)
+            .TakeWhile(step => step.Before.GetValueOrDefault("combat.in_progress") == "true")
+            .ToList();
+        Assert.NotEmpty(fight);
 
-        var totalTurns = combat.Max(step => Int(step.After, "combat.turn"));
-        var startingHp = Int(combat[0].After, "combat.player_hp");
-        var finalHp = Int(combat[^1].After, "combat.player_hp");
+        var outcome = fight[^1].After.GetValueOrDefault("combat.outcome");
+        var totalTurns = fight.Max(step => Int(step.Before, "combat.turn"));
+        var startingHp = Int(steps[entry].After, "combat.player_hp");
+        var finalHp = Int(fight[^1].After, "combat.player_hp");
         var consumablesUsed = steps
             .SelectMany(step => Potions(step.Before).Except(Potions(step.After), StringComparer.Ordinal))
             .ToList();
 
-        Assert.True(totalTurns >= 1, $"turns derived: {totalTurns}");
+        // The fight the recording shows: four turns, won on the fourth. Health ends
+        // seven below where it started even though thirteen came off during the turns,
+        // because the starting relic heals six as the last enemy dies. The turn detail
+        // measures the one and the summary measures the other, and the trace has to
+        // keep enough for both to be derived without replaying anything.
+        Assert.Equal("victory", outcome);
+        Assert.Equal(4, totalTurns);
         Assert.Equal(64, startingHp);
-        Assert.Equal(60, finalHp);
-        Assert.Equal(4, startingHp - finalHp);
-        // The reconstructed prefix uses no potion; deriving an empty list is the
+        Assert.Equal(57, finalHp);
+        Assert.Equal(-7, finalHp - startingHp);
+        // The reconstructed history uses no potion; deriving an empty list is the
         // point, since the alternative is being unable to tell.
         Assert.Empty(consumablesUsed);
     }
@@ -68,20 +83,32 @@ public class ReplayTraceTests
         foreach (var step in Trace().Steps.Where(s => s.Before.GetValueOrDefault("combat.in_progress") == "true"))
         {
             var turn = Int(step.Before, "combat.turn");
-            var dealt = Int(step.Before, "combat.enemy.0.hp") - Int(step.After, "combat.enemy.0.hp");
+            // The engine takes a dead enemy out of the combat state instead of leaving
+            // it at zero health, so the killing step has no enemy afterwards to
+            // subtract from. When they all go, each one's remaining health is what the
+            // step dealt - which is the one case the sampled state still resolves
+            // exactly, and the reason a fight that ends in a kill is derivable at all.
+            var dealt = Int(step.After, "combat.enemy_count") == 0
+                ? Enumerable.Range(0, Int(step.Before, "combat.enemy_count"))
+                    .Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"))
+                : Int(step.Before, "combat.enemy.0.hp") - Int(step.After, "combat.enemy.0.hp");
             var received = Int(step.Before, "combat.player_hp") - Int(step.After, "combat.player_hp");
             var running = byTurn.TryGetValue(turn, out var existing) ? existing : (0, 0);
             byTurn[turn] = (running.Item1 + Math.Max(0, dealt), running.Item2 + Math.Max(0, received));
         }
 
-        Assert.NotEmpty(byTurn);
-        // Turn 1 of this fight, as the engine actually resolves it: both cards are
-        // played without moving a hit point, and everything lands when the turn ends -
-        // the enemy drops 42 to 34, and its 9-damage attack arrives as 4 through the
-        // 5 block Defend put up. Attributing that to the turn it belongs to is exactly
-        // the derivation a chronology projection has to make, which is why the trace
-        // keeps the turn number on both sides of every step.
+        // The whole fight, turn by turn, as the engine actually resolves it. Turn 1 is
+        // the one worth reading twice: both cards are played without moving a hit
+        // point, and everything lands when the turn ends - the enemy drops 42 to 34,
+        // and its 9-damage attack arrives as 4 through the 5 block Defend put up.
+        // Attributing that to the turn it belongs to is exactly the derivation a
+        // chronology projection has to make, which is why the trace keeps the turn
+        // number on both sides of every step.
+        Assert.Equal([1, 2, 3, 4], byTurn.Keys);
         Assert.Equal((8, 4), byTurn[1]);
+        Assert.Equal((24, 2), byTurn[2]);
+        Assert.Equal((6, 7), byTurn[3]);
+        Assert.Equal((4, 0), byTurn[4]);
     }
 
     [GameFact]

@@ -119,7 +119,7 @@
       "duration_s": 2049
     },
     "extraction_method": "manual",
-    "coverage": "Run start through the first combat's opening turn: Neow's blessing, the move to the first map node, the two cards played on turn 1, and ending that turn. It stops there deliberately - this milestone is about whether a reconstructed history replays exactly, and extending the transcription further would add transcription risk without adding anything to that question.",
+    "coverage": "Run start through the end of the first combat: Neow's blessing, the move to the first map node, and every card the player played and every turn they ended across the four turns of the fight, up to and including the killing blow. It stops there. The fight is the unit the comparison contract is defined over, so the history ends where the fight does and nothing after the victory - the loot, the card reward, the next map move - is transcribed.",
     "run_start": {
       "first_observed_run_time_s": {
         "Value": 4,
@@ -288,14 +288,17 @@
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.DEFEND_IRONCLAD",
-        "hand_index": "3"
+        "hand_index": "3",
+        "negative_control_substitute_card_id": "CARD.STRIKE_IRONCLAD",
+        "negative_control_substitute_hand_index": "0"
       },
       "source": "Observed",
       "evidence": {
         "video_t_ms": 76750,
         "method": "energy falls 1 -> 0, the hand loses Defend, and 5 block appears beside the player's health bar. The hand index is 3 rather than 4 because playing Hellraiser already shifted the cards after it."
       },
-      "consumes_rng": []
+      "consumes_rng": [],
+      "note": "The play the negative controls damage. Strike sits at hand index 0 at this moment and costs the same 1 energy, so substituting it balances every arithmetic check the frames allow while changing the fight; omitting this play changes the block that meets the enemy's opening attack, which the turn-2 checkpoint reads."
     },
     {
       "seq": 4,
@@ -312,6 +315,97 @@
         "CombatTargets"
       ],
       "note": "Hellraiser plays every drawn Strike against a random enemy, so the turn-2 draw consumes the combat-targets stream. This turn is squarely in the unforgiving class."
+    },
+    {
+      "seq": 5,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 81850,
+        "method": "turn 2's hand is Defend, Ascender's Bane, Defend, left to right; energy falls 3 -> 2 and it is the leftmost Defend that leaves the hand, so the play is hand index 0"
+      },
+      "consumes_rng": []
+    },
+    {
+      "seq": 6,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "1"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 82150,
+        "method": "energy falls 2 -> 1, block reads 10, and Ascender's Bane is all that is left in hand. The index is 1 rather than 2 because playing the first Defend already shifted the cards after it"
+      },
+      "consumes_rng": []
+    },
+    {
+      "seq": 7,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 82500,
+        "method": "the End Turn 2 button is pressed with Ascender's Bane, which is unplayable, still in hand; the card leaves the hand as the turn ends, the enemy attacks, and the Turn 3 banner follows"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ],
+      "note": "The turn-3 draw empties the draw pile and reshuffles the discard, and every Strike it turns up is played by Hellraiser against a random enemy. This is the most unforgiving action in the history."
+    },
+    {
+      "seq": 8,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.HELLRAISER",
+        "hand_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 89700,
+        "method": "Hellraiser is the only card in turn 3's hand after the draw resolves; energy falls 3 -> 1 for its cost of 2 and the hand empties"
+      },
+      "consumes_rng": [],
+      "note": "The second of the two Hellraisers the opening transform produced. The video gives no direct sign of which card it was: the power icon has been on the player since the first Hellraiser and carries no stack number, so the only visible evidence is the energy falling by two and the hand emptying. What the power counts to is hidden state a recording could not have shown either way, which is the class of thing the arbiter exists to check."
+    },
+    {
+      "seq": 9,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 90250,
+        "method": "the End Turn 3 button disappears, the enemy takes its turn, and the Turn 4 banner follows"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 10,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.BASH",
+        "hand_index": "3"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 94500,
+        "method": "turn 4's hand is Defend, Defend, Defend, Bash, left to right; Bash is hovered showing 'Deal 8 damage. Apply 2 Vulnerable.', energy falls 3 -> 1, Bash leaves the hand and the enemy's health bar reads Dead"
+      },
+      "consumes_rng": [
+        "CombatTargets"
+      ],
+      "note": "The killing blow, and the last action in the history: the enemy is at 4 health and Bash deals 8. One enemy is alive, so no target_index is recorded - there is no choice to record."
     }
   ],
   "checkpoints": [
@@ -502,6 +596,268 @@
           "Evidence": {
             "video_t_ms": 79200,
             "method": "health bar reads 60/68"
+          }
+        }
+      }
+    },
+    {
+      "id": "turn2-after-first-defend",
+      "after_seq": 5,
+      "kind": "mid_turn",
+      "expect": {
+        "combat.energy": {
+          "Value": "2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82000,
+            "method": "energy orb reads 2/3"
+          }
+        },
+        "combat.block": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82000,
+            "method": "block 5 beside the player's health bar"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82000,
+            "method": "Ascender's Bane and one Defend remain in hand"
+          }
+        }
+      }
+    },
+    {
+      "id": "turn2-after-second-defend",
+      "after_seq": 6,
+      "kind": "mid_turn",
+      "note": "Two Defends in one turn is the reading most at risk of being one Defend seen twice, so the block total is asserted as well as the count.",
+      "expect": {
+        "combat.energy": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82250,
+            "method": "energy orb reads 1/3"
+          }
+        },
+        "combat.block": {
+          "Value": "10",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82250,
+            "method": "block 10 beside the player's health bar"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82250,
+            "method": "Ascender's Bane is the only card left in hand"
+          }
+        }
+      }
+    },
+    {
+      "id": "turn3-start",
+      "after_seq": 7,
+      "kind": "turn_start",
+      "note": "The block held for 10 of the enemy's attack and 2 got through. The hand and the enemy's health are read after the turn-3 draw has resolved, because Hellraiser plays each Strike it turns up before the player can act.",
+      "expect": {
+        "combat.turn": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 84750,
+            "method": "the banner reads 'Player Turn / Turn 3'"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "58",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 84750,
+            "method": "health bar reads 58/68"
+          }
+        },
+        "player.max_hp": {
+          "Value": "68",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 84750,
+            "method": "health bar reads 58/68"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 85000,
+            "method": "energy orb reads 3/3, nothing played yet"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.HELLRAISER",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89500,
+            "method": "one card is left in hand and its face and title are Hellraiser's"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89500,
+            "method": "a single card in hand"
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89000,
+            "method": "one enemy is present"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "10",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89000,
+            "method": "enemy health bar reads 10/42 after four Strikes Hellraiser played on the draw, each for 6"
+          }
+        }
+      }
+    },
+    {
+      "id": "after-second-hellraiser",
+      "after_seq": 8,
+      "kind": "mid_turn",
+      "expect": {
+        "combat.energy": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89750,
+            "method": "energy orb reads 1/3"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89750,
+            "method": "the hand is empty"
+          }
+        }
+      }
+    },
+    {
+      "id": "turn4-start",
+      "after_seq": 9,
+      "kind": "turn_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "4",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 92250,
+            "method": "the banner reads 'Player Turn / Turn 4'"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "51",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 91500,
+            "method": "health bar reads 51/68"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 93900,
+            "method": "energy orb reads 3/3, nothing played yet"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.BASH",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 93900,
+            "method": "the four cards in hand, left to right, by card face and title"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "4",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 93900,
+            "method": "four cards in hand"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "4",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 93750,
+            "method": "enemy health bar reads 4/42 after the Strike Hellraiser played on the draw"
+          }
+        }
+      }
+    },
+    {
+      "id": "combat-victory",
+      "after_seq": 10,
+      "kind": "combat_end",
+      "note": "The fight is over, which is what makes this history one side of a whole-combat comparison. Final health is 57 rather than 51 because the starting relic heals six the moment the last enemy dies - the video shows the jump in the same frame that shows the enemy dead.",
+      "expect": {
+        "combat.outcome": {
+          "Value": "victory",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 94500,
+            "method": "the enemy's health bar is replaced by 'Dead' and the loot screen follows"
+          }
+        },
+        "combat.in_progress": {
+          "Value": "false",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 94500,
+            "method": "the enemy's bar reads 'Dead' in place of a health value and telegraphs no intent; the loot screen replaces the fight a moment later",
+            "note": "The End Turn button is still drawn in this frame, which is why the enemy rather than the button is what this reads."
+          }
+        },
+        "combat.player_hp": {
+          "Value": "57",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 94500,
+            "method": "health bar reads 57/68"
+          }
+        },
+        "player.hp": {
+          "Value": "57",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 94500,
+            "method": "health bar reads 57/68"
+          }
+        },
+        "player.max_hp": {
+          "Value": "68",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 94500,
+            "method": "health bar reads 57/68"
           }
         }
       }

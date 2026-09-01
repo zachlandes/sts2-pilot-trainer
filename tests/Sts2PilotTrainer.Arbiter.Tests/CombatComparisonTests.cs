@@ -109,16 +109,84 @@ public class CombatComparisonTests
     [GameFact]
     public void RefusesToProjectAHistoryWhoseFightNeverFinishes()
     {
-        // The shipped VOD reconstruction covers the opening turn and leaves the fight
-        // running. Refusing it, with a message that says why, is the right answer -
-        // and it is what the manifest needs before it can be one side of a comparison.
+        // The shipped VOD reconstruction used to stop after the opening turn and leave
+        // its fight running, and this is that manifest cut back to where it stopped.
+        // Refusing it, with a message that says why, is the right answer, and it is
+        // what had to change before the recording could be one side of a comparison.
         var outDir = TempDir();
 
         var result = Arbiter.Run(
-            "combat-compare", Arbiter.Manifest, Fixture(outDir, "reference"), "--out", outDir);
+            "combat-compare", OpeningTurnOnly(outDir), Fixture(outDir, "reference"), "--out", outDir);
 
         Assert.False(result.Verified);
         Assert.Contains("still in progress", result.All, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The recording's own fight, projected. This is the milestone: the VOD's solution
+    /// is a completed side rather than a history the contract has to refuse.
+    ///
+    /// Both sides are the same recorded line, because no second line of this fight
+    /// exists - nobody has played it in a retail client through a mod host, and
+    /// authoring an alternative would be inventing a decision no player made. What is
+    /// under test is that the recording projects and compares at all, from its own
+    /// combat-start boundary.
+    /// </summary>
+    [GameFact]
+    public void ProjectsTheRecordedFightAsOneCompletedSide()
+    {
+        var outDir = TempDir();
+
+        var result = Arbiter.Run(
+            "combat-compare", Arbiter.Manifest, Arbiter.Manifest, "--out", outDir);
+        Assert.True(result.Verified, result.All);
+
+        var comparison = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "combat-comparison.json")))
+            .RootElement.GetProperty("comparison");
+        var left = comparison.GetProperty("left");
+
+        Assert.Equal("victory", left.GetProperty("summary").GetProperty("outcome").GetString());
+        Assert.Equal(4, left.GetProperty("summary").GetProperty("total_turns").GetInt32());
+        Assert.Equal(64, left.GetProperty("summary").GetProperty("starting_health").GetInt32());
+        Assert.Equal(57, left.GetProperty("summary").GetProperty("final_health").GetInt32());
+        Assert.Equal(
+            "ENCOUNTER.SLUDGE_SPINNER_WEAK",
+            left.GetProperty("boundary").GetProperty("combat.encounter").GetString());
+        Assert.All(
+            comparison.GetProperty("summary").EnumerateArray(),
+            field => Assert.True(field.GetProperty("matches").GetBoolean()));
+
+        // The caveat that keeps the output honest survives a VOD side: neither line
+        // here was fought by a person, because no mod host exists to capture one.
+        Assert.Contains("no mod host exists yet", result.Output, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The shipped manifest cut back to the end of the first turn: the history it
+    /// carried before this milestone, kept as the negative control for a fight that
+    /// does not finish. Derived from the manifest rather than stored beside it, so it
+    /// cannot drift into being a control for something else.
+    /// </summary>
+    private static string OpeningTurnOnly(string outDir)
+    {
+        var manifest = ManifestJson.Load(Arbiter.Manifest);
+        var throughFirstTurn = manifest.Actions
+            .TakeWhile(action => action.Verb != ActionVerb.EndTurn)
+            .Concat(manifest.Actions.Where(action => action.Verb == ActionVerb.EndTurn).Take(1))
+            .ToList();
+        var path = Path.Combine(outDir, "opening-turn-only.replay.json");
+        ManifestJson.Save(
+            manifest with
+            {
+                RunId = manifest.RunId + "+opening-turn-only",
+                Actions = throughFirstTurn,
+                Checkpoints = manifest.Checkpoints
+                    .Where(checkpoint => checkpoint.AfterSeq <= throughFirstTurn[^1].Seq)
+                    .ToList(),
+            },
+            path);
+        return path;
     }
 
     [GameFact]

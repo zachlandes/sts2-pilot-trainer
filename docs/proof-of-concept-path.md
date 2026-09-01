@@ -36,7 +36,7 @@ assembled into one verdict.
   content hash, acts, unlock categories and - reading a real profile - ascension
   availability, and refuses with in-game remediation rather than replaying into a
   mismatch. It never writes to a save, a profile or the install.
-- **Headless replay of the covered history through the real shipped engine**, with 21
+- **Headless replay of the covered history through the real shipped engine**, with 47
   VOD-observed values reproduced and every checkpoint compared field by field.
 - **Determinism across fresh processes**, and rejection of four deliberately corrupted
   histories, two of which pass every arithmetic check the frames allow.
@@ -95,20 +95,43 @@ turn detail for two completed fights and their differences, and `combat-snapshot
 longer calls a finished fight an active one.
 This is step 4 of the loop, with engine-produced lines standing in for a human's -
 which is what can be honest before a mod host exists.
+S2 replaced one of those lines with the recording's own; both sides are still
+engine-replayed, because a human's fight cannot be captured until S3 and S4 land.
 [demo/DEMO.md](../demo/DEMO.md) has it with its real output.
 
-### S2 - The VOD's complete first combat in the manifest
+### S2 - The VOD's complete first combat in the manifest - done
 
-The shipped manifest covers five actions: Neow, the map move, two cards and the end of
-turn one.
+The shipped manifest covered five actions: Neow, the map move, two cards and the end
+of turn one.
 A comparison against "the VOD solution" needs the VOD's whole fight, read from the
 video the same way those five were, with the same provenance and timestamps.
 
-This is authoring one manifest, not building an ingestion pipeline, and it stays that
-way.
+- Six more actions, read from the recording at 3840x2160 and carrying the timestamp
+  that lets anyone re-check them: two Defends on turn 2, the second Hellraiser on turn
+  3, the two turns those ended, and the Bash that killed the enemy on turn 4. Eleven
+  actions, four turns, one victory.
+- Six more checkpoints, and 47 observed values compared field by field, up from 20.
+  The ones that carry the reconstruction are the two turn-start hands: Hellraiser
+  plays every Strike the draw turns up, so the hand a turn opens with is a fact about
+  where the shuffle put five cards, and the video shows it.
+- `covered-fight` in the publication gate: the reproduced history has to cover a
+  fight from its combat start to the end of that fight. Read through
+  `CombatProjection.CoverageOf`, the same reader the projection refuses on, so the
+  gate and the comparison cannot disagree about whether a fight ended.
+- The negative controls nominate the turn-1 Defend. Without a nomination they damage
+  the last play, which in a fight replayed to its end is the killing blow - and
+  omitting the killing blow leaves a shorter history that is self-consistent.
 
-**Runnable when it lands:** the gate's verdict covers a complete fight, and
-`combat-compare` can put the VOD's real solution on one side.
+This was authoring one manifest, not building an ingestion pipeline, and it stayed
+that way. No code in this repository reads a video: the frames were read at source
+resolution and what they show was written into the manifest by hand, each value with
+the timestamp that lets anybody open the public recording and disagree.
+
+**Runnable now:** `./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json`
+returns `PUBLISHABLE` over a complete fight, and `combat-compare` puts the VOD's real
+solution on one side.
+The only second line of that fight is itself: nobody has played it in a retail client,
+so the comparison against the recording is the recording, and it says so.
 
 ### S3 - The in-game mod host
 
@@ -164,6 +187,11 @@ through.
 **Nothing here guarantees a retail player has passed the live gate.** No mod host
 exists yet; that is S3, and until it does every live claim is a claim about a headless
 process.
+
+**No comparison has two independent lines of the recording's fight.** The recording is
+one completed side; the other side of a comparison against it can only be the
+recording again, because the second line is the player's and capturing it is S5.
+Authoring one instead would be inventing a decision nobody made.
 
 ## Deliberately not built
 

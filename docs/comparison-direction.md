@@ -14,7 +14,8 @@ The supported reset and replay boundary is **the start of a combat**, and the un
 work is the complete fight.
 A future solution must be computed and verified by replaying the whole combat from that boundary, which is what keeps the engine's state aligned with the run that produced it.
 The generated engine fixture now plays its first combat to the end, in both of its lines, so a completed fight is something this repository produces rather than something it describes.
-The shipped VOD reconstruction still covers only the opening turn; reading the rest of that fight off the video is its own slice, and until it lands the comparison refuses that manifest rather than projecting a fight that has not finished.
+The shipped VOD reconstruction now covers its whole first combat, read off the video with the same provenance as its opening turn, so the recording is a completed side rather than a history the comparison has to refuse.
+A history that stops mid-combat is still refused, and that refusal is exercised against the shipped manifest cut back to where it used to stop.
 
 That is a product decision with teeth, so here is what it rules out. No turn-level
 state reset. No pre-turn branching into an alternative line. No turn-level solver.
@@ -118,5 +119,6 @@ No comparison UI. No scoring. No verdict about which of two lines was better.
 `combat-snapshot` describes only the covered action history.
 
 Neither side of a comparison has ever been a fight played by a person.
-Both are replayed through the real engine from the same combat-start boundary, because no mod host exists to capture a retail player's fight, and the comparison says so in its own caveats.
+Every side is replayed through the real engine from the same combat-start boundary, because no mod host exists to capture a retail player's fight, and the comparison says so in its own caveats.
+The recording's own fight is one such side now, and the only second line of it that exists is itself: authoring an alternative to compare it against would be inventing a decision no player made.
 See [the proof-of-concept path](proof-of-concept-path.md) for where that slice sits.

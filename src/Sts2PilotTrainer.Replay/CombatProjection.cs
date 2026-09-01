@@ -67,6 +67,72 @@ public sealed record CombatProjection
     private static readonly string[] BoundaryEnemySuffixes = [".model", ".max_hp"];
 
     /// <summary>
+    /// Whether a trace holds a fight these projections are defined over: one the
+    /// history entered and that finished before the history ran out.
+    ///
+    /// Public because the publication gate has to ask the same question of a verified
+    /// history that <see cref="FromTrace"/> asks before it derives anything, and a
+    /// second implementation of "did the fight end" is a second answer waiting to
+    /// disagree with this one. It computes nothing about the fight itself.
+    /// </summary>
+    public static FightCoverage CoverageOf(ReplayTrace trace)
+    {
+        var steps = trace.Steps.OrderBy(step => step.Seq).ToList();
+        if (steps.Count == 0 || !steps[0].After.ContainsKey("combat.outcome"))
+        {
+            return new FightCoverage
+            {
+                ReachedCombat = false,
+                Finished = false,
+                Outcome = "unreadable",
+                Refusal =
+                    "This trace has no 'combat.outcome' samples, so whether its fight finished cannot be read. " +
+                    "It was recorded before the canonical state could see the end of a combat; replay the " +
+                    "manifest again to produce a trace that can be projected.",
+            };
+        }
+
+        var start = steps.FindIndex(step => Outcome(step.After) == InProgress);
+        if (start < 0)
+        {
+            return new FightCoverage
+            {
+                ReachedCombat = false,
+                Finished = false,
+                Outcome = Outcome(steps[^1].After),
+                Refusal =
+                    "This history never enters combat, so there is no fight to project. The supported unit is " +
+                    "a whole fight from combat start.",
+            };
+        }
+
+        var fight = steps.Skip(start + 1).TakeWhile(step => Outcome(step.Before) == InProgress).ToList();
+        if (fight.Count == 0 || Outcome(fight[^1].After) == InProgress)
+        {
+            return new FightCoverage
+            {
+                ReachedCombat = true,
+                Finished = false,
+                Outcome = InProgress,
+                Refusal =
+                    "This history's combat is still in progress when the history ends, so it has no completed " +
+                    "fight to project. Total turns, net health change and final health are all defined at the end " +
+                    "of a fight; reporting them for one still being fought would be a confident wrong answer.",
+                CombatStartSeq = steps[start].Seq,
+            };
+        }
+
+        return new FightCoverage
+        {
+            ReachedCombat = true,
+            Finished = true,
+            Outcome = Outcome(fight[^1].After),
+            Refusal = null,
+            CombatStartSeq = steps[start].Seq,
+        };
+    }
+
+    /// <summary>
     /// Reads one completed fight out of a trace.
     /// </summary>
     /// <exception cref="ManifestException">
@@ -83,32 +149,14 @@ public sealed record CombatProjection
                 "A complete combat-start snapshot digest is required before a fight can be projected for comparison.");
         }
 
+        if (CoverageOf(trace) is { Refusal: { } refusal })
+        {
+            throw new ManifestException(refusal);
+        }
+
         var steps = trace.Steps.OrderBy(step => step.Seq).ToList();
-        if (steps.Count == 0 || !steps[0].After.ContainsKey("combat.outcome"))
-        {
-            throw new ManifestException(
-                "This trace has no 'combat.outcome' samples, so whether its fight finished cannot be read. " +
-                "It was recorded before the canonical state could see the end of a combat; replay the " +
-                "manifest again to produce a trace that can be projected.");
-        }
-
         var start = steps.FindIndex(step => Outcome(step.After) == InProgress);
-        if (start < 0)
-        {
-            throw new ManifestException(
-                "This history never enters combat, so there is no fight to project. The supported unit is " +
-                "a whole fight from combat start.");
-        }
-
         var fight = steps.Skip(start + 1).TakeWhile(step => Outcome(step.Before) == InProgress).ToList();
-        if (fight.Count == 0 || Outcome(fight[^1].After) == InProgress)
-        {
-            throw new ManifestException(
-                "This history's combat is still in progress when the history ends, so it has no completed " +
-                "fight to project. Total turns, net health change and final health are all defined at the end " +
-                "of a fight; reporting them for one still being fought would be a confident wrong answer.");
-        }
-
         var boundary = steps[start].After;
         var turns = TurnsOf(fight);
         var startingHealth = Int(boundary, "player.hp");
@@ -288,6 +336,49 @@ public sealed record CombatProjection
             : throw new ManifestException(
                 $"A trace sample carries no readable '{field}'. The projection reads only fields " +
                 "ReplayTrace.SampledFields names, so this is a trace that was not sampled as the format says.");
+}
+
+/// <summary>
+/// Whether a replay trace covers a whole fight, and how that fight ended.
+///
+/// It answers one question and carries the refusal that goes with a no, so a caller
+/// cannot report "no completed fight" without being able to say why. Nothing here
+/// describes the fight: that is <see cref="CombatProjection"/>'s job, and it will
+/// only do it once this says yes.
+/// </summary>
+public sealed record FightCoverage
+{
+    /// <summary>Whether the history entered a combat at all.</summary>
+    [JsonPropertyName("reached_combat")]
+    public required bool ReachedCombat { get; init; }
+
+    /// <summary>Whether that combat had ended by the last sampled step.</summary>
+    [JsonPropertyName("finished")]
+    public required bool Finished { get; init; }
+
+    /// <summary>The engine's own last word on the fight - <c>victory</c>,
+    /// <c>defeat</c>, <c>ended</c>, <c>in_progress</c> or <c>none</c> - or
+    /// <c>unreadable</c> for a trace recorded before the outcome was sampled.</summary>
+    [JsonPropertyName("outcome")]
+    public required string Outcome { get; init; }
+
+    /// <summary>Why this trace holds no completed fight, or null when it does.</summary>
+    [JsonPropertyName("refusal")]
+    public required string? Refusal { get; init; }
+
+    /// <summary>
+    /// The sequence number of the action after which the engine reported a combat in
+    /// progress, or null when the history reached none.
+    ///
+    /// Where the fight begins is a fact about what the engine did, so it is read here
+    /// and nowhere else: the snapshot boundary, the comparison and this reader all have
+    /// to mean the same moment.
+    /// </summary>
+    [JsonPropertyName("combat_start_seq")]
+    public int? CombatStartSeq { get; init; }
+
+    [JsonIgnore]
+    public bool IsCompletedFight => Refusal is null;
 }
 
 /// <summary>
