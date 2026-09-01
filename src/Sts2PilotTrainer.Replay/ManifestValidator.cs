@@ -19,6 +19,14 @@ public static partial class ManifestValidator
     /// </summary>
     public const string SeedAlphabet = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
+    /// <summary>
+    /// The generated engine fixture's current shape. Pinned rather than accepted as
+    /// any version, so a fixture emitted by an older generator cannot pass as one this
+    /// build's claims are made about. Version 2 plays its combat to the end; version 1
+    /// stopped after the opening turn.
+    /// </summary>
+    public const int SyntheticFixtureVersion = 2;
+
     private static readonly string[] KnownGameModes = ["standard", "custom", "daily"];
 
     [GeneratedRegex(@"^v\d+\.\d+\.\d+$")]
@@ -306,12 +314,13 @@ public static partial class ManifestValidator
 
             if (source.Synthetic is not { } synthetic ||
                 string.IsNullOrWhiteSpace(synthetic.FixtureId) ||
-                synthetic.FixtureVersion != 1 ||
+                synthetic.FixtureVersion != SyntheticFixtureVersion ||
                 synthetic.Generator != "sts2-pilot-trainer" ||
                 string.IsNullOrWhiteSpace(synthetic.GeneratedBuild))
             {
                 problems.Add(
-                    "source.synthetic must identify a version-1 sts2-pilot-trainer engine fixture and its build.");
+                    $"source.synthetic must identify a version-{SyntheticFixtureVersion} sts2-pilot-trainer " +
+                    "engine fixture and its build.");
             }
 
             if (source.ExtractionMethod != "engine-generated")

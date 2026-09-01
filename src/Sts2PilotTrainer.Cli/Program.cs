@@ -38,6 +38,7 @@ internal static class Program
                 "determinism" => Commands.Determinism(args[1..]),
                 "negative-controls" => Commands.NegativeControls(args[1..]),
                 "combat-snapshot" => Commands.CombatSnapshot(args[1..]),
+                "combat-compare" => Commands.CombatCompare(args[1..]),
                 _ => UnknownCommand(args[0]),
             };
         }
@@ -100,6 +101,11 @@ internal static class Program
               Compare the verified prefix under the real build's standard, custom and
               daily run construction, with a behavior-changing modifier control.
 
+          synthetic-fixture / generate-synthetic-fixture --out <path> [--line reference|alternate]
+              Emit the mechanically generated engine fixture. Both lines play the
+              first combat to its end; they differ only in which end of the hand they
+              play from, and neither is a claim about how to play.
+
           replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
                                      [--progress <model>] [--show-trace]
               Replay the manifest's ordered action history from run start and check
@@ -113,6 +119,15 @@ internal static class Program
           negative-controls <manifest> [--out <dir>]
               Damage the history in specific ways and show the arbiter rejects each,
               alongside what a video-only consistency check would have concluded.
+
+          combat-compare  <manifest> <manifest> [--out <dir>]
+              Replay two manifests of the same fight, project each one's completed
+              combat, and print the differences. Two projections, kept apart: the
+              combat summary carries no chronology, the turn detail carries the
+              ordered actions and what each turn dealt and cost. Nothing is scored or
+              ranked. Refuses two fights that did not start from the same boundary,
+              and refuses a history whose combat never finishes. See
+              docs/comparison-direction.md.
 
           combat-snapshot <manifest> [--cache <dir>] [--out <dir>]
               Materialise the verified combat-start snapshot, restore it by

@@ -38,6 +38,7 @@ public sealed record ReplayTrace
     public static readonly IReadOnlyList<string> SampledFields =
     [
         "combat.in_progress",
+        "combat.outcome",
         "combat.turn",
         "combat.round",
         "combat.encounter",

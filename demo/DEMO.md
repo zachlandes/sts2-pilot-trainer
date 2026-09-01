@@ -355,7 +355,7 @@ Its publication result depends on the history-bound BaseLib reachability evidenc
 
 ```output
 manifest       : synthetic-v0111-pilot-trainer
-actions        : 5
+actions        : 17
 status         : VERIFIED
 
   ok   checkpoint combat-start (after action 1)
@@ -382,9 +382,16 @@ status         : VERIFIED
         combat.hand                  observed=CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD engine=CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.TEAR_ASUNDER|CARD.BASH|CARD.DEFEND_IRONCLAD
         combat.player_hp             observed=80                     engine=80
         combat.turn                  observed=2                      engine=2
+  ok   checkpoint combat-complete (after action 16)
+        combat.enemy_count           observed=0                      engine=0
+        combat.in_progress           observed=false                  engine=false
+        combat.outcome               observed=victory                engine=victory
+        combat.turn                  observed=5                      engine=5
+        player.hp                    observed=64                     engine=64
+        run.act_floor                observed=2                      engine=2
 
-final state digest : sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
-action history hash: sha256:0ff5f04a18b4ec445448d4435864273193cb755479d32b3b9908c50367c813c0
+final state digest : sha256:67dc96c5a8995af62ba4a89af9d830d910503f6698bf3ae9849a7602a26bd82a
+action history hash: sha256:ecd5b8e2d8bddc4bd20384edd17451fab7ff1f146525b55566e9a39183a0e3b2
 ```
 
 Three fields show what the synthetic fixture pins.
@@ -437,6 +444,7 @@ trace (sampled fields that changed at each step):
         combat.energy - -> 3
         combat.hand - -> CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD
         combat.in_progress false -> true
+        combat.outcome none -> in_progress
         combat.player_hp - -> 64
         combat.player_powers - -> 
         combat.round - -> 1
@@ -495,9 +503,9 @@ an artefact of running on a different afternoon.
 ```
 
 ```output
-run 0: sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
-run 1: sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
-run 2: sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
+run 0: sha256:67dc96c5a8995af62ba4a89af9d830d910503f6698bf3ae9849a7602a26bd82a
+run 1: sha256:67dc96c5a8995af62ba4a89af9d830d910503f6698bf3ae9849a7602a26bd82a
+run 2: sha256:67dc96c5a8995af62ba4a89af9d830d910503f6698bf3ae9849a7602a26bd82a
 
 all 3 fresh processes produced byte-identical canonical state
 ```
@@ -525,17 +533,17 @@ reorder-plays
   video-only   : UNDETECTED - The same cards are played, aggregate energy and hand counts are unchanged, and the final visible damage and block totals agree. The intermediate state and hidden pile order still depend on order.
   arbiter      : REJECTED
   first divergence: checkpoint 'after-defend' (after action 2): combat.block observed '5', engine produced '0'
-  end state       : differs from the uncorrupted run
+  end state       : IDENTICAL to the uncorrupted run
 
 substitute-same-cost
-  corruption   : Replaces the final played card with a different same-cost card selected by the control.
+  corruption   : Replaces the nominated card play with a different same-cost card selected by the control.
   video-only   : UNDETECTED - Energy conservation and hand accounting both balance, because the substitute costs the same. The damage arithmetic balances too unless the enemy's health is read frame by frame, which the earlier video-only pipeline did not do.
   arbiter      : REJECTED
   first divergence: checkpoint 'after-strike' (after action 3): combat.enemy.0.hp observed '51', engine produced '57'
   end state       : differs from the uncorrupted run
 
 omit-play
-  corruption   : Drops the final card play entirely.
+  corruption   : Drops the nominated card play entirely.
   video-only   : DETECTED - Energy and hand counts no longer balance against the declared line. Included as a control on the control: an arbiter that rejected only the subtle corruptions and let this one through would be broken in an interesting way.
   arbiter      : REJECTED
   first divergence: checkpoint 'turn-two' (after action 3): combat.enemy.0.hp observed '51', engine produced '57'
@@ -545,8 +553,8 @@ wrong-opening-choice
   corruption   : Takes a different blessing at the run's opening event.
   video-only   : DETECTED - The different opening option changes generated setup before combat. Included because it corrupts the history far from the turn being checked, which tests that divergence is caught where it surfaces.
   arbiter      : REJECTED
-  first divergence: checkpoint 'combat-start' (after action 1): combat.hand observed 'CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD', engine produced 'CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD'
-  end state       : differs from the uncorrupted run
+  first divergence: action 5 (PlayCard): Action 5 expects CARD.STRIKE_IRONCLAD at hand index 0, but the engine has CARD.DEFEND_IRONCLAD. The hand is CARD.DEFEND_IRONCLAD, CARD.BASH, CARD.DEFEND_IRONCLAD, CARD.DEFEND_IRONCLAD, CARD.STRIKE_IRONCLAD. The replay has diverged from the recorded history before this point.
+  end state       : UNAVAILABLE - the rejected run produced no final state digest
 
 all 4 corrupted histories were rejected; the uncorrupted one verified
 ```
@@ -560,8 +568,8 @@ The checkpoint identifies the first divergence instead of waiting for that hidde
 This is the point of the whole apparatus. Once the start of a fight can be reproduced
 exactly, the fight can be replayed from it and described.
 
-Combat start is the supported boundary, and the whole fight is the intended future comparison unit.
-The current fixture stops after the opening turn while combat remains active, so this milestone does not claim a completed fight.
+Combat start is the supported boundary, and the whole fight is the comparison unit.
+The fixture now plays that fight to its end, so the covered history reaches a finished combat rather than stopping while one is still being fought.
 Resuming part-way through a combat would need state reset at a turn boundary, and nothing here does that or is designed around it.
 [docs/comparison-direction.md](../docs/comparison-direction.md) records the boundary and what it rules out.
 
@@ -581,12 +589,16 @@ manifest        : synthetic-v0111-pilot-trainer
 combat starts   : after action 1
 snapshot key    : v0.111.0_standard_CHARACTER.IRONCLAD_a0_P1L0TTRA1NER_1568834832_seq1_fa6c25365719e14b153879446a45e4044c4ca1b3b3be1594bd9a54126ba5b330
 snapshot source : materialised now
-snapshot digest : sha256:579b37b764a8428a02df53e2baf851065e5e188878e2e831898f88acdd3a9474
+snapshot digest : sha256:48b927730a503dad7dcd40081341096ebc81bc2839ad0a7aeaa45f35baa2f34e
 restore         : re-derived in a fresh process, digest matches
-covered history : VERIFIED through action 4 (5 actions), combat remains active, end state sha256:c1cdb7d8f8da6fbf0990136a70fe9bfa2f09d19381d69491d4ad00a63c7b48c8
+covered history : VERIFIED through action 16 (17 actions), combat finished (victory), end state sha256:67dc96c5a8995af62ba4a89af9d830d910503f6698bf3ae9849a7602a26bd82a
 
 covered combat history, turn by turn (description, not a verdict):
   turn 1  actions 2..4  player hp 80 -> 80
+  turn 2  actions 5..8  player hp 80 -> 80
+  turn 3  actions 9..11  player hp 80 -> 69
+  turn 4  actions 12..14  player hp 69 -> 58
+  turn 5  actions 15..16  player hp 58 -> 64
 
 report: build/evidence/combat-snapshot.json
 ```
@@ -595,14 +607,114 @@ Where the fight begins is located, not declared: it is read out of the replay's 
 trace as the first step after which the engine reports a combat in progress. Asking
 the manifest instead would let the two disagree.
 
-The fixture's covered history ends after the opening turn while combat remains active.
-The turn-by-turn lines describe only that history and nothing else.
+The fixture's covered history ends with the fight won, and the report says so rather than merely saying no combat is running.
+That distinction needed a change to the canonical state: the player's combat state outlives the fight, so before this the arbiter read a won combat as one still in progress.
+The turn-by-turn lines describe only the covered history and nothing else.
 There is no score, ranking, or highlight on a "better" outcome — which line is better is a question about a game, and answering it here would turn a measurement into an opinion.
 A test asserts the report contains no score, rank or verdict field, and no alternative line at all.
 
 That ordered per-turn record is what a walkthrough will read later: stepping a player
 through an already-computed solution is presentation, and it re-solves nothing and
 resets nothing.
+
+## Comparing two completed fights
+
+This is what the whole-combat comparison looks like, and it is the last step of the
+product loop that can be shown honestly without a mod host.
+
+Both sides are engine-produced. The generator emits two lines of the same first
+combat: they open from the same boundary, they differ only in which end of the hand
+they play from, and neither is a claim about how to play. Standing them in for a
+person's fight against a VOD's is the substitution this milestone makes, and the
+comparison says so in its own output rather than leaving it to be inferred.
+
+```bash
+./scripts/arbiter generate-synthetic-fixture --out build/evidence/synthetic-engine-alternate.replay.json --line alternate 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
+```
+
+```output
+generated synthetic fixture: build/evidence/synthetic-engine-alternate.replay.json (alternate line)
+```
+
+```bash
+./scripts/arbiter combat-compare build/evidence/synthetic-engine.replay.json build/evidence/synthetic-engine-alternate.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
+```
+
+```output
+left  : synthetic-v0111-pilot-trainer
+right : synthetic-v0111-pilot-trainer-alternate
+fight : ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK, same combat-start boundary on both sides
+
+combat summary (no chronology - see the turn detail for when):
+  same outcome           left=victory        right=victory
+  diff total_turns       left=5              right=6
+  same starting_health   left=80             right=80
+  diff final_health      left=64             right=80
+  diff health_lost       left=16             right=0
+  same consumables_used  left=(none)         right=(none)
+  same cards_removed     left=(none)         right=(none)
+
+turn detail:
+  turn 1
+    left  dealt   6  lost   0  consumables none  actions CARD.DEFEND_IRONCLAD CARD.STRIKE_IRONCLAD EndTurn
+    right dealt  12  lost   0  consumables none  actions CARD.STRIKE_IRONCLAD CARD.STRIKE_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
+  turn 2
+    left  dealt   6  lost   0  consumables none  actions CARD.STRIKE_IRONCLAD CARD.DEFEND_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
+    right dealt   8  lost   0  consumables none  actions CARD.DEFEND_IRONCLAD CARD.BASH EndTurn
+  turn 3
+    left  dealt  14  lost  11  consumables none  actions CARD.STRIKE_IRONCLAD CARD.BASH EndTurn
+    right dealt  18  lost   6  consumables none  actions CARD.STRIKE_IRONCLAD CARD.STRIKE_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
+  turn 4
+    left  dealt  23  lost  11  consumables none  actions CARD.TEAR_ASUNDER CARD.STRIKE_IRONCLAD EndTurn
+    right dealt   0  lost   0  consumables none  actions CARD.DEFEND_IRONCLAD CARD.DEFEND_IRONCLAD CARD.DEFEND_IRONCLAD EndTurn
+  turn 5
+    left  dealt   8  lost   0  consumables none  actions CARD.STRIKE_IRONCLAD CARD.STRIKE_IRONCLAD
+    right dealt  16  lost   0  consumables none  actions CARD.TEAR_ASUNDER CARD.STRIKE_IRONCLAD EndTurn
+  turn 6
+    left  (this line's fight was already over)
+    right dealt   3  lost   0  consumables none  actions CARD.STRIKE_IRONCLAD
+
+  note: This states differences. It does not score either line, rank them, or say which was better.
+  note: Health lost is health that actually came off. Damage a block absorbed is not separately observable from the sampled canonical state, so neither side's number includes it.
+  note: The summary's health outcome is read at the end of the fight and includes anything that resolves as the combat ends, a relic that heals among them. The turn detail's health lost is what came off during that turn. The two are different measurements and do not have to add up.
+  note: Both lines were replayed through the real engine from the same combat-start boundary. Nothing here is evidence about a fight played by a person in the retail client: no mod host exists yet, so no live capture has ever been compared.
+
+report: build/evidence/combat-comparison.json
+```
+
+The two projections are kept apart because they answer different questions. The
+summary says what happened in this fight and carries no turn numbers at all; the turn
+detail says when, with the ordered actions, what each turn dealt, what it cost, and
+the exact turn a consumable was drunk. A summary carrying both would make every later
+consumer decide which half to trust.
+
+Read them together and they do not add up, on purpose. The reference line's summary
+says 16 health lost; its turns add to 22. Ironclad's starting relic heals six the
+moment the last enemy dies, and the summary's health outcome is measured at the end of
+the fight while the turn detail measures what came off during each turn. Reconciling
+them by quietly picking one would throw away something real about the fight, so both
+are reported and the difference is stated. A test pins it.
+
+Nothing here scores or ranks. The left line wins a turn sooner and takes sixteen
+damage; the right takes none and needs an extra turn. Which is better is a question
+about a game, and answering it here would turn a measurement into an opinion.
+
+The contract computes over a fight that finished, and refuses anything else. The
+shipped VOD reconstruction covers the opening turn and leaves its fight running, so
+it is refused, with a message that says why — which is the right answer, and is what that manifest needs
+before it can be one side of a comparison.
+
+```bash
+./scripts/arbiter combat-compare manifests/navegreed-OJ-6QXhNgdg.replay.json build/evidence/synthetic-engine.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
+```
+
+```output
+This history's combat is still in progress when the history ends, so it has no completed fight to project. Total turns, health lost and the final health are all defined at the end of a fight; reporting them for one still being fought would be a confident wrong answer.
+```
+
+Two fights that did not start from the same boundary are refused the same way. A
+comparison of two different fights populates every field and means nothing, which is
+exactly why it is checked rather than assumed.
 
 ## The tests
 
@@ -625,8 +737,8 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   174, Skipped:     0, Total:   174 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    75, Skipped:     0, Total:    75 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   184, Skipped:     0, Total:   184 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    80, Skipped:     0, Total:    80 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -768,7 +880,7 @@ This proves the replay spine against a controlled fixture, not the separate hist
   both fingerprints of a run resumed from history — which replays perfectly and is
   therefore invisible to every other check here.
 - The combat-start snapshot is keyed to the history that produced it and restores to a digest-checked identical state by being re-derived rather than deserialised.
-  The fixture covers the opening turn, reports that combat remains active, and ranks nothing.
+- A whole combat is carried to a victory the canonical state can see, and two engine-produced lines of it are compared as a combat summary and a turn detail that stay apart. Nothing is scored or ranked, and a fight that has not finished is refused rather than projected.
 - The preflight refuses on every dimension it claims to check, including each unlock
   category, a locked act variant, a profile below the manifest's ascension, and a
   synthetic demo run differing in seed, mode, ascension, character or acts.
@@ -804,9 +916,14 @@ What is established is parity across that space, not the mode itself, and combin
 - **This is not the retail client.** It is the real shipped assembly driven headless,
   with the presentation layer stubbed out. Everything above is agreement at points a
   video could show, which is strong and is not the same as running the game.
-- **Only the opening turn is covered.** Every claim is about the part of the run that
-  was transcribed by hand. Extending the transcription is ordinary work; nothing here
-  suggests it would be *easy*, and the manifest says where it stops.
+- **Only the opening turn of the VOD is covered.** Every claim about the recording is
+  about the part of the run that was transcribed by hand. Extending the transcription
+  is ordinary work; nothing here suggests it would be *easy*, and the manifest says
+  where it stops. The completed fights above are the engine fixture's, not the VOD's.
+- **No fight played by a person has ever been captured.** Both sides of every
+  comparison here are replayed histories. The mod host that would read a retail
+  player's fight does not exist, and nothing in this document is evidence that it
+  would work.
 - **Nothing is automatically extracted from video.** The five actions and 61 map
   nodes were read by a person. Building the extractor is the next problem and was
   deliberately not started: an extractor is only worth building once there is an

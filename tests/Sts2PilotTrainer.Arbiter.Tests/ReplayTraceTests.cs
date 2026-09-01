@@ -9,9 +9,13 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// ask of it later, without replaying anything again.
 ///
 /// These tests derive the quantities named in <c>docs/comparison-direction.md</c>
-/// out of a real trace. Deriving them here is the proof that the trace kept them;
-/// it is not the comparison contract, which a separate work item owns. Nothing here
-/// ranks a line or scores an outcome.
+/// out of a real trace, by hand. Deriving them here is the proof that the trace kept
+/// them, which is a different claim from the contract that reads them:
+/// <c>CombatProjection</c> owns that, and it is exercised in
+/// <c>CombatProjectionTests</c> and <c>CombatComparisonTests</c>. Keeping this
+/// hand-derivation is deliberate - it would still fail if the trace stopped sampling
+/// a field, even if the contract were rewritten around the gap. Nothing here ranks a
+/// line or scores an outcome.
 /// </summary>
 public class ReplayTraceTests
 {
