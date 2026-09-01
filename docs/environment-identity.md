@@ -207,9 +207,13 @@ behind an identical map.
 Where the reading comes from is reported next to the verdict rather than assumed.
 `--progress local-profile` reads the save progress of whichever profile the process has.
 Inside the retail client that is the player's own, and inside the headless arbiter it is the empty sandbox profile, because the player's save is a read-only input the host never opens.
-`preflight-live` defaults to that local profile and reads an existing active run; it refuses when no run is in progress.
-The explicit `--demo-start-run` path constructs a synthetic run only for tests and demonstrations.
-An eventual in-game mod entry point must invoke this same live preflight before presenting a VOD replay or advice; no mod host is built in this milestone, so the repository does not yet enforce that integration.
+`preflight-live` runs in the headless host, whose user data is redirected to `build/sandbox` and whose `RunManager` is separate from the retail process.
+Its default path therefore reads the empty sandbox profile, finds no active run, and refuses by design; it cannot report on a retail player's state.
+Non-demo live evaluation accepts only `local-profile`, so an unlock model supplied by the host cannot masquerade as runtime player state.
+The explicit `--demo-start-run` path constructs a synthetic run and permits synthetic progress models only for tests and demonstrations.
+`Preflight.EvaluateLiveGame` is the API an eventual in-game mod entry point must invoke before presenting a VOD replay or advice.
+No mod host is built in this milestone, so nothing today guarantees that a retail player is gated.
+That future host cannot embed the current headless entry point unchanged: `EngineHost.Start` enables test mode and applies headless patches, which must never be activated inside the retail process.
 `--progress all-unlocked`, the arbiter's ordinary replay default, is the state the host will construct the run with, and the report says so rather than calling it a reading of anybody.
 
 The remediation is always the same and always the game's: unlock the rest by playing.

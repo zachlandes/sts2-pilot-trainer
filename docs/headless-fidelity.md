@@ -68,6 +68,10 @@ The host therefore sets `RunManager.ForceDiscoveryOrderModifications` back to tr
 for standard runs, which is exactly what retail computes for them. Daily and custom
 runs return false from the same method and get false here.
 
+This initialization belongs only to the headless arbiter.
+An eventual in-game host must call `Preflight.EvaluateLiveGame` before presenting a VOD replay or advice, but it must not embed this entry point unchanged because `EngineHost.Start` enables test mode and installs the headless patches above inside its process.
+No in-game host exists in this milestone.
+
 That was found by reading the method, not by noticing a symptom. The remaining
 readers of the flag are in the presentation namespace or skip animation waits.
 

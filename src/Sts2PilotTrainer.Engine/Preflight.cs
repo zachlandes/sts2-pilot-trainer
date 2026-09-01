@@ -48,7 +48,8 @@ public static class Preflight
         EnvironmentPreflight.RunIdentity(expected, LocalEnvironment.ReadStartedRun());
 
     /// <summary>Both gates, which an eventual mod entry point must ask of a live game.</summary>
-    public static PreflightResult EvaluateLiveGame(
-        EnvironmentIdentity expected, PlayerProgress progress = PlayerProgress.LocalProfile) =>
-        EnvironmentPreflight.Combine(Evaluate(expected, progress), EvaluateStartedRun(expected));
+    public static PreflightResult EvaluateLiveGame(EnvironmentIdentity expected) =>
+        EnvironmentPreflight.Combine(
+            Evaluate(expected, PlayerProgress.LocalProfile),
+            EvaluateStartedRun(expected));
 }

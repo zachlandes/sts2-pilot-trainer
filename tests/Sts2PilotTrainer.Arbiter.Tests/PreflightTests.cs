@@ -93,9 +93,25 @@ public class PreflightTests
         var result = Arbiter.Run("preflight-live", Arbiter.Manifest);
 
         Assert.False(result.Verified, result.All);
+        Assert.Contains(
+            "headless; user data is build/sandbox; retail profile and RunManager are not visible",
+            result.Output,
+            StringComparison.Ordinal);
         Assert.Contains("progress : LocalProfile", result.Output, StringComparison.Ordinal);
         Assert.Contains("FAIL run_present", result.Output, StringComparison.Ordinal);
         Assert.Contains("no run in progress", result.Output, StringComparison.Ordinal);
+    }
+
+    [GameTheory]
+    [InlineData("all-unlocked")]
+    [InlineData("none-unlocked")]
+    public void LivePreflightRefusesASubstitutedUnlockModel(string progress)
+    {
+        var result = Arbiter.Run("preflight-live", Arbiter.Manifest, "--progress", progress);
+
+        Assert.False(result.Verified, result.All);
+        Assert.Contains("requires --progress local-profile", result.All, StringComparison.Ordinal);
+        Assert.Contains("runtime player unlocks must be read, not replaced", result.All, StringComparison.Ordinal);
     }
 
     [GameFact]

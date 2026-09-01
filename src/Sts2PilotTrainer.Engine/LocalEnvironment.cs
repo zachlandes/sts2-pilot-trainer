@@ -56,7 +56,7 @@ public static class LocalEnvironment
     /// </param>
     /// <param name="progress">
     /// Which unlock state to read. <see cref="PlayerProgress.LocalProfile"/> reads
-    /// this machine's own save progress and is what the mod uses. The other two are
+    /// this process's profile and is what an eventual in-game host must use. The other two are
     /// states the host supplies in place of a profile it does not have, and they are
     /// reported as such rather than as a reading of anyone.
     /// </param>

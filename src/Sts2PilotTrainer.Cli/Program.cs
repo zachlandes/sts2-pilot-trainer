@@ -80,11 +80,12 @@ internal static class Program
               diagnostics and in-game remediation, rather than replaying into a
               mismatch. Nothing here writes to a save, a profile or the install.
 
-          preflight-live  <manifest> [--progress local-profile|all-unlocked|none-unlocked]
-              Read the current profile and existing active run, then compare build,
-              content, unlocks, seed, mode, ascension, character and acts against the
-              manifest. Refuses when no run is active. Synthetic startup and identity
-              overrides are available only with --demo-start-run for tests and demos.
+          preflight-live  <manifest> [--progress local-profile]
+              Demonstrate the future live gate inside this headless process. It reads
+              only the empty build/sandbox profile and this process's RunManager, not
+              retail player state, so the default path refuses by design. Synthetic
+              startup, progress models and identity overrides are available only with
+              --demo-start-run for tests and demos.
 
           verify-seed     <map-observation> --candidates <seed>[,<seed>...] [--out <dir>]
               Generate each candidate seed's Act 1 map through the real engine and

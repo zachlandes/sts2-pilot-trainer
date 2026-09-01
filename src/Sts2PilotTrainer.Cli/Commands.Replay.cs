@@ -39,7 +39,7 @@ internal static partial class Commands
     }
 
     /// <summary>
-    /// The live gate reads the player's current profile and existing active run.
+    /// The headless live-gate demonstration reads only its sandbox profile and run.
     /// Synthetic run startup exists only for the explicit demo/test path.
     /// </summary>
     internal static int PreflightLive(string[] args)
@@ -49,6 +49,13 @@ internal static partial class Commands
         var demoStartRun = Args.Has(args, "--demo-start-run");
         var progress = ParseProgress(args, PlayerProgress.LocalProfile);
         var identityOverrides = new[] { "--seed", "--game-mode", "--character", "--ascension", "--acts" };
+        if (!demoStartRun && progress != PlayerProgress.LocalProfile)
+        {
+            throw new ManifestException(
+                "Non-demo live preflight requires --progress local-profile because runtime player unlocks " +
+                "must be read, not replaced. Use --demo-start-run for synthetic progress models.");
+        }
+
         if (!demoStartRun && identityOverrides.Any(option => Args.Value(args, option) is not null))
         {
             throw new ManifestException(
@@ -57,8 +64,9 @@ internal static partial class Commands
         }
 
         Console.WriteLine($"manifest : {manifest.RunId}");
+        Console.WriteLine("host     : headless; user data is build/sandbox; retail profile and RunManager are not visible");
         Console.WriteLine($"progress : {progress}");
-        Console.WriteLine($"run      : {(demoStartRun ? "synthetic demo/test run" : "existing active run")}");
+        Console.WriteLine($"run      : {(demoStartRun ? "synthetic demo/test run" : "sandbox process active run")}");
         Console.WriteLine();
 
         PreflightResult combined;
@@ -97,7 +105,7 @@ internal static partial class Commands
         }
         else
         {
-            combined = Engine.Preflight.EvaluateLiveGame(environment, progress);
+            combined = Engine.Preflight.EvaluateLiveGame(environment);
             PrintFields(combined);
         }
         Console.WriteLine();

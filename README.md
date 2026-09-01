@@ -67,10 +67,15 @@ All bootstrap, evidence, state, and snapshot-cache output paths must resolve ins
 ```bash
 ./scripts/build.sh                      # prepare the assembly copy, build everything
 ./scripts/arbiter preflight      manifests/navegreed-OJ-6QXhNgdg.replay.json
-./scripts/arbiter preflight-live manifests/navegreed-OJ-6QXhNgdg.replay.json # reads the local profile and active run
+./scripts/arbiter preflight-live manifests/navegreed-OJ-6QXhNgdg.replay.json # reads only the headless sandbox and refuses
 ./scripts/arbiter synthetic-fixture --out build/evidence/synthetic.replay.json
 ./scripts/arbiter replay     build/evidence/synthetic.replay.json
 ```
+
+`preflight-live` is a headless demonstration, not a connection to the retail process.
+Its user data is redirected to `build/sandbox`, it cannot see the retail `RunManager`, and its default path therefore reads an empty sandbox profile, finds no active run, and refuses by design.
+`Preflight.EvaluateLiveGame` is the API an eventual in-game host must call before showing a VOD replay or advice, but no such host exists yet.
+Nothing today guarantees that a retail player has passed this gate.
 
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
 `verify-seed`, `determinism`, `negative-controls`, `combat-snapshot`. `validate` needs

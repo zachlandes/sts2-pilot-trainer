@@ -221,10 +221,16 @@ The two gates above are about *whether* a matching run could be played here. The
 one is about the run that actually exists.
 This is the gate an eventual mod entry point must run when the player has a run in progress, asking whether it is the one the manifest describes.
 
-`preflight-live` normally reads the local profile and an existing active run, refusing when either prerequisite is unavailable.
-The eventual in-game mod entry point must invoke this same gate before presenting a VOD replay or advice; no mod host is built in this milestone.
+`preflight-live` is not connected to the retail process.
+This executable redirects user data to `build/sandbox`, reads the empty profile there, and has only its own headless `RunManager`, so its default path finds no active run and refuses by design.
+It cannot observe a retail player's profile or run.
+
+`Preflight.EvaluateLiveGame` is the API an eventual in-game host must call before presenting a VOD replay or advice, but no such host exists yet, so nothing today guarantees that a retail player is gated.
+That host must not embed this headless entry point unchanged: `EngineHost.Start` enables test mode and installs headless patches inside its process.
+
 For this headless demonstration, `--demo-start-run` explicitly starts a synthetic run at a stated identity, and `--progress all-unlocked` names its synthetic progress model.
-The command then reads the run out of `RunManager` and compares it.
+Without that flag, the command refuses any progress model other than `local-profile`, because substituted unlocks are not runtime player state.
+The command then reads the synthetic run out of its own `RunManager` and compares it.
 Nothing is taken on trust: what it reports is the run the engine holds, not the run it was asked for.
 
 ```bash
@@ -243,8 +249,9 @@ Nothing is taken on trust: what it reports is the run the engine holds, not the 
 environment or run does NOT match; refusing to replay
 ```
 
-One character of the seed, and it refuses. Run it with no overrides and every line
-reads `ok`. The arbiter runs the same check on itself immediately after it constructs
+One character of the seed, and it refuses.
+Run the explicit demo path with no identity overrides and every line reads `ok`.
+The arbiter runs the same check on itself immediately after it constructs
 a run, which is not a formality: a seed the engine normalised differently, or an act
 that quietly defaulted, would otherwise replay perfectly and be a different run.
 
@@ -619,7 +626,7 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 
 ```output
 Passed!  - Failed:     0, Passed:   174, Skipped:     0, Total:   174 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    73, Skipped:     0, Total:    73 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    75, Skipped:     0, Total:    75 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -764,7 +771,8 @@ This proves the replay spine against a controlled fixture, not the separate hist
   The fixture covers the opening turn, reports that combat remains active, and ranks nothing.
 - The preflight refuses on every dimension it claims to check, including each unlock
   category, a locked act variant, a profile below the manifest's ascension, and a
-  existing active run differing in seed, mode, ascension, character or acts, and it refuses when no run is active.
+  synthetic demo run differing in seed, mode, ascension, character or acts.
+  The default headless live path also refuses when its sandbox has no active run.
 
 **Assumed, and doing real work.**
 
