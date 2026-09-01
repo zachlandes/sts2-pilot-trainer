@@ -408,9 +408,8 @@ These are pinned engine outputs for machinery tests, not observations from the s
 A verified replay's end state answers "was it exact". It cannot answer the question
 this product exists to serve next — how a played combat compares with an alternative
 line — because that question is about the shape of the fight, not its last frame.
-Total turns, health lost, which consumable was drunk on which turn, and enemy and
-player health lost each turn: every one of those is a difference between two moments, and a report
-that kept only the final moment has thrown all of them away.
+A final state can retain final health and the last combat turn reached.
+It cannot recover the starting state and chronology needed for net health change, ordered actions, per-turn health loss, or consumable use timing.
 
 So the report also carries a trace: the canonical state sampled either side of every
 action, both samples kept. It computes nothing and ranks nothing. `--show-trace`
@@ -479,12 +478,11 @@ health. Both cards at steps 2 and 3 move no hit points at all; everything lands 
 the turn ends, where the enemy drops 42 to 34 and its 9-damage attack arrives as 4
 through the 5 block Defend put up — and the player picks up Weak on the way.
 
-Aggregate and turn-level views are two projections of this, and they stay separate:
-the combat summary says which consumables were used, the total turns and the health
-outcome; the chronology says which turn each use happened on and what that turn cost.
-Neither is built here, and the trace does not pre-judge either.
-[docs/comparison-direction.md](../docs/comparison-direction.md) is where that
-direction is written down.
+Aggregate and turn-level views are two projections of this, and they stay separate.
+The combat summary says which consumables were used, the total turns, final health, and signed net health change.
+The chronology says which turn each use happened on and that turn's enemy and player health lost.
+`CombatProjection` derives both from the trace without making the trace pre-judge either.
+[docs/comparison-direction.md](../docs/comparison-direction.md) is where that direction is written down.
 
 ## Determinism
 
@@ -682,11 +680,9 @@ turn detail:
 report: build/evidence/combat-comparison.json
 ```
 
-The two projections are kept apart because they answer different questions. The
-summary says what happened in this fight and carries no turn numbers at all; the turn
-detail says when, with the ordered actions, each turn's enemy and player health lost,
-and the exact turn a consumable was drunk. A summary carrying both would make every later
-consumer decide which half to trust.
+The two projections are kept apart because they answer different questions.
+The summary says what happened in this fight and carries no turn numbers at all; the turn detail says when, with the ordered actions, each turn's enemy and player health lost, and the exact turn a consumable was used.
+A summary carrying both would make every later consumer decide which half to trust.
 
 Read them together and they do not add up, on purpose. The reference line's summary
 has a net health change of -16; its turns report 22 player health lost. Ironclad's

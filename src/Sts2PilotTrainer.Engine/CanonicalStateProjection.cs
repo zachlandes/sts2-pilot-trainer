@@ -232,8 +232,8 @@ public static class CanonicalStateProjection
     /// there, holding the final hand and pile order, with its turn phase set to None.
     /// Asking it whether a combat is in progress therefore reports a finished fight as
     /// an active one - which is exactly the reading that would let a whole-combat
-    /// comparison compute total turns, health lost and final health over a fight that
-    /// had not finished.
+    /// comparison compute total turns, net health change and final health over a fight
+    /// that had not finished.
     ///
     /// The finished fight's other combat fields are still projected, on purpose. The
     /// last frame of a fight is part of its result, and dropping it the moment the

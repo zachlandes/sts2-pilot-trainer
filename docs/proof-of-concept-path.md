@@ -61,10 +61,9 @@ past its opening turn, and `docs/comparison-direction.md` said so.
 
 **The arbiter could not see that it had happened.** `combat.in_progress` was projected
 from `PlayerCombatState is not null`, and that object outlives the fight: after the
-enemy died it still read `true`, with the player's turn phase at `None`. Every
-quantity the comparison needs - total turns, health lost, final health - is defined
-over a *completed* fight, so a result that cannot tell a finished fight from a live one
-cannot carry any of them honestly. `CombatManager.IsInProgress` is the signal that
+enemy died it still read `true`, with the player's turn phase at `None`.
+Every quantity the comparison needs - total turns, net health change, final health - is defined over a *completed* fight, so a result that cannot tell a finished fight from a live one cannot carry any of them honestly.
+`CombatManager.IsInProgress` is the signal that
 actually tracks the fight, and it read `false` with `IsOverOrEnding` true at exactly
 the right moment.
 

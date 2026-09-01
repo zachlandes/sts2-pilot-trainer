@@ -58,25 +58,22 @@ It is rare, it matters when it happens, and it is not worth designing a screen a
 
 ## What that requires of the replay result
 
-Every quantity above is a *difference between two moments*.
-Total turns is the last turn number minus the first; net health change is final health minus starting health; enemy health lost in a turn is an enemy's hit points before that turn against after it; a consumable use is a potion slot that held something and then did not except during an explicit discard action; a permanent removal is a card that was in the deck and then was not.
+The projections above depend on more than the fight's final state.
+Total turns is the last combat turn reached; net health change is final health minus starting health; enemy health lost in a turn is an enemy's hit points before that turn against after it; a consumable use is a potion slot that held something and then did not except during an explicit discard action; a permanent removal is a card that was in the deck and then was not.
 
-A result that keeps only the final state has kept none of these.
-It has the answer to "was it exact" and nothing else, and no amount of re-reading it recovers the rest - the run would have to be replayed again, which is precisely the expensive thing a stored result exists to avoid.
+A result that keeps only the final state has final health and the last turn reached, but not the starting state and chronology needed to derive the rest.
+No amount of re-reading it recovers those missing facts; the run would have to be replayed again, which is precisely the expensive thing a stored result exists to avoid.
 
 So `VerificationReport.Trace` samples the canonical state either side of every action and keeps both samples.
 It computes nothing, ranks nothing, and labels no line better than another.
-Deriving the two projections above is later code's job, working from data that is already there.
+`CombatProjection` derives the two projections above from data that is already there.
 
 `ReplayTrace.SampledFields` is the list of what gets kept, named explicitly.
 Adding a derivation to the direction above means adding its inputs to that list, on purpose, rather than discovering later that the field was never recorded.
 
 ## A recorded interface hypothesis, and what it needs kept
 
-One shape has been floated for the turn-level view and is explicitly *not* a
-commitment: a turn-indexed chart plotting enemy health lost and player health lost
-for the player and VOD solution, with potion artwork at the turn it was drunk and an
-immediately legible visual distinction between the player's line and the VOD's.
+One shape has been floated for the turn-level view and is explicitly *not* a commitment: a turn-indexed chart plotting enemy health lost and player health lost for the player and VOD solution, with potion artwork at the turn it was used and an immediately legible visual distinction between the player's line and the VOD's.
 
 It is written down here only so the data it would need survives long enough to test
 it. Whether it is the right interface is for interface design to decide, and
