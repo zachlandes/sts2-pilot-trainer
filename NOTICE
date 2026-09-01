@@ -1,0 +1,48 @@
+sts2-pilot-trainer
+Copyright (c) 2026 Zachary Landes
+Licensed under the MIT License (see LICENSE).
+
+═══════════════════════════════════════════════════════════════════════════════
+Third-party code included in this repository
+═══════════════════════════════════════════════════════════════════════════════
+
+third_party/godot-stubs/
+────────────────────────
+Adapted from `src/GodotStubs` of wuhao21/sts2-cli.
+
+    Source:   https://github.com/wuhao21/sts2-cli
+    Commit:   d11aa88 (fetched 2026-08-30)
+    License:  MIT License, Copyright (c) 2025 Hao Wu
+    Full text: third_party/godot-stubs/LICENSE
+
+These files are a managed no-op reimplementation of the subset of the Godot
+engine's C# API surface that the Slay the Spire 2 assembly references. They
+contain no MegaCrit code. They exist so the shipped game assembly can be loaded
+and executed in a headless process with no graphics, audio, or input stack.
+
+Changes from upstream are recorded in third_party/godot-stubs/CHANGES.md.
+The MIT terms permit this reuse; the upstream copyright notice is preserved in
+third_party/godot-stubs/LICENSE.
+
+═══════════════════════════════════════════════════════════════════════════════
+Third-party material this repository deliberately does NOT include
+═══════════════════════════════════════════════════════════════════════════════
+
+Slay the Spire 2 game assemblies, localization tables, and art assets
+    Copyright (c) Mega Crit Games. NOT redistributed here, in any form.
+    `scripts/bootstrap.sh` copies them from the user's own legally-owned Steam
+    installation into a gitignored working directory at build time. Nothing
+    under build/ is ever committed. This project cannot be used without owning
+    the game.
+
+NaveGreed video footage (YouTube video OJ-6QXhNgdg and others)
+    Copyright (c) the creator. NOT redistributed here, in any form — no frames,
+    no clips, no stills. This repository stores only unprotectable facts read
+    from the video (a seed string, a build version, an ordered list of card
+    plays) together with the public video ID and timestamps that let any reader
+    verify each fact against the original at its source.
+
+Designs and concepts referenced during development
+    boardengineer/RunReplays, Landmaster/Hindsight, Gennadiyev/STS2MCP —
+    consulted for their command vocabularies and architectural approach. No
+    code from any of them is included. See docs/dependency-audit.md.

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The replay format and its rules. Deliberately free of any dependency on
+       the game assembly, on a video pipeline, and on any storefront: this is the
+       part that has to outlive a build, a creator, and a distribution channel. -->
+  <PropertyGroup>
+    <RootNamespace>Sts2PilotTrainer.Replay</RootNamespace>
+    <AssemblyName>Sts2PilotTrainer.Replay</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures/synthetic-v0111-pilot-trainer.replay.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj" />
+  </ItemGroup>
+
+</Project>

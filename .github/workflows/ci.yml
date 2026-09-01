@@ -1,0 +1,38 @@
+name: CI
+
+# Covers the parts of the arbiter that build without the licensed game assemblies:
+# the manifest/evidence domain, the vendored Godot stubs, and the bootstrap tool.
+# The replay proof itself - engine reconstruction, map topology, determinism and the
+# negative controls - needs a local Slay the Spire 2 install and cannot run here.
+# See docs/dependencies.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  domain:
+    name: Domain layer (no game assemblies)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore sts2-pilot-trainer.domain.slnf
+
+      - name: Build
+        run: dotnet build sts2-pilot-trainer.domain.slnf -c Release --no-restore --nologo
+
+      - name: Test
+        run: dotnet test sts2-pilot-trainer.domain.slnf -c Release --no-build --nologo --verbosity normal
+
+      - name: Format
+        run: dotnet format sts2-pilot-trainer.domain.slnf --verify-no-changes --verbosity minimal

@@ -1,0 +1,47 @@
+# ── Never commit game binaries or content ────────────────────────────────────
+# Slay the Spire 2 assemblies are MegaCrit's copyrighted property. The bootstrap
+# script copies them into build/lib/ at setup time; they must never be tracked.
+build/
+lib/
+*.dll
+*.pck
+*.pdb
+
+# ── Never commit source video or captured frames ─────────────────────────────
+# VOD footage belongs to its creator. Only extracted facts enter this repo.
+*.mp4
+*.webm
+*.mkv
+*.m4a
+*.ts
+frames/
+capture/
+
+# ── Never commit save data or player identity ────────────────────────────────
+*.run
+*.mcr
+saves/
+
+# ── Secrets ──────────────────────────────────────────────────────────────────
+.env
+.env.*
+*.key
+*.pem
+secrets/
+
+# ── .NET ─────────────────────────────────────────────────────────────────────
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+artifacts/
+
+# ── Python (analysis helpers) ────────────────────────────────────────────────
+__pycache__/
+*.pyc
+.venv/
+
+# ── OS / editor ──────────────────────────────────────────────────────────────
+.DS_Store
+*.swp

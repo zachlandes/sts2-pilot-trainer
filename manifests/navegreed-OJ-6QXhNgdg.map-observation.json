@@ -1,0 +1,390 @@
+{
+  "schema": "sts2-pilot-trainer/map-observation/v1",
+  "video": {
+    "platform": "youtube",
+    "video_id": "OJ-6QXhNgdg",
+    "channel_id": "UCuuDxwofGcur0Lt6iP-aDww",
+    "duration_s": 2049
+  },
+  "act_index": 0,
+  "method": "Manual transcription by a human reader from five source-resolution (3840x2160) frames, fetched by HTTP range seek without downloading the video. The map screen scrolls, so no single frame shows the whole act; each frame settles a band of rows and the bands overlap, which is what makes the transcription self-checking. Grid columns were assigned from the node x-positions, which fall on seven evenly spaced values across every frame.",
+  "frames": [
+    {
+      "video_t_ms": 9000,
+      "rows_settled": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "video_t_ms": 12500,
+      "rows_settled": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "video_t_ms": 13000,
+      "rows_settled": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "video_t_ms": 13500,
+      "rows_settled": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    {
+      "video_t_ms": 14000,
+      "rows_settled": [
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    }
+  ],
+  "legend_mapping": {
+    "Unknown": "Unknown",
+    "Merchant": "Shop",
+    "Treasure": "Treasure",
+    "Rest": "RestSite",
+    "Enemy": "Monster",
+    "Elite": "Elite"
+  },
+  "rows": 16,
+  "columns": 7,
+  "nodes": [
+    {
+      "row": 1,
+      "column": 0,
+      "type": "Monster"
+    },
+    {
+      "row": 1,
+      "column": 3,
+      "type": "Monster"
+    },
+    {
+      "row": 2,
+      "column": 0,
+      "type": "Monster"
+    },
+    {
+      "row": 2,
+      "column": 2,
+      "type": "Monster"
+    },
+    {
+      "row": 2,
+      "column": 4,
+      "type": "Unknown"
+    },
+    {
+      "row": 3,
+      "column": 0,
+      "type": "Shop"
+    },
+    {
+      "row": 3,
+      "column": 1,
+      "type": "Monster"
+    },
+    {
+      "row": 3,
+      "column": 2,
+      "type": "Monster"
+    },
+    {
+      "row": 3,
+      "column": 3,
+      "type": "Monster"
+    },
+    {
+      "row": 3,
+      "column": 5,
+      "type": "Monster"
+    },
+    {
+      "row": 4,
+      "column": 0,
+      "type": "Monster"
+    },
+    {
+      "row": 4,
+      "column": 1,
+      "type": "Monster"
+    },
+    {
+      "row": 4,
+      "column": 3,
+      "type": "Monster"
+    },
+    {
+      "row": 4,
+      "column": 6,
+      "type": "Unknown"
+    },
+    {
+      "row": 5,
+      "column": 0,
+      "type": "Monster"
+    },
+    {
+      "row": 5,
+      "column": 2,
+      "type": "Unknown"
+    },
+    {
+      "row": 5,
+      "column": 3,
+      "type": "Monster"
+    },
+    {
+      "row": 5,
+      "column": 6,
+      "type": "Shop"
+    },
+    {
+      "row": 6,
+      "column": 1,
+      "type": "Unknown"
+    },
+    {
+      "row": 6,
+      "column": 2,
+      "type": "RestSite"
+    },
+    {
+      "row": 6,
+      "column": 3,
+      "type": "Unknown"
+    },
+    {
+      "row": 6,
+      "column": 6,
+      "type": "Unknown"
+    },
+    {
+      "row": 7,
+      "column": 2,
+      "type": "Monster"
+    },
+    {
+      "row": 7,
+      "column": 3,
+      "type": "Elite"
+    },
+    {
+      "row": 7,
+      "column": 6,
+      "type": "Elite"
+    },
+    {
+      "row": 8,
+      "column": 1,
+      "type": "Monster"
+    },
+    {
+      "row": 8,
+      "column": 2,
+      "type": "RestSite"
+    },
+    {
+      "row": 8,
+      "column": 3,
+      "type": "Elite"
+    },
+    {
+      "row": 8,
+      "column": 4,
+      "type": "Shop"
+    },
+    {
+      "row": 8,
+      "column": 5,
+      "type": "RestSite"
+    },
+    {
+      "row": 8,
+      "column": 6,
+      "type": "Monster"
+    },
+    {
+      "row": 9,
+      "column": 1,
+      "type": "Treasure"
+    },
+    {
+      "row": 9,
+      "column": 3,
+      "type": "Treasure"
+    },
+    {
+      "row": 9,
+      "column": 5,
+      "type": "Treasure"
+    },
+    {
+      "row": 9,
+      "column": 6,
+      "type": "Treasure"
+    },
+    {
+      "row": 10,
+      "column": 2,
+      "type": "Monster"
+    },
+    {
+      "row": 10,
+      "column": 3,
+      "type": "Unknown"
+    },
+    {
+      "row": 10,
+      "column": 4,
+      "type": "Elite"
+    },
+    {
+      "row": 10,
+      "column": 5,
+      "type": "RestSite"
+    },
+    {
+      "row": 10,
+      "column": 6,
+      "type": "Monster"
+    },
+    {
+      "row": 11,
+      "column": 1,
+      "type": "Unknown"
+    },
+    {
+      "row": 11,
+      "column": 2,
+      "type": "Monster"
+    },
+    {
+      "row": 11,
+      "column": 3,
+      "type": "Unknown"
+    },
+    {
+      "row": 11,
+      "column": 4,
+      "type": "Monster"
+    },
+    {
+      "row": 11,
+      "column": 6,
+      "type": "Elite"
+    },
+    {
+      "row": 12,
+      "column": 0,
+      "type": "Monster"
+    },
+    {
+      "row": 12,
+      "column": 2,
+      "type": "RestSite"
+    },
+    {
+      "row": 12,
+      "column": 3,
+      "type": "RestSite"
+    },
+    {
+      "row": 12,
+      "column": 5,
+      "type": "Monster"
+    },
+    {
+      "row": 12,
+      "column": 6,
+      "type": "RestSite"
+    },
+    {
+      "row": 13,
+      "column": 0,
+      "type": "Unknown"
+    },
+    {
+      "row": 13,
+      "column": 2,
+      "type": "Monster"
+    },
+    {
+      "row": 13,
+      "column": 4,
+      "type": "Monster"
+    },
+    {
+      "row": 13,
+      "column": 5,
+      "type": "Unknown"
+    },
+    {
+      "row": 14,
+      "column": 0,
+      "type": "Elite"
+    },
+    {
+      "row": 14,
+      "column": 2,
+      "type": "Elite"
+    },
+    {
+      "row": 14,
+      "column": 4,
+      "type": "Unknown"
+    },
+    {
+      "row": 14,
+      "column": 5,
+      "type": "Elite"
+    },
+    {
+      "row": 15,
+      "column": 0,
+      "type": "RestSite"
+    },
+    {
+      "row": 15,
+      "column": 3,
+      "type": "RestSite"
+    },
+    {
+      "row": 15,
+      "column": 5,
+      "type": "RestSite"
+    }
+  ],
+  "not_observed": [
+    "Row 0, the run's starting node. It sits below the visible area in every frame read; only the player's position marker pointing down at it is on screen. Left out rather than assumed.",
+    "Edges. The connecting paths are thin dashed curves that cross one another, and transcribing them by eye would introduce error the node reading does not have. The node grid alone is already a 62-way fingerprint, so the edges are not needed to identify a seed.",
+    "The boss node above the final row. It is rendered outside the map grid and has no grid coordinate."
+  ]
+}

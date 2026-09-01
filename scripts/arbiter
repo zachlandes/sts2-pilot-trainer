@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Runs the arbiter CLI.
+#
+# Invokes the managed assembly through `dotnet` rather than the generated apphost,
+# because the apphost resolves the runtime through DOTNET_ROOT and a Homebrew or
+# other side-by-side install often does not set it. Going through `dotnet` works
+# wherever `dotnet` is on PATH, which is the same thing the build already needs.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+dll="$root/build/bin/Sts2PilotTrainer.Cli/Release/net9.0/sts2-arbiter.dll"
+
+if [ ! -f "$dll" ]; then
+  echo "The arbiter is not built. Run ./scripts/build.sh first." >&2
+  exit 2
+fi
+
+exec dotnet "$dll" "$@"

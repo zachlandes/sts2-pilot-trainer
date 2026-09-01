@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       The ONE owner of game-version-specific code.
+
+       Everything that knows how Slay the Spire 2 v0.111.0 is put together -
+       type names, method signatures, initialisation order, runtime patches -
+       lives in this project and nowhere else. When the game ships a new build,
+       this is the only project that should need to change.
+
+       It links against the private, prepared copy of the game assembly under
+       build/lib (see scripts/bootstrap.sh). Nothing here is redistributable
+       without owning the game, and nothing from the game is committed.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <PropertyGroup>
+    <RootNamespace>Sts2PilotTrainer.Engine</RootNamespace>
+    <AssemblyName>Sts2PilotTrainer.Engine</AssemblyName>
+    <PreparedLibDir>$(MSBuildThisFileDirectory)../../build/lib</PreparedLibDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../third_party/godot-stubs/GodotStubs.csproj" />
+    <ProjectReference Include="../Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj" />
+    <ProjectReference Include="../Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj" />
+  </ItemGroup>
+
+  <!-- Reference the prepared game assemblies. Private=false: they are the
+       user's own installed files, copied at bootstrap, never redistributed. -->
+  <ItemGroup>
+    <Reference Include="sts2">
+      <HintPath>$(PreparedLibDir)/sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SmartFormat">
+      <HintPath>$(PreparedLibDir)/SmartFormat.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="SmartFormat.ZString">
+      <HintPath>$(PreparedLibDir)/SmartFormat.ZString.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sentry">
+      <HintPath>$(PreparedLibDir)/Sentry.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Steamworks.NET">
+      <HintPath>$(PreparedLibDir)/Steamworks.NET.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MonoMod.Backports">
+      <HintPath>$(PreparedLibDir)/MonoMod.Backports.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MonoMod.ILHelpers">
+      <HintPath>$(PreparedLibDir)/MonoMod.ILHelpers.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(PreparedLibDir)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="RequirePreparedAssembly" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(PreparedLibDir)/sts2.dll')"
+           Text="The prepared game assembly is missing. Run ./scripts/bootstrap.sh first (it copies your own Steam install into build/lib and never modifies it)." />
+  </Target>
+
+</Project>

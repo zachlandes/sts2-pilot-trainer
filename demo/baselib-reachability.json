@@ -1,0 +1,120 @@
+{
+  "schema": "sts2-pilot-trainer/baselib-reachability-report/v1",
+  "instrument_passed": true,
+  "affected_branch_reached_in_history": false,
+  "path_specific_parity_established": true,
+  "bindings_match": true,
+  "negative_control_detected": true,
+  "history": {
+    "Schema": "sts2-pilot-trainer/baselib-reachability/v1",
+    "NegativeControl": false,
+    "RunId": "navegreed-OJ-6QXhNgdg",
+    "VideoId": "OJ-6QXhNgdg",
+    "BuildVersion": "v0.111.0",
+    "BuildCommit": "41cef1ea",
+    "BaseLibVersion": "3.4.5.0",
+    "BaseLibSha256": "sha256:ad2f89e43e8b31debfab65d783353d9429eba59a2cfe904ff933a894ce79d32e",
+    "TargetIlSha256": "sha256:5aabd119585880b94d7d39e4102406cdd396e83ea668499ec52a11188d81e4c9",
+    "Seed": "SFXT47K77RFK",
+    "ActionHistoryHash": "sha256:e09210ed5816126ae557e8330ef7244271a0d01a138ec3a3edea42255790dbaf",
+    "FinalStateSha256": "sha256:ad7d3d164d73b5cefdf47622ee51089a66b44bf610b122142f972401d5815cff",
+    "FinalRng": {
+      "run.rng.CombatCardGeneration": "0",
+      "run.rng.CombatCardSelection": "0",
+      "run.rng.CombatEnergyCosts": "0",
+      "run.rng.CombatOrbGeneration": "0",
+      "run.rng.CombatPotionGeneration": "0",
+      "run.rng.CombatTargets": "2",
+      "run.rng.MonsterAi": "1",
+      "run.rng.Niche": "1",
+      "run.rng.Shuffle": "10",
+      "run.rng.TreasureRoomRelics": "0",
+      "run.rng.UnknownMapPoint": "0",
+      "run.rng.UpFront": "411"
+    },
+    "Calls": [
+      {
+        "ActionSeq": 2,
+        "PowerId": "POWER.HELLRAISER_POWER",
+        "PowerType": "Buff",
+        "TargetSide": "Player",
+        "ApplierSide": "Player",
+        "OriginalTaskIncomplete": false,
+        "CustomModelParticipant": false,
+        "AffectedBranchReached": false
+      },
+      {
+        "ActionSeq": 4,
+        "PowerId": "POWER.WEAK_POWER",
+        "PowerType": "Debuff",
+        "TargetSide": "Player",
+        "ApplierSide": "Enemy",
+        "OriginalTaskIncomplete": false,
+        "CustomModelParticipant": false,
+        "AffectedBranchReached": false
+      }
+    ],
+    "AffectedBranchReached": false
+  },
+  "negative_control": {
+    "Schema": "sts2-pilot-trainer/baselib-reachability/v1",
+    "NegativeControl": true,
+    "RunId": "navegreed-OJ-6QXhNgdg",
+    "VideoId": "OJ-6QXhNgdg",
+    "BuildVersion": "v0.111.0",
+    "BuildCommit": "41cef1ea",
+    "BaseLibVersion": "3.4.5.0",
+    "BaseLibSha256": "sha256:ad2f89e43e8b31debfab65d783353d9429eba59a2cfe904ff933a894ce79d32e",
+    "TargetIlSha256": "sha256:5aabd119585880b94d7d39e4102406cdd396e83ea668499ec52a11188d81e4c9",
+    "Seed": "SFXT47K77RFK",
+    "ActionHistoryHash": "sha256:e09210ed5816126ae557e8330ef7244271a0d01a138ec3a3edea42255790dbaf",
+    "FinalStateSha256": "sha256:d9924ce5090bbbf546744ab267512145aa5fa66bc56ee0bf5fc9311440ecf3a3",
+    "FinalRng": {
+      "run.rng.CombatCardGeneration": "0",
+      "run.rng.CombatCardSelection": "0",
+      "run.rng.CombatEnergyCosts": "0",
+      "run.rng.CombatOrbGeneration": "0",
+      "run.rng.CombatPotionGeneration": "0",
+      "run.rng.CombatTargets": "2",
+      "run.rng.MonsterAi": "1",
+      "run.rng.Niche": "1",
+      "run.rng.Shuffle": "10",
+      "run.rng.TreasureRoomRelics": "0",
+      "run.rng.UnknownMapPoint": "0",
+      "run.rng.UpFront": "411"
+    },
+    "Calls": [
+      {
+        "ActionSeq": -2,
+        "PowerId": "POWER.CUSTOM_DEBUFF_POWER",
+        "PowerType": "Debuff",
+        "TargetSide": "Player",
+        "ApplierSide": "Player",
+        "OriginalTaskIncomplete": true,
+        "CustomModelParticipant": true,
+        "AffectedBranchReached": true
+      },
+      {
+        "ActionSeq": 2,
+        "PowerId": "POWER.HELLRAISER_POWER",
+        "PowerType": "Buff",
+        "TargetSide": "Player",
+        "ApplierSide": "Player",
+        "OriginalTaskIncomplete": false,
+        "CustomModelParticipant": false,
+        "AffectedBranchReached": false
+      },
+      {
+        "ActionSeq": 4,
+        "PowerId": "POWER.WEAK_POWER",
+        "PowerType": "Debuff",
+        "TargetSide": "Player",
+        "ApplierSide": "Enemy",
+        "OriginalTaskIncomplete": false,
+        "CustomModelParticipant": false,
+        "AffectedBranchReached": false
+      }
+    ],
+    "AffectedBranchReached": true
+  }
+}
