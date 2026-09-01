@@ -168,6 +168,20 @@ public class RewardAndScreenVerbTests
         Assert.Contains("the manifest supplies 1", result.All, StringComparison.Ordinal);
     }
 
+    [GameTheory]
+    [InlineData(15, 0)]
+    [InlineData(16, 1)]
+    public void APartialReplayCannotConsumeSelectionsOutsideItsHistory(
+        int stopAfter, int suppliedSelections)
+    {
+        var result = Replay(Arbiter.Manifest, stopAfter);
+
+        Assert.False(result.Verified, result.All);
+        Assert.Contains("asked for 2 card(s)", result.All, StringComparison.Ordinal);
+        Assert.Contains(
+            $"the manifest supplies {suppliedSelections}", result.All, StringComparison.Ordinal);
+    }
+
     [GameFact]
     public void FreshProcessesReachTheSameTwoEnemyBoundary()
     {

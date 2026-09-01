@@ -119,9 +119,13 @@ public static class Arbiter
             var before = Sample(CanonicalStateProjection.Project(session.RunState));
             try
             {
-                // The rest of the history is passed with each action because a card
-                // screen is answered from inside the call that opens it; see RunDriver.
-                driver.Apply(action, ordered.GetRange(index + 1, ordered.Count - index - 1));
+                // The rest of the replayed history is passed with each action because
+                // a card screen is answered inside the call that opens it; see RunDriver.
+                var upcoming = ordered
+                    .Skip(index + 1)
+                    .TakeWhile(next => stopAfterSeq is not { } limit || next.Seq <= limit)
+                    .ToList();
+                driver.Apply(action, upcoming);
             }
             catch (EngineException ex)
             {

@@ -52,7 +52,7 @@ Do not add a field without deciding which of those it is.
 **Real-engine reproduction is the publication standard.** `gate` is where it is
 written down and computed. No condition may be satisfied by a cheaper proxy - not
 reader confidence, not arithmetic over the footage, not a screenshot of a mod list.
-Those are filters worth having and they are not evidence: two of the four history
+Those are filters worth having and they are not evidence: four of the ten history
 corruptions pass every arithmetic check the frames allow.
 
 **Refuse rather than approximate.** An unknown action verb, a card that is not where
