@@ -90,7 +90,7 @@ public static class Arbiter
                 FinalState: null);
         }
 
-        var driver = new RunDriver(session);
+        using var driver = new RunDriver(session);
         driver.EnterFirstRoom();
 
         var checkpointsBySeq = manifest.Checkpoints.ToLookup(c => c.AfterSeq);
@@ -110,14 +110,18 @@ public static class Arbiter
             After = Sample(state),
         });
 
-        foreach (var action in manifest.Actions.OrderBy(a => a.Seq))
+        var ordered = manifest.Actions.OrderBy(a => a.Seq).ToList();
+        for (var index = 0; index < ordered.Count; index++)
         {
+            var action = ordered[index];
             if (stopAfterSeq is { } actionLimit && action.Seq > actionLimit) break;
 
             var before = Sample(CanonicalStateProjection.Project(session.RunState));
             try
             {
-                driver.Apply(action);
+                // The rest of the history is passed with each action because a card
+                // screen is answered from inside the call that opens it; see RunDriver.
+                driver.Apply(action, ordered.GetRange(index + 1, ordered.Count - index - 1));
             }
             catch (EngineException ex)
             {

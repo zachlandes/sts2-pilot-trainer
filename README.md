@@ -21,7 +21,7 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   candidate's Act 1 map through the game and comparing topology against the map the
   video shows resolves it: `SFXT47K77RFK` reproduces all 61 transcribed nodes, the
   next best candidate reproduces 19.
-- **The headless replay matches 47 VOD values and the source-tooling residual is history-bound.** The enemy state, ordered hand, energy, block, and the outcome of every turn of the first combat agree. The three visible-build utilities are non-gameplay tooling. BaseLib can change `SkipNextDurationTick` for a player-applied custom debuff, so the gate instruments every `PowerCmd.Apply` in this exact history and requires a negative control before accepting that the affected branch is unreachable.
+- **The headless replay matches 141 VOD values and the source-tooling residual is history-bound.** The enemy state, ordered hand, energy, block, gold, the potion belt, the deck size, and the outcome of every turn of two whole fights agree - through the loot each of them offered, an event that spent 99 gold enchanting two cards, and into the opening turns of a third fight. The three visible-build utilities are non-gameplay tooling. BaseLib can change `SkipNextDurationTick` for a player-applied custom debuff, so the gate instruments every `PowerCmd.Apply` in this exact history and requires a negative control before accepting that the affected branch is unreachable.
 - **Replay machinery is exercised by an independent synthetic fixture.**
   A mechanically generated seed and action sequence, distinct from the VOD trace, pin engine-produced checkpoints.
   Fresh-process determinism, corrupted-history rejection, and combat-start snapshot re-derivation are claims about that fixture only.
@@ -29,6 +29,7 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   The fixture plays its first fight to a victory the canonical state can see, in two mechanically different lines from the same combat-start boundary.
   `combat-compare` derives the combat summary and the turn detail from each and states the differences, scoring nothing.
   The shipped VOD reconstruction now covers its whole first combat, read off the video action by action, so the recording is one of those completed sides.
+  It runs on past that fight to the start of the floor-5 fight's third turn, which is the boundary a candidate search over that turn would have to begin from; the projection still reads the first fight the history enters and requires it to have finished.
   A history that stops mid-combat is still refused, which is what the recording used to be.
   No fight played by a person has ever been captured or compared: no mod host exists, so every side is engine-produced.
 
@@ -57,7 +58,7 @@ The selected VOD currently returns `PUBLISHABLE` on path-specific parity across 
 The standard is successful reproduction through the real engine, and no condition
 accepts a cheaper stand-in — not reader confidence, not arithmetic over the footage,
 not a screenshot of a mod list. Those are useful filters and they are not evidence:
-two of the four history corruptions pass every arithmetic check available from the
+four of the ten history corruptions pass every arithmetic check available from the
 frames, and a run resumed from run history passes every check that is not about the
 recording itself.
 

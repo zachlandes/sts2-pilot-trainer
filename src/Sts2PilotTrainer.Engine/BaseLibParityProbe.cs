@@ -73,7 +73,7 @@ public static class BaseLibParityProbe
             fixture.Environment.Ascension.Value,
             fixture.Environment.GameMode.Value,
             fixture.Environment.Acts.Value);
-        var driver = new RunDriver(session);
+        using var driver = new RunDriver(session);
         driver.EnterFirstRoom();
         foreach (var action in fixture.Actions.Take(2)) driver.Apply(action);
 

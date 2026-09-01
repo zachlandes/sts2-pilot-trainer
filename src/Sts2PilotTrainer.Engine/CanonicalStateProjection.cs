@@ -150,6 +150,14 @@ public static class CanonicalStateProjection
         // Deck order is part of the state, not a presentation detail: the shuffle
         // stream turns it into draw order.
         builder.AddSequence("player.deck", player.Deck.Cards.Select(Describe));
+
+        // The same deck counted rather than listed. Redundant against the list and
+        // here anyway, because it is the one deck fact a recording actually shows:
+        // the badge in the top bar carries it on every frame, while the ordered deck
+        // is not readable from the deck screen, which sorts. A checkpoint that could
+        // only compare the ordered list would have nothing to say about the deck at
+        // any moment the video did not open a screen.
+        builder.Add("player.deck_count", player.Deck.Cards.Count);
         builder.AddSequence("player.relics", player.Relics.Select(r => r.Id.ToString()));
         builder.AddSequence("player.potions", player.PotionSlots.Select(slot => slot?.Id.ToString() ?? "empty"));
 

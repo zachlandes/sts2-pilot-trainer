@@ -43,6 +43,29 @@ internal static partial class Commands
 
         foreach (var corruption in Corruption.All)
         {
+            // A control aimed at a decision this history never made has nothing to
+            // damage. Reported as what it is rather than counted as a pass, so a
+            // history cannot dodge a control by leaving the decision out.
+            if (!corruption.AppliesTo(manifest))
+            {
+                Console.WriteLine($"{corruption.Name}");
+                Console.WriteLine($"  corruption   : {corruption.What}");
+                Console.WriteLine(
+                    $"  arbiter      : NOT APPLICABLE - this control needs {corruption.Requires}; " +
+                    "this history has none");
+                Console.WriteLine();
+                results.Add(new
+                {
+                    name = corruption.Name,
+                    corruption = corruption.What,
+                    video_only_verdict = corruption.VideoOnly.ToString(),
+                    video_only_reasoning = corruption.WhyVideoOnly,
+                    applicable = false,
+                    requires = corruption.Requires,
+                });
+                continue;
+            }
+
             var corrupted = corruption.Apply(manifest);
             var path = Path.Combine(scratchDir, $"{corruption.Name}.manifest.json");
             ManifestJson.Save(corrupted, path);
@@ -102,6 +125,8 @@ internal static partial class Commands
                 corruption = corruption.What,
                 video_only_verdict = corruption.VideoOnly.ToString(),
                 video_only_reasoning = corruption.WhyVideoOnly,
+                applicable = true,
+                requires = corruption.Requires,
                 arbiter_rejected = arbiterRejected,
                 ingestion_rejected = ingestionRejected,
                 replay_status = replayReport?.Status.ToString() ??
@@ -126,11 +151,15 @@ internal static partial class Commands
                 manifest = Path.GetFileName(manifestPath),
                 baseline_verified = baselinePassed,
                 all_rejected = allRejected,
+                applicable_controls = Corruption.All.Count(corruption => corruption.AppliesTo(manifest)),
                 controls = results,
             }, Json.Indented) + "\n");
 
+        var applied = Corruption.All.Count(corruption => corruption.AppliesTo(manifest));
+        var skipped = Corruption.All.Count - applied;
         Console.WriteLine(allRejected
-            ? $"all {Corruption.All.Count} corrupted histories were rejected; the uncorrupted one verified"
+            ? $"all {applied} corrupted histories were rejected; the uncorrupted one verified" +
+              (skipped > 0 ? $" ({skipped} control(s) had nothing in this history to damage)" : "")
             : "AT LEAST ONE CORRUPTED HISTORY WAS ACCEPTED");
 
         return allRejected ? 0 : 1;

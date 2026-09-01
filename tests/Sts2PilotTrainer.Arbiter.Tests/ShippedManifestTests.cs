@@ -68,13 +68,64 @@ public class ShippedManifestTests
     public void CoversTheFirstCombatThroughItsEnd()
     {
         var manifest = Manifest;
-        var last = manifest.Actions[^1];
-        var final = Assert.Single(manifest.Checkpoints, c => c.AfterSeq == last.Seq);
+        var ends = manifest.Checkpoints.Where(c => c.Kind == "combat_end").ToList();
 
-        Assert.Equal("combat_end", final.Kind);
-        Assert.Equal("victory", final.Expect["combat.outcome"].Value);
-        Assert.Equal("false", final.Expect["combat.in_progress"].Value);
-        Assert.All(final.Expect.Values, fact => Assert.Equal(FactSource.Observed, fact.Source));
+        Assert.NotEmpty(ends);
+        Assert.All(ends, final =>
+        {
+            Assert.Equal("victory", final.Expect["combat.outcome"].Value);
+            Assert.Equal("false", final.Expect["combat.in_progress"].Value);
+            Assert.All(final.Expect.Values, fact => Assert.Equal(FactSource.Observed, fact.Source));
+        });
+
+        // The first fight the history enters is the one the comparison contract reads,
+        // and it has to have finished. The history may run past it - this one goes on
+        // to a second fight and into the opening turns of a third - but a first fight
+        // that never ended would leave the projection with nothing it can compute.
+        var firstCombatStart = manifest.Checkpoints
+            .Where(c => c.Kind == "combat_start")
+            .Min(c => c.AfterSeq);
+        Assert.Contains(ends, final => final.AfterSeq > firstCombatStart);
+    }
+
+    /// <summary>
+    /// Every negative control has something in this history to damage.
+    ///
+    /// A control that finds nothing to corrupt is reported as inapplicable rather than
+    /// as a pass, which is honest and would also let the publication manifest quietly
+    /// stop exercising one. This is what keeps that from happening silently.
+    /// </summary>
+    [Fact]
+    public void GivesEveryNegativeControlSomethingToDamage()
+    {
+        var manifest = Manifest;
+        var inapplicable = Corruption.All
+            .Where(control => !control.AppliesTo(manifest))
+            .Select(control => $"{control.Name} (needs {control.Requires})")
+            .ToList();
+
+        Assert.True(inapplicable.Count == 0, string.Join("; ", inapplicable));
+    }
+
+    /// <summary>
+    /// The history reaches the fight the 209-215 second window is inside, and stops at
+    /// that window's own opening rather than replaying into it.
+    /// </summary>
+    [Fact]
+    public void ReachesTheTwoEnemyWindowsCombatAndStopsAtItsBoundary()
+    {
+        var manifest = Manifest;
+        var boundary = Assert.Single(manifest.Checkpoints, c => c.Id == "floor5-window-boundary");
+
+        Assert.Equal(manifest.Actions[^1].Seq, boundary.AfterSeq);
+        Assert.Equal("5", boundary.Expect["run.total_floor"].Value);
+        Assert.Equal("3", boundary.Expect["combat.turn"].Value);
+        Assert.Contains("CARD.BASH@ENCHANTMENT.STEADY", boundary.Expect["combat.hand"].Value);
+        Assert.All(boundary.Expect.Values, fact =>
+        {
+            Assert.Equal(FactSource.Observed, fact.Source);
+            Assert.InRange(fact.Evidence!.VideoTimeMs!.Value, 209_000, 215_000);
+        });
     }
 
     /// <summary>
