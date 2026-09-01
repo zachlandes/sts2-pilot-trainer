@@ -45,8 +45,8 @@ public class CombatProjectionTests
     [Fact]
     public void RefusesAFightThatIsStillBeingFought()
     {
-        // Total turns, health lost and the final health are all defined at the end of a
-        // fight. Reporting them for one still in progress is the confident wrong answer
+        // Total turns, net health change and final health are all defined at the end of
+        // a fight. Reporting them for one still in progress is the confident wrong answer
         // the whole project exists to refuse.
         var trace = Trace(
             Step(-1, "run_start", Outside(), Outside()),
@@ -66,8 +66,12 @@ public class CombatProjectionTests
         Assert.Equal(2, projection.Summary.TotalTurns);
         Assert.Equal(80, projection.Summary.StartingHealth);
         Assert.Equal(71, projection.Summary.FinalHealth);
-        Assert.Equal(9, projection.Summary.HealthLost);
+        Assert.Equal(-9, projection.Summary.NetHealthChange);
         Assert.Equal(["POTION.FIRE"], projection.Summary.ConsumablesUsed);
+
+        var serialized = System.Text.Json.JsonSerializer.Serialize(projection.Summary);
+        Assert.Contains("\"net_health_change\"", serialized, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"health_lost\"", serialized, StringComparison.Ordinal);
 
         // Which consumable, not when. The turn it was drunk on is the other
         // projection's answer, and a summary carrying both would make every consumer
@@ -76,6 +80,48 @@ public class CombatProjectionTests
             projection.Summary.GetType().GetProperties(),
             property => property.Name.Contains("Turn", StringComparison.Ordinal) &&
                         property.Name != "TotalTurns");
+    }
+
+    [Fact]
+    public void ReportsAHealthGainAsPositiveNetHealthChange()
+    {
+        var start = InCombat(1, 5, 6);
+        var afterHit = InCombat(1, 2, 6);
+        var victory = Outside();
+        victory["combat.outcome"] = "victory";
+        victory["player.hp"] = "8";
+
+        var projection = Project("healed", Trace(
+            Step(-1, "run_start", Outside(), start),
+            Step(0, "EndTurn", start, afterHit),
+            Step(1, "PlayCard", afterHit, victory)));
+
+        Assert.Equal(3, projection.Summary.NetHealthChange);
+        Assert.Equal(3, projection.Turns.Sum(turn => turn.HealthLost));
+    }
+
+    [Fact]
+    public void ExcludesDiscardedPotionsButKeepsAutomaticConsumption()
+    {
+        var start = InCombat(1, 80, 6);
+        start["player.potions"] = "POTION.FIRE|POTION.FAIRY|empty";
+        var afterDiscard = InCombat(1, 80, 6);
+        afterDiscard["player.potions"] = "POTION.FAIRY|empty|empty";
+        var afterAutomatic = InCombat(1, 80, 6);
+        afterAutomatic["player.potions"] = "empty|empty|empty";
+        var victory = Outside();
+        victory["combat.outcome"] = "victory";
+        victory["player.hp"] = "80";
+        victory["player.potions"] = "empty|empty|empty";
+
+        var projection = Project("potions", Trace(
+            Step(-1, "run_start", Outside(), start),
+            Step(0, "DiscardPotion", start, afterDiscard),
+            Step(1, "EndTurn", afterDiscard, afterAutomatic),
+            Step(2, "PlayCard", afterAutomatic, victory)));
+
+        Assert.Equal(["POTION.FAIRY"], projection.Summary.ConsumablesUsed);
+        Assert.Equal(["POTION.FAIRY"], projection.Turns.Single().ConsumablesUsed);
     }
 
     [Fact]

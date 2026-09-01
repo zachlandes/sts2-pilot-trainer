@@ -62,7 +62,7 @@ public class CombatComparisonTests
         var summary = comparison.GetProperty("summary").EnumerateArray().ToList();
         Assert.False(summary.Single(f => f.GetProperty("field").GetString() == "total_turns")
             .GetProperty("matches").GetBoolean());
-        Assert.False(summary.Single(f => f.GetProperty("field").GetString() == "health_lost")
+        Assert.False(summary.Single(f => f.GetProperty("field").GetString() == "net_health_change")
             .GetProperty("matches").GetBoolean());
         Assert.True(summary.Single(f => f.GetProperty("field").GetString() == "starting_health")
             .GetProperty("matches").GetBoolean());
@@ -88,10 +88,8 @@ public class CombatComparisonTests
     public void TheSummarysHealthOutcomeAndTheTurnDetailsLossesAreDifferentMeasurements()
     {
         // Ironclad's starting relic heals six the moment the last enemy dies, so the
-        // fight's health outcome is smaller than the health that came off during its
-        // turns. The two projections measure different things and are not required to
-        // agree; this pins that as a fact about the engine rather than a note in a
-        // comment nobody re-checks.
+        // net health change and the health that came off during turns are different.
+        // This pins that as a fact about the engine rather than a note nobody re-checks.
         var outDir = TempDir();
         var result = Arbiter.Run(
             "combat-compare", Fixture(outDir, "reference"), Fixture(outDir, "alternate"), "--out", outDir);
@@ -100,12 +98,12 @@ public class CombatComparisonTests
         var left = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "combat-comparison.json")))
             .RootElement.GetProperty("comparison").GetProperty("left");
 
-        var healthLost = left.GetProperty("summary").GetProperty("health_lost").GetInt32();
+        var netHealthChange = left.GetProperty("summary").GetProperty("net_health_change").GetInt32();
         var lostInTurns = left.GetProperty("turns").EnumerateArray()
             .Sum(turn => turn.GetProperty("health_lost").GetInt32());
 
-        Assert.True(healthLost > 0, "the reference line takes damage");
-        Assert.Equal(healthLost + 6, lostInTurns);
+        Assert.True(netHealthChange < 0, "the reference line finishes below its starting health");
+        Assert.Equal(-netHealthChange + 6, lostInTurns);
     }
 
     [GameFact]

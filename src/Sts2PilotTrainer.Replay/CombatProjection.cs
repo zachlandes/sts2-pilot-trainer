@@ -18,7 +18,7 @@ namespace Sts2PilotTrainer.Replay;
 /// the contract and its tests outlive a build.
 ///
 /// It computes over a <em>finished</em> fight and refuses anything else. Total turns,
-/// health lost and the final health are all defined at the end of a combat, and a
+/// net health change and final health are all defined at the end of a combat, and a
 /// projection that quietly reported them for a fight still in progress would be the
 /// confident wrong answer this project exists to prevent.
 /// </summary>
@@ -105,7 +105,7 @@ public sealed record CombatProjection
         {
             throw new ManifestException(
                 "This history's combat is still in progress when the history ends, so it has no completed " +
-                "fight to project. Total turns, health lost and the final health are all defined at the end " +
+                "fight to project. Total turns, net health change and final health are all defined at the end " +
                 "of a fight; reporting them for one still being fought would be a confident wrong answer.");
         }
 
@@ -128,7 +128,7 @@ public sealed record CombatProjection
                 TotalTurns = turns.Count == 0 ? 0 : turns[^1].Turn,
                 StartingHealth = startingHealth,
                 FinalHealth = finalHealth,
-                HealthLost = startingHealth - finalHealth,
+                NetHealthChange = finalHealth - startingHealth,
                 // Deliberately no turn numbers here. The summary answers "what
                 // happened in this fight"; the chronology is the other projection's
                 // question, and a summary carrying both would make every consumer
@@ -188,7 +188,9 @@ public sealed record CombatProjection
                 index = turns.Count - 1;
             }
 
-            var potions = Missing(Potions(step.Before), Potions(step.After));
+            var potions = step.Verb == nameof(ActionVerb.DiscardPotion)
+                ? Enumerable.Empty<string>()
+                : Missing(Potions(step.Before), Potions(step.After));
             turns[index] = turns[index] with
             {
                 Actions = [.. turns[index].Actions, new TurnAction(step.Seq, step.Verb, step.Args)],
@@ -292,13 +294,10 @@ public sealed record CombatProjection
 /// What happened in this fight. No chronology: the exact turn something happened is
 /// the other projection's answer.
 ///
-/// The health outcome is read at the end of the fight, so it includes whatever
-/// resolves as the combat ends. Ironclad's starting relic heals six the moment the
-/// last enemy dies, which is why this summary's <see cref="HealthLost"/> can be
-/// smaller than the turn detail's health lost added up. They are two different
-/// measurements - what the fight cost in the end, and what came off during each turn -
-/// and they are not required to agree. Reconciling them by quietly picking one would
-/// throw away the difference, which is a real thing about the fight.
+/// The signed health outcome is read at the end of the fight, so it includes whatever
+/// resolves as the combat ends. <see cref="NetHealthChange"/> is final health minus
+/// starting health: positive means a net gain and negative means a net loss. It is not
+/// gross damage taken, which the turn detail keeps separately as health lost.
 /// </summary>
 public sealed record CombatSummary
 {
@@ -314,8 +313,8 @@ public sealed record CombatSummary
     [JsonPropertyName("final_health")]
     public required int FinalHealth { get; init; }
 
-    [JsonPropertyName("health_lost")]
-    public required int HealthLost { get; init; }
+    [JsonPropertyName("net_health_change")]
+    public required int NetHealthChange { get; init; }
 
     [JsonPropertyName("consumables_used")]
     public required IReadOnlyList<string> ConsumablesUsed { get; init; }

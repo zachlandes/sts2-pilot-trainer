@@ -71,7 +71,7 @@ public sealed record CombatComparison
             Compare("total_turns", left.Summary.TotalTurns, right.Summary.TotalTurns),
             Compare("starting_health", left.Summary.StartingHealth, right.Summary.StartingHealth),
             Compare("final_health", left.Summary.FinalHealth, right.Summary.FinalHealth),
-            Compare("health_lost", left.Summary.HealthLost, right.Summary.HealthLost),
+            Compare("net_health_change", left.Summary.NetHealthChange, right.Summary.NetHealthChange),
             Compare("consumables_used", left.Summary.ConsumablesUsed, right.Summary.ConsumablesUsed),
             Compare("cards_removed", left.Summary.CardsRemoved, right.Summary.CardsRemoved),
         };
@@ -99,10 +99,10 @@ public sealed record CombatComparison
                 "Enemy health lost and player health lost count only health that actually came off. Damage " +
                 "either side's block absorbed is not included in those measurements.",
 
-                "The summary's health outcome is read at the end of the fight and includes anything that " +
-                "resolves as the combat ends, a relic that heals among them. The turn detail's health lost " +
-                "is what came off during that turn. The two are different measurements and do not have to " +
-                "add up.",
+                "The summary's net health change is final health minus starting health: positive is a net " +
+                "gain and negative is a net loss. It includes anything that resolves as combat ends. Turn " +
+                "detail reports gross player health lost during each turn, so the measurements do not have " +
+                "to add up.",
 
                 "Both lines were replayed through the real engine from the same combat-start boundary. " +
                 "Nothing here is evidence about a fight played by a person in the retail client: no mod " +

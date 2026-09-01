@@ -41,15 +41,16 @@ They are two projections of the same events, and they stay separate:
 
 | projection | says |
 | --- | --- |
-| **combat summary** | which consumables were used, total turns, and the health outcome - how much was lost and what it ended at |
+| **combat summary** | which consumables were used, total turns, final health, and signed net health change |
 | **turn chronology** | the exact turn each consumable was used, and that turn's enemy health lost and player health lost |
 
 Turn chronology does not get baked into the summary.
 The summary answers "what happened in this fight"; a summary that carried turn numbers would be answering the other question badly, and every later consumer would have to decide which half to trust.
 
 One consequence of keeping them apart is worth knowing before reading either.
-The summary's health outcome is measured at the end of the fight, so it includes whatever resolves as the combat ends - Ironclad's starting relic heals six the moment the last enemy dies.
-The turn detail's health lost is what came off during that turn.
+The summary's `net_health_change` is final health minus starting health, so a positive value is a net gain and a negative value is a net loss.
+It includes whatever resolves as combat ends - Ironclad's starting relic heals six the moment the last enemy dies.
+The turn detail's player health lost is the gross amount that came off during that turn.
 The two therefore need not add up, and they are not reconciled: quietly picking one would throw away a real thing about the fight.
 
 Permanent card removal is represented, and deliberately not prioritised in presentation.
@@ -58,7 +59,7 @@ It is rare, it matters when it happens, and it is not worth designing a screen a
 ## What that requires of the replay result
 
 Every quantity above is a *difference between two moments*.
-Total turns is the last turn number minus the first; health lost is a subtraction; enemy health lost in a turn is an enemy's hit points before that turn against after it; a consumable use is a potion slot that held something and then did not; a permanent removal is a card that was in the deck and then was not.
+Total turns is the last turn number minus the first; net health change is final health minus starting health; enemy health lost in a turn is an enemy's hit points before that turn against after it; a consumable use is a potion slot that held something and then did not except during an explicit discard action; a permanent removal is a card that was in the deck and then was not.
 
 A result that keeps only the final state has kept none of these.
 It has the answer to "was it exact" and nothing else, and no amount of re-reading it recovers the rest - the run would have to be replayed again, which is precisely the expensive thing a stored result exists to avoid.
@@ -87,8 +88,10 @@ What the trace keeps for it today:
   every event has a turn on both ends and a step that crosses a turn boundary is
   visible as one.
 - **Item identity and use timing.** `player.potions` is sampled as model ids, so a
-  use is a slot that held an id and then did not, at a known turn. The model id is
-  the stable key any artwork lookup would use; no art reference is stored here.
+  disappearance is a use at a known turn unless the action explicitly discarded it.
+  This retains automatic consumption such as Fairy in a Bottle while excluding a
+  discarded potion. The model id is the stable key any artwork lookup would use; no
+  art reference is stored here.
 - **Damage events.** Each enemy's hit points and block are sampled by index, as are
   the player's, so a damage event is a subtraction over one step.
 - **Actor identity, as far as it goes.** For the player's own actions the actor is

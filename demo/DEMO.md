@@ -650,7 +650,7 @@ combat summary (no chronology - see the turn detail for when):
   diff total_turns       left=5              right=6
   same starting_health   left=80             right=80
   diff final_health      left=64             right=80
-  diff health_lost       left=16             right=0
+  diff net_health_change left=-16            right=0
   same consumables_used  left=(none)         right=(none)
   same cards_removed     left=(none)         right=(none)
 
@@ -676,7 +676,7 @@ turn detail:
 
   note: This states differences. It does not score either line, rank them, or say which was better.
   note: Enemy health lost and player health lost count only health that actually came off. Damage either side's block absorbed is not included in those measurements.
-  note: The summary's health outcome is read at the end of the fight and includes anything that resolves as the combat ends, a relic that heals among them. The turn detail's health lost is what came off during that turn. The two are different measurements and do not have to add up.
+  note: The summary's net health change is final health minus starting health: positive is a net gain and negative is a net loss. It includes anything that resolves as combat ends. Turn detail reports gross player health lost during each turn, so the measurements do not have to add up.
   note: Both lines were replayed through the real engine from the same combat-start boundary. Nothing here is evidence about a fight played by a person in the retail client: no mod host exists yet, so no live capture has ever been compared.
 
 report: build/evidence/combat-comparison.json
@@ -689,11 +689,11 @@ and the exact turn a consumable was drunk. A summary carrying both would make ev
 consumer decide which half to trust.
 
 Read them together and they do not add up, on purpose. The reference line's summary
-says 16 health lost; its turns add to 22. Ironclad's starting relic heals six the
-moment the last enemy dies, and the summary's health outcome is measured at the end of
-the fight while the turn detail measures what came off during each turn. Reconciling
-them by quietly picking one would throw away something real about the fight, so both
-are reported and the difference is stated. A test pins it.
+has a net health change of -16; its turns report 22 player health lost. Ironclad's
+starting relic heals six the moment the last enemy dies. The summary is final health
+minus starting health, while the turn detail measures what came off during each turn.
+Reconciling them by quietly picking one would throw away something real about the
+fight, so both are reported and the difference is stated. A test pins it.
 
 Nothing here scores or ranks. The left line wins a turn sooner and loses sixteen
 health; the right loses none and needs an extra turn. Which is better is a question
@@ -709,7 +709,7 @@ before it can be one side of a comparison.
 ```
 
 ```output
-This history's combat is still in progress when the history ends, so it has no completed fight to project. Total turns, health lost and the final health are all defined at the end of a fight; reporting them for one still being fought would be a confident wrong answer.
+This history's combat is still in progress when the history ends, so it has no completed fight to project. Total turns, net health change and final health are all defined at the end of a fight; reporting them for one still being fought would be a confident wrong answer.
 ```
 
 Two fights whose complete combat-start snapshot digests differ are refused. That
