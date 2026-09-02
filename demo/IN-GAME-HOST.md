@@ -142,11 +142,11 @@ The remaining declarative test parses the mod manifest and verifies the non-game
 There is no source-reference scan presented as behavioral evidence, and no test claim stands in for the absent S4 implementation.
 
 ```bash
-set -o pipefail; dotnet test tests/Sts2PilotTrainer.Arbiter.Tests/Sts2PilotTrainer.Arbiter.Tests.csproj -c Release --nologo --filter 'FullyQualifiedName~ModHostBoundaryTests' 2>&1 | grep -E 'Passed!|Failed!' | sed -E 's/Duration: [^ ]+ ms/Duration: <duration>/'
+set -o pipefail; dotnet test tests/Sts2PilotTrainer.Mod.Tests/Sts2PilotTrainer.Mod.Tests.csproj -c Release --nologo --filter 'FullyQualifiedName~ModHostBoundaryTests' 2>&1 | grep -E 'Passed!|Failed!' | sed -E 's/Duration: [^ ]+ ms/Duration: <duration>/'
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: <duration> - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: <duration> - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
 ```
 
 And what the screen says, checked on a machine that does not own the game. The wording

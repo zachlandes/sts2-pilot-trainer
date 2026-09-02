@@ -109,17 +109,18 @@ The full walkthrough, with commands and their real output, is in
 |---|---|
 | `src/Sts2PilotTrainer.Replay` | The replay format and its rules. Depends on nothing — not the game, not a video pipeline, not a storefront. Its tests run on a machine that does not own the game. |
 | `src/Sts2PilotTrainer.Engine` | The only project that knows about a specific game version. |
+| `src/Sts2PilotTrainer.Trainer` | The game-free owner of the Combat Trainer screen's wording and row presentation. |
+| `src/Sts2PilotTrainer.Mod` | The only project loaded into the retail game; it owns the native mode card and popup. |
 | `src/Sts2PilotTrainer.Cli` | The arbiter's commands. |
 | `manifests/` | The reconstructed run, and the map read from the video. Facts only. |
-| `docs/` | [The proof-of-concept path](docs/proof-of-concept-path.md) · [environment identity](docs/environment-identity.md) · [comparison direction](docs/comparison-direction.md) · [headless fidelity](docs/headless-fidelity.md) · [dependencies](docs/dependencies.md) · [distribution](docs/distribution.md) · [the engine's own replay format](docs/native-replay-format.md) |
+| `docs/` | [The proof-of-concept path](docs/proof-of-concept-path.md) · [the in-game host](docs/in-game-host.md) · [environment identity](docs/environment-identity.md) · [comparison direction](docs/comparison-direction.md) · [headless fidelity](docs/headless-fidelity.md) · [dependencies](docs/dependencies.md) · [distribution](docs/distribution.md) · [the engine's own replay format](docs/native-replay-format.md) |
 
 ## What this repository does not contain
 
-No game assemblies, localization tables or art — MegaCrit's property, copied from
-your own installation at build time. No video footage of any kind: no frames, no
-clips, no stills. Only unprotectable facts read from the video, together with the
-public video id and the timestamps that let anyone re-check each one against the
-original. See [NOTICE](NOTICE).
+No extracted game assemblies, localization tables or art assets — MegaCrit's property, copied from your own installation at build time.
+The only committed images from the client are screenshots of this mod's own UI under `demo/`; no source-video footage of any kind is stored here: no frames, clips or stills.
+Only unprotectable facts read from the video, together with the public video id and the timestamps that let anyone re-check each one against the original, are retained.
+See [NOTICE](NOTICE).
 
 ## Licence
 

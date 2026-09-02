@@ -112,7 +112,7 @@ public sealed record UnlockCategory(
 /// <summary>
 /// The run that exists in the game right now, read back from it.
 ///
-/// An eventual in-game host reads the player's own run here. The arbiter reads the
+/// The Combat Trainer host reads the player's own run here. The arbiter reads the
 /// run it just constructed, which is not a formality: it is how we learn that the
 /// engine built the run the manifest asked for rather than something adjacent to it.
 /// </summary>

@@ -10,8 +10,8 @@ internal static partial class Commands
     /// The prerequisite gate: is this the machine, with the progress, that could
     /// replay this run at all?
     ///
-    /// <c>--progress</c> chooses whose unlock state is checked. The eventual mod
-    /// entry point must pass <c>local-profile</c> and gate on what the player actually has. The headless
+    /// <c>--progress</c> chooses whose unlock state is checked. The Combat Trainer
+    /// host passes <c>local-profile</c> and gates on what the player actually has. The headless
     /// arbiter defaults to <c>all-unlocked</c>, which is the state it will construct
     /// the run with - the same question asked of a host rather than of a person, and
     /// reported as such rather than as a reading of anybody's save.

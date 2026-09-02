@@ -2,14 +2,16 @@
 # Builds the Combat Trainer mod and puts it where the game looks for mods.
 #
 # This is the one script in this repository that writes inside a Slay the Spire 2
-# installation. Its final state is exactly mods/CombatTrainer; upgrades use temporary
-# sibling directories under mods so the complete named file set replaces the old one.
-# That is the game's own mod surface - the same directory Steam Workshop installs into
+# installation. Its final state is exactly CombatTrainer under the selected supported
+# mod directory (mods or mods_STEAMTEST); upgrades use temporary siblings there so the
+# complete named file set replaces the old one. That is the game's own mod surface -
+# the same directory Steam Workshop installs into
 # - and there is no other: the game derives it from its executable's location and
 # offers no user-data alternative.
 #
-# Nothing outside mods is touched, and nothing here reads or writes a save, a profile
-# or a run. --uninstall removes the final directory and nothing more.
+# Nothing outside the selected mod directory is touched, and nothing here reads or
+# writes a save, a profile or a run. --uninstall removes the final directory and
+# nothing more.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

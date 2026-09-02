@@ -11,7 +11,7 @@ No source-reference scan stands in for an executable proof that those absent fea
 ## What it proves
 
 **The retail game loads the mod through its own mod surface.**
-`mods/CombatTrainer` contains `CombatTrainer.json`, `CombatTrainer.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
+`CombatTrainer` under the selected game mod directory contains `CombatTrainer.json`, `CombatTrainer.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
 The game's recursive scan discovers the manifest, `ModManager` loads the mod, and `ModInitializerAttribute` initializes it.
 The libraries ship together; there is no separately installed framework or runtime dependency, and no resource pack.
 
@@ -112,8 +112,9 @@ rows that already passed are below it.
 ```
 
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
-Its final state is exactly `mods/CombatTrainer`; an upgrade stages the complete named file set in a temporary sibling under `mods` and replaces the old directory rather than overlaying it.
-That is the game's own mod surface — the same directory Steam Workshop installs into — and the game offers no user-data alternative, because it derives the path from its executable's location.
+Its final state is exactly `CombatTrainer` under the selected supported game mod directory, either `mods` or the game's Steam test-branch variant `mods_STEAMTEST`.
+An upgrade stages the complete named file set in a temporary sibling there and replaces the old directory rather than overlaying it.
+That is the game's own mod surface — the same location Steam Workshop installs into — and the game offers no user-data alternative, because it derives the path from its executable's location.
 
 [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) has the mod card and the eligibility
 screen as they appear in the shipped client.

@@ -1,7 +1,7 @@
 # Deterministic replay of a Slay the Spire 2 run, checked against the video
 
-*2026-08-30T23:49:27Z by Showboat 0.6.1*
-<!-- showboat-id: e6c021fc-420a-425d-b6aa-89b0dff77747 -->
+*2026-09-02T08:30:16Z by Showboat 0.6.1*
+<!-- showboat-id: 72eb1ada-1408-4f95-bca6-a683ae5b9885 -->
 
 This document runs the prototype and records what it actually printed. Every code
 block below was executed; the output under it is that run's output, not a
@@ -129,6 +129,7 @@ progress : AllUnlocked
   ok   seed_alphabet          manifest=legal                          local=legal
   ok   game_mode_supported    manifest=standard                       local=standard
   ok   mod_environment        manifest=navegreed-2026-08 (3 mod(s))   local=audited source tooling
+  ok   loaded_mod_environment manifest=no active local mods except this loaded non-gameplay Combat Trainer host local=none discovered
   ok   unlocks_requirement    manifest=complete                       local=UnlockState.all, supplied by the host in place of the source player's profile
   ok   unlocks_characters     manifest=5                              local=5
   ok   unlocks_cards          manifest=596                            local=596
@@ -219,7 +220,7 @@ replay was evidence about.
 
 The two gates above are about *whether* a matching run could be played here. The last
 one is about the run that actually exists.
-This is the gate an eventual mod entry point must run when the player has a run in progress, asking whether it is the one the manifest describes.
+This is the gate the Combat Trainer host runs when the player has a run in progress, asking whether it is the one the manifest describes.
 
 `preflight-live` is not connected to the retail process.
 This executable redirects user data to `build/sandbox`, reads the empty profile there, and has only its own headless `RunManager`, so its default path finds no active run and refuses by design.
@@ -310,7 +311,7 @@ drawn is the transcription, which is also what the comparison actually used.
 ![Act 1 map topology for seed SFXT47K77RFK: the transcription and the engine-generated map, node for node identical across all 61 observed nodes](map-topology-match.png)
 ```
 
-![Act 1 map topology for seed SFXT47K77RFK: the transcription and the engine-generated map, node for node identical across all 61 observed nodes](e4d44337-2026-08-30.png)
+![Act 1 map topology for seed SFXT47K77RFK: the transcription and the engine-generated map, node for node identical across all 61 observed nodes](e9e864ae-2026-09-02.png)
 
 And the same drawing for the seed the optical pass reported with full confidence.
 Mismatches are ringed.
@@ -319,7 +320,7 @@ Mismatches are ringed.
 ![The same comparison for SEXT47K77REK: 12 of 61 nodes agree, with mismatches ringed](map-topology-mismatch.png)
 ```
 
-![The same comparison for SEXT47K77REK: 12 of 61 nodes agree, with mismatches ringed](8d139fb3-2026-08-30.png)
+![The same comparison for SEXT47K77REK: 12 of 61 nodes agree, with mismatches ringed](89be6027-2026-09-02.png)
 
 Row 0 appears only on the generated side. It is the run's starting node, which sits
 below the visible area in every frame that was read, so it was left out of the
@@ -798,7 +799,7 @@ completed side.
 
 Both sides below are the same recorded line. That is not a placeholder for a better
 pair: the only other line of this fight is the one a player would fight, and capturing
-that needs a mod host that does not exist. Authoring an alternative to put opposite it
+that needs the S5 live-fight capture host, which does not exist. Authoring an alternative to put opposite it
 would be inventing a decision nobody made, which is the thing this project is built to
 refuse. So what this shows is the recording projecting and comparing at all, from its
 own combat-start boundary — and every field agreeing, because it is the same fight.
@@ -1086,8 +1087,10 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   210, Skipped:     0, Total:   210 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:   102, Skipped:     0, Total:   102 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   221, Skipped:     0, Total:   221 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    15, Skipped:     0, Total:    15 - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     7, Skipped:     0, Total:     7 - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   100, Skipped:     2, Total:   102 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -1278,8 +1281,8 @@ What is established is parity across that space, not the mode itself, and combin
   from, and stops there. The search is not built and this document is not evidence
   that it would work.
 - **No fight played by a person has ever been captured.** Both sides of every
-  comparison here are replayed histories, the recording's included. The mod host that
-  would read a retail player's fight does not exist, and nothing in this document is
+  comparison here are replayed histories, the recording's included. The S5 host that
+  would capture a retail player's fight does not exist, and nothing in this document is
   evidence that it would work. That is also why the recording is compared against
   itself: there is no second line of that fight to put opposite it.
 - **Nothing is automatically extracted from video.** The forty-six actions, twenty-one

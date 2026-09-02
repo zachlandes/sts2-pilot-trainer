@@ -108,7 +108,7 @@ way in. Two traps in that process cost a crash each and are written down there: 
 initialization runs before the game has a model database, and Godot does not load the
 game into the default assembly load context. `./scripts/install-mod.sh` is the one
 script here that writes inside a Slay the Spire 2 installation.
-Its final state is exactly `mods/CombatTrainer`; upgrades use temporary sibling directories under `mods` to replace the complete artifact without mixing versions.
+Its final state is exactly `CombatTrainer` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions.
 
 ## Maintaining this file
 
