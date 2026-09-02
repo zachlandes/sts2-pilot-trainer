@@ -30,13 +30,8 @@ public sealed class ModeCardTests
         SetField(cardType, card, "_locKeyPrefix", "CUSTOM");
 
         var modeCard = modAssembly.GetType("Sts2PilotTrainer.Mod.ModeCard")!;
-        modeCard.GetMethod("ClearLocalization", BindingFlags.NonPublic | BindingFlags.Static)!
+        modeCard.GetMethod("SetLabels", BindingFlags.NonPublic | BindingFlags.Static)!
             .Invoke(null, [card]);
-        SetText(title, "Combat Trainer");
-        SetText(
-            description,
-            "Fight NaveGreed's Floor 2 Sludge Spinner exactly as recorded, then compare your fight with " +
-            "the recording. Reads your game; never writes to it.");
         cardType.GetMethod("_Notification")!.Invoke(card, [2010]);
 
         Assert.Null(GetField(cardType, card, "_locKeyPrefix"));
@@ -53,21 +48,8 @@ public sealed class ModeCardTests
     private static void SetField(Type type, object target, string name, object? value) =>
         type.GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(target, value);
 
-    private static void SetText(object label, string text) =>
-        FieldInHierarchy(label.GetType(), "<Text>k__BackingField").SetValue(label, text);
-
     private static string? TextOf(object label) =>
         label.GetType().GetProperty("Text", BindingFlags.Instance | BindingFlags.Public)!.GetValue(label) as string;
-
-    private static FieldInfo FieldInHierarchy(Type type, string name)
-    {
-        for (var candidate = type; candidate is not null; candidate = candidate.BaseType)
-        {
-            if (candidate.GetField(name, BindingFlags.Instance | BindingFlags.NonPublic) is { } field) return field;
-        }
-
-        throw new InvalidOperationException($"{type.FullName} has no field named {name}.");
-    }
 
     public sealed class ModeCardFactAttribute : FactAttribute
     {

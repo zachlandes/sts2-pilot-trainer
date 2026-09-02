@@ -40,20 +40,20 @@ internal static class TrainerScreen
 
     internal static void Open()
     {
+        EligibilityScreen screen;
         try
         {
-            Show(Compose());
+            screen = Compose();
         }
         catch (Exception ex)
         {
-            // Everything a reading can refuse - a profile that went away, a build
-            // that cannot identify itself - arrives here. Saying so is the whole
-            // point of the screen; claiming eligibility would be the failure.
             Log.Error(
                 $"[{CombatTrainerMod.ModId}] could not read this game's eligibility: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
-            Show(EligibilityScreenRefusal.For(ex));
+            screen = EligibilityScreenRefusal.For(ex);
         }
+
+        ShowSafely(screen);
     }
 
     private static EligibilityScreen Compose()
@@ -64,41 +64,62 @@ internal static class TrainerScreen
         return EligibilityScreen.For(expected, Preflight.EvaluateLiveHost(expected));
     }
 
-    private static void Show(EligibilityScreen screen)
+    private static void ShowSafely(EligibilityScreen screen)
     {
-        var popup = NGenericPopup.Create();
-        var container = NModalContainer.Instance;
-        if (popup is null || container is null)
+        NGenericPopup? popup = null;
+        NModalContainer? container = null;
+        var added = false;
+        try
         {
-            Log.Error($"[{CombatTrainerMod.ModId}] this process has no modal surface; nothing shown.", 2);
-            return;
+            popup = NGenericPopup.Create()
+                ?? throw new InvalidOperationException("This process has no eligibility popup surface.");
+            container = NModalContainer.Instance
+                ?? throw new InvalidOperationException("This process has no modal container.");
+            container.Add(popup, showBackstop: true);
+            added = true;
+
+            var content = popup.GetNode<NVerticalPopup>(VerticalPopupPath);
+            var body = content.BodyLabel();
+
+            // Enabled explicitly rather than assumed: if the scene ever shipped with it
+            // off, the row colours would render as literal tags in the middle of the copy.
+            body.BbcodeEnabled = true;
+
+            // The popup's label shrinks its font until the text fits, which for a body
+            // this long lands somewhere unreadable. A floor is the honest trade: a row
+            // nobody can read is not evidence, and the label scrolls what does not fit.
+            body.MinFontSize = MinimumBodyFontSize;
+            body.ScrollActive = true;
+
+            content.SetText(screen.Title, ScreenMarkup.Body(screen));
+            content.InitYesButton(PlaceholderButtonLabel, _ => { });
+            content.HideNoButton();
+            content.YesButton.SetText(screen.BackButton);
+
+            // Deferred: adding the modal updates the game's active screen context, which
+            // decides what is focused. Grabbing focus before that has finished loses it,
+            // and a screen whose only control cannot be reached from a keyboard or a
+            // controller is a screen half the players cannot leave.
+            Callable.From(() => content.YesButton.GrabFocus()).CallDeferred();
         }
+        catch (Exception ex)
+        {
+            try
+            {
+                if (added) container!.Clear();
+                else popup?.QueueFree();
+            }
+            catch (Exception cleanup)
+            {
+                Log.Error(
+                    $"[{CombatTrainerMod.ModId}] could not clear a failed eligibility modal: " +
+                    $"{cleanup.GetType().Name}: {cleanup.Message}", 2);
+            }
 
-        container.Add(popup, showBackstop: true);
-
-        var content = popup.GetNode<NVerticalPopup>(VerticalPopupPath);
-        var body = content.BodyLabel();
-
-        // Enabled explicitly rather than assumed: if the scene ever shipped with it
-        // off, the row colours would render as literal tags in the middle of the copy.
-        body.BbcodeEnabled = true;
-
-        // The popup's label shrinks its font until the text fits, which for a body
-        // this long lands somewhere unreadable. A floor is the honest trade: a row
-        // nobody can read is not evidence, and the label scrolls what does not fit.
-        body.MinFontSize = MinimumBodyFontSize;
-        body.ScrollActive = true;
-
-        content.SetText(screen.Title, ScreenMarkup.Body(screen));
-        content.InitYesButton(PlaceholderButtonLabel, _ => { });
-        content.HideNoButton();
-        content.YesButton.SetText(screen.BackButton);
-
-        // Deferred: adding the modal updates the game's active screen context, which
-        // decides what is focused. Grabbing focus before that has finished loses it,
-        // and a screen whose only control cannot be reached from a keyboard or a
-        // controller is a screen half the players cannot leave.
-        Callable.From(() => content.YesButton.GrabFocus()).CallDeferred();
+            Log.Error(
+                $"[{CombatTrainerMod.ModId}] could not show this game's eligibility: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     /// <summary>

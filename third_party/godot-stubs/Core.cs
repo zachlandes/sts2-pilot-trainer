@@ -8,6 +8,7 @@ public class GodotObject
 
     public static bool IsInstanceValid(GodotObject? obj) => obj != null;
     public virtual bool IsQueuedForDeletion() => false;
+    public Variant CallDeferred(StringName method, params Variant[] args) => default;
 
     // ToSignal - must be on GodotObject (not Node) to match real Godot
     public SignalAwaiter ToSignal(GodotObject source, StringName signal)
@@ -50,6 +51,7 @@ public class Node : GodotObject
     public virtual StringName Name { get; set; } = "";
 
     public Node? GetParent() => _parent;
+    public NodePath GetPath() => new();
 
     public Godot.Collections.Array<Node> GetChildren(bool includeInternal = false)
     {
