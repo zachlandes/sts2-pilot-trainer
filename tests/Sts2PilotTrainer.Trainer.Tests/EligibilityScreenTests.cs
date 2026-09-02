@@ -28,10 +28,10 @@ public sealed class EligibilityScreenTests
     {
         var prerequisites = Fixtures.Prerequisites() with
         {
-            LoadedMods =
+            Mods =
             [
-                new LoadedMod("CombatTrainer", "Combat Trainer", "0.1.0", false),
-                new LoadedMod("patcher", "Behavior Patcher", "1.0.0", false),
+                new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Loaded"),
+                new LocalMod("patcher", "Behavior Patcher", "1.0.0", false, "Failed"),
             ],
         };
 

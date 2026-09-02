@@ -71,7 +71,7 @@ public static class EnvironmentPreflight
             EvaluateSeedAlphabet(expected.Seed.Value),
             EvaluateSupportedMode(expected.GameMode.Value),
             EvaluateSourceMods(expected.Mods.Value),
-            EvaluateLoadedMods(actual.LoadedMods),
+            EvaluateLocalMods(actual.Mods),
         };
 
         fields.AddRange(EvaluateUnlocks(expected, actual));
@@ -282,27 +282,37 @@ public static class EnvironmentPreflight
                 "Daily and custom runs carry modifiers that change run setup, so replaying one as standard " +
                 "would produce a different run under the same seed.");
 
-    private static PreflightField EvaluateLoadedMods(IReadOnlyList<LoadedMod> mods)
+    private static PreflightField EvaluateLocalMods(IReadOnlyList<LocalMod> mods)
     {
-        var permitted = mods.Count == 0 ||
-                        mods.Count == 1 &&
-                        mods[0] is { Id: "CombatTrainer", Name: "Combat Trainer", AffectsGameplay: false };
+        var active = mods
+            .Where(mod => mod.State is not ("Disabled" or "DisabledDuplicate"))
+            .ToList();
+        var permitted = active.Count == 0 ||
+                        active.Count == 1 &&
+                        active[0] is
+                        {
+                            Id: "CombatTrainer",
+                            Name: "Combat Trainer",
+                            AffectsGameplay: false,
+                            State: "Loaded",
+                        };
         var actual = mods.Count == 0
-            ? "none loaded"
+            ? "none discovered"
             : string.Join("; ", mods.Select(mod =>
-                $"{mod.Name} ({mod.Id}, {mod.Version}, affects gameplay: {mod.AffectsGameplay})"));
+                $"{mod.Name} ({mod.Id}, {mod.Version}, state: {mod.State}, " +
+                $"affects gameplay: {mod.AffectsGameplay})"));
 
         return new PreflightField(
             "loaded_mod_environment",
-            "no local mods except this non-gameplay Combat Trainer host",
+            "no active local mods except this loaded non-gameplay Combat Trainer host",
             actual,
             permitted,
             permitted
                 ? null
-                : "The running game has another mod loaded. Its behaviour cannot be established as identical " +
-                  "to the recording from the content hash, because that hash does not cover behaviour patches " +
-                  "or mods that declare themselves non-gameplay. Disable every mod except Combat Trainer, " +
-                  "restart the game, and check again.");
+                : "The running game has another active or failed mod. Its behaviour cannot be established as " +
+                  "identical to the recording from the content hash, because a failed mod can leave resources " +
+                  "loaded and that hash does not cover behaviour patches or mods that declare themselves " +
+                  "non-gameplay. Disable every mod except Combat Trainer, restart the game, and check again.");
     }
 
     private static PreflightField EvaluateSourceMods(ModEnvironment mods)
