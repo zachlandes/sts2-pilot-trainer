@@ -98,11 +98,12 @@ internal static class ModeCard
     /// Set on the label nodes rather than through <c>SetIconAndLocalization</c>,
     /// which reads the game's own localization tables. A DLL-only mod contributes no
     /// tables, so asking for a key that does not exist would put a key on screen.
-    /// The duplicate's localization prefix stays null, which is also what stops the
-    /// game from refreshing these labels back to the card they came from.
+    /// The duplicate's localization prefix is cleared so a translation refresh
+    /// leaves these labels unchanged.
     /// </summary>
     private static void SetLabels(NSubmenuButton card)
     {
+        ClearLocalization(card);
         var title = Field<MegaLabel>(card, "_title");
         var description = Field<MegaRichTextLabel>(card, "_description");
         title.SetTextAutoSize(TrainerCopy.Name);
@@ -111,13 +112,19 @@ internal static class ModeCard
 
     private static T Field<T>(NSubmenuButton card, string name) where T : class
     {
-        var field = typeof(NSubmenuButton).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
-            ?? throw new InvalidOperationException(
-                $"NSubmenuButton has no '{name}' on this build, so the card's wording cannot be set.");
+        var field = CardField(name);
         return field.GetValue(card) as T
             ?? throw new InvalidOperationException(
                 $"NSubmenuButton.{name} was not a {typeof(T).Name} on this build.");
     }
+
+    private static void ClearLocalization(NSubmenuButton card) =>
+        CardField("_locKeyPrefix").SetValue(card, null);
+
+    private static FieldInfo CardField(string name) =>
+        typeof(NSubmenuButton).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
+        ?? throw new InvalidOperationException(
+            $"NSubmenuButton has no '{name}' on this build, so the card's wording cannot be set.");
 
     /// <summary>
     /// Where the fourth card goes.

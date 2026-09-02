@@ -88,6 +88,7 @@ public class Node : GodotObject
     public double GetProcessDeltaTime() => 0.016;
     public bool IsAncestorOf(Node node) => false;
     public bool IsInsideTree() => false;
+    public bool IsNodeReady() => true;
     public int GetChildCount(bool includeInternal = false) => _children.Count;
 
     public void CallDeferred(StringName method, params Variant[] args) { }
