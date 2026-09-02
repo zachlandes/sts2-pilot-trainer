@@ -194,9 +194,9 @@ cannot faithfully represent the VOD.
   a lookalike. It opens one screen, built from the game's own modal popup.
 - `EngineHost.AdoptRunningGame`: the engine can now be *taken* as well as built.
   It refuses anything it cannot read honestly and names the assembly it read.
-  `EngineHost.Start`, which patches the save subsystem and switches on test mode,
-  never runs in a player's client - and a test over the shipped assembly fails if it
-  could.
+  One of the three boundary tests drives the console refusal and verifies that the prepared game inputs and sandbox profile remain unchanged.
+  Another loads a duplicate game assembly and proves that state refuses before adoption.
+  The third parses the mod manifest and verifies its non-gameplay, DLL-only, packless contract; no source-reference scan is presented as behavioural evidence.
 - `EnvironmentPreflight.LiveGame` and `Preflight.EvaluateLiveHost`: the same two gates,
   kept separable, so "you have not started the run yet" is distinguishable from "your
   install cannot play this" without softening either.
