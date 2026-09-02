@@ -66,7 +66,9 @@ internal static class ModeCard
                 return;
             }
 
-            if (source.Duplicate() is not NSubmenuButton card)
+            const int duplicateFlags =
+                (int)(Node.DuplicateFlags.Groups | Node.DuplicateFlags.Scripts | Node.DuplicateFlags.UseInstantiation);
+            if (source.Duplicate(duplicateFlags) is not NSubmenuButton card)
             {
                 Log.Warn(
                     $"[{CombatTrainerMod.ModId}] the singleplayer card could not be duplicated; not adding " +
@@ -74,14 +76,20 @@ internal static class ModeCard
                 return;
             }
 
-            card.Name = CardNodeName;
-            __instance.AddChild(card);
-            Layout.PlaceBeside(__instance, source, card);
-            SetLabels(card);
-
-            card.Connect(
-                NClickableControl.SignalName.Released,
-                Callable.From<NButton>(_ => TrainerScreen.Open()));
+            InstallCard(
+                __instance,
+                source,
+                card,
+                () =>
+                {
+                    var error = card.Connect(
+                        NClickableControl.SignalName.Released,
+                        Callable.From<NButton>(_ => TrainerScreen.Open()));
+                    if (error != Error.Ok)
+                    {
+                        throw new InvalidOperationException($"Connecting the mode card failed with {error}.");
+                    }
+                });
         }
         catch (Exception ex)
         {
@@ -89,6 +97,44 @@ internal static class ModeCard
             // appear is a bug report; a menu that failed to open is a broken game.
             Log.Error(
                 $"[{CombatTrainerMod.ModId}] could not add the mode card: {ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    private static void InstallCard(
+        NSingleplayerSubmenu submenu,
+        NSubmenuButton source,
+        NSubmenuButton card,
+        Action connect)
+    {
+        var layout = Layout.Capture(submenu, source);
+        var added = false;
+        try
+        {
+            card.Name = CardNodeName;
+            submenu.AddChild(card);
+            added = true;
+            SetLabels(card);
+            Layout.PlaceBeside(layout, card);
+            connect();
+        }
+        catch
+        {
+            try
+            {
+                Layout.Restore(layout);
+            }
+            finally
+            {
+                try
+                {
+                    if (added && card.GetParent() == submenu) submenu.RemoveChild(card);
+                }
+                finally
+                {
+                    card.QueueFree();
+                }
+            }
+            throw;
         }
     }
 
@@ -138,23 +184,42 @@ internal static class ModeCard
     /// </summary>
     private static class Layout
     {
-        internal static void PlaceBeside(NSingleplayerSubmenu submenu, Control source, Control card)
-        {
-            if (card.GetParent() is Container) return;
+        internal sealed record Snapshot(
+            Control Source,
+            Control? Standard,
+            Control? Daily,
+            IReadOnlyList<(Control Card, Vector2 Position)> Positions);
 
+        internal static Snapshot Capture(NSingleplayerSubmenu submenu, Control source)
+        {
             var standard = submenu.GetNodeOrNull<Control>(StandardCardPath);
             var daily = submenu.GetNodeOrNull<Control>(DailyCardPath);
-            if (standard is null || daily is null) return;
+            var positions = new[] { standard, daily, source }
+                .OfType<Control>()
+                .Distinct()
+                .Select(card => (card, card.Position))
+                .ToList();
+            return new Snapshot(source, standard, daily, positions);
+        }
 
-            var step = daily.Position - standard.Position;
+        internal static void PlaceBeside(Snapshot snapshot, Control card)
+        {
+            if (card.GetParent() is Container || snapshot.Standard is null || snapshot.Daily is null) return;
+
+            var step = snapshot.Daily.Position - snapshot.Standard.Position;
             if (step.LengthSquared() <= 0f) return;
 
-            card.Position = source.Position + step;
+            card.Position = snapshot.Source.Position + step;
             var recentre = -step / 2f;
-            foreach (var sibling in new[] { standard, daily, source, card })
+            foreach (var sibling in new[] { snapshot.Standard, snapshot.Daily, snapshot.Source, card })
             {
                 sibling.Position += recentre;
             }
+        }
+
+        internal static void Restore(Snapshot snapshot)
+        {
+            foreach (var (card, position) in snapshot.Positions) card.Position = position;
         }
     }
 }

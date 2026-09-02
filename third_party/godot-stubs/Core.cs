@@ -58,8 +58,9 @@ public class Node : GodotObject
         return new Godot.Collections.Array<Node>(_children);
     }
 
-    public T? GetNodeOrNull<T>(string path) where T : class => null;
-    public T? GetNodeOrNull<T>(NodePath path) where T : class => null;
+    public T? GetNodeOrNull<T>(string path) where T : class =>
+        _children.FirstOrDefault(child => child.Name.ToString() == path) as T;
+    public T? GetNodeOrNull<T>(NodePath path) where T : class => GetNodeOrNull<T>(path.ToString());
     public T GetNode<T>(string path) where T : class => default!;
     public T GetNode<T>(NodePath path) where T : class => default!;
 

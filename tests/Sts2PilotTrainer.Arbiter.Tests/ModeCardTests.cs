@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using Godot;
 using Sts2PilotTrainer.Engine;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -40,6 +41,56 @@ public sealed class ModeCardTests
             "Fight NaveGreed's Floor 2 Sludge Spinner exactly as recorded, then compare your fight with " +
             "the recording. Reads your game; never writes to it.",
             TextOf(description));
+    }
+
+    [ModeCardFact]
+    public void FailedInstallationRemovesTheCardAndRestoresTheNativeLayout()
+    {
+        _ = EngineHost.StartupPhase();
+        var modAssembly = AssemblyLoadContext.Default.Assemblies
+            .FirstOrDefault(assembly => assembly.GetName().Name == "CombatTrainer")
+            ?? AssemblyLoadContext.Default.LoadFromAssemblyPath(ModAssemblyPath);
+        var gameAssembly = AppDomain.CurrentDomain.GetAssemblies()
+            .Single(assembly => assembly.GetName().Name == "sts2");
+        var submenuType = gameAssembly.GetType("MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSingleplayerSubmenu")!;
+        var cardType = gameAssembly.GetType("MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSubmenuButton")!;
+        var titleType = gameAssembly.GetType("MegaCrit.Sts2.addons.mega_text.MegaLabel")!;
+        var descriptionType = gameAssembly.GetType("MegaCrit.Sts2.addons.mega_text.MegaRichTextLabel")!;
+        var submenu = (Node)Activator.CreateInstance(submenuType)!;
+        var standard = CreateCard(cardType, titleType, descriptionType, "StandardButton", new Vector2(10, 20));
+        var daily = CreateCard(cardType, titleType, descriptionType, "DailyButton", new Vector2(110, 20));
+        var source = CreateCard(cardType, titleType, descriptionType, "CustomRunButton", new Vector2(210, 20));
+        var trainer = CreateCard(cardType, titleType, descriptionType, "Duplicate", new Vector2(210, 20));
+        submenu.AddChild(standard);
+        submenu.AddChild(daily);
+        submenu.AddChild(source);
+        var originalPositions = new[] { standard.Position, daily.Position, source.Position };
+
+        var modeCard = modAssembly.GetType("Sts2PilotTrainer.Mod.ModeCard")!;
+        var failure = Assert.Throws<TargetInvocationException>(() =>
+            modeCard.GetMethod("InstallCard", BindingFlags.NonPublic | BindingFlags.Static)!
+                .Invoke(null, [submenu, source, trainer, (Action)(() => throw new InvalidOperationException())]));
+
+        Assert.IsType<InvalidOperationException>(failure.InnerException);
+        Assert.Null(trainer.GetParent());
+        Assert.Null(submenu.GetNodeOrNull<Node>("CombatTrainerButton"));
+        Assert.Equal(originalPositions, new[] { standard.Position, daily.Position, source.Position });
+    }
+
+    private static Control CreateCard(
+        Type cardType,
+        Type titleType,
+        Type descriptionType,
+        string name,
+        Vector2 position)
+    {
+        var card = (Control)Activator.CreateInstance(cardType)!;
+        card.Name = name;
+        card.Position = position;
+        SetField(cardType, card, "_title", Activator.CreateInstance(titleType));
+        SetField(cardType, card, "_description", Activator.CreateInstance(descriptionType));
+        SetField(cardType, card, "_locKeyPrefix", "CUSTOM");
+        return card;
     }
 
     private static object? GetField(Type type, object target, string name) =>

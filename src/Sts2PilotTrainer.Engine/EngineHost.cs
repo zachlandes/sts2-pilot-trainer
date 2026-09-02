@@ -92,7 +92,7 @@ public static class EngineHost
         // through it does not fail, it takes the process down. So this returns
         // rather than accumulating, and nothing after it is touched.
         var phase = StartupPhase();
-        if (phase is not ("Essential" or "Done"))
+        if (phase != "Done")
         {
             refusals.Add(
                 $"the game's startup phase is '{phase ?? "unreadable"}', not one where it has a model " +
@@ -158,10 +158,10 @@ public static class EngineHost
     /// publishes one.
     ///
     /// The game keeps it in one private field and moves it through None, VeryEarly,
-    /// Essential and Done. Essential is the step that calls <c>ModelDb.Init</c> and
-    /// <c>ModelIdSerializationCache.Init</c>, so anything at or past it has the
-    /// content this host reads. Read reflectively because the field is the game's
-    /// own; nothing here writes it, and a build that no longer publishes it reads as
+    /// Essential and Done. Essential performs <c>ModelDb.Init</c> and
+    /// <c>ModelIdSerializationCache.Init</c>; only Done proves both completed before
+    /// this host reads them. Read reflectively because the field is the game's own;
+    /// nothing here writes it, and a build that no longer publishes it reads as
     /// unreadable rather than as ready.
     /// </summary>
     public static string? StartupPhase()
