@@ -187,7 +187,7 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrain
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    36, Skipped:     0, Total:    36, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    40, Skipped:     0, Total:    40, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
 ```
 
 ## The regression coverage around the entry

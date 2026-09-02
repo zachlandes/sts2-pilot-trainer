@@ -33,6 +33,13 @@ public sealed record EligibilityRow(string Label, RequirementState State, string
 /// is that field's own diagnostic passed through unchanged. A refusal the screen
 /// has no row for is still shown - as its sentence - because a gate that failed and
 /// said nothing is the failure mode this project exists to prevent.
+///
+/// Which reading it is handed decides what every row is about, and the caller owns
+/// that choice rather than this file. A host that constructs the run hands it the
+/// reading the run will be generated against, so each row states a requirement of
+/// the fight being offered; a host asking whether somebody could play the run
+/// themselves hands it their profile. Showing one and gating on the other is how a
+/// screen ends up warning about something that stops nothing.
 /// </summary>
 public sealed record EligibilityScreen(
     string Title,
@@ -137,7 +144,11 @@ public sealed record EligibilityScreen(
             Eligible: preflight.Matches,
             Rows: ordered,
             Refusals: refusals,
-            ProfileNote: TrainerCopy.ProfileNote,
+            // Said only where it is true. The note names the profile the rows were
+            // measured against, and where the host supplies the state instead there
+            // is no profile in the answer - a sentence pointing at one would send a
+            // player to import progress that nothing here reads.
+            ProfileNote: preflight.Reading.Unlocks.FromPlayerProfile ? TrainerCopy.ProfileNote : string.Empty,
             BackButton: TrainerCopy.BackButton)
         {
             FightOffered = fightOffered,

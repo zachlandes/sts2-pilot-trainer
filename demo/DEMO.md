@@ -1090,8 +1090,8 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   235, Skipped:     0, Total:   235 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    36, Skipped:     0, Total:    36 - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   239, Skipped:     0, Total:   239 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    40, Skipped:     0, Total:    40 - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
 Passed!  - Failed:     0, Passed:    11, Skipped:     0, Total:    11 - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
 Passed!  - Failed:     0, Passed:   109, Skipped:     0, Total:   109 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```

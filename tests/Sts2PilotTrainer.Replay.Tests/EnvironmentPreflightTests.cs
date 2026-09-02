@@ -139,6 +139,96 @@ public class EnvironmentPreflightTests
             StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The host failing on its own is our defect, not a compatibility problem.
+    ///
+    /// Every nonempty failure used to be reported as another active or failed mod,
+    /// which on a clean install with only Combat Trainer present sent the player off
+    /// to disable mods they do not have and blamed their game for ours.
+    /// </summary>
+    [Fact]
+    public void TheHostFailingAloneIsReportedAsItsOwnFailure()
+    {
+        var result = EnvironmentPreflight.LiveGame(
+            Environment(),
+            Local() with
+            {
+                Mods = [new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Failed")],
+            },
+            run: null);
+
+        Assert.False(result.Prerequisites.Matches);
+        Assert.Equal(
+            "Combat Trainer failed to load. Restart the game and check again.",
+            Diagnostic(result.Prerequisites, "loaded_mod_environment"));
+    }
+
+    /// <summary>
+    /// The same failure with somebody else's mod beside it is a compatibility
+    /// problem, and keeps the explanation that says why a hash cannot settle it.
+    /// </summary>
+    [Fact]
+    public void TheHostFailingBesideAnotherModIsStillReportedAsContamination()
+    {
+        var result = EnvironmentPreflight.LiveGame(
+            Environment(),
+            Local() with
+            {
+                Mods =
+                [
+                    new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Failed"),
+                    new LocalMod("baselib", "BaseLib", "3.4.5", false, "Loaded"),
+                ],
+            },
+            run: null);
+
+        Assert.False(result.Prerequisites.Matches);
+        Assert.Contains(
+            "another active or failed mod",
+            Diagnostic(result.Prerequisites, "loaded_mod_environment"),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A disabled mod beside a failed host is not another mod being there, so the
+    /// host's own failure is still what gets reported. Disabled is the state a player
+    /// reaches by doing exactly what the other sentence would have told them to do.
+    /// </summary>
+    [Fact]
+    public void ADisabledModBesideAFailedHostDoesNotBecomeContamination()
+    {
+        var result = EnvironmentPreflight.LiveGame(
+            Environment(),
+            Local() with
+            {
+                Mods =
+                [
+                    new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Failed"),
+                    new LocalMod("baselib", "BaseLib", "3.4.5", false, "Disabled"),
+                ],
+            },
+            run: null);
+
+        Assert.Equal(
+            "Combat Trainer failed to load. Restart the game and check again.",
+            Diagnostic(result.Prerequisites, "loaded_mod_environment"));
+    }
+
+    /// <summary>
+    /// A game reporting no mod at all is neither: nothing failed and nothing else is
+    /// there, so the host simply is not loaded and the sentence says so.
+    /// </summary>
+    [Fact]
+    public void AGameThatReportsNoHostAtAllIsNotReportedAsAFailure()
+    {
+        var result = EnvironmentPreflight.LiveGame(Environment(), Local() with { Mods = [] }, run: null);
+
+        Assert.Contains(
+            "did not report Combat Trainer as loaded",
+            Diagnostic(result.Prerequisites, "loaded_mod_environment"),
+            StringComparison.Ordinal);
+    }
+
     [Fact]
     public void DisabledModsDoNotPreventParity()
     {

@@ -198,3 +198,73 @@ public sealed class FightOfferTests
             screen.NotSavedNote);
     }
 }
+
+/// <summary>
+/// What the rows are about, which is decided by the reading the screen is handed.
+///
+/// The trainer constructs the recording's run against a supplied complete unlock
+/// state, so that is the reading its screen asks for and every row is a requirement
+/// of the fight on offer. The profile reading still exists and still behaves as it
+/// did; what changed is which question the in-game host asks.
+/// </summary>
+public sealed class SuppliedReadingRowTests
+{
+    /// <summary>
+    /// The row this exists for. A profile whose ascension ceiling is below the
+    /// recording's does not stop the trainer constructing the run at the recording's
+    /// ascension, so a red row above an enabled offer would be warning about
+    /// something that stops nothing.
+    /// </summary>
+    [Fact]
+    public void TheAscensionRowReportsTheStateTheRunIsGeneratedAgainst()
+    {
+        var screen = Fixtures.Screen(Fixtures.SuppliedPrerequisites(), fightOffered: true);
+        var row = screen.Row("Ascension 10 available on");
+
+        Assert.True(row.Met);
+        Assert.Equal("Ascension 10 available on Ironclad", row.Label);
+        Assert.True(screen.Eligible);
+    }
+
+    /// <summary>
+    /// The profile note names the profile the rows were measured against, so it is
+    /// said only where there was one. Pointing a player at the game's profile import
+    /// over rows nothing read from a profile would send them to fix something that is
+    /// not broken.
+    /// </summary>
+    [Fact]
+    public void TheProfileNoteIsAbsentWhenNoProfileWasRead()
+    {
+        Assert.Equal(string.Empty, Fixtures.Screen(Fixtures.SuppliedPrerequisites()).ProfileNote);
+        Assert.Equal(TrainerCopy.ProfileNote, Fixtures.Screen().ProfileNote);
+    }
+
+    /// <summary>
+    /// The other reading is untouched. Asked about a real profile, the same rule still
+    /// refuses an ascension the profile cannot reach and still says what raises it.
+    /// </summary>
+    [Fact]
+    public void TheProfileReadingStillRefusesAnAscensionThatProfileCannotReach()
+    {
+        var screen = Fixtures.Screen(Fixtures.Prerequisites(ascensionCeiling: 9));
+        var row = screen.Row("Ascension 10 available on");
+
+        Assert.False(row.Met);
+        Assert.Contains("highest available ascension", row.Note!, StringComparison.Ordinal);
+        Assert.Equal(TrainerCopy.ProfileNote, screen.ProfileNote);
+    }
+
+    /// <summary>
+    /// The rows that no host can supply are read from this installation either way, so
+    /// a mismatched build still refuses whichever question was asked.
+    /// </summary>
+    [Fact]
+    public void TheRowsNoHostCanSupplyStillGateUnderASuppliedReading()
+    {
+        var reading = Fixtures.SuppliedPrerequisites() with { BuildVersion = "v0.110.0" };
+        var screen = Fixtures.Screen(reading);
+
+        Assert.False(screen.Eligible);
+        Assert.False(screen.Row("Build ").Met);
+    }
+}

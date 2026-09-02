@@ -119,9 +119,17 @@ colour is a `PreflightField` the gate produced; and every sentence under a row i
 field's own diagnostic, word for word. Unmet rows are ordered first, because what a
 player has to act on should not sit below what already passed.
 
-This is the captain's real modded profile, which is at ascension 9. The screen says
-so, and says what raises it - the engine's sentence, unedited, including the promise
-that the tool will not do it for him.
+This is the captain's real modded profile, which is at ascension 9, and the screen was
+captured while the host still asked its question about that profile: the ascension row
+is red and carries the engine's sentence about what raises it, unedited, including the
+promise that the tool will not do it for him.
+
+That is no longer the question the host asks. Once the trainer constructs the run
+itself, the unlocks, the acts and the ascension are supplied for that run and the row
+states a requirement of the fight on offer rather than of a run nobody starts by hand
+- so on this same profile the row is now met. The rule and the label are unchanged;
+only the reading they are asked about is. The shot above is kept as what the S3 host
+showed, and [the entry document](RECORDED-FIGHT-ENTRY.md) owns what replaced it.
 
 The green content-hash row still carries its qualifier. A matching hash rules out one
 class of divergence and is never proof of environment parity, and the engine owns the
@@ -160,7 +168,7 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrain
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    36, Skipped:     0, Total:    36, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    40, Skipped:     0, Total:    40, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
 ```
 
 ## What this proves, and what it does not

@@ -233,6 +233,9 @@ and proves it arrived.
   constructing a run directly never consults the profile ceiling.
   That is what lets the captain stand in an Ascension 10 fight from an Ascension 9
   profile without a byte of his progress changing.
+  The eligibility screen is asked about that same supplied model, so every row states
+  a requirement of the fight on offer rather than of a run nobody starts by hand -
+  otherwise the ascension row would sit in red above an offer it does not stop.
 - `ProfileWriteBarrier` in the mod: `shouldSave: false` covers the run save and
   everything at the end of a run, and it does not cover the two writes on this
   fight's path - winning a combat rewrites the progress file, and an event room saves

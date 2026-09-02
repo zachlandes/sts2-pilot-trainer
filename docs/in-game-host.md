@@ -34,6 +34,13 @@ nothing, a build that cannot identify itself, a profile that is not loaded.
 `./scripts/arbiter adopt-live` exercises that refusal from the command line, where a
 console process is correctly not a running game.
 
+A refusal also has to be about the right thing. The mod-environment gate tells this
+host's own failure apart from somebody else's mod being present: a game whose only
+active mod is Combat Trainer, failed, is told that Combat Trainer failed to load, not
+to go and disable mods it does not have. The longer explanation about what a content
+hash cannot settle is kept for the case it describes, which is another active or
+failed mod actually being there.
+
 ## Standing in the recorded fight
 
 **The journey is the recording's, and the host only decides when.**
@@ -74,19 +81,27 @@ and `RunManager.EnterMapCoord` — rather than on the buttons that usually reach
 A screen with its buttons hidden is a screen a controller, a hotkey or another mod can
 still drive; the command is the thing that would actually change the run.
 
-**The offer and the rows answer different questions, on purpose.**
-The eligibility rows are unchanged: they read the player's own profile, and every
-refusal S3 shipped still computes and still shows its sentence. The offer of the
-fight is governed by whether this game can construct the recording's run, which is
-the same rule set asked of the progress model the run is actually generated against.
-So a profile whose ascension ceiling is below the recording's is still reported as
-such and no longer stops the fight being offered - the run does not consult that
-ceiling, and `EnvironmentPreflight.EvaluateAscensionCeiling` already said so before
-there was anything to offer. The consequence worth stating: a screen can show a red
-profile row above an enabled offer. That is two true statements about two different
-questions and it reads as a contradiction; whether the rows should change with the
-offer is a wording decision nobody has made, and no new sentence was invented to
-paper over it.
+**The rows and the offer answer the same question.**
+Every rule is the one S3 shipped and every row label is the one it approved; what
+changed is which reading they are asked about. The screen asks
+`Preflight.EvaluateLiveHost` for the progress model the run is actually generated
+against - `RecordedFightEntry.SuppliedProgress`, the same constant the construction
+uses - so each row states a requirement of the fight being offered rather than of a
+run nobody starts by hand. The unlocks, the acts and the ascension are supplied for
+that run, so they pass; the build, the build date, the content hash and the mod
+environment are read from this installation, because those are the ones no host can
+supply, and they still refuse.
+
+The row this matters for is the ascension. A profile whose ceiling is below the
+recording's does not stop the trainer constructing the run at the recording's
+ascension - `EnvironmentPreflight.EvaluateAscensionCeiling` said so before there was
+anything to offer, because a host constructing a run directly never consults that
+ceiling. Reporting it as unmet would put a red row above an offer it does not stop,
+which is a warning about nothing.
+
+The profile note goes with the reading it describes. It names the profile the rows
+were measured against, so it is shown only where a profile was read; over rows the
+host supplied, it would send a player to import progress that nothing here consults.
 
 **The fight is proved before it is handed over.**
 `CombatStartEquality` compares the live state against both readings of the boundary:

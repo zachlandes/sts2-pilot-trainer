@@ -77,9 +77,18 @@ internal static class TrainerScreen
     {
         var recording = CombatTrainerMod.Recording;
         var expected = recording.Environment;
+
+        // Asked about the state the run will actually be generated against, which is
+        // the same state RecordedFightEntry constructs it with. That is what keeps
+        // every row a requirement of the fight on offer: the unlocks, the acts and the
+        // ascension are supplied for that run, so a row measured against the player's
+        // save would be reporting a requirement nothing consults - and, on a profile
+        // below the recording's ascension, would sit in red above an offer it does not
+        // stop. The build, the content hash and the mod environment are read from this
+        // installation either way, because those are the ones no host can supply.
         return EligibilityScreen.For(
             recording,
-            Preflight.EvaluateLiveHost(expected),
+            Preflight.EvaluateLiveHost(expected, RecordedFightEntry.SuppliedProgress),
             fightOffered: RecordedFightEntry.CanConstruct(expected, out _));
     }
 

@@ -30,6 +30,16 @@ namespace Sts2PilotTrainer.Engine;
 /// </summary>
 public sealed class RecordedFightEntry : IDisposable
 {
+    /// <summary>
+    /// The progress model the recording's run is generated against, named once.
+    ///
+    /// A host has to construct the run against the state the recording's content came
+    /// from, and it has to ask its own eligibility question against the same one -
+    /// otherwise a screen reports a requirement that nothing consults. One constant so
+    /// the two can never be asked different questions.
+    /// </summary>
+    public const PlayerProgress SuppliedProgress = PlayerProgress.AllUnlocked;
+
     private readonly GameSession _session;
     private readonly RunDriver _driver;
     private readonly PlayerProgress _progress;
@@ -82,7 +92,7 @@ public sealed class RecordedFightEntry : IDisposable
     /// </summary>
     public static bool CanConstruct(
         EnvironmentIdentity expected, out PreflightResult gate,
-        PlayerProgress progress = PlayerProgress.AllUnlocked)
+        PlayerProgress progress = SuppliedProgress)
     {
         gate = Preflight.Evaluate(expected, progress);
         return gate.Matches && LocalEnvironment.ReadStartedRun() is null;
@@ -93,7 +103,7 @@ public sealed class RecordedFightEntry : IDisposable
     /// room, ready for the first recorded decision.
     /// </summary>
     public static RecordedFightEntry StartHeadless(
-        ReplayManifest manifest, PlayerProgress progress = PlayerProgress.AllUnlocked)
+        ReplayManifest manifest, PlayerProgress progress = SuppliedProgress)
     {
         var entry = Prepare(manifest, progress, session => session.StartRun(
             manifest.Environment.Seed.Value,
@@ -116,7 +126,7 @@ public sealed class RecordedFightEntry : IDisposable
     /// act, and then steps this entry through the plan.
     /// </summary>
     public static RecordedFightEntry PrepareInRunningGame(
-        ReplayManifest manifest, PlayerProgress progress = PlayerProgress.AllUnlocked) =>
+        ReplayManifest manifest, PlayerProgress progress = SuppliedProgress) =>
         Prepare(manifest, progress, session => session.PrepareRunInRunningGame(
             manifest.Environment.Seed.Value,
             manifest.Environment.Character.Value,
