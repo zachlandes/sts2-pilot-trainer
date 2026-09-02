@@ -10,8 +10,8 @@
        eligibility verdict comes from Preflight, the wording and row logic from
        Sts2PilotTrainer.Trainer, and this project draws the answer.
 
-       The published artifact is CombatTrainer.dll plus its manifest; see
-       docs/distribution.md.
+       The published artifact is CombatTrainer.dll, its manifest and the four
+       project assemblies it uses; see docs/distribution.md.
        ═══════════════════════════════════════════════════════════════════════ -->
   <PropertyGroup>
     <RootNamespace>Sts2PilotTrainer.Mod</RootNamespace>

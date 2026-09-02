@@ -11,10 +11,9 @@ No source-reference scan stands in for an executable proof that those absent fea
 ## What it proves
 
 **The retail game loads the mod through its own mod surface.**
-`mods/CombatTrainer/CombatTrainer.json` plus `CombatTrainer.dll`, discovered by the
-game's recursive scan of its mods directory, loaded by `ModManager`, and initialised
-through `ModInitializerAttribute`.
-No framework, no dependency, no resource pack.
+`mods/CombatTrainer` contains `CombatTrainer.json`, `CombatTrainer.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
+The game's recursive scan discovers the manifest, `ModManager` loads the mod, and `ModInitializerAttribute` initializes it.
+The libraries ship together; there is no separately installed framework or runtime dependency, and no resource pack.
 
 **The eligibility answer comes from the same owner the arbiter uses.**
 `Preflight.EvaluateLiveHost` reads this process's game and judges it through
@@ -112,11 +111,9 @@ rows that already passed are below it.
 ./scripts/arbiter adopt-live             # the refusal, from a process that is not a running game
 ```
 
-`install-mod.sh` is the one script in this repository that writes inside a Slay the
-Spire 2 installation, and it writes exactly one directory: `mods/CombatTrainer`. That
-is the game's own mod surface — the same directory Steam Workshop installs into — and
-the game offers no user-data alternative, because it derives the path from its
-executable's location.
+`install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
+Its final state is exactly `mods/CombatTrainer`; an upgrade stages the complete named file set in a temporary sibling under `mods` and replaces the old directory rather than overlaying it.
+That is the game's own mod surface — the same directory Steam Workshop installs into — and the game offers no user-data alternative, because it derives the path from its executable's location.
 
 [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) has the mod card and the eligibility
 screen as they appear in the shipped client.

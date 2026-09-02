@@ -23,9 +23,9 @@ is stored anywhere here; see [docs/in-game-host.md](../docs/in-game-host.md).
 ## Building and installing it
 
 One project-owned command builds the mod and puts it where the game looks. It is the
-only script in this repository that writes inside a Slay the Spire 2 installation, and
-it writes exactly one directory - the game's own mod surface, the same one Steam
-Workshop installs into. `--uninstall` removes that directory and nothing else.
+only script in this repository that writes inside a Slay the Spire 2 installation.
+Its final state is exactly one directory in the game's own mod surface, the same one Steam Workshop installs into; upgrades stage the complete named file set in a temporary sibling and replace the old directory rather than overlaying it.
+`--uninstall` removes the final directory and nothing else.
 
 ```bash
 set -o pipefail; ./scripts/install-mod.sh | sed -E 's/Time Elapsed .*/Time Elapsed <elapsed>/'

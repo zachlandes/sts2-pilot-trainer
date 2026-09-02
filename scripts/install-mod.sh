@@ -2,13 +2,14 @@
 # Builds the Combat Trainer mod and puts it where the game looks for mods.
 #
 # This is the one script in this repository that writes inside a Slay the Spire 2
-# installation, and it writes exactly one directory: mods/CombatTrainer. That is the
-# game's own mod surface - the same directory Steam Workshop installs into - and
-# there is no other: the game derives it from its executable's location and offers no
-# user-data alternative.
+# installation. Its final state is exactly mods/CombatTrainer; upgrades use temporary
+# sibling directories under mods so the complete named file set replaces the old one.
+# That is the game's own mod surface - the same directory Steam Workshop installs into
+# - and there is no other: the game derives it from its executable's location and
+# offers no user-data alternative.
 #
-# Nothing else in the install is touched, and nothing here reads or writes a save, a
-# profile or a run. --uninstall removes the same directory and nothing more.
+# Nothing outside mods is touched, and nothing here reads or writes a save, a profile
+# or a run. --uninstall removes the final directory and nothing more.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -91,10 +92,38 @@ for file in "${files[@]}"; do
   fi
 done
 
-mkdir -p "$target"
+staging="$(mktemp -d "$mods_dir/.${mod_id}.install.XXXXXX")"
+backup=""
+cleanup() {
+  if [[ -n "$staging" ]]; then
+    rm -rf "$staging"
+  fi
+  if [[ -n "$backup" && ( -e "$backup" || -L "$backup" ) ]]; then
+    if [[ ! -e "$target" && ! -L "$target" ]]; then
+      mv "$backup" "$target"
+    else
+      rm -rf "$backup"
+    fi
+  fi
+}
+trap cleanup EXIT
+
 for file in "${files[@]}"; do
-  cp "$built/$file" "$target/$file"
+  cp "$built/$file" "$staging/$file"
 done
+
+if [[ -e "$target" || -L "$target" ]]; then
+  backup="$(mktemp -d "$mods_dir/.${mod_id}.previous.XXXXXX")"
+  rmdir "$backup"
+  mv "$target" "$backup"
+fi
+mv "$staging" "$target"
+staging=""
+if [[ -n "$backup" ]]; then
+  rm -rf "$backup"
+  backup=""
+fi
+trap - EXIT
 
 echo "installed    : ${#files[@]} files -> ${target/#$HOME/\~}"
 echo "next         : launch Slay the Spire 2, allow mod loading, then Singleplayer"

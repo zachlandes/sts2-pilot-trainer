@@ -28,9 +28,11 @@ installed assemblies into `build/lib` and hashes the installation before and aft
 The headless host also routes every engine write into a sandbox and throws on any
 path inside a Steam or Slay the Spire 2 directory. Do not weaken either.
 
-**Nothing from the game or from a video is ever committed.** No assemblies, no
-localization tables, no frames, no stills. `.gitignore` blocks the file types; the
-judgement is yours. Facts read from a video are fine and are what `manifests/` holds.
+**Nothing extracted from the game or from a source video is ever committed.**
+No game assemblies, localization tables, source-VOD frames or source-VOD stills.
+`.gitignore` blocks the file types; the judgement is yours.
+The sole visual exception is screenshots of this mod's own UI captured in the player's client and committed under `demo/` as S3 evidence; that is not permission to commit any source footage.
+Facts read from a video are fine and are what `manifests/` holds.
 
 **One owner for game-version-specific code.** Everything that knows how v0.111.0 is
 put together lives in `Sts2PilotTrainer.Engine`. `Sts2PilotTrainer.Replay` must stay
@@ -105,8 +107,8 @@ player's game; `EngineHost.Start` must never run there, and `AdoptRunningGame` i
 way in. Two traps in that process cost a crash each and are written down there: mod
 initialization runs before the game has a model database, and Godot does not load the
 game into the default assembly load context. `./scripts/install-mod.sh` is the one
-script here that writes inside a Slay the Spire 2 installation, and it writes exactly
-`mods/CombatTrainer`.
+script here that writes inside a Slay the Spire 2 installation.
+Its final state is exactly `mods/CombatTrainer`; upgrades use temporary sibling directories under `mods` to replace the complete artifact without mixing versions.
 
 ## Maintaining this file
 
