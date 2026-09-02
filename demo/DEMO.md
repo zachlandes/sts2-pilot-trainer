@@ -225,7 +225,7 @@ This is the gate an eventual mod entry point must run when the player has a run 
 This executable redirects user data to `build/sandbox`, reads the empty profile there, and has only its own headless `RunManager`, so its default path finds no active run and refuses by design.
 It cannot observe a retail player's profile or run.
 
-`Preflight.EvaluateLiveGame` is the API an eventual in-game host must call before presenting a VOD replay or advice, but no such host exists yet, so nothing today guarantees that a retail player is gated.
+`Preflight.EvaluateLiveHost` is the API the in-game host calls before presenting a player anything; that host is [the Combat Trainer mod](IN-GAME-HOST.md), and it states eligibility rather than entering a fight.
 That host must not embed this headless entry point unchanged: `EngineHost.Start` enables test mode and installs headless patches inside its process.
 
 For this headless demonstration, `--demo-start-run` explicitly starts a synthetic run at a stated identity, and `--progress all-unlocked` names its synthetic progress model.
@@ -769,7 +769,7 @@ turn detail:
   note: This states differences. It does not score either line, rank them, or say which was better.
   note: Enemy health lost and player health lost count only health that actually came off. Damage either side's block absorbed is not included in those measurements.
   note: The summary's net health change is final health minus starting health: positive is a net gain and negative is a net loss. It includes anything that resolves as combat ends. Turn detail reports gross player health lost during each turn, so the measurements do not have to add up.
-  note: Both lines were replayed through the real engine from the same combat-start boundary. Nothing here is evidence about a fight played by a person in the retail client: no mod host exists yet, so no live capture has ever been compared.
+  note: Both lines were replayed through the real engine from the same combat-start boundary. Nothing here is evidence about a fight played by a person in the retail client: the mod host states eligibility and enters no fight, so no live capture has ever been compared.
 
 report: build/evidence/combat-comparison.json
 ```
@@ -838,7 +838,7 @@ turn detail:
   note: This states differences. It does not score either line, rank them, or say which was better.
   note: Enemy health lost and player health lost count only health that actually came off. Damage either side's block absorbed is not included in those measurements.
   note: The summary's net health change is final health minus starting health: positive is a net gain and negative is a net loss. It includes anything that resolves as combat ends. Turn detail reports gross player health lost during each turn, so the measurements do not have to add up.
-  note: Both lines were replayed through the real engine from the same combat-start boundary. Nothing here is evidence about a fight played by a person in the retail client: no mod host exists yet, so no live capture has ever been compared.
+  note: Both lines were replayed through the real engine from the same combat-start boundary. Nothing here is evidence about a fight played by a person in the retail client: the mod host states eligibility and enters no fight, so no live capture has ever been compared.
 
 report: build/evidence/combat-comparison.json
 ```

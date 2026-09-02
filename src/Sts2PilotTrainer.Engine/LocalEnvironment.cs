@@ -63,7 +63,12 @@ public static class LocalEnvironment
     public static LocalPrerequisites ReadPrerequisites(
         EnvironmentIdentity expected, PlayerProgress progress = PlayerProgress.AllUnlocked)
     {
-        var identity = GameIdentity.Read();
+        // Which reading answers "what build is this" depends on how the engine got
+        // here. Inside the retail client there is no prepared copy and no bootstrap
+        // receipt to consult; the running process is the authority on itself.
+        var identity = EngineHost.Origin == EngineOrigin.RunningGame
+            ? GameIdentity.ReadFromRunningGame()
+            : GameIdentity.Read();
         var inventory = ReadUnlockInventory(progress);
 
         return new LocalPrerequisites

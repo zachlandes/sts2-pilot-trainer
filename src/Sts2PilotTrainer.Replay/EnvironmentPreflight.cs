@@ -130,10 +130,24 @@ public static class EnvironmentPreflight
         return new PreflightResult(fields.All(field => field.Matches), fields);
     }
 
-    /// <summary>Both gates as one verdict, which is how the mod asks the question.</summary>
+    /// <summary>Both gates as one verdict, which is how the arbiter asks the question.</summary>
     public static PreflightResult Combine(PreflightResult prerequisites, PreflightResult runIdentity) =>
         new(prerequisites.Matches && runIdentity.Matches,
             [.. prerequisites.Fields, .. runIdentity.Fields]);
+
+    /// <summary>
+    /// Both gates as a live host has to ask them: separably, and with the sequencing
+    /// recorded.
+    ///
+    /// Same rules, same order, no softening - <see cref="RunIdentity"/> still refuses
+    /// a null reading, and where a run exists its verdict still counts. What changes
+    /// is that the host can tell "you have not started the run yet" apart from "your
+    /// install cannot play this", which one combined field list cannot express. See
+    /// <see cref="LivePreflight"/>.
+    /// </summary>
+    public static LivePreflight LiveGame(
+        EnvironmentIdentity expected, LocalPrerequisites prerequisites, LocalRunReading? run) =>
+        new(Prerequisites(expected, prerequisites), RunIdentity(expected, run), run is not null, prerequisites);
 
     private static IEnumerable<PreflightField> EvaluateUnlocks(
         EnvironmentIdentity expected, LocalPrerequisites actual)

@@ -124,6 +124,6 @@ No comparison UI. No scoring. No verdict about which of two lines was better.
 `combat-snapshot` describes only the covered action history.
 
 Neither side of a comparison has ever been a fight played by a person.
-Every side is replayed through the real engine from the same combat-start boundary, because no mod host exists to capture a retail player's fight, and the comparison says so in its own caveats.
+Every side is replayed through the real engine from the same combat-start boundary, because nothing captures a retail player's fight yet - the mod host states eligibility and enters no fight - and the comparison says so in its own caveats.
 The recording's own fight is one such side now, and the only second line of it that exists is itself: authoring an alternative to compare it against would be inventing a decision no player made.
 See [the proof-of-concept path](proof-of-concept-path.md) for where that slice sits.

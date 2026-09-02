@@ -8,11 +8,12 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
 
 ```bash
 ./scripts/build.sh          # bootstrap the game assembly copy, then build everything
+./scripts/install-mod.sh    # build the in-game mod and install it into the game's mods directory
 dotnet test sts2-pilot-trainer.sln -c Release
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
-./scripts/arbiter <command> # gate | validate | preflight | verify-seed | replay |
-                            # determinism | negative-controls | combat-snapshot |
-                            # combat-compare
+./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
+                            # verify-seed | replay | determinism | negative-controls |
+                            # combat-snapshot | combat-compare
 ```
 
 `dotnet test` works without the game: the integration suite skips with an explanation
@@ -97,6 +98,15 @@ Two screens have no engine command at all - the loot a won fight offers, and the
 screens a reward or an enchantment opens - so the host drives the first and answers
 the second from the manifest. Neither decides anything, and both refuse where the
 manifest is silent.
+
+**Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
+inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
+player's game; `EngineHost.Start` must never run there, and `AdoptRunningGame` is the
+way in. Two traps in that process cost a crash each and are written down there: mod
+initialization runs before the game has a model database, and Godot does not load the
+game into the default assembly load context. `./scripts/install-mod.sh` is the one
+script here that writes inside a Slay the Spire 2 installation, and it writes exactly
+`mods/CombatTrainer`.
 
 ## Maintaining this file
 

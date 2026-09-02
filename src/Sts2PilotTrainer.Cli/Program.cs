@@ -25,6 +25,7 @@ internal static class Program
                 "validate" => Commands.Validate(args[1..]),
                 "preflight" => Commands.Preflight(args[1..]),
                 "preflight-live" => Commands.PreflightLive(args[1..]),
+                "adopt-live" => Commands.AdoptLive(args[1..]),
                 "verify-seed" => Commands.VerifySeed(args[1..]),
                 "synthetic-fixture" => Commands.SyntheticFixture(args[1..]),
                 "generate-synthetic-fixture" => Commands.GenerateSyntheticFixture(args[1..]),
@@ -87,6 +88,12 @@ internal static class Program
               retail player state, so the default path refuses by design. Synthetic
               startup, progress models and identity overrides are available only with
               --demo-start-run for tests and demos.
+
+          adopt-live
+              Ask whether this process is a running game whose state can be read.
+              It refuses here, because a console process is not one - the same
+              refusal the in-game host gets if it asks before the game has finished
+              starting up, which is a crash rather than a wrong answer if unguarded.
 
           verify-seed     <map-observation> --candidates <seed>[,<seed>...] [--out <dir>]
               Generate each candidate seed's Act 1 map through the real engine and

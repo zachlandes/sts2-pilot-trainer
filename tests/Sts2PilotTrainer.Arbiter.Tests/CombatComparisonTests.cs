@@ -158,8 +158,11 @@ public class CombatComparisonTests
             field => Assert.True(field.GetProperty("matches").GetBoolean()));
 
         // The caveat that keeps the output honest survives a VOD side: neither line
-        // here was fought by a person, because no mod host exists to capture one.
-        Assert.Contains("no mod host exists yet", result.Output, StringComparison.Ordinal);
+        // here was fought by a person. A mod host exists now, and it states
+        // eligibility rather than entering a fight, so there is still nothing to
+        // capture.
+        Assert.Contains(
+            "the mod host states eligibility and enters no fight", result.Output, StringComparison.Ordinal);
     }
 
     /// <summary>

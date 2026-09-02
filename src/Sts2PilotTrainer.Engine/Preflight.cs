@@ -47,9 +47,27 @@ public static class Preflight
     public static PreflightResult EvaluateStartedRun(EnvironmentIdentity expected) =>
         EnvironmentPreflight.RunIdentity(expected, LocalEnvironment.ReadStartedRun());
 
-    /// <summary>Both gates, which an eventual mod entry point must ask of a live game.</summary>
+    /// <summary>Both gates, which a host must ask of a live game.</summary>
     public static PreflightResult EvaluateLiveGame(EnvironmentIdentity expected) =>
         EnvironmentPreflight.Combine(
             Evaluate(expected, PlayerProgress.LocalProfile),
             EvaluateStartedRun(expected));
+
+    /// <summary>
+    /// Both gates as the in-game host asks them: the same rules over one reading,
+    /// with the two verdicts kept apart.
+    ///
+    /// Same owners, same order, nothing softened - this reads the player's own
+    /// profile and the run they actually have, and where a run exists
+    /// <see cref="EnvironmentPreflight.RunIdentity"/> is still authoritative. What it
+    /// adds is that both gates are judged from a single reading, so a screen can
+    /// never show a row measured at one moment beside a verdict measured at another,
+    /// and that a host can distinguish "you have not started the run yet" from "your
+    /// install cannot play this". See <see cref="LivePreflight"/>.
+    /// </summary>
+    public static LivePreflight EvaluateLiveHost(EnvironmentIdentity expected) =>
+        EnvironmentPreflight.LiveGame(
+            expected,
+            LocalEnvironment.ReadPrerequisites(expected, PlayerProgress.LocalProfile),
+            LocalEnvironment.ReadStartedRun());
 }
