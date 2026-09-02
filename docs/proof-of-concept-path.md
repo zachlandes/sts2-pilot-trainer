@@ -38,8 +38,7 @@ assembled into one verdict.
   mismatch. It never writes to a save, a profile or the install.
 - **Headless replay of the covered history through the real shipped engine**, with 141
   VOD-observed values reproduced and every checkpoint compared field by field.
-- **Determinism across fresh processes**, and rejection of ten deliberately corrupted
-  histories, four of which pass every arithmetic check the frames allow.
+- **Determinism across fresh processes**, and rejection of ten deliberately corrupted histories, all of which the publication gate requires to apply; four pass every arithmetic check the frames allow.
 - **The combat-start snapshot**, derived, cached under a key bound to the history that
   produced it, and re-derived in a fresh process to be read at all.
 - **A stored result that keeps the shape of the fight**, not only its last frame:
@@ -250,7 +249,5 @@ multi-VOD support. No charting. No broad interface work. No presentation designe
 around rare permanent card removal. No candidate search: S2.5 built the prefix one
 would need and deliberately stopped there.
 
-And nothing in the decision alphabet beyond what this one path uses. Rest sites,
-shops, potions, treasure rooms and act transitions are still named by the format and
-still refused by the driver, because implementing a verb no reconstruction exercises
-is how a verb that quietly does the wrong thing gets shipped.
+And nothing in the decision alphabet beyond what this one path uses.
+Rest sites, shops, potion use, treasure rooms and act transitions are still named by the format and still refused by the driver, because implementing a verb no reconstruction exercises is how a verb that quietly does the wrong thing gets shipped.
