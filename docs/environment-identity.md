@@ -214,9 +214,10 @@ The explicit `--demo-start-run` path constructs a synthetic run and permits synt
 The Combat Trainer mod invokes `Preflight.EvaluateLiveHost` inside the retail process before stating whether the selected recording is eligible.
 It reads the installed build, the mods the game discovered and the profile used for modded play, while the existing prerequisite and run-identity owners remain authoritative.
 It adopts the client through `EngineHost.AdoptRunningGame`; `EngineHost.Start` remains the headless entry point that enables test mode and applies headless patches.
-One of the three boundary tests drives the console refusal and verifies that the prepared game inputs and sandbox profile remain unchanged.
+One of the four boundary tests drives the console refusal and verifies that the prepared game inputs and sandbox profile remain unchanged.
 Another loads a duplicate game assembly and proves that state refuses before adoption.
-The third parses the manifest and proves that the shipped host is non-gameplay, DLL-only and packless.
+A third proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
+The fourth parses the manifest and proves that the shipped host is non-gameplay, DLL-only and packless.
 The host states eligibility and enters no fight; constructing or entering the captured combat remains S4.
 `--progress all-unlocked`, the arbiter's ordinary replay default, is the state the headless host constructs the run with, and the report says so rather than calling it a reading of anybody.
 

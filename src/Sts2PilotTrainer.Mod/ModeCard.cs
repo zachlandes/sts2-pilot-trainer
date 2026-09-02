@@ -204,10 +204,17 @@ internal static class ModeCard
 
         internal static void PlaceBeside(Snapshot snapshot, Control card)
         {
-            if (card.GetParent() is Container || snapshot.Standard is null || snapshot.Daily is null) return;
+            if (card.GetParent() is Container) return;
+            if (snapshot.Standard is null || snapshot.Daily is null)
+            {
+                throw new InvalidOperationException("The native mode-card layout anchors are unavailable.");
+            }
 
             var step = snapshot.Daily.Position - snapshot.Standard.Position;
-            if (step.LengthSquared() <= 0f) return;
+            if (step.LengthSquared() <= 0f)
+            {
+                throw new InvalidOperationException("The native mode-card layout anchors have no usable spacing.");
+            }
 
             card.Position = snapshot.Source.Position + step;
             var recentre = -step / 2f;

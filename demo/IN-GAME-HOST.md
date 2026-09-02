@@ -137,6 +137,7 @@ sentence that says so.
 
 The boundary suite drives `adopt-live` as a real command and verifies that a console process refuses without changing the prepared game inputs or sandbox profile.
 It also loads a second copy of `sts2` and verifies that adoption refuses before reading either copy's state, with the bound assembly named in the refusal.
+A third test proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
 The remaining declarative test parses the mod manifest and verifies the non-gameplay, DLL-only, packless contract that keeps the compared content hash meaningful.
 There is no source-reference scan presented as behavioral evidence, and no test claim stands in for the absent S4 implementation.
 
@@ -145,7 +146,7 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Arbiter.Tests/Sts2PilotTrain
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:     3, Skipped:     0, Total:     3, Duration: <duration> - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: <duration> - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 And what the screen says, checked on a machine that does not own the game. The wording

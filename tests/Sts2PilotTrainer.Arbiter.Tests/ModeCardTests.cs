@@ -77,6 +77,46 @@ public sealed class ModeCardTests
         Assert.Equal(originalPositions, new[] { standard.Position, daily.Position, source.Position });
     }
 
+    [ModeCardFact]
+    public void UnsupportedManualLayoutsRemoveTheCardAndRestoreNativePositions()
+    {
+        AssertUnsupportedLayoutRollsBack(includeStandard: false, dailyPosition: new Vector2(110, 20));
+        AssertUnsupportedLayoutRollsBack(includeStandard: true, dailyPosition: new Vector2(10, 20));
+    }
+
+    private static void AssertUnsupportedLayoutRollsBack(bool includeStandard, Vector2 dailyPosition)
+    {
+        _ = EngineHost.StartupPhase();
+        var modAssembly = AssemblyLoadContext.Default.Assemblies
+            .FirstOrDefault(assembly => assembly.GetName().Name == "CombatTrainer")
+            ?? AssemblyLoadContext.Default.LoadFromAssemblyPath(ModAssemblyPath);
+        var gameAssembly = AppDomain.CurrentDomain.GetAssemblies()
+            .Single(assembly => assembly.GetName().Name == "sts2");
+        var submenuType = gameAssembly.GetType("MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSingleplayerSubmenu")!;
+        var cardType = gameAssembly.GetType("MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSubmenuButton")!;
+        var titleType = gameAssembly.GetType("MegaCrit.Sts2.addons.mega_text.MegaLabel")!;
+        var descriptionType = gameAssembly.GetType("MegaCrit.Sts2.addons.mega_text.MegaRichTextLabel")!;
+        var submenu = (Node)Activator.CreateInstance(submenuType)!;
+        var standard = CreateCard(cardType, titleType, descriptionType, "StandardButton", new Vector2(10, 20));
+        var daily = CreateCard(cardType, titleType, descriptionType, "DailyButton", dailyPosition);
+        var source = CreateCard(cardType, titleType, descriptionType, "CustomRunButton", new Vector2(210, 20));
+        var trainer = CreateCard(cardType, titleType, descriptionType, "Duplicate", new Vector2(210, 20));
+        if (includeStandard) submenu.AddChild(standard);
+        submenu.AddChild(daily);
+        submenu.AddChild(source);
+        var originalPositions = new[] { standard.Position, daily.Position, source.Position };
+
+        var modeCard = modAssembly.GetType("Sts2PilotTrainer.Mod.ModeCard")!;
+        var failure = Assert.Throws<TargetInvocationException>(() =>
+            modeCard.GetMethod("InstallCard", BindingFlags.NonPublic | BindingFlags.Static)!
+                .Invoke(null, [submenu, source, trainer, (Action)(() => { })]));
+
+        Assert.IsType<InvalidOperationException>(failure.InnerException);
+        Assert.Null(trainer.GetParent());
+        Assert.Null(submenu.GetNodeOrNull<Node>("CombatTrainerButton"));
+        Assert.Equal(originalPositions, new[] { standard.Position, daily.Position, source.Position });
+    }
+
     private static Control CreateCard(
         Type cardType,
         Type titleType,

@@ -53,7 +53,11 @@ public static class EnvironmentPreflight
     /// Everything checkable before a run exists: the build, the content, and the
     /// player prerequisites the run's generation will read.
     /// </summary>
-    public static PreflightResult Prerequisites(EnvironmentIdentity expected, LocalPrerequisites actual)
+    public static PreflightResult Prerequisites(EnvironmentIdentity expected, LocalPrerequisites actual) =>
+        Prerequisites(expected, actual, requireHost: false);
+
+    private static PreflightResult Prerequisites(
+        EnvironmentIdentity expected, LocalPrerequisites actual, bool requireHost)
     {
         var fields = new List<PreflightField>
         {
@@ -71,7 +75,7 @@ public static class EnvironmentPreflight
             EvaluateSeedAlphabet(expected.Seed.Value),
             EvaluateSupportedMode(expected.GameMode.Value),
             EvaluateSourceMods(expected.Mods.Value),
-            EvaluateLocalMods(actual.Mods),
+            EvaluateLocalMods(actual.Mods, requireHost),
         };
 
         fields.AddRange(EvaluateUnlocks(expected, actual));
@@ -148,7 +152,8 @@ public static class EnvironmentPreflight
     /// </summary>
     public static LivePreflight LiveGame(
         EnvironmentIdentity expected, LocalPrerequisites prerequisites, LocalRunReading? run) =>
-        new(Prerequisites(expected, prerequisites), RunIdentity(expected, run), run is not null, prerequisites);
+        new(Prerequisites(expected, prerequisites, requireHost: true), RunIdentity(expected, run),
+            run is not null, prerequisites);
 
     private static IEnumerable<PreflightField> EvaluateUnlocks(
         EnvironmentIdentity expected, LocalPrerequisites actual)
@@ -282,20 +287,20 @@ public static class EnvironmentPreflight
                 "Daily and custom runs carry modifiers that change run setup, so replaying one as standard " +
                 "would produce a different run under the same seed.");
 
-    private static PreflightField EvaluateLocalMods(IReadOnlyList<LocalMod> mods)
+    private static PreflightField EvaluateLocalMods(IReadOnlyList<LocalMod> mods, bool requireHost)
     {
         var active = mods
             .Where(mod => mod.State is not ("Disabled" or "DisabledDuplicate"))
             .ToList();
-        var permitted = active.Count == 0 ||
-                        active.Count == 1 &&
-                        active[0] is
-                        {
-                            Id: "CombatTrainer",
-                            Name: "Combat Trainer",
-                            AffectsGameplay: false,
-                            State: "Loaded",
-                        };
+        var hostIsTheOnlyActiveMod = active.Count == 1 &&
+                                     active[0] is
+                                     {
+                                         Id: "CombatTrainer",
+                                         Name: "Combat Trainer",
+                                         AffectsGameplay: false,
+                                         State: "Loaded",
+                                     };
+        var permitted = hostIsTheOnlyActiveMod || !requireHost && active.Count == 0;
         var actual = mods.Count == 0
             ? "none discovered"
             : string.Join("; ", mods.Select(mod =>
@@ -309,10 +314,13 @@ public static class EnvironmentPreflight
             permitted,
             permitted
                 ? null
-                : "The running game has another active or failed mod. Its behaviour cannot be established as " +
-                  "identical to the recording from the content hash, because a failed mod can leave resources " +
-                  "loaded and that hash does not cover behaviour patches or mods that declare themselves " +
-                  "non-gameplay. Disable every mod except Combat Trainer, restart the game, and check again.");
+                : requireHost && active.Count == 0
+                    ? "The running game did not report Combat Trainer as loaded, so its mod environment cannot " +
+                      "be established. Restart the game with only Combat Trainer enabled, and check again."
+                    : "The running game has another active or failed mod. Its behaviour cannot be established as " +
+                      "identical to the recording from the content hash, because a failed mod can leave resources " +
+                      "loaded and that hash does not cover behaviour patches or mods that declare themselves " +
+                      "non-gameplay. Disable every mod except Combat Trainer, restart the game, and check again.");
     }
 
     private static PreflightField EvaluateSourceMods(ModEnvironment mods)

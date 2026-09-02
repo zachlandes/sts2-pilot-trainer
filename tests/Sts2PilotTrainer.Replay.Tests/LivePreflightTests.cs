@@ -40,6 +40,18 @@ public sealed class LivePreflightTests
     }
 
     [Fact]
+    public void AnEmptyLiveModInventoryRefuses()
+    {
+        var live = EnvironmentPreflight.LiveGame(
+            Identity(), Prerequisites() with { Mods = [] }, run: null);
+
+        Assert.False(live.Matches);
+        var field = Assert.Single(live.Fields, field => field.Field == "loaded_mod_environment");
+        Assert.False(field.Matches);
+        Assert.Contains("did not report Combat Trainer as loaded", field.Diagnostic, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AFailingPrerequisiteFailsTheWholeVerdict()
     {
         var identity = Identity();
@@ -99,7 +111,7 @@ public sealed class LivePreflightTests
         BuildVersion = "v0.111.0",
         BuildDateUtc = "2026.08.14",
         ContentHash = "1568834832",
-        Mods = [],
+        Mods = [new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Loaded")],
         Unlocks = new UnlockInventory
         {
             Origin = "test reading",
