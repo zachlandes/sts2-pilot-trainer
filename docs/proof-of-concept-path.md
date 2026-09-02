@@ -36,10 +36,9 @@ assembled into one verdict.
   content hash, acts, unlock categories and - reading a real profile - ascension
   availability, and refuses with in-game remediation rather than replaying into a
   mismatch. It never writes to a save, a profile or the install.
-- **Headless replay of the covered history through the real shipped engine**, with 47
+- **Headless replay of the covered history through the real shipped engine**, with 141
   VOD-observed values reproduced and every checkpoint compared field by field.
-- **Determinism across fresh processes**, and rejection of four deliberately corrupted
-  histories, two of which pass every arithmetic check the frames allow.
+- **Determinism across fresh processes**, and rejection of ten deliberately corrupted histories, all of which the publication gate requires to apply; four pass every arithmetic check the frames allow.
 - **The combat-start snapshot**, derived, cached under a key bound to the history that
   produced it, and re-derived in a fresh process to be read at all.
 - **A stored result that keeps the shape of the fight**, not only its last frame:
@@ -133,6 +132,50 @@ solution on one side.
 The only second line of that fight is itself: nobody has played it in a retail client,
 so the comparison against the recording is the recording, and it says so.
 
+### S2.5 - The prefix to the two-enemy window - done
+
+S2 stopped at the first fight's victory because the driver stopped there: four verbs,
+and the next thing the recording shows is a loot screen. Reaching any later fight
+needed the decisions between them, and the decisions between them needed verbs.
+
+- Five more verbs, each mapped to the engine's own command for it: `ClaimReward` and
+  `TakeCard` and `SkipRewards` through `RewardsSetSynchronizer`, `ChooseEventOption`
+  through `EventSynchronizer`, `SelectCardFromScreen` through the `ICardSelector` seam
+  the game's own tests use. Nothing was invented and nothing was approximated; where
+  the engine had no command - the loot screen appearing, a card screen asking - the
+  host stands in for the UI and the manifest still makes every decision. See
+  [headless fidelity](headless-fidelity.md).
+- Five, not the six this path was thought to need. `ProceedToMap` was not implemented,
+  because returning to the map is presentation: the state change is entering the next
+  node, which `MapMove` already is, and a verb standing for a screen transition would
+  be a decision the run does not contain. The verb names a reconstruction needs are
+  settled by asking the engine which command each click reaches, not by naming the
+  screens a viewer sees.
+- Thirty-five more actions and eleven more checkpoints, read off the recording the
+  same way the first eleven were: floor 2's loot and the card taken from it, the
+  Waterlogged Scriptorium and the two cards it enchanted with Steady, the whole
+  five-turn floor-4 fight against two Toadpoles, floor 4's loot and the card reward
+  declined, and the first two turns of the floor-5 fight against two Corpse Slugs.
+  141 observed values compared field by field, up from 47.
+- `player.deck_count` in the canonical state. The ordered deck is not readable from a
+  video - the deck screen sorts - and the badge in the top bar is on every frame.
+- One value deliberately not checkpointed. Each Corpse Slug carries a status badge
+  reading 5, drawn as an icon with no text, and the recording never hovers it. The
+  count is legible and the power's identity is not, so `combat.enemy.N.powers` is
+  absent from that boundary rather than filled in from the engine.
+- Six more negative controls, one for each newly reachable kind of decision: a claimed
+  reward declined, a different card taken from the reward, a different copy of the
+  same card enchanted, a different event option, a different enemy targeted, a
+  different map node. Four of the ten controls now pass every arithmetic check the
+  frames allow.
+
+**Runnable now:** `./scripts/arbiter replay manifests/navegreed-OJ-6QXhNgdg.replay.json`
+reaches the floor-5 two-enemy fight and reproduces the hand the recording shows at the
+opening of the 209-215 second turn - `Bash` carrying Retain, two Strikes and two
+Hellraisers - along with both enemies' health, the player's, the gold and the Frail
+stack. That is the trusted prefix an engine-constrained candidate search over that
+window would have to start from; the search itself is not built and is not next.
+
 ### S3 - The in-game mod host
 
 `Preflight.EvaluateLiveGame` is already the API a host must call before showing a
@@ -193,8 +236,18 @@ one completed side; the other side of a comparison against it can only be the
 recording again, because the second line is the player's and capturing it is S5.
 Authoring one instead would be inventing a decision nobody made.
 
+**Only a prefix of the recording is transcribed.** Run start through the opening of
+the floor-5 fight's third turn, which is two whole fights, the loot each of them
+offered, one event, and two turns of a third fight. Everything after that boundary -
+including the rest of that fight and the forty-four floors beyond it - is not
+transcribed and nothing here is a claim about it.
+
 ## Deliberately not built
 
 No turn-level reset or branching. No solver. No generalized VOD ingestion and no
 multi-VOD support. No charting. No broad interface work. No presentation designed
-around rare permanent card removal.
+around rare permanent card removal. No candidate search: S2.5 built the prefix one
+would need and deliberately stopped there.
+
+And nothing in the decision alphabet beyond what this one path uses.
+Rest sites, shops, potion use, treasure rooms and act transitions are still named by the format and still refused by the driver, because implementing a verb no reconstruction exercises is how a verb that quietly does the wrong thing gets shipped.

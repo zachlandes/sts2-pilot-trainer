@@ -19,6 +19,7 @@ internal static partial class Commands
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
         var reportArtifact = EvidenceArtifact.Prepare(outDir, "negative-controls.json");
+        var requireAllControls = Args.Has(args, "--require-all-controls");
         var manifest = ManifestJson.Load(manifestPath);
         var scratchDir = Path.Combine(outDir, "negative-controls");
         Directory.CreateDirectory(scratchDir);
@@ -43,6 +44,29 @@ internal static partial class Commands
 
         foreach (var corruption in Corruption.All)
         {
+            // A control aimed at a decision this history never made has nothing to
+            // damage. Reported as what it is rather than counted as a pass, so a
+            // history cannot dodge a control by leaving the decision out.
+            if (!corruption.AppliesTo(manifest))
+            {
+                Console.WriteLine($"{corruption.Name}");
+                Console.WriteLine($"  corruption   : {corruption.What}");
+                Console.WriteLine(
+                    $"  arbiter      : NOT APPLICABLE - this control needs {corruption.Requires}; " +
+                    "this history has none");
+                Console.WriteLine();
+                results.Add(new
+                {
+                    name = corruption.Name,
+                    corruption = corruption.What,
+                    video_only_verdict = corruption.VideoOnly.ToString(),
+                    video_only_reasoning = corruption.WhyVideoOnly,
+                    applicable = false,
+                    requires = corruption.Requires,
+                });
+                continue;
+            }
+
             var corrupted = corruption.Apply(manifest);
             var path = Path.Combine(scratchDir, $"{corruption.Name}.manifest.json");
             ManifestJson.Save(corrupted, path);
@@ -102,6 +126,8 @@ internal static partial class Commands
                 corruption = corruption.What,
                 video_only_verdict = corruption.VideoOnly.ToString(),
                 video_only_reasoning = corruption.WhyVideoOnly,
+                applicable = true,
+                requires = corruption.Requires,
                 arbiter_rejected = arbiterRejected,
                 ingestion_rejected = ingestionRejected,
                 replay_status = replayReport?.Status.ToString() ??
@@ -119,6 +145,11 @@ internal static partial class Commands
             });
         }
 
+        var applied = Corruption.All.Count(corruption => corruption.AppliesTo(manifest));
+        var skipped = Corruption.All.Count - applied;
+        var allControlsApplicable = skipped == 0;
+        var passed = allRejected && (!requireAllControls || allControlsApplicable);
+
         reportArtifact.WriteAtomic(
             JsonSerializer.Serialize(new
             {
@@ -126,14 +157,20 @@ internal static partial class Commands
                 manifest = Path.GetFileName(manifestPath),
                 baseline_verified = baselinePassed,
                 all_rejected = allRejected,
+                all_controls_applicable = allControlsApplicable,
+                applicable_controls = applied,
+                total_controls = Corruption.All.Count,
                 controls = results,
             }, Json.Indented) + "\n");
 
-        Console.WriteLine(allRejected
-            ? $"all {Corruption.All.Count} corrupted histories were rejected; the uncorrupted one verified"
-            : "AT LEAST ONE CORRUPTED HISTORY WAS ACCEPTED");
+        Console.WriteLine(!allRejected
+            ? "AT LEAST ONE CORRUPTED HISTORY WAS ACCEPTED"
+            : requireAllControls && !allControlsApplicable
+                ? $"ONLY {applied} OF {Corruption.All.Count} REQUIRED CONTROLS APPLIED"
+                : $"all {applied} corrupted histories were rejected; the uncorrupted one verified" +
+                  (skipped > 0 ? $" ({skipped} control(s) had nothing in this history to damage)" : ""));
 
-        return allRejected ? 0 : 1;
+        return passed ? 0 : 1;
     }
 
     private static string? Digest(string output)

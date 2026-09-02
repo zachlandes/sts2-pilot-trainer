@@ -51,6 +51,46 @@ mechanism rather than an unsupported hook.
 | `SaveManager.SaveRun`, `SaveProgressFile`, `SavePrefsFile`, `SaveProfileFile` | **The player's save directory is a read-only input.** The run is created with `shouldSave: false`, but the engine still reaches for the save subsystem on room entry. |
 | `LocManager.GetTable`, `LocString.GetFormattedText/GetRawText`, `LocTable.*` | Localization is stubbed with no data at all — see below. |
 
+### Two screens the host has to stand in for
+
+The engine does not take a command for everything a player does. Two of its surfaces
+are driven by the UI, and there is no UI here.
+
+**The loot screen a won fight puts up.** `NCombatUi.ShowRewards` waits out the death
+animations and calls `CombatRoom.OfferRoomEndRewards`, which is what generates the
+gold, rolls for a potion and builds the card reward. Nothing else calls it, so a
+headless replay that walked out of a won fight simply never earned its loot. The
+driver calls the same method at the same point - immediately after the action that
+ended the fight has drained - and generates nothing itself.
+
+Offering is not a decision, so it is not an action. Taking is, and until the manifest
+says so the set sits open. `RewardsSet.Offer` hands the set to
+`RewardsSet.testSelector` when test mode is on, in place of showing the screen; the
+driver's delegate parks the set there rather than resolving it, and clears
+`ThrowInTestIfRewardsNotTaken`, which is a test-only assertion read at exactly one
+site - the line after that delegate returns - and exists to catch a test that forgot
+to answer a reward screen. Here the answer arrives from the next action instead.
+
+The consequence worth knowing: a map move that would leave the room with rewards
+still on offer is **refused**. The engine skips a leftover set on the way out
+(`RewardsSetSynchronizer.BeforeLeavingRoom`) and says nothing, so a history that
+simply omitted a reward would replay identically to one that declined it on purpose.
+Declining is written down as `SkipRewards`.
+
+**The card screens a reward or an enchantment opens.** Both pull the player's answer
+synchronously from inside the call that opened them, through `CardSelectCmd.Selector`
+- the `ICardSelector` seam the game's own tests use. The driver installs a selector
+that answers only from the manifest and refuses otherwise. It records the refusal
+rather than throwing, because the engine runs both callbacks inside fire-and-forget
+tasks that swallow exceptions; the driver raises it after the action instead, where
+it can actually stop the replay.
+
+Because the answer is pulled from inside the opening call, the actions that record
+those clicks - which sit after it in the history, because that is when the player made
+them - are handed to the selector before the call is made. Only a contiguous run of
+`SelectCardFromScreen` immediately after the opening action is ever read, and a
+selection no screen consumed is refused.
+
 ### The headless flag
 
 `TestMode.IsOn` is set. This is the switch the game's own automated tests use, and
@@ -118,8 +158,8 @@ generation runs through the act model, the room set, and the path pruning and
 post-processing passes. It comes out identical to what a retail client on a modded
 install produced.
 
-**The headless experiment matched 47 independently observed VOD values** — including the enemy state, ordered hand, pile counts, energy, block, and the outcome of every turn of the fight.
-This is evidence that the experiment followed the same path through the whole first combat, from its opening hand to the killing blow.
+**The headless experiment matched 141 independently observed VOD values** — including the enemy state, ordered hand, pile counts, energy, block, gold, the potion belt, the deck size, and the outcome of every turn of two whole fights.
+This is evidence that the experiment followed the same path through the covered prefix: two combats from their opening hands to their killing blows, the loot each of them offered, an event that spent 99 gold enchanting two cards, and the first two turns of a third fight.
 The source's three visible-build utilities are non-gameplay tooling, but the target-level BaseLib probe demonstrates a behavior difference for a player-applied custom debuff.
 A separate history-bound probe therefore records every `PowerCmd.Apply` call in the reconstructed actions and must prove that branch unreachable with an injected affected-call negative control.
 
@@ -135,6 +175,7 @@ Fresh-process determinism, corruption rejection, and snapshot restore are exerci
   else. See [environment identity](environment-identity.md).
 - **Unlock state is assumed complete.** It demonstrably changes generated content,
   and it is not observable from a video. See the same document.
-- **Only the first combat is covered.** Every claim here is about the part of the run
-  that was transcribed: run start through the end of that fight, and nothing after
-  the victory.
+- **Only the transcribed prefix is covered.** Every claim here is about the part of the
+  run that was transcribed: run start through the opening of the floor-5 fight's third
+  turn, which is two complete fights, the loot each of them offered, one event, and
+  the first two turns of a third fight. Nothing after that boundary is transcribed.

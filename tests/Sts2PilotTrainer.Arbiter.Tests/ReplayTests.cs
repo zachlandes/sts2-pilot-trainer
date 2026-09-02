@@ -195,13 +195,23 @@ public class ReplayTests
         Assert.True(report.GetProperty("baseline_verified").GetBoolean());
         Assert.True(report.GetProperty("all_rejected").GetBoolean());
 
+        // The synthetic fixture is a fight and nothing else - no loot, no event, no
+        // second enemy - so the controls aimed at those decisions have nothing here to
+        // damage and say so. They are exercised against the reconstructed VOD history,
+        // which makes every one of them applicable.
         var controls = report.GetProperty("controls").EnumerateArray().ToList();
-        Assert.All(controls, control =>
+        var applied = controls.Where(control => control.GetProperty("applicable").GetBoolean()).ToList();
+        Assert.NotEmpty(applied);
+        Assert.All(applied, control =>
         {
             Assert.True(control.GetProperty("arbiter_rejected").GetBoolean());
             Assert.False(control.GetProperty("ingestion_rejected").GetBoolean());
             Assert.Equal("Rejected", control.GetProperty("replay_status").GetString());
         });
+        Assert.All(
+            controls.Where(control => !control.GetProperty("applicable").GetBoolean()),
+            control => Assert.False(string.IsNullOrWhiteSpace(control.GetProperty("requires").GetString())));
+        Assert.Equal(applied.Count, report.GetProperty("applicable_controls").GetInt32());
 
         // The two corruptions arithmetic on the footage cannot see must both be here
         // and must both be rejected. Without them the suite would only demonstrate
@@ -211,6 +221,45 @@ public class ReplayTests
             var control = controls.Single(c => c.GetProperty("name").GetString() == name);
             Assert.Equal("Undetected", control.GetProperty("video_only_verdict").GetString());
             Assert.True(control.GetProperty("arbiter_rejected").GetBoolean());
+        }
+    }
+
+    /// <summary>
+    /// The reconstructed history is where every control has to have something to
+    /// damage, because it is the one the publication gate judges.
+    /// </summary>
+    [GameFact]
+    public void EveryNegativeControlAppliesToTheReconstructedHistoryAndIsRejected()
+    {
+        var outDir = TempDir();
+
+        var result = Arbiter.Run("negative-controls", Arbiter.Manifest, "--out", outDir);
+
+        Assert.True(result.Verified, result.All);
+        var report = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "negative-controls.json"))).RootElement;
+        Assert.True(report.GetProperty("all_rejected").GetBoolean());
+
+        var controls = report.GetProperty("controls").EnumerateArray().ToList();
+        Assert.All(controls, control =>
+        {
+            Assert.True(
+                control.GetProperty("applicable").GetBoolean(),
+                $"{control.GetProperty("name").GetString()} had nothing in the reconstructed history to damage");
+            Assert.True(control.GetProperty("arbiter_rejected").GetBoolean());
+        });
+
+        // One control per newly reachable kind of decision, each rejected.
+        foreach (var name in new[]
+                 {
+                     "decline-a-claimed-reward", "take-a-different-card", "enchant-a-different-card",
+                     "choose-a-different-event-option", "target-the-other-enemy", "move-to-a-different-node",
+                 })
+        {
+            var control = controls.Single(c => c.GetProperty("name").GetString() == name);
+            Assert.True(control.GetProperty("arbiter_rejected").GetBoolean(), name);
+            Assert.False(
+                string.IsNullOrWhiteSpace(control.GetProperty("first_divergence").GetString()),
+                $"{name} was rejected without saying why");
         }
     }
 
@@ -421,6 +470,45 @@ public class PublicationGateTests
         var source = report.GetProperty("conditions").EnumerateArray()
             .Single(condition => condition.GetProperty("name").GetString() == "publication-source");
         Assert.False(source.GetProperty("passed").GetBoolean());
+    }
+
+    [GameFact]
+    public void RequiresEveryNegativeControlToApplyAtPublication()
+    {
+        var outDir = TempDir();
+        var manifest = ManifestJson.Load(Arbiter.Manifest);
+        var actions = manifest.Actions.Select(action =>
+        {
+            if (action.Verb != ActionVerb.TakeCard) return action;
+            var args = action.Args
+                .Where(pair => pair.Key != Corruption.AlternativeCardId &&
+                               pair.Key != Corruption.AlternativeOptionIndex)
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            return action with { Args = args };
+        }).ToList();
+        var path = Path.Combine(outDir, "missing-control-nomination.json");
+        ManifestJson.Save(manifest with { Actions = actions }, path);
+
+        var result = Arbiter.Run(
+            "gate", path, "--map-observation", Arbiter.MapObservation, "--out", outDir);
+
+        Assert.False(result.Verified);
+        var report = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "publication-gate.json"))).RootElement;
+        var rejection = report.GetProperty("conditions").EnumerateArray()
+            .Single(condition => condition.GetProperty("name").GetString() == "rejection");
+        Assert.False(rejection.GetProperty("passed").GetBoolean());
+        Assert.Contains(
+            "Every required corruption applies",
+            rejection.GetProperty("requirement").GetString(),
+            StringComparison.Ordinal);
+
+        var controls = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "negative-controls.json"))).RootElement;
+        Assert.False(controls.GetProperty("all_controls_applicable").GetBoolean());
+        Assert.True(
+            controls.GetProperty("applicable_controls").GetInt32() <
+            controls.GetProperty("total_controls").GetInt32());
     }
 
     [GameFact]

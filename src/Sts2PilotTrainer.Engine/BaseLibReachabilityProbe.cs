@@ -83,13 +83,15 @@ public static class BaseLibReachabilityProbe
                 manifest.Environment.Ascension.Value,
                 manifest.Environment.GameMode.Value,
                 manifest.Environment.Acts.Value);
-            var driver = new RunDriver(session);
+            using var driver = new RunDriver(session);
             driver.EnterFirstRoom();
 
-            foreach (var action in manifest.Actions.OrderBy(action => action.Seq))
+            var ordered = manifest.Actions.OrderBy(action => action.Seq).ToList();
+            for (var index = 0; index < ordered.Count; index++)
             {
+                var action = ordered[index];
                 _actionSeq = action.Seq;
-                driver.Apply(action);
+                driver.Apply(action, ordered.GetRange(index + 1, ordered.Count - index - 1));
                 if (injectAffectedCall && action.Seq == 1)
                 {
                     InjectAffectedCall(session, assembly);

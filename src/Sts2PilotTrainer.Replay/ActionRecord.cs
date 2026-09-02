@@ -59,7 +59,7 @@ public sealed record ActionRecord
 [JsonConverter(typeof(JsonStringEnumConverter<ActionVerb>))]
 public enum ActionVerb
 {
-    // ── Implemented for the first-combat proof ──
+    // ── Implemented for the selected proof ──
     /// <summary>Pick one of Neow's opening blessings. Args: <c>option_index</c>.</summary>
     ChooseNeowBlessing,
 
@@ -73,16 +73,17 @@ public enum ActionVerb
     /// <summary>End the player's turn.</summary>
     EndTurn,
 
-    // ── Named but not implemented in this milestone ──
     ChooseEventOption,
-    ChooseRestSiteOption,
     ClaimReward,
     TakeCard,
     SkipRewards,
+    SelectCardFromScreen,
+
+    // ── Named but not implemented in this milestone ──
+    ChooseRestSiteOption,
     UsePotion,
     DiscardPotion,
     SelectHandCards,
-    SelectCardFromScreen,
     ShopPurchase,
     CloseShop,
     ProceedToMap,

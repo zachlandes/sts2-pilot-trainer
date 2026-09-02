@@ -40,23 +40,18 @@ public class ReplayTraceTests
     {
         // Total turns, the health outcome, and which consumables were used - with no
         // turn numbers, because the summary does not carry chronology.
-        var steps = Trace().Steps;
-        var entry = steps.Select((step, index) => (step, index))
-            .Where(pair => pair.step.After.GetValueOrDefault("combat.in_progress") == "true")
-            .Select(pair => pair.index)
-            .DefaultIfEmpty(-1)
-            .First();
-        Assert.True(entry >= 0, "the history enters combat");
-        var fight = steps.Skip(entry + 1)
-            .TakeWhile(step => step.Before.GetValueOrDefault("combat.in_progress") == "true")
-            .ToList();
+        var (entry, fight) = FirstFight();
         Assert.NotEmpty(fight);
 
         var outcome = fight[^1].After.GetValueOrDefault("combat.outcome");
         var totalTurns = fight.Max(step => Int(step.Before, "combat.turn"));
-        var startingHp = Int(steps[entry].After, "combat.player_hp");
+        var startingHp = Int(entry.After, "combat.player_hp");
         var finalHp = Int(fight[^1].After, "combat.player_hp");
-        var consumablesUsed = steps
+        // Scoped to the fight, like every other quantity in the summary. The history
+        // picks up a potion from this fight's loot, which is an addition to the belt
+        // and not a use, and a summary counted over the whole run would be answering a
+        // different question from the one it says it answers.
+        var consumablesUsed = fight
             .SelectMany(step => Potions(step.Before).Except(Potions(step.After), StringComparer.Ordinal))
             .ToList();
 
@@ -79,8 +74,14 @@ public class ReplayTraceTests
     public void TheTurnChronologyProjectionIsDerivable()
     {
         // The same events read the other way: per-turn enemy and player health lost.
+        //
+        // Bounded to the first fight, because turn numbers restart with every combat
+        // and a chronology that summed them across fights would be adding turn 2 of one
+        // to turn 2 of another. That bound is the projection's too - CombatProjection
+        // reads one completed fight - and it is the reason the history's later fights
+        // do not change the numbers below.
         var byTurn = new SortedDictionary<int, (int Dealt, int Received)>();
-        foreach (var step in Trace().Steps.Where(s => s.Before.GetValueOrDefault("combat.in_progress") == "true"))
+        foreach (var step in FirstFight().Steps)
         {
             var turn = Int(step.Before, "combat.turn");
             // The engine takes a dead enemy out of the combat state instead of leaving
@@ -117,6 +118,15 @@ public class ReplayTraceTests
         // Nothing in the reconstructed prefix removes a card, so what is proved here
         // is that a removal would be visible: the deck is sampled either side of every
         // action, and a set difference is all a later projection needs.
+        //
+        // With one wrinkle the history now exercises. A card's canonical identity
+        // carries its enchantment, so the event that enchants Bash and a Defend turns
+        // 'CARD.BASH' into 'CARD.BASH@ENCHANTMENT.STEADY' - and a naive set difference
+        // reads that as a removal and an addition. It is not one, and a removal
+        // projection that treated it as one would report the wrong thing about the
+        // rarest event it exists to describe. Comparing base identities is what
+        // separates the two, and it is recorded here rather than left to be
+        // rediscovered.
         var steps = Trace().Steps;
         Assert.All(steps, step =>
         {
@@ -125,9 +135,39 @@ public class ReplayTraceTests
         });
 
         var removals = steps
-            .SelectMany(step => Deck(step.Before).Except(Deck(step.After), StringComparer.Ordinal))
+            .SelectMany(step => BaseCards(step.Before).Except(BaseCards(step.After), StringComparer.Ordinal))
             .ToList();
         Assert.Empty(removals);
+
+        // And the enchantment really is in the trace, or the paragraph above would be
+        // describing a hazard this history does not contain.
+        Assert.Contains(steps, step => Deck(step.After).Any(card => card.Contains('@')));
+    }
+
+    /// <summary>Card identities with any enchantment suffix removed.</summary>
+    private static IEnumerable<string> BaseCards(IReadOnlyDictionary<string, string> sample) =>
+        Deck(sample).Select(card => card.Split('@')[0]);
+
+    /// <summary>
+    /// The step that entered the history's first combat, and the steps of that fight
+    /// up to the one that ended it. The same window <see cref="CombatProjection"/>
+    /// reads, and the reason the fights this history goes on to do not change any
+    /// number derived here.
+    /// </summary>
+    private static (ReplayStep Entry, IReadOnlyList<ReplayStep> Steps) FirstFight()
+    {
+        var steps = Trace().Steps;
+        var entry = steps.Select((step, index) => (step, index))
+            .Where(pair => pair.step.After.GetValueOrDefault("combat.in_progress") == "true")
+            .Select(pair => pair.index)
+            .DefaultIfEmpty(-1)
+            .First();
+        Assert.True(entry >= 0, "the history enters combat");
+        return (
+            steps[entry],
+            steps.Skip(entry + 1)
+                .TakeWhile(step => step.Before.GetValueOrDefault("combat.in_progress") == "true")
+                .ToList());
     }
 
     [GameFact]

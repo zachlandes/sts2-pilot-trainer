@@ -43,7 +43,7 @@ public static class SyntheticFixtureGenerator
         string[] acts = ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"];
         var session = new GameSession();
         session.StartRun(seed, "CHARACTER.IRONCLAD", 0, "standard", acts);
-        var driver = new RunDriver(session);
+        using var driver = new RunDriver(session);
         driver.EnterFirstRoom();
 
         var actions = new List<ActionRecord>();

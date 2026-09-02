@@ -390,7 +390,7 @@ status         : VERIFIED
         player.hp                    observed=64                     engine=64
         run.act_floor                observed=2                      engine=2
 
-final state digest : sha256:67dc96c5a8995af62ba4a89af9d830d910503f6698bf3ae9849a7602a26bd82a
+final state digest : sha256:99eb1168a227d3723b99c6ece01f1193e9dac9fcb78397a6c1daffb373f04864
 action history hash: sha256:ecd5b8e2d8bddc4bd20384edd17451fab7ff1f146525b55566e9a39183a0e3b2
 ```
 
@@ -413,10 +413,12 @@ It cannot recover the starting state and chronology needed for net health change
 
 So the report also carries a trace: the canonical state sampled either side of every
 action, both samples kept. It computes nothing and ranks nothing. `--show-trace`
-prints what changed at each step, as an inspection view of the stored data:
+prints what changed at each step, as an inspection view of the stored data. The
+history is forty-six actions long; this is its first fight, from run start to the
+killing blow, which is the part the paragraphs below read:
 
 ```bash
-./scripts/arbiter replay manifests/navegreed-OJ-6QXhNgdg.replay.json --show-trace 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed -n '/^trace (/,/^final state/p' | sed '/^final state/d' | sed '/^$/d'
+./scripts/arbiter replay manifests/navegreed-OJ-6QXhNgdg.replay.json --show-trace 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed -n '/^trace (/,/^final state/p' | sed '/^final state/d' | sed '/^$/d' | sed '/^   11 /,$d'
 ```
 
 ```output
@@ -560,9 +562,9 @@ an artefact of running on a different afternoon.
 ```
 
 ```output
-run 0: sha256:67dc96c5a8995af62ba4a89af9d830d910503f6698bf3ae9849a7602a26bd82a
-run 1: sha256:67dc96c5a8995af62ba4a89af9d830d910503f6698bf3ae9849a7602a26bd82a
-run 2: sha256:67dc96c5a8995af62ba4a89af9d830d910503f6698bf3ae9849a7602a26bd82a
+run 0: sha256:99eb1168a227d3723b99c6ece01f1193e9dac9fcb78397a6c1daffb373f04864
+run 1: sha256:99eb1168a227d3723b99c6ece01f1193e9dac9fcb78397a6c1daffb373f04864
+run 2: sha256:99eb1168a227d3723b99c6ece01f1193e9dac9fcb78397a6c1daffb373f04864
 
 all 3 fresh processes produced byte-identical canonical state
 ```
@@ -570,13 +572,19 @@ all 3 fresh processes produced byte-identical canonical state
 ## Rejecting a history that is wrong
 
 A checker nobody has fed a bad input to has never been shown to reject anything. So
-the history is damaged in four specific ways, and each is replayed.
+the history is damaged in ten specific ways, and each is replayed.
 
-The two interesting ones are the corruptions that arithmetic on the footage alone
+The two interesting ones here are the corruptions that arithmetic on the footage alone
 **accepts**: reordering two plays, and substituting a card of the same energy cost.
 Energy conservation balances, hand accounting balances, and the damage arithmetic
 balances — every check that can be done from the frames says yes. Those are the two
 that justify owning an engine at all.
+
+Six of the ten aim at decisions this fixture never makes — it is a fight and nothing
+else, with no loot screen, no event and no second enemy — and they say so rather than
+counting as passes. A control that quietly reported success against a history it could
+not touch would be the easiest way for a manifest to stop being tested. They all apply
+to the reconstructed recording, which is the history the publication gate judges.
 
 ```bash
 ./scripts/arbiter negative-controls build/evidence/synthetic-engine.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
@@ -613,7 +621,31 @@ wrong-opening-choice
   first divergence: checkpoint 'combat-start' (after action 1): combat.hand observed 'CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD', engine produced 'CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD'
   end state       : UNAVAILABLE - the rejected run produced no final state digest
 
-all 4 corrupted histories were rejected; the uncorrupted one verified
+decline-a-claimed-reward
+  corruption   : Turns the first reward the player took into a dismissal of the whole loot screen.
+  arbiter      : NOT APPLICABLE - this control needs a claimed reward; this history has none
+
+take-a-different-card
+  corruption   : Takes the alternative card the reward offered instead of the one the player took.
+  arbiter      : NOT APPLICABLE - this control needs a card reward nominating another card it offered; this history has none
+
+enchant-a-different-card
+  corruption   : Enchants a different, identical copy of the same card on the event's selection screen.
+  arbiter      : NOT APPLICABLE - this control needs a card picked off a screen nominating another copy of the same card; this history has none
+
+choose-a-different-event-option
+  corruption   : Takes a different option at the event, one the player could afford and did not take.
+  arbiter      : NOT APPLICABLE - this control needs an event choice; this history has none
+
+target-the-other-enemy
+  corruption   : Aims a card at the other living enemy.
+  arbiter      : NOT APPLICABLE - this control needs a play that recorded a target; this history has none
+
+move-to-a-different-node
+  corruption   : Walks to a different node the map made reachable from the same one.
+  arbiter      : NOT APPLICABLE - this control needs a map move nominating a reachable sibling; this history has none
+
+all 4 corrupted histories were rejected; the uncorrupted one verified (6 control(s) had nothing in this history to damage)
 ```
 
 The reordering first diverges at the bound `combat.block` checkpoint: Defend has not yet run in the reordered line.
@@ -646,9 +678,9 @@ manifest        : synthetic-v0111-pilot-trainer
 combat starts   : after action 1
 snapshot key    : v0.111.0_standard_CHARACTER.IRONCLAD_a0_P1L0TTRA1NER_1568834832_seq1_fa6c25365719e14b153879446a45e4044c4ca1b3b3be1594bd9a54126ba5b330
 snapshot source : materialised now
-snapshot digest : sha256:48b927730a503dad7dcd40081341096ebc81bc2839ad0a7aeaa45f35baa2f34e
+snapshot digest : sha256:75fbfd0b0cd434805cafce50b5f0054cb03a288ea44c8db2cb6244bda7a6678b
 restore         : re-derived in a fresh process, digest matches
-covered history : VERIFIED through action 16 (17 actions), combat finished (victory), end state sha256:67dc96c5a8995af62ba4a89af9d830d910503f6698bf3ae9849a7602a26bd82a
+covered history : VERIFIED through action 16 (17 actions), combat finished (victory), end state sha256:99eb1168a227d3723b99c6ece01f1193e9dac9fcb78397a6c1daffb373f04864
 
 covered combat history, turn by turn (description, not a verdict):
   turn 1  actions 2..4  player hp 80 -> 80
@@ -843,12 +875,17 @@ and means nothing, which is exactly why identity is checked rather than assumed.
 
 ### The corruption controls, on the completed history
 
-The four controls run against the recording's own history as part of the gate, and a
+All ten controls run against the recording's own history as part of the gate, and a
 fight replayed to its end changes what they have to damage. Without a nomination they
 take the last play, which is now the killing blow — and omitting a killing blow leaves
 a shorter history that is perfectly self-consistent. The manifest therefore nominates
 the turn-1 Defend, which a checkpoint sits on and where a same-cost Strike is sitting
 in hand ready to be substituted for it.
+
+Six of them aim at the decisions between the fights: a claimed reward declined, a
+different card taken from the reward, a different copy of the same card enchanted, a
+different event option, a different enemy targeted, a different map node. Two of those
+six are in the class that matters — arithmetic on the frames accepts them.
 
 Each control's first divergence is a checkpoint rather than a refused action, which is
 the reading worth having: a substitution three actions in eventually makes some later
@@ -873,8 +910,160 @@ omit-play
 wrong-opening-choice
   arbiter      : REJECTED
   first divergence: checkpoint 'floor2-combat-start' (after action 1): combat.draw_pile_count observed '6', engine produced '7'
-all 4 corrupted histories were rejected; the uncorrupted one verified
+decline-a-claimed-reward
+  arbiter      : REJECTED
+  first divergence: action 12 (ClaimReward): Action 12 (ClaimReward) acts on a reward screen, but no rewards are on offer. Rewards are offered when a fight the encounter rewards is won, and stop being on offer once every one of them has been taken or the set has been skipped.
+take-a-different-card
+  arbiter      : REJECTED
+  first divergence: checkpoint 'floor4-combat-start' (after action 18): combat.hand observed 'CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY', engine produced 'CARD.STRIKE_IRONCLAD|CARD.TREMBLE|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY'
+enchant-a-different-card
+  arbiter      : REJECTED
+  first divergence: checkpoint 'floor4-combat-start' (after action 18): combat.hand observed 'CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY', engine produced 'CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD'
+choose-a-different-event-option
+  arbiter      : REJECTED
+  first divergence: action 15 (ChooseEventOption): Action 15 (ChooseEventOption) queued 1 card selection(s) that no screen asked for. A recorded selection the engine never consumed means the manifest describes a screen this run does not open.
+target-the-other-enemy
+  arbiter      : REJECTED
+  first divergence: checkpoint 'floor4-turn2-start' (after action 22): combat.enemy.0.hp observed '14', engine produced '23'
+move-to-a-different-node
+  arbiter      : REJECTED
+  first divergence: action 15 (ChooseEventOption): Action 15 chooses an option in event EVENT.WATERLOGGED_SCRIPTORIUM, but this floor is a Monster room, not an event.
+all 10 corrupted histories were rejected; the uncorrupted one verified
 ```
+
+## Getting to the fight the window is inside
+
+Everything above is about one fight — the first one the recording shows. Reaching any
+later one was blocked by the driver having four verbs.
+
+The driver implemented `ChooseNeowBlessing`, `MapMove`, `PlayCard` and `EndTurn`, and
+the very next thing the recording shows after that victory is a loot screen: thirteen
+gold at 95.5 s, a potion, and a card reward the player opens at 96.0 s and takes Pommel
+Strike from at 97.0 s. Then an event that spends 99 gold enchanting two cards with
+Steady, which is what gives a card Retain; then a five-turn fight against two
+Toadpoles; then loot the player declines; and then the two-enemy fight the 209–215
+second window is inside.
+
+None of that could be transcribed, because none of it could be replayed. So the
+manifest now carries thirty-five more actions and eleven more checkpoints, read off the
+recording exactly the way the first eleven were, and the driver carries five more verbs
+— each mapped onto the game's own command for it, through the same synchronizers and
+the same `ICardSelector` seam the game's own tests use. Where the engine has no command
+at all, because the retail UI is what drives it, the host stands in and the manifest
+still makes every decision; `docs/headless-fidelity.md` is where that is written down.
+
+Five, not the six this path looked like it needed. There is no `ProceedToMap`: going
+back to the map is presentation, the state change is entering the next node, and a verb
+standing in for a screen transition would be a decision the run does not contain. Which
+verbs a reconstruction needs is settled by asking the engine which command each click
+reaches, not by naming the screens a viewer watches go past.
+
+Here is the far end of it. The last action in the history is the end of the floor-5
+fight's second turn, and the checkpoint bound to it is what the recording shows at
+t = 212.0 s — the opening frame of the window itself.
+
+```bash
+./scripts/arbiter replay manifests/navegreed-OJ-6QXhNgdg.replay.json --out build/evidence/verified-manifest.json 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed -n '/floor5-window-boundary/,$p'
+```
+
+```output
+  ok   checkpoint floor5-window-boundary (after action 45)
+        combat.block                 observed=0                      engine=0
+        combat.enemy.0.hp            observed=6                      engine=6
+        combat.enemy.0.intent        observed=Attack:6               engine=Attack:6
+        combat.enemy.1.hp            observed=29                     engine=29
+        combat.enemy.1.intent        observed=Attack:9               engine=Attack:9
+        combat.energy                observed=3                      engine=3
+        combat.hand                  observed=CARD.BASH@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER engine=CARD.BASH@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER
+        combat.hand_count            observed=5                      engine=5
+        combat.player_hp             observed=50                     engine=50
+        combat.player_powers         observed=POWER.FRAIL_POWER:3    engine=POWER.FRAIL_POWER:3
+        combat.turn                  observed=3                      engine=3
+        player.deck_count            observed=12                     engine=12
+        player.gold                  observed=27                     engine=27
+        run.total_floor              observed=5                      engine=5
+
+final state digest : sha256:6ac445ae823f49032a5abf2b2d6970918598e47533f75ff51453a4bde2d06c39
+action history hash: sha256:e693eb61f9e479c33ff0b29e9c63a82b421fc2c85543ace496b9a91a70a6bf87
+verified manifest  : build/evidence/verified-manifest.json
+```
+
+Everything in that block is a reading of a frame, and every one of them agrees with
+what the engine produced from the seed. The hand is the part worth reading twice: five
+cards, in order, with Retain on the Bash — an enchantment the player bought two floors
+earlier with gold from a fight two floors before that, landing where the shuffle put
+it. Nothing about that is derivable from the frames; it is either reproduced or it is
+not.
+
+None of these readings is taken from a frame in which something is still moving. The
+loot window is the clearest case: the coin counter reads 99 as the screen opens and 108
+while the card screen is up, and settles on 112 only once the map is back — so during
+the window itself it shows numbers that were never the total. What the gold action
+records is therefore the loot entry disappearing from the list, and the settled total is
+checkpointed on the map screen, where nothing is counting.
+
+One value is deliberately missing from the boundary above it. Each of the two slugs
+carries a status badge reading 5, drawn as an icon with no text, and the recording
+never hovers it — so the count is legible and the power's identity is not. It could
+have been filled in from the engine and checkpointed as observed, and that is exactly
+the move the whole apparatus exists to prevent, so `combat.enemy.N.powers` is absent
+from that checkpoint instead. The floor-4 enemy's Thorns *is* checkpointed, because
+there the game put its own description on screen.
+
+One reading in that window is a correction. An earlier pass read the badge under the
+player's health bar as three block. It is not block — block is drawn on the bar itself,
+and turn 3 opens with none — it is the cracked shield of Frail, reading 3, applied by
+the enemy that telegraphs a debuff rather than a number. The manifest records the
+reading and says why it is easy to get wrong.
+
+### The subtlest control this history admits
+
+The event enchants two of the deck's cards. One is Bash; the other is a Defend, and the
+deck holds three of them, identical on screen and identical on the selection grid.
+Which one the player clicked is not settled by any frame of that event.
+
+It is settled two floors later, by which Defend carries the retain marker in the
+floor-4 opening hand — and the negative control makes that concrete by enchanting one of
+the others and asking what happens. Gold, maximum health, deck size and every card face
+are the same afterwards. Every arithmetic check the footage allows accepts it.
+
+This reads the report the controls above already wrote rather than running them a
+second time, and pulls out the two that arithmetic on the frames cannot see.
+
+```bash
+python3 - <<'CONTROL'
+import json
+report = json.load(open("build/evidence/negative-controls.json"))
+for name in ("enchant-a-different-card", "target-the-other-enemy"):
+    control = next(c for c in report["controls"] if c["name"] == name)
+    print(name)
+    print("  corruption      :", control["corruption"])
+    print("  video-only      :", control["video_only_verdict"])
+    print("  arbiter         :", "REJECTED" if control["arbiter_rejected"] else "DID NOT REJECT")
+    print("  first divergence:", control["first_divergence"])
+    print()
+CONTROL
+```
+
+```output
+enchant-a-different-card
+  corruption      : Enchants a different, identical copy of the same card on the event's selection screen.
+  video-only      : Undetected
+  arbiter         : REJECTED
+  first divergence: checkpoint 'floor4-combat-start' (after action 18): combat.hand observed 'CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY', engine produced 'CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD'
+
+target-the-other-enemy
+  corruption      : Aims a card at the other living enemy.
+  video-only      : Undetected
+  arbiter         : REJECTED
+  first divergence: checkpoint 'floor4-turn2-start' (after action 22): combat.enemy.0.hp observed '14', engine produced '23'
+
+```
+
+The first divergence is the floor-4 opening hand, which is where the difference first
+becomes something a person could have seen — and the reason the manifest's reading of
+the event screen is recorded with that as its evidence rather than as a confident
+reading of a grid of identical cards.
 
 ## The tests
 
@@ -889,16 +1078,16 @@ categories, a locked act, a profile below the manifest's ascension, no run in
 progress at all, and an explicitly synthetic demo run differing in seed, mode,
 ascension, character and act variant; required engine initialization has a forced failing step; the map
 comparison has a wrong node, a missing node, an extra node and a wrong grid size; the
-arbiter has four corrupted histories; and the cache key has changes that must and
-must not invalidate it.
+arbiter has ten corrupted histories and a refusal for every way each of its verbs can
+be wrong; and the cache key has changes that must and must not invalidate it.
 
 ```bash
 dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "Passed!|Failed!|error" | sed -E 's/, Duration: [^-]+ - / - /'
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   189, Skipped:     0, Total:   189 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    83, Skipped:     0, Total:    83 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   210, Skipped:     0, Total:   210 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   102, Skipped:     0, Total:   102 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -987,7 +1176,7 @@ the real engine, and no condition accepts a cheaper stand-in — not reader
 confidence, not arithmetic over the footage, not a screenshot of a mod list.
 
 Those cheaper methods are useful filters and they are not evidence, which this
-document has now shown twice over: two of the four history corruptions pass every
+document has now shown twice over: four of the ten history corruptions pass every
 arithmetic check available from the frames, and a run resumed from history passes
 every check that is not about the recording itself.
 
@@ -1015,7 +1204,7 @@ manifest : navegreed-OJ-6QXhNgdg
   pass  reproduction     The reconstructed history replays through the real engine and matches every observed value.
   pass  covered-fight    The reproduced history covers a whole fight, from its combat start to the end of that fight.
   pass  determinism      Fresh processes produce byte-identical canonical state.
-  pass  rejection        Corrupted and incomplete histories are refused.
+  pass  rejection        Every required corruption applies, and corrupted and incomplete histories are refused.
 
 PUBLISHABLE - every condition of the gate holds
 ```
@@ -1035,8 +1224,9 @@ than the one that was actually used.
 This proves the replay spine against a controlled fixture, not the separate history-bound tooling check for the VOD.
 - The same manifest in three fresh processes produces byte-identical canonical
   state, including all fifteen random-stream positions and the full draw-pile order.
-- Four corrupted histories are rejected, two of which every arithmetic check
-  available from the footage accepts.
+- Ten corrupted histories are rejected, four of which every arithmetic check
+  available from the footage accepts. One control per kind of decision the driver can
+  apply, so a verb whose rejection has never been demonstrated cannot arrive quietly.
 - Four damaged provenance records are refused before any engine starts, including
   both fingerprints of a run resumed from history — which replays perfectly and is
   therefore invisible to every other check here.
@@ -1077,17 +1267,22 @@ What is established is parity across that space, not the mode itself, and combin
 - **This is not the retail client.** It is the real shipped assembly driven headless,
   with the presentation layer stubbed out. Everything above is agreement at points a
   video could show, which is strong and is not the same as running the game.
-- **Only the first combat of the VOD is covered.** Every claim about the recording is
-  about the part of the run that was transcribed by hand: run start through the end of
-  that fight, and nothing after the victory. Extending the transcription further is
-  ordinary work; nothing here suggests it would be *easy*, and the manifest says where
-  it stops.
+- **Only a prefix of the VOD is covered.** Every claim about the recording is about
+  the part of the run that was transcribed by hand: run start through the opening of
+  the floor-5 fight's third turn — two whole fights, the loot each of them offered, one
+  event, and two turns of a third fight — and nothing after that boundary. Extending
+  the transcription further is ordinary work; nothing here suggests it would be *easy*,
+  and the manifest says where it stops.
+- **Nothing searches that window.** The history reaches the boundary an
+  engine-constrained candidate search over the 209–215 second turn would have to start
+  from, and stops there. The search is not built and this document is not evidence
+  that it would work.
 - **No fight played by a person has ever been captured.** Both sides of every
   comparison here are replayed histories, the recording's included. The mod host that
   would read a retail player's fight does not exist, and nothing in this document is
   evidence that it would work. That is also why the recording is compared against
   itself: there is no second line of that fight to put opposite it.
-- **Nothing is automatically extracted from video.** The eleven actions, ten
+- **Nothing is automatically extracted from video.** The forty-six actions, twenty-one
   checkpoint moments and 61 map nodes were read by a person off the frames at source
   resolution. Building the extractor is the next problem and was deliberately not
   started: an extractor is only worth building once there is an arbiter that can tell

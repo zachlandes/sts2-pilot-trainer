@@ -36,6 +36,14 @@ put together lives in `Sts2PilotTrainer.Engine`. `Sts2PilotTrainer.Replay` must 
 free of the game assembly — that is what lets the format and its tests outlive a
 build.
 
+**Find the engine's own command before writing one.** Every verb in `RunDriver` maps
+onto a method the retail client calls; none of them reimplement game logic. Reading
+`build/lib/sts2.dll` is how that is established — decompile it into a scratch
+directory outside the repository, never into it, and never commit anything you find
+there. `ilspycmd -p -o <scratch> build/lib/sts2.dll` does the job in about twenty
+seconds; on a Homebrew .NET it needs `DOTNET_ROOT` set to the `libexec` directory and
+`DOTNET_ROLL_FORWARD=Major`.
+
 **Provenance is not decoration.** Every value in a manifest records whether it was
 observed, inferred, engine-produced or declared, and observations carry the video
 timestamp that lets someone re-check them. The validator enforces the parts it can.
@@ -44,7 +52,7 @@ Do not add a field without deciding which of those it is.
 **Real-engine reproduction is the publication standard.** `gate` is where it is
 written down and computed. No condition may be satisfied by a cheaper proxy - not
 reader confidence, not arithmetic over the footage, not a screenshot of a mod list.
-Those are filters worth having and they are not evidence: two of the four history
+Those are filters worth having and they are not evidence: four of the ten history
 corruptions pass every arithmetic check the frames allow.
 
 **Refuse rather than approximate.** An unknown action verb, a card that is not where
@@ -83,8 +91,12 @@ drift. Do not weaken `source.run_start` or `source.run_summary` on the grounds t
 the replay would catch it.
 
 **Read [docs/headless-fidelity.md](docs/headless-fidelity.md) before changing what
-the host patches.** Each patch has a stated reason and the set is deliberately small.
-`TestMode` in particular reaches further than its name suggests.
+the host patches or stands in for.** Each patch has a stated reason and the set is
+deliberately small. `TestMode` in particular reaches further than its name suggests.
+Two screens have no engine command at all - the loot a won fight offers, and the card
+screens a reward or an enchantment opens - so the host drives the first and answers
+the second from the manifest. Neither decides anything, and both refuse where the
+manifest is silent.
 
 ## Maintaining this file
 

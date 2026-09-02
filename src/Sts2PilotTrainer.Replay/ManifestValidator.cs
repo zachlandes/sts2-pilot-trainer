@@ -29,6 +29,13 @@ public static partial class ManifestValidator
 
     private static readonly string[] KnownGameModes = ["standard", "custom", "daily"];
 
+    /// <summary>
+    /// The reward kinds this history claims with a single click on the loot screen.
+    /// The card reward is absent on purpose: it opens a card screen, so taking it is
+    /// <see cref="ActionVerb.TakeCard"/>, which records which card came back.
+    /// </summary>
+    public static readonly string[] ClaimableRewardTypes = ["gold", "potion"];
+
     [GeneratedRegex(@"^v\d+\.\d+\.\d+$")]
     private static partial Regex BuildVersionPattern { get; }
 
@@ -549,8 +556,8 @@ public static partial class ManifestValidator
                 break;
             case ActionVerb.MapMove:
                 required = ["act", "row", "column"];
-                allowed = required;
-                nonNegativeIntegers = required;
+                allowed = [.. required, Corruption.AlternativeColumn];
+                nonNegativeIntegers = [.. required, Corruption.AlternativeColumn];
                 break;
             case ActionVerb.PlayCard:
                 required = ["card_id", "hand_index"];
@@ -568,6 +575,34 @@ public static partial class ManifestValidator
                 required = [];
                 allowed = [];
                 nonNegativeIntegers = [];
+                break;
+            case ActionVerb.ChooseEventOption:
+                // The event id is required and the opening blessing's is not: which
+                // event a floor generates is a consequence of the whole history before
+                // it, and an option index means nothing without the event it indexes.
+                required = ["event_id", "option_index"];
+                allowed = required;
+                nonNegativeIntegers = ["option_index"];
+                break;
+            case ActionVerb.ClaimReward:
+                required = ["reward_type"];
+                allowed = required;
+                nonNegativeIntegers = [];
+                break;
+            case ActionVerb.TakeCard:
+                required = ["card_id", "option_index"];
+                allowed = [.. required, Corruption.AlternativeCardId, Corruption.AlternativeOptionIndex];
+                nonNegativeIntegers = ["option_index", Corruption.AlternativeOptionIndex];
+                break;
+            case ActionVerb.SkipRewards:
+                required = [];
+                allowed = [];
+                nonNegativeIntegers = [];
+                break;
+            case ActionVerb.SelectCardFromScreen:
+                required = ["card_id", "option_index"];
+                allowed = [.. required, Corruption.AlternativeOptionIndex];
+                nonNegativeIntegers = ["option_index", Corruption.AlternativeOptionIndex];
                 break;
             default:
                 problems.Add(
@@ -606,6 +641,55 @@ public static partial class ManifestValidator
         if (action.Args.TryGetValue("card_id", out var cardId) && string.IsNullOrWhiteSpace(cardId))
         {
             problems.Add($"actions[{action.Seq}] ({action.Verb}) argument 'card_id' is empty.");
+        }
+
+        if (action.Args.TryGetValue("event_id", out var eventId) && string.IsNullOrWhiteSpace(eventId))
+        {
+            problems.Add($"actions[{action.Seq}] ({action.Verb}) argument 'event_id' is empty.");
+        }
+
+        // A reward kind the driver cannot name is refused at ingestion rather than at
+        // replay, because a manifest that says 'coins' would otherwise look valid right
+        // up until an engine is spent on it.
+        if (action.Args.TryGetValue("reward_type", out var rewardType) &&
+            !ClaimableRewardTypes.Contains(rewardType, StringComparer.Ordinal))
+        {
+            problems.Add(
+                $"actions[{action.Seq}] ({action.Verb}) argument 'reward_type' is '{rewardType}'. Known " +
+                $"kinds: {string.Join(", ", ClaimableRewardTypes)}. A card reward opens a second screen and " +
+                "is taken with TakeCard, which records which card came back.");
+        }
+
+        // An alternative a control is meant to take has to differ from what was taken,
+        // or the control corrupts nothing and an arbiter that accepted it would be
+        // reported as having failed to reject a corruption nobody made.
+        foreach (var (nominated, actual) in new[]
+                 {
+                     (Corruption.AlternativeCardId, "card_id"),
+                     (Corruption.AlternativeOptionIndex, "option_index"),
+                     (Corruption.AlternativeColumn, "column"),
+                 })
+        {
+            if (action.Args.TryGetValue(nominated, out var alternative) &&
+                action.Args.TryGetValue(actual, out var taken) &&
+                string.Equals(alternative, taken, StringComparison.Ordinal))
+            {
+                problems.Add(
+                    $"actions[{action.Seq}] ({action.Verb}) nominates '{nominated}' = '{alternative}', which is " +
+                    $"what '{actual}' already says. A negative control pointed at the decision that was made " +
+                    "corrupts nothing.");
+            }
+        }
+
+        if (action.Verb == ActionVerb.TakeCard)
+        {
+            var hasAlternativeCard = action.Args.ContainsKey(Corruption.AlternativeCardId);
+            var hasAlternativeIndex = action.Args.ContainsKey(Corruption.AlternativeOptionIndex);
+            if (hasAlternativeCard != hasAlternativeIndex)
+            {
+                problems.Add(
+                    $"actions[{action.Seq}] ({action.Verb}) negative-control alternative card and option index must appear together.");
+            }
         }
 
         var hasSubstituteCard = action.Args.ContainsKey("negative_control_substitute_card_id");

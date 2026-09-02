@@ -621,4 +621,163 @@ public class ManifestValidatorTests
             },
         };
     }
+    // ── The verbs that reach the loot screen, the event and the card screens ──
+
+    [Fact]
+    public void AcceptsTheRewardAndScreenVerbsWithTheirRequiredArguments()
+    {
+        // The positive case for the block of negatives below. Without it they would
+        // all still pass against a validator that refused these verbs outright.
+        var manifest = WithActions(
+            Fixtures.Action(0, ActionVerb.ClaimReward, ("reward_type", "gold")),
+            Fixtures.Action(1, ActionVerb.TakeCard, ("card_id", "CARD.POMMEL_STRIKE"), ("option_index", "0")),
+            Fixtures.Action(2, ActionVerb.SkipRewards),
+            Fixtures.Action(3, ActionVerb.ChooseEventOption,
+                ("event_id", "EVENT.WATERLOGGED_SCRIPTORIUM"), ("option_index", "2")),
+            Fixtures.Action(4, ActionVerb.SelectCardFromScreen,
+                ("card_id", "CARD.BASH"), ("option_index", "7")));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Theory]
+    [InlineData("bloody-ink")]
+    [InlineData("coins")]
+    [InlineData("card")]
+    [InlineData("relic")]
+    public void RejectsAKindOfRewardThatIsNotClaimedWithOneClick(string kind)
+    {
+        // 'card' is on this list on purpose: the card reward opens a second screen, so
+        // taking it is TakeCard, which records which card came back. Letting it through
+        // here would lose that.
+        var manifest = WithActions(Fixtures.Action(0, ActionVerb.ClaimReward, ("reward_type", kind)));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("'reward_type'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAnEventChoiceThatDoesNotNameItsEvent()
+    {
+        // An option index means nothing without the event it indexes, and which event
+        // a floor generates is a consequence of the whole history before it.
+        var manifest = WithActions(Fixtures.Action(0, ActionVerb.ChooseEventOption, ("option_index", "2")));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("missing required argument 'event_id'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsATakenCardThatDoesNotSayWhichPositionItCameFrom()
+    {
+        var manifest = WithActions(
+            Fixtures.Action(0, ActionVerb.TakeCard, ("card_id", "CARD.POMMEL_STRIKE")));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("missing required argument 'option_index'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsATakenCardWithOnlyHalfOfItsNegativeControlAlternative()
+    {
+        var manifest = WithActions(Fixtures.Action(
+            0, ActionVerb.TakeCard,
+            ("card_id", "CARD.POMMEL_STRIKE"), ("option_index", "0"),
+            (Corruption.AlternativeCardId, "CARD.BASH")));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains(
+            "alternative card and option index must appear together", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAScreenSelectionCarryingAnArgumentTheVerbDoesNotTake()
+    {
+        var manifest = WithActions(Fixtures.Action(
+            0, ActionVerb.SelectCardFromScreen,
+            ("card_id", "CARD.BASH"), ("option_index", "7"), ("hand_index", "1")));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("unknown argument 'hand_index'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAnEmptyEventId()
+    {
+        var manifest = WithActions(Fixtures.Action(
+            0, ActionVerb.ChooseEventOption, ("event_id", "  "), ("option_index", "0")));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("'event_id' is empty", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsANegativeControlAlternativeThatIsTheDecisionThatWasMade()
+    {
+        // A control aimed at the decision the player actually made corrupts nothing,
+        // and an arbiter that accepted it would be reported as having failed to reject
+        // a corruption nobody made.
+        var manifest = WithActions(Fixtures.Action(
+            0, ActionVerb.SelectCardFromScreen,
+            ("card_id", "CARD.DEFEND_IRONCLAD"), ("option_index", "5"),
+            (Corruption.AlternativeOptionIndex, "5")));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("corrupts nothing", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void StillRefusesAVerbThisManifestVersionDoesNotImplement()
+    {
+        // The alphabet is deliberately larger than what is implemented. A named verb
+        // that quietly did nothing would be the worst of both worlds, so the ones with
+        // no mapping have to fail at ingestion rather than at replay.
+        var manifest = WithActions(Fixtures.Action(0, ActionVerb.UsePotion, ("slot_index", "0")));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, p => p.Contains("does not implement", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The valid manifest with more actions appended, renumbered and timed after the
+    /// ones it already has. Appending rather than replacing keeps the rest of the
+    /// manifest coherent, so a failure is about the action under test rather than
+    /// about the evidence timeline.
+    /// </summary>
+    private static ReplayManifest WithActions(params ActionRecord[] actions)
+    {
+        var manifest = Fixtures.ValidManifest();
+        var last = manifest.Actions[^1];
+        var appended = actions.Select((action, index) => action with
+        {
+            Seq = last.Seq + 1 + index,
+            Evidence = FactEvidence.AtVideoTime(
+                Math.Max(
+                    last.Evidence!.VideoTimeMs!.Value,
+                    manifest.Checkpoints.SelectMany(c => c.Expect.Values)
+                        .Max(fact => fact.Evidence?.VideoTimeMs ?? 0))
+                + 1000 * (index + 1),
+                "test fixture"),
+        });
+        return manifest with { Actions = [.. manifest.Actions, .. appended] };
+    }
+
 }
