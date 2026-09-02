@@ -24,6 +24,25 @@ public sealed class EligibilityScreenTests
     }
 
     [Fact]
+    public void AnAdditionalLoadedModGetsTheFailHeadlineAndARefusal()
+    {
+        var prerequisites = Fixtures.Prerequisites() with
+        {
+            LoadedMods =
+            [
+                new LoadedMod("CombatTrainer", "Combat Trainer", "0.1.0", false),
+                new LoadedMod("patcher", "Behavior Patcher", "1.0.0", false),
+            ],
+        };
+
+        var screen = Fixtures.Screen(prerequisites);
+
+        Assert.False(screen.Eligible);
+        Assert.Equal(TrainerCopy.FailHeadline, screen.Headline);
+        Assert.Contains(screen.Refusals, refusal => refusal.Contains("Disable every mod except Combat Trainer"));
+    }
+
+    [Fact]
     public void FailingGameGetsTheFailHeadlineAndKeepsEveryOtherRow()
     {
         var screen = Fixtures.Screen(Fixtures.Prerequisites(relicsAvailable: 141));

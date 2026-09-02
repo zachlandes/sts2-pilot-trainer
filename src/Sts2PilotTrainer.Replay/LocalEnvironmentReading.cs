@@ -23,6 +23,16 @@ public sealed record LocalPrerequisites
     [JsonPropertyName("content_hash")]
     public required string ContentHash { get; init; }
 
+    /// <summary>
+    /// Every mod the running engine reports loaded.
+    ///
+    /// Kept beside the content hash because it answers the question the hash cannot:
+    /// mods that patch behaviour or declare themselves non-gameplay are still present
+    /// here even when they contribute nothing to that checksum.
+    /// </summary>
+    [JsonPropertyName("loaded_mods")]
+    public required IReadOnlyList<LoadedMod> LoadedMods { get; init; }
+
     [JsonPropertyName("unlocks")]
     public required UnlockInventory Unlocks { get; init; }
 
@@ -47,6 +57,13 @@ public sealed record LocalPrerequisites
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? ProfileAscensionCeiling { get; init; }
 }
+
+/// <summary>One mod the local engine says it loaded, identified by its own manifest.</summary>
+public sealed record LoadedMod(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("version")] string Version,
+    [property: JsonPropertyName("affects_gameplay")] bool AffectsGameplay);
 
 /// <summary>
 /// The unlock state a run here would actually be generated against, category by

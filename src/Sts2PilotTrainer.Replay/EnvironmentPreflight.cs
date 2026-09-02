@@ -70,7 +70,8 @@ public static class EnvironmentPreflight
 
             EvaluateSeedAlphabet(expected.Seed.Value),
             EvaluateSupportedMode(expected.GameMode.Value),
-            EvaluateMods(expected.Mods.Value),
+            EvaluateSourceMods(expected.Mods.Value),
+            EvaluateLoadedMods(actual.LoadedMods),
         };
 
         fields.AddRange(EvaluateUnlocks(expected, actual));
@@ -281,7 +282,30 @@ public static class EnvironmentPreflight
                 "Daily and custom runs carry modifiers that change run setup, so replaying one as standard " +
                 "would produce a different run under the same seed.");
 
-    private static PreflightField EvaluateMods(ModEnvironment mods)
+    private static PreflightField EvaluateLoadedMods(IReadOnlyList<LoadedMod> mods)
+    {
+        var permitted = mods.Count == 0 ||
+                        mods.Count == 1 &&
+                        mods[0] is { Id: "CombatTrainer", Name: "Combat Trainer", AffectsGameplay: false };
+        var actual = mods.Count == 0
+            ? "none loaded"
+            : string.Join("; ", mods.Select(mod =>
+                $"{mod.Name} ({mod.Id}, {mod.Version}, affects gameplay: {mod.AffectsGameplay})"));
+
+        return new PreflightField(
+            "loaded_mod_environment",
+            "no local mods except this non-gameplay Combat Trainer host",
+            actual,
+            permitted,
+            permitted
+                ? null
+                : "The running game has another mod loaded. Its behaviour cannot be established as identical " +
+                  "to the recording from the content hash, because that hash does not cover behaviour patches " +
+                  "or mods that declare themselves non-gameplay. Disable every mod except Combat Trainer, " +
+                  "restart the game, and check again.");
+    }
+
+    private static PreflightField EvaluateSourceMods(ModEnvironment mods)
     {
         var isVanilla = mods.ReportedCount == 0 && mods.Mods.Count == 0;
         var expectedUtilities = new HashSet<string>(StringComparer.Ordinal)

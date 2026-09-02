@@ -52,6 +52,7 @@ internal static class Fixtures
             BuildVersion = buildVersion ?? "v0.111.0",
             BuildDateUtc = "2026.08.14",
             ContentHash = contentHash ?? "1568834832",
+            LoadedMods = [new LoadedMod("CombatTrainer", "Combat Trainer", "0.1.0", false)],
             Unlocks = new UnlockInventory
             {
                 Origin = "the save progress of whichever profile this process has",

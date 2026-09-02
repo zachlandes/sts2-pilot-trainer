@@ -99,6 +99,7 @@ public sealed class LivePreflightTests
         BuildVersion = "v0.111.0",
         BuildDateUtc = "2026.08.14",
         ContentHash = "1568834832",
+        LoadedMods = [],
         Unlocks = new UnlockInventory
         {
             Origin = "test reading",

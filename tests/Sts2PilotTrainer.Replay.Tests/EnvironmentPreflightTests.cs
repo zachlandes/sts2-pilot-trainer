@@ -106,6 +106,47 @@ public class EnvironmentPreflightTests
     }
 
     [Fact]
+    public void AnAdditionalLoadedModRefusesEvenWhenTheContentHashMatches()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Environment(),
+            Local() with
+            {
+                LoadedMods = [new LoadedMod("patcher", "Behavior Patcher", "1.0.0", false)],
+            });
+
+        Assert.False(result.Matches);
+        Assert.Contains("does not cover behaviour patches", Diagnostic(result, "loaded_mod_environment"),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheKnownNonGameplayHostIsTheOnlyPermittedLoadedMod()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Environment(),
+            Local() with
+            {
+                LoadedMods = [new LoadedMod("CombatTrainer", "Combat Trainer", "0.1.0", false)],
+            });
+
+        Assert.True(result.Matches, Describe(result));
+    }
+
+    [Fact]
+    public void AGameplayClaimForTheHostRefuses()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Environment(),
+            Local() with
+            {
+                LoadedMods = [new LoadedMod("CombatTrainer", "Combat Trainer", "0.1.0", true)],
+            });
+
+        Assert.False(result.Matches);
+    }
+
+    [Fact]
     public void TheAuditedSourceToolingEnvironmentPasses()
     {
         var environment = Environment() with
@@ -341,6 +382,7 @@ public class EnvironmentPreflightTests
         BuildVersion = "v0.111.0",
         BuildDateUtc = "2026.08.14",
         ContentHash = "1568834832",
+        LoadedMods = [],
         Unlocks = Complete(),
         LockedActs = [],
         ProfileAscensionCeiling = null,

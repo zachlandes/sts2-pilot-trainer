@@ -47,8 +47,8 @@ combat is S4.
 
 **A green content-hash row is not environment parity.**
 The row carries the engine's own sentence saying so, whether it is green or red.
-The hash covers content contributed by mods that declare themselves
-gameplay-affecting; it says nothing about a mod that patches behaviour.
+The hash covers content contributed by mods that declare themselves gameplay-affecting; it says nothing about a mod that patches behaviour.
+The same prerequisite reading therefore inspects the game's loaded-mod inventory and refuses every local mod except the known non-gameplay Combat Trainer host.
 
 **The unlock rows describe the modded profile.**
 The game forks a separate profile for modded play, and that is the one a modded

@@ -1,4 +1,5 @@
 using System.Reflection;
+using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
@@ -76,12 +77,28 @@ public static class LocalEnvironment
             BuildVersion = identity.BuildVersion,
             BuildDateUtc = identity.BuildDateUtc,
             ContentHash = identity.ContentHash,
+            LoadedMods = ReadLoadedMods(),
             Unlocks = inventory,
             LockedActs = LockedActs(expected.Acts.Value, progress),
             ProfileAscensionCeiling = inventory.FromPlayerProfile
                 ? ReadProfileAscensionCeiling(expected.Character.Value)
                 : null,
         };
+    }
+
+    private static IReadOnlyList<LoadedMod> ReadLoadedMods()
+    {
+        EngineHost.Start();
+        return ModManager.GetLoadedMods()
+            .Select(mod => mod.manifest ?? throw new EngineException(
+                "The running game's mod manager reported a loaded mod without a manifest."))
+            .Select(manifest => new LoadedMod(
+                manifest.id ?? throw new EngineException("A loaded mod manifest has no id."),
+                manifest.name ?? throw new EngineException("A loaded mod manifest has no name."),
+                manifest.version ?? throw new EngineException("A loaded mod manifest has no version."),
+                manifest.affectsGameplay))
+            .OrderBy(mod => mod.Id, StringComparer.Ordinal)
+            .ToList();
     }
 
     /// <summary>
