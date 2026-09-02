@@ -53,10 +53,13 @@ fi
 
 # Refuse to write anywhere that is not a mods directory. Everything under this
 # script's hand is inside a directory somebody paid for.
-if [[ "$(basename "$mods_dir")" != mods* ]]; then
-  echo "Refusing to install into '$mods_dir': it is not a mods directory." >&2
-  exit 3
-fi
+case "$(basename "$mods_dir")" in
+  mods|mods_STEAMTEST) ;;
+  *)
+    echo "Refusing to install into '$mods_dir': it is not a mods directory." >&2
+    exit 3
+    ;;
+esac
 
 target="$mods_dir/$mod_id"
 
