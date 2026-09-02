@@ -1086,8 +1086,8 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   208, Skipped:     0, Total:   208 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    99, Skipped:     0, Total:    99 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   210, Skipped:     0, Total:   210 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   102, Skipped:     0, Total:   102 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -1204,7 +1204,7 @@ manifest : navegreed-OJ-6QXhNgdg
   pass  reproduction     The reconstructed history replays through the real engine and matches every observed value.
   pass  covered-fight    The reproduced history covers a whole fight, from its combat start to the end of that fight.
   pass  determinism      Fresh processes produce byte-identical canonical state.
-  pass  rejection        Corrupted and incomplete histories are refused.
+  pass  rejection        Every required corruption applies, and corrupted and incomplete histories are refused.
 
 PUBLISHABLE - every condition of the gate holds
 ```
