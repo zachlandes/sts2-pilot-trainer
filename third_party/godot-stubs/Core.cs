@@ -8,6 +8,7 @@ public class GodotObject
 
     public static bool IsInstanceValid(GodotObject? obj) => obj != null;
     public virtual bool IsQueuedForDeletion() => false;
+    public Variant CallDeferred(StringName method, params Variant[] args) => default;
 
     // ToSignal - must be on GodotObject (not Node) to match real Godot
     public SignalAwaiter ToSignal(GodotObject source, StringName signal)
@@ -50,14 +51,16 @@ public class Node : GodotObject
     public virtual StringName Name { get; set; } = "";
 
     public Node? GetParent() => _parent;
+    public NodePath GetPath() => new();
 
     public Godot.Collections.Array<Node> GetChildren(bool includeInternal = false)
     {
         return new Godot.Collections.Array<Node>(_children);
     }
 
-    public T? GetNodeOrNull<T>(string path) where T : class => null;
-    public T? GetNodeOrNull<T>(NodePath path) where T : class => null;
+    public T? GetNodeOrNull<T>(string path) where T : class =>
+        _children.FirstOrDefault(child => child.Name.ToString() == path) as T;
+    public T? GetNodeOrNull<T>(NodePath path) where T : class => GetNodeOrNull<T>(path.ToString());
     public T GetNode<T>(string path) where T : class => default!;
     public T GetNode<T>(NodePath path) where T : class => default!;
 
@@ -88,6 +91,7 @@ public class Node : GodotObject
     public double GetProcessDeltaTime() => 0.016;
     public bool IsAncestorOf(Node node) => false;
     public bool IsInsideTree() => false;
+    public bool IsNodeReady() => true;
     public int GetChildCount(bool includeInternal = false) => _children.Count;
 
     public void CallDeferred(StringName method, params Variant[] args) { }

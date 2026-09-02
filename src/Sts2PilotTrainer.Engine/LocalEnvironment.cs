@@ -1,4 +1,5 @@
 using System.Reflection;
+using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
@@ -56,14 +57,19 @@ public static class LocalEnvironment
     /// </param>
     /// <param name="progress">
     /// Which unlock state to read. <see cref="PlayerProgress.LocalProfile"/> reads
-    /// this process's profile and is what an eventual in-game host must use. The other two are
-    /// states the host supplies in place of a profile it does not have, and they are
+    /// this process's profile and is what the in-game host uses. The other two are
+    /// states the headless host supplies in place of a profile it does not have, and they are
     /// reported as such rather than as a reading of anyone.
     /// </param>
     public static LocalPrerequisites ReadPrerequisites(
         EnvironmentIdentity expected, PlayerProgress progress = PlayerProgress.AllUnlocked)
     {
-        var identity = GameIdentity.Read();
+        // Which reading answers "what build is this" depends on how the engine got
+        // here. Inside the retail client there is no prepared copy and no bootstrap
+        // receipt to consult; the running process is the authority on itself.
+        var identity = EngineHost.Origin == EngineOrigin.RunningGame
+            ? GameIdentity.ReadFromRunningGame()
+            : GameIdentity.Read();
         var inventory = ReadUnlockInventory(progress);
 
         return new LocalPrerequisites
@@ -71,12 +77,32 @@ public static class LocalEnvironment
             BuildVersion = identity.BuildVersion,
             BuildDateUtc = identity.BuildDateUtc,
             ContentHash = identity.ContentHash,
+            Mods = ReadMods(),
             Unlocks = inventory,
             LockedActs = LockedActs(expected.Acts.Value, progress),
             ProfileAscensionCeiling = inventory.FromPlayerProfile
                 ? ReadProfileAscensionCeiling(expected.Character.Value)
                 : null,
         };
+    }
+
+    private static IReadOnlyList<LocalMod> ReadMods()
+    {
+        EngineHost.Start();
+        return ModManager.Mods
+            .Select(mod =>
+            {
+                var manifest = mod.manifest ?? throw new EngineException(
+                    $"The running game's mod manager reported a {mod.state} mod without a manifest.");
+                return new LocalMod(
+                    manifest.id ?? throw new EngineException("A mod manifest has no id."),
+                    manifest.name ?? throw new EngineException("A mod manifest has no name."),
+                    manifest.version ?? throw new EngineException("A mod manifest has no version."),
+                    manifest.affectsGameplay,
+                    mod.state.ToString());
+            })
+            .OrderBy(mod => mod.Id, StringComparer.Ordinal)
+            .ToList();
     }
 
     /// <summary>

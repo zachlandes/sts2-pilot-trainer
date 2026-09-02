@@ -17,12 +17,21 @@ namespace Sts2PilotTrainer.Bootstrap;
 internal static class Program
 {
     /// <summary>
-    /// Assemblies the headless host needs beside <c>sts2.dll</c>. Godot itself is
-    /// not among them: <c>GodotSharp.dll</c> is supplied by third_party/godot-stubs.
+    /// Assemblies the headless host needs beside <c>sts2.dll</c>, plus the one the
+    /// in-game mod needs and the headless host must never load.
+    ///
+    /// <c>GodotSharp.dll</c> is copied for the mod host to compile against and for
+    /// nothing else. The headless projects link against the stand-ins in
+    /// third_party/godot-stubs, which emit the same assembly identity and are what
+    /// ends up beside the CLI; the real binding here would reach for a Godot runtime
+    /// that a console process does not have. The mod runs inside that runtime, so
+    /// guessing at the API rather than compiling against it would only move the
+    /// mistake to a player's machine.
     /// </summary>
     private static readonly string[] RequiredAssemblies =
     [
         "sts2.dll",
+        "GodotSharp.dll",
         "SmartFormat.dll",
         "SmartFormat.ZString.dll",
         "Sentry.dll",

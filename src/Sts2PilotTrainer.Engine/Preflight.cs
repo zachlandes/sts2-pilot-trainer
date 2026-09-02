@@ -26,8 +26,8 @@ public static class Preflight
     /// run's generation will read.
     /// </summary>
     /// <param name="progress">
-    /// Which unlock state to check. The eventual mod entry point must pass
-    /// <see cref="PlayerProgress.LocalProfile"/> and so gate on what the player
+    /// Which unlock state to check. The Combat Trainer host passes
+    /// <see cref="PlayerProgress.LocalProfile"/> and so gates on what the player
     /// actually has; the headless arbiter passes the state it will construct the run
     /// with, which is the same question asked of a host rather than a person.
     /// </param>
@@ -38,8 +38,8 @@ public static class Preflight
     /// <summary>
     /// The gate on the run that now exists, read back out of the game.
     ///
-    /// For the eventual mod this is the player's own run. For the arbiter it is the run it
-    /// just constructed, and checking it is not a formality: it is how we learn the
+    /// For the Combat Trainer host this is the player's own run. For the arbiter it is
+    /// the run it just constructed, and checking it is not a formality: it is how we learn the
     /// engine built the run the manifest asked for rather than something adjacent to
     /// it - a seed the engine normalised differently, or an act that quietly
     /// defaulted.
@@ -47,9 +47,27 @@ public static class Preflight
     public static PreflightResult EvaluateStartedRun(EnvironmentIdentity expected) =>
         EnvironmentPreflight.RunIdentity(expected, LocalEnvironment.ReadStartedRun());
 
-    /// <summary>Both gates, which an eventual mod entry point must ask of a live game.</summary>
+    /// <summary>Both gates, which a host must ask of a live game.</summary>
     public static PreflightResult EvaluateLiveGame(EnvironmentIdentity expected) =>
         EnvironmentPreflight.Combine(
             Evaluate(expected, PlayerProgress.LocalProfile),
             EvaluateStartedRun(expected));
+
+    /// <summary>
+    /// Both gates as the in-game host asks them: the same rules over one reading,
+    /// with the two verdicts kept apart.
+    ///
+    /// Same owners, same order, nothing softened - this reads the player's own
+    /// profile and the run they actually have, and where a run exists
+    /// <see cref="EnvironmentPreflight.RunIdentity"/> is still authoritative. What it
+    /// adds is that both gates are judged from a single reading, so a screen can
+    /// never show a row measured at one moment beside a verdict measured at another,
+    /// and that a host can distinguish "you have not started the run yet" from "your
+    /// install cannot play this". See <see cref="LivePreflight"/>.
+    /// </summary>
+    public static LivePreflight EvaluateLiveHost(EnvironmentIdentity expected) =>
+        EnvironmentPreflight.LiveGame(
+            expected,
+            LocalEnvironment.ReadPrerequisites(expected, PlayerProgress.LocalProfile),
+            LocalEnvironment.ReadStartedRun());
 }

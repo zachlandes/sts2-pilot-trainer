@@ -4,8 +4,10 @@
     "projects": [
       "src/Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj",
       "src/Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj",
+      "src/Sts2PilotTrainer.Trainer/Sts2PilotTrainer.Trainer.csproj",
       "tests/Sts2PilotTrainer.Arbiter.Tests/Sts2PilotTrainer.Arbiter.Tests.csproj",
       "tests/Sts2PilotTrainer.Replay.Tests/Sts2PilotTrainer.Replay.Tests.csproj",
+      "tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrainer.Trainer.Tests.csproj",
       "third_party/godot-stubs/GodotStubs.csproj",
       "tools/Sts2PilotTrainer.Bootstrap/Sts2PilotTrainer.Bootstrap.csproj"
     ]

@@ -82,6 +82,88 @@ public sealed record GameIdentity(
             Notes: notes);
     }
 
+    /// <summary>
+    /// The identity of the retail game this code is loaded inside.
+    ///
+    /// A different reading from <see cref="Read"/> rather than a fallback for it,
+    /// and the difference is the point. <see cref="Read"/> answers from the prepared
+    /// copy and its bootstrap receipt, which is the right answer for a headless host
+    /// and a claim about no player's installation. Inside the client there is no
+    /// receipt and no prepared copy: the build is whatever the running process says
+    /// it is, and the assembly hashed is the one the process actually loaded.
+    ///
+    /// Only ever reads. The assembly file is opened for hashing and nothing else.
+    /// </summary>
+    public static GameIdentity ReadFromRunningGame()
+    {
+        if (EngineHost.Origin != EngineOrigin.RunningGame)
+        {
+            throw new EngineException(
+                "This process has not adopted a running game, so there is no live build to read. Call " +
+                "EngineHost.AdoptRunningGame first; it refuses rather than guessing.");
+        }
+
+        var releaseInfo = EngineHost.RunningGameReleaseInfo()
+            ?? throw new EngineException("The running game published no release info.");
+
+        var contentHash = EngineHost.ContentHash();
+        if (contentHash == "0")
+        {
+            throw new EngineException(
+                "The running game reported content hash 0, which means its id database never initialised. " +
+                "A hash over nothing is stable and meaningless - refusing to gate on it.");
+        }
+
+        var assemblyPath = typeof(MegaCrit.Sts2.Core.Models.ModelDb).Assembly.Location;
+        var notes = new List<string>
+        {
+            "identity read from the running game process, not from a prepared copy",
+            $"engine registered {EngineHost.RegisteredModelCount()} models",
+        };
+
+        return new GameIdentity(
+            BuildVersion: ReleaseInfoString(releaseInfo, "Version"),
+            // The game's version overlay renders this timestamp in UTC, and a
+            // manifest records what the overlay showed. Comparing it in local time
+            // is how a build stamped late in the day looks like the day before.
+            BuildDateUtc: ReleaseInfoDateUtc(releaseInfo),
+            Commit: ReleaseInfoString(releaseInfo, "Commit"),
+            Branch: ReleaseInfoString(releaseInfo, "Branch"),
+            ContentHash: contentHash,
+            PristineAssemblySha256: HashOfLoadedAssembly(assemblyPath),
+            Notes: notes);
+    }
+
+    private static string ReleaseInfoString(object releaseInfo, string property) =>
+        releaseInfo.GetType().GetProperty(property, BindingFlags.Public | BindingFlags.Instance)
+            ?.GetValue(releaseInfo) as string
+        ?? throw new EngineException($"The running game's release info has no '{property}'.");
+
+    private static string ReleaseInfoDateUtc(object releaseInfo)
+    {
+        var value = releaseInfo.GetType().GetProperty("Date", BindingFlags.Public | BindingFlags.Instance)
+            ?.GetValue(releaseInfo);
+        if (value is not DateTime date)
+        {
+            throw new EngineException("The running game's release info has no build date.");
+        }
+
+        return date.ToUniversalTime().ToString("yyyy.MM.dd", System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static string HashOfLoadedAssembly(string path)
+    {
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        {
+            throw new EngineException(
+                "The running game's assembly has no readable location on disk, so it cannot be identified " +
+                "by content.");
+        }
+
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexStringLower(SHA256.HashData(stream));
+    }
+
     private static void VerifyPreparedOutputs(string libDir, JsonObject receipt)
     {
         var hashes = receipt["prepared_output_sha256"]?.AsObject()

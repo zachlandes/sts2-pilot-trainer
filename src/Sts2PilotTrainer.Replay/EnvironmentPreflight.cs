@@ -14,8 +14,8 @@ namespace Sts2PilotTrainer.Replay;
 /// Two gates, because they answer different questions at different moments:
 /// <see cref="Prerequisites"/> asks whether a matching run could be played here at
 /// all, and <see cref="RunIdentity"/> asks whether the run that now exists is the
-/// right one. An eventual mod entry point must run both against the player's live game. The arbiter runs
-/// the first before it constructs a run and the second after, which is how it
+/// right one. The Combat Trainer host runs both against the player's live game. The
+/// arbiter runs the first before it constructs a run and the second after, which is how it
 /// learns that the engine built what the manifest asked for.
 ///
 /// Everything here refuses rather than approximates. Replaying into a mismatched
@@ -53,7 +53,11 @@ public static class EnvironmentPreflight
     /// Everything checkable before a run exists: the build, the content, and the
     /// player prerequisites the run's generation will read.
     /// </summary>
-    public static PreflightResult Prerequisites(EnvironmentIdentity expected, LocalPrerequisites actual)
+    public static PreflightResult Prerequisites(EnvironmentIdentity expected, LocalPrerequisites actual) =>
+        Prerequisites(expected, actual, requireHost: false);
+
+    private static PreflightResult Prerequisites(
+        EnvironmentIdentity expected, LocalPrerequisites actual, bool requireHost)
     {
         var fields = new List<PreflightField>
         {
@@ -70,7 +74,8 @@ public static class EnvironmentPreflight
 
             EvaluateSeedAlphabet(expected.Seed.Value),
             EvaluateSupportedMode(expected.GameMode.Value),
-            EvaluateMods(expected.Mods.Value),
+            EvaluateSourceMods(expected.Mods.Value),
+            EvaluateLocalMods(actual.Mods, requireHost),
         };
 
         fields.AddRange(EvaluateUnlocks(expected, actual));
@@ -130,10 +135,25 @@ public static class EnvironmentPreflight
         return new PreflightResult(fields.All(field => field.Matches), fields);
     }
 
-    /// <summary>Both gates as one verdict, which is how the mod asks the question.</summary>
+    /// <summary>Both gates as one verdict, which is how the arbiter asks the question.</summary>
     public static PreflightResult Combine(PreflightResult prerequisites, PreflightResult runIdentity) =>
         new(prerequisites.Matches && runIdentity.Matches,
             [.. prerequisites.Fields, .. runIdentity.Fields]);
+
+    /// <summary>
+    /// Both gates as a live host has to ask them: separably, and with the sequencing
+    /// recorded.
+    ///
+    /// Same rules, same order, no softening - <see cref="RunIdentity"/> still refuses
+    /// a null reading, and where a run exists its verdict still counts. What changes
+    /// is that the host can tell "you have not started the run yet" apart from "your
+    /// install cannot play this", which one combined field list cannot express. See
+    /// <see cref="LivePreflight"/>.
+    /// </summary>
+    public static LivePreflight LiveGame(
+        EnvironmentIdentity expected, LocalPrerequisites prerequisites, LocalRunReading? run) =>
+        new(Prerequisites(expected, prerequisites, requireHost: true), RunIdentity(expected, run),
+            run is not null, prerequisites);
 
     private static IEnumerable<PreflightField> EvaluateUnlocks(
         EnvironmentIdentity expected, LocalPrerequisites actual)
@@ -267,7 +287,43 @@ public static class EnvironmentPreflight
                 "Daily and custom runs carry modifiers that change run setup, so replaying one as standard " +
                 "would produce a different run under the same seed.");
 
-    private static PreflightField EvaluateMods(ModEnvironment mods)
+    private static PreflightField EvaluateLocalMods(IReadOnlyList<LocalMod> mods, bool requireHost)
+    {
+        var active = mods
+            .Where(mod => mod.State is not ("Disabled" or "DisabledDuplicate"))
+            .ToList();
+        var hostIsTheOnlyActiveMod = active.Count == 1 &&
+                                     active[0] is
+                                     {
+                                         Id: "CombatTrainer",
+                                         Name: "Combat Trainer",
+                                         AffectsGameplay: false,
+                                         State: "Loaded",
+                                     };
+        var permitted = hostIsTheOnlyActiveMod || !requireHost && active.Count == 0;
+        var actual = mods.Count == 0
+            ? "none discovered"
+            : string.Join("; ", mods.Select(mod =>
+                $"{mod.Name} ({mod.Id}, {mod.Version}, state: {mod.State}, " +
+                $"affects gameplay: {mod.AffectsGameplay})"));
+
+        return new PreflightField(
+            "loaded_mod_environment",
+            "no active local mods except this loaded non-gameplay Combat Trainer host",
+            actual,
+            permitted,
+            permitted
+                ? null
+                : requireHost && active.Count == 0
+                    ? "The running game did not report Combat Trainer as loaded, so its mod environment cannot " +
+                      "be established. Restart the game with only Combat Trainer enabled, and check again."
+                    : "The running game has another active or failed mod. Its behaviour cannot be established as " +
+                      "identical to the recording from the content hash, because a failed mod can leave resources " +
+                      "loaded and that hash does not cover behaviour patches or mods that declare themselves " +
+                      "non-gameplay. Disable every mod except Combat Trainer, restart the game, and check again.");
+    }
+
+    private static PreflightField EvaluateSourceMods(ModEnvironment mods)
     {
         var isVanilla = mods.ReportedCount == 0 && mods.Mods.Count == 0;
         var expectedUtilities = new HashSet<string>(StringComparer.Ordinal)

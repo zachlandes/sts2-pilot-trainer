@@ -176,20 +176,39 @@ Hellraisers - along with both enemies' health, the player's, the gold and the Fr
 stack. That is the trusted prefix an engine-constrained candidate search over that
 window would have to start from; the search itself is not built and is not next.
 
-### S3 - The in-game mod host
+### S3 - The in-game mod host - done
 
-`Preflight.EvaluateLiveGame` is already the API a host must call before showing a
-player anything, and nothing has ever called it from inside the retail process.
-`preflight-live` demonstrates it in the headless sandbox and refuses by design, because
-the sandbox profile is empty.
+`Preflight` was already the API a host must call before showing a player anything, and
+nothing had ever called it from inside the retail process. `preflight-live`
+demonstrates it in the headless sandbox and refuses by design, because the sandbox
+profile is empty.
 
 This slice is the mod that loads in the shipped game and calls it against the player's
 real profile and run, refusing with the same actionable remediation when the game
 cannot faithfully represent the VOD.
 
-**Runnable when it lands:** the captain launches Slay the Spire 2 with the mod and is
-told, in game, whether his install and profile can represent this VOD - and if not,
-exactly what to play to fix it.
+- `CombatTrainer`, a DLL-only mod the game discovers, loads and initialises through
+  its own mod surface. No framework, no dependency, no resource pack.
+- A fourth mode card beside Standard, Daily and Custom, duplicated from the game's own
+  card so the panel, focus, hover and controller navigation are MegaCrit's rather than
+  a lookalike. It opens one screen, built from the game's own modal popup.
+- `EngineHost.AdoptRunningGame`: the engine can now be *taken* as well as built.
+  It refuses anything it cannot read honestly and names the assembly it read.
+  One of the four boundary tests drives the console refusal and verifies that the prepared game inputs and sandbox profile remain unchanged.
+  Another loads a duplicate game assembly and proves that state refuses before adoption.
+  A third proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
+  The fourth parses the mod manifest and verifies its non-gameplay, DLL-only, packless contract; no source-reference scan is presented as behavioural evidence.
+- `EnvironmentPreflight.LiveGame` and `Preflight.EvaluateLiveHost`: the same two gates,
+  kept separable, so "you have not started the run yet" is distinguishable from "your
+  install cannot play this" without softening either.
+- `Sts2PilotTrainer.Trainer`: what the screen says, with no game code, so every row and
+  every sentence has a test on a machine that does not own the game.
+
+**Runnable now:** `./scripts/install-mod.sh`, then launch Slay the Spire 2 and open
+Singleplayer. The captain is told, in game, whether his install and profile can
+represent this VOD - and if not, exactly what to play to fix it.
+[docs/in-game-host.md](in-game-host.md) records what that proves and what it does not;
+[demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) shows it running.
 
 ### S4 - Start or reset the captured combat, in the live game
 
@@ -227,9 +246,9 @@ is reset at the start of a turn and the trace samples either side of an action r
 than inside one, so player health lost likewise reports only the damage that got
 through.
 
-**Nothing here guarantees a retail player has passed the live gate.** No mod host
-exists yet; that is S3, and until it does every live claim is a claim about a headless
-process.
+**Nothing here guarantees a retail player has played the fight.** The mod host states
+eligibility and stops there; entering the captured combat is S4. Until it lands, every
+claim about a fight is a claim about a headless process.
 
 **No comparison has two independent lines of the recording's fight.** The recording is
 one completed side; the other side of a comparison against it can only be the

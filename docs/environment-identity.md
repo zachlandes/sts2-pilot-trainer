@@ -211,10 +211,15 @@ Inside the retail client that is the player's own, and inside the headless arbit
 Its default path therefore reads the empty sandbox profile, finds no active run, and refuses by design; it cannot report on a retail player's state.
 Non-demo live evaluation accepts only `local-profile`, so an unlock model supplied by the host cannot masquerade as runtime player state.
 The explicit `--demo-start-run` path constructs a synthetic run and permits synthetic progress models only for tests and demonstrations.
-`Preflight.EvaluateLiveGame` is the API an eventual in-game mod entry point must invoke before presenting a VOD replay or advice.
-No mod host is built in this milestone, so nothing today guarantees that a retail player is gated.
-That future host cannot embed the current headless entry point unchanged: `EngineHost.Start` enables test mode and applies headless patches, which must never be activated inside the retail process.
-`--progress all-unlocked`, the arbiter's ordinary replay default, is the state the host will construct the run with, and the report says so rather than calling it a reading of anybody.
+The Combat Trainer mod invokes `Preflight.EvaluateLiveHost` inside the retail process before stating whether the selected recording is eligible.
+It reads the installed build, the mods the game discovered and the profile used for modded play, while the existing prerequisite and run-identity owners remain authoritative.
+It adopts the client through `EngineHost.AdoptRunningGame`; `EngineHost.Start` remains the headless entry point that enables test mode and applies headless patches.
+One of the four boundary tests drives the console refusal and verifies that the prepared game inputs and sandbox profile remain unchanged.
+Another loads a duplicate game assembly and proves that state refuses before adoption.
+A third proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
+The fourth parses the manifest and proves that the shipped host is non-gameplay, DLL-only and packless.
+The host states eligibility and enters no fight; constructing or entering the captured combat remains S4.
+`--progress all-unlocked`, the arbiter's ordinary replay default, is the state the headless host constructs the run with, and the report says so rather than calling it a reading of anybody.
 
 The remediation is always the same and always the game's: unlock the rest by playing.
 Nothing in this project writes to a save, a profile, an unlock or an installed build,

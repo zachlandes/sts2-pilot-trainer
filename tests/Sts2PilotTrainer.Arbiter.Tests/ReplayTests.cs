@@ -376,7 +376,7 @@ public class PublicationGateTests
     /// it does, so the gate passing and the mode staying unestablished have to hold at
     /// the same time.
     /// </summary>
-    [GameFact]
+    [BaseLibFact]
     public void PublishesOnModeParityWithoutEstablishingTheSourceMode()
     {
         var outDir = TempDir();
@@ -598,7 +598,7 @@ public class PublicationGateTests
         Assert.Empty(report.GetProperty("unbound_modifiers").EnumerateArray());
     }
 
-    [GameFact]
+    [BaseLibFact]
     public void BaseLibReachabilityDetectorRejectsItsInjectedAffectedCall()
     {
         var outDir = TempDir();

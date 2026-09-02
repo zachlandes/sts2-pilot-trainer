@@ -38,15 +38,57 @@ public class VFlowContainer : FlowContainer { }
 public class WorldEnvironment : Node { }
 public class FastNoiseLite : Resource { }
 
+public enum HorizontalAlignment { Left, Center, Right, Fill }
+
+public static class TextServer
+{
+    public enum AutowrapMode { Off, Arbitrary, Word, WordSmart }
+
+    [Flags]
+    public enum JustificationFlag { None = 0 }
+
+    [Flags]
+    public enum LineBreakFlag { None = 0 }
+
+    public enum Direction { Auto, Ltr, Rtl, Inherited }
+
+    public enum Orientation { Horizontal, Vertical }
+
+    public enum OverrunBehavior { NoTrimming }
+}
+
+public enum InlineAlignment { Top, Center, Baseline, Bottom }
+
 public class Font : Resource
 {
     public float GetStringSize(string text, int alignment = 0, float width = -1, int fontSize = 16) => text.Length * fontSize * 0.6f;
+
+    public Vector2 GetStringSize(
+        string text,
+        HorizontalAlignment alignment,
+        float width,
+        int fontSize,
+        TextServer.JustificationFlag justificationFlags,
+        TextServer.Direction direction,
+        TextServer.Orientation orientation) => new(text.Length * fontSize * 0.6f, fontSize);
 }
 
 public class TextParagraph
 {
+    public TextServer.Direction Direction { get; set; }
+    public TextServer.Orientation Orientation { get; set; }
+    public float Width { get; set; }
+    public TextServer.LineBreakFlag BreakFlags { get; set; }
+    public TextServer.JustificationFlag JustificationFlags { get; set; }
+    public TextServer.OverrunBehavior TextOverrunBehavior { get; set; }
+    public HorizontalAlignment Alignment { get; set; }
+    public int MaxLinesVisible { get; set; }
+
     public void Clear() { }
     public void AddString(string text, Font font, int fontSize) { }
+    public bool AddString(string text, Font font, int fontSize, string language, Variant features) => true;
+    public bool AddObject(Variant key, Vector2 size, InlineAlignment alignment, int length, float baseline) => true;
+    public int GetLineCount() => 1;
     public Vector2 GetSize() => Vector2.Zero;
     public float GetWidth() => 0;
 }

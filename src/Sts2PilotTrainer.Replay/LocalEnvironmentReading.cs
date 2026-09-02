@@ -23,6 +23,16 @@ public sealed record LocalPrerequisites
     [JsonPropertyName("content_hash")]
     public required string ContentHash { get; init; }
 
+    /// <summary>
+    /// Every mod the running engine discovered and its resulting load state.
+    ///
+    /// Kept beside the content hash because it answers the question the hash cannot:
+    /// mods that patch behaviour or declare themselves non-gameplay are still present
+    /// here even when they contribute nothing to that checksum.
+    /// </summary>
+    [JsonPropertyName("mods")]
+    public required IReadOnlyList<LocalMod> Mods { get; init; }
+
     [JsonPropertyName("unlocks")]
     public required UnlockInventory Unlocks { get; init; }
 
@@ -47,6 +57,14 @@ public sealed record LocalPrerequisites
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? ProfileAscensionCeiling { get; init; }
 }
+
+/// <summary>One mod the local engine discovered, identified by its own manifest.</summary>
+public sealed record LocalMod(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("version")] string Version,
+    [property: JsonPropertyName("affects_gameplay")] bool AffectsGameplay,
+    [property: JsonPropertyName("state")] string State);
 
 /// <summary>
 /// The unlock state a run here would actually be generated against, category by
@@ -94,7 +112,7 @@ public sealed record UnlockCategory(
 /// <summary>
 /// The run that exists in the game right now, read back from it.
 ///
-/// An eventual in-game host reads the player's own run here. The arbiter reads the
+/// The Combat Trainer host reads the player's own run here. The arbiter reads the
 /// run it just constructed, which is not a formality: it is how we learn that the
 /// engine built the run the manifest asked for rather than something adjacent to it.
 /// </summary>

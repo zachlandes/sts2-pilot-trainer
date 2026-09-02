@@ -106,6 +106,83 @@ public class EnvironmentPreflightTests
     }
 
     [Fact]
+    public void AnAdditionalLoadedModRefusesEvenWhenTheContentHashMatches()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Environment(),
+            Local() with
+            {
+                Mods = [new LocalMod("patcher", "Behavior Patcher", "1.0.0", false, "Loaded")],
+            });
+
+        Assert.False(result.Matches);
+        Assert.Contains("does not cover behaviour patches", Diagnostic(result, "loaded_mod_environment"),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AFailedModRefusesBecauseItsResourcesMayRemainLoaded()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Environment(),
+            Local() with
+            {
+                Mods =
+                [
+                    new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Loaded"),
+                    new LocalMod("broken", "Broken Resource Mod", "1.0.0", false, "Failed"),
+                ],
+            });
+
+        Assert.False(result.Matches);
+        Assert.Contains("failed mod can leave resources loaded", Diagnostic(result, "loaded_mod_environment"),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DisabledModsDoNotPreventParity()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Environment(),
+            Local() with
+            {
+                Mods =
+                [
+                    new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Loaded"),
+                    new LocalMod("disabled", "Disabled Mod", "1.0.0", true, "Disabled"),
+                ],
+            });
+
+        Assert.True(result.Matches, Describe(result));
+    }
+
+    [Fact]
+    public void TheKnownNonGameplayHostIsTheOnlyPermittedLoadedMod()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Environment(),
+            Local() with
+            {
+                Mods = [new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Loaded")],
+            });
+
+        Assert.True(result.Matches, Describe(result));
+    }
+
+    [Fact]
+    public void AGameplayClaimForTheHostRefuses()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Environment(),
+            Local() with
+            {
+                Mods = [new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", true, "Loaded")],
+            });
+
+        Assert.False(result.Matches);
+    }
+
+    [Fact]
     public void TheAuditedSourceToolingEnvironmentPasses()
     {
         var environment = Environment() with
@@ -341,6 +418,7 @@ public class EnvironmentPreflightTests
         BuildVersion = "v0.111.0",
         BuildDateUtc = "2026.08.14",
         ContentHash = "1568834832",
+        Mods = [],
         Unlocks = Complete(),
         LockedActs = [],
         ProfileAscensionCeiling = null,

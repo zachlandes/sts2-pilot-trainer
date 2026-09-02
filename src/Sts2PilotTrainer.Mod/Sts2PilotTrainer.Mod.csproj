@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       The Combat Trainer mod: the only project that runs inside the retail
+       Slay the Spire 2 process.
+
+       It owns the game's UI surfaces the way Sts2PilotTrainer.Engine owns its
+       gameplay surfaces - both are game-version-specific, and both are the
+       places to look when a build moves something. It owns no rules: the
+       eligibility verdict comes from Preflight, the wording and row logic from
+       Sts2PilotTrainer.Trainer, and this project draws the answer.
+
+       The published artifact is CombatTrainer.dll, its manifest and the four
+       project assemblies it uses; see docs/distribution.md.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <PropertyGroup>
+    <RootNamespace>Sts2PilotTrainer.Mod</RootNamespace>
+    <AssemblyName>CombatTrainer</AssemblyName>
+    <PreparedLibDir>$(MSBuildThisFileDirectory)../../build/lib</PreparedLibDir>
+    <!-- The mod is loaded by the game, never launched. -->
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Sts2PilotTrainer.Engine/Sts2PilotTrainer.Engine.csproj" />
+    <ProjectReference Include="../Sts2PilotTrainer.Trainer/Sts2PilotTrainer.Trainer.csproj" />
+  </ItemGroup>
+
+  <!-- The one recording this proof ships, embedded rather than dropped beside the
+       DLL: the game scans its mod directory recursively for *.json manifests, and a
+       replay manifest sitting there would be read as a broken mod. -->
+  <ItemGroup>
+    <EmbeddedResource Include="../../manifests/navegreed-OJ-6QXhNgdg.replay.json"
+                      LogicalName="Sts2PilotTrainer.Mod.recording.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="CombatTrainer.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="sts2">
+      <HintPath>$(PreparedLibDir)/sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(PreparedLibDir)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="RequirePreparedAssembly" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(PreparedLibDir)/GodotSharp.dll')"
+           Text="The prepared game assemblies are missing. Run ./scripts/bootstrap.sh first (it copies your own Steam install into build/lib and never modifies it)." />
+  </Target>
+
+  <!-- Compile against the game's own Godot binding, not the headless stand-ins.
+
+       third_party/godot-stubs emits an assembly with the same identity as the real
+       GodotSharp, which is what lets the console host load sts2.dll at all - and it
+       reaches this project transitively through Sts2PilotTrainer.Engine. In here it
+       is the wrong one: this code runs inside Godot, and the stubs declare a small
+       hand-written subset of its API. Since the two identities are identical the
+       swap has to be by path, after references resolve. It is a compile-time
+       reference only; at runtime the game's own copy is already loaded. -->
+  <Target Name="CompileAgainstTheGamesGodot" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <ReferencePath Remove="@(ReferencePath)" Condition="'%(Filename)' == 'GodotSharp'" />
+      <ReferencePath Include="$(PreparedLibDir)/GodotSharp.dll" />
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" Condition="'%(Filename)' == 'GodotSharp'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

@@ -10,8 +10,8 @@ internal static partial class Commands
     /// The prerequisite gate: is this the machine, with the progress, that could
     /// replay this run at all?
     ///
-    /// <c>--progress</c> chooses whose unlock state is checked. The eventual mod
-    /// entry point must pass <c>local-profile</c> and gate on what the player actually has. The headless
+    /// <c>--progress</c> chooses whose unlock state is checked. The Combat Trainer
+    /// host passes <c>local-profile</c> and gates on what the player actually has. The headless
     /// arbiter defaults to <c>all-unlocked</c>, which is the state it will construct
     /// the run with - the same question asked of a host rather than of a person, and
     /// reported as such rather than as a reading of anybody's save.
@@ -36,6 +36,37 @@ internal static partial class Commands
             ? "environment matches; replay may proceed"
             : "environment does NOT match; refusing to replay");
         return result.Matches ? 0 : 1;
+    }
+
+    /// <summary>
+    /// The question the in-game host has to ask before it reads anything: is this
+    /// process a running game whose state can be read honestly?
+    ///
+    /// It refuses here by design, and saying so is the point. The same refusal is
+    /// what a mod host gets when it asks during mod loading, which the game runs
+    /// before it has built its model database - and asking then does not return a
+    /// wrong answer, it ends the process. So the refusal is a gate with teeth rather
+    /// than a formality, and this is where it is exercised without the game running.
+    /// </summary>
+    internal static int AdoptLive(string[] args)
+    {
+        if (args.Length > 0)
+        {
+            throw new ManifestException("adopt-live takes no arguments; it asks about this process only.");
+        }
+
+        Console.WriteLine($"startup phase : {EngineHost.StartupPhase() ?? "unreadable"}");
+        try
+        {
+            var startup = EngineHost.AdoptRunningGame();
+            Console.WriteLine($"adopted a running game: {startup.ModelsRegistered} models registered");
+            return 0;
+        }
+        catch (EngineException refusal)
+        {
+            Console.WriteLine(refusal.Message);
+            return 1;
+        }
     }
 
     /// <summary>

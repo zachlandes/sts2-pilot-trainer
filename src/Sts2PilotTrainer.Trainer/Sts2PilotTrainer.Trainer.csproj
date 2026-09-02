@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       What the Combat Trainer mod says, with nothing that knows how to say it.
+
+       The in-game host (Sts2PilotTrainer.Mod) owns Godot and the game assembly;
+       this project owns the wording and the rules that turn a preflight verdict
+       into rows a player reads. Keeping them apart is what lets every claim the
+       screen makes have a test on a machine with no game installed - the same
+       split Sts2PilotTrainer.Replay has against Sts2PilotTrainer.Engine.
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <PropertyGroup>
+    <RootNamespace>Sts2PilotTrainer.Trainer</RootNamespace>
+    <AssemblyName>Sts2PilotTrainer.Trainer</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj" />
+  </ItemGroup>
+
+</Project>

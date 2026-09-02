@@ -105,8 +105,8 @@ public sealed record CombatComparison
                 "to add up.",
 
                 "Both lines were replayed through the real engine from the same combat-start boundary. " +
-                "Nothing here is evidence about a fight played by a person in the retail client: no mod " +
-                "host exists yet, so no live capture has ever been compared.",
+                "Nothing here is evidence about a fight played by a person in the retail client: the mod " +
+                "host states eligibility and enters no fight, so no live capture has ever been compared.",
             ],
         };
     }

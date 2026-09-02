@@ -43,10 +43,17 @@ public class Control : CanvasItem
     public string TooltipText { get; set; } = "";
 
     public Rect2 GetViewportRect() => new Rect2(0, 0, 1920, 1080);
+    public Rect2 GetRect() => new(Position, Size);
     public void GrabFocus() { }
     public void ReleaseFocus() { }
     public bool HasFocus() => false;
     public Viewport? GetViewport() => null;
+    public Font GetThemeFont(StringName name, StringName themeType) => new();
+    public int GetThemeFontSize(StringName name, StringName themeType) => 16;
+    public int GetThemeConstant(StringName name, StringName themeType) => 0;
+    public bool HasThemeFontOverride(StringName name) => false;
+    public bool HasThemeFont(StringName name, StringName themeType) => true;
+    public void AddThemeFontSizeOverride(StringName name, int fontSize) { }
 
     public virtual void _GuiInput(InputEvent @event) { }
 
@@ -89,7 +96,10 @@ public class PackedScene : Resource
 }
 
 // Texture types
-public class Texture2D : Resource { }
+public class Texture2D : Resource
+{
+    public Vector2 GetSize() => Vector2.Zero;
+}
 public class CompressedTexture2D : Texture2D { }
 public class AtlasTexture : Texture2D
 {
@@ -208,12 +218,17 @@ public class SubViewport : Viewport { }
 public class Label : Control
 {
     public string Text { get; set; } = "";
+    public TextServer.AutowrapMode AutowrapMode { get; set; }
 }
 
 public class RichTextLabel : Control
 {
     public string Text { get; set; } = "";
+    public bool FitContent { get; set; }
+    public bool BbcodeEnabled { get; set; }
+    public Godot.Collections.Array CustomEffects { get; set; } = new();
     public void Clear() { Text = ""; }
+    public void ParseBbcode(string text) { Text = text; }
     public void AppendText(string text) { Text += text; }
     public void AddText(string text) { Text += text; }
 }

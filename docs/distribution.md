@@ -36,12 +36,12 @@ video pipeline, not a channel. A manifest verified today stays readable regardle
 where anything is eventually published, and the tests for all of it run on a machine
 that does not own the game.
 
-**The eventual published artifact is small.** The community's packaging contract is
-one DLL plus a manifest, `has_pck: false`, `dependencies: []`,
-`affects_gameplay: false`. Everything in this repository that could not go inside
-that archive — the prepared game-assembly copy, the video tooling, the bootstrap —
-is a build-time or proof-only concern and is kept out of the projects a mod would
-ship. See [dependencies](dependencies.md).
+**The eventual published artifact is small.**
+It contains `CombatTrainer.json`, `CombatTrainer.dll`, and the four project-owned libraries that the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
+It remains DLL-only in the game's packaging terms: `has_pck: false`, `dependencies: []`, `affects_gameplay: false`.
+Those four libraries ship with the mod; they are not runtime dependencies a player installs separately.
+Everything in this repository that could not go inside that archive — the prepared game-assembly copy, the video tooling, the bootstrap — is a build-time or proof-only concern and is kept out of the projects a mod would ship.
+See [dependencies](dependencies.md).
 
 ## Licensing posture
 
