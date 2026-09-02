@@ -50,6 +50,14 @@ internal static class ScreenMarkup
         Blank(body);
         Line(body, Dim(screen.ProfileNote));
 
+        // Said with the offer and never without it. A player who took this fight for
+        // one of their own would go looking for it in their run history afterwards.
+        if (screen.FightOffered)
+        {
+            Blank(body);
+            Line(body, Dim(screen.NotSavedNote));
+        }
+
         return body.ToString();
     }
 

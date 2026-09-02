@@ -317,6 +317,7 @@ public class ManifestValidatorTests
     [InlineData("platform")]
     [InlineData("video_id")]
     [InlineData("channel_id")]
+    [InlineData("channel_name")]
     public void RejectsAnEmptyVodVideoIdentityField(string field)
     {
         var manifest = Fixtures.ValidManifest();
@@ -326,6 +327,7 @@ public class ManifestValidatorTests
             "platform" => video with { Platform = "" },
             "video_id" => video with { VideoId = "" },
             "channel_id" => video with { ChannelId = "" },
+            "channel_name" => video with { ChannelName = "" },
             _ => throw new InvalidOperationException(),
         };
         manifest = manifest with { Source = manifest.Source with { Video = changed } };

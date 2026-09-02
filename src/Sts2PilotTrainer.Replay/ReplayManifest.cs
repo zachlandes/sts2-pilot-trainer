@@ -203,6 +203,18 @@ public sealed record VideoSource
     [JsonPropertyName("channel_id")]
     public required string ChannelId { get; init; }
 
+    /// <summary>
+    /// The channel's display name, as a host names the person whose run this is.
+    ///
+    /// Here rather than in a host's own copy because it is a fact about the
+    /// recording, and a mod that hardcoded it would be a mod that could only ever
+    /// carry one recording. It is an identifier the source declares, like the
+    /// platform and the video id beside it, and never a gate: nothing in the
+    /// preflight, the replay or the comparison reads it.
+    /// </summary>
+    [JsonPropertyName("channel_name")]
+    public required string ChannelName { get; init; }
+
     [JsonPropertyName("duration_s")]
     public required int DurationSeconds { get; init; }
 

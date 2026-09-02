@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Sts2PilotTrainer.Trainer;
 
 /// <summary>
@@ -17,13 +19,83 @@ public static class TrainerCopy
     /// <summary>The mod's name, in the game's mod list and on its mode card.</summary>
     public const string Name = "Combat Trainer";
 
+    /// <summary>
+    /// Which fight of the recording this build carries, as a player reads it: the
+    /// floor, and the enemy on it.
+    ///
+    /// The one recording-specific value still written down here, and the reason is a
+    /// gap rather than a preference: the floor and the enemy are not manifest fields.
+    /// The floor is legible in the recording's top bar and the enemy's name under its
+    /// health bar, so both are observable, and the owner-aligned place for them is the
+    /// combat-start checkpoint - <c>run.total_floor</c> and <c>combat.enemy.0.model</c>
+    /// beside the twelve values already read at that frame. Adding them means reading
+    /// the recording again at source resolution, which is manifest work rather than
+    /// host work. Until it is done, a second recording needs this line changed with it.
+    /// </summary>
+    public const string FightFloor = "Floor 2";
+
+    /// <inheritdoc cref="FightFloor"/>
+    public const string FightEnemy = "Sludge Spinner";
+
     /// <summary>The mod list's description, and the mode card's.</summary>
-    public const string Description =
-        "Fight NaveGreed's Floor 2 Sludge Spinner exactly as recorded, then compare your fight with " +
+    public static string Description(string creator) =>
+        $"Fight {creator}'s {FightFloor} {FightEnemy} exactly as recorded, then compare your fight with " +
         "the recording. Reads your game; never writes to it.";
 
     /// <summary>What this one recording is, under the screen's title.</summary>
-    public const string Subtitle = "NaveGreed · Ironclad · Ascension 10 · Floor 2 · Sludge Spinner";
+    public static string Subtitle(string creator, string character, int ascension) =>
+        string.Join(" · ",
+            creator,
+            ModelIdNames.Display(character),
+            $"Ascension {ascension.ToString(CultureInfo.InvariantCulture)}",
+            FightFloor,
+            FightEnemy);
+
+    // ── Standing in the recording's fight ───────────────────────────────────
+    //
+    // The wording below is the approved Direction A journey, with every
+    // recording-specific value interpolated rather than written down: the creator
+    // comes from the manifest's source record, the blessing and the node from the
+    // run the recording's own actions are about to act on, and the counter from how
+    // many decisions the recording made. Nothing here names this recording.
+
+    /// <summary>Offers the fight, on the eligibility screen.</summary>
+    public const string EnterButton = "Enter the fight";
+
+    /// <summary>Shown with <see cref="EnterButton"/>. Load-bearing rather than
+    /// reassuring: the run this enters is constructed at the recording's identity and
+    /// is never written anywhere, and a player who thought it was theirs would be
+    /// looking for it afterwards.</summary>
+    public const string NotSavedNote =
+        "This fight is not saved and does not count toward your run history.";
+
+    /// <summary>The state signal, on throughout the recording's own decisions and
+    /// gone the moment the fight is the player's.</summary>
+    public static string WatchingChip(string creator) => $"Watching {creator}";
+
+    /// <summary>Makes the recording's next decision.</summary>
+    public const string NextButton = "Next";
+
+    /// <summary>Makes every remaining recorded decision at once.</summary>
+    public const string SkipButton = "Skip to the fight";
+
+    /// <summary>Where in the recording's decisions this is.</summary>
+    public static string StepCounter(int step, int count) =>
+        $"{step.ToString(CultureInfo.InvariantCulture)} of {count.ToString(CultureInfo.InvariantCulture)}";
+
+    /// <summary>What the recording did at its opening event.</summary>
+    public static string BlessingCaption(string creator, string relicModelId) =>
+        $"{creator} took {ModelIdNames.Display(relicModelId)}";
+
+    /// <summary>What the recording did on the map.</summary>
+    public static string MapMoveCaption(string creator, string nodeType, string columnPosition) =>
+        $"{creator} moved to the {ModelIdNames.Display(nodeType)} node, {columnPosition} column";
+
+    /// <summary>Shown once, the first time a player watches the recording decide
+    /// anything. It says what the screens are and, as importantly, what they are
+    /// not.</summary>
+    public static string ChoicesShownAsRecorded(string creator) =>
+        $"{creator}'s choices are shown as recorded. This shows what was chosen, not why.";
 
     public const string PassHeadline = "Your game can play this fight as recorded.";
 

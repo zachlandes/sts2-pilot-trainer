@@ -59,8 +59,104 @@ public sealed class GameSession
         IReadOnlyList<string> actModelIds, PlayerProgress progress,
         IReadOnlyList<string> modifierTypeNames)
     {
-        EngineHost.Start();
+        if (EngineHost.Origin == EngineOrigin.RunningGame)
+        {
+            throw new EngineException(
+                "This is a running retail client, and the headless start path launches a run with no scene " +
+                "behind it. Use PrepareRunInRunningGame and let the game's own start-run continuation finish " +
+                "the launch.");
+        }
 
+        EngineHost.Start();
+        var runState = BuildRunState(
+            seed, characterModelId, ascension, gameMode, actModelIds, progress, modifierTypeNames);
+
+        // This order is the retail client's, read from its own start-run path, and it
+        // is load-bearing rather than incidental. SetUpNewSingleplayer already calls
+        // InitializeNewRun and GenerateRooms, both of which draw from the run's
+        // upfront RNG stream - calling either again advances that stream and silently
+        // produces a different, entirely valid-looking run.
+        //
+        // shouldSave: false. The player's save directory is a read-only input.
+        // dailyTime: null - a non-null value would enter this run on the daily
+        // leaderboard, which is both wrong and outward-facing.
+        RunManager.Instance.SetUpNewSingleplayer(runState, shouldSave: false, dailyTime: null);
+        RunManager.Instance.FinalizeStartingRelics().GetAwaiter().GetResult();
+        RunManager.Instance.Launch();
+
+        _runState = runState;
+    }
+
+    /// <summary>
+    /// Builds the recording's run inside the retail client and hands it to the game,
+    /// stopping exactly where presentation begins.
+    ///
+    /// The retail client's own entry point is <c>NGame.StartNewSingleplayerRun</c>,
+    /// which builds a <see cref="RunState"/>, calls
+    /// <see cref="RunManager.SetUpNewSingleplayer"/> and then awaits its private
+    /// <c>StartRun</c> - the part that preloads assets, finalises relics, launches and
+    /// puts the run's scene on screen. This reproduces the first half exactly and
+    /// stops, because the second half is the game's to run and this project keeps
+    /// presentation out of the engine owner. The caller drives the game's own
+    /// continuation with the run state returned here.
+    ///
+    /// Exactly one input is substituted: the unlock state. The retail path derives it
+    /// from the player's save progress, and the run being constructed is not theirs -
+    /// it is the recording's, and the recording requires the complete state its
+    /// content was generated against. That state is supplied in memory, for this run
+    /// only, and nothing is written to the profile it was not read from. See
+    /// docs/environment-identity.md on the difference between a runtime reading and
+    /// an explicitly supplied progress model.
+    ///
+    /// <c>shouldSave: false</c> for the same reason it is false headlessly, and it is
+    /// the first of two defences rather than the only one: see the in-game host's
+    /// profile write barrier, which is what makes a crash or a forced exit unable to
+    /// persist anything either.
+    /// </summary>
+    public RunState PrepareRunInRunningGame(
+        string seed, string characterModelId, int ascension, string gameMode,
+        IReadOnlyList<string> actModelIds, PlayerProgress progress)
+    {
+        if (EngineHost.Origin != EngineOrigin.RunningGame)
+        {
+            throw new EngineException(
+                "There is no running game to construct a run inside. This path is for the in-game host; the " +
+                "headless host builds its own engine and starts runs through StartRun.");
+        }
+
+        if (_runState is not null)
+        {
+            throw new EngineException("This session already has a run. Start a fresh process for a fresh run.");
+        }
+
+        if (LocalEnvironment.ReadStartedRun() is { } existing)
+        {
+            throw new EngineException(
+                $"This game already has a run in progress ({existing.Seed}, ascension {existing.Ascension}). " +
+                "The recording's run cannot be constructed over it, and abandoning somebody's run is not this " +
+                "tool's decision. Finish or abandon it in the game, then start the recorded fight again.");
+        }
+
+        var runState = BuildRunState(
+            seed, characterModelId, ascension, gameMode, actModelIds, progress, []);
+        RunManager.Instance.SetUpNewSingleplayer(runState, shouldSave: false, dailyTime: null);
+        _runState = runState;
+        return runState;
+    }
+
+    /// <summary>
+    /// The run the manifest describes, built but not yet handed to any host.
+    ///
+    /// One owner for what "the recording's run" is made of, because the headless host
+    /// and the in-game host must build the same thing: two constructions that drifted
+    /// apart would produce two different runs from one manifest, and every check
+    /// downstream would agree with whichever one it was shown.
+    /// </summary>
+    private RunState BuildRunState(
+        string seed, string characterModelId, int ascension, string gameMode,
+        IReadOnlyList<string> actModelIds, PlayerProgress progress,
+        IReadOnlyList<string> modifierTypeNames)
+    {
         if (_runState is not null)
         {
             throw new EngineException("This session already has a run. Start a fresh process for a fresh run.");
@@ -96,9 +192,6 @@ public sealed class GameSession
             ascensionLevel: ascension,
             seed: seed);
 
-        // shouldSave: false. The player's save directory is a read-only input.
-        // dailyTime: null - a non-null value would enter this run on the daily
-        // leaderboard, which is both wrong and outward-facing.
         // Restore a behaviour the headless flag would otherwise switch off.
         //
         // RunManager.ShouldApplyTutorialModifications reads, in order: this override,
@@ -111,18 +204,15 @@ public sealed class GameSession
         //
         // Scoped to standard mode, because that is exactly what retail does: daily and
         // custom runs return false from the same method.
-        RunManager.Instance.ForceDiscoveryOrderModifications = ParseGameMode(gameMode) == GameMode.Standard;
+        // Scoped further to the headless host: inside the retail client the game's
+        // own answer is already the right one, and overriding it would be this tool
+        // changing a decision it exists to reproduce.
+        if (EngineHost.Origin == EngineOrigin.HeadlessHost)
+        {
+            RunManager.Instance.ForceDiscoveryOrderModifications = ParseGameMode(gameMode) == GameMode.Standard;
+        }
 
-        // This order is the retail client's, read from its own start-run path, and it
-        // is load-bearing rather than incidental. SetUpNewSingleplayer already calls
-        // InitializeNewRun and GenerateRooms, both of which draw from the run's
-        // upfront RNG stream - calling either again advances that stream and silently
-        // produces a different, entirely valid-looking run.
-        RunManager.Instance.SetUpNewSingleplayer(runState, shouldSave: false, dailyTime: null);
-        RunManager.Instance.FinalizeStartingRelics().GetAwaiter().GetResult();
-        RunManager.Instance.Launch();
-
-        _runState = runState;
+        return runState;
     }
 
     /// <summary>

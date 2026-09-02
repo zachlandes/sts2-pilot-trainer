@@ -1081,16 +1081,19 @@ ascension, character and act variant; required engine initialization has a force
 comparison has a wrong node, a missing node, an extra node and a wrong grid size; the
 arbiter has ten corrupted histories and a refusal for every way each of its verbs can
 be wrong; and the cache key has changes that must and must not invalidate it.
+Entering the recording's fight has its own seven, which drive the entry as a real
+command; they and the rest of that slice are in
+[RECORDED-FIGHT-ENTRY.md](RECORDED-FIGHT-ENTRY.md).
 
 ```bash
 dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "Passed!|Failed!|error" | sed -E 's/, Duration: [^-]+ - / - /'
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   221, Skipped:     0, Total:   221 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    15, Skipped:     0, Total:    15 - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:     7, Skipped:     0, Total:     7 - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:   100, Skipped:     2, Total:   102 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   235, Skipped:     0, Total:   235 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    36, Skipped:     0, Total:    36 - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    11, Skipped:     0, Total:    11 - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   109, Skipped:     0, Total:   109 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe

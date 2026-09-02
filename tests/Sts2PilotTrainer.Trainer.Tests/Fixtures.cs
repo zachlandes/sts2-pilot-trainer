@@ -79,13 +79,43 @@ internal static class Fixtures
             Acts = ["ACT.UNDERDOCKS", "ACT.HIVE", "ACT.GLORY"],
         };
 
+    /// <summary>
+    /// The recording the screen is about. Only the parts a screen reads are filled
+    /// in: who it is by, and the identity every row is measured against.
+    /// </summary>
+    internal static ReplayManifest Recording(EnvironmentIdentity? identity = null, string? creator = "NaveGreed") =>
+        new()
+        {
+            RunId = "navegreed-OJ-6QXhNgdg",
+            Environment = identity ?? Identity(),
+            Source = new SourceProvenance
+            {
+                Kind = "vod",
+                ExtractionMethod = "manual",
+                Coverage = "run start through the first fight",
+                Video = creator is null ? null : new VideoSource
+                {
+                    Platform = "youtube",
+                    VideoId = "OJ-6QXhNgdg",
+                    ChannelId = "UCuuDxwofGcur0Lt6iP-aDww",
+                    ChannelName = creator,
+                    DurationSeconds = 2049,
+                },
+            },
+            Actions = [],
+            Checkpoints = [],
+        };
+
     internal static EligibilityScreen Screen(
-        LocalPrerequisites? prerequisites = null, LocalRunReading? run = null)
+        LocalPrerequisites? prerequisites = null,
+        LocalRunReading? run = null,
+        bool fightOffered = false)
     {
-        var identity = Identity();
+        var recording = Recording();
         return EligibilityScreen.For(
-            identity,
-            EnvironmentPreflight.LiveGame(identity, prerequisites ?? Prerequisites(), run));
+            recording,
+            EnvironmentPreflight.LiveGame(recording.Environment, prerequisites ?? Prerequisites(), run),
+            fightOffered);
     }
 
     internal static EligibilityRow Row(this EligibilityScreen screen, string startsWith) =>

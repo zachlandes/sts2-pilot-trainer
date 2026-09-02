@@ -46,6 +46,27 @@ public sealed record EligibilityScreen(
     string BackButton)
 {
     /// <summary>
+    /// Whether the recording's fight is offered, and the note that goes with the
+    /// offer.
+    ///
+    /// A separate question from <see cref="Eligible"/>, and the difference is the
+    /// point. The rows above report the player's own profile, which is what a player
+    /// starting this run by hand would need. Nobody starts it by hand: the trainer
+    /// constructs it, and the unlock state it is generated against is the complete
+    /// one the recording requires, supplied for that run and written nowhere. So the
+    /// offer is governed by whether this game can construct the recording's run,
+    /// which <c>Preflight</c> answers under exactly the same rules against exactly
+    /// that progress model - see EnvironmentPreflight.EvaluateAscensionCeiling, which
+    /// already says a host constructing a run directly never consults the profile
+    /// ceiling.
+    /// </summary>
+    public bool FightOffered { get; init; }
+
+    public string EnterButton => TrainerCopy.EnterButton;
+
+    public string NotSavedNote => TrainerCopy.NotSavedNote;
+
+    /// <summary>
     /// Field names this screen turns into a row. Anything failing and not in here
     /// surfaces as a refusal sentence instead, so adding a gate to
     /// <see cref="EnvironmentPreflight"/> can never make the screen quietly show one
@@ -61,8 +82,10 @@ public sealed record EligibilityScreen(
     /// about a category of content, so it has no "n of m" row to live in.</summary>
     private const string UnlockRequirementField = "unlocks_requirement";
 
-    public static EligibilityScreen For(EnvironmentIdentity expected, LivePreflight preflight)
+    public static EligibilityScreen For(
+        ReplayManifest recording, LivePreflight preflight, bool fightOffered = false)
     {
+        var expected = recording.Environment;
         var fields = preflight.Fields;
         var rows = new List<EligibilityRow>();
         var claimed = new HashSet<string>(StringComparer.Ordinal);
@@ -108,14 +131,17 @@ public sealed record EligibilityScreen(
 
         return new EligibilityScreen(
             Title: TrainerCopy.Name,
-            Subtitle: TrainerCopy.Subtitle,
+            Subtitle: RecordingIdentity.Subtitle(recording),
             RecordingLine: TrainerCopy.RecordingLine(expected.BuildVersion.Value, expected.BuildDateUtc.Value),
             Headline: preflight.Matches ? TrainerCopy.PassHeadline : TrainerCopy.FailHeadline,
             Eligible: preflight.Matches,
             Rows: ordered,
             Refusals: refusals,
             ProfileNote: TrainerCopy.ProfileNote,
-            BackButton: TrainerCopy.BackButton);
+            BackButton: TrainerCopy.BackButton)
+        {
+            FightOffered = fightOffered,
+        };
     }
 
     private static void AddRow(

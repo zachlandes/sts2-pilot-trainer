@@ -178,7 +178,9 @@ public static class LocalEnvironment
         _ => throw new EngineException($"Unknown player-progress model '{progress}'."),
     };
 
-    internal static string OriginOf(PlayerProgress progress) => progress switch
+    /// <summary>Where a progress model came from, in words a report can print, so a
+    /// supplied state is never presented as a reading of somebody's save.</summary>
+    public static string OriginOf(PlayerProgress progress) => progress switch
     {
         PlayerProgress.AllUnlocked =>
             "UnlockState.all, supplied by the host in place of the source player's profile",

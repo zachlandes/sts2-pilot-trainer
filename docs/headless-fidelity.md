@@ -91,6 +91,23 @@ them - are handed to the selector before the call is made. Only a contiguous run
 `SelectCardFromScreen` immediately after the opening action is ever read, and a
 selection no screen consumed is refused.
 
+**Neither stand-in is installed inside the retail client.** The same `RunDriver` runs
+there, walking a constructed run through the recording's decisions before its fight,
+and in there both of these screens are on a player's screen: answering one would take
+a decision away from somebody who was looking at it. So the driver installs no
+selector and no rewards delegate when the engine's origin is a running game, and
+narrows itself to the three verbs that reach a decision before a fight - the opening
+blessing, an event option and a map move. Every other verb refuses there, including
+the combat ones, because the fight is the player's. See
+[the in-game host](in-game-host.md).
+
+It also stops draining. The headless host drains the engine to idle after every
+action because it owns the process and there are no frames to do it; the retail
+client's action executor runs on the frame loop, on the thread the call arrives on,
+so waiting for it there wedges the game rather than settling it. The driver hands the
+engine's task back through `RunDriver.Pending` and the in-game host waits for it on
+the game's own frames.
+
 ### The headless flag
 
 `TestMode.IsOn` is set. This is the switch the game's own automated tests use, and

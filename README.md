@@ -96,6 +96,20 @@ See [docs/in-game-host.md](docs/in-game-host.md) and [demo/IN-GAME-HOST.md](demo
 ./scripts/arbiter combat-compare build/evidence/synthetic.replay.json build/evidence/alternate.replay.json
 ```
 
+Standing in the recording's own fight, which is what the in-game mod does with a
+scene tree in the way:
+
+```bash
+./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json
+```
+
+It constructs the run at the recording's identity, makes the recording's decisions
+before its fight in order, and reports the fight it lands in as the recorded one -
+against everything the recording observed there and against the cached combat-start
+snapshot - with the profile unchanged either side.
+[demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md) has it with its real
+output.
+
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
 `verify-seed`, `determinism`, `negative-controls`, `combat-snapshot`. `validate` needs
 no game.

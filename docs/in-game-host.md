@@ -1,12 +1,10 @@
 # The in-game host: what it proves, and what it does not
 
-This is S3 of [the proof-of-concept path](proof-of-concept-path.md): the smallest mod
-that loads in the shipped Slay the Spire 2 client and gives a player an honest answer
-to one question — can this game play the recorded fight?
+This is the mod that loads in the shipped Slay the Spire 2 client: S3 of
+[the proof-of-concept path](proof-of-concept-path.md) answers one question — can this
+game play the recorded fight? — and S4 adds the button that enters it.
 
-It answers that question and nothing else.
-Starting the fight, replaying the recording's choices, and comparing the two fights are S4 and S5.
-No source-reference scan stands in for an executable proof that those absent features remain absent.
+Comparing the player's fight with the recording's is S5 and is not here.
 
 ## What it proves
 
@@ -36,11 +34,83 @@ nothing, a build that cannot identify itself, a profile that is not loaded.
 `./scripts/arbiter adopt-live` exercises that refusal from the command line, where a
 console process is correctly not a running game.
 
+## Standing in the recorded fight
+
+**The journey is the recording's, and the host only decides when.**
+`RecordedFightEntry` in `Sts2PilotTrainer.Engine` constructs the run, makes the
+recording's decisions in order, and proves the fight at the end of them is the
+recorded one. `RecordedFightRun` in this mod owns when each of those happens relative
+to the game's frames and what a player sees while they do, and nothing else. That
+split is why the same journey runs on the command line with no scene tree, which is
+where it is actually tested: `./scripts/arbiter enter-fight`.
+
+**The run is constructed the way the game constructs its own.**
+`GameSession.PrepareRunInRunningGame` reproduces the first half of the client's
+`NGame.StartNewSingleplayerRun` — build the run state, `SetUpNewSingleplayer` with
+`shouldSave: false` — and stops. The second half is the game's own private
+`StartRun`, reached by name, which preloads the run's assets, finalises the starting
+relics, launches, puts the scene on screen and enters the first act. Exactly one
+input is substituted: the unlock state, which the retail path derives from the
+player's save progress and which this run needs to be the recording's complete one.
+See [environment identity](environment-identity.md) on why a supplied progress model
+is not a reading of anybody.
+
+**Nothing this run does can be persisted.**
+`shouldSave: false` gates the run save and everything at the end of a run, and it
+does not gate two writes this fight's path reaches: winning a combat calls
+`SaveManager.UpdateProgressAfterCombatWon` and then `SaveProgressFile`, and an event
+room saves the run with `saveProgress` defaulted on. `ProfileWriteBarrier` stops the
+writes themselves. It is installed at mod start rather than when a run begins, and it
+does nothing at all unless a trainer run is live — so a crash, a forced exit and a
+quit are all covered by the write never happening, and a player's own runs go on
+saving normally. It comes down on `RunManager.CleanUp`, which is where a run stops
+existing on every path there is; a barrier left raised after the recorded fight would
+silently stop saving the next run the player started, which is the same defect
+pointed the other way.
+
+**The recording owns every decision before the fight.**
+Enforced on the two commands those decisions reach — `EventSynchronizer.ChooseLocalOption`
+and `RunManager.EnterMapCoord` — rather than on the buttons that usually reach them.
+A screen with its buttons hidden is a screen a controller, a hotkey or another mod can
+still drive; the command is the thing that would actually change the run.
+
+**The offer and the rows answer different questions, on purpose.**
+The eligibility rows are unchanged: they read the player's own profile, and every
+refusal S3 shipped still computes and still shows its sentence. The offer of the
+fight is governed by whether this game can construct the recording's run, which is
+the same rule set asked of the progress model the run is actually generated against.
+So a profile whose ascension ceiling is below the recording's is still reported as
+such and no longer stops the fight being offered - the run does not consult that
+ceiling, and `EnvironmentPreflight.EvaluateAscensionCeiling` already said so before
+there was anything to offer. The consequence worth stating: a screen can show a red
+profile row above an enabled offer. That is two true statements about two different
+questions and it reads as a contradiction; whether the rows should change with the
+offer is a wording decision nobody has made, and no new sentence was invented to
+paper over it.
+
+**The fight is proved before it is handed over.**
+`CombatStartEquality` compares the live state against both readings of the boundary:
+every value the recording observed there, and the cached combat-start snapshot's
+digest, which covers the run-persistent random streams and the draw pile's order that
+no video can show. A boundary that disagrees on either abandons the run and says why.
+
 ## What it does not prove
 
 **Nobody has played the fight.**
-The screen states eligibility. It has no button that enters combat, because entering
-combat is S4.
+The journey above has never been watched running in the retail client. Its owner is
+exercised end to end headlessly and its refusals are tested there; the mod's own side
+of it — the launch through the game's continuation, the popup over the game's
+screens, the deviation lock, the barrier under a real save path — is written and has
+not been observed. `demo/RECORDED-FIGHT-ENTRY.md` says so where it would otherwise be
+read as a claim.
+
+**The watching screens are the game's popup, not the mockup's bar.**
+The approved journey shows a chip and a control bar over the game's own screens. What
+is built is the game's own popup with no backstop, so the screen underneath stays
+lit, carrying the same three things and the same two controls. It uses only the
+approved wording and the furniture this mod has already been seen to draw correctly;
+the difference in layout is a deviation from the mockup and is recorded here rather
+than presented as the design.
 
 **A green content-hash row is not environment parity.**
 The row carries the engine's own sentence saying so, whether it is green or red.
@@ -109,6 +179,7 @@ rows that already passed are below it.
 ./scripts/install-mod.sh                 # build the mod and install it into the game's mods directory
 ./scripts/install-mod.sh --uninstall     # remove it again
 ./scripts/arbiter adopt-live             # the refusal, from a process that is not a running game
+./scripts/arbiter enter-fight <manifest> # the journey into the recorded fight, without a scene tree
 ```
 
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
@@ -117,4 +188,6 @@ An upgrade stages the complete named file set in a temporary sibling there and r
 That is the game's own mod surface — the same location Steam Workshop installs into — and the game offers no user-data alternative, because it derives the path from its executable's location.
 
 [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) has the mod card and the eligibility
-screen as they appear in the shipped client.
+screen as they appear in the shipped client, and
+[demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has the journey into
+the recorded fight with its real output.

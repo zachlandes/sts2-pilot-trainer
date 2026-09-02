@@ -220,6 +220,10 @@ A third proves that adoption still refuses during essential initialization, befo
 The fourth parses the manifest and proves that the shipped host is non-gameplay, DLL-only and packless.
 The host states eligibility and enters no fight; constructing or entering the captured combat remains S4.
 `--progress all-unlocked`, the arbiter's ordinary replay default, is the state the headless host constructs the run with, and the report says so rather than calling it a reading of anybody.
+The in-game host constructs the recording's run against the same supplied state, for that run only and in memory: the run being constructed is the recording's, and the recording requires the complete unlock state its content was generated against.
+It reaches the run through `Player.CreateForNewRun` and nothing else, which is the one input `GameSession.PrepareRunInRunningGame` substitutes into the client's own start-run path.
+Nothing is written back - the run is set up with saving off and the mod's profile write barrier stops the writes that flag does not cover - so a player's unlocks, ascension ceiling and progress are exactly what they were before the fight.
+The player's profile is still read, still judged by the same rules, and still reported; what changes is that the constructed run does not depend on it, which `EnvironmentPreflight.EvaluateAscensionCeiling` already recorded when it said a host constructing a run directly never consults the profile ceiling.
 
 The remediation is always the same and always the game's: unlock the rest by playing.
 Nothing in this project writes to a save, a profile, an unlock or an installed build,

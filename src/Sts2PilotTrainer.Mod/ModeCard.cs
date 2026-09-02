@@ -153,7 +153,7 @@ internal static class ModeCard
         var title = Field<MegaLabel>(card, "_title");
         var description = Field<MegaRichTextLabel>(card, "_description");
         title.SetTextAutoSize(TrainerCopy.Name);
-        description.SetTextAutoSize(TrainerCopy.Description);
+        description.SetTextAutoSize(RecordingIdentity.Description(CombatTrainerMod.Recording));
     }
 
     private static T Field<T>(NSubmenuButton card, string name) where T : class

@@ -29,13 +29,54 @@ namespace Sts2PilotTrainer.Engine;
 /// and it answers card screens from the manifest through the game's own
 /// <c>ICardSelector</c> seam. Neither stand-in decides anything; the manifest does,
 /// and where the manifest is silent both refuse. See docs/headless-fidelity.md.
+///
+/// Inside the retail client neither stand-in is installed and neither is wanted,
+/// because the screens they answer are on a player's screen. The driver is narrowed
+/// there to the recording's decisions before a fight, and it hands the engine's work
+/// back to the host to wait for rather than draining it - a frame loop is what
+/// drains the queue in there, and blocking for it on the frame thread wedges the
+/// game. See <see cref="VerbsAllowedInRunningGame"/> and <see cref="Pending"/>.
 /// </summary>
 public sealed class RunDriver : IDisposable
 {
+    /// <summary>
+    /// The verbs this driver will issue inside a running retail client.
+    ///
+    /// Everything before the fight, and nothing in it. Two reasons, and both are
+    /// about not taking something away from the player: the decisions before a fight
+    /// are the recording's and the fight is theirs, and the stand-ins this driver
+    /// installs for the loot and card screens exist because a headless process has no
+    /// UI - the retail client has one, and intercepting it would answer a screen the
+    /// player was looking at. See docs/headless-fidelity.md.
+    /// </summary>
+    private static readonly ActionVerb[] VerbsAllowedInRunningGame =
+        [ActionVerb.ChooseNeowBlessing, ActionVerb.ChooseEventOption, ActionVerb.MapMove];
+
     private readonly GameSession _session;
     private readonly ManifestCardSelector _selector = new();
-    private readonly IDisposable _selectorScope;
+    private readonly IDisposable? _selectorScope;
     private readonly Func<RewardsSet, Task>? _previousRewardsSelector;
+
+    /// <summary>
+    /// Whether this driver is standing in for a UI that does not exist, or issuing
+    /// commands inside one that does.
+    ///
+    /// Read from <see cref="EngineHost.Origin"/> rather than passed in, so a host
+    /// cannot claim to be the other one.
+    /// </summary>
+    private readonly bool _insideRunningGame;
+
+    /// <summary>
+    /// Engine work the last action started and this driver deliberately did not wait
+    /// for, or null.
+    ///
+    /// Only ever set inside a running game. The headless host drains the engine to
+    /// idle after every action, because it owns the process and there are no frames
+    /// to do it. The retail client's action executor runs on its frame loop, on the
+    /// thread this call arrives on, so blocking for it there would wedge the game
+    /// rather than settle it. The host awaits this across its own frames instead.
+    /// </summary>
+    public Task? Pending { get; private set; }
 
     /// <summary>
     /// The rewards set the current room is offering, once it has been offered and
@@ -56,6 +97,12 @@ public sealed class RunDriver : IDisposable
     public RunDriver(GameSession session)
     {
         _session = session;
+        _insideRunningGame = EngineHost.Origin == EngineOrigin.RunningGame;
+
+        // Neither stand-in is installed inside the retail client. Both of them answer
+        // a screen on the player's behalf, and in there the player is the one looking
+        // at it.
+        if (_insideRunningGame) return;
 
         // The game's own seam for answering a card screen without a scene tree.
         // Pushed rather than exclusively claimed, because a process that drives two
@@ -82,15 +129,61 @@ public sealed class RunDriver : IDisposable
 
     public void Dispose()
     {
+        if (_selectorScope is null) return;
         RewardsSet.testSelector = _previousRewardsSelector;
         _selectorScope.Dispose();
     }
 
+    /// <summary>
+    /// Lets the engine finish what an action started.
+    ///
+    /// Headlessly that means waiting for it, here, because nothing else will. Inside
+    /// the retail client it means handing the task back to a host that can wait for
+    /// it on the game's own frames; see <see cref="Pending"/>.
+    /// </summary>
+    private void Settle(Task work)
+    {
+        if (_insideRunningGame)
+        {
+            Pending = work;
+            return;
+        }
+
+        work.GetAwaiter().GetResult();
+        Pump.Drain();
+    }
+
+    /// <summary>The same, for an engine command that returns nothing and leaves its
+    /// work on the queue.</summary>
+    private void Settle()
+    {
+        if (_insideRunningGame)
+        {
+            Pending = Task.CompletedTask;
+            return;
+        }
+
+        Pump.Drain();
+    }
+
     private Player Player => _session.RunState.Players[0];
 
-    /// <summary>Enters the run's first room. On a new run that is Neow's event.</summary>
+    /// <summary>
+    /// Enters the run's first room. On a new run that is Neow's event.
+    ///
+    /// Headless only. The retail client enters the first act from inside its own
+    /// start-run continuation, which also loads the scene the room is drawn on, and a
+    /// second entry would be this host doing the game's job worse.
+    /// </summary>
     public void EnterFirstRoom()
     {
+        if (_insideRunningGame)
+        {
+            throw new EngineException(
+                "The running game enters the first act itself, as part of starting a run. Entering it again " +
+                "from here would generate the first room a second time.");
+        }
+
         RunManager.Instance.EnterAct(0, doTransition: false).GetAwaiter().GetResult();
         Pump.Drain();
     }
@@ -114,6 +207,17 @@ public sealed class RunDriver : IDisposable
     /// </param>
     public void Apply(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
     {
+        Pending = null;
+
+        if (_insideRunningGame && !VerbsAllowedInRunningGame.Contains(action.Verb))
+        {
+            throw new EngineException(
+                $"Action {action.Seq} uses verb '{action.Verb}', which this driver does not issue inside a " +
+                "running game. Only the recording's decisions before a fight are replayed there; the fight " +
+                "itself is the player's, and answering a screen they are looking at would take a decision " +
+                "away from them.");
+        }
+
         switch (action.Verb)
         {
             case ActionVerb.ChooseNeowBlessing:
@@ -277,7 +381,7 @@ public sealed class RunDriver : IDisposable
         }
 
         synchronizer.ChooseLocalOption(optionIndex);
-        Pump.Drain();
+        Settle();
     }
 
     /// <summary>
@@ -475,8 +579,7 @@ public sealed class RunDriver : IDisposable
                 $"(row {currentCoord.row}, column {currentCoord.col}).");
         }
 
-        RunManager.Instance.EnterMapCoord(new MapCoord(column, row)).GetAwaiter().GetResult();
-        Pump.Drain();
+        Settle(RunManager.Instance.EnterMapCoord(new MapCoord(column, row)));
     }
 
     private void PlayCard(ActionRecord action)

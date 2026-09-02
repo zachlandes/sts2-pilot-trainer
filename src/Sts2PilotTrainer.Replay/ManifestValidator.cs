@@ -301,6 +301,12 @@ public static partial class ManifestValidator
                 {
                     problems.Add("source.video.channel_id is empty.");
                 }
+                if (string.IsNullOrWhiteSpace(source.Video.ChannelName))
+                {
+                    problems.Add(
+                        "source.video.channel_name is empty, so nothing that shows this recording to a player " +
+                        "could name whose run it is without hardcoding it.");
+                }
                 if (source.Video.DurationSeconds <= 0)
                 {
                     problems.Add("source.video.duration_s must be positive so observation timestamps can be bounded.");

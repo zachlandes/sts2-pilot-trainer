@@ -39,6 +39,7 @@ internal static class Program
                 "determinism" => Commands.Determinism(args[1..]),
                 "negative-controls" => Commands.NegativeControls(args[1..]),
                 "combat-snapshot" => Commands.CombatSnapshot(args[1..]),
+                "enter-fight" => Commands.EnterFight(args[1..]),
                 "combat-compare" => Commands.CombatCompare(args[1..]),
                 _ => UnknownCommand(args[0]),
             };
@@ -127,6 +128,14 @@ internal static class Program
               Damage the history in specific ways and show the arbiter rejects each,
               alongside what a video-only consistency check would have concluded.
               --require-all-controls also refuses histories that do not exercise every control.
+
+          enter-fight     <manifest> [--control <name>] [--cache <dir>] [--out <dir>] [--step]
+              Construct the recording's run, walk it through the recording's own
+              decisions in order, and prove the fight it lands in is the recorded one -
+              against what the recording observed at that boundary and against the
+              cached combat-start snapshot. Reports the profile before and after,
+              because nothing here may write to it. --control damages one decision
+              before the fight and shows the entry refused; --step stops after one.
 
           combat-compare  <manifest> <manifest> [--out <dir>]
               Replay two manifests of the same fight, project each one's completed

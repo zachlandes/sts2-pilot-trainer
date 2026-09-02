@@ -39,9 +39,21 @@ public static class CombatTrainerMod
     private static bool _adoptionAttempted;
     private static bool _adopted;
 
-    /// <summary>The recording this build ships, or null when the mod refused to
-    /// start. Read-only for everything downstream.</summary>
-    internal static ReplayManifest? Recording { get; private set; }
+    private static ReplayManifest? _recording;
+
+    /// <summary>Whether the mod started without refusing. Distinct from having a
+    /// recording: the recording is embedded in this assembly and reading it cannot
+    /// fail for a reason about the player's game, so a refusal is about everything
+    /// else.</summary>
+    internal static bool Started { get; private set; }
+
+    /// <summary>
+    /// The recording this build ships. Read from this assembly's own embedded
+    /// resource on first use, so nothing downstream has to carry a null case for a
+    /// file that travels inside it, and so a build with a broken resource says so
+    /// rather than drawing a card with no description.
+    /// </summary>
+    internal static ReplayManifest Recording => _recording ??= ShippedRecording.Read();
 
     public static void Initialize()
     {
@@ -69,8 +81,16 @@ public static class CombatTrainerMod
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Start()
     {
-        Recording = ShippedRecording.Read();
-        new Harmony(HarmonyId).PatchAll(typeof(CombatTrainerMod).Assembly);
+        _recording = ShippedRecording.Read();
+        var harmony = new Harmony(HarmonyId);
+        harmony.PatchAll(typeof(CombatTrainerMod).Assembly);
+
+        // Installed here, at mod start, rather than when a trainer run begins. A
+        // barrier raised with the run would have a window before it and would be gone
+        // after a crash; installed always and conditional on the run, there is no
+        // moment where a trainer run exists and its writes are not stopped.
+        ProfileWriteBarrier.Install(harmony);
+        Started = true;
         Log.Info($"[{ModId}] loaded; the mode card is added when the singleplayer menu opens", 2);
     }
 
@@ -92,9 +112,9 @@ public static class CombatTrainerMod
             if (_adoptionAttempted) return _adopted;
             _adoptionAttempted = true;
 
-            if (Recording is null)
+            if (!Started)
             {
-                Log.Error($"[{ModId}] no recording was loaded; not adding the mode card.", 2);
+                Log.Error($"[{ModId}] the mod refused to start; not adding the mode card.", 2);
                 return false;
             }
 

@@ -137,9 +137,9 @@ public sealed class EligibilityScreenTests
     public void AFailingFieldWithNoRowIsShownAsItsOwnSentence()
     {
         var reading = Fixtures.Prerequisites() with { BuildDateUtc = "2026.08.13" };
-        var identity = Fixtures.Identity();
+        var recording = Fixtures.Recording();
         var screen = EligibilityScreen.For(
-            identity, EnvironmentPreflight.LiveGame(identity, reading, run: null));
+            recording, EnvironmentPreflight.LiveGame(recording.Environment, reading, run: null));
 
         Assert.False(screen.Eligible);
         Assert.Contains(screen.Refusals, refusal => refusal.Contains("compared in local time"));
@@ -151,7 +151,7 @@ public sealed class EligibilityScreenTests
         var screen = Fixtures.Screen();
 
         Assert.Equal("Recorded on v0.111.0 (2026.08.14)", screen.RecordingLine);
-        Assert.Equal(TrainerCopy.Subtitle, screen.Subtitle);
+        Assert.Equal("NaveGreed · Ironclad · Ascension 10 · Floor 2 · Sludge Spinner", screen.Subtitle);
         Assert.Equal(TrainerCopy.Name, screen.Title);
         Assert.Equal(TrainerCopy.BackButton, screen.BackButton);
         Assert.Equal(TrainerCopy.ProfileNote, screen.ProfileNote);

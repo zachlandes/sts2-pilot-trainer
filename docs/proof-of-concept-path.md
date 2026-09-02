@@ -210,14 +210,62 @@ represent this VOD - and if not, exactly what to play to fix it.
 [docs/in-game-host.md](in-game-host.md) records what that proves and what it does not;
 [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) shows it running.
 
-### S4 - Start or reset the captured combat, in the live game
+### S4 - Start or reset the captured combat, in the live game - done
 
 Construct the run at the VOD's identity inside the retail process and enter the
 captured fight at the combat-start boundary.
-The snapshot machinery already defines that boundary and refuses a drifted one.
+The snapshot machinery already defined that boundary; this is what walks a run to it
+and proves it arrived.
 
-**Runnable when it lands:** the captain presses a button and is standing in the
-NaveGreed fight, at Ascension 10, with the same hand.
+- `RecordedFightPlan` and `CombatStartEquality` in `Sts2PilotTrainer.Replay`: the
+  recording's decisions before its fight, the boundary they end at, and the two
+  readings a live entry is compared against there.
+  Pure, so both have tests on a machine with no game.
+- `RecordedFightEntry` in `Sts2PilotTrainer.Engine`: the one owner of standing
+  somebody in that fight.
+  It constructs the run, makes the recording's decisions in order, and refuses three
+  ways - over a run that already exists, past a decision the plan does not authorise
+  at that point, and into a fight whose combat start is not the recorded one.
+- The progress the run is generated against is supplied rather than read.
+  The recording requires the complete unlock state its content came from, and the
+  player's profile is not it; `Preflight` already distinguishes a supplied model from
+  a reading, and `EnvironmentPreflight.EvaluateAscensionCeiling` already says a host
+  constructing a run directly never consults the profile ceiling.
+  That is what lets the captain stand in an Ascension 10 fight from an Ascension 9
+  profile without a byte of his progress changing.
+- `ProfileWriteBarrier` in the mod: `shouldSave: false` covers the run save and
+  everything at the end of a run, and it does not cover the two writes on this
+  fight's path - winning a combat rewrites the progress file, and an event room saves
+  the run with progress saving defaulted on. The barrier stops the writes themselves,
+  is installed at mod start and does nothing unless a trainer run is live, so a
+  crash, a forced exit and a quit are all covered by the write never happening. It
+  comes down on the game's own end-of-run path, because one left raised would stop
+  saving the player's next run.
+- A deviation lock on the two commands the recording's decisions reach, rather than
+  on the buttons that usually reach them: a screen with its buttons hidden is one a
+  controller, a hotkey or another mod can still drive, and the command is the thing
+  that would change the run.
+- `source.video.channel_name`, so a host names whose recording this is from the
+  manifest.
+  Every sentence the journey shows is a template over what the run is standing in
+  front of - the relic the blessing grants, the kind of node the move enters, how
+  many decisions there are - and nothing about NaveGreed, the Underdocks or a Sludge
+  Spinner is written into the wording.
+
+**Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json`
+constructs the run, walks it through Neow's blessing and the map move with the
+captions the in-game screens use, and reports the fight it lands in as the recorded
+one on all thirteen values the recording observed and on the cached combat-start
+snapshot digest - with the profile reading and every byte of the profile store
+unchanged either side. `--control wrong-opening-choice` damages one recorded decision
+and the entry is refused.
+[demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has it with its real
+output.
+
+**Not yet observed:** the same journey inside the retail client. The mod's side of it
+is written and unit-tested where a test can reach it, and nobody has watched it run;
+[docs/in-game-host.md](in-game-host.md) records exactly what that leaves unproved and
+what it would take to settle.
 
 ### S5 - The player's own fight, compared
 
@@ -246,9 +294,10 @@ is reset at the start of a turn and the trace samples either side of an action r
 than inside one, so player health lost likewise reports only the damage that got
 through.
 
-**Nothing here guarantees a retail player has played the fight.** The mod host states
-eligibility and stops there; entering the captured combat is S4. Until it lands, every
-claim about a fight is a claim about a headless process.
+**Nothing here guarantees a retail player has played the fight.** Every claim about a
+fight in this repository is still a claim about a headless process. S4's entry is
+proved there, through the same owner the mod runs; it has not been watched running in
+the retail client, and a mod that loads is not a mod somebody has played.
 
 **No comparison has two independent lines of the recording's fight.** The recording is
 one completed side; the other side of a comparison against it can only be the
