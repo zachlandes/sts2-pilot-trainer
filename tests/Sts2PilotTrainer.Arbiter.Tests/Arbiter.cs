@@ -48,7 +48,8 @@ internal static class Arbiter
 
     internal static string SyntheticReplayFixture()
     {
-        var path = Path.Combine(RepoRoot, "build", "test-scratch", "synthetic-engine.replay.json");
+        var path = Path.Combine(
+            RepoRoot, "build", "test-scratch", $"synthetic-engine-{Guid.NewGuid():N}.replay.json");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         ManifestJson.Save(Sts2PilotTrainer.Replay.SyntheticReplayFixture.Create(), path);
         return path;
@@ -109,5 +110,23 @@ public sealed class GameTheoryAttribute : TheoryAttribute
     public GameTheoryAttribute()
     {
         if (!Arbiter.GameAvailable) Skip = Arbiter.SkipReason;
+    }
+}
+
+/// <summary>A game fact that also needs the separately fetched BaseLib parity fixture.</summary>
+public sealed class BaseLibFactAttribute : FactAttribute
+{
+    public BaseLibFactAttribute()
+    {
+        if (!Arbiter.GameAvailable)
+        {
+            Skip = Arbiter.SkipReason;
+            return;
+        }
+
+        if (!File.Exists(Path.Combine(Arbiter.RepoRoot, "build", "parity", "BaseLib.dll")))
+        {
+            Skip = "Needs the BaseLib parity fixture. Run ./scripts/fetch-baselib-parity.sh.";
+        }
     }
 }

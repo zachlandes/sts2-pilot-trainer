@@ -1,9 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Integration tests. Each one drives the built CLI in its own process, because
-       the game engine keeps static state and a determinism claim that only holds
-       inside one process is not the claim being made. Skipped, loudly, on a machine
-       with no prepared game assembly. -->
+  <!-- Executable tests for code loaded into the retail game process. Kept outside
+       the game-free domain solution filter because these compile against the
+       prepared game assemblies. -->
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <RootNamespace>Sts2PilotTrainer.Arbiter.Tests</RootNamespace>
@@ -16,13 +15,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj" />
+    <ProjectReference Include="../../src/Sts2PilotTrainer.Engine/Sts2PilotTrainer.Engine.csproj" />
+    <ProjectReference Include="../../src/Sts2PilotTrainer.Mod/Sts2PilotTrainer.Mod.csproj" />
     <ProjectReference Include="../../third_party/godot-stubs/GodotStubs.csproj" />
-    <ProjectReference Include="../../tools/Sts2PilotTrainer.Bootstrap/Sts2PilotTrainer.Bootstrap.csproj"
-                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../Sts2PilotTrainer.Arbiter.Tests/Arbiter.cs" Link="Arbiter.cs" />
     <Using Include="Xunit" />
   </ItemGroup>
 

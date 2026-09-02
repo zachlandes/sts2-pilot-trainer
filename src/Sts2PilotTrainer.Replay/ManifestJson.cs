@@ -11,6 +11,7 @@ namespace Sts2PilotTrainer.Replay;
 public static class ManifestJson
 {
     private static readonly NullabilityInfoContext Nullability = new();
+    private static readonly object NullabilityLock = new();
 
     public static readonly JsonSerializerOptions Options = new()
     {
@@ -133,13 +134,21 @@ public static class ManifestJson
             if (propertyValue is null)
             {
                 if (property.GetCustomAttribute<RequiredMemberAttribute>() is not null ||
-                    Nullability.Create(property).ReadState == NullabilityState.NotNull)
+                    NullabilityReadState(property) == NullabilityState.NotNull)
                 {
                     throw new ManifestException($"{propertyPath} is required and cannot be null.");
                 }
                 continue;
             }
             ValidateRequiredMembers(propertyValue, propertyPath, visited);
+        }
+    }
+
+    private static NullabilityState NullabilityReadState(PropertyInfo property)
+    {
+        lock (NullabilityLock)
+        {
+            return Nullability.Create(property).ReadState;
         }
     }
 }
