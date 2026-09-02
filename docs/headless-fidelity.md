@@ -110,7 +110,9 @@ runs return false from the same method and get false here.
 
 This initialization belongs only to the headless arbiter.
 The in-game host calls `Preflight.EvaluateLiveHost` before presenting a player anything, and it must not embed this entry point, because `EngineHost.Start` enables test mode and installs the headless patches above inside its process.
-It calls `EngineHost.AdoptRunningGame` instead, which takes the engine the client already has and refuses anything it cannot read honestly; a test over the shipped mod assembly fails if a reference to `EngineHost.Start` appears in it.
+It calls `EngineHost.AdoptRunningGame` instead, which takes the engine the client already has and refuses anything it cannot read honestly.
+Executable boundary tests verify that a console process and duplicate game assemblies are refused without changing the prepared game inputs or sandbox profile.
+The removed source-reference scan is not treated as evidence that the mod avoids `EngineHost.Start`.
 See [the in-game host](in-game-host.md).
 
 That was found by reading the method, not by noticing a symptom. The remaining

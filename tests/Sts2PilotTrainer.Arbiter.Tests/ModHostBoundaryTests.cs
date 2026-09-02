@@ -1,5 +1,7 @@
+using System.Runtime.Loader;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Sts2PilotTrainer.Engine;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -17,6 +19,27 @@ public sealed class ModHostBoundaryTests
         Assert.Contains("startup phase : None", result.Output, StringComparison.Ordinal);
         Assert.Contains("not a game whose state can be read honestly", result.Output, StringComparison.Ordinal);
         Assert.Equal(before, after);
+    }
+
+    [GameFact]
+    public void AdoptionRefusesDuplicateGameAssembliesBeforeReadingTheirState()
+    {
+        _ = EngineHost.StartupPhase();
+        var gamePath = Path.Combine(Arbiter.RepoRoot, "build", "lib", "sts2.dll");
+        var duplicateContext = new AssemblyLoadContext("duplicate-sts2", isCollectible: true);
+        duplicateContext.LoadFromAssemblyPath(gamePath);
+
+        try
+        {
+            var refusal = Assert.Throws<EngineException>(EngineHost.AdoptRunningGame);
+
+            Assert.Contains("2 assemblies named sts2 are loaded", refusal.Message, StringComparison.Ordinal);
+            Assert.Contains(gamePath, refusal.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            duplicateContext.Unload();
+        }
     }
 
     [Fact]

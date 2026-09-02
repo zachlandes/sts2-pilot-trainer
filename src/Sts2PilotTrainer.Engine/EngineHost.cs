@@ -44,21 +44,26 @@ public static class EngineHost
     {
         lock (Gate)
         {
+            var provenance = GameAssemblyProvenance();
+            var assemblyCount = GameAssemblyCount();
+            if (assemblyCount != 1)
+            {
+                throw AdoptionFailure(
+                    [$"{assemblyCount} assemblies named sts2 are loaded; exactly one is required"],
+                    provenance);
+            }
+
             if (Origin == EngineOrigin.RunningGame) return Startup!;
             if (_started)
             {
-                throw new EngineException(
-                    "This process already started its own headless engine, so there is no running game to " +
-                    "adopt. The two hosts are mutually exclusive by design.");
+                throw AdoptionFailure(
+                    ["this process already started its own headless engine, so there is no running game to " +
+                     "adopt; the two hosts are mutually exclusive by design"],
+                    provenance);
             }
 
             var refusals = RunningGameRefusals();
-            if (refusals.Count > 0)
-            {
-                throw new EngineException(
-                    "This process is not a game whose state can be read honestly; refusing to report on it:\n" +
-                    string.Join("\n", refusals.Select(refusal => $"  - {refusal}")));
-            }
+            if (refusals.Count > 0) throw AdoptionFailure(refusals, provenance);
 
             Startup = new EngineStartupReport(
                 ModelsRegistered: MegaCrit.Sts2.Core.Models.ModelDb.All.Count(),
@@ -92,8 +97,7 @@ public static class EngineHost
             refusals.Add(
                 $"the game's startup phase is '{phase ?? "unreadable"}', not one where it has a model " +
                 "database and an id-serialization cache to read. Adopt it from a surface the player can " +
-                $"reach, not from mod loading, which the game runs before either exists. Read from " +
-                $"{GameAssemblyProvenance()}.");
+                "reach, not from mod loading, which the game runs before either exists");
             return refusals;
         }
 
@@ -144,6 +148,11 @@ public static class EngineHost
         return refusals;
     }
 
+    private static EngineException AdoptionFailure(IEnumerable<string> refusals, string provenance) =>
+        new(
+            "This process is not a game whose state can be read honestly; refusing to report on it:\n" +
+            string.Join("\n", refusals.Select(refusal => $"  - {refusal}. Read from {provenance}.")));
+
     /// <summary>
     /// The game's own startup phase, by name, or null when this build no longer
     /// publishes one.
@@ -175,13 +184,19 @@ public static class EngineHost
     internal static string GameAssemblyProvenance()
     {
         var assembly = typeof(MegaCrit.Sts2.Core.Models.ModelDb).Assembly;
-        var loaded = AppDomain.CurrentDomain.GetAssemblies()
-            .Count(candidate => candidate.GetName().Name == assembly.GetName().Name);
+        var loaded = GameAssemblyCount();
         var location = string.IsNullOrEmpty(assembly.Location) ? "an assembly with no file" : assembly.Location;
         return loaded == 1
             ? location
             : $"{location} ({loaded.ToString(System.Globalization.CultureInfo.InvariantCulture)} assemblies " +
               "named sts2 are loaded, which is one too many)";
+    }
+
+    private static int GameAssemblyCount()
+    {
+        var name = typeof(MegaCrit.Sts2.Core.Models.ModelDb).Assembly.GetName().Name;
+        return AppDomain.CurrentDomain.GetAssemblies()
+            .Count(candidate => candidate.GetName().Name == name);
     }
 
     /// <summary>The release information the running game published about itself, or

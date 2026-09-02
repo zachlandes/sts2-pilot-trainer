@@ -5,8 +5,8 @@ that loads in the shipped Slay the Spire 2 client and gives a player an honest a
 to one question — can this game play the recorded fight?
 
 It answers that question and nothing else.
-Starting the fight, replaying the recording's choices, and comparing the two fights
-are S4 and S5, and there is a test that fails if a path into any of them appears here.
+Starting the fight, replaying the recording's choices, and comparing the two fights are S4 and S5.
+No source-reference scan stands in for an executable proof that those absent features remain absent.
 
 ## What it proves
 
@@ -26,11 +26,9 @@ word for word.
 
 **It reads and never writes.**
 The player's save, profile, progress, unlocks and installed build are inputs.
-`ModHostBoundaryTests` reads the shipped assembly and fails if it refers to anything
-in the game's save, unlock or timeline namespaces at all, or to
-`EngineHost.Start` — the headless entry point, which switches the engine into test
-mode and neutralises the save subsystem, and which must never run in a player's
-client.
+The executable `adopt-live` boundary test verifies that a console process is refused without changing the prepared game inputs or sandbox profile.
+The mod-manifest contract verifies that the shipped host is non-gameplay and carries no resource pack.
+There is no source-reference scan presented as behavioural evidence.
 
 **It refuses rather than approximating.**
 Every condition that would make a reading untrustworthy is a refusal with a sentence:
@@ -48,7 +46,7 @@ combat is S4.
 **A green content-hash row is not environment parity.**
 The row carries the engine's own sentence saying so, whether it is green or red.
 The hash covers content contributed by mods that declare themselves gameplay-affecting; it says nothing about a mod that patches behaviour.
-The same prerequisite reading therefore inspects the game's loaded-mod inventory and refuses every local mod except the known non-gameplay Combat Trainer host.
+The same prerequisite reading therefore inspects every mod the game discovered, including failed states that may have left resources loaded, and refuses every active local mod except the known non-gameplay Combat Trainer host.
 
 **The unlock rows describe the modded profile.**
 The game forks a separate profile for modded play, and that is the one a modded

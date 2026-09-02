@@ -13,8 +13,8 @@ the arbiter's own preflight about the player's real game, and tell them - in the
 in the game's own furniture - whether it can play NaveGreed's Floor 2 Sludge Spinner as
 recorded, and what to go and play if it cannot?
 
-It answers that and stops. Entering the fight is the next slice, and there is a test
-below that fails if a path into it appears here.
+It answers that and stops.
+Entering the fight is the next slice, and no source-reference scan stands in for an executable proof that absent S4 behavior remains absent.
 
 The two screenshots are the one kind of image this repository keeps: our own screen,
 drawn by our own mod, inside the player's own client. No frame of the source recording
@@ -28,7 +28,7 @@ it writes exactly one directory - the game's own mod surface, the same one Steam
 Workshop installs into. `--uninstall` removes that directory and nothing else.
 
 ```bash
-./scripts/install-mod.sh
+set -o pipefail; ./scripts/install-mod.sh | sed -E 's/Time Elapsed .*/Time Elapsed <elapsed>/'
 ```
 
 ```output
@@ -37,7 +37,7 @@ Build succeeded.
     0 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:00:01.30
+Time Elapsed <elapsed>
 installed    : 6 files -> ~/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods/CombatTrainer
 next         : launch Slay the Spire 2, allow mod loading, then Singleplayer
 ```
@@ -73,21 +73,17 @@ initializer, and reports the mod loaded. The mod reads nothing at this point: mo
 initialization runs one startup phase before the game has a model database, so it
 loads its embedded recording, installs one Harmony patch, and waits.
 
-```
-[INFO] Found mod manifest file .../mods/CombatTrainer/CombatTrainer.json
-[INFO]   3: Combat Trainer (CombatTrainer)
-[INFO] Loading assembly DLL .../mods/CombatTrainer/CombatTrainer.dll
-[INFO] Calling initializer method of type Sts2PilotTrainer.Mod.CombatTrainerMod for CombatTrainer
-[INFO] [CombatTrainer] loaded; the mode card is added when the singleplayer menu opens
-[INFO] Finished mod initialization for 'Combat Trainer' (CombatTrainer)
-```
+> [INFO] Found mod manifest file .../mods/CombatTrainer/CombatTrainer.json
+> [INFO]   3: Combat Trainer (CombatTrainer)
+> [INFO] Loading assembly DLL .../mods/CombatTrainer/CombatTrainer.dll
+> [INFO] Calling initializer method of type Sts2PilotTrainer.Mod.CombatTrainerMod for CombatTrainer
+> [INFO] [CombatTrainer] loaded; the mode card is added when the singleplayer menu opens
+> [INFO] Finished mod initialization for 'Combat Trainer' (CombatTrainer)
 
 Opening Singleplayer is the first moment there is demonstrably a running game, so that
 is where the host adopts it - and the adoption says what it found:
 
-```
-[INFO] [CombatTrainer] adopted the running game: 1660 models registered
-```
+> [INFO] [CombatTrainer] adopted the running game: 1660 models registered
 
 Those lines are from the game's own log at
 `~/Library/Application Support/SlayTheSpire2/logs/godot.log`, with the installation
@@ -137,23 +133,19 @@ sentence that says so.
 
 ![The Combat Trainer screen over the singleplayer menu. Headline: "Your game cannot play this fight as recorded yet." A red row reads "Ascension 10 available on Ironclad" followed by the engine remediation "This profile's highest available ascension for CHARACTER.IRONCLAD is 9, and the manifest records ascension 10..." Green rows below read "Build v0.111.0" and "Content hash 1568834832" with its scope sentence.](376ba49a-2026-09-02.png)
 
-## What the screen may and may not touch, read out of the assembly
+## Executable host boundaries
 
-Two claims about a program that runs inside somebody else's client are worth
-compiling against rather than promising. It reads the game and never writes to it. And
-it is the gate, not the fight: entering the captured combat is the next slice, and a
-host that had quietly grown a path into it would be shipping an unfinished feature to
-a player.
-
-Both are stated as "this assembly refers to nothing in these namespaces", read out of
-the shipped DLL.
+The boundary suite drives `adopt-live` as a real command and verifies that a console process refuses without changing the prepared game inputs or sandbox profile.
+It also loads a second copy of `sts2` and verifies that adoption refuses before reading either copy's state, with the bound assembly named in the refusal.
+The remaining declarative test parses the mod manifest and verifies the non-gameplay, DLL-only, packless contract that keeps the compared content hash meaningful.
+There is no source-reference scan presented as behavioral evidence, and no test claim stands in for the absent S4 implementation.
 
 ```bash
-dotnet test tests/Sts2PilotTrainer.Arbiter.Tests/Sts2PilotTrainer.Arbiter.Tests.csproj -c Release --nologo --filter 'FullyQualifiedName~ModHostBoundaryTests' 2>&1 | grep -E 'Passed!|Failed!'
+set -o pipefail; dotnet test tests/Sts2PilotTrainer.Arbiter.Tests/Sts2PilotTrainer.Arbiter.Tests.csproj -c Release --nologo --filter 'FullyQualifiedName~ModHostBoundaryTests' 2>&1 | grep -E 'Passed!|Failed!' | sed -E 's/Duration: [^ ]+ ms/Duration: <duration>/'
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: 17 ms - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     3, Skipped:     0, Total:     3, Duration: <duration> - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 And what the screen says, checked on a machine that does not own the game. The wording
@@ -163,20 +155,20 @@ ordering, a green hash row keeping its qualifier, a failing gate with no row sti
 being shown as its own sentence - is a test.
 
 ```bash
-dotnet test tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrainer.Trainer.Tests.csproj -c Release --nologo 2>&1 | grep -E 'Passed!|Failed!'
+set -o pipefail; dotnet test tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrainer.Trainer.Tests.csproj -c Release --nologo 2>&1 | grep -E 'Passed!|Failed!' | sed -E 's/Duration: [^ ]+ ms/Duration: <duration>/'
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    14, Skipped:     0, Total:    14, Duration: 16 ms - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    15, Skipped:     0, Total:    15, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
 ```
 
 ## What this proves, and what it does not
 
-**Proved.** The shipped client discovers, loads and initialises the mod through its
-own mod surface. A fourth mode card appears in the game's own furniture. Opening it
-runs `Preflight.EvaluateLiveHost` against the player's real installed build and the
-profile the modded game uses, and shows the result with the engine's own remediation.
-Nothing is written. Nothing about the fight is offered.
+**Proved.** The shipped client discovers, loads and initialises the mod through its own mod surface.
+A fourth mode card appears in the game's own furniture.
+Opening it runs `Preflight.EvaluateLiveHost` against the player's real installed build and the profile the modded game uses, and shows the result with the engine's own remediation.
+The executable console refusal leaves its prepared game inputs and sandbox profile unchanged.
+Nothing about the fight is offered.
 
 **Not proved.** Nobody has played the fight; there is no button that enters combat,
 because entering combat is S4. A green content-hash row is not environment parity, and
