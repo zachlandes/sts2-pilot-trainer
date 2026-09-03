@@ -105,8 +105,8 @@ scene tree in the way:
 
 It constructs the run at the recording's identity, makes the recording's decisions
 before its fight in order, and reports the fight it lands in as the recorded one -
-against everything the recording observed there and against the cached combat-start
-snapshot - with the profile unchanged either side.
+against everything the recording observed there and against the manifest's
+engine-produced combat-start snapshot digest - with the profile unchanged either side.
 [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md) has it with its real
 output.
 

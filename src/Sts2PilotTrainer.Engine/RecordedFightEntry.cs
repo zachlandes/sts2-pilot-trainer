@@ -331,14 +331,9 @@ public sealed class RecordedFightEntry : IDisposable
     /// Asked after the last recorded decision and before a player is given the
     /// controls. It refuses two different ways of being wrong: the run is not in a
     /// fight at all, or it is in one that does not match what the recording observed
-    /// and cached. Both are drift, and neither is entered.
+    /// and the engine-produced snapshot digest. Both are drift, and neither is entered.
     /// </summary>
-    /// <param name="expectedDigest">
-    /// The cached combat-start snapshot's digest, when the caller has one. The
-    /// recording's observed fields are compared either way; the digest is what also
-    /// compares the state no video can show.
-    /// </param>
-    public CombatStartEquality VerifyCombatStart(string? expectedDigest = null)
+    public CombatStartEquality VerifyCombatStart()
     {
         if (!AtCombatStart)
         {
@@ -347,6 +342,9 @@ public sealed class RecordedFightEntry : IDisposable
                 "have not been made yet, so there is no combat start to compare against.");
         }
 
+        var expectedDigest = Manifest.Source.CombatStartSnapshotDigest?.Value
+            ?? throw new ManifestException(
+                "The recording has no engine-produced combat-start snapshot digest.");
         var state = LiveState();
         if (!InCombat())
         {

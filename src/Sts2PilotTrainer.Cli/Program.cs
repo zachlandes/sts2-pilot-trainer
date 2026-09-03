@@ -133,7 +133,7 @@ internal static class Program
               Construct the recording's run, walk it through the recording's own
               decisions in order, and prove the fight it lands in is the recorded one -
               against what the recording observed at that boundary and against the
-              cached combat-start snapshot. Reports the profile before and after,
+              manifest's engine-produced combat-start snapshot digest. Reports the profile before and after,
               because nothing here may write to it. --control damages one decision
               before the fight and shows the entry refused; --step stops after one.
 

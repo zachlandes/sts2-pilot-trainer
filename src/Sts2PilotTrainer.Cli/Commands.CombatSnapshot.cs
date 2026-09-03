@@ -86,6 +86,16 @@ internal static partial class Commands
             return 1;
         }
 
+        var snapshotDigest = DigestOf(snapshot);
+        if (manifest.Source.CombatStartSnapshotDigest is { } declaredSnapshot &&
+            !string.Equals(declaredSnapshot.Value, snapshotDigest, StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine(
+                $"The manifest declares combat-start snapshot {declaredSnapshot.Value}, but replaying its " +
+                $"recorded prefix produced {snapshotDigest}. Refusing a drifted publication boundary.");
+            return 1;
+        }
+
         var coveredState = File.ReadAllText(coveredStatePath);
         var coveredFields = ParseState(coveredState);
         var combatActive = coveredFields.GetValueOrDefault("combat.in_progress") == "true";
@@ -104,7 +114,7 @@ internal static partial class Commands
         Console.WriteLine($"combat starts   : after action {combatStart}");
         Console.WriteLine($"snapshot key    : {key.ToCacheDirectoryName()}");
         Console.WriteLine($"snapshot source : {(cached ? "cache hit" : "materialised now")}");
-        Console.WriteLine($"snapshot digest : {DigestOf(snapshot)}");
+        Console.WriteLine($"snapshot digest : {snapshotDigest}");
         Console.WriteLine($"restore         : re-derived in a fresh process, digest matches");
         Console.WriteLine($"covered history : {report.Status.ToString().ToUpperInvariant()} through action " +
                           $"{lastSeq} ({manifest.Actions.Count} actions), {combatState}, " +
@@ -125,7 +135,7 @@ internal static partial class Commands
                 manifest = Path.GetFileName(manifestPath),
                 combat_start_seq = combatStart,
                 snapshot_key = key,
-                snapshot_digest = DigestOf(snapshot),
+                snapshot_digest = snapshotDigest,
                 snapshot_source = cached ? "cache hit" : "materialised now",
                 restore_verified = true,
                 covered_history_status = report.Status.ToString(),

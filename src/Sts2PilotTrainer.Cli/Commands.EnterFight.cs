@@ -18,8 +18,8 @@ internal static partial class Commands
     /// at the recording's identity against a supplied complete unlock state, each
     /// recorded decision is executed in order and captioned exactly as the mod's
     /// screens caption it, and the boundary is compared against both what the
-    /// recording observed there and the cached combat-start snapshot. Nothing here is
-    /// a proxy for the retail client - the retail client runs the same
+    /// recording observed there and the manifest's engine-produced combat-start
+    /// snapshot digest. Nothing here is a proxy for the retail client - the retail client runs the same
     /// <see cref="RecordedFightEntry"/> - and nothing here draws a screen.
     ///
     /// It also reports what it did to the profile, before and after, because "this
@@ -112,8 +112,15 @@ internal static partial class Commands
             return 1;
         }
 
-        var expectedDigest = CachedSnapshotDigest(plan, cacheDir, out var snapshotSource);
-        var equality = entry.VerifyCombatStart(expectedDigest);
+        var equality = entry.VerifyCombatStart();
+        var cachedDigest = CachedSnapshotDigest(plan, cacheDir, out var snapshotSource);
+        if (cachedDigest is not null &&
+            !string.Equals(cachedDigest, equality.ExpectedDigest, StringComparison.Ordinal))
+        {
+            throw new ManifestException(
+                $"The cached combat-start snapshot is {cachedDigest}, but the recording declares " +
+                $"{equality.ExpectedDigest}. Re-run combat-snapshot before entering the fight.");
+        }
 
         Console.WriteLine();
         Console.WriteLine(
@@ -128,7 +135,7 @@ internal static partial class Commands
 
         Console.WriteLine();
         Console.WriteLine($"snapshot        : {snapshotSource}");
-        Console.WriteLine($"  recorded      : {expectedDigest ?? "none cached"}");
+        Console.WriteLine($"  recorded      : {equality.ExpectedDigest}");
         Console.WriteLine($"  this game     : {equality.ActualDigest}");
 
         var profileAfter = ProfileReading(recording.Environment);
@@ -235,7 +242,7 @@ internal static partial class Commands
             string.Equals(arg.Value, value, StringComparison.Ordinal));
 
     /// <summary>The digest the combat-start snapshot cache holds for this exact
-    /// history, or null when nothing has materialised it yet.</summary>
+    /// history, when this machine has materialised it.</summary>
     private static string? CachedSnapshotDigest(
         RecordedFightPlan plan, string cacheDir, out string source)
     {
@@ -244,8 +251,7 @@ internal static partial class Commands
         if (!File.Exists(path))
         {
             source =
-                $"none cached under {plan.SnapshotKey.ToCacheDirectoryName()}; run combat-snapshot to " +
-                "materialise one. Only the values the recording observed are compared.";
+                $"recording manifest; no local cache under {plan.SnapshotKey.ToCacheDirectoryName()}";
             return null;
         }
 

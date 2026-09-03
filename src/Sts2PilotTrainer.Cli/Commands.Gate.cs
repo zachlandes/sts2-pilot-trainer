@@ -105,6 +105,11 @@ internal static partial class Commands
                         "covered-fight", CoveredFightRequirement, false,
                         "A completed fight can only be read out of a verified reproduction."));
 
+                conditions.Add(Check(
+                    "combat-boundary",
+                    CombatBoundaryRequirement,
+                    SelfProcess.Run("combat-snapshot", manifestPath, "--out", outDir)));
+
                 conditions.Add(Check("determinism",
                 "Fresh processes produce byte-identical canonical state.",
                 SelfProcess.Run("determinism", manifestPath, "--runs", "2", "--out", outDir)));
@@ -180,6 +185,7 @@ internal static partial class Commands
         new Condition("reproduction",
             "The reconstructed history replays through the real engine and matches every observed value.", false),
         new Condition("covered-fight", CoveredFightRequirement, false),
+        new Condition("combat-boundary", CombatBoundaryRequirement, false),
         new Condition("determinism",
             "Fresh processes produce byte-identical canonical state.", false),
         new Condition("rejection", RejectionRequirement, false),
@@ -190,6 +196,9 @@ internal static partial class Commands
 
     private const string CoveredFightRequirement =
         "The reproduced history covers a whole fight, from its combat start to the end of that fight.";
+
+    private const string CombatBoundaryRequirement =
+        "The manifest's combat-start snapshot digest matches a fresh real-engine derivation.";
 
     /// <summary>
     /// Whether the verified history covers a fight that finished.

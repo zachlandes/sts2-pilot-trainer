@@ -134,6 +134,24 @@ public sealed class ProfileWriteBarrierTests
         }
     }
 
+    [BarrierFact]
+    public void EndingATrainerRunLowersTheBarrierForTheNextRun()
+    {
+        var barrier = BarrierType();
+        barrier.GetMethod("Raise", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+
+        var recordedRun = BarrierType().Assembly.GetType("Sts2PilotTrainer.Mod.RecordedFightRun")!;
+        var teardown = recordedRun.GetNestedType(
+            "TrainerRunTeardown", BindingFlags.NonPublic)!;
+        teardown.GetMethod("AfterRunEnds", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+
+        Assert.False((bool)barrier.GetProperty(
+            "IsActive", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!.GetValue(null)!);
+        Assert.Equal(
+            "None",
+            recordedRun.GetProperty("Phase", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!.ToString());
+    }
+
     private static Type BarrierType()
     {
         var modAssembly = AssemblyLoadContext.Default.Assemblies

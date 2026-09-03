@@ -1,5 +1,5 @@
 {
- "manifest_version": 3,
+ "manifest_version": 4,
  "run_id": "navegreed-OJ-6QXhNgdg",
  "environment": {
   "build_version": {
@@ -121,6 +121,10 @@
   },
   "extraction_method": "manual",
   "coverage": "Run start through the start of the third turn of the floor-5 combat: Neow's blessing, four map moves, two whole fights played to their victories, the loot each of them offered and what the player did with it, the Waterlogged Scriptorium and the two cards it enchanted, and the first two turns of the floor-5 two-enemy fight. It stops at the boundary that opens the 209-215 second window - the moment turn 3 begins - and nothing after that is transcribed. The unit the comparison contract is defined over is a whole fight, and this history covers two of them from their combat starts to their ends.",
+  "combat_start_snapshot_digest": {
+   "Value": "sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae",
+   "Source": "Engine"
+  },
   "run_start": {
    "first_observed_run_time_s": {
     "Value": 4,

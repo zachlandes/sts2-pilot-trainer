@@ -258,8 +258,8 @@ and proves it arrived.
 **Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json`
 constructs the run, walks it through Neow's blessing and the map move with the
 captions the in-game screens use, and reports the fight it lands in as the recorded
-one on all thirteen values the recording observed and on the cached combat-start
-snapshot digest - with the profile reading and every byte of the profile store
+one on all thirteen values the recording observed and on the manifest's
+engine-produced combat-start snapshot digest - with the profile reading and every byte of the profile store
 unchanged either side. `--control wrong-opening-choice` damages one recorded decision
 and the entry is refused.
 [demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has it with its real

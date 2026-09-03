@@ -175,17 +175,13 @@ public sealed class CombatStartEqualityTests
         Assert.Contains("sha256:live", equality.Refusal!, StringComparison.Ordinal);
     }
 
-    /// <summary>A host entering a fight before anything cached one has no digest to
-    /// compare, and that is reported rather than counted as agreement.</summary>
     [Fact]
-    public void WithNoCachedSnapshotOnlyTheObservedValuesAreCompared()
+    public void RefusesToCompareWithoutTheRecordedSnapshotDigest()
     {
-        var equality = CombatStartEquality.Compare(
-            EntryFixtures.Boundary(), Live, "sha256:live", expectedDigest: null);
+        var refusal = Assert.Throws<ArgumentException>(() => CombatStartEquality.Compare(
+            EntryFixtures.Boundary(), Live, "sha256:live", expectedDigest: null!));
 
-        Assert.True(equality.Matches);
-        Assert.Null(equality.ExpectedDigest);
-        Assert.Equal("sha256:live", equality.ActualDigest);
+        Assert.Contains("cannot be verified without", refusal.Message, StringComparison.Ordinal);
     }
 
     [Fact]

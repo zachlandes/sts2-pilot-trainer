@@ -415,10 +415,6 @@ internal static class RecordedFightRun
         {
             PrefightScreen.ShowRefusal(reason);
 
-            // CleanUp is postfixed by TrainerRunTeardown, which clears the same state
-            // this method's finally clears. Both are idempotent, and having the
-            // teardown on the game's own end-of-run path rather than only here is
-            // what covers the ways a run ends that never come through this method.
             if (RunManager.Instance is { IsInProgress: true }) RunManager.Instance.CleanUp();
             NGame.Instance?.ReturnToMainMenu();
         }
@@ -430,10 +426,7 @@ internal static class RecordedFightRun
         }
         finally
         {
-            _entry?.Dispose();
-            _entry = null;
-            Phase = RecordedFightPhase.None;
-            ProfileWriteBarrier.Lower();
+            Finish();
         }
     }
 
@@ -460,6 +453,38 @@ internal static class RecordedFightRun
 
         return startRun.Invoke(game, [runState]) as Task
             ?? throw new InvalidOperationException("NGame.StartRun did not return a task on this build.");
+    }
+
+    internal static void Finish()
+    {
+        var entry = _entry;
+        _entry = null;
+        _authorising = false;
+        Phase = RecordedFightPhase.None;
+        try
+        {
+            entry?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{CombatTrainerMod.ModId}] could not dispose the recorded fight entry: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+        finally
+        {
+            ProfileWriteBarrier.Lower();
+        }
+    }
+
+    [HarmonyPatch(typeof(RunManager), nameof(RunManager.CleanUp))]
+    internal static class TrainerRunTeardown
+    {
+        [HarmonyPostfix]
+        internal static void AfterRunEnds()
+        {
+            if (Phase != RecordedFightPhase.None || ProfileWriteBarrier.IsActive) Finish();
+        }
     }
 
     /// <summary>

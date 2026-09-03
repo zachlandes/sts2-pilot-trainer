@@ -24,7 +24,7 @@ part of that has been watched running in the retail client, and which has not.
 One command. It reads the recording, constructs the run the recording describes, makes
 the two decisions the recording made before its fight - Neow's blessing, then the map
 move - and compares where it lands against the recording's own observation of that
-moment and against the cached combat-start snapshot.
+moment and against the manifest's engine-produced combat-start snapshot digest.
 
 Three things in the output are worth reading closely.
 
@@ -136,8 +136,8 @@ combat start    : checkpoint 'floor2-combat-start', 13 observed value(s)
   FAIL combat.hand                recording=CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD game=CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DOMINATE|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD
   FAIL player.max_hp              recording=68                                                       game=80
 
-snapshot        : none cached under v0.111.0_standard_CHARACTER.IRONCLAD_a10_SFXT47K77RFK_1568834832_seq1_2344a767ba16a6daf98ee6954747281ae5f2accfa113a08d5ac282922012103f; run combat-snapshot to materialise one. Only the values the recording observed are compared.
-  recorded      : none cached
+snapshot        : recording manifest; no local cache under v0.111.0_standard_CHARACTER.IRONCLAD_a10_SFXT47K77RFK_1568834832_seq1_2344a767ba16a6daf98ee6954747281ae5f2accfa113a08d5ac282922012103f
+  recorded      : sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae
   this game     : sha256:8a65e216ecf167ee26e391bd7af6782029bdafd6988752cacb4c52d7e824063f
 
 profile after   : ascension ceiling 0 for CHARACTER.IRONCLAD; characters 1/5, cards 232/596, card_pools 8/12, character_card_pools 1/5, relics 254/299, potions 45/66, shared_ancients 0/1, epochs 0/57
@@ -298,8 +298,8 @@ construction the retail client uses, against a complete unlock state supplied in
 for that run. The recording's two decisions before its fight are executed in its order
 and captioned from what the run is standing in front of. The fight that opens is the
 recorded one on all thirteen values a person read off the video and on the complete
-canonical state the cached combat-start snapshot holds - the run's random streams and
-the draw pile's order included. Damaging one recorded decision produces a valid fight
+canonical state covered by the manifest's engine-produced combat-start snapshot digest -
+the run's random streams and the draw pile's order included. Damaging one recorded decision produces a valid fight
 that is refused. Stopping a decision short refuses to be called the boundary. The
 profile reading and every byte of the profile store are unchanged either side of all of
 it.

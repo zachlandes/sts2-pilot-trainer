@@ -105,9 +105,9 @@ host supplied, it would send a player to import progress that nothing here consu
 
 **The fight is proved before it is handed over.**
 `CombatStartEquality` compares the live state against both readings of the boundary:
-every value the recording observed there, and the cached combat-start snapshot's
-digest, which covers the run-persistent random streams and the draw pile's order that
-no video can show. A boundary that disagrees on either abandons the run and says why.
+every value the recording observed there, and the manifest's engine-produced
+combat-start snapshot digest, which covers the run-persistent random streams and the
+draw pile's order that no video can show. A boundary that disagrees on either abandons the run and says why.
 
 ## What it does not prove
 

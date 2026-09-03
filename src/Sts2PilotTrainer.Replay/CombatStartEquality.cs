@@ -30,9 +30,8 @@ public sealed record CombatStartEquality
     /// was checked thoroughly from one that was barely checked at all.</summary>
     public required IReadOnlyList<FieldComparison> Comparisons { get; init; }
 
-    /// <summary>The digest the snapshot holds for this boundary, when one was
-    /// supplied.</summary>
-    public required string? ExpectedDigest { get; init; }
+    /// <summary>The digest the recording holds for this boundary.</summary>
+    public required string ExpectedDigest { get; init; }
 
     /// <summary>The digest of the state the live run actually reached.</summary>
     public required string ActualDigest { get; init; }
@@ -47,18 +46,20 @@ public sealed record CombatStartEquality
     /// <param name="boundary">What the recording observed when the fight opened.</param>
     /// <param name="live">The canonical state the live run reached, field by field.</param>
     /// <param name="liveDigest">Digest over the whole of that state.</param>
-    /// <param name="expectedDigest">
-    /// The combat-start snapshot's digest, when the caller has one. Null is a real
-    /// case rather than a shortcut - a host entering a fight for the first time has
-    /// no snapshot to compare against yet - and it is reported rather than treated
-    /// as agreement.
-    /// </param>
+    /// <param name="expectedDigest">The recording's engine-produced combat-start snapshot digest.</param>
     public static CombatStartEquality Compare(
         Checkpoint boundary,
         IReadOnlyDictionary<string, string> live,
         string liveDigest,
-        string? expectedDigest)
+        string expectedDigest)
     {
+        if (string.IsNullOrWhiteSpace(expectedDigest))
+        {
+            throw new ArgumentException(
+                "A combat start cannot be verified without the recording's snapshot digest.",
+                nameof(expectedDigest));
+        }
+
         var comparisons = new List<FieldComparison>();
         foreach (var (field, expected) in boundary.Expect.OrderBy(entry => entry.Key, StringComparer.Ordinal))
         {
@@ -71,8 +72,7 @@ public sealed record CombatStartEquality
         }
 
         var disagreements = comparisons.Where(comparison => !comparison.Matches).ToList();
-        var digestDisagrees = expectedDigest is { Length: > 0 } &&
-                              !string.Equals(expectedDigest, liveDigest, StringComparison.Ordinal);
+        var digestDisagrees = !string.Equals(expectedDigest, liveDigest, StringComparison.Ordinal);
 
         return new CombatStartEquality
         {
@@ -88,7 +88,7 @@ public sealed record CombatStartEquality
         Checkpoint boundary,
         IReadOnlyList<FieldComparison> disagreements,
         bool digestDisagrees,
-        string? expectedDigest,
+        string expectedDigest,
         string liveDigest)
     {
         if (disagreements.Count == 0 && !digestDisagrees) return null;

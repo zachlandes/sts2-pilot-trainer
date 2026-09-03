@@ -42,6 +42,8 @@ internal static class Fixtures
             },
             ExtractionMethod = "manual",
             Coverage = "opening turn only",
+            CombatStartSnapshotDigest = Fact<string>.Engine(
+                "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
             RunStart = RunStart(),
             RunSummary = RunSummary(),
         },

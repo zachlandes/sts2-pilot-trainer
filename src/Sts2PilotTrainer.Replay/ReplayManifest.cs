@@ -15,7 +15,7 @@ public sealed record ReplayManifest
 {
     /// <summary>Bumped whenever a change would make an older arbiter misread a
     /// newer manifest. Readers must refuse an unknown version rather than guess.</summary>
-    public const int CurrentManifestVersion = 3;
+    public const int CurrentManifestVersion = 4;
 
     [JsonPropertyName("manifest_version")]
     public int ManifestVersion { get; init; } = CurrentManifestVersion;
@@ -153,6 +153,16 @@ public sealed record SourceProvenance
     /// complete is not.</summary>
     [JsonPropertyName("coverage")]
     public required string Coverage { get; init; }
+
+    /// <summary>
+    /// The complete canonical state digest at the first combat boundary, produced by
+    /// <c>combat-snapshot</c> after it re-derived the boundary in a fresh process.
+    /// Required for a video source so a retail host can compare hidden state without
+    /// carrying or trusting a machine-local snapshot cache.
+    /// </summary>
+    [JsonPropertyName("combat_start_snapshot_digest")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Fact<string>? CombatStartSnapshotDigest { get; init; }
 
     /// <summary>
     /// Evidence that the recording begins at the run's beginning. Required for a
