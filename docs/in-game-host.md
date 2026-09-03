@@ -317,13 +317,25 @@ A screen's command does most of its work after an await, so an authorisation tha
 when the starting call returned had already lapsed - and the lock refused the
 recording's own map move. It is held across the step now.
 
-**The watching screens are the game's popup, not the mockup's bar.**
-The approved journey shows a chip and a control bar over the game's own screens. What
-is built is the game's own popup with no backstop, so the screen underneath stays
-lit, carrying the same three things and the same two controls. It uses only the
-approved wording and the furniture this mod has already been seen to draw correctly;
-the difference in layout is a deviation from the mockup and is recorded here rather
-than presented as the design.
+**The watching journey is one long-lived transport, not a popup per step.**
+The popup this started with was created and torn down around every decision, so it could not carry a position across the map-to-combat transition and it covered the screens the player is there to look at.
+`PlaybackTransportStrip` replaces the whole set with one node, `PlaybackTransportDock` parents it to `NRun.GlobalUi` - the run's own persistent interface, which the room is swapped underneath - and `PlaybackTransport` in `Sts2PilotTrainer.Trainer` owns every word it says.
+It docks in the band under the game's own top bar, measured off `NGlobalUi.TopBar` rather than written down, because that band is the one part of every screen this journey walks past that the game leaves empty.
+`PrefightScreen` keeps only the two things a popup is actually for: a refusal, and the result of the player's fight.
+
+**Reveal, hold, commit, and Back is none of them.**
+`RecordedFightReveal` applies the game's own selected state to what the recording is about to choose and never its click path: `GrabFocus` is what a control's own `OnFocus` runs off, and on the map `NSelectionReticle.OnSelect` lights the ring directly so it survives the player moving focus to the transport.
+The hold is the strip waiting - for the player under Forward, for a `SceneTreeTimer` under Play, shorter on the map because the game supplies a second of its own before the fade.
+The commit is `RecordedFightEntry.AdvanceOneStep`, unchanged.
+Back re-shows a decision already made from what the host wrote down at the moment it was revealed; there is no path that uncommits one, and the run is never rewound to answer.
+A target the host cannot resolve - no screen, a coordinate this act does not draw, an option row granting a different relic - ends the attempt with the reason rather than committing a decision unseen.
+
+What these surfaces should *look* like is not settled and is not recorded here; [mod-ui-direction.md](mod-ui-direction.md) carries that brief, and the strip's palette and layout are provisional until it is answered.
+
+**The strip has to be reachable and has to be out of the way.**
+Its root and everything on it except the buttons ignore the mouse, so the map, the event and the player's own fight keep every click that is not on a control.
+Its buttons take focus, so a controller can reach them.
+During the player's own fight it collapses to a chip carrying the trainer's name and nothing else.
 
 **A green content-hash row is not environment parity.**
 The row carries the engine's own sentence saying so, whether it is green or red.

@@ -11,8 +11,10 @@ namespace Sts2PilotTrainer.Trainer;
 /// manifest, or a diagnostic <see cref="Sts2PilotTrainer.Replay.EnvironmentPreflight"/>
 /// already produces and is shown verbatim.
 ///
-/// These strings are approved wording. Changing one is a product decision, not a
-/// refactor.
+/// These strings are approved wording, with one marked exception: the transport's
+/// control labels are placeholders for controls the visual design has not settled
+/// yet, and they say so where they sit. Changing anything else here is a product
+/// decision, not a refactor.
 /// </summary>
 public static class TrainerCopy
 {
@@ -77,15 +79,38 @@ public static class TrainerCopy
     /// gone the moment the fight is the player's.</summary>
     public static string WatchingChip(string creator) => $"Watching {creator}";
 
-    /// <summary>Makes the recording's next decision.</summary>
-    public const string NextButton = "Next";
+    // ── Provisional: the transport's controls ──────────────────────────────
+    //
+    // The four below are NOT approved wording, and they are the only things in this
+    // file that are not. The captain's direction is iconography rather than text for
+    // playback controls, and the visual design that decides which of these survive as
+    // words has not been done yet; docs/mod-ui-direction.md carries that brief.
+    // What is settled is what each control does, which is the part a redesign must
+    // preserve. Treat a label here as a placeholder for a control, not as copy.
 
-    /// <summary>Makes every remaining recorded decision at once.</summary>
-    public const string SkipButton = "Skip to the fight";
+    /// <summary>Commits the decision the strip is holding on, then reveals the
+    /// next.</summary>
+    public const string ForwardButton = "Forward";
+
+    /// <summary>Runs the remaining decisions, holding on each one long enough to be
+    /// watched.</summary>
+    public const string PlayButton = "Play";
+
+    /// <summary>Stops Play where it is, on the decision it is holding.</summary>
+    public const string PauseButton = "Pause";
 
     /// <summary>Where in the recording's decisions this is.</summary>
     public static string StepCounter(int step, int count) =>
         $"{step.ToString(CultureInfo.InvariantCulture)} of {count.ToString(CultureInfo.InvariantCulture)}";
+
+    /// <summary>The same, for a decision already made and being looked at again. It
+    /// says so, because a counter alone would read as the step about to happen.
+    /// Provisional with the three controls above: whether looking back is said in
+    /// words at all is the design's to decide.</summary>
+    public static string PreviousStepCounter(int step, int count) =>
+        $"Last step · {StepCounter(step, count)}";
+
+    // ── End provisional ────────────────────────────────────────────────────
 
     /// <summary>What the recording did at its opening event.</summary>
     public static string BlessingCaption(string creator, string relicModelId) =>

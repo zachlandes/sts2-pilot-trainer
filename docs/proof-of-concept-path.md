@@ -396,6 +396,45 @@ stands the run at that floor's arrival with the digest that boundary records.
 The shipped video reconstruction records no map coordinate anywhere, so its floor
 boundaries are declared but not enterable and `--floor` refuses on it; `--fight` works
 on both.
+### S7 - One playback transport, in the retail client - done
+
+Replace the per-step popup with one long-lived transport that carries the watched
+journey through the map-to-combat transition, and prove in the client the three
+things a wider playback design depends on.
+
+- `PlaybackTransport` in `Sts2PilotTrainer.Trainer`: the one owner of what the
+  transport says at each moment - the chip, the counter, the caption, the once-only
+  sentence, and the three controls with whether each is offered.
+  Pure, so every state has a test on a machine with no game.
+- `PlaybackTransportStrip` in the mod draws it from stock Godot nodes, so it is
+  asserted on node by node in a process with no game too, and `PlaybackTransportDock`
+  parents it to `NRun.GlobalUi` - the run's own persistent interface, which the game
+  swaps rooms underneath - and docks it in the band under the top bar, measured off
+  the top bar rather than written down.
+- `PrefightTarget` in `Sts2PilotTrainer.Engine` says where the recording's next
+  decision lands on the game's own screen, beside `PrefightChoice` which says what it
+  was; the coordinate is the game's own type, which is why the two are separate.
+- `RecordedFightReveal` applies the game's own selected state to that target and
+  never its click path.
+  It refuses a screen it cannot drive, a coordinate this act's map does not draw and
+  an option row granting a different relic from the recorded one, rather than
+  committing a decision unseen.
+- Forward commits one recorded action, Play runs the sequence with a hold on each -
+  shorter on the map, where the game supplies a second of its own - and Back re-shows
+  a decision already made without rewinding anything.
+  During the player's own fight the strip collapses to a chip and offers nothing.
+
+**Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json`
+prints, for each recorded decision, exactly what the transport says and what it would
+light on the game's own screen, and refuses a target it cannot name before anything is
+committed.
+
+**Runnable now, in the retail client.** `./scripts/install-mod.sh`, then launch with
+only Combat Trainer enabled: the strip appears over Neow with the blessing ringed,
+Forward commits it and reveals the map node, and the same strip is still there in the
+fight, collapsed to a chip.
+[demo/PLAYBACK-TRANSPORT.md](../demo/PLAYBACK-TRANSPORT.md) has it with the
+screenshots.
 
 ## Known limits that no slice above removes
 
@@ -422,6 +461,12 @@ the recording's replay - and that is what the headless test pins.
 abandoned fight has no completed line to set beside it; the panel says so and shows
 nothing else. Comparing two losses is not a thing the comparison refuses, it is a
 thing no recording here has.
+
+**The transport carries only the two decision kinds this path uses.** An opening
+blessing and a map move are what the transcribed prefix contains, and they are what
+the reveal can point at. Every other screen between fights - loot, card rewards,
+rests, shops, treasure, act transitions - is refused by the reveal for the same
+reason the driver refuses its verb, and the transport says so rather than skipping it.
 
 **Only a prefix of the recording is transcribed.** Run start through the opening of
 the floor-5 fight's third turn, which is two whole fights, the loot each of them

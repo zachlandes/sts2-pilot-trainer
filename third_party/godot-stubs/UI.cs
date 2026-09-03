@@ -231,7 +231,7 @@ public class RichTextLabel : Control
     public void AddText(string text) { Text += text; }
 }
 
-public class BaseButton : Control
+public partial class BaseButton : Control
 {
     public new class SignalName : Control.SignalName
     {

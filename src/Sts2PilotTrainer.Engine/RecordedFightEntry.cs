@@ -331,6 +331,34 @@ public sealed class RecordedFightEntry : IDisposable
     }
 
     /// <summary>
+    /// Where the recording's next decision lands on the game's own screen.
+    ///
+    /// The reveal's half of <see cref="DescribeNextStep"/>: that says what the
+    /// decision is in words, this says which object it is about to happen to, so a
+    /// host can apply the game's own selected state to it without clicking. Read from
+    /// the same live run and refusing the same verbs, because a target this owner
+    /// could not name is a decision no strip may pretend to be showing.
+    /// </summary>
+    public PrefightTarget DescribeNextTarget()
+    {
+        var action = NextStep ?? throw new EngineException(
+            "Every decision the recording made before its fight has already been made; there is no next one " +
+            "to point at.");
+
+        return action.Verb switch
+        {
+            ActionVerb.ChooseNeowBlessing => new PrefightTarget.EventOption(
+                action.Seq, ArgumentInt(action, "option_index"), BlessingRelic(action)),
+            ActionVerb.MapMove => new PrefightTarget.MapNode(
+                action.Seq,
+                new MapCoord(ArgumentInt(action, "column"), ArgumentInt(action, "row"))),
+            _ => throw new EngineException(
+                $"Action {action.Seq} is a '{action.Verb}', which this trainer cannot point at on the game's " +
+                "own screen. Only an opening blessing and a map move are supported before a fight."),
+        };
+    }
+
+    /// <summary>
     /// The relic the blessing this action takes would grant.
     ///
     /// Asked of the option itself rather than of the relics the player ends up with,

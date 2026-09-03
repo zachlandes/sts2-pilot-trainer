@@ -180,6 +180,9 @@ test. That document also names three limits this path does not remove.
 
 **Standing somebody in a recorded fight has one owner.**
 `RecordedFightEntry` constructs the run, makes the recording's decisions in order and refuses a boundary that is not the recorded one; the mod owns retail timing, presentation, deviation locks and write isolation.
+The watched journey is one long-lived transport and not a popup per step: `PlaybackTransport` in `Sts2PilotTrainer.Trainer` owns what it says, `PlaybackTransportStrip` draws it, `PlaybackTransportDock` parents it to the run's own persistent interface so it survives the map-to-combat transition, and `RecordedFightReveal` lights the game's own selected state without clicking.
+Do not add a second playback path beside it; `docs/in-game-host.md` owns why.
+How those surfaces should look is a separate, open question: `docs/mod-ui-direction.md` carries the captain's goal for them and the client constraints any redesign has to hold, and the styling in `PlaybackTransportStrip` is provisional until it is answered.
 Keeping construction in the engine owner lets `./scripts/arbiter enter-fight` exercise the journey without a scene tree.
 The run is generated against a supplied complete unlock state and can persist nothing:
 `shouldSave: false` plus the mod's `ProfileWriteBarrier`, which is installed at mod

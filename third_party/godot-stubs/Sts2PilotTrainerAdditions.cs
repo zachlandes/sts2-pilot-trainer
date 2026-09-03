@@ -247,3 +247,11 @@ public partial class Control
     public void AddThemeColorOverride(StringName name, Color color) { }
     public void AddThemeStyleboxOverride(StringName name, StyleBox stylebox) { }
 }
+
+public partial class BaseButton
+{
+    /// <summary>Godot: a button that is drawn but refuses input. The transport draws
+    /// a control it is not offering rather than removing it, so its buttons never
+    /// move about under the player's aim.</summary>
+    public bool Disabled { get; set; }
+}

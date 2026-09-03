@@ -3,7 +3,7 @@ using Sts2PilotTrainer.Replay;
 namespace Sts2PilotTrainer.Trainer.Tests;
 
 /// <summary>
-/// What a player reads while the recording makes the decisions that lead to its
+/// What the transport says while the recording makes the decisions that lead to its
 /// fight.
 ///
 /// Every assertion here is the approved sentence, character for character, produced
@@ -11,7 +11,7 @@ namespace Sts2PilotTrainer.Trainer.Tests;
 /// second recording, by somebody else, past a different node, says the right thing
 /// without any of these sentences changing.
 /// </summary>
-public sealed class PrefightJourneyTests
+public sealed class PlaybackTransportTests
 {
     private static readonly PrefightChoice Blessing = new PrefightChoice.Blessing(0, "RELIC.LEAFY_POULTICE");
 
@@ -19,20 +19,109 @@ public sealed class PrefightJourneyTests
     private static readonly PrefightChoice MapMove = new PrefightChoice.MapMove(1, "Monster", 3, 7);
 
     [Fact]
-    public void TheJourneyReadsAsTheApprovedWordingForTheShippedRecording()
+    public void TheFirstRevealReadsAsTheApprovedWordingForTheShippedRecording()
     {
-        var journey = PrefightJourney.For("NaveGreed", [Blessing, MapMove]);
+        var transport = PlaybackTransport.Revealing(
+            "NaveGreed", Blessing, number: 1, count: 2, playing: false, noteShown: false);
 
-        Assert.Equal("Watching NaveGreed", journey.Chip);
-        Assert.Equal("Next", journey.NextButton);
-        Assert.Equal("Skip to the fight", journey.SkipButton);
+        Assert.Equal(TransportMode.Watching, transport.Mode);
+        Assert.Equal("Watching NaveGreed", transport.Chip);
+        Assert.Equal("1 of 2", transport.Counter);
+        Assert.Equal("NaveGreed took Leafy Poultice", transport.Caption);
         Assert.Equal(
             "NaveGreed's choices are shown as recorded. This shows what was chosen, not why.",
-            journey.ChoicesShownAsRecorded);
-        Assert.Equal("1 of 2", journey.Steps[0].Counter);
-        Assert.Equal("NaveGreed took Leafy Poultice", journey.Steps[0].Caption);
-        Assert.Equal("2 of 2", journey.Steps[1].Counter);
-        Assert.Equal("NaveGreed moved to the Monster node, centre column", journey.Steps[1].Caption);
+            transport.Note);
+        Assert.Equal("Forward", transport.Forward.Label);
+        Assert.Equal("Play", transport.Play.Label);
+        Assert.Equal("Back", transport.Back.Label);
+    }
+
+    [Fact]
+    public void TheSecondRevealIsTheMapMoveAndSaysNothingAboutHowToReadIt()
+    {
+        var transport = PlaybackTransport.Revealing(
+            "NaveGreed", MapMove, number: 2, count: 2, playing: false, noteShown: true);
+
+        Assert.Equal("2 of 2", transport.Counter);
+        Assert.Equal("NaveGreed moved to the Monster node, centre column", transport.Caption);
+        Assert.Equal(string.Empty, transport.Note);
+    }
+
+    /// <summary>
+    /// The sentence about how to read these screens is said once. It is a rule, and a
+    /// rule repeated above every decision is a rule nobody reads.
+    /// </summary>
+    [Fact]
+    public void TheOnceOnlySentenceIsSaidOnceAndOnTheFirstDecision()
+    {
+        Assert.NotEqual(string.Empty, PlaybackTransport
+            .Revealing("NaveGreed", Blessing, 1, 2, playing: false, noteShown: false).Note);
+        Assert.Equal(string.Empty, PlaybackTransport
+            .Revealing("NaveGreed", Blessing, 1, 2, playing: false, noteShown: true).Note);
+        Assert.Equal(string.Empty, PlaybackTransport
+            .Revealing("NaveGreed", MapMove, 2, 2, playing: false, noteShown: false).Note);
+    }
+
+    /// <summary>
+    /// Back is offered from the second decision on. There is nothing behind the first
+    /// one, and a control that does nothing is worse than one that is plainly off.
+    /// </summary>
+    [Fact]
+    public void BackIsOfferedOnlyOnceThereIsSomethingBehind()
+    {
+        Assert.False(PlaybackTransport
+            .Revealing("NaveGreed", Blessing, 1, 2, playing: false, noteShown: false).Back.Enabled);
+        Assert.True(PlaybackTransport
+            .Revealing("NaveGreed", MapMove, 2, 2, playing: false, noteShown: true).Back.Enabled);
+    }
+
+    /// <summary>Play is the only control that changes what it says, and it says what
+    /// pressing it does next.</summary>
+    [Fact]
+    public void PlayBecomesPauseWhileItIsRunning()
+    {
+        Assert.Equal("Play", PlaybackTransport
+            .Revealing("NaveGreed", Blessing, 1, 2, playing: false, noteShown: true).Play.Label);
+        Assert.Equal("Pause", PlaybackTransport
+            .Revealing("NaveGreed", Blessing, 1, 2, playing: true, noteShown: true).Play.Label);
+    }
+
+    /// <summary>
+    /// Looking back says so. A counter alone over a decision already made would read
+    /// as the one about to happen, which is the one misreading this mode can cause.
+    /// </summary>
+    [Fact]
+    public void LookingBackNamesItselfAndKeepsTheSameCaption()
+    {
+        var transport = PlaybackTransport.LookingBackAt("NaveGreed", Blessing, number: 1, count: 2);
+
+        Assert.Equal(TransportMode.LookingBack, transport.Mode);
+        Assert.Equal("Last step · 1 of 2", transport.Counter);
+        Assert.Equal("NaveGreed took Leafy Poultice", transport.Caption);
+        Assert.Equal(string.Empty, transport.Note);
+        Assert.False(transport.Back.Enabled);
+        Assert.True(transport.Forward.Enabled);
+    }
+
+    /// <summary>
+    /// The player's own fight. The strip collapses to a chip that carries the
+    /// trainer's name and offers nothing: the recording's line is not shown beside a
+    /// fight it is not part of.
+    /// </summary>
+    [Fact]
+    public void DuringThePlayersFightTheStripIsASilentChip()
+    {
+        var transport = PlaybackTransport.DuringYourFight();
+
+        Assert.Equal(TransportMode.Chip, transport.Mode);
+        Assert.False(transport.HasControls);
+        Assert.Equal("Combat Trainer", transport.Chip);
+        Assert.Equal(string.Empty, transport.Counter);
+        Assert.Equal(string.Empty, transport.Caption);
+        Assert.Equal(string.Empty, transport.Note);
+        Assert.False(transport.Back.Enabled);
+        Assert.False(transport.Forward.Enabled);
+        Assert.False(transport.Play.Enabled);
     }
 
     /// <summary>
@@ -43,15 +132,14 @@ public sealed class PrefightJourneyTests
     [Fact]
     public void AnotherRecordingIsDescribedByTheSameSentences()
     {
-        var journey = PrefightJourney.For("Someone Else",
-        [
-            new PrefightChoice.Blessing(0, "RELIC.ARCANE_SCROLL"),
-            new PrefightChoice.MapMove(1, "Event", 0, 7),
-        ]);
+        var blessing = PlaybackTransport.Revealing(
+            "Someone Else", new PrefightChoice.Blessing(0, "RELIC.ARCANE_SCROLL"), 1, 2, false, true);
+        var move = PlaybackTransport.Revealing(
+            "Someone Else", new PrefightChoice.MapMove(1, "Event", 0, 7), 2, 2, false, true);
 
-        Assert.Equal("Watching Someone Else", journey.Chip);
-        Assert.Equal("Someone Else took Arcane Scroll", journey.Steps[0].Caption);
-        Assert.Equal("Someone Else moved to the Event node, left column", journey.Steps[1].Caption);
+        Assert.Equal("Watching Someone Else", blessing.Chip);
+        Assert.Equal("Someone Else took Arcane Scroll", blessing.Caption);
+        Assert.Equal("Someone Else moved to the Event node, left column", move.Caption);
     }
 
     /// <summary>
@@ -60,21 +148,21 @@ public sealed class PrefightJourneyTests
     /// in the whole journey a step is.
     /// </summary>
     [Fact]
-    public void TheCounterCountsTheWholeJourneyNotTheStepsDescribedSoFar()
+    public void TheCounterCountsTheWholeJourneyNotTheStepsRevealedSoFar()
     {
-        var journey = PrefightJourney.For("NaveGreed", [Blessing], stepCount: 2);
-
-        Assert.Single(journey.Steps);
-        Assert.Equal("1 of 2", journey.Steps[0].Counter);
+        Assert.Equal("2 of 5", PlaybackTransport
+            .Revealing("NaveGreed", MapMove, number: 2, count: 5, playing: false, noteShown: true).Counter);
     }
 
     [Fact]
-    public void RefusesToDescribeMoreStepsThanTheRecordingMakes()
+    public void RefusesAStepNumberTheJourneyDoesNotHave()
     {
-        var refusal = Assert.Throws<ManifestException>(() =>
-            PrefightJourney.For("NaveGreed", [Blessing, MapMove], stepCount: 1));
-
-        Assert.Contains("more than the recording makes", refusal.Message, StringComparison.Ordinal);
+        Assert.Throws<ManifestException>(() =>
+            PlaybackTransport.Revealing("NaveGreed", Blessing, 0, 2, false, true));
+        Assert.Throws<ManifestException>(() =>
+            PlaybackTransport.Revealing("NaveGreed", Blessing, 3, 2, false, true));
+        Assert.Throws<ManifestException>(() =>
+            PlaybackTransport.LookingBackAt("NaveGreed", Blessing, 3, 2));
     }
 
     /// <summary>
@@ -86,7 +174,7 @@ public sealed class PrefightJourneyTests
     public void RefusesADecisionItHasNoApprovedCaptionFor()
     {
         var refusal = Assert.Throws<ManifestException>(() =>
-            PrefightJourney.For("NaveGreed", [new UnknownChoice(4)]));
+            PlaybackTransport.Revealing("NaveGreed", new UnknownChoice(4), 1, 1, false, true));
 
         Assert.Contains("no way to describe", refusal.Message, StringComparison.Ordinal);
     }
@@ -266,30 +354,5 @@ public sealed class SuppliedReadingRowTests
 
         Assert.False(screen.Eligible);
         Assert.False(screen.Row("Build ").Met);
-    }
-}
-
-/// <summary>
-/// A host that holds one step at a time still has to say which one it is.
-/// </summary>
-public sealed class SingleStepJourneyTests
-{
-    [Fact]
-    public void AStepIsNumberedWhereItFallsRatherThanWhereItSitsInTheList()
-    {
-        var journey = PrefightJourney.ForStep(
-            "NaveGreed", new PrefightChoice.MapMove(1, "Monster", 3, 7), number: 2, count: 2);
-
-        Assert.Equal("2 of 2", journey.Steps[0].Counter);
-        Assert.Equal("NaveGreed moved to the Monster node, centre column", journey.Steps[0].Caption);
-    }
-
-    [Fact]
-    public void RefusesAStepNumberTheJourneyDoesNotHave()
-    {
-        var choice = new PrefightChoice.Blessing(0, "RELIC.LEAFY_POULTICE");
-
-        Assert.Throws<ManifestException>(() => PrefightJourney.ForStep("NaveGreed", choice, 0, 2));
-        Assert.Throws<ManifestException>(() => PrefightJourney.ForStep("NaveGreed", choice, 3, 2));
     }
 }

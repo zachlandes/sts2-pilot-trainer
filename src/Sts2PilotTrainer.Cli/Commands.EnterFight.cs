@@ -77,10 +77,10 @@ internal static partial class Commands
         using var entry = RecordedFightEntry.StartHeadless(recording, PlanFor(recording, args), progress);
         var plan = entry.Plan;
 
-        // Every caption the mod shows, produced by the mod's own wording owner from
-        // the same readings. Built one step at a time because a caption names what the
-        // run is standing in front of, and that is only readable while it is.
-        var choices = new List<PrefightChoice>();
+        // Every word the mod's transport shows, produced by the mod's own wording
+        // owner from the same readings, and the target it would light on the game's
+        // own screen. Both are read one step at a time because each names what the run
+        // is standing in front of, and that is only readable while it is.
         var steps = new List<object>();
 
         Console.WriteLine(
@@ -90,35 +90,59 @@ internal static partial class Commands
         if (creator is not null) Console.WriteLine($"  {TrainerCopy.ChoicesShownAsRecorded(creator)}");
         Console.WriteLine();
 
+        var noteShown = false;
         while (!entry.AtBoundary)
         {
             var action = entry.NextStep!;
+            var number = entry.StepsTaken + 1;
 
             // Only some decisions have words. A journey to a later fight walks through
             // that fight's predecessors - cards played, turns ended, loot taken - and
-            // those are executed and printed as themselves rather than captioned.
+            // those are executed and printed as themselves rather than shown on the
+            // transport.
             var choice = creator is null ? null : entry.DescribeNextStepOrNull();
-            if (choice is not null) choices.Add(choice);
-            var journey = choice is null
-                ? null
-                : PrefightJourney.For(creator!, choices, plan.PrefixActions.Count);
 
-            var step = journey?.Steps[^1];
-            if (journey is not null && step is not null)
+            // Both halves of the reveal, asked in the order the client asks them: what
+            // the decision is, and which object on the game's own screen it is about
+            // to happen to. A target the host cannot name refuses here exactly as it
+            // refuses in the client, before anything is committed.
+            var target = choice is null ? null : entry.DescribeNextTarget();
+            var transport = choice is null
+                ? null
+                : PlaybackTransport.Revealing(
+                    creator!, choice, number, plan.PrefixActions.Count, playing: false, noteShown);
+            if (transport is not null)
             {
-                Console.WriteLine($"  [{journey.Chip}]  {step.Counter}   {step.Caption}");
+                noteShown |= transport.Note.Length > 0;
+                Console.WriteLine($"  [{transport.Chip}]  {transport.Counter}   {transport.Caption}");
+                Console.WriteLine($"      reveals {target!.Description}");
             }
 
             Console.WriteLine(
                 $"      action {action.Seq.ToString(CultureInfo.InvariantCulture)} {action.Verb} " +
                 $"{string.Join(" ", action.Args.Select(arg => $"{arg.Key}={arg.Value}"))}");
+            if (transport is not null)
+            {
+                Console.WriteLine(
+                    $"      controls {Describe(transport.Back)} {Describe(transport.Forward)} " +
+                    $"{Describe(transport.Play)}");
+            }
 
             entry.AdvanceOneStep();
             steps.Add(new
             {
-                number = step?.Number,
-                counter = step?.Counter,
-                caption = step?.Caption,
+                number,
+                counter = transport?.Counter,
+                caption = transport?.Caption,
+                reveals = target?.Description,
+                controls = transport is null
+                    ? null
+                    : (object)new
+                    {
+                        back = Describe(transport.Back),
+                        forward = Describe(transport.Forward),
+                        play = Describe(transport.Play),
+                    },
                 seq = action.Seq,
                 verb = action.Verb.ToString(),
                 args = action.Args,
@@ -526,4 +550,8 @@ internal static partial class Commands
         return "sha256:" + Convert.ToHexStringLower(
             SHA256.HashData(Encoding.UTF8.GetBytes(rendering.ToString())));
     }
+
+    /// <summary>One of the transport's controls, and whether it is offered.</summary>
+    private static string Describe(TransportControl control) =>
+        control.Enabled ? $"[{control.Label}]" : $"({control.Label})";
 }

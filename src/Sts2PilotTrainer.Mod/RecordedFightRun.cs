@@ -61,6 +61,38 @@ internal static class RecordedFightRun
     private static PlayerFightObserver? _observer;
     private static FightResultScreen? _resultAfterMainMenu;
 
+    /// <summary>The decisions the recording has already made, in order, described at
+    /// the moment each one was revealed. Kept because Back re-shows a decision whose
+    /// screen has since gone: the run cannot be asked about it again, and it must
+    /// never be rewound to answer.</summary>
+    private static readonly List<PrefightChoice> Shown = [];
+
+    /// <summary>Which already-made decision the player is looking back at, counted
+    /// from one, or null while the transport is on the decision about to happen.</summary>
+    private static int? _lookingBackAt;
+
+    /// <summary>Whether Play is running the sequence.</summary>
+    private static bool _playing;
+
+    /// <summary>Whether a decision is being made right now. A commit spans several of
+    /// the game's frames, and every control on the strip stays pressable during them;
+    /// two commits overlapping would put the plan's steps out of order.</summary>
+    private static bool _committing;
+
+    /// <summary>Whether the once-per-run sentence about how to read these screens has
+    /// been said.</summary>
+    private static bool _noteShown;
+
+    /// <summary>
+    /// Which hold is current.
+    ///
+    /// A hold is a timer the game runs, and a timer cannot be recalled. Pause, Back
+    /// and a commit that happened some other way all have to leave a hold already in
+    /// flight unable to act, so every one of them moves this on and a hold that wakes
+    /// up on an old number does nothing.
+    /// </summary>
+    private static int _hold;
+
     /// <summary>
     /// Set only while this class is issuing one of the recording's own decisions, so
     /// the lock below can tell it from a player's click.
@@ -134,10 +166,10 @@ internal static class RecordedFightRun
 
             Phase = RecordedFightPhase.Watching;
             Log.Info(
-                $"[{RunmobileMod.ModId}] constructed the recording's run; watching " +
+                $"[{RunmobileMod.ModId}] constructed {creator}'s run; watching " +
                 $"{_entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)} recorded " +
                 "decision(s) before the fight", 2);
-            ShowWhenTheGameHasFinishedMoving(creator, _entry);
+            RevealWhenTheGameHasFinishedMoving();
         }
         catch (Exception ex)
         {
@@ -145,19 +177,54 @@ internal static class RecordedFightRun
         }
     }
 
-    /// <summary>Makes the recording's next decision, then shows the next one.</summary>
-    private static async void Next()
+    // ── The transport ──────────────────────────────────────────────────────
+    //
+    // Reveal, hold, commit. The reveal applies the game's own selected state to what
+    // the recording is about to choose; the hold is the strip waiting, for the player
+    // under Forward and for a timer under Play; the commit is the same call the popup
+    // made before this existed. Back is not part of the cycle at all - it re-shows a
+    // decision already made, and there is no path here that uncommits one.
+
+    /// <summary>
+    /// How long Play holds on a revealed decision before committing it.
+    ///
+    /// It has to be longer than the game's own select effect, because the watcher did
+    /// not do the thinking and is reading the screen rather than confirming a
+    /// conclusion they already reached.
+    /// </summary>
+    private const double HoldSeconds = 1.6;
+
+    /// <summary>
+    /// The same, on the map, where the game supplies a second of its own.
+    ///
+    /// Measured from the client's code rather than chosen: a map node's select effect
+    /// holds for a second before the fade, so a hold of this length plus that one is
+    /// the same pause as anywhere else.
+    /// </summary>
+    private const double MapHoldSeconds = 0.7;
+
+    /// <summary>
+    /// Forward.
+    ///
+    /// One press, one recorded action - unless the player is looking back, where the
+    /// same press walks the ghost toward the present rather than moving the run. That
+    /// is the only way out of looking back that does not skip anything.
+    /// </summary>
+    private static async void Forward()
     {
         try
         {
-            await AdvanceOne();
-            if (_entry is { AtBoundary: false } entry)
+            if (_entry is not { } entry) return;
+
+            if (_lookingBackAt is { } step)
             {
-                ShowWhenTheGameHasFinishedMoving(RecordingIdentity.Creator(entry.Manifest), entry);
+                _lookingBackAt = step < entry.StepsTaken ? step + 1 : null;
+                if (_lookingBackAt is null) Relight();
+                ShowTransport();
                 return;
             }
 
-            HandOverWhenTheGameHasFinishedMoving();
+            await CommitOne();
         }
         catch (Exception ex)
         {
@@ -165,26 +232,266 @@ internal static class RecordedFightRun
         }
     }
 
-    /// <summary>Makes every remaining recorded decision, without stopping between
-    /// them. The same decisions in the same order; only the pauses go.</summary>
-    private static async void SkipToTheFight()
+    /// <summary>
+    /// Back.
+    ///
+    /// Re-shows the decision before the one on screen and moves nothing. Play stops,
+    /// because a sequence that carried on while somebody was reading the last step
+    /// would be the reason they pressed this.
+    /// </summary>
+    private static void Back()
+    {
+        if (_entry is not { } entry || entry.StepsTaken == 0) return;
+
+        Pause();
+        _lookingBackAt = _lookingBackAt is { } step ? Math.Max(1, step - 1) : entry.StepsTaken;
+        ShowTransport();
+    }
+
+    /// <summary>
+    /// Play, and Pause.
+    ///
+    /// Play runs the recording's remaining decisions with a hold on each, which is
+    /// what makes it watching rather than skipping: the same decisions in the same
+    /// order, revealed before each one is made.
+    /// </summary>
+    private static void PlayOrPause()
+    {
+        if (_entry is null) return;
+
+        if (_playing)
+        {
+            Pause();
+            ShowTransport();
+            return;
+        }
+
+        _playing = true;
+        _lookingBackAt = null;
+        Relight();
+        ShowTransport();
+        HoldThenCommit();
+    }
+
+    /// <summary>
+    /// Puts the current decision's selected state back on the game's own screen.
+    ///
+    /// Needed because pressing a control on the strip is the player taking focus, and
+    /// the game's own node responds to losing it by putting its highlight out - which
+    /// is correct behaviour that would otherwise leave the transport holding on a
+    /// decision nothing on screen is pointing at. Best effort: a screen that will not
+    /// take it back says so in the log, and the caption on the strip still names the
+    /// decision.
+    /// </summary>
+    private static void Relight()
+    {
+        if (_entry is not { AtBoundary: false } entry) return;
+
+        try
+        {
+            RecordedFightReveal.Reveal(entry.DescribeNextTarget());
+        }
+        catch (Exception ex)
+        {
+            Log.Info(
+                $"[{RunmobileMod.ModId}] could not put the reveal back after a control was pressed: " +
+                $"{ex.Message}", 2);
+        }
+    }
+
+    private static void Pause()
+    {
+        _playing = false;
+
+        // Moved on so a hold already in flight cannot commit anything after this.
+        _hold++;
+    }
+
+    /// <summary>
+    /// Waits out the revealed decision, then makes it.
+    ///
+    /// The timer is the game's, on its own scene tree, so the client goes on drawing
+    /// the reveal while it runs. Everything about the moment it wakes up is checked
+    /// again: a hold that was paused, stepped past by Forward, or belongs to a run
+    /// that has since ended commits nothing.
+    /// </summary>
+    private static async void HoldThenCommit()
     {
         try
         {
-            while (_entry is { AtBoundary: false }) await AdvanceOne();
-            HandOverWhenTheGameHasFinishedMoving();
+            var hold = ++_hold;
+            var mine = _entry;
+            await LetTheGameRun(HoldFor(mine));
+
+            if (hold != _hold || !_playing || !ReferenceEquals(mine, _entry)) return;
+            if (Phase != RecordedFightPhase.Watching) return;
+
+            await CommitOne();
         }
         catch (Exception ex)
         {
             Abandon(ex.Message);
         }
+    }
+
+    /// <summary>How long to hold on what is revealed now, by the kind of screen it is
+    /// on. One duration with a floor per screen, shorter where the game already
+    /// pauses.</summary>
+    private static double HoldFor(RecordedFightEntry? entry)
+    {
+        try
+        {
+            return entry?.DescribeNextTarget() is PrefightTarget.MapNode ? MapHoldSeconds : HoldSeconds;
+        }
+        catch (Exception)
+        {
+            // A target this host cannot name is refused at the reveal, loudly and with
+            // the reason. Here it only decides a pause, so the longer one is right.
+            return HoldSeconds;
+        }
+    }
+
+    /// <summary>Makes the revealed decision, then reveals the next one or hands the
+    /// fight over.</summary>
+    private static async Task CommitOne()
+    {
+        var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
+        if (_committing) return;
+
+        // Any hold still in flight is invalidated: this decision is being made now,
+        // and a timer that woke up afterwards would make the next one unrevealed.
+        _hold++;
+        _committing = true;
+        try
+        {
+
+            // Recorded before the step, because after it the screen it was made on is
+            // gone and the run must never be asked to go back and look.
+            Shown.Add(entry.DescribeNextStep());
+            RecordedFightReveal.Clear();
+
+            await AdvanceOne();
+        }
+        finally
+        {
+            _committing = false;
+        }
+
+        if (_entry is { AtBoundary: false })
+        {
+            RevealWhenTheGameHasFinishedMoving();
+            return;
+        }
+
+        HandOverWhenTheGameHasFinishedMoving();
+    }
+
+    /// <summary>
+    /// Reveals the recording's next decision on the game's own screen and puts the
+    /// transport on it.
+    ///
+    /// The refusal here is the one the whole design turns on. A decision this host
+    /// cannot point at is a decision that would be committed unseen, which is the
+    /// thing a watcher is here to prevent, so it ends the attempt with the reason
+    /// rather than skipping the reveal and clicking anyway.
+    /// </summary>
+    private static async Task RevealNext()
+    {
+        var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
+
+        _lookingBackAt = null;
+        var what = await RevealWhenTheScreenIsReady(entry.DescribeNextTarget());
+        Log.Info(
+            $"[{RunmobileMod.ModId}] revealed decision " +
+            $"{(entry.StepsTaken + 1).ToString(CultureInfo.InvariantCulture)} of " +
+            $"{entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)}: {what}", 2);
+
+        ShowTransport();
+        if (_playing) HoldThenCommit();
+    }
+
+    /// <summary>How long to keep offering a screen the chance to finish putting up
+    /// the thing the recording chose. Long enough for the animations measured in the
+    /// client - options flying in, a map fading - and short enough that a screen which
+    /// never arrives is reported rather than waited on.</summary>
+    private const double SettlingSeconds = 0.2;
+
+    private const int SettlingAttempts = 25;
+
+    /// <summary>
+    /// Reveals as soon as the screen will take it.
+    ///
+    /// The retry is for one measured cause and no other: the game animates a screen's
+    /// controls in and enables them at the end of it, so a reveal issued the moment
+    /// the run reaches the screen is refused by a control that cannot yet take focus.
+    /// A screen that cannot be driven at all is not retried - that refusal is passed
+    /// straight out, and so is this one once the budget is spent.
+    /// </summary>
+    private static async Task<string> RevealWhenTheScreenIsReady(PrefightTarget target)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return RecordedFightReveal.Reveal(target);
+            }
+            catch (RevealNotReadyException notReady) when (attempt < SettlingAttempts)
+            {
+                if (attempt == 1)
+                {
+                    Log.Info(
+                        $"[{RunmobileMod.ModId}] waiting for the screen to finish: {notReady.Message}", 2);
+                }
+
+                await LetTheGameRun(SettlingSeconds);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Puts the current state on the strip, attaching it the first time.
+    ///
+    /// Attached once and kept: the strip is a child of the run's own persistent
+    /// interface, so it crosses the transitions the popup it replaces could not.
+    /// </summary>
+    private static void ShowTransport()
+    {
+        var state = TransportState();
+
+        // Said once, and "once" means once it has been on the strip rather than once
+        // it has been composed.
+        _noteShown |= state.Note.Length > 0;
+
+        if (PlaybackTransportDock.Current is null)
+        {
+            PlaybackTransportDock.Attach(state, Back, Forward, PlayOrPause);
+            return;
+        }
+
+        PlaybackTransportDock.Apply(state);
+    }
+
+    private static PlaybackTransport TransportState()
+    {
+        if (Phase != RecordedFightPhase.Watching) return PlaybackTransport.DuringYourFight();
+
+        var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
+        var creator = RecordingIdentity.Creator(entry.Manifest);
+        var count = entry.Plan.PrefixActions.Count;
+
+        if (_lookingBackAt is { } step)
+        {
+            return PlaybackTransport.LookingBackAt(creator, Shown[step - 1], step, count);
+        }
+
+        return PlaybackTransport.Revealing(
+            creator, entry.DescribeNextStep(), entry.StepsTaken + 1, count, _playing, _noteShown);
     }
 
     private static async Task AdvanceOne()
     {
         var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
 
-        PrefightScreen.Close();
         var step = entry.StepsTaken + 1;
         _authorising = true;
         try
@@ -318,12 +625,12 @@ internal static class RecordedFightRun
     /// proved to run here - the popup's own focus grab already relies on it - and
     /// end-of-frame is after the transition the decision started.
     /// </summary>
-    private static void ShowWhenTheGameHasFinishedMoving(string creator, RecordedFightEntry entry) =>
-        Callable.From(() =>
+    private static void RevealWhenTheGameHasFinishedMoving() =>
+        Callable.From(async void () =>
         {
             try
             {
-                PrefightScreen.Show(creator, entry, Next, SkipToTheFight);
+                await RevealNext();
             }
             catch (Exception ex)
             {
@@ -404,8 +711,14 @@ internal static class RecordedFightRun
             return;
         }
 
-        PrefightScreen.Close();
+        Pause();
+        RecordedFightReveal.Clear();
         Phase = RecordedFightPhase.InFight;
+
+        // The strip collapses rather than closing. A player fighting wants nothing in
+        // the way, and the chip is what a peek will be reached from later; nothing is
+        // drawn unbidden from here until the fight has ended.
+        PlaybackTransportDock.Apply(PlaybackTransport.DuringYourFight());
         Log.Info(
             $"[{RunmobileMod.ModId}] standing in the recorded fight; canonical state at combat start is " +
             $"{equality.ActualDigest}", 2);
@@ -443,6 +756,7 @@ internal static class RecordedFightRun
                 (screen.HasComparison ? $"comparison, {screen.Rows.Count} row(s)" : screen.Notice), 2);
 
             await LetTheGameRun(EndingTheFightSeconds);
+            PlaybackTransportDock.Detach();
             PrefightScreen.ShowResult(screen, LeaveTheFight);
         }
         catch (Exception ex)
@@ -489,6 +803,11 @@ internal static class RecordedFightRun
 
         try
         {
+            // The transport goes first. A refusal is the one thing this journey says
+            // in a popup of its own, and leaving a strip offering Forward behind it
+            // would be offering to go on with a run that is being torn down.
+            Pause();
+            PlaybackTransportDock.Detach();
             PrefightScreen.ShowRefusal(reason);
 
             if (RunManager.Instance is { IsInProgress: true }) RunManager.Instance.CleanUp();
@@ -538,9 +857,17 @@ internal static class RecordedFightRun
         _entry = null;
         _observer = null;
         _authorising = false;
+        _playing = false;
+        _committing = false;
+        _hold++;
+        _lookingBackAt = null;
+        _noteShown = false;
+        Shown.Clear();
         Phase = RecordedFightPhase.None;
         try
         {
+            RecordedFightReveal.Clear();
+            PlaybackTransportDock.Detach();
             // Disposing the entry abandons a capture still live, so a fight left
             // through the game's own menu is never read as one that finished.
             observer?.Dispose();
