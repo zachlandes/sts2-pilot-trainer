@@ -2,9 +2,8 @@
 
 This is the mod that loads in the shipped Slay the Spire 2 client: S3 of
 [the proof-of-concept path](proof-of-concept-path.md) answers one question — can this
-game play the recorded fight? — and S4 adds the button that enters it.
-
-Comparing the player's fight with the recording's is S5 and is not here.
+game play the recorded fight? — S4 adds the button that enters it, and S5 captures the
+fight the player then plays and shows it beside the recording's.
 
 ## What it proves
 
@@ -106,14 +105,78 @@ every value the recording observed there, and the manifest's engine-produced
 combat-start snapshot digest, which covers the run-persistent random streams and the
 draw pile's order that no video can show. A boundary that disagrees on either abandons the run and says why.
 
+## The player's fight, captured and compared
+
+**The capture is an observation, and the game's own executor is what it observes.**
+Every action a player takes in a fight - a card, a potion, a discard, an ended turn -
+reaches the engine as one of the game's own actions through `ActionExecutor`, which
+announces each one before it runs and after it finishes.
+`PlayerFightObserver` subscribes to those two announcements and to the combat
+manager's own `TurnStarted` and `CombatEnded`, and to nothing else.
+It issues no command and patches nothing; `FightCapture` in `Sts2PilotTrainer.Replay`
+owns every rule about what the samples mean, and it is the same canonical projection
+the headless arbiter samples, filtered by the same `ReplayTrace.Sample`.
+
+**When the after-sample is taken is the one thing the observer owns.**
+An action finishing is not the engine settling: a card's effects run on the queue
+after the card's own action reports finished, and an ended turn hands the whole enemy
+turn to the combat manager with the player's next turn beginning frames later.
+So the after-sample waits for the moment the headless driver's drain reaches - the
+queue empty and the executor idle - and for an ended turn, the player's next
+`TurnStarted`.
+If the combat manager already regards the fight as over or ending, the sample is left
+to `CombatEnded`, which closes the open action with the final state.
+That is how a capture completes at all: the killing blow, or the enemy turn the
+player did not survive, is the action the fight ended inside.
+Waiting uses only what the section below records as working here.
+
+**A gap is refused, not bridged.**
+The capture checks that the state an action begins from is the state the previous
+one left.
+A change no action accounts for makes the trace not a record of the fight, and the
+panel then shows the capture's own sentence instead of a comparison.
+A bridged gap would attribute its damage to nothing and the projection would quietly
+under-count, which is exactly the plausible wrong answer this project refuses.
+
+**The recording's side travels with the manifest.**
+The client cannot replay - one process, one run, and it is the player's - so the
+recording's line is produced headlessly by `./scripts/arbiter recorded-fight` and
+embedded as `manifests/navegreed-OJ-6QXhNgdg.recorded-fight.json`.
+`RecordedFight.Bind` refuses it at mod start unless its run id, its history hash
+through the fight's end and its combat-start digest are the shipped manifest's, and a
+test regenerates it in a fresh process and compares.
+
+**The result is the game's popup over the game's own ending.**
+The screen is computed the moment `CombatEnded` fires and drawn two seconds later,
+over the loot on a win or the death screen on a loss.
+Computed first on purpose: on a loss the game's own flow tears the run down on its
+way to the death screen, and the entry with it.
+The panel is `FightResultScreen`'s approved wording - the summary as a table with the
+player's column first, then the turn detail under its own heading, then the two notes -
+and a row whose two sides differ is drawn plain while a row that agrees is dimmed.
+That is the only visual distinction, because a difference is not a verdict.
+
+**Only a won, completed, uninterrupted fight is compared.**
+A lost fight, a fight left through the game's own menu, a capture that could not be
+completed and a comparison that refused each show one sentence and a Done button.
+Done discards the run the way a refused entry does, and `RunManager.CleanUp` is what
+lowers the write barrier on every one of those paths.
+
 ## What it does not prove
 
-**Somebody has now stood in the fight; nobody has played it to the end.**
-In the retail client the journey runs start to finish: the run is constructed, both
-recorded decisions are made on the game's own screens, and the player is handed the
-recorded fight with the whole canonical state matching the combat-start snapshot the
-headless host derives. What has not been watched is the fight being played out and
-compared, which is S5.
+**A captured line is not a replayed one.**
+The recording's line can be re-derived from its history in a fresh process; the
+player's is what the capture saw of a fight that happened once.
+What the headless test pins is that the recording's own actions, played through the
+same capture, project to a line identical to the recording's replay on every field -
+so a line that came through the capture and differed would be a defect in the capture
+rather than a difference in the fight.
+
+**The fight was played through and compared in the client by one person, once.**
+[demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has that
+session.
+It is one fight; the paths the panel takes for a loss, a quit and a refused capture are
+proved on the game-free capture and screen, not in the client.
 
 **Three of the recording's steps are screen commands, not engine ones.**
 Each was found by running it, and each has the same shape: the engine call is the
@@ -215,6 +278,9 @@ rows that already passed are below it.
 ./scripts/install-mod.sh --uninstall     # remove it again
 ./scripts/arbiter adopt-live             # the refusal, from a process that is not a running game
 ./scripts/arbiter enter-fight <manifest> # the journey into the recorded fight, without a scene tree
+./scripts/arbiter enter-fight <manifest> --play   # and the fight played through the capture and compared
+./scripts/arbiter recorded-fight <manifest> --out manifests/<id>.recorded-fight.json
+                                         # regenerate the recording's shipped line after the manifest changes
 ```
 
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
@@ -223,6 +289,8 @@ An upgrade stages the complete named file set in a temporary sibling there and r
 That is the game's own mod surface — the same location Steam Workshop installs into — and the game offers no user-data alternative, because it derives the path from its executable's location.
 
 [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) has the mod card and the eligibility
-screen as they appear in the shipped client, and
+screen as they appear in the shipped client,
 [demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has the journey into
-the recorded fight with its real output.
+the recorded fight with its real output, and
+[demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has the fight
+played through and its comparison.

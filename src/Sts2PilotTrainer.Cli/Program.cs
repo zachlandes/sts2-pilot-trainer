@@ -41,6 +41,7 @@ internal static class Program
                 "combat-snapshot" => Commands.CombatSnapshot(args[1..]),
                 "enter-fight" => Commands.EnterFight(args[1..]),
                 "combat-compare" => Commands.CombatCompare(args[1..]),
+                "recorded-fight" => Commands.RecordedFightCommand(args[1..]),
                 _ => UnknownCommand(args[0]),
             };
         }
@@ -130,12 +131,24 @@ internal static class Program
               --require-all-controls also refuses histories that do not exercise every control.
 
           enter-fight     <manifest> [--control <name>] [--cache <dir>] [--out <dir>] [--step]
+                                     [--play [--recorded-fight <path>]]
               Construct the recording's run, walk it through the recording's own
               decisions in order, and prove the fight it lands in is the recorded one -
               against what the recording observed at that boundary and against the
               manifest's engine-produced combat-start snapshot digest. Reports the profile before and after,
               because nothing here may write to it. --control damages one decision
               before the fight and shows the entry refused; --step stops after one.
+              --play then plays the recording's own fight to its end through the same
+              capture the in-game host observes a player with, projects it, and
+              compares it with the shipped recorded fight - the whole S5 loop with no
+              scene tree, standing in the recording for the player.
+
+          recorded-fight  <manifest> [--out <path>]
+              Replay the manifest and write the recording's own line of its first
+              fight: the engine-produced trace through the end of that fight, bound to
+              the history it replayed and to the combat-start snapshot digest. This is
+              the recording's side of the in-game comparison, shipped inside the mod;
+              the retail client cannot replay, so it is produced here.
 
           combat-compare  <manifest> <manifest> [--out <dir>]
               Replay two manifests of the same fight, project each one's completed

@@ -171,7 +171,7 @@ internal static class TrainerScreen
     /// this mod, so it is reached the way every other private reading in this
     /// project is - by name, refusing loudly when a build no longer has it.
     /// </summary>
-    private static MegaRichTextLabel BodyLabel(this NVerticalPopup popup)
+    internal static MegaRichTextLabel BodyLabel(this NVerticalPopup popup)
     {
         var property = typeof(NVerticalPopup).GetProperty(
             "BodyLabel",

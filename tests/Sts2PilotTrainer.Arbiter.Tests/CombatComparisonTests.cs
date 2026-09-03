@@ -157,14 +157,13 @@ public class CombatComparisonTests
             comparison.GetProperty("summary").EnumerateArray(),
             field => Assert.True(field.GetProperty("matches").GetBoolean()));
 
-        // The caveat that keeps the output honest survives a VOD side: the host can
-        // hand the fight to a person, but it does not capture that person's completed
-        // line for comparison.
+        // The caveat that keeps the output honest about provenance: which side was
+        // replayed and which was played is stated by each side's source id, and the
+        // comparison itself does not judge it.
         Assert.Contains(
-            "hands the player the recorded fight at the verified combat-start boundary", result.Output,
-            StringComparison.Ordinal);
+            "sampled by the real engine either side of every action", result.Output, StringComparison.Ordinal);
         Assert.Contains(
-            "no fight played by a person has been compared", result.Output, StringComparison.Ordinal);
+            "stated by each side's source id, not judged here", result.Output, StringComparison.Ordinal);
     }
 
     /// <summary>

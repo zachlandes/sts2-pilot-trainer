@@ -151,6 +151,12 @@ internal static partial class Commands
             ? $"ENTERED - this game is standing in {creator}'s fight, at the recorded combat start."
             : "REFUSED - " + equality.Refusal);
 
+        object? played = null;
+        if (Args.Has(args, "--play") && equality.Matches)
+        {
+            played = PlayAndCompare(entry, equality, creator, manifestPath, Args.Value(args, "--recorded-fight"));
+        }
+
         artifact.WriteAtomic(
             JsonSerializer.Serialize(new
             {
@@ -173,6 +179,7 @@ internal static partial class Commands
                 profile_before = profileBefore,
                 profile_after = profileAfter,
                 profile_unchanged = profileUnchanged,
+                played,
                 entry_policy =
                     "The run is constructed at the recording's identity against a supplied complete unlock " +
                     "state, set up with saving off, and never written anywhere. The recording owns every " +
@@ -182,6 +189,75 @@ internal static partial class Commands
         Console.WriteLine();
         Console.WriteLine($"report: {Paths.Display(artifact.Path)}");
         return equality.Matches && profileUnchanged ? 0 : 1;
+    }
+
+    /// <summary>
+    /// Plays the recording's own fight through the player-side capture and compares
+    /// it with the shipped recorded fight, printing exactly what the in-game result
+    /// panel would say.
+    ///
+    /// The recording stands in for the player here, so every summary row reads the
+    /// same on both sides and every turn line reads the same twice. That is the
+    /// point rather than a limitation: the capture, the projection and the
+    /// comparison are the same code the client runs, and a line that came through
+    /// them and did not match the engine's own replay of the same actions would be a
+    /// defect in the capture. A person's line is what the client provides.
+    ///
+    /// The profile lines above bracket the entry and not this: the headless host has
+    /// no write barrier, so a won fight writes progress into the sandbox here exactly
+    /// as it would into a player's profile without one. That is measured and printed,
+    /// because it is the reason the mod's barrier exists.
+    /// </summary>
+    private static object PlayAndCompare(
+        RecordedFightEntry entry, CombatStartEquality equality, string creator, string manifestPath,
+        string? recordedFightPath)
+    {
+        recordedFightPath ??= manifestPath.Replace(".replay.json", ".recorded-fight.json", StringComparison.Ordinal);
+        var recorded = RecordedFight.Load(recordedFightPath);
+        recorded.Bind(entry.Manifest);
+
+        var sandboxBefore = SandboxDigest();
+        var capture = entry.BeginCapture(equality);
+        entry.PlayRecordedFightHeadless();
+        var sandboxAfter = SandboxDigest();
+
+        Console.WriteLine();
+        Console.WriteLine(
+            $"played          : {creator}'s own {capture.Trace.Steps.Count - 1} fight action(s), through the " +
+            "player-side capture");
+        Console.WriteLine($"capture         : {capture.State}");
+        Console.WriteLine(
+            $"sandbox writes  : {(sandboxBefore == sandboxAfter ? "none during the fight" : "CHANGED during the fight")} " +
+            "- measured because the headless host has no write barrier; in the client ProfileWriteBarrier " +
+            "stops what a won fight would write");
+
+        var yours = capture.Project();
+        var comparison = CombatComparison.Between(yours, recorded.Projection());
+        var screen = FightResultScreen.For(creator, comparison);
+
+        Console.WriteLine();
+        Console.WriteLine($"[{screen.Title}]");
+        Console.WriteLine($"  {"",-22}{screen.Columns[0],-14}{screen.Columns[1]}");
+        foreach (var row in screen.Rows)
+        {
+            Console.WriteLine($"  {row.Label,-22}{row.Yours,-14}{row.Theirs}{(row.Matches ? string.Empty : "   (differs)")}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine($"  {screen.TurnDetailHeading}");
+        foreach (var line in screen.TurnLines) Console.WriteLine($"  {line}");
+        Console.WriteLine();
+        foreach (var note in screen.Notes) Console.WriteLine($"  {note}");
+        Console.WriteLine($"  [{screen.DoneButton}]");
+
+        return new
+        {
+            recorded_fight = Path.GetFileName(recordedFightPath),
+            capture_state = capture.State.ToString(),
+            sandbox_unchanged_during_play = sandboxBefore == sandboxAfter,
+            comparison,
+            screen,
+        };
     }
 
     /// <summary>

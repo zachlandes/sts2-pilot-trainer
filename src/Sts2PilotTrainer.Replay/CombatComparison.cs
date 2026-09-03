@@ -104,11 +104,10 @@ public sealed record CombatComparison
                 "detail reports gross player health lost during each turn, so the measurements do not have " +
                 "to add up.",
 
-                "Both lines were replayed through the real engine from the same combat-start boundary. " +
-                "Nothing here is evidence about a fight played by a person in the retail client: the in-game " +
-                "host constructs the recording's run and hands the player the recorded fight at the verified " +
-                "combat-start boundary, but it does not capture the player's completed fight. That is S5, so " +
-                "no fight played by a person has been compared.",
+                "Both lines were sampled by the real engine either side of every action, from the same " +
+                "combat-start boundary: a recording replayed headlessly, a fight a person played in the retail " +
+                "client with the Combat Trainer capturing it, or one of each. Which is which is stated by each " +
+                "side's source id, not judged here.",
             ],
         };
     }
