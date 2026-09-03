@@ -40,6 +40,9 @@ internal static class PrefightScreen
 
     private static NGenericPopup? _open;
 
+    /// <summary>The smallest the result's rows may become; the eligibility screen's floor.</summary>
+    private const int ResultBodyMinimumFontSize = 17;
+
     /// <summary>
     /// Shows the decision the recording makes next.
     ///
@@ -78,6 +81,13 @@ internal static class PrefightScreen
     internal static void ShowRefusal(string reason) =>
         Open(TrainerCopy.Name, reason, TrainerCopy.BackButton, Close, null, null);
 
+    /// <summary>
+    /// Shows the player's fight beside the recording's, or the one sentence that
+    /// says why there is no comparison. One button, Done, which leaves the fight.
+    /// </summary>
+    internal static void ShowResult(FightResultScreen screen, Action done) =>
+        Open(screen.Title, ScreenMarkup.Body(screen), screen.DoneButton, done, null, null, richText: true);
+
     internal static void Close()
     {
         try
@@ -97,7 +107,8 @@ internal static class PrefightScreen
     }
 
     private static void Open(
-        string title, string body, string confirmLabel, Action onConfirm, string? cancelLabel, Action? onCancel)
+        string title, string body, string confirmLabel, Action onConfirm, string? cancelLabel, Action? onCancel,
+        bool richText = false)
     {
         Close();
 
@@ -116,6 +127,17 @@ internal static class PrefightScreen
             added = true;
 
             var content = popup.GetNode<NVerticalPopup>(VerticalPopupPath);
+            if (richText)
+            {
+                // The result body carries the same markup the eligibility screen
+                // does, and the same floor under its font: rows nobody can read are
+                // not a result.
+                var label = content.BodyLabel();
+                label.BbcodeEnabled = true;
+                label.MinFontSize = ResultBodyMinimumFontSize;
+                label.ScrollActive = true;
+            }
+
             content.SetText(title, body);
             content.InitYesButton(PlaceholderConfirm, _ => onConfirm());
             content.YesButton.SetText(confirmLabel);

@@ -126,11 +126,11 @@ public class CombatComparisonTests
     /// The recording's own fight, projected. This is the milestone: the VOD's solution
     /// is a completed side rather than a history the contract has to refuse.
     ///
-    /// Both sides are the same recorded line, because no second line of this fight
-    /// exists - nobody has played it in a retail client through a mod host, and
-    /// authoring an alternative would be inventing a decision no player made. What is
-    /// under test is that the recording projects and compares at all, from its own
-    /// combat-start boundary.
+    /// Both sides are the same recorded line because this test isolates the
+    /// engine-replayed side. The independent player line is captured by the retail
+    /// host and tested through the player-fight path; authoring another engine line
+    /// here would invent a decision no player made. What is under test is that the
+    /// recording projects and compares at all, from its own combat-start boundary.
     /// </summary>
     [GameFact]
     public void ProjectsTheRecordedFightAsOneCompletedSide()
@@ -157,14 +157,13 @@ public class CombatComparisonTests
             comparison.GetProperty("summary").EnumerateArray(),
             field => Assert.True(field.GetProperty("matches").GetBoolean()));
 
-        // The caveat that keeps the output honest survives a VOD side: the host can
-        // hand the fight to a person, but it does not capture that person's completed
-        // line for comparison.
+        // The caveat that keeps the output honest about provenance: which side was
+        // replayed and which was played is stated by each side's source id, and the
+        // comparison itself does not judge it.
         Assert.Contains(
-            "hands the player the recorded fight at the verified combat-start boundary", result.Output,
-            StringComparison.Ordinal);
+            "sampled by the real engine either side of every action", result.Output, StringComparison.Ordinal);
         Assert.Contains(
-            "no fight played by a person has been compared", result.Output, StringComparison.Ordinal);
+            "stated by each side's source id, not judged here", result.Output, StringComparison.Ordinal);
     }
 
     /// <summary>

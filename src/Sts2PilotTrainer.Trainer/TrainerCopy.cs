@@ -118,4 +118,83 @@ public static class TrainerCopy
     /// <summary>The build the recording was made on, as the screen states it.</summary>
     public static string RecordingLine(string buildVersion, string buildDateUtc) =>
         $"Recorded on {buildVersion} ({buildDateUtc})";
+
+    // ── The player's fight, compared with the recording's ───────────────────
+    //
+    // The approved S5 result wording. Shown once, on the game's own popup, after the
+    // player's fight has ended and been captured whole; nothing is shown during the
+    // fight. Every number comes from CombatComparison and every name from the
+    // manifest; nothing below names a recording.
+
+    /// <summary>The popup's title over a comparison.</summary>
+    public static string ComparisonTitle(string creator) => $"Your fight and {creator}'s";
+
+    /// <summary>The column the player's numbers sit under.</summary>
+    public const string YouColumn = "You";
+
+    /// <summary>The summary row labels, in the contract's order.</summary>
+    public const string OutcomeRow = "Outcome";
+
+    public const string TurnsRow = "Turns";
+
+    public const string StartingHealthRow = "Health at the start";
+
+    public const string FinalHealthRow = "Health at the end";
+
+    public const string NetHealthChangeRow = "Net health change";
+
+    public const string PotionsUsedRow = "Potions used";
+
+    public const string CardsRemovedRow = "Cards removed";
+
+    /// <summary>The engine's outcome, as the player reads it.</summary>
+    public const string WonOutcome = "Won";
+
+    public const string LostOutcome = "Lost";
+
+    public const string EndedOutcome = "Ended";
+
+    /// <summary>An empty list of potions or cards.</summary>
+    public const string None = "none";
+
+    public const string TurnDetailHeading = "Turn by turn";
+
+    /// <summary>One turn both sides reached.</summary>
+    public static string TurnLine(
+        int turn, int yourEnemyHealthLost, int yourHealthLost, string creator, int theirEnemyHealthLost,
+        int theirHealthLost) =>
+        $"Turn {turn.ToString(CultureInfo.InvariantCulture)}: you took " +
+        $"{yourEnemyHealthLost.ToString(CultureInfo.InvariantCulture)} off the enemy and lost " +
+        $"{yourHealthLost.ToString(CultureInfo.InvariantCulture)}; {creator} took " +
+        $"{theirEnemyHealthLost.ToString(CultureInfo.InvariantCulture)} off and lost " +
+        $"{theirHealthLost.ToString(CultureInfo.InvariantCulture)}";
+
+    /// <summary>A turn only the recording reached.</summary>
+    public static string YourFightWasOverLine(int turn) =>
+        $"Turn {turn.ToString(CultureInfo.InvariantCulture)}: your fight was already over";
+
+    /// <summary>A turn only the player reached.</summary>
+    public static string TheirFightWasOverLine(int turn, string creator) =>
+        $"Turn {turn.ToString(CultureInfo.InvariantCulture)}: {creator}'s fight was already over";
+
+    /// <summary>The contract's caveats, shortened for a panel. The first is the one
+    /// that keeps this a statement of differences.</summary>
+    public const string NoVerdictNote = "This states differences. It does not say which fight was better.";
+
+    public const string BlockNote =
+        "Health lost counts only health that came off. Damage absorbed by block is not counted.";
+
+    /// <summary>Closes the result and returns to the main menu. The run is discarded,
+    /// as a refused entry's is.</summary>
+    public const string DoneButton = "Done";
+
+    /// <summary>Shown in place of a comparison when the player's fight was lost. The
+    /// recording's fight was won, and a lost fight has no completed line to put
+    /// beside it.</summary>
+    public static string LostNote(string creator) =>
+        $"You did not win this fight, so there is no completed line to compare with {creator}'s.";
+
+    /// <summary>Shown in place of a comparison when the fight was left before it
+    /// ended: quit, returned to the main menu, or abandoned.</summary>
+    public const string LeftNote = "This fight was left before it ended, so there is nothing to compare.";
 }

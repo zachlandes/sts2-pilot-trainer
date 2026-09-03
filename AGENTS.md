@@ -13,7 +13,7 @@ dotnet test sts2-pilot-trainer.sln -c Release
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
-                            # combat-snapshot | combat-compare
+                            # combat-snapshot | combat-compare | enter-fight | recorded-fight
 ```
 
 `dotnet test` works without the game: the integration suite skips with an explanation
@@ -117,6 +117,12 @@ The run is generated against a supplied complete unlock state and can persist no
 `shouldSave: false` plus the mod's `ProfileWriteBarrier`, which is installed at mod
 start and inert unless a trainer run is live. Do not weaken either, and do not add a
 path that writes what the barrier suppresses.
+
+**A fight a person plays is captured, never re-read.**
+`FightCapture` in `Sts2PilotTrainer.Replay` is the one owner of turning what the game's own action executor announces into the same `ReplayTrace` the headless arbiter produces; `PlayerFightObserver` in the mod only decides when a sample is taken.
+A projection is handed over only once the fight ended inside a sampled action, and a gap between two samples is refused rather than bridged.
+The recording's side of the in-game comparison is `manifests/<id>.recorded-fight.json`, produced by `./scripts/arbiter recorded-fight` from a fresh replay and bound to the manifest by run id, history hash and combat-start digest; regenerate it in the same change that edits the manifest's fight.
+Do not add a second capture path, a turn-level reset, a score or a verdict; `docs/comparison-direction.md` owns why.
 
 **Player-facing wording is a template, never a recording.** Everything the mod says
 lives in `Sts2PilotTrainer.Trainer`, and every recording-specific value in it is

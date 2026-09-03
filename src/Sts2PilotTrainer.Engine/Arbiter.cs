@@ -230,11 +230,7 @@ public static class Arbiter
     /// a field cannot mean one thing in a comparison and another in the trace.
     /// </summary>
     private static IReadOnlyDictionary<string, string> Sample(CanonicalState state) =>
-        new SortedDictionary<string, string>(
-            state.Fields
-                .Where(field => ReplayTrace.IsSampled(field.Key))
-                .ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal),
-            StringComparer.Ordinal);
+        ReplayTrace.Sample(state.Fields);
 
     /// <summary>
     /// Compares a checkpoint's observations against the engine's canonical state.

@@ -47,6 +47,11 @@ assembled into one verdict.
   instruments every `PowerCmd.Apply` in this exact history and proves its detector with
   an injected negative control. This is the one-time conclusion; there is no recurring
   mod-by-mod inference machinery and none is wanted.
+- **A fight a person plays, captured as the same trace.** `FightCapture` samples the
+  canonical state either side of every action the game's own executor announces, and
+  refuses a trace that is not a continuous record of the fight. The recording's own
+  actions played through it project to a line the comparison reports as identical to
+  the engine's replay of them.
 
 ## What this change established, with direct evidence
 
@@ -92,10 +97,9 @@ Make a finished fight observable and give its two projections one owner.
 **Runnable now:** `./scripts/arbiter combat-compare <a> <b>` prints the summary and
 turn detail for two completed fights and their differences, and `combat-snapshot` no
 longer calls a finished fight an active one.
-This is step 4 of the loop, with engine-produced lines standing in for a human's -
-which is what can be honest before a mod host exists.
-S2 added the recording's own fight as another completed side; every side is still engine-replayed, because capturing the human's fight belongs to S5.
-[demo/DEMO.md](../demo/DEMO.md) has it with its real output.
+This was step 4 of the loop, with engine-produced lines standing in for a human's, which was all that could be honest before the mod host existed.
+S2 added the recording's own fight as another completed side; S5 later added the captured player's side.
+[demo/DEMO.md](../demo/DEMO.md) has the engine-replayed comparison with its real output, and [demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has the captured player's side.
 
 ### S2 - The VOD's complete first combat in the manifest - done
 
@@ -128,8 +132,8 @@ the timestamp that lets anybody open the public recording and disagree.
 **Runnable now:** `./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json`
 returns `PUBLISHABLE` over a complete fight, and `combat-compare` puts the VOD's real
 solution on one side.
-The only second line of that fight is itself: nobody has played it in a retail client,
-so the comparison against the recording is the recording, and it says so.
+At S2, the only second line available was the recording itself, so that demonstration compares the recording against itself and says so.
+S5 adds the independent line captured from a fight played in the retail client.
 
 ### S2.5 - The prefix to the two-enemy window - done
 
@@ -277,13 +281,68 @@ Running it in the client is what found the three screen-owned transitions the ma
 has no verbs for, and the fact that this mod cannot tick a frame;
 [docs/in-game-host.md](in-game-host.md) records both.
 
-### S5 - The player's own fight, compared
+### S5 - The player's own fight, compared - done
 
 Capture the player's completed fight as a trace through the same projection, feed both
 sides to the S1 contract, and show him the result.
 
-**Runnable when it lands:** the loop is closed. The captain fights the VOD's fight and
-reads how his fight differed from NaveGreed's.
+- `FightCapture` in `Sts2PilotTrainer.Replay`: the player's fight sampled either side
+  of every action into the same `ReplayTrace` the headless arbiter produces, so it
+  goes through the same `CombatProjection` and the same `CombatComparison` rather
+  than a second reading.
+  It is a lifecycle and it refuses to be read early: a projection is handed over only
+  once the fight ended inside a sampled action.
+  A fight that was left, or whose state moved between two samples with no action in
+  between, is refused with a sentence rather than bridged; the trace is kept either way.
+  Pure, so every rule has a test on a machine with no game.
+- The samples come from the same canonical projection the checkpoints and the
+  headless trace read, filtered by `ReplayTrace.Sample`, which is now the one owner of
+  what a trace keeps.
+- `RecordedFightEntry.BeginCapture` starts capturing at the boundary just proved and
+  from nowhere else, carrying the digest the comparison then requires to be the
+  recording's.
+  `PlayRecordedFightHeadless` plays the recording's own actions through that capture
+  so the command line can exercise the whole loop with the recording standing in for
+  the player.
+- The recording's side cannot be replayed in the client - one process, one run, and
+  it is the player's - so it is produced headlessly by `./scripts/arbiter
+  recorded-fight` and shipped inside the mod as
+  `manifests/navegreed-OJ-6QXhNgdg.recorded-fight.json`: the engine-produced trace
+  through the end of the first fight, bound by run id, history hash and combat-start
+  digest.
+  `RecordedFight.Bind` refuses it at mod start unless it is the replay of exactly the
+  shipped manifest, and a test regenerates it in a fresh process and compares.
+- `PlayerFightObserver` in the mod subscribes to the game's own action executor,
+  which announces every action before it runs and after it finishes, and to the
+  combat manager's own turn-started and combat-ended events.
+  It issues no command and patches nothing.
+  What it owns is when the after-sample is taken: when the queue is empty and the
+  executor idle, which is the moment the headless drain reaches; for an ended turn,
+  once the player's next turn has started; and for the action the fight ended
+  inside, the combat manager's own event closes it with the final state.
+- `FightResultScreen` in `Sts2PilotTrainer.Trainer`: the approved wording over a
+  comparison, and the one sentence shown instead when there is none - a fight left,
+  a capture that could not be completed, a fight not won, or a comparison that
+  refused, shown in its own words.
+  A lost, abandoned or incomplete fight never produces a comparison.
+- Done discards the run the way a refused entry does, and the game's own end-of-run
+  path lowers the write barrier; a fight left through the game's own menu abandons
+  the capture the same way.
+
+**A limit recorded from the first retail session, not a requirement of this slice.**
+The captain played the fight, read the panel and reported that it worked, and that a
+text-led list of differences on a large modal is not good enough for the next
+interface: the direction is screenshot-backed playback, and it is the follow-up after
+this loop merges, owned by interface design rather than by this slice.
+What is here is the approved Direction A wording on the game's own popup, kept
+deliberately small.
+
+**Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json --play`
+stands in the fight, plays the recording's nine actions through the player-side
+capture, and prints the result panel word for word: every row the same on both sides,
+every turn line the same twice, because the recording stood in for the player.
+[demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has it with its
+real output, and the retail client's own result over a fight a person played.
 
 ### Later, and only a hypothesis
 
@@ -304,14 +363,18 @@ is reset at the start of a turn and the trace samples either side of an action r
 than inside one, so player health lost likewise reports only the damage that got
 through.
 
-**Nothing here guarantees a retail player has played the fight through.** Standing in
-it is proved in the client; fighting it to the end and comparing is S5, and every claim
-about a *completed* fight in this repository is still a claim about a headless process.
+**The player's line is captured, not replayed.** The recording's line is reproduced by
+the engine from a history that can be replayed again; the player's line is what the
+capture saw of a fight that happened once. The two go through the same projection and
+the same comparison, and the capture refuses a trace with a gap in it, but a captured
+line cannot be re-derived the way a replayed one can. What can be shown is that the
+recording's own actions, played through the capture, project to a line identical to
+the recording's replay - and that is what the headless test pins.
 
-**No comparison has two independent lines of the recording's fight.** The recording is
-one completed side; the other side of a comparison against it can only be the
-recording again, because the second line is the player's and capturing it is S5.
-Authoring one instead would be inventing a decision nobody made.
+**Only a won fight is compared.** The recording's fight was won, and a lost or
+abandoned fight has no completed line to set beside it; the panel says so and shows
+nothing else. Comparing two losses is not a thing the comparison refuses, it is a
+thing no recording here has.
 
 **Only a prefix of the recording is transcribed.** Run start through the opening of
 the floor-5 fight's third turn, which is two whole fights, the loot each of them

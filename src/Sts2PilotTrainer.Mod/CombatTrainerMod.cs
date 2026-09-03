@@ -40,6 +40,7 @@ public static class CombatTrainerMod
     private static bool _adopted;
 
     private static ReplayManifest? _recording;
+    private static RecordedFight? _recordedFight;
 
     /// <summary>Whether the mod started without refusing. Distinct from having a
     /// recording: the recording is embedded in this assembly and reading it cannot
@@ -54,6 +55,14 @@ public static class CombatTrainerMod
     /// rather than drawing a card with no description.
     /// </summary>
     internal static ReplayManifest Recording => _recording ??= ShippedRecording.Read();
+
+    /// <summary>
+    /// The recording's own line of its fight, replayed through the real engine and
+    /// shipped beside the manifest. Bound to the recording before anything reads it:
+    /// a file that is not the replay of exactly this manifest's fight is refused at
+    /// mod start rather than compared against.
+    /// </summary>
+    internal static RecordedFight RecordedFight => _recordedFight ??= ShippedRecording.ReadFight(Recording);
 
     public static void Initialize()
     {
@@ -82,6 +91,7 @@ public static class CombatTrainerMod
     private static void Start()
     {
         _recording = ShippedRecording.Read();
+        _recordedFight = ShippedRecording.ReadFight(_recording);
         var harmony = new Harmony(HarmonyId);
         harmony.PatchAll(typeof(CombatTrainerMod).Assembly);
 
@@ -193,14 +203,29 @@ internal static class ShippedRecording
 {
     private const string ResourceName = "Sts2PilotTrainer.Mod.recording.json";
 
+    private const string FightResourceName = "Sts2PilotTrainer.Mod.recorded-fight.json";
+
     internal static ReplayManifest Read()
     {
-        using var stream = typeof(ShippedRecording).Assembly.GetManifestResourceStream(ResourceName)
-            ?? throw new InvalidOperationException(
-                $"This build carries no recording ({ResourceName} is absent from the assembly).");
-        using var reader = new StreamReader(stream);
         // Deserialize refuses a manifest version this build cannot read, rather than
         // interpreting the parts it recognises.
-        return ManifestJson.Deserialize(reader.ReadToEnd());
+        return ManifestJson.Deserialize(Resource(ResourceName));
+    }
+
+    /// <summary>The recording's fight, and the proof it is this recording's.</summary>
+    internal static RecordedFight ReadFight(ReplayManifest recording)
+    {
+        var fight = RecordedFight.Deserialize(Resource(FightResourceName));
+        fight.Bind(recording);
+        return fight;
+    }
+
+    private static string Resource(string name)
+    {
+        using var stream = typeof(ShippedRecording).Assembly.GetManifestResourceStream(name)
+            ?? throw new InvalidOperationException(
+                $"This build carries no recording ({name} is absent from the assembly).");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 }

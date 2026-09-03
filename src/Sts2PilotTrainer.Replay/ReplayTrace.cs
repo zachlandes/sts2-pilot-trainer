@@ -67,6 +67,28 @@ public sealed record ReplayTrace
         SampledFields.Contains(field, StringComparer.Ordinal) ||
         field.StartsWith(EnemyFieldPrefix, StringComparison.Ordinal);
 
+    /// <summary>
+    /// The part of a canonical state the trace keeps.
+    ///
+    /// One owner for the filter, whoever is sampling: the headless replay and the
+    /// capture of a fight a person plays both read the same projection through this,
+    /// so a field cannot be kept by one and dropped by the other.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> Sample(IReadOnlyDictionary<string, string> fields) =>
+        new SortedDictionary<string, string>(
+            fields
+                .Where(field => IsSampled(field.Key))
+                .ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal),
+            StringComparer.Ordinal);
+
+    /// <summary>Whether two samples carry the same fields with the same values.</summary>
+    public static bool SameSample(
+        IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right) =>
+        left.Count == right.Count &&
+        left.All(field =>
+            right.TryGetValue(field.Key, out var value) &&
+            string.Equals(field.Value, value, StringComparison.Ordinal));
+
     [JsonPropertyName("steps")]
     public required IReadOnlyList<ReplayStep> Steps { get; init; }
 }

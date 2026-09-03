@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -150,6 +151,36 @@ public sealed class ProfileWriteBarrierTests
         Assert.Equal(
             "None",
             recordedRun.GetProperty("Phase", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!.ToString());
+    }
+
+    [BarrierFact]
+    public void LeavingATrainerFightQueuesItsResultAndLowersTheBarrier()
+    {
+        var barrier = BarrierType();
+        var recordedRun = barrier.Assembly.GetType("Sts2PilotTrainer.Mod.RecordedFightRun")!;
+        var phase = recordedRun.GetProperty("Phase", BindingFlags.Static | BindingFlags.NonPublic)!;
+        var teardown = recordedRun.GetNestedType("TrainerRunTeardown", BindingFlags.NonPublic)!;
+        var pendingResult = recordedRun.GetField(
+            "_resultAfterMainMenu", BindingFlags.Static | BindingFlags.NonPublic)!;
+
+        barrier.GetMethod("Raise", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+        phase.SetValue(null, Enum.Parse(phase.PropertyType, "InFight"));
+        try
+        {
+            teardown.GetMethod("AfterRunEnds", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+
+            var screen = Assert.IsType<FightResultScreen>(pendingResult.GetValue(null));
+            Assert.Equal(TrainerCopy.LeftNote, screen.Notice);
+            Assert.Equal(TrainerCopy.DoneButton, screen.DoneButton);
+            Assert.False((bool)barrier.GetProperty(
+                "IsActive", BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)!.GetValue(null)!);
+            Assert.Equal("None", phase.GetValue(null)!.ToString());
+        }
+        finally
+        {
+            pendingResult.SetValue(null, null);
+            recordedRun.GetMethod("Finish", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+        }
     }
 
     private static Type BarrierType()

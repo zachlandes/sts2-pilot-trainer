@@ -32,6 +32,11 @@
   <ItemGroup>
     <EmbeddedResource Include="../../manifests/navegreed-OJ-6QXhNgdg.replay.json"
                       LogicalName="Sts2PilotTrainer.Mod.recording.json" />
+    <!-- The recording's own line of its fight, replayed through the real engine by
+         ./scripts/arbiter recorded-fight. The client cannot replay, so the recording's
+         side of the in-game comparison travels with the manifest. -->
+    <EmbeddedResource Include="../../manifests/navegreed-OJ-6QXhNgdg.recorded-fight.json"
+                      LogicalName="Sts2PilotTrainer.Mod.recorded-fight.json" />
   </ItemGroup>
 
   <ItemGroup>

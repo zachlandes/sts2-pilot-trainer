@@ -363,6 +363,86 @@ public sealed class RecordedFightEntry : IDisposable
         return CombatStartEquality.Compare(Plan.Boundary, state.Fields, state.Digest(), expectedDigest);
     }
 
+    /// <summary>
+    /// The source id the player's own line carries into a comparison. One constant,
+    /// so the comparison names the same side the same way headlessly and in the
+    /// client.
+    /// </summary>
+    public const string PlayerSourceId = "player";
+
+    /// <summary>The capture of the fight after it was handed over, or null before.</summary>
+    public FightCapture? Capture { get; private set; }
+
+    /// <summary>
+    /// Starts capturing the fight that has just been proved to be the recorded one.
+    ///
+    /// Only from a boundary that matched: the capture carries the digest the
+    /// comparison will later require to be the recording's, and beginning one from a
+    /// boundary that was not would produce a line that looks comparable and is not.
+    /// </summary>
+    /// <exception cref="EngineException">When the boundary did not match, or a
+    /// capture already exists.</exception>
+    public FightCapture BeginCapture(CombatStartEquality boundary)
+    {
+        if (!boundary.Matches)
+        {
+            throw new EngineException(
+                "The fight cannot be captured for comparison: it is not the recorded one. " +
+                (boundary.Refusal ?? string.Empty));
+        }
+
+        if (Capture is not null)
+        {
+            throw new EngineException("This fight is already being captured.");
+        }
+
+        Capture = FightCapture.Begin(PlayerSourceId, LiveState().Fields, boundary.ActualDigest);
+        return Capture;
+    }
+
+    /// <summary>The live canonical state, cut down to what a trace keeps.</summary>
+    public IReadOnlyDictionary<string, string> SampleLiveState() => ReplayTrace.Sample(LiveState().Fields);
+
+    /// <summary>
+    /// Plays the recording's own fight to its end through the capture, headlessly.
+    ///
+    /// The command line's stand-in for a person: the recording's own actions after
+    /// the boundary, applied by the same driver the replay uses, with the canonical
+    /// state sampled either side of each one by <see cref="FightCapture"/> exactly as
+    /// the in-game host samples a player's. That is what lets the capture, the
+    /// projection and the comparison be exercised end to end with no scene tree, and
+    /// it decides nothing: every action is the recording's.
+    /// </summary>
+    /// <exception cref="EngineException">Inside a running game, where the fight is
+    /// the player's and nothing may play it for them; or when no capture has begun.</exception>
+    public FightCapture PlayRecordedFightHeadless()
+    {
+        var capture = Capture
+            ?? throw new EngineException("No capture has begun, so there is nothing to play the fight into.");
+
+        var actions = Manifest.Actions
+            .Where(action => action.Seq > Plan.CombatStartSeq)
+            .OrderBy(action => action.Seq)
+            .ToList();
+
+        for (var index = 0; index < actions.Count && capture.State == FightCaptureState.Live; index++)
+        {
+            var action = actions[index];
+            capture.BeginStep(action.Verb.ToString(), action.Args, SampleLiveState());
+            _driver.Apply(action, actions.Skip(index + 1).ToList());
+            capture.CompleteStep(SampleLiveState());
+        }
+
+        if (capture.State == FightCaptureState.Live)
+        {
+            throw new EngineException(
+                "The recording's actions ran out before its fight ended, so there is no completed fight to " +
+                "capture. The supported unit is a whole fight.");
+        }
+
+        return capture;
+    }
+
     /// <summary>Which progress model this run was generated against, named so a
     /// report can say it rather than imply a reading of somebody's profile.</summary>
     public string ProgressOrigin => LocalEnvironment.OriginOf(_progress);
@@ -377,5 +457,9 @@ public sealed class RecordedFightEntry : IDisposable
                 $"  - {field.Field}: the recording needs '{field.Expected}', {actualPhrase} " +
                 $"'{field.Actual}'. {field.Diagnostic}"));
 
-    public void Dispose() => _driver.Dispose();
+    public void Dispose()
+    {
+        Capture?.Abandon();
+        _driver.Dispose();
+    }
 }

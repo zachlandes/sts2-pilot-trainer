@@ -76,6 +76,13 @@ A result that keeps only the final state has final health and the last turn reac
 No amount of re-reading it recovers those missing facts; the run would have to be replayed again, which is precisely the expensive thing a stored result exists to avoid.
 
 So `VerificationReport.Trace` samples the canonical state either side of every action and keeps both samples.
+A fight a person plays in the retail client is kept the same way: `FightCapture`
+samples the same canonical projection either side of every action the game's own
+executor announces, into the same trace, so the two lines reach `CombatProjection`
+through one reading rather than two that would have to be reconciled.
+It refuses a trace with a gap in it - a change between two samples that no action
+accounts for - rather than bridging one, because a bridged gap would attribute its
+damage to nothing and the projection would under-count without saying so.
 It computes nothing, ranks nothing, and labels no line better than another.
 `CombatProjection` derives the two projections above from data that is already there.
 
@@ -124,11 +131,11 @@ Player block is reset at the start of a turn and the trace samples either side o
 
 ## What is deliberately not built yet
 
-No comparison UI. No scoring. No verdict about which of two lines was better.
-`combat-compare` states differences between two completed fights and nothing else, and it refuses two fights that did not start from the same boundary rather than producing a table that populates and means nothing.
-`combat-snapshot` describes only the covered action history.
+The retail mod now captures a person's completed fight, compares it with the recording from the same combat-start boundary, and presents the whole-combat summary before the turn chronology on the game's own popup.
+That text-led modal is a proved product limit rather than the next interface: a screenshot-backed playback UI is follow-up work, and this comparison contract does not presume its shape.
 
-Neither side of a comparison has ever been a fight played by a person.
-Every side is replayed through the real engine from the same combat-start boundary, because the mod can enter a retail player into the fight but does not capture that player's line yet, and the comparison says so in its own caveats.
-The recording's own fight is one such side now, and the only second line of it that exists is itself: authoring an alternative to compare it against would be inventing a decision no player made.
-See [the proof-of-concept path](proof-of-concept-path.md) for where that slice sits.
+There is still no turn-level reset or branching and no solver.
+There is no score and no verdict about which line was better.
+`combat-compare` and the in-game popup state differences between two completed fights and nothing else, and the comparison refuses fights that did not start from the same boundary rather than producing a table that populates and means nothing.
+`combat-snapshot` describes only the covered action history.
+See [the proof-of-concept path](proof-of-concept-path.md) for the current product boundary.

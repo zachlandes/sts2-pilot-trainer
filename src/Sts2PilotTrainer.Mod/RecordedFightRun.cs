@@ -30,8 +30,12 @@ internal enum RecordedFightPhase
     Watching,
 
     /// <summary>The fight has been proved to be the recorded one and is the
-    /// player's.</summary>
+    /// player's. Every action they take is being sampled either side.</summary>
     InFight,
+
+    /// <summary>The fight has ended and its result is on screen. The run still
+    /// exists underneath until the player leaves.</summary>
+    Result,
 }
 
 /// <summary>
@@ -54,6 +58,8 @@ internal enum RecordedFightPhase
 internal static class RecordedFightRun
 {
     private static RecordedFightEntry? _entry;
+    private static PlayerFightObserver? _observer;
+    private static FightResultScreen? _resultAfterMainMenu;
 
     /// <summary>
     /// Set only while this class is issuing one of the recording's own decisions, so
@@ -74,6 +80,11 @@ internal static class RecordedFightRun
     /// A fight that opens slowly is fine; a boundary read half-open is not, and the
     /// refusal says what it saw either way.</summary>
     private const double OpeningTheFightSeconds = 2.0;
+
+    /// <summary>How long to let the game finish the fight's ending - the last enemy's
+    /// death, the loot appearing, the death screen - before the result goes over it.
+    /// The result is computed before the wait; only the drawing is deferred.</summary>
+    private const double EndingTheFightSeconds = 2.0;
 
     internal static RecordedFightPhase Phase { get; private set; } = RecordedFightPhase.None;
 
@@ -362,7 +373,7 @@ internal static class RecordedFightRun
     /// needs those frames. The wait was what prevented it. A timer hands the frames
     /// back.
     /// </summary>
-    private static async Task LetTheGameRun(double seconds)
+    internal static async Task LetTheGameRun(double seconds)
     {
         var tree = Godot.Engine.GetMainLoop() as SceneTree
             ?? throw new InvalidOperationException("This process has no scene tree to wait in.");
@@ -398,6 +409,70 @@ internal static class RecordedFightRun
         Log.Info(
             $"[{CombatTrainerMod.ModId}] standing in the recorded fight; canonical state at combat start is " +
             $"{equality.ActualDigest}", 2);
+
+        // The capture begins at the boundary just proved, and from nowhere else: it
+        // carries the digest the comparison will require to be the recording's.
+        var capture = entry.BeginCapture(equality);
+        _observer = PlayerFightObserver.Start(entry, capture, TheFightEnded);
+    }
+
+    /// <summary>
+    /// The player's fight is over. Computes what the result screen says, then puts
+    /// it up once the game has finished drawing the ending.
+    ///
+    /// Computed first and shown later, on purpose. On a loss the game's own flow
+    /// tears the run down on its way to the death screen, and this entry with it; a
+    /// result computed after that would have nothing to read. The screen is data, so
+    /// it survives the run it describes.
+    /// </summary>
+    private static async void TheFightEnded()
+    {
+        try
+        {
+            var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
+            var capture = entry.Capture
+                ?? throw new InvalidOperationException("The fight ended before its capture began.");
+            var screen = FightResultScreen.Of(
+                RecordingIdentity.Creator(entry.Manifest), capture, CombatTrainerMod.RecordedFight);
+            _observer?.Dispose();
+            _observer = null;
+            Phase = RecordedFightPhase.Result;
+            Log.Info(
+                $"[{CombatTrainerMod.ModId}] result: " +
+                (screen.HasComparison ? $"comparison, {screen.Rows.Count} row(s)" : screen.Notice), 2);
+
+            await LetTheGameRun(EndingTheFightSeconds);
+            PrefightScreen.ShowResult(screen, LeaveTheFight);
+        }
+        catch (Exception ex)
+        {
+            Abandon(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Done. The run is discarded the way a refused entry's is: it was never the
+    /// player's, it is never saved, and the game's own end-of-run path is what lowers
+    /// the write barrier.
+    /// </summary>
+    private static void LeaveTheFight()
+    {
+        PrefightScreen.Close();
+        try
+        {
+            if (RunManager.Instance is { IsInProgress: true }) RunManager.Instance.CleanUp();
+            NGame.Instance?.ReturnToMainMenu();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{CombatTrainerMod.ModId}] could not leave the finished fight: {ex.GetType().Name}: {ex.Message}",
+                2);
+        }
+        finally
+        {
+            Finish();
+        }
     }
 
     /// <summary>
@@ -458,11 +533,16 @@ internal static class RecordedFightRun
     internal static void Finish()
     {
         var entry = _entry;
+        var observer = _observer;
         _entry = null;
+        _observer = null;
         _authorising = false;
         Phase = RecordedFightPhase.None;
         try
         {
+            // Disposing the entry abandons a capture still live, so a fight left
+            // through the game's own menu is never read as one that finished.
+            observer?.Dispose();
             entry?.Dispose();
         }
         catch (Exception ex)
@@ -483,8 +563,47 @@ internal static class RecordedFightRun
         [HarmonyPostfix]
         internal static void AfterRunEnds()
         {
+            if (Phase == RecordedFightPhase.InFight)
+            {
+                _resultAfterMainMenu = FightResultScreen.Left();
+                Finish();
+                return;
+            }
+
             if (Phase != RecordedFightPhase.None || ProfileWriteBarrier.IsActive) Finish();
         }
+    }
+
+    [HarmonyPatch(typeof(NGame), nameof(NGame.ReturnToMainMenu))]
+    internal static class MainMenuReturn
+    {
+        [HarmonyPostfix]
+        internal static void AfterReturnStarts(Task __result) => ShowResultAfterReturn(__result);
+    }
+
+    private static async void ShowResultAfterReturn(Task returning)
+    {
+        try
+        {
+            await returning;
+            if (_resultAfterMainMenu is not { } screen) return;
+
+            _resultAfterMainMenu = null;
+            PrefightScreen.ShowResult(screen, CloseResultOnMainMenu);
+        }
+        catch (Exception ex)
+        {
+            _resultAfterMainMenu = null;
+            Log.Error(
+                $"[{CombatTrainerMod.ModId}] could not show the abandoned fight result: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    private static void CloseResultOnMainMenu()
+    {
+        PrefightScreen.Close();
+        Finish();
     }
 
     /// <summary>
