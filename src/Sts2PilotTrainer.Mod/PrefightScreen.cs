@@ -105,7 +105,7 @@ internal static class PrefightScreen
                 screen,
                 container.GetViewportRect().Size,
                 ModelArt.Of,
-                container.GetThemeFont(GameLabelFont, GameLabelThemeType),
+                GameFont.Of(container.GetTree()?.Root) ?? container.GetThemeFont(GameLabelFont, GameLabelThemeType),
                 done);
 
             container.AddChild(panel.Root);

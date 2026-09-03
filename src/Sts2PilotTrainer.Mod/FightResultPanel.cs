@@ -60,6 +60,12 @@ internal static class FightResultPanel
 
     private const float MaxPanelWidth = 1240f;
     private const float MaxPanelHeight = 780f;
+
+    /// <summary>The panel a notice gets: wide enough for a sentence of the engine's
+    /// own, tall enough for it and the button.</summary>
+    private const float NoticePanelWidth = 860f;
+
+    private const float NoticePanelHeight = 260f;
     private const float ScreenMargin = 48f;
     private const float Pad = 26f;
     private const float HeaderHeight = 86f;
@@ -68,6 +74,10 @@ internal static class FightResultPanel
     private const float CardHeight = 34f;
     private const float PotionSize = 22f;
     private const float ChipGap = 4f;
+
+    /// <summary>The space between one line's turn and the next line's, so a numeral
+    /// at the end of a column is not read as a label on the column beside it.</summary>
+    private const float ColumnGutter = 16f;
 
     private const int TitleFontSize = 26;
     private const int FigureFontSize = 20;
@@ -88,8 +98,13 @@ internal static class FightResultPanel
         FightResultScreen screen, Vector2 viewport, Func<string, Texture2D?> art, Font? font, Action done)
     {
         var painter = new Painter(art, font);
-        var width = Math.Min(MaxPanelWidth, viewport.X - (2 * ScreenMargin));
-        var height = Math.Min(MaxPanelHeight, viewport.Y - (2 * ScreenMargin));
+
+        // A comparison fills a panel; a notice is one sentence and a button, and a
+        // sentence adrift in the middle of a panel this size reads as a page that
+        // failed to load.
+        var width = Math.Min(screen.HasComparison ? MaxPanelWidth : NoticePanelWidth, viewport.X - (2 * ScreenMargin));
+        var height = Math.Min(
+            screen.HasComparison ? MaxPanelHeight : NoticePanelHeight, viewport.Y - (2 * ScreenMargin));
 
         var root = new Control
         {
@@ -115,7 +130,7 @@ internal static class FightResultPanel
         if (!screen.HasComparison)
         {
             painter.Wrapped(
-                panel, "Notice", screen.Notice, Pad, 76, width - (2 * Pad), height - 76 - FooterHeight,
+                panel, "Notice", screen.Notice, Pad, 66, width - (2 * Pad), height - 66 - FooterHeight,
                 LabelFontSize, PrimaryText);
             button = painter.DoneButton(screen.DoneButton, width, height, done);
             panel.AddChild(button);
@@ -185,8 +200,8 @@ internal static class FightResultPanel
             Legend(panel, "Legend.You", screen.Columns[0], YouLine, YouFill, yours, y, columnWidth);
             Legend(panel, "Legend.Them", screen.Columns[1], TheirLine, TheirFill, theirs, y, columnWidth);
 
-            var notes = 26f * screen.Notes.Count;
-            var rowHeight = Math.Min(40f, (height - 36 - notes - 12) / Math.Max(1, screen.Rows.Count));
+            var notes = (26f * screen.Notes.Count) + 18;
+            var rowHeight = Math.Min(44f, (height - 36 - notes) / Math.Max(1, screen.Rows.Count));
             var row = y + 36;
             foreach (var figure in screen.Rows)
             {
@@ -204,9 +219,10 @@ internal static class FightResultPanel
                 row += rowHeight;
             }
 
-            // The caveats sit under the figures rather than over the chart: each is a
-            // rule about how to read every number above it.
-            var note = y + height - notes;
+            // The caveats follow the figures rather than sitting at the foot of the
+            // column: each is a rule about how to read the numbers above it, and a
+            // caveat marooned under a gap reads as a footnote to nothing.
+            var note = row + 18;
             for (var index = 0; index < screen.Notes.Count; index++)
             {
                 Wrapped(panel, $"Note.{index}", screen.Notes[index], x, note, width, 26, SmallFontSize, DimText);
@@ -251,7 +267,8 @@ internal static class FightResultPanel
             Text(panel, "Chronology", screen.TurnDetailHeading, x, y, width, 20, LabelFontSize, SecondaryText);
             Text(panel, "Chronology.Turn", screen.Chart.TurnLabel, x, y + 24, turnWidth, 18, SmallFontSize, DimText);
             Text(panel, "Chronology.You", screen.Columns[0], yours, y + 24, columnWidth, 18, SmallFontSize, YouLine);
-            Text(panel, "Chronology.Them", screen.Columns[1], theirs, y + 24, columnWidth, 18, SmallFontSize, TheirText);
+            Text(panel, "Chronology.Them", screen.Columns[1], theirs + ColumnGutter, y + 24, columnWidth, 18,
+                SmallFontSize, TheirText);
 
             var rowHeight = Math.Min(44f, (rows - 46) / Math.Max(1, screen.Turns.Count));
 
@@ -264,9 +281,9 @@ internal static class FightResultPanel
                 Text(panel, $"Turn.{turn.Turn}", turn.Turn.ToString(CultureInfo.InvariantCulture),
                     x, row, turnWidth, rowHeight, LabelFontSize, SecondaryText);
                 Side(panel, $"Turn.{turn.Turn}.Yours", turn.Yours, screen.FightOverLabel, YouLine, YouFill,
-                    yours, row, columnWidth, rowHeight, card);
+                    yours, row, columnWidth - ColumnGutter, rowHeight, card);
                 Side(panel, $"Turn.{turn.Turn}.Theirs", turn.Theirs, screen.FightOverLabel, TheirLine, TheirFill,
-                    theirs, row, columnWidth, rowHeight, card);
+                    theirs + ColumnGutter, row, columnWidth - ColumnGutter, rowHeight, card);
                 row += rowHeight;
             }
 
@@ -321,18 +338,18 @@ internal static class FightResultPanel
             Text(panel, "Chart", chart.Heading, x, y, width, 20, LabelFontSize, SecondaryText);
             if (!chart.HasTurns) return;
 
-            var plotLeft = x + 116;
-            var plotWidth = width - 116;
+            var plotLeft = x + 128;
+            var plotWidth = width - 128;
             // What is left once the heading, the gap between the plots, the turn axis
             // and the lane the potions sit in have taken their share.
-            var plotHeight = (height - 76) / 2;
+            var plotHeight = (height - 92) / 2;
 
             Plot(panel, "Chart.Enemy", chart, point => point.EnemyHealthLost, chart.EnemyMeasureLabel,
                 x, y + 26, plotLeft, plotWidth, plotHeight);
             Plot(panel, "Chart.Player", chart, point => point.HealthLost, chart.PlayerMeasureLabel,
                 x, y + 26 + plotHeight + 8, plotLeft, plotWidth, plotHeight);
 
-            var axis = y + 26 + (2 * plotHeight) + 12;
+            var axis = y + 26 + (2 * plotHeight) + 22;
             Text(panel, "Chart.TurnAxis", chart.TurnLabel, x, axis, 108, 20, SmallFontSize, DimText,
                 HorizontalAlignment.Right);
             for (var index = 0; index < chart.Turns.Count; index++)
@@ -463,13 +480,19 @@ internal static class FightResultPanel
                 var picture = new TextureRect
                 {
                     Name = NodeName($"{name}.Art"),
-                    Texture = texture,
-                    Position = new Vector2(x + 1, y + 1),
-                    Size = new Vector2(width - 2, height - 2),
+                    // Told to ignore the texture's own size before it is given one.
+                    // A texture rect's minimum size is its texture, and card art is
+                    // hundreds of pixels tall: sized first, it is clamped back up to
+                    // the portrait's own size and drawn over half the panel. Measured
+                    // in the client, where it did exactly that.
                     ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                     StretchMode = TextureRect.StretchModeEnum.KeepAspectCovered,
+                    Texture = texture,
                     MouseFilter = Control.MouseFilterEnum.Ignore,
                 };
+                picture.Position = new Vector2(x + 1, y + 1);
+                picture.CustomMinimumSize = Vector2.Zero;
+                picture.Size = new Vector2(width - 2, height - 2);
                 panel.AddChild(picture);
                 return;
             }
@@ -510,11 +533,13 @@ internal static class FightResultPanel
             Control panel, string name, string text, float x, float y, float width, float height, int size,
             Color color, HorizontalAlignment alignment = HorizontalAlignment.Left)
         {
-            var label = Styled(name, text, x, y, width, height, size, color);
+            var label = Styled(name, text, size, color);
             label.HorizontalAlignment = alignment;
             label.VerticalAlignment = VerticalAlignment.Center;
+            // A figure or a label that would not fit is cut off inside its own box
+            // rather than drawn over the one beside it.
             label.ClipText = true;
-            panel.AddChild(label);
+            Place(panel, label, x, y, width, height);
             return label;
         }
 
@@ -522,27 +547,43 @@ internal static class FightResultPanel
             Control panel, string name, string text, float x, float y, float width, float height, int size,
             Color color)
         {
-            var label = Styled(name, text, x, y, width, height, size, color);
+            var label = Styled(name, text, size, color);
             label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-            panel.AddChild(label);
+            Place(panel, label, x, y, width, height);
             return label;
         }
 
-        private Label Styled(
-            string name, string text, float x, float y, float width, float height, int size, Color color)
+        /// <summary>
+        /// Gives a label its box, after it has been told how to lay text out inside
+        /// one.
+        ///
+        /// The order is load-bearing and was measured on a screen rather than
+        /// reasoned about: a Control's size is clamped up to its minimum, and a
+        /// label's minimum width is its whole unwrapped line, so a width set before
+        /// the wrap mode is simply widened back and the sentence runs off the panel.
+        /// The engine's own refusals are the longest text this panel ever draws, and
+        /// that is exactly the case it went wrong in.
+        /// </summary>
+        private static void Place(Control panel, Label label, float x, float y, float width, float height)
+        {
+            label.Position = new Vector2(x, y);
+            label.CustomMinimumSize = new Vector2(width, 0);
+            label.Size = new Vector2(width, height);
+            panel.AddChild(label);
+        }
+
+        private Label Styled(string name, string text, int size, Color color)
         {
             var label = new Label
             {
                 Name = NodeName(name),
                 Text = text,
-                Position = new Vector2(x, y),
-                Size = new Vector2(width, height),
                 MouseFilter = Control.MouseFilterEnum.Ignore,
             };
 
-            // The font is the game's, read from the theme this panel is added under.
-            // Its size and colour are ours, because the theme's sizes are the sizes of
-            // the game's own screens rather than of a table of figures.
+            // The font is the game's own, taken from a label already on screen. Its
+            // size and colour are ours, because the game's sizes are the sizes of its
+            // own screens rather than of a table of figures.
             if (font is not null) label.AddThemeFontOverride("font", font);
             label.AddThemeFontSizeOverride("font_size", size);
             label.AddThemeColorOverride("font_color", color);

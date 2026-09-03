@@ -68,6 +68,8 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Mod.Tests -c Release --nolog
 
 ```output
   Passed Sts2PilotTrainer.Arbiter.Tests.FightResultPanelTests.AFightWithNoComparisonIsTheNoticeAndTheButton
+  Passed Sts2PilotTrainer.Arbiter.Tests.FightResultPanelTests.ANoticeIsWrappedInsideAPanelTheSizeOfASentence
+  Passed Sts2PilotTrainer.Arbiter.Tests.FightResultPanelTests.ArtworkIsDrawnAtTheSizeOfItsChipRatherThanOfItsTexture
   Passed Sts2PilotTrainer.Arbiter.Tests.FightResultPanelTests.CarriesTheApprovedWordingAndNothingElse
   Passed Sts2PilotTrainer.Arbiter.Tests.FightResultPanelTests.DrawsACardForEveryCardPlayedAndAPotionWhereOneWasSpent
   Passed Sts2PilotTrainer.Arbiter.Tests.FightResultPanelTests.DrawsEachPointsOwnNumeral
@@ -131,3 +133,72 @@ set -o pipefail; ./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.r
 
 report: build/evidence/enter-fight.json
 ```
+
+## The retail client, with a line that is deliberately not the recording's
+
+The mod was installed with `./scripts/install-mod.sh` and the game launched with only
+Combat Trainer enabled. The fight was entered from the mode card and played by the agent
+driving the client through screenshots and synthetic clicks, rather than by a person: the
+point of this session is that the two sides of the panel differ, and playing a line
+chosen to differ is what produces that.
+
+NaveGreed's recorded line blocks: Hellraiser and Defend, then two more Defends, then
+Hellraiser, then Bash - four turns, seven health lost. The line played here attacks
+instead: Bash and Strike, then two Strikes and one Defend, then three Strikes - three
+turns, ten health lost, and the fight over a turn before his.
+
+```bash {image}
+![The Combat Trainer result panel over the darkened loot screen. Title "Your fight and NaveGreed's" with "Both fights started from the same position." beneath it. A gold You swatch and a blue NaveGreed swatch head two columns of figures: Outcome Won and Won, Turns 3 and 4, Health at the start 64 and 64, Health at the end 54 and 57, Net health change -10 and -7, Potions used none and none, Cards removed none and none. Under them the two caveats. On the right, "Turn by turn" lists four turns as rows of the game's own card art with health-lost numerals: turn 1 two cards and -9 against two cards and -4; turn 2 three cards and -7 against two cards and -2; turn 3 three cards and 0 against one card and -7; turn 4 reads "fight over" against one card and 0. Below, "Health lost each turn" plots two lines against the turn: enemy health lost with gold squares at 17, 12, 13 and blue diamonds at 8, 24, 6, 4; health lost with gold at 9, 7, 0 and blue at 4, 2, 7, 0. A gold Done button.](in-game-result-panel.png)
+```
+
+![The Combat Trainer result panel over the darkened loot screen. Title "Your fight and NaveGreed's" with "Both fights started from the same position." beneath it. A gold You swatch and a blue NaveGreed swatch head two columns of figures: Outcome Won and Won, Turns 3 and 4, Health at the start 64 and 64, Health at the end 54 and 57, Net health change -10 and -7, Potions used none and none, Cards removed none and none. Under them the two caveats. On the right, "Turn by turn" lists four turns as rows of the game's own card art with health-lost numerals: turn 1 two cards and -9 against two cards and -4; turn 2 three cards and -7 against two cards and -2; turn 3 three cards and 0 against one card and -7; turn 4 reads "fight over" against one card and 0. Below, "Health lost each turn" plots two lines against the turn: enemy health lost with gold squares at 17, 12, 13 and blue diamonds at 8, 24, 6, 4; health lost with gold at 9, 7, 0 and blue at 4, 2, 7, 0. A gold Done button.](529825ff-2026-09-03.png)
+
+Read against the recording, the panel says what the fight cost: the chart's upper plot
+has the played line ahead on turn 1 (17 against 8) and behind on turn 2 (12 against 24),
+the lower plot has it losing 9 and 7 where NaveGreed lost 4 and 2, and the fourth turn is
+his alone - drawn as a gap in the gold line and said in words as "fight over". Nothing on
+the panel says which line was better, and the two caveats under the figures are the ones
+the comparison contract carries.
+
+## The paths with no comparison, in the client
+
+Neither of these had been seen in the retail client before: both were proved on the
+game-free capture and screen only. Both appeared in this session.
+
+A fight left before it ended: the run was given up from the game's own pause menu, and
+the trainer's notice came up over the main menu once the return finished, on a panel the
+size of its sentence.
+
+```bash {image}
+![The Combat Trainer notice over the darkened main menu: a compact dark panel titled "Combat Trainer" reading "This fight was left before it ended, so there is nothing to compare." with a gold Done button.](in-game-result-notice.png)
+```
+
+![The Combat Trainer notice over the darkened main menu: a compact dark panel titled "Combat Trainer" reading "This fight was left before it ended, so there is nothing to compare." with a gold Done button.](dce01ad1-2026-09-03.png)
+
+A capture that could not be completed: on the first attempt of this session the panel
+showed the capture's own refusal instead of a comparison - "A 'EndTurn' began while the
+'PlayCard' before it had not been sampled afterwards, so the capture cannot say what each
+of them did." That is the capture refusing rather than guessing, and it is correct, but
+what produced it is worth writing down. In this client a number key *selects* a card and
+a click plays it; the agent pressed a number and then clicked End Turn, so that one click
+both played the held card and ended the turn, and the two actions began within
+milliseconds of each other. A person who holds a card and then clicks End Turn can reach
+the same state. The capture's rule is not at fault and is not changed here; that the
+window exists at all is recorded in [the in-game host's limits](../docs/in-game-host.md).
+
+## What this session changed on disk
+
+SHA-256 over 154 files before the mod was installed and after the last Done: every
+profile, progress, prefs, save, run-history and replay file, every mod config, and every
+file of BaseLib, Hindsight and STS2_MCP. 152 are byte identical, including all 120 run
+history files and both profiles' `progress.save`.
+
+Two differ, and both are worth naming. `modded/profile1/replays/latest.mcr` is the game's
+own combat replay scratch file, which the engine rewrites at the end of every fight; S4
+and S5 recorded it differing the same way. `modded/profile1/saves/progress.save.backup`
+now holds a byte-for-byte copy of the current `progress.save`, whose own content is
+unchanged: the game copies a file to its backup inside its own IO layer, below the
+`SaveManager` methods `ProfileWriteBarrier` suppresses, and the give-up path reaches that
+copy. No progress was gained, lost or altered - what changed is that a backup which held
+an older snapshot now holds the current one. The barrier's list does not cover that path,
+which is a finding for the barrier's owner rather than something this slice changes.

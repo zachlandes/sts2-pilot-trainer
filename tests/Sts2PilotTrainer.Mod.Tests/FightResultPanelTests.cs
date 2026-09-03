@@ -44,9 +44,25 @@ public sealed class FightResultPanelTests
             Panel(Comparison()),
             art: modelId => modelId == "CARD.BASH" ? known : null);
 
-        Assert.Same(known, Assert.IsType<TextureRect>(Find(panel, "Turn.2.Yours.Card.CARD.BASH.Art")).Texture);
+        Assert.Same(known, Find<TextureRect>(panel, "Turn.2.Yours.Card.CARD.BASH.Art").Texture);
         Assert.Null(Find(panel, "Turn.1.Yours.Card.CARD.STRIKE_IRONCLAD.Art"));
-        Assert.Equal("Strike Ironclad", Assert.IsType<Label>(Find(panel, "Turn.1.Yours.Card.CARD.STRIKE_IRONCLAD.Name")).Text);
+        Assert.Equal("Strike Ironclad", Find<Label>(panel, "Turn.1.Yours.Card.CARD.STRIKE_IRONCLAD.Name").Text);
+    }
+
+    [Fact]
+    public void ArtworkIsDrawnAtTheSizeOfItsChipRatherThanOfItsTexture()
+    {
+        // Card art is hundreds of pixels tall. In the client it was drawn at its own
+        // size, over half the panel, because a texture rect's minimum size is its
+        // texture until it is told to ignore it.
+        var panel = Build(Panel(Comparison()), art: _ => new Texture2D());
+
+        var chip = Find<ColorRect>(panel, "Turn.2.Yours.Card.CARD.BASH");
+        var picture = Find<TextureRect>(panel, "Turn.2.Yours.Card.CARD.BASH.Art");
+        Assert.Equal(TextureRect.ExpandModeEnum.IgnoreSize, picture.ExpandMode);
+        Assert.Equal(chip.Size.X - 2, picture.Size.X);
+        Assert.Equal(chip.Size.Y - 2, picture.Size.Y);
+        Assert.True(picture.Size.Y <= 34);
     }
 
     [Fact]
@@ -175,6 +191,26 @@ public sealed class FightResultPanelTests
         Assert.NotNull(Find(panel, "Done"));
         Assert.Null(Find(panel, "Chart"));
         Assert.Null(Find(panel, "Legend.You"));
+    }
+
+    [Fact]
+    public void ANoticeIsWrappedInsideAPanelTheSizeOfASentence()
+    {
+        // Both were wrong in the client before they were tested: the engine's longest
+        // refusal was laid out on one line that ran off the panel, inside a panel
+        // sized for a comparison that was not there.
+        var notice = FightResultScreen.Refused(
+            "Your fight could not be captured completely, so it is not compared. A 'EndTurn' began while the " +
+            "'PlayCard' before it had not been sampled afterwards, so the capture cannot say what each of them did.");
+        var compared = Build(Panel(Comparison()));
+        var panel = Build(notice);
+
+        var label = Find<Label>(panel, "Notice");
+        var box = Find<ColorRect>(panel, "Panel");
+        Assert.Equal(TextServer.AutowrapMode.WordSmart, label.AutowrapMode);
+        Assert.True(label.Position.X + label.Size.X <= box.Size.X);
+        Assert.True(box.Size.X < Find<ColorRect>(compared, "Panel").Size.X);
+        Assert.True(box.Size.Y < Find<ColorRect>(compared, "Panel").Size.Y);
     }
 
     [Fact]

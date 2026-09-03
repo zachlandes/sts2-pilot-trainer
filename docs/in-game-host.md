@@ -137,6 +137,16 @@ panel then shows the capture's own sentence instead of a comparison.
 A bridged gap would attribute its damage to nothing and the projection would quietly
 under-count, which is exactly the plausible wrong answer this project refuses.
 
+**Two actions can begin close enough together to leave no room for the sample between
+them.** Seen in the client: a card was played and the turn ended in the same click, and
+the capture refused the whole fight because the card's after-sample had not been taken
+when the ended turn began. In this client a number key selects a card and a click plays
+it, so a click on End Turn while a card is held is two actions at once; a person holding a
+card and clicking End Turn reaches the same state. The refusal is correct - the two
+actions genuinely overlapped, and what each did cannot be attributed - and nothing here
+changes it. It is recorded because the window is real: a fight lost to it is a fight with
+no comparison, and closing it is work for the capture's owner rather than for the panel.
+
 **The recording's side travels with the manifest.**
 The client cannot replay - one process, one run, and it is the player's - so the
 recording's line is produced headlessly by `./scripts/arbiter recorded-fight` and
@@ -177,9 +187,17 @@ drawn as a blank icon.
 `NModalContainer.Add` casts what it is given to `IScreenContext`, which is a game
 interface a stock node cannot implement, so the panel is added as a child instead. The
 container's backstop still blocks the mouse and the Done button is focused explicitly,
-but `ActiveScreenContext` still regards the screen underneath as current. What that
-means for a keyboard or a controller while the result is up is measured in the retail
-session rather than claimed here.
+but `ActiveScreenContext` still regards the screen underneath as current. The retail
+session drove the panel by mouse throughout and did not exercise a controller, so what
+that means for one is still unmeasured.
+
+**Two layout rules were learned on the screen rather than reasoned about.**
+Both have the same shape, and both drew over half the panel before they were caught. A
+Control's size is clamped up to its minimum size, so a label given its width before it is
+told to wrap is widened back to its whole unwrapped line, and a texture rect given its
+size before it is told to ignore its texture is grown to the size of the card art. Order
+the calls the other way round. `FightResultPanelTests` pins both, against the longest
+refusal this panel ever draws and against a card's own portrait.
 
 **Only a won, completed, uninterrupted fight is compared.**
 A lost fight, a fight left through the game's own menu, a capture that could not be
@@ -197,11 +215,26 @@ same capture, project to a line identical to the recording's replay on every fie
 so a line that came through the capture and differed would be a defect in the capture
 rather than a difference in the fight.
 
-**The fight was played through and compared in the client by one person, once.**
-[demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has that
-session.
-It is one fight; the paths the panel takes for a loss, a quit and a refused capture are
-proved on the game-free capture and screen, not in the client.
+**The fight was played through and compared in the client twice, once by a person and
+once by an agent driving it.**
+[demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has the first,
+where the recording's own line was played and every figure agreed;
+[demo/VISUAL-COMPARISON.md](../demo/VISUAL-COMPARISON.md) has the second, where a
+deliberately different line was played so the two sides of the panel differ.
+The second session also produced, in the client for the first time, a fight left before it
+ended and a capture that could not be completed.
+A lost fight has still only been proved on the game-free capture and screen.
+
+**The give-up path reaches a write the barrier does not cover.**
+Measured over 154 files before and after that session: 152 byte identical, including all
+120 run history files and both profiles' `progress.save`. The game's own combat replay
+scratch file differs, as it did in S4 and S5. So does
+`modded/profile1/saves/progress.save.backup`, which now holds a byte-for-byte copy of the
+current `progress.save`: the game copies a file to its backup inside `GodotFileIo`, below
+the `SaveManager` methods `ProfileWriteBarrier` suppresses, and giving a run up reaches
+that copy. No progress was gained, lost or altered; a backup that held an older snapshot
+now holds the current one. The barrier's list is what needs extending, and that is its
+owner's change rather than the panel's.
 
 **Three of the recording's steps are screen commands, not engine ones.**
 Each was found by running it, and each has the same shape: the engine call is the

@@ -339,6 +339,10 @@ colour and by marker shape. `FightResultPanel` in the mod draws it and decides
 nothing; `FightResultChart` derives the chart from the comparison and leaves a gap
 where a value cannot be derived honestly.
 
+[demo/VISUAL-COMPARISON.md](../demo/VISUAL-COMPARISON.md) has the drawn panel from the
+retail client over a deliberately different line, the two no-comparison paths it also
+produced there, and what that session changed on disk.
+
 **Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json --play`
 stands in the fight, plays the recording's nine actions through the player-side
 capture, and prints the result panel as far as a terminal can draw it - the figures,
