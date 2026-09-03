@@ -33,6 +33,13 @@ public sealed record EligibilityRow(string Label, RequirementState State, string
 /// is that field's own diagnostic passed through unchanged. A refusal the screen
 /// has no row for is still shown - as its sentence - because a gate that failed and
 /// said nothing is the failure mode this project exists to prevent.
+///
+/// Which reading it is handed decides what every row is about, and the caller owns
+/// that choice rather than this file. A host that constructs the run hands it the
+/// reading the run will be generated against, so each row states a requirement of
+/// the fight being offered; a host asking whether somebody could play the run
+/// themselves hands it their profile. Showing one and gating on the other is how a
+/// screen ends up warning about something that stops nothing.
 /// </summary>
 public sealed record EligibilityScreen(
     string Title,
@@ -45,6 +52,22 @@ public sealed record EligibilityScreen(
     string ProfileNote,
     string BackButton)
 {
+    /// <summary>
+    /// Whether the recording's fight is offered, and the note that goes with the
+    /// offer.
+    ///
+    /// Set only when this game can construct the recording's run. The rows and the
+    /// offer are both evaluated against the complete unlock state that run will use,
+    /// supplied in memory and written nowhere. See
+    /// EnvironmentPreflight.EvaluateAscensionCeiling, which records why a host
+    /// constructing a run directly never consults the profile ceiling.
+    /// </summary>
+    public bool FightOffered { get; init; }
+
+    public string EnterButton => TrainerCopy.EnterButton;
+
+    public string NotSavedNote => TrainerCopy.NotSavedNote;
+
     /// <summary>
     /// Field names this screen turns into a row. Anything failing and not in here
     /// surfaces as a refusal sentence instead, so adding a gate to
@@ -61,8 +84,10 @@ public sealed record EligibilityScreen(
     /// about a category of content, so it has no "n of m" row to live in.</summary>
     private const string UnlockRequirementField = "unlocks_requirement";
 
-    public static EligibilityScreen For(EnvironmentIdentity expected, LivePreflight preflight)
+    public static EligibilityScreen For(
+        ReplayManifest recording, LivePreflight preflight, bool fightOffered = false)
     {
+        var expected = recording.Environment;
         var fields = preflight.Fields;
         var rows = new List<EligibilityRow>();
         var claimed = new HashSet<string>(StringComparer.Ordinal);
@@ -108,14 +133,21 @@ public sealed record EligibilityScreen(
 
         return new EligibilityScreen(
             Title: TrainerCopy.Name,
-            Subtitle: TrainerCopy.Subtitle,
+            Subtitle: RecordingIdentity.Subtitle(recording),
             RecordingLine: TrainerCopy.RecordingLine(expected.BuildVersion.Value, expected.BuildDateUtc.Value),
             Headline: preflight.Matches ? TrainerCopy.PassHeadline : TrainerCopy.FailHeadline,
             Eligible: preflight.Matches,
             Rows: ordered,
             Refusals: refusals,
-            ProfileNote: TrainerCopy.ProfileNote,
-            BackButton: TrainerCopy.BackButton);
+            // Said only where it is true. The note names the profile the rows were
+            // measured against, and where the host supplies the state instead there
+            // is no profile in the answer - a sentence pointing at one would send a
+            // player to import progress that nothing here reads.
+            ProfileNote: preflight.Reading.Unlocks.FromPlayerProfile ? TrainerCopy.ProfileNote : string.Empty,
+            BackButton: TrainerCopy.BackButton)
+        {
+            FightOffered = fightOffered,
+        };
     }
 
     private static void AddRow(

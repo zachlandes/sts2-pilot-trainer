@@ -94,8 +94,7 @@ turn detail for two completed fights and their differences, and `combat-snapshot
 longer calls a finished fight an active one.
 This is step 4 of the loop, with engine-produced lines standing in for a human's -
 which is what can be honest before a mod host exists.
-S2 added the recording's own fight as another completed side; every side is still
-engine-replayed, because a human's fight cannot be captured until S3 and S4 land.
+S2 added the recording's own fight as another completed side; every side is still engine-replayed, because capturing the human's fight belongs to S5.
 [demo/DEMO.md](../demo/DEMO.md) has it with its real output.
 
 ### S2 - The VOD's complete first combat in the manifest - done
@@ -204,20 +203,79 @@ cannot faithfully represent the VOD.
 - `Sts2PilotTrainer.Trainer`: what the screen says, with no game code, so every row and
   every sentence has a test on a machine that does not own the game.
 
-**Runnable now:** `./scripts/install-mod.sh`, then launch Slay the Spire 2 and open
-Singleplayer. The captain is told, in game, whether his install and profile can
-represent this VOD - and if not, exactly what to play to fix it.
-[docs/in-game-host.md](in-game-host.md) records what that proves and what it does not;
-[demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) shows it running.
+**Established by this slice:** the captain was told, in game, whether his install and profile could represent this VOD - and if not, exactly what to play to fix it.
+S4 extended that same host with the current fight offer and asks the supplied run model about capabilities the trainer provides in memory.
+[docs/in-game-host.md](in-game-host.md) records the current behavior and its limits; [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) preserves the S3 evidence.
 
-### S4 - Start or reset the captured combat, in the live game
+### S4 - Start or reset the captured combat, in the live game - done
 
 Construct the run at the VOD's identity inside the retail process and enter the
 captured fight at the combat-start boundary.
-The snapshot machinery already defines that boundary and refuses a drifted one.
+The snapshot machinery already defined that boundary; this is what walks a run to it
+and proves it arrived.
 
-**Runnable when it lands:** the captain presses a button and is standing in the
-NaveGreed fight, at Ascension 10, with the same hand.
+- `RecordedFightPlan` and `CombatStartEquality` in `Sts2PilotTrainer.Replay`: the
+  recording's decisions before its fight, the boundary they end at, and the two
+  readings a live entry is compared against there.
+  Pure, so both have tests on a machine with no game.
+- `RecordedFightEntry` in `Sts2PilotTrainer.Engine`: the one owner of standing
+  somebody in that fight.
+  It constructs the run, makes the recording's decisions in order, and refuses three
+  ways - over a run that already exists, past a decision the plan does not authorise
+  at that point, and into a fight whose combat start is not the recorded one.
+- The progress the run is generated against is supplied rather than read.
+  The recording requires the complete unlock state its content came from, and the
+  player's profile is not it; `Preflight` already distinguishes a supplied model from
+  a reading, and `EnvironmentPreflight.EvaluateAscensionCeiling` already says a host
+  constructing a run directly never consults the profile ceiling.
+  That is what lets the captain stand in an Ascension 10 fight from an Ascension 9
+  profile without a byte of his progress changing.
+  The eligibility screen is asked about that same supplied model, so every row states
+  a requirement of the fight on offer rather than of a run nobody starts by hand -
+  otherwise the ascension row would sit in red above an offer it does not stop.
+- `ProfileWriteBarrier` in the mod: `shouldSave: false` covers the run save and
+  everything at the end of a run, and it does not cover the two writes on this
+  fight's path - winning a combat rewrites the progress file, and an event room saves
+  the run with progress saving defaulted on. The barrier stops the writes themselves,
+  is installed at mod start and does nothing unless a trainer run is live, so a
+  crash, a forced exit and a quit are all covered by the write never happening. It
+  comes down on the game's own end-of-run path, because one left raised would stop
+  saving the player's next run.
+- A deviation lock on the two commands the recording's decisions reach, rather than
+  on the buttons that usually reach them: a screen with its buttons hidden is one a
+  controller, a hotkey or another mod can still drive, and the command is the thing
+  that would change the run.
+- `source.video.channel_name`, so a host names whose recording this is from the
+  manifest.
+  Every sentence the journey shows is a template over what the run is standing in
+  front of - the relic the blessing grants, the kind of node the move enters, how
+  many decisions there are - and nothing about NaveGreed, the Underdocks or a Sludge
+  Spinner is written into the wording.
+
+**Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json`
+constructs the run, walks it through Neow's blessing and the map move with the
+captions the in-game screens use, and reports the fight it lands in as the recorded
+one on all thirteen values the recording observed and on the manifest's
+engine-produced combat-start snapshot digest - with the profile reading and every byte of the profile store
+unchanged either side. `--control wrong-opening-choice` damages one recorded decision
+and the entry is refused.
+[demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has it with its real
+output.
+
+**Runnable now, in the retail client.** `./scripts/install-mod.sh`, then launch Slay
+the Spire 2 with only Combat Trainer enabled and open Singleplayer. The screen offers
+the fight; pressing it constructs the recording's run, walks it through Neow's blessing
+and the map move on the game's own screens, and stands the player in the recorded
+fight - the Sludge Spinner at 42 of 42, the opening hand the recording shows, turn 1 at
+Ascension 10. The canonical state at that boundary is the same digest the headless host
+derives for the combat-start snapshot, so the agreement covers the run's random streams
+and the draw pile's order and not only what a screenshot shows.
+[demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has it with the
+screenshots.
+
+Running it in the client is what found the three screen-owned transitions the manifest
+has no verbs for, and the fact that this mod cannot tick a frame;
+[docs/in-game-host.md](in-game-host.md) records both.
 
 ### S5 - The player's own fight, compared
 
@@ -246,9 +304,9 @@ is reset at the start of a turn and the trace samples either side of an action r
 than inside one, so player health lost likewise reports only the damage that got
 through.
 
-**Nothing here guarantees a retail player has played the fight.** The mod host states
-eligibility and stops there; entering the captured combat is S4. Until it lands, every
-claim about a fight is a claim about a headless process.
+**Nothing here guarantees a retail player has played the fight through.** Standing in
+it is proved in the client; fighting it to the end and comparing is S5, and every claim
+about a *completed* fight in this repository is still a claim about a headless process.
 
 **No comparison has two independent lines of the recording's fight.** The recording is
 one completed side; the other side of a comparison against it can only be the

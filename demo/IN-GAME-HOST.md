@@ -13,8 +13,8 @@ the arbiter's own preflight about the player's real game, and tell them - in the
 in the game's own furniture - whether it can play NaveGreed's Floor 2 Sludge Spinner as
 recorded, and what to go and play if it cannot?
 
-It answers that and stops.
-Entering the fight is the next slice, and no source-reference scan stands in for an executable proof that absent S4 behavior remains absent.
+It answers that and stops there.
+Entering the fight is [its own document](RECORDED-FIGHT-ENTRY.md); nothing here claims any part of it.
 
 The two screenshots are the one kind of image this repository keeps: our own screen,
 drawn by our own mod, inside the player's own client. No frame of the source recording
@@ -119,9 +119,17 @@ colour is a `PreflightField` the gate produced; and every sentence under a row i
 field's own diagnostic, word for word. Unmet rows are ordered first, because what a
 player has to act on should not sit below what already passed.
 
-This is the captain's real modded profile, which is at ascension 9. The screen says
-so, and says what raises it - the engine's sentence, unedited, including the promise
-that the tool will not do it for him.
+This is the captain's real modded profile, which is at ascension 9, and the screen was
+captured while the host still asked its question about that profile: the ascension row
+is red and carries the engine's sentence about what raises it, unedited, including the
+promise that the tool will not do it for him.
+
+That is no longer the question the host asks. Once the trainer constructs the run
+itself, the unlocks, the acts and the ascension are supplied for that run and the row
+states a requirement of the fight on offer rather than of a run nobody starts by hand
+- so on this same profile the row is now met. The rule and the label are unchanged;
+only the reading they are asked about is. The shot above is kept as what the S3 host
+showed, and [the entry document](RECORDED-FIGHT-ENTRY.md) owns what replaced it.
 
 The green content-hash row still carries its qualifier. A matching hash rules out one
 class of divergence and is never proof of environment parity, and the engine owns the
@@ -139,7 +147,7 @@ The boundary suite drives `adopt-live` as a real command and verifies that a con
 It also loads a second copy of `sts2` and verifies that adoption refuses before reading either copy's state, with the bound assembly named in the refusal.
 A third test proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
 The remaining declarative test parses the mod manifest and verifies the non-gameplay, DLL-only, packless contract that keeps the compared content hash meaningful.
-There is no source-reference scan presented as behavioral evidence, and no test claim stands in for the absent S4 implementation.
+There is no source-reference scan presented as behavioral evidence.
 
 ```bash
 set -o pipefail; dotnet test tests/Sts2PilotTrainer.Mod.Tests/Sts2PilotTrainer.Mod.Tests.csproj -c Release --nologo --filter 'FullyQualifiedName~ModHostBoundaryTests' 2>&1 | grep -E 'Passed!|Failed!' | sed -E 's/Duration: [^ ]+ ms/Duration: <duration>/'
@@ -160,7 +168,7 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrain
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    15, Skipped:     0, Total:    15, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
 ```
 
 ## What this proves, and what it does not
@@ -169,13 +177,13 @@ Passed!  - Failed:     0, Passed:    15, Skipped:     0, Total:    15, Duration:
 A fourth mode card appears in the game's own furniture.
 Opening it runs `Preflight.EvaluateLiveHost` against the player's real installed build and the profile the modded game uses, and shows the result with the engine's own remediation.
 The executable console refusal leaves its prepared game inputs and sandbox profile unchanged.
-Nothing about the fight is offered.
+The two screenshots below were taken before the fight was offered at all, which is why neither shows the offer; what the offer does, and what has and has not been watched doing it, is in [the entry document](RECORDED-FIGHT-ENTRY.md).
 
-**Not proved.** Nobody has played the fight; there is no button that enters combat,
-because entering combat is S4. A green content-hash row is not environment parity, and
-says so. The unlock rows describe the modded profile, which the game forks from the
-unmodded one - a player with complete unmodded progress can fail them and be right to
-be surprised, which is why the screen names the profile it read.
+**Not proved.**
+Nobody has played the fight.
+A green content-hash row is not environment parity, and says so.
+In this preserved S3 screen the unlock rows described the modded profile, which the game forks from the unmodded one.
+The current fight offer instead evaluates those capabilities against the supplied in-memory progress used to construct its run; [the entry document](RECORDED-FIGHT-ENTRY.md) owns that evidence.
 
 **Not measured here.** Whether a controller can drive the screen was compared against
 the game's own confirmation popup under synthetic input, and the two behaved

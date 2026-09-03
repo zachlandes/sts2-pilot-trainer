@@ -1,5 +1,5 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 4,
   "run_id": "synthetic-v0111-pilot-trainer",
   "environment": {
     "build_version": {

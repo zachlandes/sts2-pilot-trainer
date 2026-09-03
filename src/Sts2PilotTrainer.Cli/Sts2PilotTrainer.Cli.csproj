@@ -11,6 +11,10 @@
     <ProjectReference Include="../Sts2PilotTrainer.Engine/Sts2PilotTrainer.Engine.csproj" />
     <ProjectReference Include="../Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj" />
     <ProjectReference Include="../Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj" />
+    <!-- The mod's wording owner. Referenced so the command line captions the
+         recording's decisions with the same sentences the in-game screens do,
+         rather than with a second set that could drift from them. -->
+    <ProjectReference Include="../Sts2PilotTrainer.Trainer/Sts2PilotTrainer.Trainer.csproj" />
   </ItemGroup>
 
 </Project>

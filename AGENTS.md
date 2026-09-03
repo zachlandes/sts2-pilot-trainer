@@ -31,7 +31,7 @@ path inside a Steam or Slay the Spire 2 directory. Do not weaken either.
 **Nothing extracted from the game or from a source video is ever committed.**
 No game assemblies, localization tables, source-VOD frames or source-VOD stills.
 `.gitignore` blocks the file types; the judgement is yours.
-The sole visual exception is screenshots of this mod's own UI captured in the player's client and committed under `demo/` as S3 evidence; that is not permission to commit any source footage.
+The sole visual exception is screenshots of this mod's own UI captured in the player's client and committed under `demo/` as product evidence; that is not permission to commit any source footage.
 Facts read from a video are fine and are what `manifests/` holds.
 
 **One owner for game-version-specific code.** Everything that knows how v0.111.0 is
@@ -109,6 +109,22 @@ initialization runs before the game has a model database, and Godot does not loa
 game into the default assembly load context. `./scripts/install-mod.sh` is the one
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `CombatTrainer` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions.
+
+**Standing somebody in a recorded fight has one owner.**
+`RecordedFightEntry` constructs the run, makes the recording's decisions in order and refuses a boundary that is not the recorded one; the mod owns retail timing, presentation, deviation locks and write isolation.
+Keeping construction in the engine owner lets `./scripts/arbiter enter-fight` exercise the journey without a scene tree.
+The run is generated against a supplied complete unlock state and can persist nothing:
+`shouldSave: false` plus the mod's `ProfileWriteBarrier`, which is installed at mod
+start and inert unless a trainer run is live. Do not weaken either, and do not add a
+path that writes what the barrier suppresses.
+
+**Player-facing wording is a template, never a recording.** Everything the mod says
+lives in `Sts2PilotTrainer.Trainer`, and every recording-specific value in it is
+interpolated - the creator from `source.video.channel_name`, the blessing and the node
+from the run the decision is about to act on. A sentence that names NaveGreed, the
+Underdocks or a Sludge Spinner is a bug; the one remaining exception is named in
+`TrainerCopy.FightFloor` and `TrainerCopy.FightEnemy`, with the manifest fields they
+are waiting on.
 
 ## Maintaining this file
 

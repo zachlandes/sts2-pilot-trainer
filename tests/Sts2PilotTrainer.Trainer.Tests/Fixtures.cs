@@ -79,13 +79,64 @@ internal static class Fixtures
             Acts = ["ACT.UNDERDOCKS", "ACT.HIVE", "ACT.GLORY"],
         };
 
-    internal static EligibilityScreen Screen(
-        LocalPrerequisites? prerequisites = null, LocalRunReading? run = null)
+    /// <summary>
+    /// The recording the screen is about. Only the parts a screen reads are filled
+    /// in: who it is by, and the identity every row is measured against.
+    /// </summary>
+    internal static ReplayManifest Recording(EnvironmentIdentity? identity = null, string? creator = "NaveGreed") =>
+        new()
+        {
+            RunId = "navegreed-OJ-6QXhNgdg",
+            Environment = identity ?? Identity(),
+            Source = new SourceProvenance
+            {
+                Kind = "vod",
+                ExtractionMethod = "manual",
+                Coverage = "run start through the first fight",
+                Video = creator is null ? null : new VideoSource
+                {
+                    Platform = "youtube",
+                    VideoId = "OJ-6QXhNgdg",
+                    ChannelId = "UCuuDxwofGcur0Lt6iP-aDww",
+                    ChannelName = creator,
+                    DurationSeconds = 2049,
+                },
+            },
+            Actions = [],
+            Checkpoints = [],
+        };
+
+    /// <summary>
+    /// A reading of the state a host supplies rather than of anybody's save: every
+    /// category complete, no act locked, and no profile ascension ceiling to read.
+    /// What <c>LocalEnvironment.ReadPrerequisites</c> produces for the progress model
+    /// the trainer constructs the recording's run with.
+    /// </summary>
+    internal static LocalPrerequisites SuppliedPrerequisites() => Prerequisites() with
     {
-        var identity = Identity();
+        Unlocks = new UnlockInventory
+        {
+            Origin = "UnlockState.all, supplied by the host in place of the source player's profile",
+            FromPlayerProfile = false,
+            Categories =
+            [
+                new UnlockCategory("characters", 5, 5, []),
+                new UnlockCategory("relics", 143, 143, []),
+            ],
+        },
+        ProfileAscensionCeiling = null,
+    };
+
+    internal static EligibilityScreen Screen(
+        LocalPrerequisites? prerequisites = null,
+        LocalRunReading? run = null,
+        bool fightOffered = false)
+    {
+        var recording = Recording();
         return EligibilityScreen.For(
-            identity,
-            EnvironmentPreflight.LiveGame(identity, prerequisites ?? Prerequisites(), run));
+            recording,
+            EnvironmentPreflight.LiveGame(recording.Environment, prerequisites ?? Prerequisites(), run),
+            fightOffered);
     }
 
     internal static EligibilityRow Row(this EligibilityScreen screen, string startsWith) =>

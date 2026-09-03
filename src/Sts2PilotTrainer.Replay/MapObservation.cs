@@ -136,6 +136,7 @@ public sealed record MapObservation
         if (!string.Equals(Video.Platform, expected.Platform, StringComparison.Ordinal) ||
             !string.Equals(Video.VideoId, expected.VideoId, StringComparison.Ordinal) ||
             !string.Equals(Video.ChannelId, expected.ChannelId, StringComparison.Ordinal) ||
+            !string.Equals(Video.ChannelName, expected.ChannelName, StringComparison.Ordinal) ||
             Video.DurationSeconds != expected.DurationSeconds)
         {
             throw new ManifestException(
@@ -149,6 +150,7 @@ public sealed record MapObservation
         if (string.IsNullOrWhiteSpace(Video.Platform)) problems.Add("platform is empty");
         if (string.IsNullOrWhiteSpace(Video.VideoId)) problems.Add("video_id is empty");
         if (string.IsNullOrWhiteSpace(Video.ChannelId)) problems.Add("channel_id is empty");
+        if (string.IsNullOrWhiteSpace(Video.ChannelName)) problems.Add("channel_name is empty");
         if (Video.DurationSeconds <= 0) problems.Add("duration_s must be positive");
 
         var durationMs = (long)Video.DurationSeconds * 1000;

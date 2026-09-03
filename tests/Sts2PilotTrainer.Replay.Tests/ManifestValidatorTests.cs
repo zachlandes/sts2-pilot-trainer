@@ -17,6 +17,39 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void RejectsAVideoManifestWithoutAnEngineProducedCombatStartSnapshot()
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Source = manifest.Source with { CombatStartSnapshotDigest = null },
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("combat_start_snapshot_digest is absent", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(FactSource.Observed, "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")]
+    [InlineData(FactSource.Engine, "sha256:not-a-digest")]
+    public void RejectsAnUnprovenCombatStartSnapshot(FactSource source, string digest)
+    {
+        var manifest = Fixtures.ValidManifest();
+        manifest = manifest with
+        {
+            Source = manifest.Source with
+            {
+                CombatStartSnapshotDigest = new Fact<string>(digest, source),
+            },
+        };
+
+        Assert.False(ManifestValidator.Validate(manifest).IsValid);
+    }
+
+    [Fact]
     public void RejectsASeedContainingLettersTheGameNeverGenerates()
     {
         // O and I are absent from the game's seed alphabet, which is exactly why an
@@ -317,6 +350,7 @@ public class ManifestValidatorTests
     [InlineData("platform")]
     [InlineData("video_id")]
     [InlineData("channel_id")]
+    [InlineData("channel_name")]
     public void RejectsAnEmptyVodVideoIdentityField(string field)
     {
         var manifest = Fixtures.ValidManifest();
@@ -326,6 +360,7 @@ public class ManifestValidatorTests
             "platform" => video with { Platform = "" },
             "video_id" => video with { VideoId = "" },
             "channel_id" => video with { ChannelId = "" },
+            "channel_name" => video with { ChannelName = "" },
             _ => throw new InvalidOperationException(),
         };
         manifest = manifest with { Source = manifest.Source with { Video = changed } };

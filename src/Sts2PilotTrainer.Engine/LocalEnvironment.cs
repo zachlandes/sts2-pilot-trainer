@@ -57,9 +57,10 @@ public static class LocalEnvironment
     /// </param>
     /// <param name="progress">
     /// Which unlock state to read. <see cref="PlayerProgress.LocalProfile"/> reads
-    /// this process's profile and is what the in-game host uses. The other two are
-    /// states the headless host supplies in place of a profile it does not have, and they are
-    /// reported as such rather than as a reading of anyone.
+    /// this process's profile for callers asking about the player. The other two are
+    /// host-supplied states; the in-game trainer uses the complete one it will construct
+    /// the recorded run with, and every supplied state is reported as such rather than
+    /// as a reading of anyone.
     /// </param>
     public static LocalPrerequisites ReadPrerequisites(
         EnvironmentIdentity expected, PlayerProgress progress = PlayerProgress.AllUnlocked)
@@ -178,7 +179,9 @@ public static class LocalEnvironment
         _ => throw new EngineException($"Unknown player-progress model '{progress}'."),
     };
 
-    internal static string OriginOf(PlayerProgress progress) => progress switch
+    /// <summary>Where a progress model came from, in words a report can print, so a
+    /// supplied state is never presented as a reading of somebody's save.</summary>
+    public static string OriginOf(PlayerProgress progress) => progress switch
     {
         PlayerProgress.AllUnlocked =>
             "UnlockState.all, supplied by the host in place of the source player's profile",

@@ -37,10 +37,13 @@ internal static class Fixtures
                 Platform = "youtube",
                 VideoId = "OJ-6QXhNgdg",
                 ChannelId = "UCuuDxwofGcur0Lt6iP-aDww",
+                ChannelName = "NaveGreed",
                 DurationSeconds = 2049,
             },
             ExtractionMethod = "manual",
             Coverage = "opening turn only",
+            CombatStartSnapshotDigest = Fact<string>.Engine(
+                "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
             RunStart = RunStart(),
             RunSummary = RunSummary(),
         },

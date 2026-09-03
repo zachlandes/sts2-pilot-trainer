@@ -264,6 +264,7 @@ public class MapObservationTests
             Platform = "youtube",
             VideoId = "OJ-6QXhNgdg",
             ChannelId = "UCuuDxwofGcur0Lt6iP-aDww",
+            ChannelName = "NaveGreed",
             DurationSeconds = 2049,
         },
         ActIndex = 0,

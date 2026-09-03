@@ -1,0 +1,302 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Trainer;
+
+namespace Sts2PilotTrainer.Cli;
+
+internal static partial class Commands
+{
+    /// <summary>
+    /// Constructs the recording's run, walks it through the recording's own decisions
+    /// one at a time, and proves the fight it lands in is the recorded one.
+    ///
+    /// This is the whole of the in-game journey except the drawing. The run is built
+    /// at the recording's identity against a supplied complete unlock state, each
+    /// recorded decision is executed in order and captioned exactly as the mod's
+    /// screens caption it, and the boundary is compared against both what the
+    /// recording observed there and the manifest's engine-produced combat-start
+    /// snapshot digest. Nothing here is a proxy for the retail client - the retail client runs the same
+    /// <see cref="RecordedFightEntry"/> - and nothing here draws a screen.
+    ///
+    /// It also reports what it did to the profile, before and after, because "this
+    /// never writes to your progress" is a claim and a claim wants a measurement.
+    /// </summary>
+    internal static int EnterFight(string[] args)
+    {
+        var manifestPath = Args.Positional(args, 0, "manifest path");
+        var outDir = Args.Value(args, "--out") ?? "build/evidence";
+        var cacheDir = Args.Value(args, "--cache") ?? "build/snapshots";
+        var stepOne = Args.Has(args, "--step");
+        var artifact = EvidenceArtifact.Prepare(outDir, "enter-fight.json");
+
+        var recording = ManifestJson.Load(manifestPath);
+        if (Args.Value(args, "--control") is { } controlName)
+        {
+            recording = ApplyEntryControl(recording, controlName);
+        }
+
+        var creator = RecordingIdentity.Creator(recording);
+        var progress = ParseProgress(args);
+
+        Console.WriteLine($"recording       : {recording.RunId}");
+        Console.WriteLine($"creator         : {creator}");
+        Console.WriteLine($"progress        : {progress} - {LocalEnvironment.OriginOf(progress)}");
+
+        var profileBefore = ProfileReading(recording.Environment);
+        var sandboxBefore = SandboxDigest();
+        Console.WriteLine($"profile before  : {profileBefore}");
+        Console.WriteLine();
+
+        using var entry = RecordedFightEntry.StartHeadless(recording, progress);
+        var plan = entry.Plan;
+
+        // Every caption the mod shows, produced by the mod's own wording owner from
+        // the same readings. Built one step at a time because a caption names what the
+        // run is standing in front of, and that is only readable while it is.
+        var choices = new List<PrefightChoice>();
+        var steps = new List<object>();
+
+        Console.WriteLine(
+            $"{creator}'s decisions before the fight: " +
+            $"{plan.PrefightActions.Count.ToString(CultureInfo.InvariantCulture)}, " +
+            $"combat starts after action {plan.CombatStartSeq.ToString(CultureInfo.InvariantCulture)}");
+        Console.WriteLine($"  {TrainerCopy.ChoicesShownAsRecorded(creator)}");
+        Console.WriteLine();
+
+        while (!entry.AtCombatStart)
+        {
+            var action = entry.NextStep!;
+            var choice = entry.DescribeNextStep();
+            choices.Add(choice);
+            var journey = PrefightJourney.For(creator, choices, plan.PrefightActions.Count);
+            var step = journey.Steps[^1];
+
+            Console.WriteLine($"  [{journey.Chip}]  {step.Counter}   {step.Caption}");
+            Console.WriteLine(
+                $"      action {action.Seq.ToString(CultureInfo.InvariantCulture)} {action.Verb} " +
+                $"{string.Join(" ", action.Args.Select(arg => $"{arg.Key}={arg.Value}"))}");
+
+            entry.AdvanceOneStep();
+            steps.Add(new
+            {
+                number = step.Number,
+                counter = step.Counter,
+                caption = step.Caption,
+                seq = action.Seq,
+                verb = action.Verb.ToString(),
+                args = action.Args,
+            });
+
+            if (stepOne) break;
+        }
+
+        if (stepOne)
+        {
+            Console.WriteLine();
+            Console.WriteLine(
+                "--step stops after one decision. The fight is not entered, and asking whether it started " +
+                "where the recording's did is refused rather than answered:");
+            try
+            {
+                entry.VerifyCombatStart();
+            }
+            catch (EngineException refusal)
+            {
+                Console.WriteLine($"  {refusal.Message}");
+            }
+
+            return 1;
+        }
+
+        var equality = entry.VerifyCombatStart();
+        var cachedDigest = CachedSnapshotDigest(plan, cacheDir, out var snapshotSource);
+        if (cachedDigest is not null &&
+            !string.Equals(cachedDigest, equality.ExpectedDigest, StringComparison.Ordinal))
+        {
+            throw new ManifestException(
+                $"The cached combat-start snapshot is {cachedDigest}, but the recording declares " +
+                $"{equality.ExpectedDigest}. Re-run combat-snapshot before entering the fight.");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine(
+            $"combat start    : checkpoint '{plan.Boundary.Id}', " +
+            $"{equality.Comparisons.Count.ToString(CultureInfo.InvariantCulture)} observed value(s)");
+        foreach (var comparison in equality.Comparisons)
+        {
+            Console.WriteLine(
+                $"  {(comparison.Matches ? "ok  " : "FAIL")} {comparison.Field,-26} " +
+                $"recording={comparison.Expected,-56} game={comparison.Actual}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine($"snapshot        : {snapshotSource}");
+        Console.WriteLine($"  recorded      : {equality.ExpectedDigest}");
+        Console.WriteLine($"  this game     : {equality.ActualDigest}");
+
+        var profileAfter = ProfileReading(recording.Environment);
+        var sandboxAfter = SandboxDigest();
+        var profileUnchanged = profileBefore == profileAfter && sandboxBefore == sandboxAfter;
+        Console.WriteLine();
+        Console.WriteLine($"profile after   : {profileAfter}");
+        Console.WriteLine(
+            $"profile writes  : {(profileUnchanged ? "none - the reading and every byte of the profile store are unchanged" : "CHANGED")}");
+
+        Console.WriteLine();
+        Console.WriteLine(equality.Matches
+            ? $"ENTERED - this game is standing in {creator}'s fight, at the recorded combat start."
+            : "REFUSED - " + equality.Refusal);
+
+        artifact.WriteAtomic(
+            JsonSerializer.Serialize(new
+            {
+                schema = "sts2-pilot-trainer/enter-fight/v1",
+                manifest = Path.GetFileName(manifestPath),
+                run_id = recording.RunId,
+                creator,
+                control = Args.Value(args, "--control"),
+                progress = progress.ToString(),
+                progress_origin = entry.ProgressOrigin,
+                combat_start_seq = plan.CombatStartSeq,
+                boundary_checkpoint = plan.Boundary.Id,
+                steps,
+                combat_start_matches = equality.Matches,
+                comparisons = equality.Comparisons,
+                recorded_snapshot_digest = equality.ExpectedDigest,
+                this_game_digest = equality.ActualDigest,
+                snapshot_source = snapshotSource,
+                refusal = equality.Refusal,
+                profile_before = profileBefore,
+                profile_after = profileAfter,
+                profile_unchanged = profileUnchanged,
+                entry_policy =
+                    "The run is constructed at the recording's identity against a supplied complete unlock " +
+                    "state, set up with saving off, and never written anywhere. The recording owns every " +
+                    "decision before the fight; the fight itself is nobody's yet.",
+            }, Json.Indented) + "\n");
+
+        Console.WriteLine();
+        Console.WriteLine($"report: {Paths.Display(artifact.Path)}");
+        return equality.Matches && profileUnchanged ? 0 : 1;
+    }
+
+    /// <summary>
+    /// Damages one of the recording's decisions before the fight, using the project's
+    /// own negative controls rather than a drift injector written for this command.
+    ///
+    /// Only the controls that reach a pre-fight decision are offered: a control that
+    /// damaged a card play would leave the entry boundary untouched and prove nothing
+    /// about it.
+    /// </summary>
+    private static ReplayManifest ApplyEntryControl(ReplayManifest manifest, string name)
+    {
+        var control = Corruption.All.FirstOrDefault(candidate => candidate.Name == name)
+            ?? throw new ManifestException(
+                $"'{name}' is not a negative control. Available: " +
+                $"{string.Join(", ", Corruption.All.Select(candidate => candidate.Name))}.");
+
+        if (!control.AppliesTo(manifest))
+        {
+            throw new ManifestException(
+                $"Control '{control.Name}' needs {control.Requires}, and this recording has none.");
+        }
+
+        var damaged = control.Apply(manifest);
+
+        // A control that damaged a decision after the fight started leaves this
+        // boundary untouched, and an entry that then succeeded would look like
+        // evidence that drift is caught when nothing had drifted. So the control has
+        // to reach the prefix, and one that does not is refused rather than run.
+        var prefix = RecordedFightPlan.For(manifest).PrefightActions;
+        var damagedPrefix = damaged.Actions
+            .OrderBy(action => action.Seq)
+            .Take(prefix.Count)
+            .ToList();
+        var reachesPrefix =
+            damagedPrefix.Count != prefix.Count ||
+            prefix.Where((action, index) => !SameDecision(action, damagedPrefix[index])).Any();
+
+        if (!reachesPrefix)
+        {
+            throw new ManifestException(
+                $"Control '{control.Name}' changes nothing the recording decides before its fight, so entering " +
+                "the damaged history would prove nothing about the combat-start boundary. Use a control that " +
+                "damages one of the first " +
+                $"{prefix.Count.ToString(CultureInfo.InvariantCulture)} action(s).");
+        }
+
+        Console.WriteLine($"control         : {control.Name} - {control.What}");
+        return damaged;
+    }
+
+    private static bool SameDecision(ActionRecord left, ActionRecord right) =>
+        left.Seq == right.Seq &&
+        left.Verb == right.Verb &&
+        left.Args.Count == right.Args.Count &&
+        left.Args.All(arg =>
+            right.Args.TryGetValue(arg.Key, out var value) &&
+            string.Equals(arg.Value, value, StringComparison.Ordinal));
+
+    /// <summary>The digest the combat-start snapshot cache holds for this exact
+    /// history, when this machine has materialised it.</summary>
+    private static string? CachedSnapshotDigest(
+        RecordedFightPlan plan, string cacheDir, out string source)
+    {
+        var directory = plan.SnapshotKey.ResolveCacheDirectory(cacheDir);
+        var path = SnapshotCacheKey.ResolveCacheArtifact(directory, "state.canonical");
+        if (!File.Exists(path))
+        {
+            source =
+                $"recording manifest; no local cache under {plan.SnapshotKey.ToCacheDirectoryName()}";
+            return null;
+        }
+
+        source = $"cache hit, {plan.SnapshotKey.ToCacheDirectoryName()}";
+        return CanonicalState.DigestRendering(File.ReadAllText(path));
+    }
+
+    /// <summary>
+    /// What this process's profile says, as one line, so before and after can be
+    /// compared without a reader having to hold two tables in their head.
+    /// </summary>
+    private static string ProfileReading(EnvironmentIdentity expected)
+    {
+        var reading = LocalEnvironment.ReadPrerequisites(expected, PlayerProgress.LocalProfile);
+        var categories = string.Join(", ", reading.Unlocks.Categories.Select(category =>
+            $"{category.Name} {category.Available.ToString(CultureInfo.InvariantCulture)}/" +
+            category.Required.ToString(CultureInfo.InvariantCulture)));
+        var ceiling = (reading.ProfileAscensionCeiling ?? 0).ToString(CultureInfo.InvariantCulture);
+        return $"ascension ceiling {ceiling} for {expected.Character.Value}; {categories}";
+    }
+
+    /// <summary>
+    /// A digest over every byte of the sandbox profile store.
+    ///
+    /// The reading above would not notice a write that changed something it does not
+    /// report. This would: it is a hash of the files themselves, so any save, any
+    /// progress update and any new file changes it.
+    /// </summary>
+    private static string SandboxDigest()
+    {
+        var root = Path.Combine(Directory.GetCurrentDirectory(), "build", "sandbox");
+        if (!Directory.Exists(root)) return "sha256:absent";
+
+        var rendering = new StringBuilder();
+        foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+                     .Order(StringComparer.Ordinal))
+        {
+            rendering
+                .Append(Path.GetRelativePath(root, file))
+                .Append('')
+                .Append(Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(file))))
+                .Append('\n');
+        }
+
+        return "sha256:" + Convert.ToHexStringLower(
+            SHA256.HashData(Encoding.UTF8.GetBytes(rendering.ToString())));
+    }
+}

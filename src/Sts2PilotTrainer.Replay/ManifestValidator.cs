@@ -45,6 +45,9 @@ public static partial class ManifestValidator
     [GeneratedRegex(@"^\d+$")]
     private static partial Regex ContentHashPattern { get; }
 
+    [GeneratedRegex(@"^sha256:[0-9a-f]{64}$")]
+    private static partial Regex SnapshotDigestPattern { get; }
+
     public static ValidationResult Validate(ReplayManifest manifest)
     {
         var problems = new List<string>();
@@ -301,6 +304,12 @@ public static partial class ManifestValidator
                 {
                     problems.Add("source.video.channel_id is empty.");
                 }
+                if (string.IsNullOrWhiteSpace(source.Video.ChannelName))
+                {
+                    problems.Add(
+                        "source.video.channel_name is empty, so nothing that shows this recording to a player " +
+                        "could name whose run it is without hardcoding it.");
+                }
                 if (source.Video.DurationSeconds <= 0)
                 {
                     problems.Add("source.video.duration_s must be positive so observation timestamps can be bounded.");
@@ -311,12 +320,35 @@ public static partial class ManifestValidator
             {
                 problems.Add("source.synthetic must be absent for a VOD manifest.");
             }
+
+            if (source.CombatStartSnapshotDigest is not { } snapshot)
+            {
+                problems.Add(
+                    "source.combat_start_snapshot_digest is absent. A video recording must carry the " +
+                    "engine-produced combat-start boundary used to verify hidden state in the retail host.");
+            }
+            else
+            {
+                if (snapshot.Source != FactSource.Engine || snapshot.Evidence is not null)
+                {
+                    problems.Add(
+                        "source.combat_start_snapshot_digest must be source=engine and carry no video evidence.");
+                }
+                if (!SnapshotDigestPattern.IsMatch(snapshot.Value))
+                {
+                    problems.Add(
+                        "source.combat_start_snapshot_digest must be a lowercase sha256 digest.");
+                }
+            }
         }
         else if (source.Kind == "synthetic-engine")
         {
-            if (source.Video is not null || source.RunStart is not null || source.RunSummary is not null)
+            if (source.Video is not null || source.RunStart is not null || source.RunSummary is not null ||
+                source.CombatStartSnapshotDigest is not null)
             {
-                problems.Add("a synthetic-engine source cannot carry video, run-start, or run-summary evidence.");
+                problems.Add(
+                    "a synthetic-engine source cannot carry video, run-start, run-summary, or a published " +
+                    "combat-start snapshot digest.");
             }
 
             if (source.Synthetic is not { } synthetic ||

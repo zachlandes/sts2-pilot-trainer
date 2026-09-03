@@ -15,7 +15,7 @@ public sealed record ReplayManifest
 {
     /// <summary>Bumped whenever a change would make an older arbiter misread a
     /// newer manifest. Readers must refuse an unknown version rather than guess.</summary>
-    public const int CurrentManifestVersion = 3;
+    public const int CurrentManifestVersion = 4;
 
     [JsonPropertyName("manifest_version")]
     public int ManifestVersion { get; init; } = CurrentManifestVersion;
@@ -155,6 +155,16 @@ public sealed record SourceProvenance
     public required string Coverage { get; init; }
 
     /// <summary>
+    /// The complete canonical state digest at the first combat boundary, produced by
+    /// <c>combat-snapshot</c> after it re-derived the boundary in a fresh process.
+    /// Required for a video source so a retail host can compare hidden state without
+    /// carrying or trusting a machine-local snapshot cache.
+    /// </summary>
+    [JsonPropertyName("combat_start_snapshot_digest")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Fact<string>? CombatStartSnapshotDigest { get; init; }
+
+    /// <summary>
     /// Evidence that the recording begins at the run's beginning. Required for a
     /// video source: replaying an ordered history from run start against a recording
     /// of a *resumed* run reconstructs a different run, and every other gate passes.
@@ -202,6 +212,18 @@ public sealed record VideoSource
 
     [JsonPropertyName("channel_id")]
     public required string ChannelId { get; init; }
+
+    /// <summary>
+    /// The channel's display name, as a host names the person whose run this is.
+    ///
+    /// Here rather than in a host's own copy because it is a fact about the
+    /// recording, and a mod that hardcoded it would be a mod that could only ever
+    /// carry one recording. It is an identifier the source declares, like the
+    /// platform and the video id beside it, and never a gate: nothing in the
+    /// preflight, the replay or the comparison reads it.
+    /// </summary>
+    [JsonPropertyName("channel_name")]
+    public required string ChannelName { get; init; }
 
     [JsonPropertyName("duration_s")]
     public required int DurationSeconds { get; init; }

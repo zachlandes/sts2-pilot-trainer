@@ -35,8 +35,25 @@ internal static class TrainerScreen
     /// key stands in and the text is then set directly.</summary>
     private static LocString PlaceholderButtonLabel => new("main_menu_ui", "GENERIC_POPUP.confirm");
 
+    /// <summary>The same, for the second button the offer of a fight needs.</summary>
+    private static LocString PlaceholderBackLabel => new("main_menu_ui", "GENERIC_POPUP.cancel");
+
     /// <summary>The smallest the evidence rows are allowed to become.</summary>
     private const int MinimumBodyFontSize = 17;
+
+    /// <summary>
+    /// Leaves this screen and starts the recording's run.
+    ///
+    /// Not awaited: the button hands control back to the game, and the journey runs
+    /// on the game's own frames from there. Anything that goes wrong ends the attempt
+    /// and says so on screen; see <see cref="RecordedFightRun"/>.
+    /// </summary>
+    private static void EnterTheFight()
+    {
+        var recording = CombatTrainerMod.Recording;
+        NModalContainer.Instance?.Clear();
+        _ = RecordedFightRun.Start(recording);
+    }
 
     internal static void Open()
     {
@@ -58,10 +75,21 @@ internal static class TrainerScreen
 
     private static EligibilityScreen Compose()
     {
-        var recording = CombatTrainerMod.Recording
-            ?? throw new InvalidOperationException("This build carries no recording to check against.");
+        var recording = CombatTrainerMod.Recording;
         var expected = recording.Environment;
-        return EligibilityScreen.For(expected, Preflight.EvaluateLiveHost(expected));
+
+        // Asked about the state the run will actually be generated against, which is
+        // the same state RecordedFightEntry constructs it with. That is what keeps
+        // every row a requirement of the fight on offer: the unlocks, the acts and the
+        // ascension are supplied for that run, so a row measured against the player's
+        // save would be reporting a requirement nothing consults - and, on a profile
+        // below the recording's ascension, would sit in red above an offer it does not
+        // stop. The build, the content hash and the mod environment are read from this
+        // installation either way, because those are the ones no host can supply.
+        return EligibilityScreen.For(
+            recording,
+            Preflight.EvaluateLiveHost(expected, RecordedFightEntry.SuppliedProgress),
+            fightOffered: RecordedFightEntry.CanConstruct(expected, out _));
     }
 
     private static void ShowSafely(EligibilityScreen screen)
@@ -92,9 +120,25 @@ internal static class TrainerScreen
             body.ScrollActive = true;
 
             content.SetText(screen.Title, ScreenMarkup.Body(screen));
-            content.InitYesButton(PlaceholderButtonLabel, _ => { });
-            content.HideNoButton();
-            content.YesButton.SetText(screen.BackButton);
+
+            // Where the fight is offered, the offer is the confirming button and Back
+            // is the other one - the game's own popup puts the affirmative on the
+            // right, and the affirmative here is entering the fight. Where it is not
+            // offered the screen is exactly what it was before this slice: one Back
+            // button and a verdict.
+            if (screen.FightOffered)
+            {
+                content.InitYesButton(PlaceholderButtonLabel, _ => EnterTheFight());
+                content.YesButton.SetText(screen.EnterButton);
+                content.InitNoButton(PlaceholderBackLabel, _ => NModalContainer.Instance?.Clear());
+                content.NoButton.SetText(screen.BackButton);
+            }
+            else
+            {
+                content.InitYesButton(PlaceholderButtonLabel, _ => { });
+                content.HideNoButton();
+                content.YesButton.SetText(screen.BackButton);
+            }
 
             // Deferred: adding the modal updates the game's active screen context, which
             // decides what is focused. Grabbing focus before that has finished loses it,
@@ -151,7 +195,10 @@ internal static class EligibilityScreenRefusal
 {
     internal static EligibilityScreen For(Exception failure) => new(
         Title: TrainerCopy.Name,
-        Subtitle: TrainerCopy.Subtitle,
+        // Nothing is named here. The subtitle names whose recording this is, and a
+        // process that could not read its own eligibility is a process that may not
+        // be able to read the recording either.
+        Subtitle: string.Empty,
         RecordingLine: string.Empty,
         Headline: TrainerCopy.FailHeadline,
         Eligible: false,
