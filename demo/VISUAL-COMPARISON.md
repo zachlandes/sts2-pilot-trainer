@@ -3,7 +3,7 @@
 *2026-09-03T06:26:02Z by Showboat 0.6.1*
 <!-- showboat-id: 3a3fbb41-c758-415f-a0b2-40a0d1f31c75 -->
 
-This document is the S6 slice of [the proof-of-concept path](../docs/proof-of-concept-path.md):
+This document records the completed S5 result from [the proof-of-concept path](../docs/proof-of-concept-path.md):
 the post-fight result, drawn. Every code block below was executed; the output under it is
 that run's output. `showboat --workdir .. verify VISUAL-COMPARISON.md` re-runs the lot and
 diffs; the blocks are repo-root commands, which is what the working directory is for.

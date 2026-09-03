@@ -10,9 +10,9 @@ namespace Sts2PilotTrainer.Mod;
 /// This is the result the captain asked for after reading the first one: the fight
 /// as pictures rather than as prose. The cards each side played are the game's own
 /// card art in turn order, the potions are the game's own bottles at the turn they
-/// were spent, the summary is four columns of figures, and the chart puts both
-/// lines' enemy health lost and player health lost against the turn. The one large
-/// popup the previous slice used is gone rather than wrapped around this.
+/// were spent, the summary is two side-by-side columns of figures, and the chart
+/// puts both lines' enemy health lost and player health lost against the turn. The
+/// one large popup the previous slice used is gone rather than wrapped around this.
 ///
 /// It draws and decides nothing. Every value comes from
 /// <see cref="FightResultScreen"/>, every word from it too, and a measurement the

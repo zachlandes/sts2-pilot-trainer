@@ -386,9 +386,8 @@ transcribed and nothing here is a claim about it.
 ## Deliberately not built
 
 No turn-level reset or branching. No solver. No generalized VOD ingestion and no
-multi-VOD support. No charting. No broad interface work. No presentation designed
-around rare permanent card removal. No candidate search: S2.5 built the prefix one
-would need and deliberately stopped there.
+multi-VOD support. No presentation designed around rare permanent card removal. No
+candidate search: S2.5 built the prefix one would need and deliberately stopped there.
 
 And nothing in the decision alphabet beyond what this one path uses.
 Rest sites, shops, potion use, treasure rooms and act transitions are still named by the format and still refused by the driver, because implementing a verb no reconstruction exercises is how a verb that quietly does the wrong thing gets shipped.

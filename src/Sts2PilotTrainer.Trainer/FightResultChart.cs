@@ -6,13 +6,14 @@ namespace Sts2PilotTrainer.Trainer;
 /// The post-fight chart: what each turn cost either side, turn by turn, for both
 /// lines at once.
 ///
-/// This is the interface hypothesis <c>docs/comparison-direction.md</c> wrote down
-/// and kept the data for - a turn-indexed reading of enemy health lost and player
-/// health lost for the player's line and the recording's, with the potions each side
-/// used marked at the turn they were used. It is presentation, so it lives here
-/// rather than in the comparison contract: <see cref="CombatComparison"/> states
-/// differences and commits to no shape for them, and a chart baked into it would be
-/// an interface decision nothing could revisit.
+/// This is the required interface <c>docs/comparison-direction.md</c> first wrote
+/// down and kept the data for - a turn-indexed reading of enemy health lost and
+/// player health lost for the player's line and the recording's, with the potions
+/// each side used marked at the turn they were used. It is presentation, so it
+/// lives here rather than in the comparison contract:
+/// <see cref="CombatComparison"/> states differences and commits to no shape for
+/// them, and a chart baked into it would be an interface decision nothing could
+/// revisit.
 ///
 /// It derives and never infers. Every number is a value the comparison already
 /// carries; a turn one side never reached is absent on that side

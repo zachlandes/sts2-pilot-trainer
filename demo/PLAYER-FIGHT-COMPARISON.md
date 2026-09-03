@@ -116,7 +116,7 @@ combat start    : checkpoint 'floor2-combat-start', 13 observed value(s)
   ok   combat.turn                recording=1                                                        game=1
   ok   player.max_hp              recording=68                                                       game=68
 
-snapshot        : cache hit, v0.111.0_standard_CHARACTER.IRONCLAD_a10_SFXT47K77RFK_1568834832_seq1_d0cf798421262bced5ac23bd9d1a3e6457889d455cb638089bc95ede4c1664ec
+snapshot        : recording manifest; no local cache under v0.111.0_standard_CHARACTER.IRONCLAD_a10_SFXT47K77RFK_1568834832_seq1_d0cf798421262bced5ac23bd9d1a3e6457889d455cb638089bc95ede4c1664ec
   recorded      : sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae
   this game     : sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae
 
@@ -243,8 +243,6 @@ a controller is likewise not claimed.
 limits, and [docs/proof-of-concept-path.md](../docs/proof-of-concept-path.md) has S5
 in the context of the loop it closes.
 
-**Observed, and recorded as a limit rather than expanded here.** The captain's report
-after this session: it worked, and a text-led list of differences on a large modal is
-not good enough for the next interface. The screenshot-backed playback interface that
-points at is the follow-up after this loop merges; this slice stays the approved
-wording on the game's popup.
+**Observed here, then replaced.** The captain reported after this session that the
+text-led list of differences on a large modal was not the interface.
+This document keeps that session's screenshot as evidence; [the completed visual result](VISUAL-COMPARISON.md) records the drawn panel that replaced it.
