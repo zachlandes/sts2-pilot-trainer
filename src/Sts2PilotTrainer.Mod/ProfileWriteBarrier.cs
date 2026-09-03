@@ -100,6 +100,22 @@ internal static class ProfileWriteBarrier
     /// </summary>
     internal static void Install(Harmony harmony)
     {
+        var installed = Install(
+            harmony,
+            typeof(MegaCrit.Sts2.Core.Saves.SaveManager).Assembly,
+            SuppressedWrites);
+
+        Log.Info(
+            $"[{CombatTrainerMod.ModId}] profile write barrier installed over " +
+            $"{installed.ToString(System.Globalization.CultureInfo.InvariantCulture)} write(s); " +
+            "inactive until a trainer run exists", 2);
+    }
+
+    internal static int Install(
+        Harmony harmony,
+        Assembly targetAssembly,
+        IReadOnlyList<(string Type, string Method)> suppressedWrites)
+    {
         // Two prefixes rather than one, because Harmony's __result is only valid on a
         // method that returns something. A single prefix declaring it would refuse to
         // patch every void write here, and a barrier that failed to install over half
@@ -108,13 +124,11 @@ internal static class ProfileWriteBarrier
             .GetMethod(nameof(SkipVoidWrite), BindingFlags.NonPublic | BindingFlags.Static)!);
         var skipTask = new HarmonyMethod(typeof(ProfileWriteBarrier)
             .GetMethod(nameof(SkipTaskWrite), BindingFlags.NonPublic | BindingFlags.Static)!);
-
-        var gameAssembly = typeof(MegaCrit.Sts2.Core.Saves.SaveManager).Assembly;
         var installed = 0;
 
-        foreach (var (typeName, methodName) in SuppressedWrites)
+        foreach (var (typeName, methodName) in suppressedWrites)
         {
-            var type = gameAssembly.GetType(typeName)
+            var type = targetAssembly.GetType(typeName)
                 ?? throw new InvalidOperationException(
                     $"This build has no {typeName}, so the trainer cannot guarantee it writes nothing.");
 
@@ -152,10 +166,7 @@ internal static class ProfileWriteBarrier
             }
         }
 
-        Log.Info(
-            $"[{CombatTrainerMod.ModId}] profile write barrier installed over " +
-            $"{installed.ToString(System.Globalization.CultureInfo.InvariantCulture)} write(s); " +
-            "inactive until a trainer run exists", 2);
+        return installed;
     }
 
     /// <summary>

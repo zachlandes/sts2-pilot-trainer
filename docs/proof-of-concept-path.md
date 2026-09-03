@@ -351,12 +351,6 @@ the recording stood in for the player.
 [demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has it with its
 real output, and the retail client's own result over a fight a person played.
 
-### Later, and only a hypothesis
-
-The turn-indexed chart of player-versus-VOD health loss with potion markers is recorded in
-[comparison direction](comparison-direction.md) as an interface hypothesis.
-It is not a commitment, and discarding it is a good outcome.
-
 ## Known limits that no slice above removes
 
 **The source game mode is not identified.** Standard and custom-with-no-modifiers agree

@@ -18,8 +18,8 @@ inventing a single value the projection cannot derive?
 Three parts. The chart's derivation, which is arithmetic over the comparison and is tested
 on a machine with no game. The panel, which is assembled from stock Godot nodes and can
 therefore be built and interrogated node by node in the same game-free process. And the
-retail client, with a person playing a line that is deliberately not the recording's, so
-the two sides of the panel are actually different.
+retail client, with an agent playing a deliberately different line through screenshots
+and synthetic clicks, so the two sides of the panel are actually different.
 
 ## What the chart is, and what it refuses
 

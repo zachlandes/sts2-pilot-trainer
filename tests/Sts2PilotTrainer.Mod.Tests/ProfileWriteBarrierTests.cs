@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using HarmonyLib;
+using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -84,25 +86,73 @@ public sealed class ProfileWriteBarrierTests
         Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "SaveRun"), named);
     }
 
-    /// <summary>
-    /// The writes and mutations a trainer run leaves in a player's own profile, each
-    /// found by measuring the profile directory before and after a retail session.
-    ///
-    /// Found in the retail client: the trainer's run marked its own starting relic
-    /// seen while it was live, the barrier never saw it because nothing was written,
-    /// and the game wrote that progress out itself on quit, with no trainer run live
-    /// and by a path the barrier must not stop. State that will be written later is a
-    /// write that has not happened yet, so it belongs on the same list.
-    /// </summary>
     [BarrierFact]
-    public void ItCoversTheProgressAMutationLeavesBehindForTheGameToWrite()
+    public void ItInstallsTheBoundariesFoundByTheRetailProof()
     {
-        var named = SuppressedWrites().ToHashSet();
+        var harmony = new Harmony($"sts2-pilot-trainer.barrier-test.{Guid.NewGuid():N}");
+        var gameAssembly = GameAssembly();
+        var boundaries = new (string Type, string Method)[]
+        {
+            ("MegaCrit.Sts2.Core.Multiplayer.Replay.CombatReplayWriter", "WriteReplay"),
+            ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkCardAsSeen"),
+            ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkRelicAsSeen"),
+            ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkPotionAsSeen"),
+        };
 
-        Assert.Contains(("MegaCrit.Sts2.Core.Multiplayer.Replay.CombatReplayWriter", "WriteReplay"), named);
-        Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkCardAsSeen"), named);
-        Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkRelicAsSeen"), named);
-        Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkPotionAsSeen"), named);
+        try
+        {
+            ProfileWriteBarrier.Install(harmony);
+
+            foreach (var (typeName, methodName) in boundaries)
+            {
+                var methods = gameAssembly.GetType(typeName)!
+                    .GetMethods(BindingFlags.Instance | BindingFlags.Static |
+                                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                    .Where(method => method.Name == methodName);
+
+                Assert.All(methods, method => Assert.Contains(
+                    Harmony.GetPatchInfo(method)!.Prefixes,
+                    patch => patch.owner == harmony.Id));
+            }
+        }
+        finally
+        {
+            harmony.UnpatchAll(harmony.Id);
+        }
+    }
+
+    [Fact]
+    public async Task RaisedItSuppressesInstalledBoundaries()
+    {
+        var harmony = new Harmony($"sts2-pilot-trainer.barrier-test.{Guid.NewGuid():N}");
+        var boundaryType = typeof(WriteBoundary);
+        var boundaries = new (string Type, string Method)[]
+        {
+            (boundaryType.FullName!, nameof(WriteBoundary.VoidWrite)),
+            (boundaryType.FullName!, nameof(WriteBoundary.TaskWrite)),
+        };
+
+        try
+        {
+            Assert.Equal(2, ProfileWriteBarrier.Install(harmony, boundaryType.Assembly, boundaries));
+
+            WriteBoundary.VoidWrite();
+            await WriteBoundary.TaskWrite();
+            Assert.Equal(2, WriteBoundary.Calls);
+
+            WriteBoundary.Calls = 0;
+            ProfileWriteBarrier.Raise();
+            WriteBoundary.VoidWrite();
+            await WriteBoundary.TaskWrite();
+
+            Assert.Equal(0, WriteBoundary.Calls);
+        }
+        finally
+        {
+            ProfileWriteBarrier.Lower();
+            harmony.UnpatchAll(harmony.Id);
+            WriteBoundary.Calls = 0;
+        }
     }
 
     /// <summary>
@@ -201,6 +251,19 @@ public sealed class ProfileWriteBarrierTests
         {
             pendingResult.SetValue(null, null);
             recordedRun.GetMethod("Finish", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+        }
+    }
+
+    private static class WriteBoundary
+    {
+        internal static int Calls { get; set; }
+
+        public static void VoidWrite() => Calls++;
+
+        public static Task TaskWrite()
+        {
+            Calls++;
+            return Task.CompletedTask;
         }
     }
 
