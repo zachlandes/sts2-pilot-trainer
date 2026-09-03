@@ -137,15 +137,17 @@ panel then shows the capture's own sentence instead of a comparison.
 A bridged gap would attribute its damage to nothing and the projection would quietly
 under-count, which is exactly the plausible wrong answer this project refuses.
 
-**Two actions can begin close enough together to leave no room for the sample between
-them.** Seen in the client: a card was played and the turn ended in the same click, and
-the capture refused the whole fight because the card's after-sample had not been taken
-when the ended turn began. In this client a number key selects a card and a click plays
-it, so a click on End Turn while a card is held is two actions at once; a person holding a
-card and clicking End Turn reaches the same state. The refusal is correct - the two
-actions genuinely overlapped, and what each did cannot be attributed - and nothing here
-changes it. It is recorded because the window is real: a fight lost to it is a fight with
-no comparison, and closing it is work for the capture's owner rather than for the panel.
+**Two actions can begin with no frame between them, and that is now recorded rather
+than refused.** In this client a number key selects a card and a click plays it, so a
+click on End Turn while a card is held plays the card and ends the turn together. Seen
+first as a refused fight: the card's after-sample had not been taken when the ended turn
+began. The capture now closes the open action with the next one's before-sample where the
+executor had already reported that action finished - the executor runs its actions in
+order, so that sample is exactly the finished action's after-state and nothing is
+invented. Where the open action had not finished the two genuinely overlap and the capture
+refuses as it always did, and a change no action accounts for is still a gap either way.
+Reproduced in the client before and after: the same gesture that refused a whole fight now
+produces a comparison.
 
 **The recording's side travels with the manifest.**
 The client cannot replay - one process, one run, and it is the player's - so the
@@ -225,16 +227,30 @@ The second session also produced, in the client for the first time, a fight left
 ended and a capture that could not be completed.
 A lost fight has still only been proved on the game-free capture and screen.
 
-**The give-up path reaches a write the barrier does not cover.**
-Measured over 154 files before and after that session: 152 byte identical, including all
-120 run history files and both profiles' `progress.save`. The game's own combat replay
-scratch file differs, as it did in S4 and S5. So does
-`modded/profile1/saves/progress.save.backup`, which now holds a byte-for-byte copy of the
-current `progress.save`: the game copies a file to its backup inside `GodotFileIo`, below
-the `SaveManager` methods `ProfileWriteBarrier` suppresses, and giving a run up reaches
-that copy. No progress was gained, lost or altered; a backup that held an older snapshot
-now holds the current one. The barrier's list is what needs extending, and that is its
-owner's change rather than the panel's.
+**A trainer run leaves nothing behind, and that is measured rather than argued.**
+Over 154 files - every profile, progress, prefs, save, run-history and replay file, every
+mod config, and every file of the other mods installed here - hashed before the mod was
+installed and after the game was quit: all 154 byte identical, across entering the fight,
+playing it, reading the result and leaving.
+
+Getting there found two writes the barrier did not cover, each established by
+reproduction. A clean launch and quit with no trainer run changes nothing, so neither was
+the game's own ordinary behaviour.
+
+The first is not a write at all. A run marks its own relics seen as it starts and its
+rewards seen as they are offered; those calls only mutate the progress the game holds in
+memory, so the barrier never saw them - and the mutation outlived the run. The game then
+wrote it out itself at `NGame.Quit`, with no trainer run live, by a path the barrier must
+not stop. It showed as a rotated `progress.save.backup` whose content happened to match,
+because this profile had already seen the trainer's relic; on a profile that had not, the
+same path writes a discovery the player never made. `SaveManager.MarkCardAsSeen`,
+`MarkRelicAsSeen` and `MarkPotionAsSeen` are on the barrier's list for that reason: state
+that will be written is a write that has not happened yet.
+
+The second is the combat replay the engine writes at the end of every fight, into the
+player's own profile directory, where it is the replay of the last combat they fought.
+Suppressing `RunManager.WriteReplay`, which only hands the writer a path, left the file
+changed anyway; the barrier covers `CombatReplayWriter.WriteReplay` itself.
 
 **Three of the recording's steps are screen commands, not engine ones.**
 Each was found by running it, and each has the same shape: the engine call is the

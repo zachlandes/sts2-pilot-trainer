@@ -13,6 +13,51 @@ public sealed class FightCaptureTests
     private const string Digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
     [Fact]
+    public void AnActionThatBeginsWhileAnotherIsOpenClosesItWhereThatOneHadFinished()
+    {
+        // Measured in the retail client: one click played a held card and ended the
+        // turn, so the played card had not been sampled afterwards when the ended turn
+        // began. Where the engine had nothing queued, the ended turn's before-sample is
+        // exactly the card's after-sample, so the card is recorded rather than the
+        // whole fight refused.
+        var capture = FightCapture.Begin("player", Sample("in_progress", 1, 64, 42), Digest);
+        capture.BeginStep("PlayCard", Args(("card_id", "CARD.DEFEND_IRONCLAD")), Sample("in_progress", 1, 64, 42));
+        capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 42), previousActionFinished: true);
+        capture.CompleteStep(Sample("in_progress", 2, 55, 42));
+
+        Assert.Equal(FightCaptureState.Live, capture.State);
+        Assert.Null(capture.Refusal);
+        Assert.Equal(["combat_start", "PlayCard", "EndTurn"], capture.Trace.Steps.Select(step => step.Verb));
+        var card = capture.Trace.Steps[1];
+        Assert.Equal(card.Before, card.After);
+    }
+
+    [Fact]
+    public void AnActionThatBeginsWhileTheOneBeforeItIsStillRunningIsStillRefused()
+    {
+        var capture = FightCapture.Begin("player", Sample("in_progress", 1, 64, 42), Digest);
+        capture.BeginStep("PlayCard", Args(("card_id", "CARD.BASH")), Sample("in_progress", 1, 64, 42));
+        capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 34));
+
+        Assert.Equal(FightCaptureState.Incomplete, capture.State);
+        Assert.Contains("had not been sampled afterwards", capture.Refusal!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnActionThatBeginsAfterAGapIsStillRefusedEvenSo()
+    {
+        // A finished previous action does not say the fight is unchanged. A change no
+        // action accounts for is still a gap.
+        var capture = FightCapture.Begin("player", Sample("in_progress", 1, 64, 42), Digest);
+        capture.BeginStep("PlayCard", Args(("card_id", "CARD.BASH")), Sample("in_progress", 1, 64, 42));
+        capture.CompleteStep(Sample("in_progress", 1, 64, 34));
+        capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 20), previousActionFinished: true);
+
+        Assert.Equal(FightCaptureState.Incomplete, capture.State);
+        Assert.Contains("with no action in between", capture.Refusal!, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void BeginsOnlyInsideALiveFight()
     {
         var thrown = Assert.Throws<ManifestException>(() =>

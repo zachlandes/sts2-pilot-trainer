@@ -85,6 +85,27 @@ public sealed class ProfileWriteBarrierTests
     }
 
     /// <summary>
+    /// The writes and mutations a trainer run leaves in a player's own profile, each
+    /// found by measuring the profile directory before and after a retail session.
+    ///
+    /// Found in the retail client: the trainer's run marked its own starting relic
+    /// seen while it was live, the barrier never saw it because nothing was written,
+    /// and the game wrote that progress out itself on quit, with no trainer run live
+    /// and by a path the barrier must not stop. State that will be written later is a
+    /// write that has not happened yet, so it belongs on the same list.
+    /// </summary>
+    [BarrierFact]
+    public void ItCoversTheProgressAMutationLeavesBehindForTheGameToWrite()
+    {
+        var named = SuppressedWrites().ToHashSet();
+
+        Assert.Contains(("MegaCrit.Sts2.Core.Multiplayer.Replay.CombatReplayWriter", "WriteReplay"), named);
+        Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkCardAsSeen"), named);
+        Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkRelicAsSeen"), named);
+        Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkPotionAsSeen"), named);
+    }
+
+    /// <summary>
     /// With no trainer run live the barrier does nothing at all. This is what keeps a
     /// player's own runs saving normally with the mod installed, and it is the reason
     /// the patches can be installed once at start rather than raised and lowered.

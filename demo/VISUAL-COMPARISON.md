@@ -175,30 +175,45 @@ size of its sentence.
 
 ![The Combat Trainer notice over the darkened main menu: a compact dark panel titled "Combat Trainer" reading "This fight was left before it ended, so there is nothing to compare." with a gold Done button.](dce01ad1-2026-09-03.png)
 
-A capture that could not be completed: on the first attempt of this session the panel
+A capture that could not be completed: on an early attempt of this session the panel
 showed the capture's own refusal instead of a comparison - "A 'EndTurn' began while the
 'PlayCard' before it had not been sampled afterwards, so the capture cannot say what each
-of them did." That is the capture refusing rather than guessing, and it is correct, but
-what produced it is worth writing down. In this client a number key *selects* a card and
-a click plays it; the agent pressed a number and then clicked End Turn, so that one click
-both played the held card and ended the turn, and the two actions began within
-milliseconds of each other. A person who holds a card and then clicks End Turn can reach
-the same state. The capture's rule is not at fault and is not changed here; that the
-window exists at all is recorded in [the in-game host's limits](../docs/in-game-host.md).
+of them did." In this client a number key *selects* a card and a click plays it, so one
+click on End Turn while a card is held plays the card and ends the turn together, and the
+card's after-sample had not been taken when the ended turn began. That gesture is
+available to anyone playing with the keyboard and the mouse, so it is a defect rather than
+a limit, and it is fixed: the capture now closes the open action with the next one's
+before-sample where the executor has already reported that action finished. The same
+gesture was played again in the session that produced the panel above - turn 2's Defend
+and the ended turn after it are one click - and it produced a comparison. Where the open
+action had *not* finished the two genuinely overlap, and the capture refuses as it always
+did.
 
 ## What this session changed on disk
 
-SHA-256 over 154 files before the mod was installed and after the last Done: every
-profile, progress, prefs, save, run-history and replay file, every mod config, and every
-file of BaseLib, Hindsight and STS2_MCP. 152 are byte identical, including all 120 run
-history files and both profiles' `progress.save`.
+Nothing. SHA-256 over 154 files before the mod was installed and after the game was quit -
+every profile, progress, prefs, save, run-history and replay file, every mod config, and
+every file of BaseLib, Hindsight and STS2_MCP - and all 154 are byte identical across
+entering the fight, playing it, reading the result, pressing Done and quitting.
 
-Two differ, and both are worth naming. `modded/profile1/replays/latest.mcr` is the game's
-own combat replay scratch file, which the engine rewrites at the end of every fight; S4
-and S5 recorded it differing the same way. `modded/profile1/saves/progress.save.backup`
-now holds a byte-for-byte copy of the current `progress.save`, whose own content is
-unchanged: the game copies a file to its backup inside its own IO layer, below the
-`SaveManager` methods `ProfileWriteBarrier` suppresses, and the give-up path reaches that
-copy. No progress was gained, lost or altered - what changed is that a backup which held
-an older snapshot now holds the current one. The barrier's list does not cover that path,
-which is a finding for the barrier's owner rather than something this slice changes.
+That took two fixes, each found by reproducing rather than by reading, and a control that
+ruled out the game's own behaviour: a clean launch and quit with the mod loaded and no
+trainer run changes nothing at all.
+
+The first was not a write. A run marks its own relics seen as it starts and its rewards
+seen as they are offered, and those calls only mutate the progress the game holds in
+memory - so the write barrier never saw them, and the mutation outlived the run that made
+it. The game then wrote that progress out itself on quit, by an ordinary path the barrier
+must not stop. It showed as a rotated `progress.save.backup` whose content happened to
+match, because this profile had already seen the trainer's starting relic; on a profile
+that had not, the same path would have written a discovery the player never made. Marking
+a card, a relic or a potion as seen is now suppressed for as long as a trainer run is
+live.
+
+The second was the combat replay the engine writes at the end of every fight, into the
+player's own profile directory where it is the replay of the last combat *they* fought.
+Suppressing `RunManager.WriteReplay` - which only hands the writer a path - left the file
+changed anyway, so the barrier now covers `CombatReplayWriter.WriteReplay` itself.
+
+[docs/in-game-host.md](../docs/in-game-host.md) carries both, and the barrier's own tests
+name every method on its list.

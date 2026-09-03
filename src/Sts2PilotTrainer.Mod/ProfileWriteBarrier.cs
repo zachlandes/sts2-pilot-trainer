@@ -17,6 +17,12 @@ namespace Sts2PilotTrainer.Mod;
 /// stands in an event room, so both of those are on its path. A player's progress
 /// file would then be rewritten from a run that was never theirs.
 ///
+/// A third kind sits on the same list without being a write at all: marking a card,
+/// a relic or a potion as seen changes only the progress the game holds in memory,
+/// which the trainer's run then leaves behind for the game to write out later by an
+/// ordinary path the barrier must not stop. State that will be written is a write
+/// that has not happened yet.
+///
 /// So the writes themselves are stopped rather than the flags that usually reach
 /// them. Every patch here is installed once, at mod start, and every one of them
 /// does nothing at all unless a trainer run is live. That order matters: a barrier
@@ -52,10 +58,34 @@ internal static class ProfileWriteBarrier
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "UpdateProgressWithRunData"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "SaveProfile"),
 
+        // The combat replay the engine writes at the end of every fight. It lands in
+        // the player's own profile directory, where it is the replay of the last
+        // combat they fought - and a fight in somebody else's run is not one of
+        // theirs. Measured: this is the one file a trainer fight changed once
+        // everything else was byte identical. Patched at the writer rather than at
+        // RunManager.WriteReplay, which only hands it the path: suppressing that
+        // wrapper left the file changed anyway, so the write reaches the writer by a
+        // path this process cannot intercept there.
+        ("MegaCrit.Sts2.Core.Multiplayer.Replay.CombatReplayWriter", "WriteReplay"),
+
         // The run save and the run history: this fight is not a run anybody keeps.
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "SaveRun"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "SaveRunHistory"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "IncrementNumReloads"),
+
+        // Not writes, and on this list for exactly that reason. A run marks its own
+        // relics seen as it starts and its rewards seen as they are offered, and those
+        // calls only mutate the progress the game holds in memory - so the barrier
+        // never saw them, and the mutation outlived the run it came from. The game
+        // then wrote it out itself: measured in the retail client, NGame.Quit calls
+        // SaveProgressFile with no trainer run live, which is an ordinary write the
+        // barrier must not stop, of a progress state the trainer had already dirtied.
+        // Seen once as a rotated progress backup whose content happened to match,
+        // because the profile had already seen the trainer's relic; on a profile that
+        // had not, the same path writes a discovery the player never made.
+        ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkCardAsSeen"),
+        ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkRelicAsSeen"),
+        ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkPotionAsSeen"),
 
         // Outward-facing, and so worse than a local write: an achievement earned in
         // somebody else's fight is not the player's, and it cannot be taken back.
