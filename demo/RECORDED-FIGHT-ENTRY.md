@@ -187,7 +187,7 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrain
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    40, Skipped:     0, Total:    40, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
 ```
 
 ## The regression coverage around the entry
@@ -308,20 +308,26 @@ it.
 installed and every other mod disabled through the game's own screen, the client loads
 Combat Trainer alone and installs the write barrier over ten real write sites. The
 screen offers the fight. Pressing it constructs the recording's run in the client - the
-overlay reads seed SFXT47K77RFK, the badge reads Ascension 10, the top bar reads 64 of
-80 - and stops on the recording's first decision with the approved wording over Neow's
-own screen. Pressing Next makes that decision: Leafy Poultice is granted, maximum health
-goes 80 to 68, and the log records `made recorded decision 1 of 2`.
+overlay reads seed SFXT47K77RFK, the badge reads Ascension 10 - and the journey then
+runs: the recorded blessing is taken (maximum health 80 to 68, the relic granted), the
+game's own event screen is dismissed through the button the game would have had the
+player press, the map comes up, and the recorded map move is made. Both recorded
+decisions execute in order, each captioned from what the run is standing in front of,
+numbered where it falls. The log records both.
 
-**Not proved: everything after that decision.** The journey stops there. The second
-recorded decision is never made, the fight is never entered, no timeout fires and
-nothing is logged - the shape of a wait that is never ticked. Three ways of waiting on
-the game's frames have been tried and none has been observed running in the client;
-`RecordedFightRun.WaitForFrames` records all three and what the next attempt should
-establish first. So the map move, the entry into combat and the combat-start equality
-check have not been seen in the retail client, and nothing here should be read as
-saying they have. Headlessly, all of them run - which is what makes this a defect in
-how the in-game host waits rather than in what the journey does.
+**Not proved: the fight itself.** After the map move the run does not finish opening
+its combat - the engine's own turn phase never becomes the player's - so the entry
+gives up and abandons the run rather than handing over a fight it cannot show is the
+recorded one. That refusal is the machinery working; what is missing is a reason for
+the combat to start. Entering a map node from code builds the room, and something in
+the client's own room transition that a clicked node would have run does not happen.
+It is the same shape as the two presentation gaps below, one step further on, and it
+is where this stopped rather than chase a fifth.
+
+**What the boundary check did, before that.** An earlier run of this journey reached
+the boundary and refused it, reading an empty hand and no energy - the fight one moment
+after the room is built and before it is dealt. Wrong to enter, correctly refused, and
+the reason the entry now waits for the engine's own turn phase instead of for the room.
 
 **One thing the retail run found that no headless test could.** The client's event room
 waits on its own "Proceed" before returning to the map. The manifest has no verb for
@@ -344,3 +350,14 @@ the most this can claim, and it is not a claim that either responds to a control
 here and what runs in the client, and
 [docs/proof-of-concept-path.md](../docs/proof-of-concept-path.md) has S4 in the context
 of the loop it closes a step of.
+
+The map, reached. The recorded blessing has been taken, the game's own event screen has
+been dismissed through the button the game itself would have had the player press, and
+the map is behind the panel with the run standing on its starting node. The step is
+numbered where it falls.
+
+```bash {image}
+![The Act 1 map in the retail client with a panel over it titled "Watching NaveGreed", reading "2 of 2   NaveGreed moved to the Monster node, centre column", with "Skip to the fight" and "Next" buttons. The top bar reads 64/68 health after the recorded blessing.](in-game-watching-map.png)
+```
+
+![The Act 1 map in the retail client with a panel over it titled "Watching NaveGreed", reading "2 of 2   NaveGreed moved to the Monster node, centre column", with "Skip to the fight" and "Next" buttons. The top bar reads 64/68 health after the recorded blessing.](140b3d23-2026-09-03.png)

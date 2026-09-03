@@ -40,6 +40,30 @@ public sealed record PrefightJourney(
     /// in the whole journey a step is, so it has to come from the plan rather than
     /// from the list.
     /// </param>
+    /// <summary>
+    /// One step of the journey, numbered where it actually falls.
+    ///
+    /// A host reaching the recording's screens one at a time knows which step it is
+    /// on and holds only that one, so numbering from a list's position would call
+    /// every step the first one - which is what the second panel said out loud in the
+    /// retail client before this existed.
+    /// </summary>
+    public static PrefightJourney ForStep(string creator, PrefightChoice choice, int number, int count)
+    {
+        if (number < 1 || number > count)
+        {
+            throw new ManifestException(
+                $"This journey has {count} step(s), so there is no step {number}.");
+        }
+
+        return new PrefightJourney(
+            Chip: TrainerCopy.WatchingChip(creator),
+            ChoicesShownAsRecorded: TrainerCopy.ChoicesShownAsRecorded(creator),
+            NextButton: TrainerCopy.NextButton,
+            SkipButton: TrainerCopy.SkipButton,
+            Steps: [new PrefightStep(number, count, Caption(creator, choice))]);
+    }
+
     public static PrefightJourney For(
         string creator, IReadOnlyList<PrefightChoice> choices, int? stepCount = null)
     {

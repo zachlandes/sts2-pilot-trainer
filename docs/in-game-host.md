@@ -112,16 +112,22 @@ no video can show. A boundary that disagrees on either abandons the run and says
 ## What it does not prove
 
 **Nobody has played the fight.**
-In the retail client the journey has been watched as far as its first recorded
-decision and no further: the run is constructed, the screen offers the fight, the
-watching panel comes up over Neow's own screen, and pressing Next grants the recorded
-blessing. Then it stops — the next decision never runs, no timeout fires and nothing
-is logged, which is what a wait that is never ticked looks like. Three ways of waiting
-on the game's frames have been tried and none has been seen running in the client;
-`RecordedFightRun.WaitForFrames` records all three so a fourth attempt starts by
-proving a tick happens at all. Everything after that decision — the map move, entering
-combat, and the combat-start equality check — runs headlessly and has not been seen in
-the client. `demo/RECORDED-FIGHT-ENTRY.md` has the screenshots and says the same.
+In the retail client the journey now runs both of the recording's decisions: the run is
+constructed, the screen offers the fight, the blessing is taken, the game's own event
+screen is dismissed, the map comes up and the recorded move is made. It stops there.
+The run does not finish opening its combat - the engine's own turn phase never becomes
+the player's - so the entry abandons rather than hand over a fight it cannot show is the
+recorded one. Entering a map node from code builds the room; something the client's own
+room transition would do when a player clicks a node does not happen. Everything past
+that point runs headlessly and has not been seen in the client.
+
+**Waiting in this process is not what it looks like.**
+Worth knowing before writing anything that waits here. Nothing this mod ticks has ever
+been observed running: an await on the scene tree's `ProcessFrame` signal, a delegate
+on that signal's C# event, and a node's own `_Process` all leave a wait registered and
+never resumed, with no timeout and nothing logged. Two primitives do work - awaiting a
+task the game itself completes, and `CallDeferred` - and a deferral that re-defers
+itself is this host's frame loop. `RecordedFightRun` uses only those two and says so.
 
 **The client waits where the manifest does not.**
 Found by running it: the event room waits on its own "Proceed" before returning to the

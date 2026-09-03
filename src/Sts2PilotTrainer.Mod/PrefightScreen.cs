@@ -49,8 +49,11 @@ internal static class PrefightScreen
     /// </summary>
     internal static void Show(string creator, RecordedFightEntry entry, Action next, Action skip)
     {
-        var journey = PrefightJourney.For(
-            creator, [entry.DescribeNextStep()], entry.Plan.PrefightActions.Count);
+        var journey = PrefightJourney.ForStep(
+            creator,
+            entry.DescribeNextStep(),
+            entry.StepsTaken + 1,
+            entry.Plan.PrefightActions.Count);
         var step = journey.Steps[0];
 
         // The chip is the popup's title and appears once. It is the state signal for

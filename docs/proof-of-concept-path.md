@@ -265,15 +265,15 @@ and the entry is refused.
 [demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has it with its real
 output.
 
-**Watched in the retail client as far as the first recorded decision.** The client
-loads Combat Trainer alone, the screen offers the fight, pressing it constructs the
-recording's run - seed on the overlay, Ascension 10 on the badge - and the watching
-panel comes up over Neow's own screen; pressing Next grants the recorded blessing.
-The journey then stops, because none of the three ways of waiting on the game's frames
-has been seen running in that process. The map move, entering combat and the
-combat-start check run headlessly and have not been seen in the client.
-[docs/in-game-host.md](in-game-host.md) records the state and what a fourth attempt
-should establish first.
+**Watched in the retail client as far as the map move.** The client loads Combat
+Trainer alone, the screen offers the fight, pressing it constructs the recording's run,
+and both recorded decisions then run in order: the blessing is taken, the game's own
+event screen is dismissed, the map comes up and the recorded move is made. It stops
+before the fight - the run does not finish opening its combat, so the entry abandons
+rather than hand over a fight it cannot show is the recorded one. Two presentation gaps
+were found by running it and are closed; this is the third and is not.
+[docs/in-game-host.md](in-game-host.md) records the state, and what is worth knowing
+about waiting inside that process before anything else is built on it.
 
 ### S5 - The player's own fight, compared
 

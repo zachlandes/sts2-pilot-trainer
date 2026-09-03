@@ -268,3 +268,28 @@ public sealed class SuppliedReadingRowTests
         Assert.False(screen.Row("Build ").Met);
     }
 }
+
+/// <summary>
+/// A host that holds one step at a time still has to say which one it is.
+/// </summary>
+public sealed class SingleStepJourneyTests
+{
+    [Fact]
+    public void AStepIsNumberedWhereItFallsRatherThanWhereItSitsInTheList()
+    {
+        var journey = PrefightJourney.ForStep(
+            "NaveGreed", new PrefightChoice.MapMove(1, "Monster", 3, 7), number: 2, count: 2);
+
+        Assert.Equal("2 of 2", journey.Steps[0].Counter);
+        Assert.Equal("NaveGreed moved to the Monster node, centre column", journey.Steps[0].Caption);
+    }
+
+    [Fact]
+    public void RefusesAStepNumberTheJourneyDoesNotHave()
+    {
+        var choice = new PrefightChoice.Blessing(0, "RELIC.LEAFY_POULTICE");
+
+        Assert.Throws<ManifestException>(() => PrefightJourney.ForStep("NaveGreed", choice, 0, 2));
+        Assert.Throws<ManifestException>(() => PrefightJourney.ForStep("NaveGreed", choice, 3, 2));
+    }
+}

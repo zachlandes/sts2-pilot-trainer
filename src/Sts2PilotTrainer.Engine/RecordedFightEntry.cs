@@ -1,5 +1,5 @@
 using System.Globalization;
-using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
 
@@ -283,36 +283,19 @@ public sealed class RecordedFightEntry : IDisposable
                 $"Action {action.Seq} ({action.Verb}) is missing required argument '{name}'.");
 
     /// <summary>
-    /// Dismisses a screen that is only waiting to be told to carry on, and says
-    /// whether it did.
+    /// Whether the fight has finished opening and is the player's to act in.
     ///
-    /// Not a decision, and deliberately not a verb. The retail client's event room
-    /// waits on a "Proceed" before it returns to the map; the headless host never
-    /// meets it, because nothing there is waiting for a person. S2.5 decided against
-    /// a <c>ProceedToMap</c> verb for exactly the right reason - returning to the map
-    /// is presentation, and a verb standing for a screen transition would be a
-    /// decision the run does not contain - which leaves the transition for a host to
-    /// drive, the same way the headless host drives the loot screen a won fight puts
-    /// up. See docs/headless-fidelity.md.
-    ///
-    /// It refuses to decide anything. The engine flags the option that only carries
-    /// on as <c>IsProceed</c>, and this acts only when that is the single option
-    /// left: where there is a real choice on screen the recording owns it, and this
-    /// does nothing rather than pick one.
+    /// Entering the room is not the same moment as the fight being ready, and the
+    /// retail client is where that stops being a distinction without a difference:
+    /// the room is built as soon as the map move's task completes, and the opening
+    /// hand is dealt over the frames after it. Asked in between, the boundary reads
+    /// an empty hand and no energy - a real state, and not the one the recording
+    /// describes. The engine's own turn phase is the signal that the player may act,
+    /// which is exactly what "before any card is played" means.
     /// </summary>
-    public bool DismissScreenWaitingToProceed()
-    {
-        if (_session.RunState.CurrentRoom is not EventRoom) return false;
-
-        var synchronizer = RunManager.Instance.EventSynchronizer;
-        if (synchronizer?.GetLocalEvent() is not { } localEvent) return false;
-
-        var options = localEvent.CurrentOptions;
-        if (options.Count != 1 || !options[0].IsProceed) return false;
-
-        synchronizer.ChooseLocalOption(0);
-        return true;
-    }
+    public bool IsReadyForThePlayer =>
+        CombatManager.Instance is { IsInProgress: true } &&
+        _session.RunState.Players[0].PlayerCombatState is { Phase: PlayerTurnPhase.Play };
 
     /// <summary>The live run's canonical state, as the arbiter reads it.</summary>
     public CanonicalState LiveState() => CanonicalStateProjection.Project(_session.RunState);
