@@ -105,8 +105,10 @@ public sealed record CombatComparison
                 "to add up.",
 
                 "Both lines were replayed through the real engine from the same combat-start boundary. " +
-                "Nothing here is evidence about a fight played by a person in the retail client: the mod " +
-                "host states eligibility and enters no fight, so no live capture has ever been compared.",
+                "Nothing here is evidence about a fight played by a person in the retail client: the in-game " +
+                "host constructs the recording's run and hands the player the recorded fight at the verified " +
+                "combat-start boundary, but it does not capture the player's completed fight. That is S5, so " +
+                "no fight played by a person has been compared.",
             ],
         };
     }

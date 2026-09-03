@@ -31,7 +31,7 @@ path inside a Steam or Slay the Spire 2 directory. Do not weaken either.
 **Nothing extracted from the game or from a source video is ever committed.**
 No game assemblies, localization tables, source-VOD frames or source-VOD stills.
 `.gitignore` blocks the file types; the judgement is yours.
-The sole visual exception is screenshots of this mod's own UI captured in the player's client and committed under `demo/` as S3 evidence; that is not permission to commit any source footage.
+The sole visual exception is screenshots of this mod's own UI captured in the player's client and committed under `demo/` as product evidence; that is not permission to commit any source footage.
 Facts read from a video are fine and are what `manifests/` holds.
 
 **One owner for game-version-specific code.** Everything that knows how v0.111.0 is
