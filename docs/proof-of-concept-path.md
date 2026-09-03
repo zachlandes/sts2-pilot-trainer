@@ -97,10 +97,9 @@ Make a finished fight observable and give its two projections one owner.
 **Runnable now:** `./scripts/arbiter combat-compare <a> <b>` prints the summary and
 turn detail for two completed fights and their differences, and `combat-snapshot` no
 longer calls a finished fight an active one.
-This is step 4 of the loop, with engine-produced lines standing in for a human's -
-which is what can be honest before a mod host exists.
-S2 added the recording's own fight as another completed side; every side is still engine-replayed, because capturing the human's fight belongs to S5.
-[demo/DEMO.md](../demo/DEMO.md) has it with its real output.
+This was step 4 of the loop, with engine-produced lines standing in for a human's, which was all that could be honest before the mod host existed.
+S2 added the recording's own fight as another completed side; S5 later added the captured player's side.
+[demo/DEMO.md](../demo/DEMO.md) has the engine-replayed comparison with its real output, and [demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has the captured player's side.
 
 ### S2 - The VOD's complete first combat in the manifest - done
 
@@ -133,8 +132,8 @@ the timestamp that lets anybody open the public recording and disagree.
 **Runnable now:** `./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json`
 returns `PUBLISHABLE` over a complete fight, and `combat-compare` puts the VOD's real
 solution on one side.
-The only second line of that fight is itself: nobody has played it in a retail client,
-so the comparison against the recording is the recording, and it says so.
+At S2, the only second line available was the recording itself, so that demonstration compares the recording against itself and says so.
+S5 adds the independent line captured from a fight played in the retail client.
 
 ### S2.5 - The prefix to the two-enemy window - done
 

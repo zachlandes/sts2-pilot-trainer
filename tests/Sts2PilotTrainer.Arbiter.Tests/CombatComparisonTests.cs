@@ -126,11 +126,11 @@ public class CombatComparisonTests
     /// The recording's own fight, projected. This is the milestone: the VOD's solution
     /// is a completed side rather than a history the contract has to refuse.
     ///
-    /// Both sides are the same recorded line, because no second line of this fight
-    /// exists - nobody has played it in a retail client through a mod host, and
-    /// authoring an alternative would be inventing a decision no player made. What is
-    /// under test is that the recording projects and compares at all, from its own
-    /// combat-start boundary.
+    /// Both sides are the same recorded line because this test isolates the
+    /// engine-replayed side. The independent player line is captured by the retail
+    /// host and tested through the player-fight path; authoring another engine line
+    /// here would invent a decision no player made. What is under test is that the
+    /// recording projects and compares at all, from its own combat-start boundary.
     /// </summary>
     [GameFact]
     public void ProjectsTheRecordedFightAsOneCompletedSide()

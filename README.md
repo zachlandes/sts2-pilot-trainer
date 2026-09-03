@@ -90,7 +90,7 @@ Its user data is redirected to `build/sandbox`, it cannot see the retail `RunMan
 Launch Slay the Spire 2 and open Singleplayer: a fourth mode card, `Combat Trainer`, checks whether this install can reproduce the recording and offers `Enter the fight` when it can.
 Win the fight and the game's own popup shows your fight beside the recording's: the summary rows, then turn by turn, stating differences and no verdict.
 The trainer supplies the recording's unlocks, acts, and Ascension 10 in memory, then visibly makes the recording's pre-fight decisions and hands over only after the live combat-start state matches the manifest's observed fields and snapshot digest.
-See [docs/in-game-host.md](docs/in-game-host.md) and [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md).
+See [docs/in-game-host.md](docs/in-game-host.md), [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md), and [demo/PLAYER-FIGHT-COMPARISON.md](demo/PLAYER-FIGHT-COMPARISON.md).
 
 ```bash
 ./scripts/arbiter generate-synthetic-fixture --out build/evidence/alternate.replay.json --line alternate

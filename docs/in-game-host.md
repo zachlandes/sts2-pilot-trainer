@@ -121,11 +121,10 @@ the headless arbiter samples, filtered by the same `ReplayTrace.Sample`.
 An action finishing is not the engine settling: a card's effects run on the queue
 after the card's own action reports finished, and an ended turn hands the whole enemy
 turn to the combat manager with the player's next turn beginning frames later.
-So the after-sample waits for the moment the headless driver's drain reaches - the
-queue empty and the executor idle - and for an ended turn, the player's next
-`TurnStarted`.
-If the combat manager already regards the fight as over or ending, the sample is left
-to `CombatEnded`, which closes the open action with the final state.
+So the after-sample waits for the moment the headless driver's drain reaches: the queue empty and the executor idle.
+For an ended turn, it waits for the player's next `TurnStarted`.
+The entire settlement wait is bounded to the headless driver's 30-second budget; if either the queue or executor does not settle in time, the capture becomes incomplete without taking an after-sample.
+If the combat manager already regards the fight as over or ending, the sample is left to `CombatEnded`, which closes the open action with the final state.
 That is how a capture completes at all: the killing blow, or the enemy turn the
 player did not survive, is the action the fight ended inside.
 Waiting uses only what the section below records as working here.
@@ -146,11 +145,10 @@ embedded as `manifests/navegreed-OJ-6QXhNgdg.recorded-fight.json`.
 through the fight's end and its combat-start digest are the shipped manifest's, and a
 test regenerates it in a fresh process and compares.
 
-**The result is the game's popup over the game's own ending.**
-The screen is computed the moment `CombatEnded` fires and drawn two seconds later,
-over the loot on a win or the death screen on a loss.
-Computed first on purpose: on a loss the game's own flow tears the run down on its
-way to the death screen, and the entry with it.
+**The result uses the game's popup after the fight stops.**
+For a completed fight, the screen is computed the moment `CombatEnded` fires and drawn two seconds later, over the loot on a win or the death screen on a loss.
+Computed first on purpose: on a loss the game's own flow tears the run down on its way to the death screen, and the entry with it.
+Leaving through the game's menu instead records the abandoned notice during cleanup and shows it over the main menu once the return finishes.
 The panel is `FightResultScreen`'s approved wording - the summary as a table with the
 player's column first, then the turn detail under its own heading, then the two notes -
 and a row whose two sides differ is drawn plain while a row that agrees is dimmed.

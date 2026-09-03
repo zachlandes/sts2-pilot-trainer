@@ -29,8 +29,10 @@ namespace Sts2PilotTrainer.Mod;
 /// turn hands the whole enemy turn to the combat manager and the player's next turn
 /// begins frames later. So the after-sample waits for the moment the headless
 /// driver's drain reaches: the queue empty and the executor idle, and for an ended
-/// turn, the player's next turn started. If the fight ends before that moment the
-/// combat manager's own event closes the sample instead, with the final state.
+/// turn, the player's next turn started. The wait has the same 30-second bound as
+/// the headless drain; timing out marks the capture incomplete instead of sampling
+/// unsettled state. If the fight ends before settlement, the combat manager's own
+/// event closes the sample instead, with the final state.
 ///
 /// Waiting here uses only what docs/in-game-host.md records as working in this
 /// process: a task the game completes, and the scene tree's timer.
@@ -181,9 +183,11 @@ internal sealed class PlayerFightObserver : IDisposable
     /// Takes the after-sample once the engine has finished with the action.
     ///
     /// Settled means the queue is empty and the executor idle, which is what the
-    /// headless drain waits for. If the combat manager already regards the fight as
-    /// over or ending, the sample is left to <see cref="CombatEnded"/>, which carries
-    /// the final state; a sample taken here would read a fight half-ended.
+    /// headless drain waits for. The complete wait is bounded; timing out marks the
+    /// capture incomplete rather than sampling unsettled state. If the combat manager
+    /// already regards the fight as over or ending, the sample is left to
+    /// <see cref="CombatEnded"/>, which carries the final state; a sample taken here
+    /// would read a fight half-ended.
     /// </summary>
     private async Task CompleteWhenSettled()
     {
