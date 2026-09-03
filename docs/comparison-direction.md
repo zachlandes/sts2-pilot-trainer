@@ -89,13 +89,12 @@ It computes nothing, ranks nothing, and labels no line better than another.
 `ReplayTrace.SampledFields` is the list of what gets kept, named explicitly.
 Adding a derivation to the direction above means adding its inputs to that list, on purpose, rather than discovering later that the field was never recorded.
 
-## A recorded interface hypothesis, and what it needs kept
+## The approved turn-level view, and what it needs kept
 
-One shape has been floated for the turn-level view and is explicitly *not* a commitment: a turn-indexed chart plotting enemy health lost and player health lost for the player and VOD solution, with potion artwork at the turn it was used and an immediately legible visual distinction between the player's line and the VOD's.
+The required turn-level view is a turn-indexed chart plotting enemy health lost and player health lost for the player and VOD solution, with potion artwork at the turn it was used and an immediately legible visual distinction between the player's line and the VOD's.
 
-It is written down here only so the data it would need survives long enough to test
-it. Whether it is the right interface is for interface design to decide, and
-discarding it is a perfectly good outcome.
+It was first written down here before implementation so the data it needed survived long enough to test it.
+Interface design then approved it, and the retail mod now draws it from that retained data.
 
 What the trace keeps for it today:
 
