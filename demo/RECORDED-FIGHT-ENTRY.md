@@ -240,9 +240,60 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Mod.Tests/Sts2PilotTrainer.M
 Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: <duration> - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
 ```
 
+## In the retail client
+
+The sections above run the journey's owner headlessly. This section is the same owner
+inside the shipped game, driven by hand: Steam running, the mod installed, and every
+mod except Combat Trainer disabled through the game's own Mod Settings screen.
+
+Three things below are real retail screenshots. The fourth thing - the player standing
+in the fight - is not here, and the section after this one says why.
+
+
+The eligibility screen, offering the fight. Every row is measured against the state
+the run will actually be generated against, which is what the trainer constructs it
+with - so the rows state requirements of the fight on offer rather than of a run
+nobody starts by hand. The subtitle, the recording line and the creator's name all
+come from the manifest.
+
+```bash {image}
+![The Combat Trainer screen over the singleplayer menu. Subtitle "NaveGreed · Ironclad · Ascension 10 · Floor 2 · Sludge Spinner", "Recorded on v0.111.0 (2026.08.14)", headline "Your game can play this fight as recorded.", green rows for build and content hash with its scope sentence, and two buttons: Back and Enter the fight.](in-game-fight-offered.png)
+```
+
+![The Combat Trainer screen over the singleplayer menu. Subtitle "NaveGreed · Ironclad · Ascension 10 · Floor 2 · Sludge Spinner", "Recorded on v0.111.0 (2026.08.14)", headline "Your game can play this fight as recorded.", green rows for build and content hash with its scope sentence, and two buttons: Back and Enter the fight.](7ec98a92-2026-09-03.png)
+
+Scrolled down the same screen, to the row this reconciliation was about. The captain's
+modded profile is not what the run is generated against, so "Ascension 10 available on
+Ironclad" is met - and the fight below it is offered rather than warned about. The note
+that the fight is not saved is shown with the offer and only with it. There is no
+profile note, because no profile was read.
+
+```bash {image}
+![The same screen scrolled down. Green rows read "Characters: 5 of 5" through "Epochs: 57 of 57", "Act: Underdocks unlocked", "Act: Hive unlocked", "Act: Glory unlocked" and "Ascension 10 available on Ironclad", above the sentence "This fight is not saved and does not count toward your run history." and the Back and Enter the fight buttons.](in-game-supplied-rows.png)
+```
+
+![The same screen scrolled down. Green rows read "Characters: 5 of 5" through "Epochs: 57 of 57", "Act: Underdocks unlocked", "Act: Hive unlocked", "Act: Glory unlocked" and "Ascension 10 available on Ironclad", above the sentence "This fight is not saved and does not count toward your run history." and the Back and Enter the fight buttons.](b806e586-2026-09-03.png)
+
+Pressing "Enter the fight" constructs the recording's run inside the retail client and
+stops on the first decision the recording made. Everything in this shot is the game's
+own: Neow's screen with all three blessings still legible behind the panel, the top bar
+at 64 of 80 health with 99 gold, and the version overlay reading v0.111.0, seed
+SFXT47K77RFK, MODDED (1). The panel over it is the game's own popup with no backstop.
+
+The caption is derived, not written down. "NaveGreed" comes from the manifest's
+`source.video.channel_name` and "Leafy Poultice" is read off the event option the
+recording's action is about to take - which is why the same code says "Arcane Scroll"
+when the negative control takes a different one, as the refusal section above shows.
+
+```bash {image}
+![Neow's event screen in the retail client with a panel over it titled "Watching NaveGreed". The body reads "1 of 2   NaveGreed took Leafy Poultice" and "NaveGreed's choices are shown as recorded. This shows what was chosen, not why." Two buttons: "Skip to the fight" and "Next". The top bar shows 64/80 health, 99 gold and an Ascension 10 badge; the overlay reads v0.111.0, SFXT47K77RFK, MODDED (1).](in-game-watching-neow.png)
+```
+
+![Neow's event screen in the retail client with a panel over it titled "Watching NaveGreed". The body reads "1 of 2   NaveGreed took Leafy Poultice" and "NaveGreed's choices are shown as recorded. This shows what was chosen, not why." Two buttons: "Skip to the fight" and "Next". The top bar shows 64/80 health, 99 gold and an Ascension 10 badge; the overlay reads v0.111.0, SFXT47K77RFK, MODDED (1).](aa5241eb-2026-09-03.png)
+
 ## What this proves, and what it does not
 
-**Proved.** A run is constructed at the recording's identity, through the same
+**Proved headlessly.** A run is constructed at the recording's identity, through the same
 construction the retail client uses, against a complete unlock state supplied in memory
 for that run. The recording's two decisions before its fight are executed in its order
 and captioned from what the run is standing in front of. The fight that opens is the
@@ -253,17 +304,36 @@ that is refused. Stopping a decision short refuses to be called the boundary. Th
 profile reading and every byte of the profile store are unchanged either side of all of
 it.
 
-**Not proved.** Nobody has been shown standing in the fight inside the retail client.
-The mod's own side of the journey - launching through the game's start-run
-continuation, the popup over Neow's screen and the map, the deviation lock on the two
-commands those screens reach, and the write barrier under a save path the game actually
-calls - is written and has not been watched running. There are no screenshots in this
-document for that reason, and none of the checks above stands in for one.
+**Proved in the retail client, and only this far.** With Steam running, the mod
+installed and every other mod disabled through the game's own screen, the client loads
+Combat Trainer alone and installs the write barrier over ten real write sites. The
+screen offers the fight. Pressing it constructs the recording's run in the client - the
+overlay reads seed SFXT47K77RFK, the badge reads Ascension 10, the top bar reads 64 of
+80 - and stops on the recording's first decision with the approved wording over Neow's
+own screen. Pressing Next makes that decision: Leafy Poultice is granted, maximum health
+goes 80 to 68, and the log records `made recorded decision 1 of 2`.
 
-**What would settle it.** Installing this build into the game
-(`./scripts/install-mod.sh`) and opening Singleplayer with only Combat Trainer enabled.
-That writes inside a Slay the Spire 2 installation and needs the game launched, so it
-is the captain's to do rather than this task's.
+**Not proved: everything after that decision.** The journey stops there. The second
+recorded decision is never made, the fight is never entered, no timeout fires and
+nothing is logged - the shape of a wait that is never ticked. Three ways of waiting on
+the game's frames have been tried and none has been observed running in the client;
+`RecordedFightRun.WaitForFrames` records all three and what the next attempt should
+establish first. So the map move, the entry into combat and the combat-start equality
+check have not been seen in the retail client, and nothing here should be read as
+saying they have. Headlessly, all of them run - which is what makes this a defect in
+how the in-game host waits rather than in what the journey does.
+
+**One thing the retail run found that no headless test could.** The client's event room
+waits on its own "Proceed" before returning to the map. The manifest has no verb for
+that by design - S2.5 decided a screen transition is not a decision the run contains -
+so the host has to drive it, and now does, through the option the engine itself flags
+as a proceed. That gap was invisible until a real client sat there waiting.
+
+**The captain's saved progress is unchanged.** SHA-256 over 143 save files before the
+session and after it: `progress.save`, `profile.save` and every run-history file are
+byte identical. Two files differ and neither is progress - `settings.save`, which is
+the mod enable toggles set through the game's own screen, and the game's own combat
+replay scratch file.
 
 **Not measured here.** Whether the popup that carries the recording's decisions is
 reachable from a controller. It is the same popup the eligibility screen uses, which

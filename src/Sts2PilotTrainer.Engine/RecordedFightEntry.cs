@@ -1,4 +1,5 @@
 using System.Globalization;
+using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
 
@@ -280,6 +281,38 @@ public sealed class RecordedFightEntry : IDisposable
             ? int.Parse(raw, CultureInfo.InvariantCulture)
             : throw new EngineException(
                 $"Action {action.Seq} ({action.Verb}) is missing required argument '{name}'.");
+
+    /// <summary>
+    /// Dismisses a screen that is only waiting to be told to carry on, and says
+    /// whether it did.
+    ///
+    /// Not a decision, and deliberately not a verb. The retail client's event room
+    /// waits on a "Proceed" before it returns to the map; the headless host never
+    /// meets it, because nothing there is waiting for a person. S2.5 decided against
+    /// a <c>ProceedToMap</c> verb for exactly the right reason - returning to the map
+    /// is presentation, and a verb standing for a screen transition would be a
+    /// decision the run does not contain - which leaves the transition for a host to
+    /// drive, the same way the headless host drives the loot screen a won fight puts
+    /// up. See docs/headless-fidelity.md.
+    ///
+    /// It refuses to decide anything. The engine flags the option that only carries
+    /// on as <c>IsProceed</c>, and this acts only when that is the single option
+    /// left: where there is a real choice on screen the recording owns it, and this
+    /// does nothing rather than pick one.
+    /// </summary>
+    public bool DismissScreenWaitingToProceed()
+    {
+        if (_session.RunState.CurrentRoom is not EventRoom) return false;
+
+        var synchronizer = RunManager.Instance.EventSynchronizer;
+        if (synchronizer?.GetLocalEvent() is not { } localEvent) return false;
+
+        var options = localEvent.CurrentOptions;
+        if (options.Count != 1 || !options[0].IsProceed) return false;
+
+        synchronizer.ChooseLocalOption(0);
+        return true;
+    }
 
     /// <summary>The live run's canonical state, as the arbiter reads it.</summary>
     public CanonicalState LiveState() => CanonicalStateProjection.Project(_session.RunState);

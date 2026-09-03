@@ -265,10 +265,15 @@ and the entry is refused.
 [demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has it with its real
 output.
 
-**Not yet observed:** the same journey inside the retail client. The mod's side of it
-is written and unit-tested where a test can reach it, and nobody has watched it run;
-[docs/in-game-host.md](in-game-host.md) records exactly what that leaves unproved and
-what it would take to settle.
+**Watched in the retail client as far as the first recorded decision.** The client
+loads Combat Trainer alone, the screen offers the fight, pressing it constructs the
+recording's run - seed on the overlay, Ascension 10 on the badge - and the watching
+panel comes up over Neow's own screen; pressing Next grants the recorded blessing.
+The journey then stops, because none of the three ways of waiting on the game's frames
+has been seen running in that process. The map move, entering combat and the
+combat-start check run headlessly and have not been seen in the client.
+[docs/in-game-host.md](in-game-host.md) records the state and what a fourth attempt
+should establish first.
 
 ### S5 - The player's own fight, compared
 

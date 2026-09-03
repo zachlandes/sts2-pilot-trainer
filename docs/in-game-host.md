@@ -112,12 +112,22 @@ no video can show. A boundary that disagrees on either abandons the run and says
 ## What it does not prove
 
 **Nobody has played the fight.**
-The journey above has never been watched running in the retail client. Its owner is
-exercised end to end headlessly and its refusals are tested there; the mod's own side
-of it — the launch through the game's continuation, the popup over the game's
-screens, the deviation lock, the barrier under a real save path — is written and has
-not been observed. `demo/RECORDED-FIGHT-ENTRY.md` says so where it would otherwise be
-read as a claim.
+In the retail client the journey has been watched as far as its first recorded
+decision and no further: the run is constructed, the screen offers the fight, the
+watching panel comes up over Neow's own screen, and pressing Next grants the recorded
+blessing. Then it stops — the next decision never runs, no timeout fires and nothing
+is logged, which is what a wait that is never ticked looks like. Three ways of waiting
+on the game's frames have been tried and none has been seen running in the client;
+`RecordedFightRun.WaitForFrames` records all three so a fourth attempt starts by
+proving a tick happens at all. Everything after that decision — the map move, entering
+combat, and the combat-start equality check — runs headlessly and has not been seen in
+the client. `demo/RECORDED-FIGHT-ENTRY.md` has the screenshots and says the same.
+
+**The client waits where the manifest does not.**
+Found by running it: the event room waits on its own "Proceed" before returning to the
+map, and the manifest has no verb for that because a screen transition is not a
+decision the run contains. The host drives it now, through the option the engine flags
+as a proceed, and refuses to touch a screen that still has a real choice on it.
 
 **The watching screens are the game's popup, not the mockup's bar.**
 The approved journey shows a chip and a control bar over the game's own screens. What

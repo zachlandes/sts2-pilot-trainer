@@ -53,18 +53,16 @@ internal static class PrefightScreen
             creator, [entry.DescribeNextStep()], entry.Plan.PrefightActions.Count);
         var step = journey.Steps[0];
 
-        var body = string.Join("\n\n",
-            journey.Chip,
-            $"{step.Counter}   {step.Caption}",
-            journey.ChoicesShownAsRecorded);
+        // The chip is the popup's title and appears once. It is the state signal for
+        // the whole journey, so repeating it in the body under itself was the same
+        // sentence twice on one panel.
+        var lines = new List<string> { $"{step.Counter}   {step.Caption}" };
 
-        // Shown with the step it belongs to, and numbered from one, so that a step
-        // whose number is 1 carries the note and the rest do not.
-        var withNote = step.Number == 1
-            ? body
-            : string.Join("\n\n", journey.Chip, $"{step.Counter}   {step.Caption}");
+        // Shown once, with the first step. A sentence about how to read these screens
+        // is worth saying before the first of them and tiresome above every one.
+        if (step.Number == 1) lines.Add(journey.ChoicesShownAsRecorded);
 
-        Open(journey.Chip, withNote, journey.NextButton, next, journey.SkipButton, skip);
+        Open(journey.Chip, string.Join("\n\n", lines), journey.NextButton, next, journey.SkipButton, skip);
     }
 
     /// <summary>

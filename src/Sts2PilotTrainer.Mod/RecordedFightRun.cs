@@ -1,6 +1,7 @@
 using System.Reflection;
 using Godot;
 using HarmonyLib;
+using System.Globalization;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Map;
@@ -107,6 +108,10 @@ internal static class RecordedFightRun
             await SettleUntilTheNextDecisionCanBeDescribed();
 
             Phase = RecordedFightPhase.Watching;
+            Log.Info(
+                $"[{CombatTrainerMod.ModId}] constructed the recording's run; watching " +
+                $"{_entry.Plan.PrefightActions.Count.ToString(CultureInfo.InvariantCulture)} recorded " +
+                "decision(s) before the fight", 2);
             PrefightScreen.Show(creator, _entry, Next, SkipToTheFight);
         }
         catch (Exception ex)
@@ -155,6 +160,7 @@ internal static class RecordedFightRun
         var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
 
         PrefightScreen.Close();
+        var step = entry.StepsTaken + 1;
         _authorising = true;
         try
         {
@@ -165,8 +171,48 @@ internal static class RecordedFightRun
             _authorising = false;
         }
 
+        Log.Info(
+            $"[{CombatTrainerMod.ModId}] made recorded decision " +
+            $"{step.ToString(CultureInfo.InvariantCulture)} of " +
+            $"{entry.Plan.PrefightActions.Count.ToString(CultureInfo.InvariantCulture)}", 2);
+
         if (entry.Pending is { } pending) await pending;
+        await Settle();
+        await CarryOnPastAnyScreenWaitingToProceed();
         await (entry.AtCombatStart ? Settle() : SettleUntilTheNextDecisionCanBeDescribed());
+    }
+
+    /// <summary>
+    /// Clicks past the screens between one recorded decision and the next.
+    ///
+    /// The recording contains the decisions and not the screen transitions, so after
+    /// an event option is chosen the game sits on its own "Proceed" until somebody
+    /// carries on. Bounded rather than looped freely: two of these in a row is
+    /// already more than this journey meets, and a host that would press onward
+    /// indefinitely is a host that could walk a run somewhere nobody asked for.
+    /// </summary>
+    private static async Task CarryOnPastAnyScreenWaitingToProceed()
+    {
+        for (var dismissed = 0; dismissed < 2; dismissed++)
+        {
+            if (_entry is not { } entry) return;
+
+            bool carriedOn;
+            _authorising = true;
+            try
+            {
+                carriedOn = entry.DismissScreenWaitingToProceed();
+            }
+            finally
+            {
+                _authorising = false;
+            }
+
+            if (!carriedOn) return;
+
+            Log.Info($"[{CombatTrainerMod.ModId}] carried on past a screen that was waiting to proceed", 2);
+            await Settle();
+        }
     }
 
     /// <summary>
@@ -261,7 +307,9 @@ internal static class RecordedFightRun
 
     /// <summary>Lets the engine finish the work a decision queued, on the game's own
     /// frames.</summary>
-    private static Task Settle() => WaitForFrames(() => RunManager.Instance?.ActionExecutor is not { IsRunning: true });
+    private static Task Settle() => WaitForFrames(
+        () => RunManager.Instance?.ActionExecutor is not { IsRunning: true },
+        "finish what the recording's last decision started");
 
     /// <summary>
     /// The same, waiting until the screen the recording's next decision is about
@@ -274,7 +322,8 @@ internal static class RecordedFightRun
     /// question the screen is about to ask.
     /// </summary>
     private static Task SettleUntilTheNextDecisionCanBeDescribed() =>
-        WaitForFrames(() =>
+        WaitForFrames(
+            () =>
         {
             if (RunManager.Instance?.ActionExecutor is { IsRunning: true }) return false;
             if (_entry is not { } entry) return false;
@@ -291,74 +340,125 @@ internal static class RecordedFightRun
                 // refusal rather than being swallowed here.
                 return false;
             }
-        });
+        },
+            "reach the screen the recording's next decision is about");
 
     /// <summary>The same, waiting for the fight itself. The engine reports a combat
     /// live only once it has built it, and comparing the boundary before then would
     /// compare an empty room.</summary>
     private static Task SettleUntilTheFightIsLive() =>
-        WaitForFrames(() =>
-            RunManager.Instance?.ActionExecutor is not { IsRunning: true } &&
-            CombatManager.Instance is { IsInProgress: true });
+        WaitForFrames(
+            () => RunManager.Instance?.ActionExecutor is not { IsRunning: true } &&
+                  CombatManager.Instance is { IsInProgress: true },
+            "reach the recording's fight");
 
-    private static async Task WaitForFrames(Func<bool> until)
+    /// <summary>
+    /// Waits for the game to reach a condition, on the game's own frames.
+    ///
+    /// UNVERIFIED IN THE RETAIL CLIENT, and the next person to touch this should read
+    /// why before trying a fourth variant. The journey makes its first recorded
+    /// decision correctly and then stops: no further step runs, no timeout fires, and
+    /// nothing is logged, which is what a wait that is never ticked looks like.
+    /// Three mechanisms have been tried against the running game and none has been
+    /// observed ticking - an await on the scene tree's <c>ProcessFrame</c> signal, a
+    /// delegate on that signal's C# event, and this node's <c>_Process</c>. That they
+    /// all fail the same way says the fault is more likely in how this mod's
+    /// continuations are scheduled inside the game's process than in any one of them,
+    /// so the next attempt should establish that a tick happens at all - a log line
+    /// from <c>_Process</c> - before building anything on top of it.
+    /// </summary>
+    private static Task WaitForFrames(Func<bool> until, string what)
     {
-        var tree = Godot.Engine.GetMainLoop() as SceneTree
-            ?? throw new InvalidOperationException("This process has no frame loop to wait on.");
-
-        for (var frame = 0; frame < SettleFrameBudget; frame++)
-        {
-            if (until()) return;
-            await tree.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
-        }
-
-        if (until()) return;
-
-        throw new InvalidOperationException(
-            "The game did not finish what the recording's last decision started. Refusing to carry on from a " +
-            "half-applied state.");
+        if (until()) return Task.CompletedTask;
+        return JourneyPump.Attached().Wait(until, what, SettleFrameBudget);
     }
 
     /// <summary>
-    /// Forgets the trainer run once the game has torn it down, whichever way it
-    /// ended.
+    /// The node that ticks the journey's waits.
     ///
-    /// Load-bearing rather than tidy. The barrier stops every write while a trainer
-    /// run is live, and a player who finished or abandoned the recorded fight is back
-    /// in their own game a moment later - so a barrier that stayed raised would
-    /// silently stop saving their next run. `RunManager.CleanUp` is where a run
-    /// stops existing, on every path there is: quitting to the menu, losing, and
-    /// abandoning. Postfixed rather than replaced, and it does nothing at all unless
-    /// the run being torn down is the trainer's.
+    /// One, kept in a static field and left in the tree for the session: adding and
+    /// removing a node around every wait is more moving parts than a mod needs, and
+    /// an unattached node is the failure this class exists to avoid. It does nothing
+    /// at all unless something is waiting on it.
     /// </summary>
-    [HarmonyPatch(typeof(RunManager), nameof(RunManager.CleanUp))]
-    internal static class TrainerRunTeardown
+    private sealed partial class JourneyPump : Node
     {
-        [HarmonyPostfix]
-        internal static void TheTrainerRunIsOver()
+        private static JourneyPump? _attached;
+
+        private Func<bool>? _until;
+        private TaskCompletionSource? _completion;
+        private string _what = string.Empty;
+        private int _budget;
+        private int _frames;
+
+        internal static JourneyPump Attached()
         {
-            if (Phase == RecordedFightPhase.None) return;
+            if (_attached is { } existing) return existing;
+
+            var tree = Godot.Engine.GetMainLoop() as SceneTree
+                ?? throw new InvalidOperationException("This process has no scene tree to wait in.");
+
+            var pump = new JourneyPump { Name = "CombatTrainerJourneyPump" };
+            pump.SetProcess(true);
+
+            // Deferred: this is reached from inside a button's signal callback, and
+            // the tree refuses to be restructured while it is delivering one.
+            tree.Root.CallDeferred(Node.MethodName.AddChild, pump);
+            _attached = pump;
+            return pump;
+        }
+
+        internal Task Wait(Func<bool> until, string what, int budget)
+        {
+            if (_completion is not null)
+            {
+                throw new InvalidOperationException(
+                    "The recorded journey is already waiting for something; it does not wait for two things " +
+                    "at once.");
+            }
+
+            _until = until;
+            _what = what;
+            _budget = budget;
+            _frames = 0;
+            _completion = new TaskCompletionSource();
+            return _completion.Task;
+        }
+
+        public override void _Process(double delta)
+        {
+            if (_completion is not { } completion || _until is not { } until) return;
 
             try
             {
-                PrefightScreen.Close();
-                _entry?.Dispose();
+                if (until())
+                {
+                    Finish();
+                    completion.SetResult();
+                    return;
+                }
+
+                if (++_frames < _budget) return;
+
+                var what = _what;
+                var budget = _budget;
+                Finish();
+                completion.SetException(new InvalidOperationException(
+                    $"The game did not {what} within {budget.ToString(CultureInfo.InvariantCulture)} frames. " +
+                    "Refusing to carry on from a half-applied state."));
             }
             catch (Exception ex)
             {
-                Log.Error(
-                    $"[{CombatTrainerMod.ModId}] could not clear the recorded fight after the run ended: " +
-                    $"{ex.GetType().Name}: {ex.Message}", 2);
+                Finish();
+                completion.SetException(ex);
             }
-            finally
-            {
-                _entry = null;
-                Phase = RecordedFightPhase.None;
-                ProfileWriteBarrier.Lower();
-                Log.Info(
-                    $"[{CombatTrainerMod.ModId}] the recorded fight's run is over; saving behaves normally " +
-                    "again", 2);
-            }
+        }
+
+        private void Finish()
+        {
+            _until = null;
+            _completion = null;
+            _frames = 0;
         }
     }
 
