@@ -76,6 +76,13 @@ A result that keeps only the final state has final health and the last turn reac
 No amount of re-reading it recovers those missing facts; the run would have to be replayed again, which is precisely the expensive thing a stored result exists to avoid.
 
 So `VerificationReport.Trace` samples the canonical state either side of every action and keeps both samples.
+A fight a person plays in the retail client is kept the same way: `FightCapture`
+samples the same canonical projection either side of every action the game's own
+executor announces, into the same trace, so the two lines reach `CombatProjection`
+through one reading rather than two that would have to be reconciled.
+It refuses a trace with a gap in it - a change between two samples that no action
+accounts for - rather than bridging one, because a bridged gap would attribute its
+damage to nothing and the projection would under-count without saying so.
 It computes nothing, ranks nothing, and labels no line better than another.
 `CombatProjection` derives the two projections above from data that is already there.
 
