@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -25,6 +26,43 @@ public sealed class PlayerFightObserverTests
 
         Assert.NotNull(fight);
         Assert.Equal("navegreed-OJ-6QXhNgdg", fight!.GetType().GetProperty("RunId")!.GetValue(fight));
+    }
+
+    [ObserverFact]
+    public async Task ASettlementTimeoutRefusesTheCaptureWithoutSampling()
+    {
+        var capture = FightCapture.Begin(
+            "player",
+            new Dictionary<string, string> { ["combat.outcome"] = "in_progress" },
+            "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+        capture.BeginStep(
+            "PlayCard",
+            new Dictionary<string, string>(),
+            new Dictionary<string, string> { ["combat.outcome"] = "in_progress" });
+
+        var neverEmpty = new TaskCompletionSource<bool>();
+        var deadline = new TaskCompletionSource<bool>();
+        var observer = ModAssembly().GetType("Sts2PilotTrainer.Mod.PlayerFightObserver")!;
+        var wait = Assert.IsAssignableFrom<Task<bool>>(observer.GetMethod(
+            "WaitUntilSettled", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null,
+            [
+                capture,
+                neverEmpty.Task,
+                deadline.Task,
+                (Func<bool>)(() => false),
+                (Func<bool>)(() => false),
+                (Func<Task>)(() => throw new InvalidOperationException("The first queue wait never settled.")),
+            ]));
+
+        deadline.SetResult(true);
+        Assert.False(await wait);
+        Assert.Equal(FightCaptureState.Incomplete, capture.State);
+        Assert.Contains("did not settle within 30 seconds", capture.Refusal, StringComparison.Ordinal);
+        Assert.False(capture.HasOpenStep);
+
+        capture.CompleteStep(new Dictionary<string, string> { ["combat.outcome"] = "victory" });
+        Assert.Single(capture.Trace.Steps);
+        Assert.Throws<ManifestException>(capture.Project);
     }
 
     [ObserverFact]
@@ -89,7 +127,8 @@ public sealed class PlayerFightObserverTests
     {
         public ObserverFactAttribute()
         {
-            if (!Arbiter.GameAvailable || !File.Exists(ModAssemblyPath))
+            if (!File.Exists(Path.Combine(Arbiter.RepoRoot, "build", "lib", "sts2.dll")) ||
+                !File.Exists(ModAssemblyPath))
             {
                 Skip = "Needs the prepared game and built Combat Trainer mod. Run ./scripts/build.sh.";
             }

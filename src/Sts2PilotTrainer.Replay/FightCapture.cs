@@ -235,6 +235,13 @@ public sealed class FightCapture
             "recorded. The trace is not a continuous record of the fight.");
     }
 
+    /// <summary>The observer could not account for the fight continuously.</summary>
+    public void MarkIncomplete(string reason)
+    {
+        if (State != FightCaptureState.Live) return;
+        Refuse(reason);
+    }
+
     /// <summary>The fight was left before it ended: the run was quit, or torn down.</summary>
     public void Abandon()
     {

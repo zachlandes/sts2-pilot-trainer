@@ -189,18 +189,23 @@ internal sealed class PlayerFightObserver : IDisposable
     {
         try
         {
-            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(SettleBudgetSeconds);
-            await RunManager.Instance.ActionQueueSet.BecameEmpty();
-            while (_executor.IsRunning || !RunManager.Instance.ActionQueueSet.IsEmpty)
+            var queues = RunManager.Instance.ActionQueueSet;
+            var settled = await WaitUntilSettled(
+                _capture,
+                queues.BecameEmpty(),
+                RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
+                () => !_executor.IsRunning && queues.IsEmpty,
+                () => _ended || _disposed,
+                () => RecordedFightRun.LetTheGameRun(SettlePollSeconds));
+            if (!settled)
             {
-                if (_ended || _disposed) return;
-                if (DateTime.UtcNow > deadline)
+                if (!_ended && !_disposed)
                 {
-                    Log.Warn($"[{CombatTrainerMod.ModId}] the engine did not settle within {SettleBudgetSeconds}s after an action", 2);
-                    break;
+                    Log.Warn(
+                        $"[{CombatTrainerMod.ModId}] the engine did not settle within " +
+                        $"{SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)}s after an action", 2);
                 }
-
-                await RecordedFightRun.LetTheGameRun(SettlePollSeconds);
+                return;
             }
 
             if (_ended || _disposed || _combat.IsOverOrEnding) return;
@@ -208,7 +213,49 @@ internal sealed class PlayerFightObserver : IDisposable
         }
         catch (Exception ex)
         {
+            if (!_ended && !_disposed)
+            {
+                _capture.MarkIncomplete(
+                    $"The engine could not settle after an action: {ex.GetType().Name}: {ex.Message}");
+            }
             Log.Error($"[{CombatTrainerMod.ModId}] could not sample after an action: {ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    internal static async Task<bool> WaitUntilSettled(
+        FightCapture capture,
+        Task becameEmpty,
+        Task deadline,
+        Func<bool> isSettled,
+        Func<bool> stopped,
+        Func<Task> nextPoll)
+    {
+        if (deadline.IsCompleted || await Task.WhenAny(becameEmpty, deadline) != becameEmpty)
+        {
+            return TimedOut();
+        }
+        await becameEmpty;
+
+        while (true)
+        {
+            if (stopped()) return false;
+            if (deadline.IsCompleted) return TimedOut();
+            if (isSettled()) return true;
+
+            var poll = nextPoll();
+            if (await Task.WhenAny(poll, deadline) != poll) return TimedOut();
+            await poll;
+        }
+
+        bool TimedOut()
+        {
+            if (!stopped())
+            {
+                capture.MarkIncomplete(
+                    $"The engine did not settle within " +
+                    $"{SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds after an action.");
+            }
+            return false;
         }
     }
 
