@@ -24,9 +24,23 @@ internal static partial class Commands
         var outPath = Args.Value(args, "--out")
             ?? Path.Combine("build", "evidence", Path.GetFileName(manifestPath)
                 .Replace(".replay.json", ".recorded-fight.json", StringComparison.Ordinal));
-        var scratch = Path.Combine("build", "evidence");
         var artifact = EvidenceArtifact.PreparePath(outPath);
+        var scratch = Path.Combine(
+            Path.GetDirectoryName(artifact.Path)!,
+            $".{Path.GetFileName(artifact.Path)}.{Guid.NewGuid():N}.scratch");
+        Directory.CreateDirectory(scratch);
+        try
+        {
+            return WriteRecordedFight(manifestPath, artifact, scratch);
+        }
+        finally
+        {
+            Directory.Delete(scratch, recursive: true);
+        }
+    }
 
+    private static int WriteRecordedFight(string manifestPath, EvidenceArtifact artifact, string scratch)
+    {
         var manifest = ManifestJson.Load(manifestPath);
         var verifiedPath = Path.Combine(scratch, "recorded-fight.verified.json");
         var replay = SelfProcess.Run("replay", manifestPath, "--out", verifiedPath);
