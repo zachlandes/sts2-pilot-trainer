@@ -52,7 +52,14 @@ public class PlayerFightTests
         var result = Arbiter.Run("enter-fight", Arbiter.Manifest, "--play", "--out", outDir);
         Assert.True(result.Verified, result.All);
         Assert.Contains("[Your fight and NaveGreed's]", result.Output, StringComparison.Ordinal);
-        Assert.Contains("Turn 1: you took 8 off the enemy and lost 4; NaveGreed took 8 off and lost 4", result.Output,
+
+        // The panel as a terminal draws it: what each side played on a turn, then the
+        // chart's own numbers for the same turn on both lines.
+        Assert.Contains("Hellraiser, Defend Ironclad         Hellraiser, Defend Ironclad", result.Output,
+            StringComparison.Ordinal);
+        Assert.Contains("Health lost each turn", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Enemy health lost", result.Output, StringComparison.Ordinal);
+        Assert.Contains("     1   8            8            4            4", result.Output,
             StringComparison.Ordinal);
 
         var played = JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, "enter-fight.json")))

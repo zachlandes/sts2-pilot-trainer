@@ -7,9 +7,8 @@ If everything agrees, the run's verified gameplay history has been reproduced ex
 This does not identify an unobserved source configuration when multiple configurations reproduce that history; the report states that limit.
 If anything disagrees, it says which field, at which moment, and stops.
 
-This is the foundation for a training tool: once a combat-start position is reconstructed exactly, a completed player fight is compared with the VOD solution replayed from that same boundary.
-It is not that tool yet - nothing here has ever captured a fight played by a person.
-[The proof-of-concept path](docs/proof-of-concept-path.md) is the route from here to one somebody can try, slice by slice.
+This is now a tryable training proof of concept: once a combat-start position is reconstructed exactly, the Combat Trainer mod lets a player fight it, captures that fight, and compares it with the VOD solution replayed from the same boundary.
+[The proof-of-concept path](docs/proof-of-concept-path.md) records how that loop was built, slice by slice.
 
 ## What has been demonstrated
 
@@ -31,7 +30,7 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   The shipped VOD reconstruction now covers its whole first combat, read off the video action by action, so the recording is one of those completed sides.
   It runs on past that fight to the start of the floor-5 fight's third turn, which is the boundary a candidate search over that turn would have to begin from; the projection still reads the first fight the history enters and requires it to have finished.
   A history that stops mid-combat is still refused, which is what the recording used to be.
-  The fight a person plays in the retail client is captured as the same trace by the Combat Trainer mod, projected the same way, and shown beside the recording's on the game's own popup.
+  The fight a person plays in the retail client is captured as the same trace by the Combat Trainer mod, projected the same way, and shown beside the recording's on the mod's visual result panel.
 
 - **Provenance is gated before any engine starts.** A run resumed from run history
   matches on seed, build, content hash and acts and replays perfectly — it is just
@@ -88,9 +87,10 @@ Its user data is redirected to `build/sandbox`, it cannot see the retail `RunMan
 ```
 
 Launch Slay the Spire 2 and open Singleplayer: a fourth mode card, `Combat Trainer`, checks whether this install can reproduce the recording and offers `Enter the fight` when it can.
-Win the fight and the game's own popup shows your fight beside the recording's: the summary rows, then turn by turn, stating differences and no verdict.
+Win the fight and the mod's visual result panel shows your fight beside the recording's: compact summary figures, card and potion art by turn, and a chart of enemy and player health lost each turn.
+The two lines stay distinct by colour and marker shape, and the panel states differences without scoring either line or giving a verdict.
 The trainer supplies the recording's unlocks, acts, and Ascension 10 in memory, then visibly makes the recording's pre-fight decisions and hands over only after the live combat-start state matches the manifest's observed fields and snapshot digest.
-See [docs/in-game-host.md](docs/in-game-host.md), [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md), and [demo/PLAYER-FIGHT-COMPARISON.md](demo/PLAYER-FIGHT-COMPARISON.md).
+See [docs/in-game-host.md](docs/in-game-host.md), [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md), and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md).
 
 ```bash
 ./scripts/arbiter generate-synthetic-fixture --out build/evidence/alternate.replay.json --line alternate
@@ -125,8 +125,8 @@ The full walkthrough, with commands and their real output, is in
 |---|---|
 | `src/Sts2PilotTrainer.Replay` | The replay format and its rules. Depends on nothing — not the game, not a video pipeline, not a storefront. Its tests run on a machine that does not own the game. |
 | `src/Sts2PilotTrainer.Engine` | The only project that knows about a specific game version. |
-| `src/Sts2PilotTrainer.Trainer` | The game-free owner of the Combat Trainer screen's wording and row presentation. |
-| `src/Sts2PilotTrainer.Mod` | The only project loaded into the retail game; it owns the native mode card and popup. |
+| `src/Sts2PilotTrainer.Trainer` | The game-free owner of the Combat Trainer screen model, wording, and chart derivation. |
+| `src/Sts2PilotTrainer.Mod` | The only project loaded into the retail game; it owns the native mode card and retail presentation. |
 | `src/Sts2PilotTrainer.Cli` | The arbiter's commands. |
 | `manifests/` | The reconstructed run, and the map read from the video. Facts only. |
 | `docs/` | [The proof-of-concept path](docs/proof-of-concept-path.md) · [the in-game host](docs/in-game-host.md) · [environment identity](docs/environment-identity.md) · [comparison direction](docs/comparison-direction.md) · [headless fidelity](docs/headless-fidelity.md) · [dependencies](docs/dependencies.md) · [distribution](docs/distribution.md) · [the engine's own replay format](docs/native-replay-format.md) |

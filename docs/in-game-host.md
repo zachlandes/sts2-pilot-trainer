@@ -137,6 +137,18 @@ panel then shows the capture's own sentence instead of a comparison.
 A bridged gap would attribute its damage to nothing and the projection would quietly
 under-count, which is exactly the plausible wrong answer this project refuses.
 
+**Two actions can begin with no frame between them, and that is now recorded rather
+than refused.** In this client a number key selects a card and a click plays it, so a
+click on End Turn while a card is held plays the card and ends the turn together. Seen
+first as a refused fight: the card's after-sample had not been taken when the ended turn
+began. The capture now closes the open action with the next one's before-sample where the
+executor had already reported that action finished - the executor runs its actions in
+order, so that sample is exactly the finished action's after-state and nothing is
+invented. Where the open action had not finished the two genuinely overlap and the capture
+refuses as it always did, and a change no action accounts for is still a gap either way.
+Reproduced in the client before and after: the same gesture that refused a whole fight now
+produces a comparison.
+
 **The recording's side travels with the manifest.**
 The client cannot replay - one process, one run, and it is the player's - so the
 recording's line is produced headlessly by `./scripts/arbiter recorded-fight` and
@@ -145,14 +157,15 @@ embedded as `manifests/navegreed-OJ-6QXhNgdg.recorded-fight.json`.
 through the fight's end and its combat-start digest are the shipped manifest's, and a
 test regenerates it in a fresh process and compares.
 
-**The result uses the game's popup after the fight stops.**
-For a completed fight, the screen is computed the moment `CombatEnded` fires and drawn two seconds later, over the loot on a win or the death screen on a loss.
+**The result is a panel this mod draws, after the fight stops.**
+For a completed fight, the result is computed the moment `CombatEnded` fires and drawn two seconds later, over the loot on a win or the death screen on a loss.
 Computed first on purpose: on a loss the game's own flow tears the run down on its way to the death screen, and the entry with it.
 Leaving through the game's menu instead records the abandoned notice during cleanup and shows it over the main menu once the return finishes.
-The panel is `FightResultScreen`'s approved wording - the summary as a table with the
-player's column first, then the turn detail under its own heading, then the two notes -
-and a row whose two sides differ is drawn plain while a row that agrees is dimmed.
-That is the only visual distinction, because a difference is not a verdict.
+`FightResultPanel` draws it: the summary as figures in two columns, the turn chronology as the game's own card and potion art in the order they were played, and the chart of what each turn cost either side.
+The two lines are told apart by colour and by the shape of their chart markers, and the same two colours run through the columns, the card borders and the lines, so a column, an icon and a line read as one fighter.
+A figure whose two sides agree is dimmed and one that differs is not; that is the only emphasis there is, because a difference is not a verdict.
+It is added into `NModalContainer` rather than built on `NGenericPopup`: the container's own backstop dims and blocks the screen underneath, and its `Clear` takes the panel away on every path that already clears a popup.
+The panel is stock Godot nodes, because this assembly compiles without Godot's source generators and a `Control` subclass of ours would have no generated bridge - which is also what lets the whole panel be assembled and asserted on node by node in a process with no game.
 
 **A card the game plays for the player is sampled as an action of its own.**
 Hellraiser plays a Strike automatically when one is drawn, and in the client that play
@@ -163,12 +176,30 @@ nine, for this reason.
 Both are attributed to the turn they happened in, and the turn totals agree; the
 difference is in how many steps a turn is made of, not in what happened.
 
-**The result is text on a modal, and that is a recorded limit.**
-The captain read the first retail comparison and reported that a text-led list of
-differences on a large popup is not good enough for the next interface.
-That is observed product evidence, kept here on purpose; the screenshot-backed
-playback interface it points at is a follow-up owned by interface design, and nothing
-in this host presumes its shape.
+**The chart is derived and never inferred.**
+`FightResultChart` in `Sts2PilotTrainer.Trainer` reads it out of the comparison and
+nothing else: one point per turn per line for each measure, one ceiling both plots and
+both lines are drawn against, and the potions marked at the turn they were spent. A
+turn one line never reached has no point on that line rather than a point on the axis,
+and the chronology says so in the panel's own words - a zero there would claim the turn
+was fought and cost nothing. A card play that carries no card id is refused rather than
+drawn as a blank icon.
+
+**The panel is not registered as the game's modal screen.**
+`NModalContainer.Add` casts what it is given to `IScreenContext`, which is a game
+interface a stock node cannot implement, so the panel is added as a child instead. The
+container's backstop still blocks the mouse and the Done button is focused explicitly,
+but `ActiveScreenContext` still regards the screen underneath as current. The retail
+session drove the panel by mouse throughout and did not exercise a controller, so what
+that means for one is still unmeasured.
+
+**Two layout rules were learned on the screen rather than reasoned about.**
+Both have the same shape, and both drew over half the panel before they were caught. A
+Control's size is clamped up to its minimum size, so a label given its width before it is
+told to wrap is widened back to its whole unwrapped line, and a texture rect given its
+size before it is told to ignore its texture is grown to the size of the card art. Order
+the calls the other way round. `FightResultPanelTests` pins both, against the longest
+refusal this panel ever draws and against a card's own portrait.
 
 **Only a won, completed, uninterrupted fight is compared.**
 A lost fight, a fight left through the game's own menu, a capture that could not be
@@ -186,11 +217,40 @@ same capture, project to a line identical to the recording's replay on every fie
 so a line that came through the capture and differed would be a defect in the capture
 rather than a difference in the fight.
 
-**The fight was played through and compared in the client by one person, once.**
-[demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has that
-session.
-It is one fight; the paths the panel takes for a loss, a quit and a refused capture are
-proved on the game-free capture and screen, not in the client.
+**The fight was played through and compared in the client twice, once by a person and
+once by an agent driving it.**
+[demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has the first,
+where the recording's own line was played and every figure agreed;
+[demo/VISUAL-COMPARISON.md](../demo/VISUAL-COMPARISON.md) has the second, where a
+deliberately different line was played so the two sides of the panel differ.
+The second session also produced, in the client for the first time, a fight left before it
+ended and a capture that could not be completed.
+A lost fight has still only been proved on the game-free capture and screen.
+
+**A trainer run leaves nothing behind, and that is measured rather than argued.**
+Over 154 files - every profile, progress, prefs, save, run-history and replay file, every
+mod config, and every file of the other mods installed here - hashed before the mod was
+installed and after the game was quit: all 154 byte identical, across entering the fight,
+playing it, reading the result and leaving.
+
+Getting there found two writes the barrier did not cover, each established by
+reproduction. A clean launch and quit with no trainer run changes nothing, so neither was
+the game's own ordinary behaviour.
+
+The first is not a write at all. A run marks its own relics seen as it starts and its
+rewards seen as they are offered; those calls only mutate the progress the game holds in
+memory, so the barrier never saw them - and the mutation outlived the run. The game then
+wrote it out itself at `NGame.Quit`, with no trainer run live, by a path the barrier must
+not stop. It showed as a rotated `progress.save.backup` whose content happened to match,
+because this profile had already seen the trainer's relic; on a profile that had not, the
+same path writes a discovery the player never made. `SaveManager.MarkCardAsSeen`,
+`MarkRelicAsSeen` and `MarkPotionAsSeen` are on the barrier's list for that reason: state
+that will be written is a write that has not happened yet.
+
+The second is the combat replay the engine writes at the end of every fight, into the
+player's own profile directory, where it is the replay of the last combat they fought.
+Suppressing `RunManager.WriteReplay`, which only hands the writer a path, left the file
+changed anyway; the barrier covers `CombatReplayWriter.WriteReplay` itself.
 
 **Three of the recording's steps are screen commands, not engine ones.**
 Each was found by running it, and each has the same shape: the engine call is the

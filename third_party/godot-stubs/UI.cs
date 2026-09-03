@@ -14,7 +14,7 @@ public class CanvasItem : Node
 }
 
 // Control
-public class Control : CanvasItem
+public partial class Control : CanvasItem
 {
     public enum FocusModeEnum { None, Click, All }
     public enum MouseFilterEnum { Stop, Pass, Ignore }
@@ -183,7 +183,7 @@ public class MethodTweener
 public class IntervalTweener { }
 
 // UI Controls
-public class TextureRect : Control
+public partial class TextureRect : Control
 {
     public new class MethodName : Control.MethodName { }
     public new class PropertyName : Control.PropertyName { }
@@ -215,7 +215,7 @@ public class ScrollContainer : Container { }
 public class SubViewportContainer : Container { }
 public class SubViewport : Viewport { }
 
-public class Label : Control
+public partial class Label : Control
 {
     public string Text { get; set; } = "";
     public TextServer.AutowrapMode AutowrapMode { get; set; }
@@ -233,22 +233,26 @@ public class RichTextLabel : Control
     public void AddText(string text) { Text += text; }
 }
 
-public class Button : Control
-{
-    public new class SignalName : Control.SignalName
-    {
-        public static readonly StringName Pressed = "Pressed";
-    }
-    public string Text { get; set; } = "";
-    public event Action? Pressed;
-}
-
 public class BaseButton : Control
 {
     public new class SignalName : Control.SignalName
     {
         public static readonly StringName Pressed = "Pressed";
     }
+
+    // Godot declares the pressed signal on BaseButton, and a caller compiled against
+    // the real GodotSharp emits BaseButton.add_Pressed. Declaring it on Button here
+    // instead made that call unresolvable at load.
+    public event Action? Pressed;
+}
+
+public class Button : BaseButton
+{
+    public new class SignalName : BaseButton.SignalName
+    {
+        public static readonly StringName Pressed = "Pressed";
+    }
+    public string Text { get; set; } = "";
 }
 
 public class CheckBox : Button { }

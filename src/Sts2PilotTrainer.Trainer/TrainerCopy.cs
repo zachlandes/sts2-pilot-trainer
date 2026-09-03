@@ -121,12 +121,15 @@ public static class TrainerCopy
 
     // ── The player's fight, compared with the recording's ───────────────────
     //
-    // The approved S5 result wording. Shown once, on the game's own popup, after the
-    // player's fight has ended and been captured whole; nothing is shown during the
-    // fight. Every number comes from CombatComparison and every name from the
-    // manifest; nothing below names a recording.
+    // The approved result wording. Shown once, on the trainer's own result panel,
+    // after the player's fight has ended and been captured whole; nothing is shown
+    // during the fight. The panel is mostly pictures - card art by turn, two lines on
+    // a chart, figures in two columns - so what is left here is the furniture those
+    // pictures need and the sentences that are rules rather than captions. Every
+    // number comes from CombatComparison and every name from the manifest; nothing
+    // below names a recording.
 
-    /// <summary>The popup's title over a comparison.</summary>
+    /// <summary>The panel's title over a comparison.</summary>
     public static string ComparisonTitle(string creator) => $"Your fight and {creator}'s";
 
     /// <summary>The column the player's numbers sit under.</summary>
@@ -157,25 +160,28 @@ public static class TrainerCopy
     /// <summary>An empty list of potions or cards.</summary>
     public const string None = "none";
 
+    /// <summary>Why the two lines can be set beside each other at all: the boundary
+    /// was proved identical before the fight was handed over. Load-bearing rather
+    /// than reassuring - it is what makes every difference below a difference in the
+    /// fighting rather than in the fight.</summary>
+    public const string SameBoundaryNote = "Both fights started from the same position.";
+
     public const string TurnDetailHeading = "Turn by turn";
 
-    /// <summary>One turn both sides reached.</summary>
-    public static string TurnLine(
-        int turn, int yourEnemyHealthLost, int yourHealthLost, string creator, int theirEnemyHealthLost,
-        int theirHealthLost) =>
-        $"Turn {turn.ToString(CultureInfo.InvariantCulture)}: you took " +
-        $"{yourEnemyHealthLost.ToString(CultureInfo.InvariantCulture)} off the enemy and lost " +
-        $"{yourHealthLost.ToString(CultureInfo.InvariantCulture)}; {creator} took " +
-        $"{theirEnemyHealthLost.ToString(CultureInfo.InvariantCulture)} off and lost " +
-        $"{theirHealthLost.ToString(CultureInfo.InvariantCulture)}";
+    /// <summary>Over the chart of what each turn cost either side.</summary>
+    public const string ChartHeading = "Health lost each turn";
 
-    /// <summary>A turn only the recording reached.</summary>
-    public static string YourFightWasOverLine(int turn) =>
-        $"Turn {turn.ToString(CultureInfo.InvariantCulture)}: your fight was already over";
+    /// <summary>The chart's two measures, in the contract's own terms.</summary>
+    public const string EnemyMeasureLabel = "Enemy health lost";
 
-    /// <summary>A turn only the player reached.</summary>
-    public static string TheirFightWasOverLine(int turn, string creator) =>
-        $"Turn {turn.ToString(CultureInfo.InvariantCulture)}: {creator}'s fight was already over";
+    public const string PlayerMeasureLabel = "Health lost";
+
+    /// <summary>The turn axis, and the turn column of the chronology.</summary>
+    public const string TurnLabel = "Turn";
+
+    /// <summary>Where one side reached a turn the other never did. The turn is the
+    /// difference, so it is said rather than drawn as a row of zeroes.</summary>
+    public const string FightOverLabel = "fight over";
 
     /// <summary>The contract's caveats, shortened for a panel. The first is the one
     /// that keeps this a statement of differences.</summary>

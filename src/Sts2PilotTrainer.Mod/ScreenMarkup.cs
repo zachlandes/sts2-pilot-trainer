@@ -64,48 +64,6 @@ internal static class ScreenMarkup
         return body.ToString();
     }
 
-    /// <summary>
-    /// The player's fight beside the recording's.
-    ///
-    /// The two projections are laid out the way the contract keeps them: the summary
-    /// as a table with the player's column first, then the turn detail under its own
-    /// heading. A row whose two sides differ is drawn plain and a row that agrees is
-    /// dimmed, so what differed reads first - and that is the only visual distinction,
-    /// because a difference is not a verdict and no colour here says it is.
-    /// </summary>
-    internal static string Body(FightResultScreen screen)
-    {
-        var body = new StringBuilder();
-        if (!screen.HasComparison)
-        {
-            Line(body, Escape(screen.Notice));
-            return body.ToString();
-        }
-
-        body.Append("[table=3]");
-        Cell(body, string.Empty);
-        foreach (var column in screen.Columns) Cell(body, Dim(column));
-        foreach (var row in screen.Rows)
-        {
-            Cell(body, row.Matches ? Dim(row.Label) : Escape(row.Label));
-            Cell(body, row.Matches ? Dim(row.Yours) : Escape(row.Yours));
-            Cell(body, row.Matches ? Dim(row.Theirs) : Escape(row.Theirs));
-        }
-
-        body.Append("[/table]\n");
-
-        Blank(body);
-        Line(body, Escape(screen.TurnDetailHeading));
-        foreach (var line in screen.TurnLines) Line(body, Dim(line));
-
-        Blank(body);
-        foreach (var note in screen.Notes) Line(body, Dim(note));
-        return body.ToString();
-    }
-
-    private static void Cell(StringBuilder body, string text) =>
-        body.Append("[cell padding=0,0,24,4]").Append(text).Append("[/cell]");
-
     private static void Line(StringBuilder body, string text) => body.Append(text).Append('\n');
 
     private static void Blank(StringBuilder body) => body.Append('\n');

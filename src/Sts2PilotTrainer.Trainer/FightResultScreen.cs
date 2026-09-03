@@ -8,23 +8,36 @@ namespace Sts2PilotTrainer.Trainer;
 /// recording's, or the one sentence that says why there is no comparison.
 ///
 /// Computed from a <see cref="CombatComparison"/> and nothing else. The two
-/// projections stay apart here as they do in the contract - the summary rows first,
-/// then the turn detail under its own heading - and every number is the comparison's.
-/// Nothing is scored, ranked or judged: a row whose two sides differ is a row whose
-/// two sides differ, and the note under the detail says so in the approved words.
+/// projections stay apart here as they do in the contract - the summary figures
+/// first, then the turn chronology and the chart of the same turns - and every
+/// number is the comparison's. Nothing is scored, ranked or judged: a figure whose
+/// two sides differ is a figure whose two sides differ, and the notes say so in the
+/// approved words.
 ///
-/// Every sentence is a template over the creator's name and the comparison's values.
-/// Nothing here names a recording.
+/// It is a model of pictures rather than of sentences: the cards each turn, the
+/// potions and the two lines of the chart are model ids and numerals that a renderer
+/// draws. What text remains is furniture and the two caveats, each a rule rather
+/// than a caption. Every sentence is a template over the creator's name and the
+/// comparison's values, and nothing here names a recording.
 /// </summary>
 public sealed record FightResultScreen(
     string Title,
+    /// <summary>Why the two lines can be set beside each other at all.</summary>
+    string SameBoundaryNote,
     /// <summary>The player's column header, then the recording's.</summary>
     IReadOnlyList<string> Columns,
     /// <summary>The summary, one row per compared field, in the contract's order.</summary>
     IReadOnlyList<FightResultRow> Rows,
     string TurnDetailHeading,
-    /// <summary>One line per turn either side reached, in turn order.</summary>
-    IReadOnlyList<string> TurnLines,
+    /// <summary>One entry per turn either side reached, in turn order, with each
+    /// side's cards, potions and health-loss numerals.</summary>
+    IReadOnlyList<FightResultTurn> Turns,
+    /// <summary>What stands where a side has no turn to draw.</summary>
+    string FightOverLabel,
+    /// <summary>The same turns as a chart: both lines' enemy health lost and player
+    /// health lost against the turn, with the potions marked where they were
+    /// spent.</summary>
+    FightResultChart Chart,
     IReadOnlyList<string> Notes,
     /// <summary>The one sentence shown instead of the rows when there is no
     /// comparison, or empty when there is one.</summary>
@@ -48,20 +61,20 @@ public sealed record FightResultScreen(
                 Label(field.Field), Display(field.Field, field.Left), Display(field.Field, field.Right), field.Matches));
         }
 
-        var turns = comparison.Turns.Select(turn => (turn.Left, turn.Right) switch
-        {
-            ({ } yours, { } theirs) => TrainerCopy.TurnLine(
-                turn.Turn, yours.EnemyHealthLost, yours.HealthLost, creator, theirs.EnemyHealthLost, theirs.HealthLost),
-            (null, _) => TrainerCopy.YourFightWasOverLine(turn.Turn),
-            (_, null) => TrainerCopy.TheirFightWasOverLine(turn.Turn, creator),
-        }).ToList();
+        var turns = comparison.Turns.Select(turn => new FightResultTurn(
+            turn.Turn,
+            turn.Left is { } yours ? FightResultTurnSide.Of(yours) : null,
+            turn.Right is { } theirs ? FightResultTurnSide.Of(theirs) : null)).ToList();
 
         return new FightResultScreen(
             Title: TrainerCopy.ComparisonTitle(creator),
+            SameBoundaryNote: TrainerCopy.SameBoundaryNote,
             Columns: [TrainerCopy.YouColumn, creator],
             Rows: rows,
             TurnDetailHeading: TrainerCopy.TurnDetailHeading,
-            TurnLines: turns,
+            Turns: turns,
+            FightOverLabel: TrainerCopy.FightOverLabel,
+            Chart: FightResultChart.From(creator, comparison),
             Notes: [TrainerCopy.NoVerdictNote, TrainerCopy.BlockNote],
             Notice: string.Empty,
             DoneButton: TrainerCopy.DoneButton);
@@ -115,10 +128,13 @@ public sealed record FightResultScreen(
 
     private static FightResultScreen NoticeOf(string sentence) => new(
         Title: TrainerCopy.Name,
+        SameBoundaryNote: string.Empty,
         Columns: [],
         Rows: [],
         TurnDetailHeading: string.Empty,
-        TurnLines: [],
+        Turns: [],
+        FightOverLabel: string.Empty,
+        Chart: FightResultChart.Empty,
         Notes: [],
         Notice: sentence,
         DoneButton: TrainerCopy.DoneButton);
@@ -166,3 +182,47 @@ public sealed record FightResultScreen(
 /// <summary>One summary row: the label, the player's value, the recording's, and
 /// whether they agree. Agreement is a fact about two values, not a verdict.</summary>
 public sealed record FightResultRow(string Label, string Yours, string Theirs, bool Matches);
+
+/// <summary>
+/// One turn as the result draws it: the turn's number, and each side's cards,
+/// potions and health-loss numerals. A side that did not reach the turn is null,
+/// which is the difference rather than a row of zeroes.
+/// </summary>
+public sealed record FightResultTurn(int Turn, FightResultTurnSide? Yours, FightResultTurnSide? Theirs);
+
+/// <summary>
+/// What one line did on one turn.
+///
+/// The cards are the model ids of the cards played, in the order they were played,
+/// which is what a renderer looks card art up by. The potions are the potions that
+/// left a slot that turn without being discarded, from the same reading the summary's
+/// potion row uses.
+/// </summary>
+public sealed record FightResultTurnSide(
+    IReadOnlyList<string> CardModelIds,
+    IReadOnlyList<string> PotionModelIds,
+    int EnemyHealthLost,
+    int HealthLost)
+{
+    /// <summary>
+    /// Reads one side's turn out of the comparison's turn detail.
+    /// </summary>
+    /// <exception cref="ManifestException">When a card play carries no card id. The
+    /// icon for it would have to be invented, and a card nobody can name is not a
+    /// card this screen will draw a blank for.</exception>
+    public static FightResultTurnSide Of(CombatTurn turn) => new(
+        turn.Actions
+            .Where(action => string.Equals(action.Verb, nameof(ActionVerb.PlayCard), StringComparison.Ordinal))
+            .Select(CardModelId)
+            .ToList(),
+        turn.ConsumablesUsed,
+        turn.EnemyHealthLost,
+        turn.HealthLost);
+
+    private static string CardModelId(TurnAction action) =>
+        action.Args.TryGetValue("card_id", out var card) && card.Length > 0
+            ? card
+            : throw new ManifestException(
+                $"Step {action.Seq} plays a card and carries no 'card_id', so the card cannot be named. " +
+                "Refusing rather than drawing an icon for a card nobody can identify.");
+}

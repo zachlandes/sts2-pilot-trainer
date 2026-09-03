@@ -89,13 +89,12 @@ It computes nothing, ranks nothing, and labels no line better than another.
 `ReplayTrace.SampledFields` is the list of what gets kept, named explicitly.
 Adding a derivation to the direction above means adding its inputs to that list, on purpose, rather than discovering later that the field was never recorded.
 
-## A recorded interface hypothesis, and what it needs kept
+## The approved turn-level view, and what it needs kept
 
-One shape has been floated for the turn-level view and is explicitly *not* a commitment: a turn-indexed chart plotting enemy health lost and player health lost for the player and VOD solution, with potion artwork at the turn it was used and an immediately legible visual distinction between the player's line and the VOD's.
+The required turn-level view is a turn-indexed chart plotting enemy health lost and player health lost for the player and VOD solution, with potion artwork at the turn it was used and an immediately legible visual distinction between the player's line and the VOD's.
 
-It is written down here only so the data it would need survives long enough to test
-it. Whether it is the right interface is for interface design to decide, and
-discarding it is a perfectly good outcome.
+It was first written down here before implementation so the data it needed survived long enough to test it.
+Interface design then approved it, and the retail mod now draws it from that retained data.
 
 What the trace keeps for it today:
 
@@ -131,11 +130,14 @@ Player block is reset at the start of a turn and the trace samples either side o
 
 ## What is deliberately not built yet
 
-The retail mod now captures a person's completed fight, compares it with the recording from the same combat-start boundary, and presents the whole-combat summary before the turn chronology on the game's own popup.
-That text-led modal is a proved product limit rather than the next interface: a screenshot-backed playback UI is follow-up work, and this comparison contract does not presume its shape.
+The retail mod now captures a person's completed fight, compares it with the recording from the same combat-start boundary, and draws the result: the whole-combat summary as figures, then the turn chronology as card art in the order it was played, then the chart.
+The text-led modal that first showed it is gone; the captain read it and reported that prose describing the difference from the recording, on a large popup, was not the interface.
+The chart is the one hypothesised above, built and kept honest: `FightResultChart` in `Sts2PilotTrainer.Trainer` derives it from `CombatComparison` alone, plots enemy health lost and player health lost for both lines against the turn, marks potions by their stable model ids at the turn they were spent, and leaves a gap in a line where a projection has no value rather than drawing a zero.
+It lives with the presentation rather than in this contract on purpose: what a comparison *says* is still an interface question, and a chart baked into the contract would be an answer nothing could revisit.
 
 There is still no turn-level reset or branching and no solver.
 There is no score and no verdict about which line was better.
-`combat-compare` and the in-game popup state differences between two completed fights and nothing else, and the comparison refuses fights that did not start from the same boundary rather than producing a table that populates and means nothing.
+`combat-compare` and the in-game panel state differences between two completed fights and nothing else, and the comparison refuses fights that did not start from the same boundary rather than producing a table that populates and means nothing.
+Nothing on the panel ranks the two lines, scores either of them, or says which was better.
 `combat-snapshot` describes only the covered action history.
 See [the proof-of-concept path](proof-of-concept-path.md) for the current product boundary.

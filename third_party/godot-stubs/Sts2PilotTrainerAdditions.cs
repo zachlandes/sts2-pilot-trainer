@@ -196,3 +196,54 @@ public partial class DirAccess
         }
     }
 }
+
+// ── Control surface the trainer's result panel draws with ───────────────────
+//
+// The panel is built out of stock Godot nodes rather than a Control subclass of
+// its own: the mod compiles without Godot's source generators, so a subclass would
+// have no generated bridge and none of its overrides would ever be dispatched.
+// Everything below is a member of the real GodotSharp the mod compiles against; it
+// is stubbed here so the same code loads in the mod's game-free tests.
+
+/// <summary>Godot: how a label's text sits inside its box vertically.</summary>
+public enum VerticalAlignment { Top, Center, Bottom, Fill }
+
+public partial class Label
+{
+    public HorizontalAlignment HorizontalAlignment { get; set; }
+    public VerticalAlignment VerticalAlignment { get; set; }
+    public bool ClipText { get; set; }
+}
+
+public partial class TextureRect
+{
+    public enum ExpandModeEnum { KeepSize, IgnoreSize, FitWidth, FitWidthProportional, FitHeight, FitHeightProportional }
+
+    public enum StretchModeEnum
+    {
+        Scale, Tile, Keep, KeepCentered, KeepAspect, KeepAspectCentered, KeepAspectCovered,
+    }
+
+    public ExpandModeEnum ExpandMode { get; set; }
+    public StretchModeEnum StretchMode { get; set; }
+}
+
+public class StyleBox : Resource
+{
+    public void SetContentMarginAll(float offset) { }
+}
+
+public class StyleBoxFlat : StyleBox
+{
+    public Color BgColor { get; set; }
+    public Color BorderColor { get; set; }
+    public void SetBorderWidthAll(int width) { }
+    public void SetCornerRadiusAll(int radius) { }
+}
+
+public partial class Control
+{
+    public void AddThemeFontOverride(StringName name, Font font) { }
+    public void AddThemeColorOverride(StringName name, Color color) { }
+    public void AddThemeStyleboxOverride(StringName name, StyleBox stylebox) { }
+}

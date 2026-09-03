@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using HarmonyLib;
+using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -82,6 +84,75 @@ public sealed class ProfileWriteBarrierTests
         Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "SaveProgressFile"), named);
         Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "UpdateProgressAfterCombatWon"), named);
         Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "SaveRun"), named);
+    }
+
+    [BarrierFact]
+    public void ItInstallsTheBoundariesFoundByTheRetailProof()
+    {
+        var harmony = new Harmony($"sts2-pilot-trainer.barrier-test.{Guid.NewGuid():N}");
+        var gameAssembly = GameAssembly();
+        var boundaries = new (string Type, string Method)[]
+        {
+            ("MegaCrit.Sts2.Core.Multiplayer.Replay.CombatReplayWriter", "WriteReplay"),
+            ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkCardAsSeen"),
+            ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkRelicAsSeen"),
+            ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkPotionAsSeen"),
+        };
+
+        try
+        {
+            ProfileWriteBarrier.Install(harmony);
+
+            foreach (var (typeName, methodName) in boundaries)
+            {
+                var methods = gameAssembly.GetType(typeName)!
+                    .GetMethods(BindingFlags.Instance | BindingFlags.Static |
+                                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
+                    .Where(method => method.Name == methodName);
+
+                Assert.All(methods, method => Assert.Contains(
+                    Harmony.GetPatchInfo(method)!.Prefixes,
+                    patch => patch.owner == harmony.Id));
+            }
+        }
+        finally
+        {
+            harmony.UnpatchAll(harmony.Id);
+        }
+    }
+
+    [Fact]
+    public async Task RaisedItSuppressesInstalledBoundaries()
+    {
+        var harmony = new Harmony($"sts2-pilot-trainer.barrier-test.{Guid.NewGuid():N}");
+        var boundaryType = typeof(WriteBoundary);
+        var boundaries = new (string Type, string Method)[]
+        {
+            (boundaryType.FullName!, nameof(WriteBoundary.VoidWrite)),
+            (boundaryType.FullName!, nameof(WriteBoundary.TaskWrite)),
+        };
+
+        try
+        {
+            Assert.Equal(2, ProfileWriteBarrier.Install(harmony, boundaryType.Assembly, boundaries));
+
+            WriteBoundary.VoidWrite();
+            await WriteBoundary.TaskWrite();
+            Assert.Equal(2, WriteBoundary.Calls);
+
+            WriteBoundary.Calls = 0;
+            ProfileWriteBarrier.Raise();
+            WriteBoundary.VoidWrite();
+            await WriteBoundary.TaskWrite();
+
+            Assert.Equal(0, WriteBoundary.Calls);
+        }
+        finally
+        {
+            ProfileWriteBarrier.Lower();
+            harmony.UnpatchAll(harmony.Id);
+            WriteBoundary.Calls = 0;
+        }
     }
 
     /// <summary>
@@ -180,6 +251,19 @@ public sealed class ProfileWriteBarrierTests
         {
             pendingResult.SetValue(null, null);
             recordedRun.GetMethod("Finish", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
+        }
+    }
+
+    private static class WriteBoundary
+    {
+        internal static int Calls { get; set; }
+
+        public static void VoidWrite() => Calls++;
+
+        public static Task TaskWrite()
+        {
+            Calls++;
+            return Task.CompletedTask;
         }
     }
 

@@ -53,6 +53,14 @@ internal sealed class PlayerFightObserver : IDisposable
     private readonly Action _fightEnded;
 
     private bool _awaitingPlayerTurn;
+
+    /// <summary>How many steps have been opened. Used only to tell one open step from
+    /// the next, so a wait that outlives its own action cannot close another's.</summary>
+    private int _openedSteps;
+
+    /// <summary>Whether the executor has reported the open step's action finished.
+    /// What makes it safe to close that step with the next action's before-sample.</summary>
+    private bool _openStepFinished;
     private bool _ended;
     private bool _disposed;
 
@@ -95,22 +103,28 @@ internal sealed class PlayerFightObserver : IDisposable
     {
         if (_ended || action.OwnerId != _player.NetId) return;
 
+        // Whether the action still open had already finished executing. Only consulted
+        // when one is open, which happens where two actions arrive with no frame
+        // between them - one click that plays a held card and ends the turn does
+        // exactly that. The executor runs its actions in order, so a finished previous
+        // action means this action's before-sample is that one's after-sample.
+        var previousFinished = _openStepFinished;
+
         try
         {
             switch (action)
             {
                 case PlayCardAction play:
-                    _capture.BeginStep(nameof(ActionVerb.PlayCard), PlayCardArgs(play), _entry.SampleLiveState());
+                    Begin(nameof(ActionVerb.PlayCard), PlayCardArgs(play), previousFinished);
                     break;
                 case UsePotionAction potion:
-                    _capture.BeginStep(nameof(ActionVerb.UsePotion), PotionArgs(potion.PotionIndex), _entry.SampleLiveState());
+                    Begin(nameof(ActionVerb.UsePotion), PotionArgs(potion.PotionIndex), previousFinished);
                     break;
                 case DiscardPotionGameAction discard:
-                    _capture.BeginStep(
-                        nameof(ActionVerb.DiscardPotion), PotionArgs(SlotOf(discard)), _entry.SampleLiveState());
+                    Begin(nameof(ActionVerb.DiscardPotion), PotionArgs(SlotOf(discard)), previousFinished);
                     break;
                 case EndPlayerTurnAction:
-                    _capture.BeginStep(nameof(ActionVerb.EndTurn), Empty, _entry.SampleLiveState());
+                    Begin(nameof(ActionVerb.EndTurn), Empty, previousFinished);
                     break;
                 case UndoEndPlayerTurnAction:
                     // The game took the ended turn back before the enemy turn began.
@@ -127,6 +141,20 @@ internal sealed class PlayerFightObserver : IDisposable
         }
     }
 
+    /// <summary>
+    /// Opens a step, and counts it.
+    ///
+    /// The count is what keeps a late after-sample from closing the wrong action: an
+    /// action that began while another was open closes that one here, and the wait
+    /// still running for it must not then close this one with a state that is not its.
+    /// </summary>
+    private void Begin(string verb, IReadOnlyDictionary<string, string> args, bool previousFinished)
+    {
+        _capture.BeginStep(verb, args, _entry.SampleLiveState(), previousFinished);
+        _openedSteps++;
+        _openStepFinished = false;
+    }
+
     private void AfterAction(GameAction action)
     {
         if (_ended || action.OwnerId != _player.NetId) return;
@@ -134,11 +162,13 @@ internal sealed class PlayerFightObserver : IDisposable
         switch (action)
         {
             case PlayCardAction or UsePotionAction or DiscardPotionGameAction:
+                _openStepFinished = true;
                 _ = CompleteWhenSettled();
                 break;
             case EndPlayerTurnAction:
                 // The turn's after-sample is the player's next turn, once the enemy
                 // turn between them has resolved; TurnStarted says when.
+                _openStepFinished = true;
                 _awaitingPlayerTurn = true;
                 break;
         }
@@ -191,6 +221,7 @@ internal sealed class PlayerFightObserver : IDisposable
     /// </summary>
     private async Task CompleteWhenSettled()
     {
+        var waitingFor = _openedSteps;
         try
         {
             var queues = RunManager.Instance.ActionQueueSet;
@@ -212,7 +243,10 @@ internal sealed class PlayerFightObserver : IDisposable
                 return;
             }
 
-            if (_ended || _disposed || _combat.IsOverOrEnding) return;
+            // The action this wait belongs to may already have been closed by the next
+            // one beginning. Closing again would put this action's after-sample on the
+            // action after it.
+            if (_ended || _disposed || _combat.IsOverOrEnding || _openedSteps != waitingFor) return;
             _capture.CompleteStep(_entry.SampleLiveState());
         }
         catch (Exception ex)

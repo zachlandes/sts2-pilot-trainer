@@ -26,6 +26,13 @@
     <ProjectReference Include="../Sts2PilotTrainer.Trainer/Sts2PilotTrainer.Trainer.csproj" />
   </ItemGroup>
 
+  <!-- The result panel is assembled from stock Godot nodes and asserted on node by
+       node, in a process with no game. Reaching it by reflection like the surfaces
+       that need the real game assembly would make those assertions unreadable. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sts2PilotTrainer.Mod.Tests" />
+  </ItemGroup>
+
   <!-- The one recording this proof ships, embedded rather than dropped beside the
        DLL: the game scans its mod directory recursively for *.json manifests, and a
        replay manifest sitting there would be read as a broken mod. -->

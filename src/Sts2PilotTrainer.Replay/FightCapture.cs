@@ -135,17 +135,48 @@ public sealed class FightCapture
     /// no action accounts for, and a trace with a gap in it is not a record of the
     /// fight. It is refused rather than bridged, because bridging it would attribute
     /// the gap's damage to nothing and the projection would quietly under-count.
+    ///
+    /// The same rule is what lets an action that begins while another is still open be
+    /// recorded rather than refused, but only where the engine had nothing pending:
+    /// then this action's before-sample <em>is</em> the previous action's after-sample,
+    /// and closing the previous one with it invents nothing.
     /// </summary>
-    public void BeginStep(string verb, IReadOnlyDictionary<string, string> args, IReadOnlyDictionary<string, string> before)
+    /// <param name="previousActionFinished">
+    /// Whether the action still open had already finished executing when this one
+    /// began. Only consulted when an action is still open, and then it is the
+    /// difference between a sample that is exact and one that would be a guess.
+    /// </param>
+    public void BeginStep(
+        string verb,
+        IReadOnlyDictionary<string, string> args,
+        IReadOnlyDictionary<string, string> before,
+        bool previousActionFinished = false)
     {
         if (State != FightCaptureState.Live) return;
 
         if (_open is not null)
         {
-            Refuse(
-                $"A '{verb}' began while the '{_open.Verb}' before it had not been sampled afterwards, so the " +
-                "capture cannot say what each of them did.");
-            return;
+            // Two actions can begin one after the other with nothing between them:
+            // measured in the retail client, where one click played a held card and
+            // ended the turn, so the card's after-sample had not been taken when the
+            // ended turn began.
+            //
+            // Where the open action had already finished executing, this sample is
+            // exactly its after-state - the state an action begins from is the state
+            // the one before it left - so it is closed with it and nothing is guessed.
+            // Where it had not, the two actions genuinely overlap, sampling now would
+            // attribute one's effects to the other, and the capture refuses as it
+            // always has.
+            if (!previousActionFinished)
+            {
+                Refuse(
+                    $"A '{verb}' began while the '{_open.Verb}' before it had not been sampled afterwards, so the " +
+                    "capture cannot say what each of them did.");
+                return;
+            }
+
+            CompleteStep(before);
+            if (State != FightCaptureState.Live) return;
         }
 
         var sample = ReplayTrace.Sample(before);

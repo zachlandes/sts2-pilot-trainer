@@ -29,12 +29,15 @@ public sealed class FightResultScreenTests
             new FightResultRow("Cards removed", "none", "none", true),
         ], screen.Rows);
         Assert.Equal("Turn by turn", screen.TurnDetailHeading);
-        Assert.Equal(
-        [
-            "Turn 1: you took 8 off the enemy and lost 6; NaveGreed took 8 off and lost 6",
-            "Turn 2: you took 10 off the enemy and lost 8; NaveGreed took 34 off and lost 0",
-            "Turn 3: NaveGreed's fight was already over",
-        ], screen.TurnLines);
+        Assert.Equal([1, 2, 3], screen.Turns.Select(turn => turn.Turn));
+        Assert.Equal(["CARD.STRIKE_IRONCLAD"], screen.Turns[0].Yours!.CardModelIds);
+        Assert.Equal(["CARD.HELLRAISER"], screen.Turns[0].Theirs!.CardModelIds);
+        Assert.Equal((8, 6), (screen.Turns[0].Yours!.EnemyHealthLost, screen.Turns[0].Yours!.HealthLost));
+        Assert.Equal(["POTION.BLOCK_POTION"], screen.Turns[1].Yours!.PotionModelIds);
+        Assert.Empty(screen.Turns[1].Theirs!.PotionModelIds);
+        Assert.Equal((10, 8), (screen.Turns[1].Yours!.EnemyHealthLost, screen.Turns[1].Yours!.HealthLost));
+        Assert.Equal((34, 0), (screen.Turns[1].Theirs!.EnemyHealthLost, screen.Turns[1].Theirs!.HealthLost));
+        Assert.Null(screen.Turns[2].Theirs);
         Assert.Equal(
         [
             "This states differences. It does not say which fight was better.",
@@ -45,10 +48,27 @@ public sealed class FightResultScreenTests
     }
 
     [Fact]
-    public void ATurnOnlyTheRecordingReachedSaysSo()
+    public void ATurnOnlySideReachedIsAbsentOnTheOtherRatherThanZero()
     {
         var screen = FightResultScreen.For("NaveGreed", CombatComparison.Between(RecordingsLine(), PlayersLine()));
-        Assert.Equal("Turn 3: your fight was already over", screen.TurnLines[2]);
+
+        Assert.Null(screen.Turns[2].Yours);
+        Assert.NotNull(screen.Turns[2].Theirs);
+        Assert.Null(screen.Chart.Yours.Points[2].EnemyHealthLost);
+        Assert.Null(screen.Chart.Yours.Points[2].HealthLost);
+        Assert.False(screen.Chart.Yours.Points[2].Reached);
+    }
+
+    [Fact]
+    public void ACardPlayedWithNoCardIdIsRefusedRatherThanDrawnBlank()
+    {
+        var capture = Live();
+        capture.BeginStep("PlayCard", Args(), Sample("in_progress", 1, 64, 42));
+        capture.CompleteStep(Sample("victory", 1, 64, 0, enemies: 0));
+
+        var screen = FightResultScreen.Of("NaveGreed", capture, Recording());
+        Assert.False(screen.HasComparison);
+        Assert.Contains("carries no 'card_id'", screen.Notice, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -57,7 +77,8 @@ public sealed class FightResultScreenTests
         var screen = FightResultScreen.For("Someone Else", CombatComparison.Between(PlayersLine(), RecordingsLine()));
         Assert.Equal("Your fight and Someone Else's", screen.Title);
         Assert.Equal(["You", "Someone Else"], screen.Columns);
-        Assert.Equal("Turn 3: Someone Else's fight was already over", screen.TurnLines[2]);
+        Assert.Equal("Someone Else", screen.Chart.Theirs.Label);
+        Assert.Null(screen.Turns[2].Theirs);
     }
 
     [Fact]
@@ -118,7 +139,7 @@ public sealed class FightResultScreenTests
     public void AWonFightFromADifferentBoundaryShowsTheComparisonsOwnRefusal()
     {
         var capture = FightCapture.Begin("player", Sample("in_progress", 1, 64, 42), "sha256:" + new string('f', 64));
-        capture.BeginStep("PlayCard", Args(), Sample("in_progress", 1, 64, 42));
+        capture.BeginStep("PlayCard", Card("CARD.BASH"), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("victory", 1, 64, 0, enemies: 0));
 
         var screen = FightResultScreen.Of("NaveGreed", capture, Recording());
@@ -130,17 +151,19 @@ public sealed class FightResultScreenTests
     public void AWonFightFromTheRecordedBoundaryIsCompared()
     {
         var capture = Live();
-        capture.BeginStep("PlayCard", Args(), Sample("in_progress", 1, 64, 42));
+        capture.BeginStep("PlayCard", Card("CARD.HELLRAISER"), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("in_progress", 1, 64, 34));
         capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 34));
         capture.CompleteStep(Sample("in_progress", 2, 58, 34));
-        capture.BeginStep("PlayCard", Args(), Sample("in_progress", 2, 58, 34));
+        capture.BeginStep("PlayCard", Card("CARD.BASH"), Sample("in_progress", 2, 58, 34));
         capture.CompleteStep(Sample("victory", 2, 58, 0, enemies: 0));
 
         var screen = FightResultScreen.Of("NaveGreed", capture, Recording());
         Assert.True(screen.HasComparison);
         Assert.All(screen.Rows, row => Assert.True(row.Matches));
-        Assert.Equal("Turn 2: you took 34 off the enemy and lost 0; NaveGreed took 34 off and lost 0", screen.TurnLines[1]);
+        Assert.Equal(["CARD.BASH"], screen.Turns[1].Yours!.CardModelIds);
+        Assert.Equal(screen.Turns[1].Yours!.CardModelIds, screen.Turns[1].Theirs!.CardModelIds);
+        Assert.Equal(34, screen.Turns[1].Theirs!.EnemyHealthLost);
     }
 
     // ── The two lines ─────────────────────────────────────────────────────
@@ -149,17 +172,17 @@ public sealed class FightResultScreenTests
     private static CombatProjection PlayersLine()
     {
         var capture = Live();
-        capture.BeginStep("PlayCard", Args(), Sample("in_progress", 1, 64, 42));
+        capture.BeginStep("PlayCard", Card("CARD.STRIKE_IRONCLAD"), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("in_progress", 1, 64, 34));
         capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 34));
         capture.CompleteStep(Sample("in_progress", 2, 58, 34));
         capture.BeginStep("UsePotion", Args(("potion_index", "0")), Sample("in_progress", 2, 58, 34));
         capture.CompleteStep(Sample("in_progress", 2, 58, 34, potions: "empty|empty"));
-        capture.BeginStep("PlayCard", Args(), Sample("in_progress", 2, 58, 34, potions: "empty|empty"));
+        capture.BeginStep("PlayCard", Card("CARD.BASH"), Sample("in_progress", 2, 58, 34, potions: "empty|empty"));
         capture.CompleteStep(Sample("in_progress", 2, 58, 24, potions: "empty|empty"));
         capture.BeginStep("EndTurn", Args(), Sample("in_progress", 2, 58, 24, potions: "empty|empty"));
         capture.CompleteStep(Sample("in_progress", 3, 50, 24, potions: "empty|empty"));
-        capture.BeginStep("PlayCard", Args(), Sample("in_progress", 3, 50, 24, potions: "empty|empty"));
+        capture.BeginStep("PlayCard", Card("CARD.HELLRAISER"), Sample("in_progress", 3, 50, 24, potions: "empty|empty"));
         capture.CompleteStep(Sample("victory", 3, 50, 0, enemies: 0, potions: "empty|empty"));
         return capture.Project();
     }
@@ -170,11 +193,11 @@ public sealed class FightResultScreenTests
     private static RecordedFight Recording()
     {
         var capture = FightCapture.Begin("test-run", Sample("in_progress", 1, 64, 42), Digest);
-        capture.BeginStep("PlayCard", Args(), Sample("in_progress", 1, 64, 42));
+        capture.BeginStep("PlayCard", Card("CARD.HELLRAISER"), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("in_progress", 1, 64, 34));
         capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 34));
         capture.CompleteStep(Sample("in_progress", 2, 58, 34));
-        capture.BeginStep("PlayCard", Args(), Sample("in_progress", 2, 58, 34));
+        capture.BeginStep("PlayCard", Card("CARD.BASH"), Sample("in_progress", 2, 58, 34));
         capture.CompleteStep(Sample("victory", 2, 58, 0, enemies: 0));
         return new RecordedFight
         {
@@ -214,6 +237,8 @@ public sealed class FightResultScreenTests
         }
         return sample;
     }
+
+    private static IReadOnlyDictionary<string, string> Card(string modelId) => Args(("card_id", modelId));
 
     private static IReadOnlyDictionary<string, string> Args(params (string Key, string Value)[] args) =>
         args.ToDictionary(arg => arg.Key, arg => arg.Value, StringComparer.Ordinal);

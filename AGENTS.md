@@ -80,6 +80,10 @@ nothing; `CombatProjection` and `CombatComparison` do the deriving, over a fight
 finished and never over one still being fought. Do not collapse the trace into final
 snapshots or prose, do not bake turn chronology into the summary, and do not add a
 score, a ranking or a verdict about which line was better.
+What the result *looks like* is presentation and stays out of that contract:
+`FightResultScreen` and `FightResultChart` in `Sts2PilotTrainer.Trainer` derive the
+drawn model, and `FightResultPanel` in the mod draws it. A value the projection cannot
+derive honestly is a gap in a line, never a zero.
 
 **Where this is going, and what is runnable at each step, is
 [docs/proof-of-concept-path.md](docs/proof-of-concept-path.md).** Read it before

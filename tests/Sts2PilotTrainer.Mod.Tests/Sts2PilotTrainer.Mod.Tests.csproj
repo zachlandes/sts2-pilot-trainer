@@ -15,6 +15,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>../../build/lib/0Harmony.dll</HintPath>
+    </Reference>
     <ProjectReference Include="../../src/Sts2PilotTrainer.Engine/Sts2PilotTrainer.Engine.csproj" />
     <ProjectReference Include="../../src/Sts2PilotTrainer.Mod/Sts2PilotTrainer.Mod.csproj" />
     <ProjectReference Include="../../third_party/godot-stubs/GodotStubs.csproj" />

@@ -329,26 +329,27 @@ sides to the S1 contract, and show him the result.
   path lowers the write barrier; a fight left through the game's own menu abandons
   the capture the same way.
 
-**A limit recorded from the first retail session, not a requirement of this slice.**
-The captain played the fight, read the panel and reported that it worked, and that a
-text-led list of differences on a large modal is not good enough for the next
-interface: the direction is screenshot-backed playback, and it is the follow-up after
-this loop merges, owned by interface design rather than by this slice.
-What is here is the approved Direction A wording on the game's own popup, kept
-deliberately small.
+**The result the first retail session asked for is what is here now.**
+The captain played the fight, read the text-led list of differences on a large modal
+and reported that prose describing how his fight differed from the recording's was not
+the interface. The panel it became is drawn: the summary as figures in two columns,
+the turn chronology as the game's own card and potion art in the order it was played,
+and the chart of what each turn cost either side, with the two lines told apart by
+colour and by marker shape. `FightResultPanel` in the mod draws it and decides
+nothing; `FightResultChart` derives the chart from the comparison and leaves a gap
+where a value cannot be derived honestly.
+
+[demo/VISUAL-COMPARISON.md](../demo/VISUAL-COMPARISON.md) has the drawn panel from the
+retail client over a deliberately different line, the two no-comparison paths it also
+produced there, and what that session changed on disk.
 
 **Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json --play`
 stands in the fight, plays the recording's nine actions through the player-side
-capture, and prints the result panel word for word: every row the same on both sides,
-every turn line the same twice, because the recording stood in for the player.
+capture, and prints the result panel as far as a terminal can draw it - the figures,
+the chronology and the chart's own numbers - every row the same on both sides because
+the recording stood in for the player.
 [demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has it with its
 real output, and the retail client's own result over a fight a person played.
-
-### Later, and only a hypothesis
-
-The turn-indexed chart of player-versus-VOD health loss with potion markers is recorded in
-[comparison direction](comparison-direction.md) as an interface hypothesis.
-It is not a commitment, and discarding it is a good outcome.
 
 ## Known limits that no slice above removes
 
@@ -385,9 +386,8 @@ transcribed and nothing here is a claim about it.
 ## Deliberately not built
 
 No turn-level reset or branching. No solver. No generalized VOD ingestion and no
-multi-VOD support. No charting. No broad interface work. No presentation designed
-around rare permanent card removal. No candidate search: S2.5 built the prefix one
-would need and deliberately stopped there.
+multi-VOD support. No presentation designed around rare permanent card removal. No
+candidate search: S2.5 built the prefix one would need and deliberately stopped there.
 
 And nothing in the decision alphabet beyond what this one path uses.
 Rest sites, shops, potion use, treasure rooms and act transitions are still named by the format and still refused by the driver, because implementing a verb no reconstruction exercises is how a verb that quietly does the wrong thing gets shipped.
