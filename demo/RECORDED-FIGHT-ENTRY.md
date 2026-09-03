@@ -304,34 +304,29 @@ that is refused. Stopping a decision short refuses to be called the boundary. Th
 profile reading and every byte of the profile store are unchanged either side of all of
 it.
 
-**Proved in the retail client, and only this far.** With Steam running, the mod
-installed and every other mod disabled through the game's own screen, the client loads
-Combat Trainer alone and installs the write barrier over ten real write sites. The
-screen offers the fight. Pressing it constructs the recording's run in the client - the
-overlay reads seed SFXT47K77RFK, the badge reads Ascension 10 - and the journey then
-runs: the recorded blessing is taken (maximum health 80 to 68, the relic granted), the
-game's own event screen is dismissed through the button the game would have had the
-player press, the map comes up, and the recorded map move is made. Both recorded
-decisions execute in order, each captioned from what the run is standing in front of,
-numbered where it falls. The log records both.
+**Proved in the retail client.** With Steam running, the mod installed and every other
+mod disabled through the game's own screen, the client loads Combat Trainer alone and
+installs the write barrier over ten real write sites. The screen offers the fight.
+Pressing it constructs the recording's run at the recording's identity, and the
+recording's two decisions are then made in order, on the game's own screens, captioned
+from the run itself. The player ends up standing in the recorded fight, and the whole
+canonical state at that boundary is the same digest the headless host derives for the
+combat-start snapshot. That is the loop's second step, closed in the client.
 
-**Not proved: the fight itself.** After the map move the entry gives up and abandons
-the run rather than hand over a fight it cannot show is the recorded one. What it saw
-when it gave up, in its own refusal: `room=Monster, combat manager=in progress, player
-combat state=None, turn=1`. So the recorded node was entered, the fight is live and it
-is turn 1 - and the player's turn never begins. That is one measured fact short of a
-cause, and it is where this stopped rather than guess at a fifth.
+**What the run found that no headless test could.** Three of the recording's steps turn
+out to be screen commands rather than engine ones, and the engine call is the middle of
+each: a map move is `NMapScreen.TravelToMapCoord`, which fades the screen around
+`RunManager.EnterMapCoord`; an event screen's continue is not in the event model's
+option list at all. Each was invisible until a real client sat there waiting, and each
+is now pinned by a test so a rename fails the build instead of a session.
 
-**What the boundary check did, before that.** An earlier run of this journey reached
-the boundary and refused it, reading an empty hand and no energy - the fight one moment
-after the room is built and before it is dealt. Wrong to enter, correctly refused, and
-the reason the entry now waits for the engine's own turn phase instead of for the room.
-
-**One thing the retail run found that no headless test could.** The client's event room
-waits on its own "Proceed" before returning to the map. The manifest has no verb for
-that by design - S2.5 decided a screen transition is not a decision the run contains -
-so the host has to drive it, and now does, through the option the engine itself flags
-as a proceed. That gap was invisible until a real client sat there waiting.
+**And one that changes how anything here should wait.** A deferral that re-defers itself
+is not a frame loop: Godot drains its deferred queue until empty, so the loop ran seven
+thousand times in eight seconds without the game drawing once - and what it was waiting
+for was the fight opening, which needs those frames. The wait was what prevented it.
+Handing the frames back on the scene tree's own timer is what let the player's turn
+begin. Nothing this mod ticks has ever been seen running in that process; awaiting the
+game's own tasks and its own timer are what work.
 
 **The captain's saved progress is unchanged.** SHA-256 over 143 save files before the
 session and after it: `progress.save`, `profile.save` and every run-history file are
@@ -359,3 +354,21 @@ numbered where it falls.
 ```
 
 ![The Act 1 map in the retail client with a panel over it titled "Watching NaveGreed", reading "2 of 2   NaveGreed moved to the Monster node, centre column", with "Skip to the fight" and "Next" buttons. The top bar reads 64/68 health after the recorded blessing.](140b3d23-2026-09-03.png)
+
+And the fight, entered. The player is standing in it: Sludge Spinner at 42 of 42 with a
+9-damage attack intent, the opening hand of Strike, Hellraiser, Strike, Bash and Defend,
+3 of 3 energy, six cards in the draw pile and none discarded, turn 1, at Ascension 10 on
+floor 2 of seed SFXT47K77RFK.
+
+Every one of those is a value a person read off the recording, and the mod checked all
+thirteen of them before it let go. It also compared the whole canonical state, which is
+the part no screenshot can show: `sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae`
+in the retail client, and the same digest for the combat-start snapshot the headless
+host derives and re-derives in a fresh process. The random streams and the draw pile's
+order agree, not just the faces on the cards.
+
+```bash {image}
+![The recorded fight in the retail client. The Ironclad at 64/68 faces a Sludge Spinner at 42/42 with a 9-damage attack intent. The hand is Strike, Hellraiser, Strike, Bash, Defend; energy reads 3/3, the draw pile 6 and the discard 0; the button reads "End Turn 1". The overlay reads v0.111.0, SFXT47K77RFK, MODDED (1) and the badge reads Ascension 10.](in-game-recorded-fight.png)
+```
+
+![The recorded fight in the retail client. The Ironclad at 64/68 faces a Sludge Spinner at 42/42 with a 9-damage attack intent. The hand is Strike, Hellraiser, Strike, Bash, Defend; energy reads 3/3, the draw pile 6 and the discard 0; the button reads "End Turn 1". The overlay reads v0.111.0, SFXT47K77RFK, MODDED (1) and the badge reads Ascension 10.](3cadd4e8-2026-09-03.png)

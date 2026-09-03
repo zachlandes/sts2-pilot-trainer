@@ -111,14 +111,12 @@ no video can show. A boundary that disagrees on either abandons the run and says
 
 ## What it does not prove
 
-**Nobody has played the fight.**
-In the retail client the journey runs both of the recording's decisions - the run is
-constructed, the blessing taken, the game's own event screen dismissed, the map shown
-and the recorded move made through the map screen's own travel command - and then
-stops. Measured at the point it gives up: `room=Monster, combat manager=in progress,
-player combat state=None, turn=1`. The right room was entered and the fight is live at
-turn 1; what never happens is the player's turn beginning, so the entry abandons rather
-than hand over a fight nobody can act in. Everything past that runs headlessly.
+**Somebody has now stood in the fight; nobody has played it to the end.**
+In the retail client the journey runs start to finish: the run is constructed, both
+recorded decisions are made on the game's own screens, and the player is handed the
+recorded fight with the whole canonical state matching the combat-start snapshot the
+headless host derives. What has not been watched is the fight being played out and
+compared, which is S5.
 
 **Three of the recording's steps are screen commands, not engine ones.**
 Each was found by running it, and each has the same shape: the engine call is the
@@ -127,27 +125,23 @@ the screen around `RunManager.EnterMapCoord`; doing only the middle leaves the c
 on the map with the next room built behind it. An event screen's continue is not in the
 event model's option list at all and is driven through `NEventRoom.OptionButtonClicked`.
 `GameScreenCommandTests` pins both, and `EventOption.IsProceed`, so a build that renames
-one fails at build time rather than in a retail session. Whether the start of the
-player's turn is a fourth of these is the open question above.
+one fails at build time rather than in a retail session.
+
+**Waiting in this process is not what it looks like.**
+Read this before writing anything here that waits. Nothing this mod ticks has ever been
+observed running: an await on the scene tree's `ProcessFrame` signal, a delegate on that
+signal's C# event, and a node's own `_Process` all leave a wait registered and never
+resumed, with no timeout and nothing logged. Worse, a deferral that re-defers itself is
+not a frame loop either - Godot drains its deferred queue until empty, so it spun seven
+thousand times in eight seconds without the game drawing, and starved the fight it was
+waiting for. Three things do work: awaiting a task the game itself completes,
+`CallDeferred` once for end-of-frame, and awaiting a `SceneTreeTimer`. `RecordedFightRun`
+uses only those.
 
 **The deviation lock has to cover a whole step, not a call.**
 A screen's command does most of its work after an await, so an authorisation that ended
 when the starting call returned had already lapsed - and the lock refused the
 recording's own map move. It is held across the step now.
-
-**Waiting in this process is not what it looks like.**
-Worth knowing before writing anything that waits here. Nothing this mod ticks has ever
-been observed running: an await on the scene tree's `ProcessFrame` signal, a delegate
-on that signal's C# event, and a node's own `_Process` all leave a wait registered and
-never resumed, with no timeout and nothing logged. Two primitives do work - awaiting a
-task the game itself completes, and `CallDeferred` - and a deferral that re-defers
-itself is this host's frame loop. `RecordedFightRun` uses only those two and says so.
-
-**The client waits where the manifest does not.**
-Found by running it: the event room waits on its own "Proceed" before returning to the
-map, and the manifest has no verb for that because a screen transition is not a
-decision the run contains. The host drives it now, through the option the engine flags
-as a proceed, and refuses to touch a screen that still has a real choice on it.
 
 **The watching screens are the game's popup, not the mockup's bar.**
 The approved journey shows a chip and a control bar over the game's own screens. What

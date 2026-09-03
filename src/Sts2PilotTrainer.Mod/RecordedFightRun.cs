@@ -70,10 +70,10 @@ internal static class RecordedFightRun
     /// </summary>
     private static bool _authorising;
 
-    /// <summary>How many frames a deferral loop gives the game before it gives up.
-    /// Generous: a fight that opens slowly is fine, a boundary read half-open is
-    /// not.</summary>
-    private const int DeferralBudget = 600;
+    /// <summary>How long to let the game run before reading the fight it is opening.
+    /// A fight that opens slowly is fine; a boundary read half-open is not, and the
+    /// refusal says what it saw either way.</summary>
+    private const double OpeningTheFightSeconds = 2.0;
 
     internal static RecordedFightPhase Phase { get; private set; } = RecordedFightPhase.None;
 
@@ -330,47 +330,44 @@ internal static class RecordedFightRun
     /// dealt over the frames after that, so the boundary asked immediately reads an
     /// empty hand and refuses a fight that is merely a moment young.
     /// </summary>
-    private static void HandOverWhenTheGameHasFinishedMoving() =>
-        DeferUntilReady(
-            () => _entry is { IsReadyForThePlayer: true },
-            "finish opening the recording's fight",
-            HandOverTheFight);
-
-    private static void DeferUntilReady(Func<bool> ready, string what, Action onReady)
+    private static async void HandOverWhenTheGameHasFinishedMoving()
     {
-        var frames = 0;
-        Action? step = null;
-        step = () =>
+        try
         {
-            try
-            {
-                if (ready())
-                {
-                    Log.Info(
-                        $"[{CombatTrainerMod.ModId}] the game took " +
-                        $"{frames.ToString(CultureInfo.InvariantCulture)} frame(s) to {what}", 2);
-                    onReady();
-                    return;
-                }
+            var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
+            Log.Info(
+                $"[{CombatTrainerMod.ModId}] letting the fight open; {entry.DescribeCombatReadiness()}", 2);
 
-                if (++frames >= DeferralBudget)
-                {
-                    Abandon(
-                        $"The game did not {what} within " +
-                        $"{DeferralBudget.ToString(CultureInfo.InvariantCulture)} frames " +
-                        $"({_entry?.DescribeCombatReadiness() ?? "no run"}).");
-                    return;
-                }
+            await LetTheGameRun(OpeningTheFightSeconds);
 
-                Callable.From(step!).CallDeferred();
-            }
-            catch (Exception ex)
-            {
-                Abandon(ex.Message);
-            }
-        };
+            Log.Info(
+                $"[{CombatTrainerMod.ModId}] after letting the game run; " +
+                $"{_entry?.DescribeCombatReadiness() ?? "no run"}", 2);
 
-        Callable.From(step).CallDeferred();
+            HandOverTheFight();
+        }
+        catch (Exception ex)
+        {
+            Abandon(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Gives the game back to itself for a moment, on the scene tree's own timer.
+    ///
+    /// The measurement that produced this is worth keeping: a deferral that re-defers
+    /// itself is not a frame loop. Godot drains its deferred queue until it is empty,
+    /// so the loop ran seven thousand times in about eight seconds without the game
+    /// drawing once - and the thing it was waiting for was the fight opening, which
+    /// needs those frames. The wait was what prevented it. A timer hands the frames
+    /// back.
+    /// </summary>
+    private static async Task LetTheGameRun(double seconds)
+    {
+        var tree = Godot.Engine.GetMainLoop() as SceneTree
+            ?? throw new InvalidOperationException("This process has no scene tree to wait in.");
+
+        await tree.ToSignal(tree.CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
     }
 
     /// <summary>

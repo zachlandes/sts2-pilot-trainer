@@ -265,16 +265,20 @@ and the entry is refused.
 [demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has it with its real
 output.
 
-**Watched in the retail client as far as the map move.** The client loads Combat
-Trainer alone, offers the fight, constructs the recording's run, and runs both recorded
-decisions in order - the blessing, the game's own event screen dismissed, the map, and
-the recorded move through the map screen's own travel command. It stops before the
-fight: measured at the refusal, the right room is entered and the combat is live at
-turn 1, and the player's turn never begins. Three of the recording's steps turned out
-to be screen commands rather than engine ones, each found by running it and each now
-pinned by a test; whether the start of a player's turn is a fourth is the open
-question. [docs/in-game-host.md](in-game-host.md) has the measurement and what it rules
-out.
+**Runnable now, in the retail client.** `./scripts/install-mod.sh`, then launch Slay
+the Spire 2 with only Combat Trainer enabled and open Singleplayer. The screen offers
+the fight; pressing it constructs the recording's run, walks it through Neow's blessing
+and the map move on the game's own screens, and stands the player in the recorded
+fight - the Sludge Spinner at 42 of 42, the opening hand the recording shows, turn 1 at
+Ascension 10. The canonical state at that boundary is the same digest the headless host
+derives for the combat-start snapshot, so the agreement covers the run's random streams
+and the draw pile's order and not only what a screenshot shows.
+[demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has it with the
+screenshots.
+
+Running it in the client is what found the three screen-owned transitions the manifest
+has no verbs for, and the fact that this mod cannot tick a frame;
+[docs/in-game-host.md](in-game-host.md) records both.
 
 ### S5 - The player's own fight, compared
 
@@ -303,10 +307,9 @@ is reset at the start of a turn and the trace samples either side of an action r
 than inside one, so player health lost likewise reports only the damage that got
 through.
 
-**Nothing here guarantees a retail player has played the fight.** Every claim about a
-fight in this repository is still a claim about a headless process. S4's entry is
-proved there, through the same owner the mod runs; it has not been watched running in
-the retail client, and a mod that loads is not a mod somebody has played.
+**Nothing here guarantees a retail player has played the fight through.** Standing in
+it is proved in the client; fighting it to the end and comparing is S5, and every claim
+about a *completed* fight in this repository is still a claim about a headless process.
 
 **No comparison has two independent lines of the recording's fight.** The recording is
 one completed side; the other side of a comparison against it can only be the
