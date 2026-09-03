@@ -88,10 +88,9 @@ public sealed class RecordedFightEntry : IDisposable
     /// Whether this game can construct the recording's run, asked before offering to.
     ///
     /// The same rules as everywhere else, over the progress model the run will
-    /// actually be generated against. That is what separates this from the
-    /// eligibility screen's own verdict, which reads the player's profile: a player
-    /// starting this run by hand would need the unlocks and the ascension ceiling
-    /// themselves, and nobody starts it by hand.
+    /// actually be generated against. The eligibility screen asks the same question,
+    /// so no saved-profile shortfall is presented as blocking a run that does not
+    /// consult it.
     /// </summary>
     public static bool CanConstruct(
         EnvironmentIdentity expected, out PreflightResult gate,

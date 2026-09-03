@@ -56,16 +56,11 @@ public sealed record EligibilityScreen(
     /// Whether the recording's fight is offered, and the note that goes with the
     /// offer.
     ///
-    /// A separate question from <see cref="Eligible"/>, and the difference is the
-    /// point. The rows above report the player's own profile, which is what a player
-    /// starting this run by hand would need. Nobody starts it by hand: the trainer
-    /// constructs it, and the unlock state it is generated against is the complete
-    /// one the recording requires, supplied for that run and written nowhere. So the
-    /// offer is governed by whether this game can construct the recording's run,
-    /// which <c>Preflight</c> answers under exactly the same rules against exactly
-    /// that progress model - see EnvironmentPreflight.EvaluateAscensionCeiling, which
-    /// already says a host constructing a run directly never consults the profile
-    /// ceiling.
+    /// Set only when this game can construct the recording's run. The rows and the
+    /// offer are both evaluated against the complete unlock state that run will use,
+    /// supplied in memory and written nowhere. See
+    /// EnvironmentPreflight.EvaluateAscensionCeiling, which records why a host
+    /// constructing a run directly never consults the profile ceiling.
     /// </summary>
     public bool FightOffered { get; init; }
 

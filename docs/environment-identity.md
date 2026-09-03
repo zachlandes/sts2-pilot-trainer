@@ -209,21 +209,21 @@ Where the reading comes from is reported next to the verdict rather than assumed
 Inside the retail client that is the player's own, and inside the headless arbiter it is the empty sandbox profile, because the player's save is a read-only input the host never opens.
 `preflight-live` runs in the headless host, whose user data is redirected to `build/sandbox` and whose `RunManager` is separate from the retail process.
 Its default path therefore reads the empty sandbox profile, finds no active run, and refuses by design; it cannot report on a retail player's state.
-Non-demo live evaluation accepts only `local-profile`, so an unlock model supplied by the host cannot masquerade as runtime player state.
 The explicit `--demo-start-run` path constructs a synthetic run and permits synthetic progress models only for tests and demonstrations.
 The Combat Trainer mod invokes `Preflight.EvaluateLiveHost` inside the retail process before stating whether the selected recording is eligible.
-It reads the installed build, the mods the game discovered and the profile used for modded play, while the existing prerequisite and run-identity owners remain authoritative.
+It reads the installed build and the mods the game discovered, but asks about the complete progress model it will supply to the trainer run rather than reading the player's profile.
+The report identifies that state as host-supplied so it cannot masquerade as runtime player state.
 It adopts the client through `EngineHost.AdoptRunningGame`; `EngineHost.Start` remains the headless entry point that enables test mode and applies headless patches.
 One of the four boundary tests drives the console refusal and verifies that the prepared game inputs and sandbox profile remain unchanged.
 Another loads a duplicate game assembly and proves that state refuses before adoption.
 A third proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
 The fourth parses the manifest and proves that the shipped host is non-gameplay, DLL-only and packless.
-The host states eligibility and enters no fight; constructing or entering the captured combat remains S4.
+The host first establishes install eligibility, then S4 constructs and enters the captured combat only after the player deliberately advances.
 `--progress all-unlocked`, the arbiter's ordinary replay default, is the state the headless host constructs the run with, and the report says so rather than calling it a reading of anybody.
 The in-game host constructs the recording's run against the same supplied state, for that run only and in memory: the run being constructed is the recording's, and the recording requires the complete unlock state its content was generated against.
 It reaches the run through `Player.CreateForNewRun` and nothing else, which is the one input `GameSession.PrepareRunInRunningGame` substitutes into the client's own start-run path.
 Nothing is written back - the run is set up with saving off and the mod's profile write barrier stops the writes that flag does not cover - so a player's unlocks, ascension ceiling and progress are exactly what they were before the fight.
-The player's profile is still read, still judged by the same rules, and still reported; what changes is that the constructed run does not depend on it, which `EnvironmentPreflight.EvaluateAscensionCeiling` already recorded when it said a host constructing a run directly never consults the profile ceiling.
+`EnvironmentPreflight.EvaluateAscensionCeiling` already records that a host constructing a run directly never consults the profile ceiling.
 
 The remediation is always the same and always the game's: unlock the rest by playing.
 Nothing in this project writes to a save, a profile, an unlock or an installed build,

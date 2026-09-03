@@ -94,8 +94,7 @@ turn detail for two completed fights and their differences, and `combat-snapshot
 longer calls a finished fight an active one.
 This is step 4 of the loop, with engine-produced lines standing in for a human's -
 which is what can be honest before a mod host exists.
-S2 added the recording's own fight as another completed side; every side is still
-engine-replayed, because a human's fight cannot be captured until S3 and S4 land.
+S2 added the recording's own fight as another completed side; every side is still engine-replayed, because capturing the human's fight belongs to S5.
 [demo/DEMO.md](../demo/DEMO.md) has it with its real output.
 
 ### S2 - The VOD's complete first combat in the manifest - done
@@ -204,11 +203,9 @@ cannot faithfully represent the VOD.
 - `Sts2PilotTrainer.Trainer`: what the screen says, with no game code, so every row and
   every sentence has a test on a machine that does not own the game.
 
-**Runnable now:** `./scripts/install-mod.sh`, then launch Slay the Spire 2 and open
-Singleplayer. The captain is told, in game, whether his install and profile can
-represent this VOD - and if not, exactly what to play to fix it.
-[docs/in-game-host.md](in-game-host.md) records what that proves and what it does not;
-[demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) shows it running.
+**Established by this slice:** the captain was told, in game, whether his install and profile could represent this VOD - and if not, exactly what to play to fix it.
+S4 extended that same host with the current fight offer and asks the supplied run model about capabilities the trainer provides in memory.
+[docs/in-game-host.md](in-game-host.md) records the current behavior and its limits; [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) preserves the S3 evidence.
 
 ### S4 - Start or reset the captured combat, in the live game - done
 

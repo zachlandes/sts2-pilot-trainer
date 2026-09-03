@@ -22,7 +22,7 @@ produced, and every sentence about a failure is that field's own diagnostic, sho
 word for word.
 
 **It reads and never writes.**
-The player's save, profile, progress, unlocks and installed build are inputs.
+The installed build, discovered mods, and supplied in-memory progress model are inputs to the fight offer; the player's saved profile is not.
 The executable `adopt-live` boundary test verifies that a console process is refused without changing the prepared game inputs or sandbox profile.
 The mod-manifest contract verifies that the shipped host is non-gameplay and carries no resource pack.
 There is no source-reference scan presented as behavioural evidence.
@@ -44,12 +44,9 @@ failed mod actually being there.
 ## Standing in the recorded fight
 
 **The journey is the recording's, and the host only decides when.**
-`RecordedFightEntry` in `Sts2PilotTrainer.Engine` constructs the run, makes the
-recording's decisions in order, and proves the fight at the end of them is the
-recorded one. `RecordedFightRun` in this mod owns when each of those happens relative
-to the game's frames and what a player sees while they do, and nothing else. That
-split is why the same journey runs on the command line with no scene tree, which is
-where it is actually tested: `./scripts/arbiter enter-fight`.
+`RecordedFightEntry` in `Sts2PilotTrainer.Engine` constructs the run, makes the recording's decisions in order, and proves the fight at the end of them is the recorded one.
+`RecordedFightRun` in this mod owns when each of those happens relative to the game's frames, what a player sees, and the retail-only deviation and lifecycle safety around the journey.
+That split is why the same construction and boundary proof run on the command line with no scene tree: `./scripts/arbiter enter-fight`.
 
 **The run is constructed the way the game constructs its own.**
 `GameSession.PrepareRunInRunningGame` reproduces the first half of the client's
@@ -156,11 +153,10 @@ The row carries the engine's own sentence saying so, whether it is green or red.
 The hash covers content contributed by mods that declare themselves gameplay-affecting; it says nothing about a mod that patches behaviour.
 The same prerequisite reading therefore inspects every mod the game discovered, including failed states that may have left resources loaded, and refuses every active local mod except the known non-gameplay Combat Trainer host.
 
-**The unlock rows describe the modded profile.**
-The game forks a separate profile for modded play, and that is the one a modded
-session reads. A player with a complete unmodded profile can fail these rows and be
-right to be surprised, which is why the screen names the profile it read and points
-at the game's own import.
+**A profile reading describes the modded profile.**
+The game forks a separate profile for modded play, and that is the one a modded session reads.
+The screen names that profile only when a row was actually measured against it.
+The fight offer instead asks about the supplied progress model used to construct the trainer run, so unlock, act, and ascension rows do not report a saved profile shortfall that cannot block the offer.
 
 **A pass is a claim about right now.**
 Nothing is cached. The screen is computed when it opens.

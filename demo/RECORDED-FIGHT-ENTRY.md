@@ -15,9 +15,8 @@ recording could - without a byte of the player's progress changing?
 
 This is S4 of [the proof-of-concept path](../docs/proof-of-concept-path.md). What runs
 here is the headless host, and it runs the same owner the in-game mod runs:
-`RecordedFightEntry` constructs the run, makes the decisions and proves the boundary,
-and the mod adds only the frames and the popup. The last section says plainly which
-part of that has been watched running in the retail client, and which has not.
+`RecordedFightEntry` constructs the run, makes the decisions and proves the boundary, while the mod owns retail timing, presentation, deviation locks, and write isolation.
+The last section says plainly which part of that has been watched running in the retail client, and which has not.
 
 ## The run, constructed and walked to the fight
 

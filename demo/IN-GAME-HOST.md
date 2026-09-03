@@ -179,10 +179,11 @@ Opening it runs `Preflight.EvaluateLiveHost` against the player's real installed
 The executable console refusal leaves its prepared game inputs and sandbox profile unchanged.
 The two screenshots below were taken before the fight was offered at all, which is why neither shows the offer; what the offer does, and what has and has not been watched doing it, is in [the entry document](RECORDED-FIGHT-ENTRY.md).
 
-**Not proved.** Nobody has played the fight. A green content-hash row is not environment parity, and
-says so. The unlock rows describe the modded profile, which the game forks from the
-unmodded one - a player with complete unmodded progress can fail them and be right to
-be surprised, which is why the screen names the profile it read.
+**Not proved.**
+Nobody has played the fight.
+A green content-hash row is not environment parity, and says so.
+In this preserved S3 screen the unlock rows described the modded profile, which the game forks from the unmodded one.
+The current fight offer instead evaluates those capabilities against the supplied in-memory progress used to construct its run; [the entry document](RECORDED-FIGHT-ENTRY.md) owns that evidence.
 
 **Not measured here.** Whether a controller can drive the screen was compared against
 the game's own confirmation popup under synthetic input, and the two behaved

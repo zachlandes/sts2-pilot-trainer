@@ -57,9 +57,10 @@ public static class LocalEnvironment
     /// </param>
     /// <param name="progress">
     /// Which unlock state to read. <see cref="PlayerProgress.LocalProfile"/> reads
-    /// this process's profile and is what the in-game host uses. The other two are
-    /// states the headless host supplies in place of a profile it does not have, and they are
-    /// reported as such rather than as a reading of anyone.
+    /// this process's profile for callers asking about the player. The other two are
+    /// host-supplied states; the in-game trainer uses the complete one it will construct
+    /// the recorded run with, and every supplied state is reported as such rather than
+    /// as a reading of anyone.
     /// </param>
     public static LocalPrerequisites ReadPrerequisites(
         EnvironmentIdentity expected, PlayerProgress progress = PlayerProgress.AllUnlocked)

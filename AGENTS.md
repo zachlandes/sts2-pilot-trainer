@@ -110,11 +110,10 @@ game into the default assembly load context. `./scripts/install-mod.sh` is the o
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `CombatTrainer` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions.
 
-**Standing somebody in a recorded fight has one owner.** `RecordedFightEntry`
-constructs the run, makes the recording's decisions in order and refuses a boundary
-that is not the recorded one; the mod adds only frames and a popup, which is what lets
-`./scripts/arbiter enter-fight` exercise the whole journey without a scene tree. The
-run is generated against a supplied complete unlock state and can persist nothing:
+**Standing somebody in a recorded fight has one owner.**
+`RecordedFightEntry` constructs the run, makes the recording's decisions in order and refuses a boundary that is not the recorded one; the mod owns retail timing, presentation, deviation locks and write isolation.
+Keeping construction in the engine owner lets `./scripts/arbiter enter-fight` exercise the journey without a scene tree.
+The run is generated against a supplied complete unlock state and can persist nothing:
 `shouldSave: false` plus the mod's `ProfileWriteBarrier`, which is installed at mod
 start and inert unless a trainer run is live. Do not weaken either, and do not add a
 path that writes what the barrier suppresses.

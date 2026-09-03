@@ -31,7 +31,7 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   The shipped VOD reconstruction now covers its whole first combat, read off the video action by action, so the recording is one of those completed sides.
   It runs on past that fight to the start of the floor-5 fight's third turn, which is the boundary a candidate search over that turn would have to begin from; the projection still reads the first fight the history enters and requires it to have finished.
   A history that stops mid-combat is still refused, which is what the recording used to be.
-  No fight played by a person has ever been captured or compared: the mod host states eligibility and enters no fight, so every side is engine-produced.
+  No fight played by a person has ever been captured or compared: the mod can enter the recorded fight, but every comparison side is still engine-produced.
 
 - **Provenance is gated before any engine starts.** A run resumed from run history
   matches on seed, build, content hash and acts and replays perfectly — it is just
@@ -87,9 +87,9 @@ Its user data is redirected to `build/sandbox`, it cannot see the retail `RunMan
 ./scripts/arbiter adopt-live            # the refusal, from a process that is not a running game
 ```
 
-Launch Slay the Spire 2 and open Singleplayer: a fourth mode card, `Combat Trainer`, opens one screen that says whether this install and profile can play the recorded fight, and what to go and play if it cannot.
-It states eligibility and stops there - nobody has fought anything yet, and entering the captured combat is the next slice.
-See [docs/in-game-host.md](docs/in-game-host.md) and [demo/IN-GAME-HOST.md](demo/IN-GAME-HOST.md).
+Launch Slay the Spire 2 and open Singleplayer: a fourth mode card, `Combat Trainer`, checks whether this install can reproduce the recording and offers `Enter the fight` when it can.
+The trainer supplies the recording's unlocks, acts, and Ascension 10 in memory, then visibly makes the recording's pre-fight decisions and hands over only after the live combat-start state matches the manifest's observed fields and snapshot digest.
+See [docs/in-game-host.md](docs/in-game-host.md) and [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md).
 
 ```bash
 ./scripts/arbiter generate-synthetic-fixture --out build/evidence/alternate.replay.json --line alternate
