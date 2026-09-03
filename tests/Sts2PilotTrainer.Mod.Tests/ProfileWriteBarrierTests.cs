@@ -179,3 +179,78 @@ public sealed class ProfileWriteBarrierTests
         }
     }
 }
+
+/// <summary>
+/// The game's own commands the in-game host drives, and the reason they are tested
+/// by name.
+///
+/// Two of the recording's steps are screen commands rather than engine ones, and both
+/// were found the hard way: the engine's map-coordinate entry is only the middle of
+/// what a clicked node does, and an event screen's continue is not in the event
+/// model's option list at all. A build that renamed either would leave the host
+/// calling nothing and the journey stopping with a fight that never opens - which is
+/// exactly what it looked like before, and took a retail cycle each time to see.
+/// This is the check that turns that into a build failure.
+/// </summary>
+public sealed class GameScreenCommandTests
+{
+    [BarrierFact]
+    public void TheMapScreenStillOwnsTheTravelCommandTheHostDrives()
+    {
+        var travel = GameType("MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapScreen")
+            .GetMethod("TravelToMapCoord", BindingFlags.Instance | BindingFlags.Public);
+
+        Assert.True(travel is not null, "NMapScreen has no TravelToMapCoord on this build.");
+        Assert.True(typeof(Task).IsAssignableFrom(travel!.ReturnType));
+        Assert.Equal(
+            ["MegaCrit.Sts2.Core.Map.MapCoord"],
+            travel.GetParameters().Select(parameter => parameter.ParameterType.FullName));
+    }
+
+    [BarrierFact]
+    public void TheEventRoomStillOwnsTheOptionClickTheHostDrives()
+    {
+        var clicked = GameType("MegaCrit.Sts2.Core.Nodes.Rooms.NEventRoom")
+            .GetMethod("OptionButtonClicked", BindingFlags.Instance | BindingFlags.Public);
+
+        Assert.True(clicked is not null, "NEventRoom has no OptionButtonClicked on this build.");
+        Assert.Equal(
+            ["MegaCrit.Sts2.Core.Events.EventOption", "System.Int32"],
+            clicked!.GetParameters().Select(parameter => parameter.ParameterType.FullName));
+    }
+
+    /// <summary>The flag that tells a screen's continue from a real choice. Without it
+    /// the host cannot know when carrying on is all that is left, and it refuses
+    /// rather than pick.</summary>
+    [BarrierFact]
+    public void AnEventOptionStillSaysWhetherItOnlyCarriesOn()
+    {
+        var isProceed = GameType("MegaCrit.Sts2.Core.Events.EventOption")
+            .GetProperty("IsProceed", BindingFlags.Instance | BindingFlags.Public);
+
+        Assert.True(isProceed is not null, "EventOption has no IsProceed on this build.");
+        Assert.Equal(typeof(bool), isProceed!.PropertyType);
+    }
+
+    private static Type GameType(string name)
+    {
+        _ = Sts2PilotTrainer.Engine.EngineHost.StartupPhase();
+        var type = AppDomain.CurrentDomain.GetAssemblies()
+            .Single(assembly => assembly.GetName().Name == "sts2")
+            .GetType(name);
+        Assert.True(type is not null, $"This build has no {name}.");
+        return type!;
+    }
+
+    public sealed class BarrierFactAttribute : FactAttribute
+    {
+        public BarrierFactAttribute()
+        {
+            var mod = Path.Combine(AppContext.BaseDirectory, "CombatTrainer.dll");
+            if (!Arbiter.GameAvailable || !File.Exists(mod))
+            {
+                Skip = "Needs the prepared game and built Combat Trainer mod. Run ./scripts/build.sh.";
+            }
+        }
+    }
+}

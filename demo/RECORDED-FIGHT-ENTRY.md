@@ -315,14 +315,12 @@ player press, the map comes up, and the recorded map move is made. Both recorded
 decisions execute in order, each captioned from what the run is standing in front of,
 numbered where it falls. The log records both.
 
-**Not proved: the fight itself.** After the map move the run does not finish opening
-its combat - the engine's own turn phase never becomes the player's - so the entry
-gives up and abandons the run rather than handing over a fight it cannot show is the
-recorded one. That refusal is the machinery working; what is missing is a reason for
-the combat to start. Entering a map node from code builds the room, and something in
-the client's own room transition that a clicked node would have run does not happen.
-It is the same shape as the two presentation gaps below, one step further on, and it
-is where this stopped rather than chase a fifth.
+**Not proved: the fight itself.** After the map move the entry gives up and abandons
+the run rather than hand over a fight it cannot show is the recorded one. What it saw
+when it gave up, in its own refusal: `room=Monster, combat manager=in progress, player
+combat state=None, turn=1`. So the recorded node was entered, the fight is live and it
+is turn 1 - and the player's turn never begins. That is one measured fact short of a
+cause, and it is where this stopped rather than guess at a fifth.
 
 **What the boundary check did, before that.** An earlier run of this journey reached
 the boundary and refused it, reading an empty hand and no energy - the fight one moment

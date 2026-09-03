@@ -112,14 +112,28 @@ no video can show. A boundary that disagrees on either abandons the run and says
 ## What it does not prove
 
 **Nobody has played the fight.**
-In the retail client the journey now runs both of the recording's decisions: the run is
-constructed, the screen offers the fight, the blessing is taken, the game's own event
-screen is dismissed, the map comes up and the recorded move is made. It stops there.
-The run does not finish opening its combat - the engine's own turn phase never becomes
-the player's - so the entry abandons rather than hand over a fight it cannot show is the
-recorded one. Entering a map node from code builds the room; something the client's own
-room transition would do when a player clicks a node does not happen. Everything past
-that point runs headlessly and has not been seen in the client.
+In the retail client the journey runs both of the recording's decisions - the run is
+constructed, the blessing taken, the game's own event screen dismissed, the map shown
+and the recorded move made through the map screen's own travel command - and then
+stops. Measured at the point it gives up: `room=Monster, combat manager=in progress,
+player combat state=None, turn=1`. The right room was entered and the fight is live at
+turn 1; what never happens is the player's turn beginning, so the entry abandons rather
+than hand over a fight nobody can act in. Everything past that runs headlessly.
+
+**Three of the recording's steps are screen commands, not engine ones.**
+Each was found by running it, and each has the same shape: the engine call is the
+middle of what a click does. A map move is `NMapScreen.TravelToMapCoord`, which fades
+the screen around `RunManager.EnterMapCoord`; doing only the middle leaves the client
+on the map with the next room built behind it. An event screen's continue is not in the
+event model's option list at all and is driven through `NEventRoom.OptionButtonClicked`.
+`GameScreenCommandTests` pins both, and `EventOption.IsProceed`, so a build that renames
+one fails at build time rather than in a retail session. Whether the start of the
+player's turn is a fourth of these is the open question above.
+
+**The deviation lock has to cover a whole step, not a call.**
+A screen's command does most of its work after an await, so an authorisation that ended
+when the starting call returned had already lapsed - and the lock refused the
+recording's own map move. It is held across the step now.
 
 **Waiting in this process is not what it looks like.**
 Worth knowing before writing anything that waits here. Nothing this mod ticks has ever

@@ -1,5 +1,6 @@
 using System.Globalization;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
 
@@ -46,13 +47,14 @@ public sealed class RecordedFightEntry : IDisposable
     private readonly PlayerProgress _progress;
 
     private RecordedFightEntry(
-        ReplayManifest manifest, RecordedFightPlan plan, GameSession session, PlayerProgress progress)
+        ReplayManifest manifest, RecordedFightPlan plan, GameSession session, PlayerProgress progress,
+        Func<MapCoord, Task>? travelInRunningGame)
     {
         Manifest = manifest;
         Plan = plan;
         _session = session;
         _progress = progress;
-        _driver = new RunDriver(session);
+        _driver = new RunDriver(session, travelInRunningGame);
     }
 
     public ReplayManifest Manifest { get; }
@@ -106,7 +108,7 @@ public sealed class RecordedFightEntry : IDisposable
     public static RecordedFightEntry StartHeadless(
         ReplayManifest manifest, PlayerProgress progress = SuppliedProgress)
     {
-        var entry = Prepare(manifest, progress, session => session.StartRun(
+        var entry = Prepare(manifest, progress, travelInRunningGame: null, session => session.StartRun(
             manifest.Environment.Seed.Value,
             manifest.Environment.Character.Value,
             manifest.Environment.Ascension.Value,
@@ -126,9 +128,15 @@ public sealed class RecordedFightEntry : IDisposable
     /// <see cref="PreparedRun"/>, which is what loads the scene and enters the first
     /// act, and then steps this entry through the plan.
     /// </summary>
+    /// <param name="travelInRunningGame">
+    /// How the host issues a map move on the game's own map screen. Required here: a
+    /// map move in the client is a screen's command, and the engine's own coordinate
+    /// entry is only the middle of it.
+    /// </param>
     public static RecordedFightEntry PrepareInRunningGame(
-        ReplayManifest manifest, PlayerProgress progress = SuppliedProgress) =>
-        Prepare(manifest, progress, session => session.PrepareRunInRunningGame(
+        ReplayManifest manifest, Func<MapCoord, Task> travelInRunningGame,
+        PlayerProgress progress = SuppliedProgress) =>
+        Prepare(manifest, progress, travelInRunningGame, session => session.PrepareRunInRunningGame(
             manifest.Environment.Seed.Value,
             manifest.Environment.Character.Value,
             manifest.Environment.Ascension.Value,
@@ -137,7 +145,8 @@ public sealed class RecordedFightEntry : IDisposable
             progress));
 
     private static RecordedFightEntry Prepare(
-        ReplayManifest manifest, PlayerProgress progress, Action<GameSession> construct)
+        ReplayManifest manifest, PlayerProgress progress, Func<MapCoord, Task>? travelInRunningGame,
+        Action<GameSession> construct)
     {
         var validation = ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
@@ -172,7 +181,7 @@ public sealed class RecordedFightEntry : IDisposable
                 "the started run has"));
         }
 
-        return new RecordedFightEntry(manifest, plan, session, progress);
+        return new RecordedFightEntry(manifest, plan, session, progress, travelInRunningGame);
     }
 
     /// <summary>
@@ -296,6 +305,22 @@ public sealed class RecordedFightEntry : IDisposable
     public bool IsReadyForThePlayer =>
         CombatManager.Instance is { IsInProgress: true } &&
         _session.RunState.Players[0].PlayerCombatState is { Phase: PlayerTurnPhase.Play };
+
+    /// <summary>
+    /// What the run says about its combat, for a refusal that has to explain itself.
+    ///
+    /// A host that gave up waiting for a fight to open should say what it was looking
+    /// at, or the next person reads the same sentence and learns nothing.
+    /// </summary>
+    public string DescribeCombatReadiness()
+    {
+        var room = _session.RunState.CurrentRoom?.RoomType.ToString() ?? "none";
+        var manager = CombatManager.Instance;
+        var combat = _session.RunState.Players[0].PlayerCombatState;
+        return $"room={room}, combat manager={(manager is null ? "none" : manager.IsInProgress ? "in progress" : "not in progress")}, " +
+               $"player combat state={(combat is null ? "none" : combat.Phase.ToString())}, " +
+               $"turn={(combat is null ? "-" : combat.TurnNumber.ToString(CultureInfo.InvariantCulture))}";
+    }
 
     /// <summary>The live run's canonical state, as the arbiter reads it.</summary>
     public CanonicalState LiveState() => CanonicalStateProjection.Project(_session.RunState);

@@ -94,9 +94,22 @@ public sealed class RunDriver : IDisposable
     /// so the action that records each one can insist it was used.</summary>
     private readonly HashSet<int> _consumedSelections = [];
 
-    public RunDriver(GameSession session)
+    /// <summary>
+    /// How a map move is issued inside a running game, or null headlessly.
+    ///
+    /// Supplied by the host rather than called from here, because in the client a map
+    /// move is a screen's command and this project keeps screens out of the engine
+    /// owner. It is not optional there: measured, entering the coord directly leaves
+    /// the client standing on the map with the next room built behind it and its
+    /// combat never dealt, because the screen transition that a clicked node runs
+    /// never happens. See docs/in-game-host.md.
+    /// </summary>
+    private readonly Func<MapCoord, Task>? _travelInRunningGame;
+
+    public RunDriver(GameSession session, Func<MapCoord, Task>? travelInRunningGame = null)
     {
         _session = session;
+        _travelInRunningGame = travelInRunningGame;
         _insideRunningGame = EngineHost.Origin == EngineOrigin.RunningGame;
 
         // Neither stand-in is installed inside the retail client. Both of them answer
@@ -579,7 +592,25 @@ public sealed class RunDriver : IDisposable
                 $"(row {currentCoord.row}, column {currentCoord.col}).");
         }
 
-        Settle(RunManager.Instance.EnterMapCoord(new MapCoord(column, row)));
+        var coord = new MapCoord(column, row);
+
+        if (!_insideRunningGame)
+        {
+            Settle(RunManager.Instance.EnterMapCoord(coord));
+            return;
+        }
+
+        // Refused rather than approximated. The engine's own EnterMapCoord is the
+        // middle of what a clicked node does, and doing only the middle produces a run
+        // that has entered the room and a client that has not - which reads as a fight
+        // that never opens.
+        var travel = _travelInRunningGame
+            ?? throw new EngineException(
+                "A map move inside a running game has to go through the screen that owns it, and no way to " +
+                "do that was supplied. Entering the map coordinate alone leaves the client on the map with " +
+                "the next room built behind it.");
+
+        Settle(travel(coord));
     }
 
     private void PlayCard(ActionRecord action)

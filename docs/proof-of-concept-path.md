@@ -266,14 +266,15 @@ and the entry is refused.
 output.
 
 **Watched in the retail client as far as the map move.** The client loads Combat
-Trainer alone, the screen offers the fight, pressing it constructs the recording's run,
-and both recorded decisions then run in order: the blessing is taken, the game's own
-event screen is dismissed, the map comes up and the recorded move is made. It stops
-before the fight - the run does not finish opening its combat, so the entry abandons
-rather than hand over a fight it cannot show is the recorded one. Two presentation gaps
-were found by running it and are closed; this is the third and is not.
-[docs/in-game-host.md](in-game-host.md) records the state, and what is worth knowing
-about waiting inside that process before anything else is built on it.
+Trainer alone, offers the fight, constructs the recording's run, and runs both recorded
+decisions in order - the blessing, the game's own event screen dismissed, the map, and
+the recorded move through the map screen's own travel command. It stops before the
+fight: measured at the refusal, the right room is entered and the combat is live at
+turn 1, and the player's turn never begins. Three of the recording's steps turned out
+to be screen commands rather than engine ones, each found by running it and each now
+pinned by a test; whether the start of a player's turn is a fourth is the open
+question. [docs/in-game-host.md](in-game-host.md) has the measurement and what it rules
+out.
 
 ### S5 - The player's own fight, compared
 

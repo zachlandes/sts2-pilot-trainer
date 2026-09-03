@@ -8,6 +8,7 @@ using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
@@ -54,9 +55,19 @@ internal static class RecordedFightRun
 {
     private static RecordedFightEntry? _entry;
 
-    /// <summary>Set only while this class is issuing one of the recording's own
-    /// decisions, so the lock below can tell it from a player's click.</summary>
-    [ThreadStatic]
+    /// <summary>
+    /// Set only while this class is issuing one of the recording's own decisions, so
+    /// the lock below can tell it from a player's click.
+    ///
+    /// Held across the whole step rather than around the call that starts it, and not
+    /// thread-static. A screen's command is asynchronous - the map screen fades, and
+    /// only then enters the coordinate - so an authorisation that ended when the
+    /// starting call returned had already lapsed by the time the command it was
+    /// authorising ran, and the lock refused the recording's own move. Everything here
+    /// runs on the game's one main thread, which is what makes a plain flag the honest
+    /// way to say "this step is ours" rather than a per-thread one that quietly does
+    /// not cover its own continuation.
+    /// </summary>
     private static bool _authorising;
 
     /// <summary>How many frames a deferral loop gives the game before it gives up.
@@ -104,7 +115,7 @@ internal static class RecordedFightRun
         try
         {
             var creator = RecordingIdentity.Creator(recording);
-            _entry = RecordedFightEntry.PrepareInRunningGame(recording);
+            _entry = RecordedFightEntry.PrepareInRunningGame(recording, TravelOnTheGamesMapScreen);
 
             // Awaiting the game's own start-run task is what puts the run on screen and
             // in its first room; the task completes when it has.
@@ -168,22 +179,22 @@ internal static class RecordedFightRun
         try
         {
             entry.AdvanceOneStep();
+
+            Log.Info(
+                $"[{CombatTrainerMod.ModId}] made recorded decision " +
+                $"{step.ToString(CultureInfo.InvariantCulture)} of " +
+                $"{entry.Plan.PrefightActions.Count.ToString(CultureInfo.InvariantCulture)}", 2);
+
+            // The engine's own task for the decision, where it has one. Awaiting the
+            // game's task is the one kind of waiting this host can do: the game
+            // completes it when the work is done. The authorisation is still held,
+            // because a screen's command does most of its work inside this task.
+            if (entry.Pending is { } pending) await pending;
         }
         finally
         {
             _authorising = false;
         }
-
-        Log.Info(
-            $"[{CombatTrainerMod.ModId}] made recorded decision " +
-            $"{step.ToString(CultureInfo.InvariantCulture)} of " +
-            $"{entry.Plan.PrefightActions.Count.ToString(CultureInfo.InvariantCulture)}", 2);
-
-        // The engine's own task for the decision, where it has one. Awaiting the
-        // game's task is the one kind of waiting this host can do: the game completes
-        // it when the work is done, and the continuation lands back on the thread that
-        // completed it.
-        if (entry.Pending is { } pending) await pending;
 
         CarryOnPastAnyScreenWaitingToProceed();
     }
@@ -223,6 +234,24 @@ internal static class RecordedFightRun
 
             Log.Info($"[{CombatTrainerMod.ModId}] carried on past a screen that was waiting to proceed", 2);
         }
+    }
+
+    /// <summary>
+    /// Moves on the map the way a clicked node does.
+    ///
+    /// `NMapScreen.TravelToMapCoord` is the game's own command for a map move, and the
+    /// engine's `EnterMapCoord` is the middle of it: the screen fades out around the
+    /// call, and the room the run entered is only put on screen by that transition.
+    /// Measured - calling the middle alone left the client on the map with a combat
+    /// built behind it that never dealt its opening hand.
+    /// </summary>
+    private static Task TravelOnTheGamesMapScreen(MapCoord coord)
+    {
+        var map = NMapScreen.Instance
+            ?? throw new InvalidOperationException(
+                "The recording moves on the map, and this game has no map screen to move on.");
+
+        return map.TravelToMapCoord(coord);
     }
 
     /// <summary>
@@ -328,7 +357,8 @@ internal static class RecordedFightRun
                 {
                     Abandon(
                         $"The game did not {what} within " +
-                        $"{DeferralBudget.ToString(CultureInfo.InvariantCulture)} frames.");
+                        $"{DeferralBudget.ToString(CultureInfo.InvariantCulture)} frames " +
+                        $"({_entry?.DescribeCombatReadiness() ?? "no run"}).");
                     return;
                 }
 
