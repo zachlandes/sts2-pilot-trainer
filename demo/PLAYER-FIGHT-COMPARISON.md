@@ -146,3 +146,86 @@ sandbox writes  : none during the fight - measured because the headless host has
 
 report: build/evidence/enter-fight.json
 ```
+
+## The retail client, with a person playing
+
+The mod was installed with `./scripts/install-mod.sh` and the game launched with only
+Combat Trainer enabled. The captain opened Singleplayer, chose Combat Trainer, pressed
+Enter the fight, skipped to the fight, and played it. Every screenshot below was taken
+by a watcher on the game's own log, at the moment the trainer logged the phase, so
+nothing was staged.
+
+The fight, entered and being captured. The game log at this moment reads "standing in
+the recorded fight; canonical state at combat start is sha256:979ba9de…" - the same
+digest the headless host derives - and then "capturing the player's fight from the
+recorded combat start". The Sludge Spinner at 42 of 42 with a 9-damage intent, the
+opening hand of Strike, Hellraiser, Strike, Bash, Defend, 3 of 3 energy, turn 1.
+
+```bash {image}
+![The recorded fight in the retail client, being captured. The Ironclad at 64/68 faces a Sludge Spinner at 42/42 with a 9-damage attack intent. The hand is Strike, Hellraiser, Strike, Bash, Defend; energy reads 3/3; the button reads "End Turn 1". The overlay reads v0.111.0, SFXT47K77RFK, MODDED (1).](in-game-fight-captured.png)
+```
+
+![The recorded fight in the retail client, being captured. The Ironclad at 64/68 faces a Sludge Spinner at 42/42 with a 9-damage attack intent. The hand is Strike, Hellraiser, Strike, Bash, Defend; energy reads 3/3; the button reads "End Turn 1". The overlay reads v0.111.0, SFXT47K77RFK, MODDED (1).](3c4cb7e9-2026-09-03.png)
+
+The fight, won. The game's own loot screen is up, the player at 57 of 68, and the log
+reads "the player's fight ended; capture Completed, 12 action(s) sampled". Twelve
+rather than the recording's nine, and the difference is worth understanding: Hellraiser
+plays a Strike automatically whenever one is drawn, and in the client each of those
+plays reaches the executor as a card action of its own, so the capture samples it as
+one. Headlessly the same plays resolve inside the ended turn that drew them. Each is
+attributed to the turn it was taken in either way, and the turn totals agree.
+
+```bash {image}
+![The game's own loot screen in the retail client after the fight: 13 Gold, Orobic Acid, Add a card to your deck, a Skip arrow. The top bar reads 57/68 health, 99 gold.](in-game-fight-won.png)
+```
+
+![The game's own loot screen in the retail client after the fight: 13 Gold, Orobic Acid, Add a card to your deck, a Skip arrow. The top bar reads 57/68 health, 99 gold.](1fda0684-2026-09-03.png)
+
+The result, over the loot screen, on the game's own popup. The title, the two columns,
+the seven summary rows and the turn detail are the approved wording; the numbers are
+the comparison's. The captain played the recording's line, so every row agrees and
+every turn line reads the same twice - which is the same output the headless block
+above produced, now from a fight a person played. The panel scrolls: the fourth turn
+line and the two notes are below the fold, as the eligibility screen's lower rows are.
+Done returns to the main menu and the run is discarded.
+
+```bash {image}
+![The game's popup titled "Your fight and NaveGreed's" over the darkened loot screen. Columns You and NaveGreed; rows Outcome Won Won, Turns 4 4, Health at the start 64 64, Health at the end 57 57, Net health change -7 -7, Potions used none none, Cards removed none none. Under "Turn by turn": Turn 1: you took 8 off the enemy and lost 4; NaveGreed took 8 off and lost 4, Turn 2: 24 and 2, Turn 3: 6 and 7, with a scrollbar. A green Done button.](in-game-comparison.png)
+```
+
+![The game's popup titled "Your fight and NaveGreed's" over the darkened loot screen. Columns You and NaveGreed; rows Outcome Won Won, Turns 4 4, Health at the start 64 64, Health at the end 57 57, Net health change -7 -7, Potions used none none, Cards removed none none. Under "Turn by turn": Turn 1: you took 8 off the enemy and lost 4; NaveGreed took 8 off and lost 4, Turn 2: 24 and 2, Turn 3: 6 and 7, with a scrollbar. A green Done button.](faf62870-2026-09-03.png)
+
+## What this proves, and what it does not
+
+**Proved headlessly.** The shipped recorded fight is the engine's own replay of the
+shipped manifest, regenerated in a fresh process and compared. The recording's own
+actions, played through the player-side capture, project to a line the comparison
+reports as identical to that replay on every summary field and every turn.
+
+**Proved in the retail client.** With only Combat Trainer enabled, the client stood
+the captain in the recorded fight at the verified boundary, sampled every action he
+took either side through the game's own executor, closed the capture on the game's
+own combat-ended event with the fight won, projected it, compared it with the shipped
+recording, and showed the result on the game's popup. Done discarded the run.
+
+**The captain's saved progress is unchanged.** SHA-256 over 150 files before the mod
+was installed and after Done: every profile, progress, save, run-history file and
+every file of BaseLib, Hindsight and STS2_MCP is byte identical. Exactly one file
+differs, `modded/profile1/replays/latest.mcr`, the game's own combat replay scratch
+file, which the engine rewrites at the end of every fight and which S4's session
+recorded differing in the same way. It is not progress and is not read by anything.
+
+**Not measured here.** A lost fight, a fight left through the game's own menu and a
+capture that could not be completed are proved on the game-free capture and screen
+and have not been watched in the client. Whether the result popup is reachable from
+a controller is likewise not claimed.
+
+[docs/in-game-host.md](../docs/in-game-host.md) records the capture's timing and its
+limits, and [docs/proof-of-concept-path.md](../docs/proof-of-concept-path.md) has S5
+in the context of the loop it closes.
+
+**Observed, and recorded as a limit rather than expanded here.** The captain's report
+after this session: it worked, and a text-led list of differences on a large modal is
+not good enough for the next interface. The screenshot-backed playback interface that
+points at is the follow-up after this loop merges; this slice stays the approved
+wording on the game's popup.

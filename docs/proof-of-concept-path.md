@@ -330,6 +330,14 @@ sides to the S1 contract, and show him the result.
   path lowers the write barrier; a fight left through the game's own menu abandons
   the capture the same way.
 
+**A limit recorded from the first retail session, not a requirement of this slice.**
+The captain played the fight, read the panel and reported that it worked, and that a
+text-led list of differences on a large modal is not good enough for the next
+interface: the direction is screenshot-backed playback, and it is the follow-up after
+this loop merges, owned by interface design rather than by this slice.
+What is here is the approved Direction A wording on the game's own popup, kept
+deliberately small.
+
 **Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json --play`
 stands in the fight, plays the recording's nine actions through the player-side
 capture, and prints the result panel word for word: every row the same on both sides,

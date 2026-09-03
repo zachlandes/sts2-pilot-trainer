@@ -156,6 +156,22 @@ player's column first, then the turn detail under its own heading, then the two 
 and a row whose two sides differ is drawn plain while a row that agrees is dimmed.
 That is the only visual distinction, because a difference is not a verdict.
 
+**A card the game plays for the player is sampled as an action of its own.**
+Hellraiser plays a Strike automatically when one is drawn, and in the client that play
+reaches the executor as a card action like any other, so the capture records it as a
+step; headlessly the same play resolves inside the ended turn that drew it.
+The first retail session sampled twelve actions where the recording's history has
+nine, for this reason.
+Both are attributed to the turn they happened in, and the turn totals agree; the
+difference is in how many steps a turn is made of, not in what happened.
+
+**The result is text on a modal, and that is a recorded limit.**
+The captain read the first retail comparison and reported that a text-led list of
+differences on a large popup is not good enough for the next interface.
+That is observed product evidence, kept here on purpose; the screenshot-backed
+playback interface it points at is a follow-up owned by interface design, and nothing
+in this host presumes its shape.
+
 **Only a won, completed, uninterrupted fight is compared.**
 A lost fight, a fight left through the game's own menu, a capture that could not be
 completed and a comparison that refused each show one sentence and a Done button.
