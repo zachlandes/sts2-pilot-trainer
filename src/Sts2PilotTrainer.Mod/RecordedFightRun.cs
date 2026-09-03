@@ -59,6 +59,7 @@ internal static class RecordedFightRun
 {
     private static RecordedFightEntry? _entry;
     private static PlayerFightObserver? _observer;
+    private static FightResultScreen? _resultAfterMainMenu;
 
     /// <summary>
     /// Set only while this class is issuing one of the recording's own decisions, so
@@ -562,8 +563,47 @@ internal static class RecordedFightRun
         [HarmonyPostfix]
         internal static void AfterRunEnds()
         {
+            if (Phase == RecordedFightPhase.InFight)
+            {
+                _resultAfterMainMenu = FightResultScreen.Left();
+                Finish();
+                return;
+            }
+
             if (Phase != RecordedFightPhase.None || ProfileWriteBarrier.IsActive) Finish();
         }
+    }
+
+    [HarmonyPatch(typeof(NGame), nameof(NGame.ReturnToMainMenu))]
+    internal static class MainMenuReturn
+    {
+        [HarmonyPostfix]
+        internal static void AfterReturnStarts(Task __result) => ShowResultAfterReturn(__result);
+    }
+
+    private static async void ShowResultAfterReturn(Task returning)
+    {
+        try
+        {
+            await returning;
+            if (_resultAfterMainMenu is not { } screen) return;
+
+            _resultAfterMainMenu = null;
+            PrefightScreen.ShowResult(screen, CloseResultOnMainMenu);
+        }
+        catch (Exception ex)
+        {
+            _resultAfterMainMenu = null;
+            Log.Error(
+                $"[{CombatTrainerMod.ModId}] could not show the abandoned fight result: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    private static void CloseResultOnMainMenu()
+    {
+        PrefightScreen.Close();
+        Finish();
     }
 
     /// <summary>
