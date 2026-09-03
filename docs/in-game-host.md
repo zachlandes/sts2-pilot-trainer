@@ -145,14 +145,15 @@ embedded as `manifests/navegreed-OJ-6QXhNgdg.recorded-fight.json`.
 through the fight's end and its combat-start digest are the shipped manifest's, and a
 test regenerates it in a fresh process and compares.
 
-**The result uses the game's popup after the fight stops.**
-For a completed fight, the screen is computed the moment `CombatEnded` fires and drawn two seconds later, over the loot on a win or the death screen on a loss.
+**The result is a panel this mod draws, after the fight stops.**
+For a completed fight, the result is computed the moment `CombatEnded` fires and drawn two seconds later, over the loot on a win or the death screen on a loss.
 Computed first on purpose: on a loss the game's own flow tears the run down on its way to the death screen, and the entry with it.
 Leaving through the game's menu instead records the abandoned notice during cleanup and shows it over the main menu once the return finishes.
-The panel is `FightResultScreen`'s approved wording - the summary as a table with the
-player's column first, then the turn detail under its own heading, then the two notes -
-and a row whose two sides differ is drawn plain while a row that agrees is dimmed.
-That is the only visual distinction, because a difference is not a verdict.
+`FightResultPanel` draws it: the summary as figures in two columns, the turn chronology as the game's own card and potion art in the order they were played, and the chart of what each turn cost either side.
+The two lines are told apart by colour and by the shape of their chart markers, and the same two colours run through the columns, the card borders and the lines, so a column, an icon and a line read as one fighter.
+A figure whose two sides agree is dimmed and one that differs is not; that is the only emphasis there is, because a difference is not a verdict.
+It is added into `NModalContainer` rather than built on `NGenericPopup`: the container's own backstop dims and blocks the screen underneath, and its `Clear` takes the panel away on every path that already clears a popup.
+The panel is stock Godot nodes, because this assembly compiles without Godot's source generators and a `Control` subclass of ours would have no generated bridge - which is also what lets the whole panel be assembled and asserted on node by node in a process with no game.
 
 **A card the game plays for the player is sampled as an action of its own.**
 Hellraiser plays a Strike automatically when one is drawn, and in the client that play
@@ -163,12 +164,22 @@ nine, for this reason.
 Both are attributed to the turn they happened in, and the turn totals agree; the
 difference is in how many steps a turn is made of, not in what happened.
 
-**The result is text on a modal, and that is a recorded limit.**
-The captain read the first retail comparison and reported that a text-led list of
-differences on a large popup is not good enough for the next interface.
-That is observed product evidence, kept here on purpose; the screenshot-backed
-playback interface it points at is a follow-up owned by interface design, and nothing
-in this host presumes its shape.
+**The chart is derived and never inferred.**
+`FightResultChart` in `Sts2PilotTrainer.Trainer` reads it out of the comparison and
+nothing else: one point per turn per line for each measure, one ceiling both plots and
+both lines are drawn against, and the potions marked at the turn they were spent. A
+turn one line never reached has no point on that line rather than a point on the axis,
+and the chronology says so in the panel's own words - a zero there would claim the turn
+was fought and cost nothing. A card play that carries no card id is refused rather than
+drawn as a blank icon.
+
+**The panel is not registered as the game's modal screen.**
+`NModalContainer.Add` casts what it is given to `IScreenContext`, which is a game
+interface a stock node cannot implement, so the panel is added as a child instead. The
+container's backstop still blocks the mouse and the Done button is focused explicitly,
+but `ActiveScreenContext` still regards the screen underneath as current. What that
+means for a keyboard or a controller while the result is up is measured in the retail
+session rather than claimed here.
 
 **Only a won, completed, uninterrupted fight is compared.**
 A lost fight, a fight left through the game's own menu, a capture that could not be

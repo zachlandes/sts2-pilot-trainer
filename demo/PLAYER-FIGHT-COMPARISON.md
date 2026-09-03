@@ -60,16 +60,21 @@ compared with the shipped recorded fight.
 
 Three things in the output are worth reading closely.
 
-Every summary **row is the same on both sides and every turn line reads the same
-twice**, because the recording stood in for the player. That is the point rather than
+Every summary **figure is the same on both sides, both lines play the same cards, and
+the chart's two lines carry the same numbers**, because the recording stood in for the
+player. That is the point rather than
 a limitation: the capture, the projection and the comparison are the same code the
 client runs, and a line that came through them and did not match the engine's own
 replay of the same actions would be a defect in the capture.
 
-The **panel** is printed word for word as the client shows it - the title, the two
-columns, the seven rows, the turn detail, the two notes and the button. All of it is
-the approved wording from `TrainerCopy`, produced from the comparison's numbers and the
-manifest's creator name; nothing in it is written down for this recording.
+The **panel** is printed as far as a terminal can draw it - the title, the two
+columns, the seven figures, then the turn chronology and the chart's own numbers, then
+the two notes and the button. All of its wording is `TrainerCopy`, produced from the
+comparison's numbers and the manifest's creator name; nothing in it is written down for
+this recording. In the client the same model is drawn rather than printed: the cards are
+the game's own art and the chart is two lines. This block was re-run after that change,
+which is why it reads as it does; the retail screenshot further down is from the S5
+session and shows the text-led popup that panel replaced.
 
 The **sandbox line** is a hash over every byte of this process's sandbox profile store
 before and after the played fight. It is printed because the headless host has no
@@ -125,6 +130,8 @@ capture         : Completed
 sandbox writes  : none during the fight - measured because the headless host has no write barrier; in the client ProfileWriteBarrier stops what a won fight would write
 
 [Your fight and NaveGreed's]
+  Both fights started from the same position.
+
                         You           NaveGreed
   Outcome               Won           Won
   Turns                 4             4
@@ -135,10 +142,19 @@ sandbox writes  : none during the fight - measured because the headless host has
   Cards removed         none          none
 
   Turn by turn
-  Turn 1: you took 8 off the enemy and lost 4; NaveGreed took 8 off and lost 4
-  Turn 2: you took 24 off the enemy and lost 2; NaveGreed took 24 off and lost 2
-  Turn 3: you took 6 off the enemy and lost 7; NaveGreed took 6 off and lost 7
-  Turn 4: you took 4 off the enemy and lost 0; NaveGreed took 4 off and lost 0
+  Turn   You                                 NaveGreed
+     1   Hellraiser, Defend Ironclad         Hellraiser, Defend Ironclad
+     2   Defend Ironclad, Defend Ironclad    Defend Ironclad, Defend Ironclad
+     3   Hellraiser                          Hellraiser
+     4   Bash                                Bash
+
+  Health lost each turn
+         Enemy health lost         Health lost               Potions used
+  Turn   You          NaveGreed    You          NaveGreed
+     1   8            8            4            4
+     2   24           24           2            2
+     3   6            6            7            7
+     4   4            4            0            0
 
   This states differences. It does not say which fight was better.
   Health lost counts only health that came off. Damage absorbed by block is not counted.
@@ -181,12 +197,15 @@ attributed to the turn it was taken in either way, and the turn totals agree.
 
 ![The game's own loot screen in the retail client after the fight: 13 Gold, Orobic Acid, Add a card to your deck, a Skip arrow. The top bar reads 57/68 health, 99 gold.](1fda0684-2026-09-03.png)
 
-The result, over the loot screen, on the game's own popup. The title, the two columns,
-the seven summary rows and the turn detail are the approved wording; the numbers are
-the comparison's. The captain played the recording's line, so every row agrees and
-every turn line reads the same twice - which is the same output the headless block
-above produced, now from a fight a person played. The panel scrolls: the fourth turn
-line and the two notes are below the fold, as the eligibility screen's lower rows are.
+The result as S5 showed it, over the loot screen, on the game's own popup. This is the
+presentation the captain read and reported was not good enough, and it is kept here as
+the record of that session; [the drawn result that replaced it](VISUAL-COMPARISON.md) is
+its own document. The title, the two columns, the seven summary rows and the turn detail
+are the approved wording; the numbers are the comparison's. The captain played the recording's line, so every row agrees and
+every turn line reads the same twice - the same comparison the headless block above
+produces, now from a fight a person played. The popup scrolls: the fourth turn line and
+the two notes are below the fold, as the eligibility screen's lower rows are. That
+scrolling, and the prose, are what the drawn panel was built to replace.
 Done returns to the main menu and the run is discarded.
 
 ```bash {image}

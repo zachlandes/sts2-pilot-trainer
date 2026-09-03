@@ -40,8 +40,9 @@ internal static class PrefightScreen
 
     private static NGenericPopup? _open;
 
-    /// <summary>The smallest the result's rows may become; the eligibility screen's floor.</summary>
-    private const int ResultBodyMinimumFontSize = 17;
+    /// <summary>The result panel, while it is up. Not a popup: the result is the one
+    /// surface this mod draws itself.</summary>
+    private static Control? _openResult;
 
     /// <summary>
     /// Shows the decision the recording makes next.
@@ -84,15 +85,56 @@ internal static class PrefightScreen
     /// <summary>
     /// Shows the player's fight beside the recording's, or the one sentence that
     /// says why there is no comparison. One button, Done, which leaves the fight.
+    ///
+    /// Not the game's popup. The result is a panel of this mod's own, added into the
+    /// game's modal container so that the container's own backstop dims and blocks
+    /// the screen underneath and its Clear takes the panel away on every path that
+    /// already clears a popup. The font is read from the theme the container sits
+    /// under, so the words are in the game's own type rather than in Godot's default.
     /// </summary>
-    internal static void ShowResult(FightResultScreen screen, Action done) =>
-        Open(screen.Title, ScreenMarkup.Body(screen), screen.DoneButton, done, null, null, richText: true);
+    internal static void ShowResult(FightResultScreen screen, Action done)
+    {
+        Close();
+
+        try
+        {
+            var container = NModalContainer.Instance
+                ?? throw new InvalidOperationException("This process has no modal container.");
+
+            var panel = FightResultPanel.Build(
+                screen,
+                container.GetViewportRect().Size,
+                ModelArt.Of,
+                container.GetThemeFont(GameLabelFont, GameLabelThemeType),
+                done);
+
+            container.AddChild(panel.Root);
+            container.ShowBackstop();
+            _openResult = panel.Root;
+
+            // Deferred for the reason every focus grab in this mod is: adding to the
+            // container changes what the game considers the active screen, and a grab
+            // before that has settled is a panel a keyboard cannot reach.
+            Callable.From(() => panel.Done.GrabFocus()).CallDeferred();
+        }
+        catch (Exception ex)
+        {
+            _openResult = null;
+            throw new InvalidOperationException(
+                $"The result panel could not be shown: {ex.GetType().Name}: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>The theme entry the game's own labels take their font from.</summary>
+    private static readonly StringName GameLabelFont = "font";
+
+    private static readonly StringName GameLabelThemeType = "Label";
 
     internal static void Close()
     {
         try
         {
-            if (_open is not null) NModalContainer.Instance?.Clear();
+            if (_open is not null || _openResult is not null) NModalContainer.Instance?.Clear();
         }
         catch (Exception ex)
         {
@@ -103,12 +145,12 @@ internal static class PrefightScreen
         finally
         {
             _open = null;
+            _openResult = null;
         }
     }
 
     private static void Open(
-        string title, string body, string confirmLabel, Action onConfirm, string? cancelLabel, Action? onCancel,
-        bool richText = false)
+        string title, string body, string confirmLabel, Action onConfirm, string? cancelLabel, Action? onCancel)
     {
         Close();
 
@@ -127,17 +169,6 @@ internal static class PrefightScreen
             added = true;
 
             var content = popup.GetNode<NVerticalPopup>(VerticalPopupPath);
-            if (richText)
-            {
-                // The result body carries the same markup the eligibility screen
-                // does, and the same floor under its font: rows nobody can read are
-                // not a result.
-                var label = content.BodyLabel();
-                label.BbcodeEnabled = true;
-                label.MinFontSize = ResultBodyMinimumFontSize;
-                label.ScrollActive = true;
-            }
-
             content.SetText(title, body);
             content.InitYesButton(PlaceholderConfirm, _ => onConfirm());
             content.YesButton.SetText(confirmLabel);

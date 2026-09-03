@@ -235,20 +235,7 @@ internal static partial class Commands
         var comparison = CombatComparison.Between(yours, recorded.Projection());
         var screen = FightResultScreen.For(creator, comparison);
 
-        Console.WriteLine();
-        Console.WriteLine($"[{screen.Title}]");
-        Console.WriteLine($"  {"",-22}{screen.Columns[0],-14}{screen.Columns[1]}");
-        foreach (var row in screen.Rows)
-        {
-            Console.WriteLine($"  {row.Label,-22}{row.Yours,-14}{row.Theirs}{(row.Matches ? string.Empty : "   (differs)")}");
-        }
-
-        Console.WriteLine();
-        Console.WriteLine($"  {screen.TurnDetailHeading}");
-        foreach (var line in screen.TurnLines) Console.WriteLine($"  {line}");
-        Console.WriteLine();
-        foreach (var note in screen.Notes) Console.WriteLine($"  {note}");
-        Console.WriteLine($"  [{screen.DoneButton}]");
+        Panel(screen);
 
         return new
         {
@@ -348,6 +335,93 @@ internal static partial class Commands
         var ceiling = (reading.ProfileAscensionCeiling ?? 0).ToString(CultureInfo.InvariantCulture);
         return $"ascension ceiling {ceiling} for {expected.Character.Value}; {categories}";
     }
+
+    /// <summary>
+    /// The result panel, as far as a terminal can draw it.
+    ///
+    /// The client draws card art, potion art and two lines on a chart; this prints
+    /// the same model in the same order - the summary figures, then the turn
+    /// chronology, then the chart's own numbers - so what the panel is made of can be
+    /// read where there is no screen. Every word is the panel's own, and nothing here
+    /// computes: a cell the chart has no value for is blank, exactly as the chart
+    /// draws no point there.
+    /// </summary>
+    private static void Panel(FightResultScreen screen)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"[{screen.Title}]");
+        Console.WriteLine($"  {screen.SameBoundaryNote}");
+        Console.WriteLine();
+        Row($"  {"",-22}{screen.Columns[0],-14}{screen.Columns[1]}");
+        foreach (var row in screen.Rows)
+        {
+            Row($"  {row.Label,-22}{row.Yours,-14}{row.Theirs}{(row.Matches ? string.Empty : "   (differs)")}");
+        }
+
+        Console.WriteLine();
+        Console.WriteLine($"  {screen.TurnDetailHeading}");
+        Row($"  {screen.Chart.TurnLabel,4}   {screen.Columns[0],-36}{screen.Columns[1]}");
+        foreach (var turn in screen.Turns)
+        {
+            Row($"  {turn.Turn,4}   {Played(turn.Yours, screen.FightOverLabel),-36}" +
+                $"{Played(turn.Theirs, screen.FightOverLabel)}");
+        }
+
+        Chart(screen.Chart);
+
+        Console.WriteLine();
+        foreach (var note in screen.Notes) Console.WriteLine($"  {note}");
+        Console.WriteLine($"  [{screen.DoneButton}]");
+    }
+
+    /// <summary>
+    /// The chart's numbers, turn by turn: both measures for both lines, and the
+    /// potions marked on the turn they were spent.
+    /// </summary>
+    private static void Chart(FightResultChart chart)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"  {chart.Heading}");
+        Row($"  {"",4}   {chart.EnemyMeasureLabel,-26}{chart.PlayerMeasureLabel,-26}{TrainerCopy.PotionsUsedRow}");
+        Row($"  {chart.TurnLabel,4}   {chart.Yours.Label,-13}{chart.Theirs.Label,-13}" +
+            $"{chart.Yours.Label,-13}{chart.Theirs.Label,-13}");
+
+        for (var index = 0; index < chart.Turns.Count; index++)
+        {
+            var yours = chart.Yours.Points[index];
+            var theirs = chart.Theirs.Points[index];
+            Row($"  {chart.Turns[index],4}   {Value(yours.EnemyHealthLost),-13}{Value(theirs.EnemyHealthLost),-13}" +
+                $"{Value(yours.HealthLost),-13}{Value(theirs.HealthLost),-13}" +
+                Potions(chart, yours, theirs));
+        }
+    }
+
+    /// <summary>One row of the panel. Columns are padded to line up, and a row whose
+    /// last columns are empty is not padded into trailing whitespace.</summary>
+    private static void Row(string row) => Console.WriteLine(row.TrimEnd());
+
+    /// <summary>A measurement, or nothing at all where this line did not reach the
+    /// turn. Never a zero: a zero would say the turn was fought and cost nothing.</summary>
+    private static string Value(int? measurement) =>
+        measurement?.ToString(CultureInfo.InvariantCulture) ?? string.Empty;
+
+    /// <summary>The potions either line spent on this turn, named by the side that
+    /// spent them.</summary>
+    private static string Potions(FightResultChart chart, FightResultPoint yours, FightResultPoint theirs) =>
+        string.Join("; ", new[] { (chart.Yours.Label, yours), (chart.Theirs.Label, theirs) }
+            .Where(side => side.Item2.PotionModelIds.Count > 0)
+            .Select(side =>
+                $"{side.Label}: {string.Join(", ", side.Item2.PotionModelIds.Select(ModelIdNames.Display))}"));
+
+    /// <summary>
+    /// What one side played on one turn, as a terminal renders the panel's card and
+    /// potion art: the cards in the order they were played, then the potions. A side
+    /// that never reached the turn says so in the panel's own words.
+    /// </summary>
+    private static string Played(FightResultTurnSide? side, string fightOver) =>
+        side is null
+            ? fightOver
+            : string.Join(", ", side.CardModelIds.Concat(side.PotionModelIds).Select(ModelIdNames.Display));
 
     /// <summary>
     /// A digest over every byte of the sandbox profile store.

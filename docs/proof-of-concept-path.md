@@ -329,18 +329,21 @@ sides to the S1 contract, and show him the result.
   path lowers the write barrier; a fight left through the game's own menu abandons
   the capture the same way.
 
-**A limit recorded from the first retail session, not a requirement of this slice.**
-The captain played the fight, read the panel and reported that it worked, and that a
-text-led list of differences on a large modal is not good enough for the next
-interface: the direction is screenshot-backed playback, and it is the follow-up after
-this loop merges, owned by interface design rather than by this slice.
-What is here is the approved Direction A wording on the game's own popup, kept
-deliberately small.
+**The result the first retail session asked for is what is here now.**
+The captain played the fight, read the text-led list of differences on a large modal
+and reported that prose describing how his fight differed from the recording's was not
+the interface. The panel it became is drawn: the summary as figures in two columns,
+the turn chronology as the game's own card and potion art in the order it was played,
+and the chart of what each turn cost either side, with the two lines told apart by
+colour and by marker shape. `FightResultPanel` in the mod draws it and decides
+nothing; `FightResultChart` derives the chart from the comparison and leaves a gap
+where a value cannot be derived honestly.
 
 **Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json --play`
 stands in the fight, plays the recording's nine actions through the player-side
-capture, and prints the result panel word for word: every row the same on both sides,
-every turn line the same twice, because the recording stood in for the player.
+capture, and prints the result panel as far as a terminal can draw it - the figures,
+the chronology and the chart's own numbers - every row the same on both sides because
+the recording stood in for the player.
 [demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has it with its
 real output, and the retail client's own result over a fight a person played.
 
