@@ -248,6 +248,15 @@ public static partial class ManifestValidator
         }
     }
 
+    /// <summary>
+    /// The characters in <paramref name="seed"/> the game's generator could never have
+    /// produced. Public because ingestion screens a candidate seed long before there is
+    /// a manifest to validate, and the alphabet must have one owner: a screen that
+    /// accepted an 'O' would key an artifact to a run that cannot exist.
+    /// </summary>
+    public static IReadOnlyList<char> IllegalSeedCharacters(string seed) =>
+        seed.Where(c => !SeedAlphabet.Contains(c, StringComparison.Ordinal)).Distinct().ToArray();
+
     private static void ValidateSeed(string seed, List<string> problems)
     {
         if (seed.Length == 0)
@@ -256,11 +265,9 @@ public static partial class ManifestValidator
             return;
         }
 
-        var illegal = seed.Where(c => !SeedAlphabet.Contains(c, StringComparison.Ordinal))
-            .Distinct()
-            .ToArray();
+        var illegal = IllegalSeedCharacters(seed);
 
-        if (illegal.Length > 0)
+        if (illegal.Count > 0)
         {
             var hints = illegal
                 .Select(c => c switch

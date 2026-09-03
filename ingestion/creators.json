@@ -1,0 +1,31 @@
+{
+  "schema": "sts2-pilot-trainer/ingestion-config/v1",
+
+  "releases": [
+    { "version": "v0.108.0", "released_utc": "2026-07-03" },
+    { "version": "v0.109.0", "released_utc": "2026-07-17" },
+    { "version": "v0.110.0", "released_utc": "2026-07-31" },
+    { "version": "v0.111.0", "released_utc": "2026-08-13" }
+  ],
+
+  "creators": [
+    {
+      "channel_name": "NaveGreed",
+      "channel_id": "UCuuDxwofGcur0Lt6iP-aDww",
+      "seed_source": "VersionOverlay",
+      "occlusions": [],
+      "notes": "Plays with the game's own 'Show Version Info' label switched on, so the seed, build, mod count and content hash are rendered top-right for the whole run. Nothing covers that corner. The seed still has to be read off pixels at source resolution, and a reading that agrees with itself has been wrong here before: an OCR pass returned SEXT47K77REK with per-character confidence 1.0 against a true seed of SFXT47K77RFK. Verify every candidate against the Act 1 map before believing it."
+    },
+    {
+      "channel_name": "JapaneseExport",
+      "channel_id": "UCYZwLfdwKJjIm_JFYCEWULw",
+      "seed_source": "Description",
+      "seed_pattern": "Run Seed:\\s*([0-9A-Z_]+)",
+      "build_pattern": "Patch:\\s*(v\\d+\\.\\d+\\.\\d+)",
+      "occlusions": [
+        "a webcam overlay sits in the top-right corner, over the region the game draws its version-info label in"
+      ],
+      "notes": "Publishes the seed and the build as text in the video description, which is strictly better than reading either off the screen: no character recognition is involved, so the whole class of confident misreads cannot occur. The occlusion is recorded because it rules out the overlay as a fallback if a description ever omits the seed. Chapters are marked on the uploads and give the intro length and the act boundaries for free."
+    }
+  ]
+}
