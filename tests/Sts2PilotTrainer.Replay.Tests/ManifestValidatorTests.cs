@@ -494,15 +494,15 @@ public class ManifestValidatorTests
 
     private static ReplayManifest WithVerifiedTrace(
         ReplayManifest manifest, params ReplayStep[] steps) => manifest with
-    {
-        Verification = new VerificationReport
         {
-            Status = VerificationStatus.Verified,
-            ArbiterVersion = "test",
-            Preflight = new PreflightResult(true, []),
-            Trace = new ReplayTrace { Steps = steps },
-        },
-    };
+            Verification = new VerificationReport
+            {
+                Status = VerificationStatus.Verified,
+                ArbiterVersion = "test",
+                Preflight = new PreflightResult(true, []),
+                Trace = new ReplayTrace { Steps = steps },
+            },
+        };
 
     private static ReplayStep TraceStep(int seq, string before, string after) => new()
     {
