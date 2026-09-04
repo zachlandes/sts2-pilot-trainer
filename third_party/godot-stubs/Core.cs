@@ -26,6 +26,8 @@ public class GodotObject
         return new SignalAwaiter();
     }
 
+    public Error EmitSignal(StringName signal, params Variant[] args) => Error.Ok;
+
     // Bridge methods overridden in generated code
     protected virtual void SaveGodotObjectData(GodotSerializationInfo info) { }
     protected virtual void RestoreGodotObjectData(GodotSerializationInfo info) { }

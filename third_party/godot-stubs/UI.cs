@@ -57,7 +57,6 @@ public partial class Control : CanvasItem
 
     public virtual void _GuiInput(InputEvent @event) { }
 
-    public void EmitSignal(StringName signal, params Variant[] args) { }
 }
 
 // Node2D
