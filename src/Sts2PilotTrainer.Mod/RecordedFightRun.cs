@@ -618,7 +618,7 @@ internal static class RecordedFightRun
                 return;
             }
 
-            strip.OpenMenu(strip.Surface.Menu == MenuKind.Chip ? Jump : ChooseSpeed);
+            strip.OpenMenu(strip.Surface.Speed.Press == Press.OpenChipMenu ? Jump : ChooseSpeed);
         }
         catch (Exception ex)
         {
@@ -916,7 +916,7 @@ internal static class RecordedFightRun
     /// result is refused rather than drawn as if it would work.
     /// </summary>
     private static bool AnythingPlayed(RecordedFightEntry entry) =>
-        entry.Capture is { } capture && capture.Trace.Steps.Count > 0;
+        entry.Capture is { AnythingPlayed: true };
 
     private static async Task AdvanceOne()
     {

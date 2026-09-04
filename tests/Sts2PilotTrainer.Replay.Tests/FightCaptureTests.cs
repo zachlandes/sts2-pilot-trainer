@@ -12,6 +12,24 @@ public sealed class FightCaptureTests
 {
     private const string Digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
+    /// <summary>
+    /// The combat-start boundary is a step in the trace and is nobody's action, so
+    /// "has anything been played" cannot be answered by counting steps.
+    /// </summary>
+    [Fact]
+    public void ACaptureThatHasOnlyItsBoundaryHasNothingPlayedInIt()
+    {
+        var capture = FightCapture.Begin("player", Sample("in_progress", 1, 64, 42), Digest);
+
+        Assert.Single(capture.Trace.Steps);
+        Assert.False(capture.AnythingPlayed);
+
+        capture.BeginStep("PlayCard", Args(("card_id", "CARD.BASH")), Sample("in_progress", 1, 64, 42));
+        capture.CompleteStep(Sample("in_progress", 1, 64, 34));
+
+        Assert.True(capture.AnythingPlayed);
+    }
+
     [Fact]
     public void AnActionThatBeginsWhileAnotherIsOpenClosesItWhereThatOneHadFinished()
     {

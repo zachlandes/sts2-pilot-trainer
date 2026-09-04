@@ -78,6 +78,15 @@ public sealed class FightCapture
     public bool HasOpenStep => _open is not null;
 
     /// <summary>
+    /// Whether the player has taken an action of their own yet.
+    ///
+    /// The combat-start boundary is a step in the trace and is nobody's action, so the
+    /// number of steps is one from the moment a capture exists. This counts only what
+    /// was played.
+    /// </summary>
+    public bool AnythingPlayed => _nextSeq > 0;
+
+    /// <summary>
     /// Everything sampled so far, in order. Available in every state: a trace of a
     /// fight that was abandoned is still what was seen of it, and it is the refusal
     /// that says it is not comparable, not the absence of data.
