@@ -1548,6 +1548,97 @@ public class NativeManifestValidatorTests
             problem.Contains("environment.seed in a native recording", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Captured is what a recorder read inside the game it was running in, and a video
+    /// reconstruction had no recorder. A captured coordinate on one names a reading
+    /// nobody could have taken, and it would sidestep the video timestamp every other
+    /// vod fact is re-checked at.
+    /// </summary>
+    [Fact]
+    public void RejectsACapturedEnvironmentFieldOnAVideoRecording()
+    {
+        var manifest = Fixtures.ValidManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                BuildVersion = Fact<string>.Captured("v0.111.0", FactEvidence.AtActionOrdinal(0)),
+            },
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains(
+                "environment.build_version is marked source=captured and this is a vod recording",
+                StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsACapturedEnvironmentFieldOnASyntheticFixture()
+    {
+        var manifest = Fixtures.SyntheticManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                BuildVersion = Fact<string>.Captured(
+                    manifest.Environment.BuildVersion.Value, FactEvidence.AtActionOrdinal(0)),
+            },
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains(
+                "is marked source=captured and this is a synthetic-engine recording",
+                StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsACapturedActionOnAVideoRecording()
+    {
+        var manifest = Fixtures.ValidManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Actions =
+            [
+                manifest.Actions[0] with
+                {
+                    Source = FactSource.Captured,
+                    Evidence = FactEvidence.AtActionOrdinal(0),
+                },
+                .. manifest.Actions.Skip(1),
+            ],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("must be source=observed for a VOD replay", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsACapturedCheckpointFieldOnAVideoRecording()
+    {
+        var manifest = Fixtures.ValidManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Checkpoints =
+            [
+                manifest.Checkpoints[0] with
+                {
+                    Expect = manifest.Checkpoints[0].Expect.ToDictionary(
+                        entry => entry.Key,
+                        entry => Fact<string>.Captured(entry.Value.Value, FactEvidence.AtActionOrdinal(1)),
+                        StringComparer.Ordinal),
+                },
+            ],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("must be source=observed because it is evidence about what the video shows",
+                StringComparison.Ordinal));
+    }
+
     /// <summary>A run has no public clock, so a captured value's coordinate is the
     /// run's own ordered history. Without one nobody could go back and look.</summary>
     [Fact]

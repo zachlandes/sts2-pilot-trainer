@@ -234,18 +234,25 @@ public static partial class ManifestValidator
         }
 
         ValidateInputFact(
-            env.BuildVersion, "environment.build_version", videoDurationMs, maxActionOrdinal, problems);
+            env.BuildVersion, "environment.build_version", sourceKind, videoDurationMs, maxActionOrdinal, problems);
         ValidateInputFact(
-            env.BuildDateUtc, "environment.build_date_utc", videoDurationMs, maxActionOrdinal, problems);
-        ValidateInputFact(env.GameMode, "environment.game_mode", videoDurationMs, maxActionOrdinal, problems);
-        ValidateInputFact(env.Seed, "environment.seed", videoDurationMs, maxActionOrdinal, problems);
+            env.BuildDateUtc, "environment.build_date_utc", sourceKind, videoDurationMs, maxActionOrdinal, problems);
         ValidateInputFact(
-            env.ContentHash, "environment.content_hash", videoDurationMs, maxActionOrdinal, problems);
-        ValidateInputFact(env.Ascension, "environment.ascension", videoDurationMs, maxActionOrdinal, problems);
-        ValidateInputFact(env.Unlocks, "environment.unlocks", videoDurationMs, maxActionOrdinal, problems);
-        ValidateInputFact(env.Character, "environment.character", videoDurationMs, maxActionOrdinal, problems);
-        ValidateInputFact(env.Acts, "environment.acts", videoDurationMs, maxActionOrdinal, problems);
-        ValidateInputFact(env.Mods, "environment.mods", videoDurationMs, maxActionOrdinal, problems);
+            env.GameMode, "environment.game_mode", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Seed, "environment.seed", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.ContentHash, "environment.content_hash", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Ascension, "environment.ascension", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Unlocks, "environment.unlocks", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Character, "environment.character", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Acts, "environment.acts", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Mods, "environment.mods", sourceKind, videoDurationMs, maxActionOrdinal, problems);
 
         if (sourceKind == "native")
         {
@@ -1309,7 +1316,8 @@ public static partial class ManifestValidator
     }
 
     private static void ValidateInputFact<T>(
-        Fact<T> fact, string path, int videoDurationMs, int maxActionOrdinal, List<string> problems)
+        Fact<T> fact, string path, string sourceKind, int videoDurationMs, int maxActionOrdinal,
+        List<string> problems)
     {
         if (!Enum.IsDefined(fact.Source))
         {
@@ -1330,7 +1338,17 @@ public static partial class ManifestValidator
 
         if (fact.Source == FactSource.Captured)
         {
-            ValidateCapturedEvidence(fact.Evidence, path, maxActionOrdinal, problems);
+            if (sourceKind != "native")
+            {
+                problems.Add(
+                    $"{path} is marked source=captured and this is a {sourceKind} recording. Captured is what a " +
+                    "recorder read out of the live game it was running in, which only a native recording has: a " +
+                    "reading off a video is observed or inferred, and a fixture's values are declared.");
+            }
+            else
+            {
+                ValidateCapturedEvidence(fact.Evidence, path, maxActionOrdinal, problems);
+            }
         }
     }
 
