@@ -27,6 +27,7 @@ internal static class Program
                 "preflight-live" => Commands.PreflightLive(args[1..]),
                 "adopt-live" => Commands.AdoptLive(args[1..]),
                 "verify-seed" => Commands.VerifySeed(args[1..]),
+                "discover" => Commands.Discover(args[1..]),
                 "synthetic-fixture" => Commands.SyntheticFixture(args[1..]),
                 "generate-synthetic-fixture" => Commands.GenerateSyntheticFixture(args[1..]),
                 "baselib-parity" => Commands.BaseLibParity(args[1..]),

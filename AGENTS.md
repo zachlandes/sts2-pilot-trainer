@@ -114,6 +114,15 @@ game into the default assembly load context. `./scripts/install-mod.sh` is the o
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `CombatTrainer` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions.
 
+**Read [docs/ingestion.md](docs/ingestion.md) before touching how a recording is found or
+dated.** Screening runs on free metadata and establishes nothing: a seed it recovers is a
+candidate for `verify-seed` and a build it dates is a candidate for `preflight`, and the engine
+settles both. Creator eligibility - the seed as text, or the overlay unoccluded - is the first
+gate and runs before anything is fetched. `Revalidation` answers whether an existing
+reconstruction still reproduces on another build, as a verdict keyed to (recording, build);
+the manifest records what the recording was made on and is never edited to match a build under
+test. That document also names three limits this path does not remove.
+
 **Standing somebody in a recorded fight has one owner.**
 `RecordedFightEntry` constructs the run, makes the recording's decisions in order and refuses a boundary that is not the recorded one; the mod owns retail timing, presentation, deviation locks and write isolation.
 Keeping construction in the engine owner lets `./scripts/arbiter enter-fight` exercise the journey without a scene tree.

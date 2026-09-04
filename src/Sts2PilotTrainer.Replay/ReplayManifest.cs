@@ -228,6 +228,20 @@ public sealed record VideoSource
     [JsonPropertyName("duration_s")]
     public required int DurationSeconds { get; init; }
 
+    /// <summary>
+    /// The recording's title as the platform published it, for a host that needs to name
+    /// the thing a player is stepping into.
+    ///
+    /// Declared, and deliberately not an identifier: this channel A/B tests its titles, so
+    /// the same recording can carry two of them and only <see cref="VideoId"/> is stable.
+    /// Optional because the manifests written before discovery existed do not have one, and
+    /// backfilling a title nobody read at the time would be inventing provenance. Nothing in
+    /// the preflight, the replay or the comparison reads it.
+    /// </summary>
+    [JsonPropertyName("title")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Title { get; init; }
+
     [JsonPropertyName("url")]
     public string Url => Platform == "youtube"
         ? $"https://www.youtube.com/watch?v={VideoId}"
