@@ -114,7 +114,7 @@ internal static class RecordedFightRun
     {
         if (Phase != RecordedFightPhase.None)
         {
-            Log.Warn($"[{CombatTrainerMod.ModId}] a recorded fight is already under way; ignoring.", 2);
+            Log.Warn($"[{RunmobileMod.ModId}] a recorded fight is already under way; ignoring.", 2);
             return;
         }
 
@@ -134,7 +134,7 @@ internal static class RecordedFightRun
 
             Phase = RecordedFightPhase.Watching;
             Log.Info(
-                $"[{CombatTrainerMod.ModId}] constructed the recording's run; watching " +
+                $"[{RunmobileMod.ModId}] constructed the recording's run; watching " +
                 $"{_entry.Plan.PrefightActions.Count.ToString(CultureInfo.InvariantCulture)} recorded " +
                 "decision(s) before the fight", 2);
             ShowWhenTheGameHasFinishedMoving(creator, _entry);
@@ -192,7 +192,7 @@ internal static class RecordedFightRun
             entry.AdvanceOneStep();
 
             Log.Info(
-                $"[{CombatTrainerMod.ModId}] made recorded decision " +
+                $"[{RunmobileMod.ModId}] made recorded decision " +
                 $"{step.ToString(CultureInfo.InvariantCulture)} of " +
                 $"{entry.Plan.PrefightActions.Count.ToString(CultureInfo.InvariantCulture)}", 2);
 
@@ -239,11 +239,11 @@ internal static class RecordedFightRun
 
             if (!carriedOn)
             {
-                Log.Info($"[{CombatTrainerMod.ModId}] nothing to carry on past: {observed}", 2);
+                Log.Info($"[{RunmobileMod.ModId}] nothing to carry on past: {observed}", 2);
                 return;
             }
 
-            Log.Info($"[{CombatTrainerMod.ModId}] carried on past a screen that was waiting to proceed", 2);
+            Log.Info($"[{RunmobileMod.ModId}] carried on past a screen that was waiting to proceed", 2);
         }
     }
 
@@ -347,12 +347,12 @@ internal static class RecordedFightRun
         {
             var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
             Log.Info(
-                $"[{CombatTrainerMod.ModId}] letting the fight open; {entry.DescribeCombatReadiness()}", 2);
+                $"[{RunmobileMod.ModId}] letting the fight open; {entry.DescribeCombatReadiness()}", 2);
 
             await LetTheGameRun(OpeningTheFightSeconds);
 
             Log.Info(
-                $"[{CombatTrainerMod.ModId}] after letting the game run; " +
+                $"[{RunmobileMod.ModId}] after letting the game run; " +
                 $"{_entry?.DescribeCombatReadiness() ?? "no run"}", 2);
 
             HandOverTheFight();
@@ -407,7 +407,7 @@ internal static class RecordedFightRun
         PrefightScreen.Close();
         Phase = RecordedFightPhase.InFight;
         Log.Info(
-            $"[{CombatTrainerMod.ModId}] standing in the recorded fight; canonical state at combat start is " +
+            $"[{RunmobileMod.ModId}] standing in the recorded fight; canonical state at combat start is " +
             $"{equality.ActualDigest}", 2);
 
         // The capture begins at the boundary just proved, and from nowhere else: it
@@ -433,12 +433,12 @@ internal static class RecordedFightRun
             var capture = entry.Capture
                 ?? throw new InvalidOperationException("The fight ended before its capture began.");
             var screen = FightResultScreen.Of(
-                RecordingIdentity.Creator(entry.Manifest), capture, CombatTrainerMod.RecordedFight);
+                RecordingIdentity.Creator(entry.Manifest), capture, CombatTrainerModule.Instance.RecordedFight);
             _observer?.Dispose();
             _observer = null;
             Phase = RecordedFightPhase.Result;
             Log.Info(
-                $"[{CombatTrainerMod.ModId}] result: " +
+                $"[{RunmobileMod.ModId}] result: " +
                 (screen.HasComparison ? $"comparison, {screen.Rows.Count} row(s)" : screen.Notice), 2);
 
             await LetTheGameRun(EndingTheFightSeconds);
@@ -466,7 +466,7 @@ internal static class RecordedFightRun
         catch (Exception ex)
         {
             Log.Error(
-                $"[{CombatTrainerMod.ModId}] could not leave the finished fight: {ex.GetType().Name}: {ex.Message}",
+                $"[{RunmobileMod.ModId}] could not leave the finished fight: {ex.GetType().Name}: {ex.Message}",
                 2);
         }
         finally
@@ -484,7 +484,7 @@ internal static class RecordedFightRun
     /// </summary>
     private static void Abandon(string reason)
     {
-        Log.Error($"[{CombatTrainerMod.ModId}] not entering the recorded fight: {reason}", 2);
+        Log.Error($"[{RunmobileMod.ModId}] not entering the recorded fight: {reason}", 2);
 
         try
         {
@@ -496,7 +496,7 @@ internal static class RecordedFightRun
         catch (Exception ex)
         {
             Log.Error(
-                $"[{CombatTrainerMod.ModId}] could not clear the refused run: {ex.GetType().Name}: {ex.Message}",
+                $"[{RunmobileMod.ModId}] could not clear the refused run: {ex.GetType().Name}: {ex.Message}",
                 2);
         }
         finally
@@ -548,7 +548,7 @@ internal static class RecordedFightRun
         catch (Exception ex)
         {
             Log.Error(
-                $"[{CombatTrainerMod.ModId}] could not dispose the recorded fight entry: " +
+                $"[{RunmobileMod.ModId}] could not dispose the recorded fight entry: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
         finally
@@ -595,7 +595,7 @@ internal static class RecordedFightRun
         {
             _resultAfterMainMenu = null;
             Log.Error(
-                $"[{CombatTrainerMod.ModId}] could not show the abandoned fight result: " +
+                $"[{RunmobileMod.ModId}] could not show the abandoned fight result: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
     }
@@ -637,7 +637,7 @@ internal static class RecordedFightRun
             if (!IsWatching || _authorising) return true;
 
             Log.Info(
-                $"[{CombatTrainerMod.ModId}] ignoring an attempt to choose {what}: the recording owns every " +
+                $"[{RunmobileMod.ModId}] ignoring an attempt to choose {what}: the recording owns every " +
                 "decision before its fight.", 2);
             return false;
         }

@@ -48,7 +48,7 @@ internal static class ModelArt
             // is not a reason to lose the result. Said once per id, because it is
             // remembered either way.
             Log.Warn(
-                $"[{CombatTrainerMod.ModId}] has no artwork for '{modelId}': " +
+                $"[{RunmobileMod.ModId}] has no artwork for '{modelId}': " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
 

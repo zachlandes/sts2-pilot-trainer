@@ -88,7 +88,7 @@ internal sealed class PlayerFightObserver : IDisposable
         observer._executor.AfterActionExecuted += observer.AfterAction;
         observer._combat.TurnStarted += observer.TurnStarted;
         observer._combat.CombatEnded += observer.CombatEnded;
-        Log.Info($"[{CombatTrainerMod.ModId}] capturing the player's fight from the recorded combat start", 2);
+        Log.Info($"[{RunmobileMod.ModId}] capturing the player's fight from the recorded combat start", 2);
         return observer;
     }
 
@@ -137,7 +137,7 @@ internal sealed class PlayerFightObserver : IDisposable
         }
         catch (Exception ex)
         {
-            Log.Error($"[{CombatTrainerMod.ModId}] could not sample before {action}: {ex.GetType().Name}: {ex.Message}", 2);
+            Log.Error($"[{RunmobileMod.ModId}] could not sample before {action}: {ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 
@@ -198,12 +198,12 @@ internal sealed class PlayerFightObserver : IDisposable
         {
             _capture.Finish(_entry.SampleLiveState());
             Log.Info(
-                $"[{CombatTrainerMod.ModId}] the player's fight ended; capture {_capture.State}, " +
+                $"[{RunmobileMod.ModId}] the player's fight ended; capture {_capture.State}, " +
                 $"{(_capture.Trace.Steps.Count - 1).ToString(CultureInfo.InvariantCulture)} action(s) sampled", 2);
         }
         catch (Exception ex)
         {
-            Log.Error($"[{CombatTrainerMod.ModId}] could not sample the end of the fight: {ex.GetType().Name}: {ex.Message}", 2);
+            Log.Error($"[{RunmobileMod.ModId}] could not sample the end of the fight: {ex.GetType().Name}: {ex.Message}", 2);
         }
 
         _fightEnded();
@@ -237,7 +237,7 @@ internal sealed class PlayerFightObserver : IDisposable
                 if (!_ended && !_disposed)
                 {
                     Log.Warn(
-                        $"[{CombatTrainerMod.ModId}] the engine did not settle within " +
+                        $"[{RunmobileMod.ModId}] the engine did not settle within " +
                         $"{SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)}s after an action", 2);
                 }
                 return;
@@ -256,7 +256,7 @@ internal sealed class PlayerFightObserver : IDisposable
                 _capture.MarkIncomplete(
                     $"The engine could not settle after an action: {ex.GetType().Name}: {ex.Message}");
             }
-            Log.Error($"[{CombatTrainerMod.ModId}] could not sample after an action: {ex.GetType().Name}: {ex.Message}", 2);
+            Log.Error($"[{RunmobileMod.ModId}] could not sample after an action: {ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 

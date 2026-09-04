@@ -14,7 +14,7 @@ namespace Sts2PilotTrainer.Replay;
 /// Two gates, because they answer different questions at different moments:
 /// <see cref="Prerequisites"/> asks whether a matching run could be played here at
 /// all, and <see cref="RunIdentity"/> asks whether the run that now exists is the
-/// right one. The Combat Trainer host runs both against the player's live game. The
+/// right one. The Runmobile host runs both against the player's live game. The
 /// arbiter runs the first before it constructs a run and the second after, which is how it
 /// learns that the engine built what the manifest asked for.
 ///
@@ -289,8 +289,18 @@ public static class EnvironmentPreflight
 
     /// <summary>The mod id the in-game host ships under. Its own failure is a
     /// different problem from somebody else's mod being present, and telling them
-    /// apart is what stops a player being sent to disable mods they do not have.</summary>
-    private const string HostModId = "CombatTrainer";
+    /// apart is what stops a player being sent to disable mods they do not have.
+    ///
+    /// It is the shell's id, not the Combat Trainer's: the Combat Trainer is one
+    /// module inside the mod a player installs, and the mod list only ever shows the
+    /// shell. See docs/in-game-host.md.</summary>
+    private const string HostModId = "Runmobile";
+
+    /// <summary>The name that same mod declares. Held here rather than read from
+    /// <c>TrainerCopy</c> because this project has no dependency on the wording
+    /// layer, and because this is a fact about a manifest rather than a sentence
+    /// shown to anybody.</summary>
+    private const string HostModName = "Runmobile";
 
     private static PreflightField EvaluateLocalMods(IReadOnlyList<LocalMod> mods, bool requireHost)
     {
@@ -301,7 +311,7 @@ public static class EnvironmentPreflight
                                      active[0] is
                                      {
                                          Id: HostModId,
-                                         Name: "Combat Trainer",
+                                         Name: HostModName,
                                          AffectsGameplay: false,
                                          State: "Loaded",
                                      };
@@ -309,7 +319,7 @@ public static class EnvironmentPreflight
 
         // What is actually wrong, kept apart. A game whose only active mod is this one,
         // failed, has nothing to do with compatibility: telling that player to disable
-        // every mod except Combat Trainer sends them to fix somebody else's mod when
+        // every mod except Runmobile sends them to fix somebody else's mod when
         // the only broken thing is ours, and blames a clean install for our defect.
         var otherModsPresent = active.Any(mod => mod.Id != HostModId);
         var hostFailedAlone = !otherModsPresent &&
@@ -324,7 +334,7 @@ public static class EnvironmentPreflight
 
         return new PreflightField(
             "loaded_mod_environment",
-            "no active local mods except this loaded non-gameplay Combat Trainer host",
+            $"no active local mods except this loaded non-gameplay {HostModName} host",
             actual,
             permitted,
             permitted ? null : Refusal());
@@ -333,12 +343,12 @@ public static class EnvironmentPreflight
         {
             if (requireHost && active.Count == 0)
             {
-                return "The running game did not report Combat Trainer as loaded, so its mod environment " +
-                       "cannot be established. Restart the game with only Combat Trainer enabled, and check " +
+                return $"The running game did not report {HostModName} as loaded, so its mod environment " +
+                       $"cannot be established. Restart the game with only {HostModName} enabled, and check " +
                        "again.";
             }
 
-            if (hostFailedAlone) return "Combat Trainer failed to load. Restart the game and check again.";
+            if (hostFailedAlone) return $"{HostModName} failed to load. Restart the game and check again.";
 
             // Everything else is another mod actually being there - or, unreachably for
             // a correctly shipped build, this host loading while declaring itself
@@ -346,7 +356,7 @@ public static class EnvironmentPreflight
             return "The running game has another active or failed mod. Its behaviour cannot be established as " +
                    "identical to the recording from the content hash, because a failed mod can leave resources " +
                    "loaded and that hash does not cover behaviour patches or mods that declare themselves " +
-                   "non-gameplay. Disable every mod except Combat Trainer, restart the game, and check again.";
+                   $"non-gameplay. Disable every mod except {HostModName}, restart the game, and check again.";
         }
     }
 

@@ -7,7 +7,7 @@ If everything agrees, the run's verified gameplay history has been reproduced ex
 This does not identify an unobserved source configuration when multiple configurations reproduce that history; the report states that limit.
 If anything disagrees, it says which field, at which moment, and stops.
 
-This is now a tryable training proof of concept: once a combat-start position is reconstructed exactly, the Combat Trainer mod lets a player fight it, captures that fight, and compares it with the VOD solution replayed from the same boundary.
+This is now a tryable training proof of concept: once a combat-start position is reconstructed exactly, the Runmobile mod's Combat Trainer lets a player fight it, captures that fight, and compares it with the VOD solution replayed from the same boundary.
 [The proof-of-concept path](docs/proof-of-concept-path.md) records how that loop was built, slice by slice.
 
 ## What has been demonstrated
@@ -30,7 +30,7 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   The shipped VOD reconstruction now covers its whole first combat, read off the video action by action, so the recording is one of those completed sides.
   It runs on past that fight to the start of the floor-5 fight's third turn, which is the boundary a candidate search over that turn would have to begin from; the projection still reads the first fight the history enters and requires it to have finished.
   A history that stops mid-combat is still refused, which is what the recording used to be.
-  The fight a person plays in the retail client is captured as the same trace by the Combat Trainer mod, projected the same way, and shown beside the recording's on the mod's visual result panel.
+  The fight a person plays in the retail client is captured as the same trace by the Runmobile mod, projected the same way, and shown beside the recording's on the mod's visual result panel.
 
 - **Provenance is gated before any engine starts.** A run resumed from run history
   matches on seed, build, content hash and acts and replays perfectly — it is just
@@ -84,7 +84,7 @@ Its user data is redirected to `build/sandbox`, it cannot see the retail `RunMan
 `Preflight.EvaluateLiveHost` is the API the in-game host calls before showing a player anything, and the mod is where it meets a real client:
 
 ```bash
-./scripts/install-mod.sh                # build the Combat Trainer mod into the game's own mods directory
+./scripts/install-mod.sh                # build the Runmobile mod into the game's own mods directory
 ./scripts/install-mod.sh --uninstall    # remove it
 ./scripts/arbiter adopt-live            # the refusal, from a process that is not a running game
 ```

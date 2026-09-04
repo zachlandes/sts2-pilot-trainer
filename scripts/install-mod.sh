@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Builds the Combat Trainer mod and puts it where the game looks for mods.
+# Builds the Runmobile mod and puts it where the game looks for mods.
 #
 # This is the one script in this repository that writes inside a Slay the Spire 2
-# installation. Its final state is exactly CombatTrainer under the selected supported
+# installation. Its final state is exactly Runmobile under the selected supported
 # mod directory (mods or mods_STEAMTEST); upgrades use temporary siblings there so the
 # complete named file set replaces the old one. That is the game's own mod surface -
 # the same directory Steam Workshop installs into
@@ -10,14 +10,20 @@
 # offers no user-data alternative.
 #
 # Nothing outside the selected mod directory is touched, and nothing here reads or
-# writes a save, a profile or a run. --uninstall removes the final directory and
+# writes a save, a profile or a run. --uninstall removes the final directory, and
+# the directory this mod was called CombatTrainer under before the rename, and
 # nothing more.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
-mod_id="CombatTrainer"
+mod_id="Runmobile"
+
+# What this mod was called before it was renamed. Only ever removed: an install that
+# left the old directory behind would put a second copy of this mod in the player's
+# mod list, and the game would report one of them as a duplicate.
+former_mod_id="CombatTrainer"
 uninstall=0
 mods_dir="${STS2_MODS_DIR:-}"
 
@@ -66,10 +72,15 @@ esac
 target="$mods_dir/$mod_id"
 
 if [[ "$uninstall" == 1 ]]; then
-  if [[ -d "$target" ]]; then
-    rm -rf "$target"
-    echo "removed      : $target"
-  else
+  removed=0
+  for directory in "$target" "$mods_dir/$former_mod_id"; do
+    if [[ -d "$directory" ]]; then
+      rm -rf "$directory"
+      echo "removed      : $directory"
+      removed=1
+    fi
+  done
+  if [[ "$removed" == 0 ]]; then
     echo "nothing to remove at $target"
   fi
   exit 0
@@ -96,6 +107,14 @@ for file in "${files[@]}"; do
     exit 4
   fi
 done
+
+# The rename leaves the old directory in the mod list beside the new one, so an
+# install removes it. Done before staging, so a failure here stops the install
+# rather than leaving two copies of this mod installed.
+if [[ -d "$mods_dir/$former_mod_id" ]]; then
+  rm -rf "$mods_dir/$former_mod_id"
+  echo "removed      : $mods_dir/$former_mod_id (renamed to $mod_id)"
+fi
 
 staging="$(mktemp -d "$mods_dir/.${mod_id}.install.XXXXXX")"
 backup=""

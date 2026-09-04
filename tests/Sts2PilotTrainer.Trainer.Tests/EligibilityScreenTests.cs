@@ -30,7 +30,7 @@ public sealed class EligibilityScreenTests
         {
             Mods =
             [
-                new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Loaded"),
+                new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Loaded"),
                 new LocalMod("patcher", "Behavior Patcher", "1.0.0", false, "Failed"),
             ],
         };
@@ -39,7 +39,7 @@ public sealed class EligibilityScreenTests
 
         Assert.False(screen.Eligible);
         Assert.Equal(TrainerCopy.FailHeadline, screen.Headline);
-        Assert.Contains(screen.Refusals, refusal => refusal.Contains("Disable every mod except Combat Trainer"));
+        Assert.Contains(screen.Refusals, refusal => refusal.Contains("Disable every mod except Runmobile"));
     }
 
     [Fact]

@@ -50,7 +50,7 @@ internal static class TrainerScreen
     /// </summary>
     private static void EnterTheFight()
     {
-        var recording = CombatTrainerMod.Recording;
+        var recording = CombatTrainerModule.Instance.Recording;
         NModalContainer.Instance?.Clear();
         _ = RecordedFightRun.Start(recording);
     }
@@ -65,7 +65,7 @@ internal static class TrainerScreen
         catch (Exception ex)
         {
             Log.Error(
-                $"[{CombatTrainerMod.ModId}] could not read this game's eligibility: " +
+                $"[{RunmobileMod.ModId}] could not read this game's eligibility: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
             screen = EligibilityScreenRefusal.For(ex);
         }
@@ -75,7 +75,7 @@ internal static class TrainerScreen
 
     private static EligibilityScreen Compose()
     {
-        var recording = CombatTrainerMod.Recording;
+        var recording = CombatTrainerModule.Instance.Recording;
         var expected = recording.Environment;
 
         // Asked about the state the run will actually be generated against, which is
@@ -156,12 +156,12 @@ internal static class TrainerScreen
             catch (Exception cleanup)
             {
                 Log.Error(
-                    $"[{CombatTrainerMod.ModId}] could not clear a failed eligibility modal: " +
+                    $"[{RunmobileMod.ModId}] could not clear a failed eligibility modal: " +
                     $"{cleanup.GetType().Name}: {cleanup.Message}", 2);
             }
 
             Log.Error(
-                $"[{CombatTrainerMod.ModId}] could not show this game's eligibility: " +
+                $"[{RunmobileMod.ModId}] could not show this game's eligibility: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
     }

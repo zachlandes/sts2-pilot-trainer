@@ -31,7 +31,7 @@ public sealed class ProfileWriteBarrierTests
     /// docs/in-game-host.md records for the game assembly.
     /// </summary>
     private static string ModAssemblyPath =>
-        Path.Combine(AppContext.BaseDirectory, "CombatTrainer.dll");
+        Path.Combine(AppContext.BaseDirectory, "Runmobile.dll");
 
     /// <summary>
     /// Every write the barrier suppresses exists here, and its declaring type does
@@ -270,7 +270,7 @@ public sealed class ProfileWriteBarrierTests
     private static Type BarrierType()
     {
         var modAssembly = AssemblyLoadContext.Default.Assemblies
-            .FirstOrDefault(assembly => assembly.GetName().Name == "CombatTrainer")
+            .FirstOrDefault(assembly => assembly.GetName().Name == "Runmobile")
             ?? AssemblyLoadContext.Default.LoadFromAssemblyPath(ModAssemblyPath);
         return modAssembly.GetType("Sts2PilotTrainer.Mod.ProfileWriteBarrier")!;
     }
@@ -307,7 +307,7 @@ public sealed class ProfileWriteBarrierTests
         {
             if (!Arbiter.GameAvailable || !File.Exists(ModAssemblyPath))
             {
-                Skip = "Needs the prepared game and built Combat Trainer mod. Run ./scripts/build.sh.";
+                Skip = "Needs the prepared game and built Runmobile mod. Run ./scripts/build.sh.";
             }
         }
     }
@@ -379,10 +379,10 @@ public sealed class GameScreenCommandTests
     {
         public BarrierFactAttribute()
         {
-            var mod = Path.Combine(AppContext.BaseDirectory, "CombatTrainer.dll");
+            var mod = Path.Combine(AppContext.BaseDirectory, "Runmobile.dll");
             if (!Arbiter.GameAvailable || !File.Exists(mod))
             {
-                Skip = "Needs the prepared game and built Combat Trainer mod. Run ./scripts/build.sh.";
+                Skip = "Needs the prepared game and built Runmobile mod. Run ./scripts/build.sh.";
             }
         }
     }

@@ -4,18 +4,22 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using Sts2PilotTrainer.Engine;
-using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Mod;
 
 /// <summary>
-/// The mod's entry point, and the only place that decides whether this process is
-/// one the trainer may speak about at all.
+/// Runmobile's entry point, and the only place that decides whether this process is
+/// one the mod may speak about at all.
 ///
 /// The game finds this class because it carries <see cref="ModInitializerAttribute"/>,
 /// calls <see cref="Initialize"/>, and does nothing else on our behalf - in
 /// particular it does not call <c>Harmony.PatchAll</c> for a mod that declares an
-/// initializer, so the one patch this mod installs is installed here, by name.
+/// initializer, so every patch this mod installs is installed here, through the
+/// module that owns it.
+///
+/// It is a shell: what is true of the mod however it is configured lives here, and
+/// each feature lives behind <see cref="IRunmobileModule"/>. Today there is one
+/// module, the Combat Trainer.
 ///
 /// Mod initialization deliberately reads nothing about the game. It runs inside the
 /// game's "very early" startup phase, one phase before the game builds its model
@@ -24,45 +28,40 @@ namespace Sts2PilotTrainer.Mod;
 /// that reads the running game happens from <see cref="ModeCard"/>, off a surface a
 /// player has reached. See docs/in-game-host.md.
 ///
-/// It refuses rather than degrades. If the recording cannot be read the reason goes
-/// to the game's log, no patch is installed, and no mode card appears.
+/// It refuses rather than degrades. A module that cannot establish what it needs
+/// says so in the game's log, installs no patch and contributes no surface.
 /// </summary>
 [ModInitializer(nameof(Initialize))]
-public static class CombatTrainerMod
+public static class RunmobileMod
 {
-    internal const string ModId = "CombatTrainer";
+    internal const string ModId = "Runmobile";
 
-    private const string HarmonyId = "sts2-pilot-trainer.combat-trainer";
+    private const string HarmonyId = "sts2-pilot-trainer.runmobile";
 
     private static readonly Lock AdoptionGate = new();
 
     private static bool _adoptionAttempted;
     private static bool _adopted;
 
-    private static ReplayManifest? _recording;
-    private static RecordedFight? _recordedFight;
-
-    /// <summary>Whether the mod started without refusing. Distinct from having a
-    /// recording: the recording is embedded in this assembly and reading it cannot
-    /// fail for a reason about the player's game, so a refusal is about everything
-    /// else.</summary>
+    /// <summary>Whether the mod started without refusing. Distinct from any module
+    /// being enabled: the shell starting is about this process, and a module being
+    /// enabled is about what that module could establish.</summary>
     internal static bool Started { get; private set; }
 
     /// <summary>
-    /// The recording this build ships. Read from this assembly's own embedded
-    /// resource on first use, so nothing downstream has to carry a null case for a
-    /// file that travels inside it, and so a build with a broken resource says so
-    /// rather than drawing a card with no description.
+    /// Every feature this build carries, in the order they are installed.
+    ///
+    /// The recorder and the run library are the other two and are not built yet;
+    /// when they are, they are added here and nothing else about the shell changes.
     /// </summary>
-    internal static ReplayManifest Recording => _recording ??= ShippedRecording.Read();
+    internal static IReadOnlyList<IRunmobileModule> Modules { get; } = [CombatTrainerModule.Instance];
 
-    /// <summary>
-    /// The recording's own line of its fight, replayed through the real engine and
-    /// shipped beside the manifest. Bound to the recording before anything reads it:
-    /// a file that is not the replay of exactly this manifest's fight is refused at
-    /// mod start rather than compared against.
-    /// </summary>
-    internal static RecordedFight RecordedFight => _recordedFight ??= ShippedRecording.ReadFight(Recording);
+    /// <summary>The modules that could establish what they need in this process.</summary>
+    internal static IEnumerable<IRunmobileModule> EnabledModules => Modules.Where(module => module.Enabled);
+
+    /// <summary>Every singleplayer-menu card the enabled modules contribute.</summary>
+    internal static IReadOnlyList<MenuCard> MenuCards =>
+        EnabledModules.SelectMany(module => module.MenuCards).ToList();
 
     public static void Initialize()
     {
@@ -90,18 +89,46 @@ public static class CombatTrainerMod
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void Start()
     {
-        _recording = ShippedRecording.Read();
-        _recordedFight = ShippedRecording.ReadFight(_recording);
         var harmony = new Harmony(HarmonyId);
-        harmony.PatchAll(typeof(CombatTrainerMod).Assembly);
 
         // Installed here, at mod start, rather than when a trainer run begins. A
         // barrier raised with the run would have a window before it and would be gone
         // after a crash; installed always and conditional on the run, there is no
-        // moment where a trainer run exists and its writes are not stopped.
+        // moment where a trainer run exists and its writes are not stopped. It is the
+        // shell's rather than a module's: it is about what this mod may do to a
+        // player's profile, which no feature gets to decide for itself.
         ProfileWriteBarrier.Install(harmony);
+
+        InstallModules(harmony, Modules);
         Started = true;
-        Log.Info($"[{ModId}] loaded; the mode card is added when the singleplayer menu opens", 2);
+        Log.Info($"[{ModId}] loaded; its cards are added when the singleplayer menu opens", 2);
+    }
+
+    /// <summary>
+    /// Installs each enabled module's patches, in order, and says in the game's log
+    /// which ones were installed and why any were not.
+    ///
+    /// A module that cannot establish what it needs is skipped rather than thrown
+    /// out of: the feature is gone for this session and the rest of the mod is not.
+    /// </summary>
+    internal static IReadOnlyList<string> InstallModules(
+        Harmony harmony, IReadOnlyList<IRunmobileModule> modules)
+    {
+        var installed = new List<string>();
+        foreach (var module in modules)
+        {
+            if (!module.Enabled)
+            {
+                Log.Error($"[{ModId}] {module.Name} is unavailable: {module.Refusal}", 2);
+                continue;
+            }
+
+            module.Install(harmony);
+            installed.Add(module.Name);
+            Log.Info($"[{ModId}] {module.Name} installed", 2);
+        }
+
+        return installed;
     }
 
     /// <summary>
@@ -189,43 +216,5 @@ internal static class SiblingAssemblies
             var path = Path.Combine(directory, name.Name + ".dll");
             return File.Exists(path) ? resolving.LoadFromAssemblyPath(path) : null;
         };
-    }
-}
-
-/// <summary>
-/// The one recording this mod carries, embedded in the assembly.
-///
-/// Embedded rather than shipped as a file beside it because the game reads every
-/// <c>.json</c> under its mod directory as a mod manifest, and a replay manifest
-/// found there would be reported to the player as a broken mod.
-/// </summary>
-internal static class ShippedRecording
-{
-    private const string ResourceName = "Sts2PilotTrainer.Mod.recording.json";
-
-    private const string FightResourceName = "Sts2PilotTrainer.Mod.recorded-fight.json";
-
-    internal static ReplayManifest Read()
-    {
-        // Deserialize refuses a manifest version this build cannot read, rather than
-        // interpreting the parts it recognises.
-        return ManifestJson.Deserialize(Resource(ResourceName));
-    }
-
-    /// <summary>The recording's fight, and the proof it is this recording's.</summary>
-    internal static RecordedFight ReadFight(ReplayManifest recording)
-    {
-        var fight = RecordedFight.Deserialize(Resource(FightResourceName));
-        fight.Bind(recording);
-        return fight;
-    }
-
-    private static string Resource(string name)
-    {
-        using var stream = typeof(ShippedRecording).Assembly.GetManifestResourceStream(name)
-            ?? throw new InvalidOperationException(
-                $"This build carries no recording ({name} is absent from the assembly).");
-        using var reader = new StreamReader(stream);
-        return reader.ReadToEnd();
     }
 }

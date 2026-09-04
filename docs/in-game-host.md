@@ -1,5 +1,14 @@
 # The in-game host: what it proves, and what it does not
 
+The mod a player installs is **Runmobile**, and the Combat Trainer is one module
+inside it. `RunmobileMod` is the shell - the assembly resolver, the Harmony instance,
+adopting the running game, the write barrier and the store - and `IRunmobileModule`
+is the line between it and a feature. A module says whether it can run, installs its
+own patches and contributes its own surfaces; one that cannot establish what it needs
+is skipped by name in the game's log and the rest of the mod loads without it.
+`CombatTrainerModule` is the only one built. The recorder and the run library are the
+other two.
+
 This is the mod that loads in the shipped Slay the Spire 2 client: S3 of
 [the proof-of-concept path](proof-of-concept-path.md) answers one question — can this
 game play the recorded fight? — S4 adds the button that enters it, and S5 captures the
@@ -8,7 +17,7 @@ fight the player then plays and shows it beside the recording's.
 ## What it proves
 
 **The retail game loads the mod through its own mod surface.**
-`CombatTrainer` under the selected game mod directory contains `CombatTrainer.json`, `CombatTrainer.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
+`Runmobile` under the selected game mod directory contains `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
 The game's recursive scan discovers the manifest, `ModManager` loads the mod, and `ModInitializerAttribute` initializes it.
 The libraries ship together; there is no separately installed framework or runtime dependency, and no resource pack.
 
@@ -20,11 +29,31 @@ The screen computes nothing: every row's state is a `PreflightField` the gate
 produced, and every sentence about a failure is that field's own diagnostic, shown
 word for word.
 
-**It reads and never writes.**
+**It reads the game and never writes to it.**
 The installed build, discovered mods, and supplied in-memory progress model are inputs to the fight offer; the player's saved profile is not.
 The executable `adopt-live` boundary test verifies that a console process is refused without changing the prepared game inputs or sandbox profile.
 The mod-manifest contract verifies that the shipped host is non-gameplay and carries no resource pack.
 There is no source-reference scan presented as behavioural evidence.
+
+**What it writes, it writes in one place.**
+The mod now has files of its own - a player's own recordings, their progress through one, a derived boundary cache - and `user://Runmobile/` is where they go.
+
+It is scoped the way the game scopes its own saves rather than flat: beneath `user://Runmobile/` sits the platform, account and profile scope the game resolved for itself, so `user://Runmobile/steam/<account>/profile1/`, and `.../modded/profile1/` for a modded session.
+The scope is `UserDataPathProvider.GetProfileScopedBasePath` - the game's own answer - taken whole and re-rooted, never reassembled here from parts, so there is no second account-identity mechanism to drift.
+Two accounts on one machine, and two profiles on one account, therefore do not share a library.
+Those identifiers are local path scoping and nothing else: no platform directory, account id or profile number belongs in an exported manifest, an upload or a shared recording's identity.
+
+`RunmobileStore` is the only thing in the mod that writes at all: it takes the root from the game's own `ProjectSettings.GlobalizePath`, checks every path against that root with `PathContainment.RequireContained`, refuses any path with a `Steam`, `steamapps` or `Slay the Spire 2` component, and writes a whole file through a temporary sibling and a move so a crash leaves the previous file rather than half of a new one.
+`PrepareForWrite` is the containment gate rather than the atomic writer, because not every write is a whole file - the recorder appends to a journal - and the point is one place that decides where this mod may write, not one way of writing.
+The `Steam` component is matched exactly: the game's own user data has a lower-case `steam` platform level, which is where this store lives.
+A traversal, an absolute path and a sibling directory whose name merely starts with the root's are all refused before anything is opened.
+Nothing else ever goes there: not a save, a profile, run history, settings, an unlock, another mod's files or anything read out of the game.
+It is not `ProfileWriteBarrier` and does not replace it - the barrier suppresses the *game's* writes while a trainer run is live, and has nothing to say about this mod's own files.
+`./scripts/protected-files.sh snapshot <ledger>` and `compare <ledger>` are how that is measured rather than asserted: they hash everything under the game's user-data directory and its mods directory, read-only, and report added, removed and changed paths in three sections.
+Protected files must not change, and one that did is the only thing that makes the comparison fail.
+The `user://Runmobile/` subtree is the mod's own store, where a change is the mod working rather than the mod failing.
+The third is the game's own churn - its log, its shader caches, its crash-reporter state - which is written on any launch with or without this mod; it is named in the script, always reported by name, and never hidden, and what establishes it is a control launch with no trainer run, the same control the first 154-file measurement used.
+That first measurement was a hand-picked list of 154 files; this tool covers both roots whole, which on this machine is 352.
 
 **It refuses rather than approximating.**
 Every condition that would make a reading untrustworthy is a refusal with a sentence:
@@ -35,7 +64,7 @@ console process is correctly not a running game.
 
 A refusal also has to be about the right thing. The mod-environment gate tells this
 host's own failure apart from somebody else's mod being present: a game whose only
-active mod is Combat Trainer, failed, is told that Combat Trainer failed to load, not
+active mod is Runmobile, failed, is told that Runmobile failed to load, not
 to go and disable mods it does not have. The longer explanation about what a content
 hash cannot settle is kept for the case it describes, which is another active or
 failed mod actually being there.
@@ -288,7 +317,7 @@ than presented as the design.
 **A green content-hash row is not environment parity.**
 The row carries the engine's own sentence saying so, whether it is green or red.
 The hash covers content contributed by mods that declare themselves gameplay-affecting; it says nothing about a mod that patches behaviour.
-The same prerequisite reading therefore inspects every mod the game discovered, including failed states that may have left resources loaded, and refuses every active local mod except the known non-gameplay Combat Trainer host.
+The same prerequisite reading therefore inspects every mod the game discovered, including failed states that may have left resources loaded, and refuses every active local mod except the known non-gameplay Runmobile host.
 
 **A profile reading describes the modded profile.**
 The game forks a separate profile for modded play, and that is the one a modded session reads.
@@ -392,6 +421,8 @@ floor identity a "play this fight" action would need - alongside its private
 ./scripts/build.sh                       # bootstrap the game assembly copy, build everything
 ./scripts/install-mod.sh                 # build the mod and install it into the game's mods directory
 ./scripts/install-mod.sh --uninstall     # remove it again
+./scripts/protected-files.sh snapshot before.ledger   # hash everything the mod must not change
+./scripts/protected-files.sh compare  before.ledger   # ... and say what a session changed
 ./scripts/arbiter adopt-live             # the refusal, from a process that is not a running game
 ./scripts/arbiter enter-fight <manifest> # the journey into the recorded fight, without a scene tree
 ./scripts/arbiter enter-fight <manifest> --play   # and the fight played through the capture and compared
@@ -400,7 +431,8 @@ floor identity a "play this fight" action would need - alongside its private
 ```
 
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
-Its final state is exactly `CombatTrainer` under the selected supported game mod directory, either `mods` or the game's Steam test-branch variant `mods_STEAMTEST`.
+Its final state is exactly `Runmobile` under the selected supported game mod directory, either `mods` or the game's Steam test-branch variant `mods_STEAMTEST`.
+It also removes a `CombatTrainer` directory left there by a build from before the rename, on install and on `--uninstall`, because two directories declaring this mod would be reported to the player as a duplicate.
 An upgrade stages the complete named file set in a temporary sibling there and replaces the old directory rather than overlaying it.
 That is the game's own mod surface — the same location Steam Workshop installs into — and the game offers no user-data alternative, because it derives the path from its executable's location.
 

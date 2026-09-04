@@ -190,7 +190,7 @@ This slice is the mod that loads in the shipped game and calls it against the pl
 real profile and run, refusing with the same actionable remediation when the game
 cannot faithfully represent the VOD.
 
-- `CombatTrainer`, a DLL-only mod the game discovers, loads and initialises through
+- `Runmobile`, a DLL-only mod the game discovers, loads and initialises through
   its own mod surface. No framework, no dependency, no resource pack.
 - A fourth mode card beside Standard, Daily and Custom, duplicated from the game's own
   card so the panel, focus, hover and controller navigation are MegaCrit's rather than
@@ -267,7 +267,7 @@ and the entry is refused.
 output.
 
 **Runnable now, in the retail client.** `./scripts/install-mod.sh`, then launch Slay
-the Spire 2 with only Combat Trainer enabled and open Singleplayer. The screen offers
+the Spire 2 with only Runmobile enabled and open Singleplayer. The screen offers
 the fight; pressing it constructs the recording's run, walks it through Neow's blessing
 and the map move on the game's own screens, and stands the player in the recorded
 fight - the Sludge Spinner at 42 of 42, the opening hand the recording shows, turn 1 at

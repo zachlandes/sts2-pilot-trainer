@@ -37,11 +37,22 @@ where anything is eventually published, and the tests for all of it run on a mac
 that does not own the game.
 
 **The eventual published artifact is small.**
-It contains `CombatTrainer.json`, `CombatTrainer.dll`, and the four project-owned libraries that the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
+It contains `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries that the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
 It remains DLL-only in the game's packaging terms: `has_pck: false`, `dependencies: []`, `affects_gameplay: false`.
 Those four libraries ship with the mod; they are not runtime dependencies a player installs separately.
 Everything in this repository that could not go inside that archive — the prepared game-assembly copy, the video tooling, the bootstrap — is a build-time or proof-only concern and is kept out of the projects a mod would ship.
 See [dependencies](dependencies.md).
+
+## What the installed mod writes
+
+The mod is installed as `Runmobile` and writes in exactly one place: `user://Runmobile/`, inside the game's own user data directory, under the platform, account and profile scope the game resolved for itself - `user://Runmobile/steam/<account>/profile1/`.
+That is where a player's own recordings, their progress through one and the derived boundary cache go.
+`RunmobileStore` is the only writer in the mod and every path it is given is checked against that root; see [the in-game host](in-game-host.md).
+Those scope identifiers stay local: nothing exported, uploaded or shared carries a platform directory, an account id or a profile number.
+
+Nothing else is ever written.
+Saves, profiles, progress, run history, settings, the game's installation and other mods' files are read-only inputs, and `scripts/protected-files.sh` is the repeatable measurement of that - a ledger before a session and a comparison after, with the `user://Runmobile/` subtree reported separately from everything that must not change.
+The install directory is the one exception and belongs to the installer rather than to the running mod: `scripts/install-mod.sh` puts the file set there, and nothing inside the game process writes to it.
 
 ## Licensing posture
 
