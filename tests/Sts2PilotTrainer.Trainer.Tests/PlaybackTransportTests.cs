@@ -10,6 +10,10 @@ namespace Sts2PilotTrainer.Trainer.Tests;
 /// from data rather than written down. That is the whole claim being tested: a
 /// second recording, by somebody else, past a different node, says the right thing
 /// without any of these sentences changing.
+///
+/// The controls are icon only, so what is asserted about them is the glyph and the
+/// tooltip rather than a label. The glyph carries the rule that matters - filled
+/// shapes move the run, hollow shapes only look - and the tooltip carries the words.
 /// </summary>
 public sealed class PlaybackTransportTests
 {
@@ -18,32 +22,64 @@ public sealed class PlaybackTransportTests
     /// <summary>The shipped recording's map move: column 3 of the act's seven.</summary>
     private static readonly PrefightChoice MapMove = new PrefightChoice.MapMove(1, "Monster", 3, 7);
 
+    private static readonly TransportIdentity NaveGreed = new(
+        "NaveGreed", "Ironclad A10, Underdocks", "https://www.youtube.com/watch?v=OJ-6QXhNgdg&t=26s", "0:26");
+
     [Fact]
     public void TheFirstRevealReadsAsTheApprovedWordingForTheShippedRecording()
     {
-        var transport = PlaybackTransport.Revealing(
-            "NaveGreed", Blessing, number: 1, count: 2, playing: false, noteShown: false);
+        var transport = Revealing(Blessing, 1, noteShown: false);
 
         Assert.Equal(TransportMode.Watching, transport.Mode);
-        Assert.Equal("Watching NaveGreed", transport.Chip);
-        Assert.Equal("1 of 2", transport.Counter);
-        Assert.Equal("NaveGreed took Leafy Poultice", transport.Caption);
+        Assert.Equal("NaveGreed", transport.Identity.Creator);
+        Assert.Equal("Ironclad A10, Underdocks", transport.Identity.VideoTitle);
+        Assert.Equal("1 of 2", transport.Counter.Numerals);
         Assert.Equal(
             "NaveGreed's choices are shown as recorded. This shows what was chosen, not why.",
             transport.Note);
-        Assert.Equal("Forward", transport.Forward.Label);
-        Assert.Equal("Play", transport.Play.Label);
-        Assert.Equal("Back", transport.Back.Label);
+    }
+
+    /// <summary>
+    /// The controls carry drawn shapes, not words, and the shapes mean something: a
+    /// filled triangle commits a decision, a hollow one only re-shows it.
+    /// </summary>
+    [Fact]
+    public void TheControlsAreGlyphsAndTheirFillSaysWhetherTheyMoveTheRun()
+    {
+        var transport = Revealing(MapMove, 2, noteShown: true);
+
+        Assert.Equal(TransportGlyph.Back, transport.Back.Glyph);
+        Assert.Equal(TransportGlyph.Play, transport.Play.Glyph);
+        Assert.Equal(TransportGlyph.Step, transport.Step.Glyph);
+    }
+
+    /// <summary>
+    /// The words the wide bar drew always live in the tooltips now, which is the
+    /// captain's tooltips-only ruling. Step's names the decision it is about to make.
+    /// </summary>
+    [Fact]
+    public void TheWordsLiveInTheTooltipsAndStepNamesTheDecision()
+    {
+        var transport = Revealing(Blessing, 1, noteShown: true);
+
+        Assert.Equal("Look back", transport.Back.TooltipTitle);
+        Assert.Equal("Shows an earlier choice again. Nothing is undone.", transport.Back.TooltipBody);
+        Assert.Equal("Play", transport.Play.TooltipTitle);
+        Assert.Equal("Step", transport.Step.TooltipTitle);
+        Assert.Contains("Makes this choice, then shows the next.", transport.Step.TooltipBody,
+            StringComparison.Ordinal);
+        Assert.Contains("1 of 2 · NaveGreed took Leafy Poultice", transport.Step.TooltipBody,
+            StringComparison.Ordinal);
     }
 
     [Fact]
     public void TheSecondRevealIsTheMapMoveAndSaysNothingAboutHowToReadIt()
     {
-        var transport = PlaybackTransport.Revealing(
-            "NaveGreed", MapMove, number: 2, count: 2, playing: false, noteShown: true);
+        var transport = Revealing(MapMove, 2, noteShown: true);
 
-        Assert.Equal("2 of 2", transport.Counter);
-        Assert.Equal("NaveGreed moved to the Monster node, centre column", transport.Caption);
+        Assert.Equal("2 of 2", transport.Counter.Numerals);
+        Assert.Contains("NaveGreed moved to the Monster node, centre column", transport.Step.TooltipBody,
+            StringComparison.Ordinal);
         Assert.Equal(string.Empty, transport.Note);
     }
 
@@ -54,74 +90,198 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void TheOnceOnlySentenceIsSaidOnceAndOnTheFirstDecision()
     {
-        Assert.NotEqual(string.Empty, PlaybackTransport
-            .Revealing("NaveGreed", Blessing, 1, 2, playing: false, noteShown: false).Note);
-        Assert.Equal(string.Empty, PlaybackTransport
-            .Revealing("NaveGreed", Blessing, 1, 2, playing: false, noteShown: true).Note);
-        Assert.Equal(string.Empty, PlaybackTransport
-            .Revealing("NaveGreed", MapMove, 2, 2, playing: false, noteShown: false).Note);
+        Assert.NotEqual(string.Empty, Revealing(Blessing, 1, noteShown: false).Note);
+        Assert.Equal(string.Empty, Revealing(Blessing, 1, noteShown: true).Note);
+        Assert.Equal(string.Empty, Revealing(MapMove, 2, noteShown: false).Note);
     }
 
     /// <summary>
-    /// Back is offered from the second decision on. There is nothing behind the first
-    /// one, and a control that does nothing is worse than one that is plainly off.
+    /// Look back is offered from the second decision on, and says why when it is not.
+    /// A control that does nothing is worse than one that is plainly off and explains
+    /// itself on hover.
     /// </summary>
     [Fact]
-    public void BackIsOfferedOnlyOnceThereIsSomethingBehind()
+    public void LookingBackIsOfferedOnlyOnceThereIsSomethingBehind()
     {
-        Assert.False(PlaybackTransport
-            .Revealing("NaveGreed", Blessing, 1, 2, playing: false, noteShown: false).Back.Enabled);
-        Assert.True(PlaybackTransport
-            .Revealing("NaveGreed", MapMove, 2, 2, playing: false, noteShown: true).Back.Enabled);
+        var first = Revealing(Blessing, 1, noteShown: false);
+        Assert.False(first.Back.Enabled);
+        Assert.Equal("This is the first choice.", first.Back.DisabledReason);
+        Assert.True(Revealing(MapMove, 2, noteShown: true).Back.Enabled);
     }
 
-    /// <summary>Play is the only control that changes what it says, and it says what
-    /// pressing it does next.</summary>
+    /// <summary>Play is the only control that changes what it carries, and it carries
+    /// what pressing it does next.</summary>
     [Fact]
     public void PlayBecomesPauseWhileItIsRunning()
     {
-        Assert.Equal("Play", PlaybackTransport
-            .Revealing("NaveGreed", Blessing, 1, 2, playing: false, noteShown: true).Play.Label);
-        Assert.Equal("Pause", PlaybackTransport
-            .Revealing("NaveGreed", Blessing, 1, 2, playing: true, noteShown: true).Play.Label);
+        Assert.Equal(TransportGlyph.Play, Revealing(Blessing, 1, noteShown: true).Play.Glyph);
+        Assert.Equal(
+            TransportGlyph.Pause,
+            PlaybackTransport.Revealing(NaveGreed, Blessing, 1, 2, playing: true, noteShown: true).Play.Glyph);
     }
 
     /// <summary>
-    /// Looking back says so. A counter alone over a decision already made would read
-    /// as the one about to happen, which is the one misreading this mode can cause.
+    /// The pips are a picture of where the journey is, and they stop being one when
+    /// there are too many to read. The numerals never stop.
     /// </summary>
     [Fact]
-    public void LookingBackNamesItselfAndKeepsTheSameCaption()
+    public void ThePipsAreDrawnOnlyWhileTheyCanBeRead()
     {
-        var transport = PlaybackTransport.LookingBackAt("NaveGreed", Blessing, number: 1, count: 2);
+        Assert.True(Revealing(Blessing, 1, noteShown: true).Counter.ShowPips);
+        Assert.False(
+            PlaybackTransport.Revealing(NaveGreed, Blessing, 1, 40, false, true).Counter.ShowPips);
+        Assert.Equal(
+            "1 of 40",
+            PlaybackTransport.Revealing(NaveGreed, Blessing, 1, 40, false, true).Counter.Numerals);
+    }
+
+    /// <summary>
+    /// Looking back lists what has been chosen so far, because the screens those
+    /// choices were made on are gone. The rows do not repeat the creator's name; the
+    /// tag hanging above them carries it once.
+    /// </summary>
+    [Fact]
+    public void LookingBackListsTheDecisionsAlreadyMadeWithoutRepeatingTheName()
+    {
+        var transport = PlaybackTransport.LookingBackAt(
+            NaveGreed, [Blessing], shown: 1, current: 2, count: 2, next: MapMove);
 
         Assert.Equal(TransportMode.LookingBack, transport.Mode);
-        Assert.Equal("Last step · 1 of 2", transport.Counter);
-        Assert.Equal("NaveGreed took Leafy Poultice", transport.Caption);
-        Assert.Equal(string.Empty, transport.Note);
-        Assert.False(transport.Back.Enabled);
-        Assert.True(transport.Forward.Enabled);
+        Assert.Equal("1 of 2", transport.Counter.Numerals);
+        Assert.Equal(2, transport.Counter.Current);
+        Assert.Equal(1, transport.Counter.LookingAt);
+
+        Assert.Equal(2, transport.Ledger.Count);
+        Assert.Equal("Leafy Poultice", transport.Ledger[0].Label);
+        Assert.Equal("RELIC.LEAFY_POULTICE", transport.Ledger[0].ArtModelId);
+        Assert.True(transport.Ledger[0].IsLookedAt);
+        Assert.Equal("Monster node, centre column", transport.Ledger[1].Label);
+        Assert.True(transport.Ledger[1].IsCurrent);
+        Assert.DoesNotContain("NaveGreed", transport.Ledger[0].Label, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesToLookBackAtADecisionThatWasNeverMade()
+    {
+        Assert.Throws<ManifestException>(() => PlaybackTransport.LookingBackAt(
+            NaveGreed, [Blessing], shown: 2, current: 2, count: 2, next: MapMove));
     }
 
     /// <summary>
-    /// The player's own fight. The strip collapses to a chip that carries the
-    /// trainer's name and offers nothing: the recording's line is not shown beside a
-    /// fight it is not part of.
+    /// The player's own fight. The tag collapses to a chip that says only whose
+    /// surface this is, because the captain's ruling is that comparing inside a fight
+    /// is second-order: a player diverges from the recorded line almost at once.
     /// </summary>
     [Fact]
-    public void DuringThePlayersFightTheStripIsASilentChip()
+    public void DuringThePlayersFightTheTagIsASilentChip()
     {
-        var transport = PlaybackTransport.DuringYourFight();
+        var transport = PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: true);
 
         Assert.Equal(TransportMode.Chip, transport.Mode);
         Assert.False(transport.HasControls);
-        Assert.Equal("Combat Trainer", transport.Chip);
-        Assert.Equal(string.Empty, transport.Counter);
-        Assert.Equal(string.Empty, transport.Caption);
+        Assert.Equal("NaveGreed", transport.Identity.Creator);
         Assert.Equal(string.Empty, transport.Note);
+    }
+
+    /// <summary>
+    /// Pressed, the chip offers two directions and no third. There is no watch row and
+    /// no comparison inside the fight; both were removed by the round-three ruling.
+    /// </summary>
+    [Fact]
+    public void TheChipOffersTwoDirectionsAndNoThird()
+    {
+        var menu = PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: true).ChipMenu;
+
+        Assert.Equal(2, menu.Count);
+        Assert.Equal("Jump to the beginning", menu[0].Label);
+        Assert.Equal(TransportGlyph.Again, menu[0].Glyph);
+        Assert.Equal("Jump to the end", menu[1].Label);
+        Assert.Equal(TransportGlyph.Jump, menu[1].Glyph);
+        Assert.True(menu[1].Enabled);
+    }
+
+    /// <summary>At turn one with nothing played there is no attempt to finish, so the
+    /// end is refused and says why rather than producing an empty result.</summary>
+    [Fact]
+    public void JumpingToTheEndIsRefusedBeforeATurnHasBeenPlayed()
+    {
+        var menu = PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: false).ChipMenu;
+
+        Assert.False(menu[1].Enabled);
+        Assert.Equal("You have not played a turn yet.", menu[1].DisabledReason);
+        Assert.True(menu[0].Enabled);
+    }
+
+    /// <summary>
+    /// A refusal is the tag's business only in so far as it stops offering things. The
+    /// sentence a player reads is the popup's.
+    /// </summary>
+    [Fact]
+    public void ARefusalTakesTheMarkAndEveryControl()
+    {
+        var transport = PlaybackTransport.Refused(NaveGreed);
+
+        Assert.Equal(TransportGlyph.Warn, transport.Mark);
         Assert.False(transport.Back.Enabled);
-        Assert.False(transport.Forward.Enabled);
         Assert.False(transport.Play.Enabled);
+        Assert.False(transport.Step.Enabled);
+        Assert.Equal("Combat Trainer stopped; dismiss the message first.", transport.Step.DisabledReason);
+    }
+
+    /// <summary>The mark is the reticle the reveal lights, which is the mod marked by
+    /// the thing it does.</summary>
+    [Fact]
+    public void TheMarkIsTheReticleExceptWhileARefusalIsUp()
+    {
+        Assert.Equal(TransportGlyph.Mark, Revealing(Blessing, 1, noteShown: true).Mark);
+        Assert.Equal(TransportGlyph.Mark, PlaybackTransport.DuringYourFight(NaveGreed, true).Mark);
+    }
+
+    /// <summary>
+    /// The identity block names the video and opens it where the move is made. A
+    /// recording whose manifest has no title falls back to the creator alone rather
+    /// than inventing one.
+    /// </summary>
+    [Fact]
+    public void TheIdentityBlockNamesTheVideoAndOpensItAtTheMoment()
+    {
+        var transport = Revealing(Blessing, 1, noteShown: true);
+
+        Assert.True(transport.Identity.IsLink);
+        Assert.Equal("NaveGreed · Ironclad A10, Underdocks", transport.Identity.TooltipTitle);
+        Assert.Equal("Opens the video at 0:26, where this move is made.", transport.Identity.TooltipBody);
+
+        var untitled = new TransportIdentity("NaveGreed", null, null, null);
+        Assert.Equal("NaveGreed", untitled.TooltipTitle);
+        Assert.False(untitled.IsLink);
+    }
+
+    /// <summary>
+    /// Speed divides the hold and never crosses the screen's own floor: a hold shorter
+    /// than the game's own animation would commit while the last decision was still
+    /// being shown.
+    /// </summary>
+    [Fact]
+    public void SpeedDividesTheHoldButNeverBelowTheScreensFloor()
+    {
+        Assert.Equal(0.8, PlaybackSpeed.Double.Divide(1.6, floor: 0.2), 3);
+        Assert.Equal(3.2, PlaybackSpeed.Half.Divide(1.6, floor: 0.2), 3);
+        Assert.Equal(1.6, PlaybackSpeed.Normal.Divide(1.6, floor: 0.2), 3);
+
+        // The map's floor is the game's own one-second select effect.
+        Assert.Equal(1.0, PlaybackSpeed.Double.Divide(1.2, floor: 1.0), 3);
+    }
+
+    [Fact]
+    public void TheSpeedMenuMarksTheSpeedInUse()
+    {
+        var transport = PlaybackTransport.Revealing(
+            NaveGreed, Blessing, 1, 2, false, true, PlaybackSpeed.OneAndAHalf);
+
+        Assert.Equal("1.5×", transport.SpeedLabel);
+        Assert.Equal(["0.5×", "1×", "1.5×", "2×"], transport.SpeedMenu.Select(row => row.Label));
+        Assert.True(transport.SpeedMenu[2].IsCurrent);
+        Assert.False(transport.SpeedMenu[1].IsCurrent);
     }
 
     /// <summary>
@@ -132,37 +292,22 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void AnotherRecordingIsDescribedByTheSameSentences()
     {
+        var other = new TransportIdentity("Someone Else", null, null, null);
         var blessing = PlaybackTransport.Revealing(
-            "Someone Else", new PrefightChoice.Blessing(0, "RELIC.ARCANE_SCROLL"), 1, 2, false, true);
+            other, new PrefightChoice.Blessing(0, "RELIC.ARCANE_SCROLL"), 1, 2, false, true);
         var move = PlaybackTransport.Revealing(
-            "Someone Else", new PrefightChoice.MapMove(1, "Event", 0, 7), 2, 2, false, true);
+            other, new PrefightChoice.MapMove(1, "Event", 0, 7), 2, 2, false, true);
 
-        Assert.Equal("Watching Someone Else", blessing.Chip);
-        Assert.Equal("Someone Else took Arcane Scroll", blessing.Caption);
-        Assert.Equal("Someone Else moved to the Event node, left column", move.Caption);
-    }
-
-    /// <summary>
-    /// A host reaches the recording's later screens one at a time, because a caption
-    /// names what the run is standing in front of. The counter still has to say where
-    /// in the whole journey a step is.
-    /// </summary>
-    [Fact]
-    public void TheCounterCountsTheWholeJourneyNotTheStepsRevealedSoFar()
-    {
-        Assert.Equal("2 of 5", PlaybackTransport
-            .Revealing("NaveGreed", MapMove, number: 2, count: 5, playing: false, noteShown: true).Counter);
+        Assert.Contains("Someone Else took Arcane Scroll", blessing.Step.TooltipBody, StringComparison.Ordinal);
+        Assert.Contains(
+            "Someone Else moved to the Event node, left column", move.Step.TooltipBody, StringComparison.Ordinal);
     }
 
     [Fact]
     public void RefusesAStepNumberTheJourneyDoesNotHave()
     {
-        Assert.Throws<ManifestException>(() =>
-            PlaybackTransport.Revealing("NaveGreed", Blessing, 0, 2, false, true));
-        Assert.Throws<ManifestException>(() =>
-            PlaybackTransport.Revealing("NaveGreed", Blessing, 3, 2, false, true));
-        Assert.Throws<ManifestException>(() =>
-            PlaybackTransport.LookingBackAt("NaveGreed", Blessing, 3, 2));
+        Assert.Throws<ManifestException>(() => PlaybackTransport.Revealing(NaveGreed, Blessing, 0, 2, false, true));
+        Assert.Throws<ManifestException>(() => PlaybackTransport.Revealing(NaveGreed, Blessing, 3, 2, false, true));
     }
 
     /// <summary>
@@ -174,10 +319,13 @@ public sealed class PlaybackTransportTests
     public void RefusesADecisionItHasNoApprovedCaptionFor()
     {
         var refusal = Assert.Throws<ManifestException>(() =>
-            PlaybackTransport.Revealing("NaveGreed", new UnknownChoice(4), 1, 1, false, true));
+            PlaybackTransport.Revealing(NaveGreed, new UnknownChoice(4), 1, 1, false, true));
 
         Assert.Contains("no way to describe", refusal.Message, StringComparison.Ordinal);
     }
+
+    private static PlaybackTransport Revealing(PrefightChoice choice, int number, bool noteShown) =>
+        PlaybackTransport.Revealing(NaveGreed, choice, number, count: 2, playing: false, noteShown: noteShown);
 
     private sealed record UnknownChoice(int Seq) : PrefightChoice(Seq);
 }

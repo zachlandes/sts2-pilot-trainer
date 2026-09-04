@@ -22,13 +22,25 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class PlaybackTransportDock
 {
-    /// <summary>The gap between the game's top bar and the strip.</summary>
-    private const float BandGap = 12f;
+    /// <summary>
+    /// How far under the top bar's own widgets the tag hangs, in the design's
+    /// reference units.
+    ///
+    /// Measured rather than chosen: the bar's torn edge runs to about 76 and the HP
+    /// widget's box ends at 50, so a smaller gap puts the tag's head inside the tear.
+    /// </summary>
+    private const float BandGap = 22f;
 
-    /// <summary>Where the band starts on a client whose top bar cannot be measured.
-    /// A fallback rather than a layout: the strip is better slightly misplaced than
-    /// absent, and the log says which happened.</summary>
-    private const float FallbackDockTop = 108f;
+    /// <summary>The design's own reference height, which every measurement in it is
+    /// expressed against.</summary>
+    private const float ReferenceHeight = 916f;
+
+    /// <summary>Where the tag hangs on a client whose top bar cannot be measured, in
+    /// reference units. A fallback rather than a layout: the tag is better slightly
+    /// misplaced than absent, and the log says which happened.</summary>
+    private const float FallbackTop = 72f;
+
+    private const float FallbackRight = 1358f;
 
     private static PlaybackTransportStrip? _strip;
 
@@ -42,7 +54,8 @@ internal static class PlaybackTransportDock
     /// would vanish at the first transition - the exact failure this replaces.
     /// </summary>
     internal static PlaybackTransportStrip Attach(
-        PlaybackTransport state, Action back, Action forward, Action play)
+        PlaybackTransport state, Action back, Action play, Action step, Action speed, Action identity,
+        Func<string, Texture2D?> art)
     {
         Detach();
 
@@ -58,18 +71,21 @@ internal static class PlaybackTransportDock
         var strip = PlaybackTransportStrip.Build(
             state,
             globalUi.GetViewportRect().Size,
-            DockTop(globalUi),
+            Anchor(globalUi),
             GameFont.Of(globalUi.GetTree()?.Root),
             back,
-            forward,
-            play);
+            play,
+            step,
+            speed,
+            identity);
+        strip.DrawArtWith(art);
 
         // Added last so it draws over the run's own interface rather than under it.
         globalUi.AddChild(strip.Root);
         _strip = strip;
         Log.Info(
             $"[{RunmobileMod.ModId}] docked the transport under {globalUi.Name} " +
-            $"(viewport {globalUi.GetViewportRect().Size}, dock top {DockTop(globalUi)}, " +
+            $"(viewport {globalUi.GetViewportRect().Size}, anchor {Anchor(globalUi)}, " +
             $"strip {strip.Root.GetGlobalRect()}, visible {strip.Root.IsVisibleInTree()})", 2);
         return strip;
     }
@@ -102,20 +118,29 @@ internal static class PlaybackTransportDock
     }
 
     /// <summary>
-    /// How far down the empty band under the game's top bar starts.
+    /// Where the tag hangs from: the top-right corner it is pinned to.
     ///
-    /// Measured off the widgets the bar actually draws rather than off the bar node,
-    /// which was the first thing tried and is wrong: <c>NTopBar</c> is a full-screen
-    /// control whose rect ends at the bottom of the viewport, so docking under it put
-    /// the strip off the screen. Health and gold are the leftmost things in the bar
-    /// on every screen this journey walks past, and the bottom of the lower of them is
-    /// where the band the game leaves empty begins.
+    /// Anchored to the game's own furniture rather than positioned at a constant, and
+    /// both halves of that are load-bearing. The top comes from the bar's own widgets
+    /// because <c>NTopBar</c> is a full-screen control whose rect ends at the bottom
+    /// of the viewport - measuring the node itself put the first tag off the screen
+    /// entirely. The right comes from the deck button, which is the right edge of the
+    /// game's own meta cluster, so the tag hangs under map, deck and settings where
+    /// controls that act on the recording belong, and stays clear of the build and
+    /// seed text beyond it. Neither is a number that is right on one monitor.
     /// </summary>
-    private static float DockTop(NGlobalUi globalUi)
+    private static Vector2 Anchor(NGlobalUi globalUi)
     {
+        var unit = globalUi.GetViewportRect().Size.Y / ReferenceHeight;
+        var top = FallbackTop * unit;
+        var right = FallbackRight * unit;
+
         try
         {
             var topBar = globalUi.TopBar;
+
+            // Health and gold are the leftmost things the bar draws on every screen
+            // this journey walks past, and the lower of them is where its widgets end.
             var bottom = 0f;
             foreach (var widget in new Control?[] { topBar?.Hp, topBar?.Gold })
             {
@@ -125,15 +150,21 @@ internal static class PlaybackTransportDock
                 }
             }
 
-            if (bottom > 0) return bottom + BandGap;
+            if (bottom > 0) top = bottom + (BandGap * unit);
+
+            // The deck button, with the settings button as the fallback the design
+            // names: both sit in the same cluster and either one puts the tag in the
+            // right neighbourhood.
+            var edge = topBar?.Deck as Control ?? topBar?.Pause;
+            if (edge is { Visible: true } && edge.Size.X > 0) right = edge.GetGlobalRect().End.X;
         }
         catch (Exception ex)
         {
             Log.Info(
-                $"[{RunmobileMod.ModId}] could not measure the top bar ({ex.GetType().Name}); docking " +
-                "the transport at the default height", 2);
+                $"[{RunmobileMod.ModId}] could not measure the top bar ({ex.GetType().Name}); hanging " +
+                "the transport at the default anchor", 2);
         }
 
-        return FallbackDockTop;
+        return new Vector2(right, top);
     }
 }

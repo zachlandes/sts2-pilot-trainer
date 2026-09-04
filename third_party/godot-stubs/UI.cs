@@ -244,7 +244,7 @@ public partial class BaseButton : Control
     public event Action? Pressed;
 }
 
-public class Button : BaseButton
+public partial class Button : BaseButton
 {
     public new class SignalName : BaseButton.SignalName
     {

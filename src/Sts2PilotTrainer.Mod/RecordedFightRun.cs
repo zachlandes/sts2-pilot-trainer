@@ -84,6 +84,21 @@ internal static class RecordedFightRun
     private static bool _noteShown;
 
     /// <summary>
+    /// How fast Play runs, as a position in <see cref="PlaybackSpeeds.All"/> rather
+    /// than as the enum itself.
+    ///
+    /// The indirection is not style. The game enumerates this assembly's types with
+    /// <c>Module.GetTypes()</c> before it calls the mod initializer, and computing a
+    /// type's field layout forces its value types to load - so a field of an enum
+    /// from a sibling assembly makes the whole mod fail to load, one startup phase
+    /// before <see cref="SiblingAssemblies"/> has taught the runtime where its
+    /// siblings are. A reference-typed field is fine, because its layout is a pointer.
+    /// Measured: it took the mod down with a ReflectionTypeLoadException naming
+    /// Sts2PilotTrainer.Trainer. See docs/in-game-host.md.
+    /// </summary>
+    private static int _speedIndex = 1;
+
+    /// <summary>
     /// Which hold is current.
     ///
     /// A hold is a timer the game runs, and a timer cannot be recalled. Pause, Back
@@ -173,7 +188,7 @@ internal static class RecordedFightRun
         }
         catch (Exception ex)
         {
-            Abandon(ex.Message);
+            Abandon(ex);
         }
     }
 
@@ -203,6 +218,13 @@ internal static class RecordedFightRun
     /// </summary>
     private const double MapHoldSeconds = 0.7;
 
+    /// <summary>The shortest either hold may become however fast Play is set. The
+    /// map's is the game's own select effect; the other is long enough for an event
+    /// row's own hover animation to have finished.</summary>
+    private const double HoldFloor = 0.5;
+
+    private const double MapHoldFloor = 0.4;
+
     /// <summary>
     /// Forward.
     ///
@@ -228,7 +250,7 @@ internal static class RecordedFightRun
         }
         catch (Exception ex)
         {
-            Abandon(ex.Message);
+            Abandon(ex);
         }
     }
 
@@ -305,6 +327,7 @@ internal static class RecordedFightRun
 
         // Moved on so a hold already in flight cannot commit anything after this.
         _hold++;
+        PlaybackTransportDock.Current?.HideHold();
     }
 
     /// <summary>
@@ -321,7 +344,22 @@ internal static class RecordedFightRun
         {
             var hold = ++_hold;
             var mine = _entry;
-            await LetTheGameRun(HoldFor(mine));
+            var seconds = HoldFor(mine);
+
+            // Drawn while it runs, not merely waited out. Without the line the tag
+            // simply pauses under Play and a watcher cannot tell a hold from a stall,
+            // which is the whole of "reveal, hold and commit should be visible".
+            var steps = Math.Max(1, (int)Math.Round(seconds / HoldTick));
+            for (var step = 0; step < steps; step++)
+            {
+                if (hold != _hold || !_playing || !ReferenceEquals(mine, _entry)) break;
+                if (Phase != RecordedFightPhase.Watching) break;
+
+                PlaybackTransportDock.Current?.ShowHold(1.0 - ((double)step / steps));
+                await LetTheGameRun(seconds / steps);
+            }
+
+            PlaybackTransportDock.Current?.HideHold();
 
             if (hold != _hold || !_playing || !ReferenceEquals(mine, _entry)) return;
             if (Phase != RecordedFightPhase.Watching) return;
@@ -330,9 +368,17 @@ internal static class RecordedFightRun
         }
         catch (Exception ex)
         {
-            Abandon(ex.Message);
+            Abandon(ex);
         }
     }
+
+    /// <summary>How often the draining line is redrawn. Frequent enough to read as
+    /// motion, rare enough that a hold is not a hundred timers.</summary>
+    private const double HoldTick = 0.08;
+
+    /// <summary>The speed in use. A property rather than a field for the reason
+    /// <see cref="_speedIndex"/> records.</summary>
+    private static PlaybackSpeed Speed => PlaybackSpeeds.All[_speedIndex];
 
     /// <summary>How long to hold on what is revealed now, by the kind of screen it is
     /// on. One duration with a floor per screen, shorter where the game already
@@ -341,13 +387,19 @@ internal static class RecordedFightRun
     {
         try
         {
-            return entry?.DescribeNextTarget() is PrefightTarget.MapNode ? MapHoldSeconds : HoldSeconds;
+            // Speed divides the hold; the floor is what it may never divide past. On
+            // the map the game runs a one-second select effect of its own before the
+            // fade, so committing sooner than that would commit while the screen was
+            // still showing the decision being made.
+            return entry?.DescribeNextTarget() is PrefightTarget.MapNode
+                ? Speed.Divide(MapHoldSeconds, MapHoldFloor)
+                : Speed.Divide(HoldSeconds, HoldFloor);
         }
         catch (Exception)
         {
             // A target this host cannot name is refused at the reveal, loudly and with
             // the reason. Here it only decides a pause, so the longer one is right.
-            return HoldSeconds;
+            return Speed.Divide(HoldSeconds, HoldFloor);
         }
     }
 
@@ -449,6 +501,148 @@ internal static class RecordedFightRun
     }
 
     /// <summary>
+    /// Opens the speed menu, or the chip's two directions, depending on what the tag
+    /// currently is.
+    ///
+    /// One button, because the tag and the chip are one node: while the recording is
+    /// deciding it sets how long each choice is held, and once the fight is the
+    /// player's it is the chip they press to leave it.
+    /// </summary>
+    private static void OpenSpeedMenu()
+    {
+        if (PlaybackTransportDock.Current is not { } strip) return;
+
+        if (strip.MenuIsOpen)
+        {
+            strip.CloseMenu();
+            return;
+        }
+
+        if (Phase != RecordedFightPhase.Watching)
+        {
+            strip.OpenMenu(chip: true, Jump);
+            return;
+        }
+
+        strip.OpenMenu(chip: false, index =>
+        {
+            _speedIndex = index;
+            ShowTransport();
+        });
+    }
+
+    /// <summary>
+    /// The two directions the chip offers, and the only destructive things the
+    /// transport does.
+    ///
+    /// Both leave the attempt, so both ask first, through the game's own confirmation
+    /// popup. Neither invents a comparison: jumping to the beginning rebuilds the run
+    /// from the recording's history to the same proven combat start the entry already
+    /// proves, and jumping to the end hands the fight to the result surface exactly as
+    /// leaving it by any other route already does.
+    /// </summary>
+    private static void Jump(int row)
+    {
+        var entry = _entry;
+        if (entry is null) return;
+        var creator = RecordingIdentity.Creator(entry.Manifest);
+
+        if (row == 0)
+        {
+            PrefightScreen.Confirm(
+                TrainerCopy.ConfirmJumpToTheBeginningTitle(creator),
+                TrainerCopy.ConfirmJumpToTheBeginningBody,
+                TrainerCopy.ConfirmGoBack,
+                TrainerCopy.ConfirmKeepFighting,
+                StartTheFightAgain);
+            return;
+        }
+
+        PrefightScreen.Confirm(
+            TrainerCopy.ConfirmJumpToTheEndTitle,
+            TrainerCopy.ConfirmJumpToTheEndBody,
+            TrainerCopy.ConfirmFinish,
+            TrainerCopy.ConfirmKeepFighting,
+            FinishHere);
+    }
+
+    /// <summary>
+    /// Back to the proven combat start.
+    ///
+    /// The attempt is discarded and the whole journey runs again, which is the one
+    /// mechanism this project has for standing somebody in that fight: rebuild the run
+    /// from the recording's history and prove the boundary. Nothing is injected and no
+    /// state is restored, so the fight that comes back is the recorded one on the same
+    /// terms it was the first time.
+    /// </summary>
+    private static void StartTheFightAgain()
+    {
+        var recording = _entry?.Manifest;
+        LeaveTheRun();
+        Finish();
+        if (recording is not null) _ = Start(recording);
+    }
+
+    /// <summary>
+    /// End the attempt where it is and show the result.
+    ///
+    /// It adds no comparison kind. An unfinished fight has no completed line to set
+    /// beside the recording's, and the result surface already says exactly that for a
+    /// fight left by any other route; this is one more route to it. A partial line for
+    /// the player is a change to the comparison contract and belongs to the comparison
+    /// owner - see docs/comparison-direction.md.
+    /// </summary>
+    private static void FinishHere() => LeaveTheFightNow();
+
+    private static void LeaveTheFightNow()
+    {
+        try
+        {
+            _resultAfterMainMenu = FightResultScreen.Left();
+            LeaveTheRun();
+            Finish();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not finish the fight here: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    private static void LeaveTheRun()
+    {
+        PlaybackTransportDock.Detach();
+        if (RunManager.Instance is { IsInProgress: true }) RunManager.Instance.CleanUp();
+        NGame.Instance?.ReturnToMainMenu();
+    }
+
+    /// <summary>
+    /// Opens the recording at the moment the decision on screen was read.
+    ///
+    /// The captain's own correction to the first tag: the creator's name alone was not
+    /// enough, and he wanted the video named and reachable. The timestamp is the
+    /// action's own observation, so this opens where the move happens rather than at
+    /// the start of a thirty-four minute run.
+    /// </summary>
+    private static void OpenTheVideo()
+    {
+        if (PlaybackTransportDock.Current?.State.Identity.VideoUrl is not { } url) return;
+
+        try
+        {
+            OS.ShellOpen(url);
+            Log.Info($"[{RunmobileMod.ModId}] opened the recording at {url}", 2);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not open the recording: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    /// <summary>
     /// Puts the current state on the strip, attaching it the first time.
     ///
     /// Attached once and kept: the strip is a child of the run's own persistent
@@ -464,7 +658,8 @@ internal static class RecordedFightRun
 
         if (PlaybackTransportDock.Current is null)
         {
-            PlaybackTransportDock.Attach(state, Back, Forward, PlayOrPause);
+            PlaybackTransportDock.Attach(
+                state, Back, PlayOrPause, Forward, OpenSpeedMenu, OpenTheVideo, ModelArt.Of);
             return;
         }
 
@@ -473,20 +668,86 @@ internal static class RecordedFightRun
 
     private static PlaybackTransport TransportState()
     {
-        if (Phase != RecordedFightPhase.Watching) return PlaybackTransport.DuringYourFight();
-
         var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
-        var creator = RecordingIdentity.Creator(entry.Manifest);
+        var identity = Identity(entry);
+
+        if (Phase != RecordedFightPhase.Watching)
+        {
+            return PlaybackTransport.DuringYourFight(identity, AnythingPlayed(entry));
+        }
+
         var count = entry.Plan.PrefixActions.Count;
+
+        // Asked only while there is one. Between the last commit and the hand-over the
+        // run has no next decision, and the tag shows the chip rather than a caption
+        // for a step that does not exist.
+        if (entry.AtBoundary) return PlaybackTransport.DuringYourFight(identity, anythingPlayed: false);
+
+        var next = entry.DescribeNextStep();
 
         if (_lookingBackAt is { } step)
         {
-            return PlaybackTransport.LookingBackAt(creator, Shown[step - 1], step, count);
+            return PlaybackTransport.LookingBackAt(
+                identity, Shown, step, entry.StepsTaken + 1, count, next, Speed);
         }
 
         return PlaybackTransport.Revealing(
-            creator, entry.DescribeNextStep(), entry.StepsTaken + 1, count, _playing, _noteShown);
+            identity, next, entry.StepsTaken + 1, count, _playing, _noteShown, Speed);
     }
+
+    /// <summary>
+    /// Whose recording this is, and where in the video the decision being shown was
+    /// made.
+    ///
+    /// Every value comes from the manifest. The video's title is absent until
+    /// ingestion fills it, and the tag says the creator alone rather than inventing
+    /// one; the timestamp is the action's own observation, so the link opens where the
+    /// move actually happens rather than at the start of a thirty-four minute video.
+    /// </summary>
+    private static TransportIdentity Identity(RecordedFightEntry entry)
+    {
+        // A manifest with no video record still names its creator; what it loses is
+        // the title and the link. Absent rather than invented, so the tag falls back
+        // to the name alone and the block simply does not open anything.
+        var video = entry.Manifest.Source.Video;
+        var at = _lookingBackAt is null ? VideoTimeOf(entry.NextStep) : null;
+        return new TransportIdentity(
+            RecordingIdentity.Creator(entry.Manifest),
+            video?.Title,
+            video is null
+                ? null
+                : at is null
+                    ? video.Url
+                    : $"{video.Url}&t={(at.Value / 1000).ToString(CultureInfo.InvariantCulture)}s",
+            at is null ? null : Timestamp(at.Value));
+    }
+
+    /// <summary>
+    /// When in the video this action was observed, where the recording says.
+    ///
+    /// Absent is a real answer: an action whose provenance is inferred rather than
+    /// observed has no timestamp, and the identity block links to the video's start
+    /// rather than to a moment nobody read.
+    /// </summary>
+    private static int? VideoTimeOf(ActionRecord? action) => action?.Evidence?.VideoTimeMs;
+
+    /// <summary>A video position as a player reads it on the platform's own scrubber.</summary>
+    private static string Timestamp(int milliseconds)
+    {
+        var total = milliseconds / 1000;
+        return $"{(total / 60).ToString(CultureInfo.InvariantCulture)}:" +
+               $"{(total % 60).ToString("00", CultureInfo.InvariantCulture)}";
+    }
+
+    /// <summary>
+    /// Whether the player has taken a turn in their own fight yet.
+    ///
+    /// It decides only whether jumping to the end is offered: at turn one with nothing
+    /// played there is no attempt to finish, and a control that would produce an empty
+    /// result is refused rather than drawn as if it would work.
+    /// </summary>
+    private static bool AnythingPlayed(RecordedFightEntry entry) =>
+        entry.Capture is { } capture && capture.Trace.Steps.Count > 0;
 
     private static async Task AdvanceOne()
     {
@@ -634,7 +895,7 @@ internal static class RecordedFightRun
             }
             catch (Exception ex)
             {
-                Abandon(ex.Message);
+                Abandon(ex);
             }
         }).CallDeferred();
 
@@ -666,7 +927,7 @@ internal static class RecordedFightRun
         }
         catch (Exception ex)
         {
-            Abandon(ex.Message);
+            Abandon(ex);
         }
     }
 
@@ -718,7 +979,7 @@ internal static class RecordedFightRun
         // The strip collapses rather than closing. A player fighting wants nothing in
         // the way, and the chip is what a peek will be reached from later; nothing is
         // drawn unbidden from here until the fight has ended.
-        PlaybackTransportDock.Apply(PlaybackTransport.DuringYourFight());
+        PlaybackTransportDock.Apply(PlaybackTransport.DuringYourFight(Identity(entry), anythingPlayed: false));
         Log.Info(
             $"[{RunmobileMod.ModId}] standing in the recorded fight; canonical state at combat start is " +
             $"{equality.ActualDigest}", 2);
@@ -761,7 +1022,7 @@ internal static class RecordedFightRun
         }
         catch (Exception ex)
         {
-            Abandon(ex.Message);
+            Abandon(ex);
         }
     }
 
@@ -797,9 +1058,15 @@ internal static class RecordedFightRun
     /// run the player did not start, that the game would go on drawing, and that the
     /// barrier would go on suppressing writes for.
     /// </summary>
-    private static void Abandon(string reason)
+    private static void Abandon(Exception failure) =>
+        Abandon(failure.Message, (failure as RevealRefusedException)?.Screen);
+
+    private static void Abandon(string reason, string? screen = null)
     {
+        // The engine's own sentence, verbatim, whatever the popup shows a player.
         Log.Error($"[{RunmobileMod.ModId}] not entering the recorded fight: {reason}", 2);
+
+        var creator = _entry is { } entry ? RecordingIdentity.Creator(entry.Manifest) : TrainerCopy.Name;
 
         try
         {
@@ -807,8 +1074,14 @@ internal static class RecordedFightRun
             // in a popup of its own, and leaving a strip offering Forward behind it
             // would be offering to go on with a run that is being torn down.
             Pause();
+
+            // The tag says so before it goes: the mark becomes the warning and every
+            // control is refused, so a player looking at the screen behind the popup
+            // is not looking at a transport that appears to still be running.
+            PlaybackTransportDock.Apply(PlaybackTransport.Refused(
+                _entry is { } refused ? Identity(refused) : new TransportIdentity(creator, null, null, null)));
             PlaybackTransportDock.Detach();
-            PrefightScreen.ShowRefusal(reason);
+            PrefightScreen.ShowRefusal(creator, screen, reason);
 
             if (RunManager.Instance is { IsInProgress: true }) RunManager.Instance.CleanUp();
             NGame.Instance?.ReturnToMainMenu();
@@ -859,6 +1132,7 @@ internal static class RecordedFightRun
         _authorising = false;
         _playing = false;
         _committing = false;
+        _speedIndex = 1;
         _hold++;
         _lookingBackAt = null;
         _noteShown = false;

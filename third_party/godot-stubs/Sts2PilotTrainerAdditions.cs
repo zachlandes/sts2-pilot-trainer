@@ -243,9 +243,40 @@ public class StyleBoxFlat : StyleBox
 
 public partial class Control
 {
+    /// <summary>Godot's hover and focus signals. The transport shows a tooltip on
+    /// hover and the game's own reticle on focus, and both are wired here.</summary>
+    public event Action? MouseEntered;
+
+    public event Action? MouseExited;
+
+    public event Action? FocusEntered;
+
+    public event Action? FocusExited;
+
+    /// <summary>Raises the hover and focus signals, so the mod's game-free tests can
+    /// drive what the client's pointer and controller drive.</summary>
+    public void EmitHover(bool entered)
+    {
+        if (entered) MouseEntered?.Invoke();
+        else MouseExited?.Invoke();
+    }
+
+    public void EmitFocus(bool entered)
+    {
+        if (entered) FocusEntered?.Invoke();
+        else FocusExited?.Invoke();
+    }
+
     public void AddThemeFontOverride(StringName name, Font font) { }
     public void AddThemeColorOverride(StringName name, Color color) { }
     public void AddThemeStyleboxOverride(StringName name, StyleBox stylebox) { }
+}
+
+public partial class Button
+{
+    /// <summary>Godot: a button drawn without its own panel. The transport's identity
+    /// block and its menu rows are hit areas over text the tag already draws.</summary>
+    public bool Flat { get; set; }
 }
 
 public partial class BaseButton
@@ -254,4 +285,16 @@ public partial class BaseButton
     /// a control it is not offering rather than removing it, so its buttons never
     /// move about under the player's aim.</summary>
     public bool Disabled { get; set; }
+}
+
+/// <summary>
+/// Godot's filled polygon. The transport's glyph family is drawn rather than taken
+/// from the game's art - the game ships no playback iconography - and a filled
+/// triangle is what tells a control that moves the run from one that only looks.
+/// </summary>
+public class Polygon2D : Node2D
+{
+    public Vector2[] Polygon { get; set; } = Array.Empty<Vector2>();
+
+    public Color Color { get; set; } = Color.White;
 }

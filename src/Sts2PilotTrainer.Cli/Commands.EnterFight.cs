@@ -110,11 +110,13 @@ internal static partial class Commands
             var transport = choice is null
                 ? null
                 : PlaybackTransport.Revealing(
-                    creator!, choice, number, plan.PrefixActions.Count, playing: false, noteShown);
+                    new TransportIdentity(
+                        creator!, recording.Source.Video?.Title, recording.Source.Video?.Url, null),
+                    choice, number, plan.PrefixActions.Count, playing: false, noteShown);
             if (transport is not null)
             {
                 noteShown |= transport.Note.Length > 0;
-                Console.WriteLine($"  [{transport.Chip}]  {transport.Counter}   {transport.Caption}");
+                Console.WriteLine($"  [{transport.Identity.Creator}]  {transport.Counter.Numerals}");
                 Console.WriteLine($"      reveals {target!.Description}");
             }
 
@@ -124,24 +126,24 @@ internal static partial class Commands
             if (transport is not null)
             {
                 Console.WriteLine(
-                    $"      controls {Describe(transport.Back)} {Describe(transport.Forward)} " +
-                    $"{Describe(transport.Play)}");
+                    $"      controls {Describe(transport.Back)} {Describe(transport.Play)} " +
+                    $"{Describe(transport.Step)}");
             }
 
             entry.AdvanceOneStep();
             steps.Add(new
             {
                 number,
-                counter = transport?.Counter,
-                caption = transport?.Caption,
+                counter = transport?.Counter.Numerals,
+                caption = transport is null ? null : Caption(transport.Step),
                 reveals = target?.Description,
                 controls = transport is null
                     ? null
                     : (object)new
                     {
                         back = Describe(transport.Back),
-                        forward = Describe(transport.Forward),
                         play = Describe(transport.Play),
+                        step = Describe(transport.Step),
                     },
                 seq = action.Seq,
                 verb = action.Verb.ToString(),
@@ -551,7 +553,29 @@ internal static partial class Commands
             SHA256.HashData(Encoding.UTF8.GetBytes(rendering.ToString())));
     }
 
-    /// <summary>One of the transport's controls, and whether it is offered.</summary>
+    /// <summary>
+    /// One of the transport's controls, as a terminal can show it.
+    ///
+    /// The controls are icon only on screen, so what is printed here is the glyph's
+    /// name and its tooltip's title: a command line cannot draw a filled triangle, and
+    /// naming the shape is closer to the truth than inventing a label the client does
+    /// not have.
+    /// </summary>
     private static string Describe(TransportControl control) =>
-        control.Enabled ? $"[{control.Label}]" : $"({control.Label})";
+        control.Enabled ? $"[{control.TooltipTitle}]" : $"({control.TooltipTitle})";
+
+    /// <summary>
+    /// What step's tooltip says about the decision it is about to make: the caption
+    /// the transport no longer draws always, and shows on hover instead.
+    ///
+    /// The counter it is prefixed with on screen is dropped, because this report
+    /// already carries it as its own field and printing it twice would read as two
+    /// different facts.
+    /// </summary>
+    private static string Caption(TransportControl step)
+    {
+        var line = step.TooltipBody.Split('\n').LastOrDefault() ?? string.Empty;
+        var separator = line.IndexOf(" · ", StringComparison.Ordinal);
+        return separator < 0 ? line : line[(separator + 3)..];
+    }
 }

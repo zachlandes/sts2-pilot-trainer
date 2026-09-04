@@ -100,19 +100,23 @@ public sealed class RecordedFightEntryTests
     }
 
     /// <summary>
-    /// The transport's own controls, as the journey offers them. Back is refused on
-    /// the first decision because there is nothing behind it.
+    /// The transport's own controls, as the journey offers them. Looking back is
+    /// refused on the first decision because there is nothing behind it.
+    ///
+    /// A terminal cannot draw the glyphs the client does, so what is printed is the
+    /// tooltip's title. That is the honest stand-in: naming the control rather than
+    /// inventing a label the client does not have.
     /// </summary>
     [GameFact]
-    public void TheTransportOffersBackOnlyOnceThereIsSomethingBehind()
+    public void TheTransportOffersLookingBackOnlyOnceThereIsSomethingBehind()
     {
         var report = EnterFight(out _);
         var steps = report.GetProperty("steps").EnumerateArray().ToList();
 
-        Assert.Equal("(Back)", steps[0].GetProperty("controls").GetProperty("back").GetString());
-        Assert.Equal("[Forward]", steps[0].GetProperty("controls").GetProperty("forward").GetString());
+        Assert.Equal("(Look back)", steps[0].GetProperty("controls").GetProperty("back").GetString());
         Assert.Equal("[Play]", steps[0].GetProperty("controls").GetProperty("play").GetString());
-        Assert.Equal("[Back]", steps[1].GetProperty("controls").GetProperty("back").GetString());
+        Assert.Equal("[Step]", steps[0].GetProperty("controls").GetProperty("step").GetString());
+        Assert.Equal("[Look back]", steps[1].GetProperty("controls").GetProperty("back").GetString());
     }
 
     /// <summary>

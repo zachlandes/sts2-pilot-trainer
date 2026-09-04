@@ -1,8 +1,10 @@
-# What the mod's own surfaces should look like
+# What the mod's own surfaces look like
 
-This is a design brief, not a record of what is built.
-It exists because the first working playback transport was styled by the engineer who made it work, and the captain's judgement on seeing it in the client was that the mechanism is right and the look is not.
-It captures his goal, the constraints the retail client actually imposes, and the native furniture a designer can build from, so that the next pass is a design decision rather than another set of hand-picked colours.
+This began as a design brief, written when the first working transport was styled by the engineer who made it work and the captain's judgement was that the mechanism was right and the look was not.
+The design phase that followed is closed: the accepted answer is the hanging tag described below, and it is what `PlaybackTransportStrip` now draws.
+The full report, every state drawn over real captures, and the sources that regenerate them are in `data/sts2-playback-control-design/` in the fleet's own tree; this file is the part a future session in this repository needs.
+
+What is settled is in "The design"; what a redesign must not break is in "What the retail client actually imposes".
 
 ## The captain's goal, in his terms
 
@@ -73,15 +75,43 @@ The candidates a designer should know exist, in `MegaCrit.Sts2.Core.Nodes.Common
 No play, pause, step or skip glyph family appears in the resource paths the assembly references.
 Whatever the transport's controls become has to be drawn, which is precisely why it is a design job and not a styling tweak.
 
-## What is provisional in the code today
+## The design, as built
 
-`PlaybackTransportStrip` in `Sts2PilotTrainer.Mod` draws the transport, and every colour, size and position in it is provisional.
-Its palette, its font sizes and its docked band are the engineer's, chosen to be legible in the client and to keep off the relics; none of it is a design decision anybody made.
-What is not provisional is underneath it: the strip is one long-lived node, it is parented to the run's persistent interface, it lets clicks through everywhere but its controls, its controls take focus, and it collapses during the player's own fight.
-A redesign should change what `PlaybackTransportStrip` draws and leave `PlaybackTransportDock`, `RecordedFightReveal` and `PlaybackTransport` alone - the last of these owns the words and is the one place to change them.
+**The hanging tag.** 378 by 56 in the design's reference units, hung from the top bar's torn edge and right-aligned to the deck button, which leaves the build and seed text clear beyond it.
+Flat charcoal at 94%, an inked gold edge, an inner hairline, two gold pins, a chamfered foot.
+Same palette as the game, different material: the game's own furniture is torn stone and parchment, so a flat plate reads as not-the-game without being loud about it, and it hangs under the game's own meta cluster where controls that act on the recording belong.
 
-The transport's four control labels - `ForwardButton`, `PlayButton`, `PauseButton` and `PreviousStepCounter` in `TrainerCopy` - are provisional with the same force, and are marked as such where they sit.
-They are placeholders for controls, not approved copy: the iconography direction may remove three of them outright.
-Everything else in `TrainerCopy` is approved wording and is not the design's to change.
+**Contents, left to right.** The mark (the selection reticle the reveal lights, shrunk to a glyph); the identity block (creator over video title, pressable, opening the video at the decision's own observed timestamp); the counter as numerals with pips; the speed chip; three 30-unit glyph controls - look back, play or pause, step.
 
-`docs/in-game-host.md` records the behaviour and the traps; this file records only what the surfaces should become.
+**Icon only, tooltips for words.** The captain's ruling: progressive disclosure is the game's own principle.
+There is no always-visible caption line; step's tooltip names the decision it is about to make.
+
+**The glyph family is the mod's own art**, because the game ships none - no play, pause, step or skip shape appears in any resource `sts2.dll` references.
+One rule carries meaning rather than decoration: **a filled shape moves the run, a hollow shape only looks.**
+
+**States.** Holding, with the target lit by the game's own selected state. Playing, with the hold drawn as a line draining along the tag's foot.
+Looking back, with a ledger of the decisions already made hung beneath - it exists because those screens are gone, and the run must never be rewound to answer for them.
+The chip during the player's own fight: the mark and the name, silent until pressed.
+Refused: the mark becomes the warning glyph and every control is drawn and refused.
+
+**The chip offers two directions and no third.** Jump to the beginning rebuilds the run to the proven combat start; jump to the end finishes the attempt where it is.
+Both leave the attempt, so both ask through the game's own confirmation popup first.
+There is no watch row and no comparison inside a fight: the captain's ruling is that a player diverges from the recorded line almost at once, so the comparison points are the whole recorded fight watched and the finished fight's result.
+
+**Refusals read as a player's sentence**, with the engine's exact diagnostic behind a details fold and always in the log.
+The refusal is not softened; only the sentence a player reads changes.
+
+## What a redesign owns, and what it does not
+
+Change what `PlaybackTransportStrip` draws.
+Leave `PlaybackTransportDock` (where the tag lives and what it is anchored to), `RecordedFightReveal` (the game's own selected states) and `PlaybackTransport` (what it says) alone - the last of these owns the words and is the one place to change them.
+
+## Carried forward, not built
+
+- **Jump to the end adds no comparison kind.** It ends the attempt and the existing result surface says what it already says about a fight left before it ended.
+  A partial player line - "left at turn N", the turns played kept and the chart's line stopping there - is a change to the comparison contract and belongs to the comparison owner; see `docs/comparison-direction.md`.
+- **The video title** is `source.video.title` in the manifest, filled at ingestion. Until a recording carries one the identity block shows the creator alone.
+- **Screens the journey does not yet walk** - loot, card rewards, shops, rests - have no caption owner. The tag is built to carry them unchanged; the reveal refuses them.
+- **No new hotkeys.** On-screen controls only, so the controls carry no hotkey glyph: one would name a key that does nothing.
+
+`docs/in-game-host.md` records the behaviour and the traps; this file records what the surfaces are.

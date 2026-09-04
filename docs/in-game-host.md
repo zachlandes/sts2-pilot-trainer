@@ -317,10 +317,11 @@ A screen's command does most of its work after an await, so an authorisation tha
 when the starting call returned had already lapsed - and the lock refused the
 recording's own map move. It is held across the step now.
 
-**The watching journey is one long-lived transport, not a popup per step.**
+**The watching journey is one long-lived tag, not a popup per step.**
 The popup this started with was created and torn down around every decision, so it could not carry a position across the map-to-combat transition and it covered the screens the player is there to look at.
 `PlaybackTransportStrip` replaces the whole set with one node, `PlaybackTransportDock` parents it to `NRun.GlobalUi` - the run's own persistent interface, which the room is swapped underneath - and `PlaybackTransport` in `Sts2PilotTrainer.Trainer` owns every word it says.
-It docks in the band under the game's own top bar, measured off `NGlobalUi.TopBar` rather than written down, because that band is the one part of every screen this journey walks past that the game leaves empty.
+It hangs from an anchor measured off the game's own furniture: the bottom of the top bar's HP and gold widgets, and the right edge of the deck button.
+Both halves are load-bearing. `NTopBar` is a full-screen control whose rect ends at the bottom of the viewport, so measuring the node itself puts the tag off the screen; and the band's left carries the run's relic inventory, which grows, so a centred or left-hung surface covers relics by about the ninth one.
 `PrefightScreen` keeps only the two things a popup is actually for: a refusal, and the result of the player's fight.
 
 **Reveal, hold, commit, and Back is none of them.**
@@ -330,7 +331,14 @@ The commit is `RecordedFightEntry.AdvanceOneStep`, unchanged.
 Back re-shows a decision already made from what the host wrote down at the moment it was revealed; there is no path that uncommits one, and the run is never rewound to answer.
 A target the host cannot resolve - no screen, a coordinate this act does not draw, an option row granting a different relic - ends the attempt with the reason rather than committing a decision unseen.
 
-What these surfaces should *look* like is not settled and is not recorded here; [mod-ui-direction.md](mod-ui-direction.md) carries that brief, and the strip's palette and layout are provisional until it is answered.
+What these surfaces look like is [mod-ui-direction.md](mod-ui-direction.md); this file records only how they behave.
+
+**A field can stop the whole mod loading, one phase before any of its code runs.**
+The game finds the initializer by enumerating this assembly's types, which happens before `SiblingAssemblies` has taught the runtime that `Sts2PilotTrainer.*` sit beside the mod rather than beside the game.
+Enumerating a type resolves the types its fields are *built from*, so a field whose type is a generic instantiation over a sibling - `IReadOnlyList<MenuRow>` was the one that did it - resolves that sibling, fails, and the mod loads not at all with a `ReflectionTypeLoadException` naming it.
+A plain reference-typed field of a sibling type is fine and several have always existed: its layout is a pointer.
+Hold state in the mod's own types, or read it off a reference-typed field, and keep sibling types out of field *shapes*.
+A module initializer does not rescue this, measured: type enumeration does not trigger one.
 
 **The strip has to be reachable and has to be out of the way.**
 Its root and everything on it except the buttons ignore the mouse, so the map, the event and the player's own fight keep every click that is not on a control.

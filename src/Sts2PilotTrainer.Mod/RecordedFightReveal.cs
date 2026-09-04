@@ -7,6 +7,7 @@ using MegaCrit.Sts2.Core.Nodes.Events;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -84,16 +85,18 @@ internal static class RecordedFightReveal
     private static void RevealMapNode(MapCoord coord)
     {
         var map = NMapScreen.Instance
-            ?? throw new InvalidOperationException(
-                "The recording moves on the map, and this game has no map screen to show the move on.");
+            ?? throw new RevealRefusedException(
+                "The recording moves on the map, and this game has no map screen to show the move on.",
+                TrainerCopy.MapScreenName);
 
         var points = MapPointsOf(map);
         if (!points.TryGetValue(coord, out var point) || !GodotObject.IsInstanceValid(point))
         {
-            throw new InvalidOperationException(
+            throw new RevealRefusedException(
                 $"The recording moves to (row {coord.row.ToString(CultureInfo.InvariantCulture)}, column " +
                 $"{coord.col.ToString(CultureInfo.InvariantCulture)}), which this act's map screen does not " +
-                "draw. Refusing to move somewhere nobody was shown.");
+                "draw. Refusing to move somewhere nobody was shown.",
+                TrainerCopy.MapScreenName);
         }
 
         // Focus first, because the node's own OnFocus is what scales it and tints it.
@@ -114,20 +117,23 @@ internal static class RecordedFightReveal
     private static void RevealEventOption(int index, string relicModelId)
     {
         var room = NEventRoom.Instance
-            ?? throw new InvalidOperationException(
-                "The recording chooses an event option, and this game has no event screen to show it on.");
+            ?? throw new RevealRefusedException(
+                "The recording chooses an event option, and this game has no event screen to show it on.",
+                TrainerCopy.EventScreenName);
 
         var layout = room.Layout
-            ?? throw new InvalidOperationException(
-                "The event screen has no layout, so the option the recording took cannot be pointed at.");
+            ?? throw new RevealRefusedException(
+                "The event screen has no layout, so the option the recording took cannot be pointed at.",
+                TrainerCopy.EventScreenName);
 
         var buttons = layout.OptionButtons.ToList();
         if (index < 0 || index >= buttons.Count)
         {
-            throw new InvalidOperationException(
+            throw new RevealRefusedException(
                 $"The recording takes option {index.ToString(CultureInfo.InvariantCulture)} and this screen " +
                 $"is showing {buttons.Count.ToString(CultureInfo.InvariantCulture)}. Refusing to point at a " +
-                "row that is not there.");
+                "row that is not there.",
+                TrainerCopy.EventScreenName);
         }
 
         var button = buttons[index];
@@ -139,10 +145,11 @@ internal static class RecordedFightReveal
         var offered = button.Option?.Relic?.Id.ToString();
         if (offered != relicModelId)
         {
-            throw new InvalidOperationException(
+            throw new RevealRefusedException(
                 $"The recording takes the option granting '{relicModelId}', and option " +
                 $"{index.ToString(CultureInfo.InvariantCulture)} on this screen grants " +
-                $"'{offered ?? "nothing"}'. The screen is not showing what the recording chose.");
+                $"'{offered ?? "nothing"}'. The screen is not showing what the recording chose.",
+                TrainerCopy.EventScreenName);
         }
 
         Focus(button, $"option {index.ToString(CultureInfo.InvariantCulture)} on the event screen");
@@ -204,3 +211,16 @@ internal static class RecordedFightReveal
 /// waits forever for a screen that will never arrive.
 /// </summary>
 internal sealed class RevealNotReadyException(string message) : InvalidOperationException(message);
+
+/// <summary>
+/// A screen the recording's next decision happens on cannot be driven.
+///
+/// It carries the screen in the player's own word - "map", "choice" - as well as the
+/// engine's exact sentence, because the two audiences want different things. A player
+/// needs to know which screen stopped and that nothing was changed; whoever is
+/// debugging needs the diagnostic, which is never softened and never dropped.
+/// </summary>
+internal sealed class RevealRefusedException(string message, string screen) : InvalidOperationException(message)
+{
+    internal string Screen { get; } = screen;
+}
