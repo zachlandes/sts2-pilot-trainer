@@ -98,6 +98,13 @@ public static class Arbiter
         var diagnostics = new List<string>();
         var steps = new List<ReplayStep>();
 
+        // The whole canonical state's digest after every action, kept beside the trace
+        // rather than in it. A trace samples the fields a comparison reads; a boundary
+        // digest covers the draw order and every random stream's position, which is
+        // most of what it is for. Which of these seqs turn out to be boundaries is
+        // decided once the history has run, by reading the trace.
+        var digests = new Dictionary<int, string>();
+
         // Checkpoints bound to -1 are evaluated before any action runs.
         results.AddRange(Evaluate(checkpointsBySeq[-1], session));
 
@@ -109,6 +116,7 @@ public static class Arbiter
             Before = Sample(state),
             After = Sample(state),
         });
+        digests[-1] = state.Digest();
 
         var ordered = manifest.Actions.OrderBy(a => a.Seq).ToList();
         for (var index = 0; index < ordered.Count; index++)
@@ -158,14 +166,16 @@ public static class Arbiter
                     FinalState: refusedState);
             }
 
+            var after = CanonicalStateProjection.Project(session.RunState);
             steps.Add(new ReplayStep
             {
                 Seq = action.Seq,
                 Verb = action.Verb.ToString(),
                 Args = action.Args,
                 Before = before,
-                After = Sample(CanonicalStateProjection.Project(session.RunState)),
+                After = Sample(after),
             });
+            digests[action.Seq] = after.Digest();
 
             results.AddRange(Evaluate(checkpointsBySeq[action.Seq], session));
         }
@@ -202,6 +212,7 @@ public static class Arbiter
                 Preflight = preflight,
                 Checkpoints = results,
                 Trace = new ReplayTrace { Steps = steps },
+                Boundaries = isPartial ? [] : DeriveBoundaries(steps, digests),
                 FinalStateDigest = finalState.Digest(),
                 ActionHistoryHash = SnapshotCacheKey.HashActions(replayedActions),
                 Caveats = Caveats(),
@@ -209,6 +220,27 @@ public static class Arbiter
             },
             finalState);
     }
+
+    /// <summary>
+    /// Every boundary this history passed, with the digest the engine produced there.
+    ///
+    /// Two owners, deliberately. Where the boundaries are is a rule over the trace and
+    /// belongs to <see cref="RunCoverage"/>, which has tests that need no game. What
+    /// the state was at each is the engine's, and is only available from the process
+    /// that just replayed it.
+    ///
+    /// A boundary whose digest is missing is dropped rather than filled in: the only
+    /// way that happens is a seq the replay never reached, and a boundary with an
+    /// invented digest is exactly the confident wrong answer this arbiter exists to
+    /// prevent.
+    /// </summary>
+    private static IReadOnlyList<ReplayBoundary> DeriveBoundaries(
+        IReadOnlyList<ReplayStep> steps, IReadOnlyDictionary<int, string> digests) =>
+        RunCoverage.Of(new ReplayTrace { Steps = steps })
+            .Boundaries()
+            .Where(boundary => digests.ContainsKey(boundary.AfterSeq))
+            .Select(boundary => boundary.With(Fact<string>.Engine(digests[boundary.AfterSeq])))
+            .ToList();
 
     /// <summary>
     /// Every field a checkpoint disagreed on, in the order the checkpoints ran.
