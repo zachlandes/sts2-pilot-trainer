@@ -106,11 +106,9 @@ undecided relic when the room is left and says nothing, so a history that omitte
 decision would replay into the state of one that declined it. A map move or an act
 transition that would leave either decision unmade is refused.
 
-**Neither of the first two stand-ins is installed inside the retail client.** The same `RunDriver` runs
-there, walking a constructed run through the recording's decisions before its fight,
-and in there both of these screens are on a player's screen: answering one would take
-a decision away from somebody who was looking at it. So the driver installs no
-selector and no rewards delegate when the engine's origin is a running game, and
+**None of these three stand-ins is installed inside the retail client.**
+The same `RunDriver` runs there, walking a constructed run through the recording's decisions before its fight, and in there each of these is on a player's screen: answering one would take a decision away from somebody who was looking at it, and the client opens its own chest through `NTreasureRoom.OpenChest`.
+So the driver installs no selector, no rewards delegate and no chest opening when the engine's origin is a running game, and
 narrows itself to the three verbs that reach a decision before a fight - the opening
 blessing, an event option and a map move. Every other verb refuses there, including
 the combat ones, because the fight is the player's. See

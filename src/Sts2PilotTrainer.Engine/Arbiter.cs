@@ -136,10 +136,10 @@ public static class Arbiter
             {
                 // The rest of the replayed history is passed with each action because
                 // a card screen is answered inside the call that opens it; see RunDriver.
-                var upcoming = ordered
-                    .Skip(index + 1)
-                    .TakeWhile(next => stopAfterSeq is not { } limit || next.Seq <= limit)
-                    .ToList();
+                // The whole rest, past a stop point too: a prefix that stops on an
+                // action which opens a screen still has to answer it, and truncating
+                // here would refuse it for a manifest that supplies the answer.
+                var upcoming = ordered.Skip(index + 1).ToList();
                 driver.Apply(action, upcoming);
             }
             catch (EngineException ex)

@@ -126,6 +126,99 @@ public sealed class BoundarySelectorTests
         Assert.Contains("nothing here enters one", refusal.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A later fight of a real engine-generated history, selected and planned. The
+    /// plan ends where that fight's own boundary says it does and walks every decision
+    /// up to it, which is the whole of what a host is handed.
+    /// </summary>
+    [Fact]
+    public void PlansTheJourneyToALaterFightOfAWholeAct()
+    {
+        var manifest = Fixtures.WholeActManifest();
+        var declared = manifest.BoundaryAt(ReplayBoundary.CombatStartKind, fight: 3)!;
+
+        var plan = BoundarySelector.Parse("combat_start:3").PlanFor(manifest);
+
+        Assert.Equal(ReplayBoundary.CombatStartKind, plan.Kind);
+        Assert.Equal(3, plan.Fight);
+        Assert.Equal("the start of fight 3", plan.Describe());
+        Assert.Equal(declared.AfterSeq, plan.BoundarySeq);
+        Assert.Equal(declared.AfterSeq, plan.PrefixActions[^1].Seq);
+        Assert.Equal(
+            manifest.Actions.Count(action => action.Seq <= declared.AfterSeq), plan.PrefixActions.Count);
+    }
+
+    /// <summary>
+    /// A floor arrival of the same history. Its checkpoint is the one that says where
+    /// the run stands rather than whichever checkpoint shares the action - a fight
+    /// starts on the same map move, and handing over that one would stand somebody at
+    /// a moment proved by the wrong fields.
+    /// </summary>
+    [Fact]
+    public void PlansTheJourneyToAFloorArrivalOfAWholeAct()
+    {
+        var manifest = Fixtures.WholeActManifest();
+        var declared = manifest.BoundaryAt(ReplayBoundary.FloorEntryKind, floor: 4)!;
+
+        var plan = BoundarySelector.Parse("floor_entry:4").PlanFor(manifest);
+
+        Assert.Equal(ReplayBoundary.FloorEntryKind, plan.Kind);
+        Assert.Equal(4, plan.Floor);
+        Assert.Equal("arrival on floor 4", plan.Describe());
+        Assert.Equal(declared.AfterSeq, plan.BoundarySeq);
+        Assert.Equal("4", plan.Boundary.Expect["run.total_floor"].Value);
+        Assert.Contains("run.map_coord", plan.Boundary.Expect.Keys);
+    }
+
+    /// <summary>
+    /// The floor a run begins on is not arrived at, so nothing derived a boundary
+    /// there and no plan may invent one.
+    /// </summary>
+    [Fact]
+    public void RefusesTheFloorAWholeActNeverArrivesOn()
+    {
+        var refusal = Assert.Throws<ManifestException>(
+            () => BoundarySelector.Parse("floor_entry:1").PlanFor(Fixtures.WholeActManifest()));
+
+        Assert.Contains("declares no floor-entry boundary for floor 1", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>A fight past the last one the history holds is refused rather than
+    /// resolved to the nearest fight there is.</summary>
+    [Fact]
+    public void RefusesAFightAWholeActNeverReaches()
+    {
+        var manifest = Fixtures.WholeActManifest();
+        var beyond = manifest.Boundaries.Where(boundary => boundary.IsCombatStart).Max(b => b.Fight!.Value) + 1;
+
+        var refusal = Assert.Throws<ManifestException>(
+            () => BoundarySelector.Parse($"combat_start:{beyond}").PlanFor(manifest));
+
+        Assert.Contains(
+            $"declares no combat-start boundary for fight {beyond}", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A turn of a later fight, selected out of a list that holds a turn 3 in several
+    /// fights. This is where an ordinal counted across the list would quietly answer
+    /// with another fight's turn.
+    /// </summary>
+    [Fact]
+    public void SelectsATurnOfALaterFightOutOfAWholeAct()
+    {
+        var manifest = Fixtures.WholeActManifest();
+
+        var selected = BoundarySelector.Parse("turn_start:2.3").In(manifest.Boundaries);
+
+        Assert.NotNull(selected);
+        Assert.Equal(2, selected.Fight);
+        Assert.Equal(3, selected.Turn);
+        Assert.Equal(
+            manifest.BoundaryAt(ReplayBoundary.TurnStartKind, fight: 2, turn: 3)!.AfterSeq, selected.AfterSeq);
+        Assert.NotEqual(
+            manifest.BoundaryAt(ReplayBoundary.TurnStartKind, fight: 1, turn: 3)!.AfterSeq, selected.AfterSeq);
+    }
+
     /// <summary>The boundary a command means when nobody said which.</summary>
     [Fact]
     public void DefaultsToTheFirstFight()

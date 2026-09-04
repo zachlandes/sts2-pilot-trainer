@@ -43,6 +43,16 @@ internal static class Arbiter
     internal static string Manifest =>
         Path.Combine(RepoRoot, "manifests", "navegreed-OJ-6QXhNgdg.replay.json");
 
+    /// <summary>
+    /// The engine-generated whole-act history, on disk: nine fights, seventeen floor
+    /// arrivals and the turns within them. The one committed history with more than
+    /// one boundary of every kind, which is what a selector needs to be exercised on.
+    /// </summary>
+    internal static string WholeAct =>
+        Path.Combine(
+            RepoRoot, "src", "Sts2PilotTrainer.Replay", "Fixtures",
+            "synthetic-v0111-whole-act.replay.json");
+
     internal static string MapObservation =>
         Path.Combine(RepoRoot, "manifests", "navegreed-OJ-6QXhNgdg.map-observation.json");
 

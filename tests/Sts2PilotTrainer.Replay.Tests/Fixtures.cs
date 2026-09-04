@@ -93,6 +93,16 @@ internal static class Fixtures
     internal static ReplayManifest SyntheticManifest() => SyntheticReplayFixture.Create();
 
     /// <summary>
+    /// The engine-generated history of a whole act: nine fights, seventeen floor
+    /// arrivals and the turns within them, all of it produced by the real game.
+    ///
+    /// Read through the shipped accessor rather than off disk, because a rule about
+    /// later fights and later floors wants a history that really has them, and this is
+    /// the one such history that owes nothing to anybody's video.
+    /// </summary>
+    internal static ReplayManifest WholeActManifest() => SyntheticReplayFixture.CreateWholeAct();
+
+    /// <summary>
     /// A minimal valid recording made by this project's own recorder.
     ///
     /// The same run as <see cref="ValidManifest"/> and a different kind of claim about
