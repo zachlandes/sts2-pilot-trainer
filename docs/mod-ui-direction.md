@@ -94,7 +94,10 @@ One rule carries meaning rather than decoration: **a filled shape moves the run,
 Looking back, with a ledger of the decisions already made hung beneath - it exists because those screens are gone, and the run must never be rewound to answer for them.
 Opening, between the last recorded choice and the fight it leads to: the tag stays exactly where it was and everything that would move the run is refused, because a run with nothing left to commit must not still be offering to commit it. The speed control is not refused there - it does not move the run.
 The chip during the player's own fight: the mark and the name, silent until pressed.
-Refused: the mark becomes the warning glyph and every control is drawn and refused, the speed control included.
+Refused: the mark becomes the warning glyph and every control is drawn and refused, the speed control included - in the model.
+It is not on screen today: the teardown applies the refused state and detaches the tag inside one call stack, so no frame is ever drawn with it.
+The state stays because it is what keeps the derivation total - every phase a journey can be in has an answer - and the sentence a player actually reads on a refusal is the popup's.
+Whether to make the refused tag visible, by holding it on screen across the return to the menu, is open rather than settled either way.
 
 **The chip offers two directions and no third.** Jump to the beginning rebuilds the run to the proven combat start; jump to the end finishes the attempt where it is.
 Both leave the attempt, so both ask through the game's own confirmation popup first.

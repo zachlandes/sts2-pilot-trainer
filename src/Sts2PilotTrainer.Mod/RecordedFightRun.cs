@@ -1269,11 +1269,12 @@ internal static class RecordedFightRun
             // would be offering to go on with a run that is being torn down.
             Pause();
 
-            // The tag says so before it goes: the mark becomes the warning and every
-            // control is refused, so a player looking at the screen behind the popup
-            // is not looking at a transport that appears to still be running. It is
-            // applied to a strip that is already there and never attaches one - the
-            // run this would hang on is being torn down in the next two lines.
+            // The refused state is applied and the tag is then detached in the same
+            // call stack, so no frame is ever drawn with it: what a player sees is the
+            // tag going, and then the popup's sentence. The transition stays because
+            // it is what keeps the derivation total - every phase has an answer, and a
+            // journey that ends is in one of them. Whether the refused tag should be
+            // held on screen across the return to the menu instead is open.
             Transition(JourneyPhase.Refused);
             PlaybackTransportDock.Detach();
 

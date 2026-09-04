@@ -162,7 +162,7 @@ internal sealed class PlaybackTransportStrip
     /// tooltip went up, then the ledger appeared underneath it, and the sentence sat
     /// on top of the rows it had been placed above.
     /// </summary>
-    private Control? _tipAnchor;
+    private (Control Anchor, Func<ElementSurface> Element)? _tipSource;
 
     private PlaybackTransportStrip(Nodes nodes, Vector2 viewport, Vector2 anchor, Font? font)
     {
@@ -405,9 +405,9 @@ internal sealed class PlaybackTransportStrip
         // Last, once everything that hangs has been laid out and the measure is final.
         // A tooltip that is already up was placed against the measure of a moment ago,
         // and this is the only point at which the right answer is known.
-        if (_tip.Visible && _tipAnchor is { } anchor)
+        if (_tip.Visible && _tipSource is { } tip)
         {
-            ShowTooltip(anchor, _tipTitle.Text, _tipBody.Text);
+            ShowTooltip(tip.Anchor, tip.Element);
         }
     }
 
@@ -1014,17 +1014,24 @@ internal sealed class PlaybackTransportStrip
     /// </summary>
     private void Wire(Button button, Func<ElementSurface> element)
     {
-        button.MouseEntered += () => ShowTooltip(button, element());
+        button.MouseEntered += () => ShowTooltip(button, element);
         button.MouseExited += HideTooltip;
-        button.FocusEntered += () => ShowTooltip(button, element());
+        button.FocusEntered += () => ShowTooltip(button, element);
         button.FocusExited += HideTooltip;
     }
 
-    private void ShowTooltip(Control anchor, ElementSurface element) =>
-        ShowTooltip(anchor, element.TooltipTitle, element.TooltipBody);
-
-    private void ShowTooltip(Control anchor, string title, string body)
+    /// <summary>
+    /// Puts a tooltip up, or re-places one that is already up.
+    ///
+    /// The element is asked for rather than handed over, because this is also the way
+    /// a tooltip that survives a state change is re-placed: the sentence has to be the
+    /// one the current surface says, not the one the labels are still holding.
+    /// </summary>
+    private void ShowTooltip(Control anchor, Func<ElementSurface> element)
     {
+        var surface = element();
+        var title = surface.TooltipTitle;
+        var body = surface.TooltipBody;
         if (title.Length == 0 && body.Length == 0)
         {
             HideTooltip();
@@ -1034,7 +1041,7 @@ internal sealed class PlaybackTransportStrip
         _tipTitle.Text = title;
         _tipBody.Text = body;
         _tip.Visible = true;
-        _tipAnchor = anchor;
+        _tipSource = (anchor, element);
 
         // Sized to the body once it has wrapped, not to the newlines in it: at this
         // width "Shows an earlier choice again. Nothing is undone." is two lines and
@@ -1062,7 +1069,7 @@ internal sealed class PlaybackTransportStrip
     private void HideTooltip()
     {
         _tip.Visible = false;
-        _tipAnchor = null;
+        _tipSource = null;
     }
 
     // ── Node plumbing ──────────────────────────────────────────────────────

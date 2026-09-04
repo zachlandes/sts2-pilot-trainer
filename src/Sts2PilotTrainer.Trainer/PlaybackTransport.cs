@@ -370,7 +370,9 @@ public sealed record PlaybackTransport(
             Menu: MenuKind.Chip),
 
         // Everything refused, the speed included: a tag that has lost its run has not
-        // kept one control that still works.
+        // kept one control that still works. What keeps the derivation total rather
+        // than a surface anybody sees - the teardown detaches the tag in the same call
+        // stack that applies this, so no frame is drawn with it.
         TransportMode.Refused => new TransportSurface(
             ChipPlate: false,
             Mark: ElementSurface.Shown(Mark),
@@ -600,9 +602,13 @@ public sealed record PlaybackTransport(
     /// <summary>
     /// A screen could not be driven.
     ///
-    /// The tag says so and stops offering anything; the sentence a player reads is
-    /// the popup's. Every control is drawn and refused rather than removed, so the
-    /// tag does not appear to have lost its controls as well as its run.
+    /// The sentence a player reads is the popup's, and today it is the only thing they
+    /// read: the mod's teardown applies this and detaches the tag inside one call
+    /// stack, so the state is never on screen for a frame. It exists because every
+    /// phase a journey can be in has to have an answer, and it is written the way a
+    /// drawn one would be - every control refused rather than removed - so that
+    /// holding the tag on screen across the return to the menu stays a change of
+    /// timing rather than of model. Whether to do that is open.
     /// </summary>
     private static PlaybackTransport Refused(TransportIdentity identity, PlaybackSpeed speed) =>
         new(

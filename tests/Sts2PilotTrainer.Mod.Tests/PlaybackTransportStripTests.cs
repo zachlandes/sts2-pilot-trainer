@@ -199,6 +199,31 @@ public sealed class PlaybackTransportStripTests
     }
 
     /// <summary>
+    /// A tooltip that survives a state change says what is true now.
+    ///
+    /// Godot sends no MouseExited when a button is disabled or enabled under a
+    /// stationary pointer, so the sentence stays up across the change. Re-placing it
+    /// from the labels it was holding captioned an offered Back with the reason it had
+    /// been refused a moment earlier.
+    /// </summary>
+    [Fact]
+    public void ATooltipAlreadyUpIsRereadRatherThanReplayed()
+    {
+        var strip = Build(Revealing(Blessing, 1, noteShown: false));
+
+        strip.Back.EmitHover(entered: true);
+        Assert.Equal("This is the first choice.", Label(strip.Tooltip, "TooltipBody").Text);
+
+        strip.Apply(Revealing(MapMove, 2, noteShown: true));
+
+        Assert.False(strip.Back.Disabled);
+        Assert.True(strip.Tooltip.Visible);
+        Assert.Equal(
+            "Shows an earlier choice again. Nothing is undone.",
+            Label(strip.Tooltip, "TooltipBody").Text);
+    }
+
+    /// <summary>
     /// The hold, made visible. Without it the tag simply pauses under Play and a
     /// watcher cannot tell a hold from a stall.
     /// </summary>
