@@ -40,6 +40,10 @@ public enum SyntheticJourney
 
     /// <summary>Run start to the far side of the act's boss.</summary>
     WholeAct,
+
+    /// <summary>Run start to the end of the first fight whose turn began with a card
+    /// screen, which is the one place a boundary's own action opens one.</summary>
+    ScreenAtBoundary,
 }
 
 public static partial class SyntheticFixtureGenerator
@@ -97,6 +101,7 @@ public static partial class SyntheticFixtureGenerator
     {
         SyntheticJourney.FirstFight => Generate(line),
         SyntheticJourney.WholeAct => GenerateWholeAct(),
+        SyntheticJourney.ScreenAtBoundary => GenerateScreenAtBoundary(),
         _ => throw new EngineException($"Unknown synthetic journey '{journey}'."),
     };
 

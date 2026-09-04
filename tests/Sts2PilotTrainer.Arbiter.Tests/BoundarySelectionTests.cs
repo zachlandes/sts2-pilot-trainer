@@ -104,6 +104,41 @@ public sealed class BoundarySelectionTests
     }
 
     /// <summary>
+    /// The boundary whose own action opens a card screen.
+    ///
+    /// A turn boundary is named after the end of the turn before it, and a power that
+    /// acts at the start of a turn opens its screen inside that call - so the answers
+    /// the recording made sit after the action a prefix replay stops at. Materialising
+    /// the boundary is what proves the stop action was handed them: a window cut at the
+    /// stop point leaves the screen asking for two cards the manifest never seems to
+    /// supply, and the boundary cannot be reached at all.
+    /// </summary>
+    [GameFact]
+    public void SnapshotsATurnBoundaryWhoseOwnActionOpensACardScreen()
+    {
+        var manifest = ManifestJson.Load(Arbiter.ScreenAtBoundary);
+        var bySeq = manifest.Actions.ToDictionary(action => action.Seq);
+        var declared = manifest.Boundaries.Single(boundary =>
+            boundary.Kind == ReplayBoundary.TurnStartKind &&
+            bySeq[boundary.AfterSeq].Verb == ActionVerb.EndTurn &&
+            bySeq.TryGetValue(boundary.AfterSeq + 1, out var next) &&
+            next.Verb == ActionVerb.SelectCardFromScreen);
+        var coordinate = $"turn_start:{declared.Fight}.{declared.Turn}";
+        var outDir = Path.Combine("build", "test-scratch", $"boundary-screen-{Guid.NewGuid():N}");
+
+        var result = Arbiter.Run(
+            "combat-snapshot", Arbiter.ScreenAtBoundary, "--boundary", coordinate,
+            "--out", outDir, "--cache", Path.Combine(outDir, "snapshots"));
+
+        Assert.True(result.Verified, result.All);
+        var report = Report(Path.Combine(Arbiter.RepoRoot, outDir, "combat-snapshot.json"), result);
+        Assert.Equal(coordinate, report.GetProperty("boundary").GetString());
+        Assert.Equal(declared.AfterSeq, report.GetProperty("boundary_seq").GetInt32());
+        Assert.Equal(declared.Digest.Value, report.GetProperty("snapshot_digest").GetString());
+        Assert.True(report.GetProperty("restore_verified").GetBoolean());
+    }
+
+    /// <summary>
     /// A coordinate this history does not pass is refused, and the refusal lists the
     /// boundaries it does pass in the form somebody can paste back.
     /// </summary>

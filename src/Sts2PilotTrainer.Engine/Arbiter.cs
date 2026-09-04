@@ -240,14 +240,9 @@ public static class Arbiter
         var rest = ordered.Skip(index + 1);
         if (stopAfterSeq is not { } limit) return rest.ToList();
 
-        var within = rest.TakeWhile(next => next.Seq <= limit).ToList();
-        if (ordered[index].Seq != limit) return within;
-
-        return within
-            .Concat(rest
-                .SkipWhile(next => next.Seq <= limit)
-                .TakeWhile(next => next.Verb == ActionVerb.SelectCardFromScreen))
-            .ToList();
+        return ordered[index].Seq == limit
+            ? CardScreenAnswers.After(ordered, limit)
+            : rest.TakeWhile(next => next.Seq <= limit).ToList();
     }
 
     /// <summary>

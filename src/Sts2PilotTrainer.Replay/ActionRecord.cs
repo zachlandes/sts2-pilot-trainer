@@ -87,6 +87,27 @@ public sealed record ActionRecord
 }
 
 /// <summary>
+/// The card-selection actions that answer the screen one action opened.
+///
+/// The contiguous run of <see cref="ActionVerb.SelectCardFromScreen"/> records
+/// immediately after it, which is all the driver ever reads and is where a screen
+/// answered inside the call that opened it gets its answer from. One owner because
+/// every caller that hands an action a window into the rest of the history - a whole
+/// replay, a prefix that stops at a boundary, a walk to one - has to cut that window
+/// in the same place: one that stopped short would refuse the screen for an omission
+/// the truncation caused rather than one the recording made.
+/// </summary>
+public static class CardScreenAnswers
+{
+    public static IReadOnlyList<ActionRecord> After(IEnumerable<ActionRecord> actions, int seq) =>
+        actions
+            .OrderBy(action => action.Seq)
+            .SkipWhile(action => action.Seq <= seq)
+            .TakeWhile(action => action.Verb == ActionVerb.SelectCardFromScreen)
+            .ToList();
+}
+
+/// <summary>
 /// The decision alphabet. Deliberately closed: an action the format cannot name is
 /// an action the arbiter cannot replay, and that must be a loud failure rather than
 /// a silently dropped decision.

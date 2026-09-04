@@ -126,12 +126,16 @@ internal static class Program
               daily run construction, with a behavior-changing modifier control.
 
           synthetic-fixture / generate-synthetic-fixture --out <path>
-                                     [--journey first-fight|whole-act] [--line reference|alternate]
+                                     [--journey first-fight|whole-act|screen-at-boundary]
+                                     [--line reference|alternate]
               Emit the mechanically generated engine fixture. The first-fight journey
               plays the first combat to its end, and its two lines differ only in which
               end of the hand they play from; the whole-act journey walks one act from
               Neow through a shop, a rest site, a chest and an elite to the act's boss
-              and into the next act. Neither is a claim about how to play.
+              and into the next act; the screen-at-boundary journey walks the same act
+              and stops at the first fight in which a turn began with a card screen,
+              which is the one place a boundary's own action opens one. None of them is
+              a claim about how to play.
 
           replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
                                      [--progress <model>] [--show-trace]

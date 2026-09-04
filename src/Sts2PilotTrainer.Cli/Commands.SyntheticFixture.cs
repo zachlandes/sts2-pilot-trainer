@@ -32,8 +32,10 @@ internal static partial class Commands
         {
             "first-fight" => Engine.SyntheticJourney.FirstFight,
             "whole-act" => Engine.SyntheticJourney.WholeAct,
+            "screen-at-boundary" => Engine.SyntheticJourney.ScreenAtBoundary,
             _ => throw new ManifestException(
-                $"Unknown fixture journey '{journeyName}'. Known journeys: first-fight, whole-act."),
+                $"Unknown fixture journey '{journeyName}'. Known journeys: first-fight, whole-act, " +
+                "screen-at-boundary."),
         };
 
         var artifact = EvidenceArtifact.PreparePath(outPath);

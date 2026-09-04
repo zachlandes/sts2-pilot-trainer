@@ -256,10 +256,18 @@ public sealed class RecordedFightEntry : IDisposable
         StepsTaken++;
     }
 
-    /// <summary>The recording's decisions after the next one, which the driver needs
-    /// because a card screen is answered from inside the call that opens it.</summary>
+    /// <summary>
+    /// The recording's decisions after the next one, which the driver needs because a
+    /// card screen is answered from inside the call that opens it.
+    ///
+    /// The plan stops at the boundary's own action, so the last step would otherwise be
+    /// handed nothing at all; the screen it opens is answered from the recording's own
+    /// selections immediately after it, exactly as a whole replay answers it.
+    /// </summary>
     private IReadOnlyList<ActionRecord> RemainingPrefix() =>
-        Plan.PrefixActions.Skip(StepsTaken + 1).ToList();
+        StepsTaken + 1 < Plan.PrefixActions.Count
+            ? Plan.PrefixActions.Skip(StepsTaken + 1).ToList()
+            : CardScreenAnswers.After(Manifest.Actions, Plan.PrefixActions[StepsTaken].Seq);
 
     /// <summary>Makes every remaining recorded decision, in order. The same steps,
     /// without stopping between them.</summary>
