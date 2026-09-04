@@ -11,7 +11,7 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
 ./scripts/install-mod.sh    # build the in-game mod and install it into the game's mods directory
 ./scripts/protected-files.sh snapshot <ledger>   # hash everything the mod must not change
 ./scripts/protected-files.sh compare  <ledger>   # ... and say what a session changed
-dotnet test sts2-pilot-trainer.sln -c Release
+./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && dotnet test sts2-pilot-trainer.sln -c Release
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
@@ -21,7 +21,13 @@ dotnet test sts2-pilot-trainer.sln -c Release
 ```
 
 `dotnet test` works without the game: the integration suite skips with an explanation
-and the pure suite still runs. `scripts/arbiter` goes through `dotnet <dll>` rather
+and the pure suite still runs.
+Run it on its own only when that is what you want, because the skip is silent in the
+totals and the suite still reports green.
+Building first is what makes it run everything: nothing in the solution references
+`Sts2PilotTrainer.Cli`, so `dotnet test` never builds the arbiter the integration
+tests drive, and bootstrapping alone leaves 119 of them skipped.
+`scripts/arbiter` goes through `dotnet <dll>` rather
 than the generated apphost, which needs `DOTNET_ROOT` that a Homebrew install does
 not set.
 
