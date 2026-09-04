@@ -15,6 +15,41 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// </summary>
 public class SnapshotRestoreProbeTests
 {
+    [Theory]
+    [InlineData("--control")]
+    [InlineData("--out")]
+    [InlineData("--phase")]
+    [InlineData("--save")]
+    [InlineData("--stop-after")]
+    public void RefusesAValueOptionWithoutAValueBeforeCreatingOutput(string option)
+    {
+        var outDir = Path.Combine(
+            Arbiter.RepoRoot, "build", "test-scratch", $"missing-option-{Guid.NewGuid():N}");
+        var args = option == "--out"
+            ? new[] { "snapshot-restore-probe", "missing.replay.json", option }
+            : new[] { "snapshot-restore-probe", "missing.replay.json", "--out", outDir, option };
+
+        var result = Arbiter.Run(args);
+
+        Assert.False(result.Verified);
+        Assert.Contains($"Option {option} requires a value", result.All, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(outDir));
+    }
+
+    [Fact]
+    public void RefusesAValueOptionFollowedByAnotherFlagBeforeCreatingOutput()
+    {
+        var outDir = Path.Combine(
+            Arbiter.RepoRoot, "build", "test-scratch", $"missing-option-{Guid.NewGuid():N}");
+
+        var result = Arbiter.Run(
+            "snapshot-restore-probe", "missing.replay.json", "--control", "--out", outDir);
+
+        Assert.False(result.Verified);
+        Assert.Contains("Option --control requires a value", result.All, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(outDir));
+    }
+
     [GameFact]
     public void MeasuresTheSaveRoundTripAgainstStatesThatBothCarryTheActRoomSet()
     {

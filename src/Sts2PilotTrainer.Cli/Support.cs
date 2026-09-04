@@ -24,7 +24,15 @@ internal static class Args
     internal static string? Value(string[] args, string name)
     {
         var index = Array.IndexOf(args, name);
-        return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+        if (index < 0) return null;
+
+        var value = index + 1 < args.Length ? args[index + 1] : null;
+        if (string.IsNullOrWhiteSpace(value) || value.StartsWith("--", StringComparison.Ordinal))
+        {
+            throw new ManifestException($"Option {name} requires a value.");
+        }
+
+        return value;
     }
 
     /// <summary>Whether a value-less flag is present.</summary>

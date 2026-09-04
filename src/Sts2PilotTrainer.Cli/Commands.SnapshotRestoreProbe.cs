@@ -26,17 +26,21 @@ internal static partial class Commands
     internal static int SnapshotRestoreProbe(string[] args)
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
+        var phase = Args.Value(args, "--phase");
+        var outOption = Args.Value(args, "--out");
+        var control = Args.Value(args, "--control");
+        Args.Value(args, "--save");
+        Args.Value(args, "--stop-after");
 
         // The two phases run as this same command in a fresh process each. The engine
         // keeps a run manager singleton that refuses a second run, so a restore in the
         // process that replayed would not be a restore at all.
-        if (Args.Value(args, "--phase") is { } phase)
+        if (phase is not null)
         {
             return SnapshotRestorePhase(args, manifestPath, phase);
         }
 
-        var outDir = WorktreePath.Require(Args.Value(args, "--out") ?? "build/evidence");
-        var control = Args.Value(args, "--control");
+        var outDir = WorktreePath.Require(outOption ?? "build/evidence");
         Directory.CreateDirectory(outDir);
 
         // A private workspace keeps concurrent probes from combining one run's
