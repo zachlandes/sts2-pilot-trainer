@@ -15,7 +15,7 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// </summary>
 public class SnapshotRestoreProbeTests
 {
-    [Theory]
+    [GameTheory]
     [InlineData("--control")]
     [InlineData("--out")]
     [InlineData("--phase")]
@@ -36,7 +36,7 @@ public class SnapshotRestoreProbeTests
         Assert.False(Directory.Exists(outDir));
     }
 
-    [Fact]
+    [GameFact]
     public void RefusesAValueOptionFollowedByAnotherFlagBeforeCreatingOutput()
     {
         var outDir = Path.Combine(
