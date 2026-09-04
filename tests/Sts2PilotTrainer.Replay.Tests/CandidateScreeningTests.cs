@@ -37,16 +37,16 @@ public class CandidateScreeningTests
     private static VideoMetadata Video(
         CreatorProfile creator, string? description, DateOnly? uploaded = null,
         IReadOnlyList<VideoChapter>? chapters = null) => new()
-    {
-        VideoId = "LKBhc87lAT0",
-        ChannelId = creator.ChannelId,
-        ChannelName = creator.ChannelName,
-        Title = "Ascension 10 Defect",
-        Description = description,
-        DurationSeconds = 3597,
-        UploadedUtc = uploaded ?? new DateOnly(2026, 8, 25),
-        Chapters = chapters ?? [],
-    };
+        {
+            VideoId = "LKBhc87lAT0",
+            ChannelId = creator.ChannelId,
+            ChannelName = creator.ChannelName,
+            Title = "Ascension 10 Defect",
+            Description = description,
+            DurationSeconds = 3597,
+            UploadedUtc = uploaded ?? new DateOnly(2026, 8, 25),
+            Chapters = chapters ?? [],
+        };
 
     [Fact]
     public void AcceptsASeedAndBuildBothStatedInTheDescription()
