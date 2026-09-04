@@ -56,6 +56,12 @@ internal static partial class Commands
         // would answer for one build by throwing away the answers for the others.
         var artifact = EvidenceArtifact.PreparePath(verdictsPath, clearExisting: false);
 
+        // Read and bound before the replay, because a catalogue this build cannot read
+        // or that is about another recording refuses either way, and refusing after a
+        // full replay throws away the measurement it just made.
+        var existing = ReproductionVerdicts.LoadOrEmpty(verdictsPath, manifest);
+        existing.Bind(manifest);
+
         Console.WriteLine($"recording : {manifest.RunId}");
         Console.WriteLine($"recorded on: {manifest.Environment.BuildVersion.Value} " +
                           $"(content {manifest.Environment.ContentHash.Value})");
@@ -84,7 +90,7 @@ internal static partial class Commands
             foreach (var condition in blocked) Console.WriteLine($"  blocked  {condition}");
         }
 
-        var catalogue = ReproductionVerdicts.LoadOrEmpty(verdictsPath, manifest).With(verdict);
+        var catalogue = existing.With(verdict);
         catalogue.Bind(manifest);
         artifact.WriteAtomic(catalogue.Serialize() + "\n");
 
