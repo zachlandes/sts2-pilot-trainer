@@ -176,4 +176,20 @@ public class CandidateScreeningTests
         Assert.Equal(ScreeningVerdict.Eligible, screening.Verdict);
         Assert.Contains(screening.Notes, n => n.Contains("'Intro' over the first 46 seconds", StringComparison.Ordinal));
     }
+
+    /// <summary>
+    /// The transport's identity block needs the recording's title, and discovery is the only
+    /// place that ever sees it. It is declared rather than an identifier: this channel A/B
+    /// tests titles, so the same recording can carry two, and only the video id is stable.
+    /// </summary>
+    [Fact]
+    public void CarriesThePlatformTitleThroughForWhateverNamesTheRecording()
+    {
+        var creator = DescriptionCreator();
+        var video = Video(creator, "Run Seed: Y5BC6Y7SZPSU");
+
+        var screening = CandidateScreening.Screen(video, creator, Calendar());
+
+        Assert.Equal(video.Title, screening.Title);
+    }
 }
