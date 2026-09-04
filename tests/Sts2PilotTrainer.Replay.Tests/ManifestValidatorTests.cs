@@ -1164,6 +1164,26 @@ public class NativeManifestValidatorTests
     }
 
     [Fact]
+    public void RejectsANativeRecordingWithoutExactUnlocks()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Unlocks = Fact<UnlockRequirement>.Captured(
+                    UnlockRequirement.Complete("inferred complete"),
+                    FactEvidence.AtActionOrdinal(0)),
+            },
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("must be 'exact' for a native recording", StringComparison.Ordinal) &&
+            problem.Contains("reads the unlock state", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsARecordingWhoseRecorderDidNotSeeTheRunBegin()
     {
         var result = Validate(Fixtures.NativeSourceBlock(witnessedStart: false));

@@ -127,6 +127,14 @@ public static partial class ManifestValidator
                 "the player had. Anything else would name unlock ids nobody read.");
         }
 
+        if (sourceKind == "native" && !unlocks.IsExact)
+        {
+            problems.Add(
+                "environment.unlocks.completeness must be 'exact' for a native recording. A recorder running " +
+                "inside the player's own game reads the unlock state it was played with rather than inferring " +
+                "completeness about its own author.");
+        }
+
         if (unlocks.IsComplete && unlocks.Inventory is not null)
         {
             problems.Add(
