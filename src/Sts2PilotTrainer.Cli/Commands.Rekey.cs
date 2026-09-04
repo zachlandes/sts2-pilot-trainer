@@ -39,7 +39,6 @@ internal static partial class Commands
         var fightsPath = RecordedFightPathFor(manifestPath);
 
         var verdictsPath = ReproductionVerdicts.PathFor(manifestPath);
-        var artifact = EvidenceArtifact.PreparePath(verdictsPath);
 
         var local = GameIdentity.Read();
         if (!string.Equals(target, local.BuildVersion, StringComparison.Ordinal))
@@ -50,6 +49,12 @@ internal static partial class Commands
                 "about has to be the build installed. Install it through the game's own version selection; " +
                 "this tool never changes it for you.");
         }
+
+        // Prepared without clearing, and only once the build being asked about is the
+        // build installed: this catalogue is its own input, it holds every build this
+        // recording has ever been asked about, and a re-key that cleared it first
+        // would answer for one build by throwing away the answers for the others.
+        var artifact = EvidenceArtifact.PreparePath(verdictsPath, clearExisting: false);
 
         Console.WriteLine($"recording : {manifest.RunId}");
         Console.WriteLine($"recorded on: {manifest.Environment.BuildVersion.Value} " +

@@ -106,6 +106,57 @@ public sealed class RekeyTests
             Assert.Single(catalogue.Verdicts, v => v.VerifiedBuild == "v0.111.0").Status);
     }
 
+    /// <summary>
+    /// The catalogue accumulates: it holds every build this recording has ever been
+    /// asked about, and answering for one build must not throw away the answers for
+    /// the others. Asserted on the file the command leaves behind, because the
+    /// accumulation happening correctly in <c>With</c> proves nothing about a command
+    /// that cleared the file before reading it.
+    /// </summary>
+    [GameFact]
+    public void ARekeyKeepsEveryOtherBuildsVerdictInTheCatalogue()
+    {
+        var manifestPath = ManifestCopy();
+        var manifest = ManifestJson.Load(manifestPath);
+        var verdictsPath = ReproductionVerdicts.PathFor(manifestPath);
+        var earlier = Revalidation.Blocked(
+            manifest, "v0.110.0", "sha256:a-build-this-recording-was-asked-about-before", ["build_version"]);
+        File.WriteAllText(
+            verdictsPath, ReproductionVerdicts.For(manifest).With(earlier).Serialize() + "\n");
+
+        Arbiter.Run("gate", manifestPath, "--rekey", "v0.111.0");
+
+        var catalogue = ReproductionVerdicts.Deserialize(File.ReadAllText(verdictsPath));
+        catalogue.Bind(manifest);
+        Assert.Equal(
+            ReproductionStatus.Blocked,
+            Assert.Single(catalogue.Verdicts, v => v.VerifiedBuild == "v0.110.0").Status);
+        Assert.Equal(
+            ReproductionStatus.Reproduces,
+            Assert.Single(catalogue.Verdicts, v => v.VerifiedBuild == "v0.111.0").Status);
+    }
+
+    /// <summary>
+    /// And a re-key this machine cannot answer leaves the catalogue alone. A command
+    /// that refuses must not destroy somebody's recorded evidence on its way out.
+    /// </summary>
+    [GameFact]
+    public void ARefusedRekeyLeavesTheCatalogueUntouched()
+    {
+        var manifestPath = ManifestCopy();
+        var manifest = ManifestJson.Load(manifestPath);
+        var verdictsPath = ReproductionVerdicts.PathFor(manifestPath);
+        var earlier = Revalidation.Blocked(
+            manifest, "v0.110.0", "sha256:a-build-this-recording-was-asked-about-before", ["build_version"]);
+        var seeded = ReproductionVerdicts.For(manifest).With(earlier).Serialize() + "\n";
+        File.WriteAllText(verdictsPath, seeded);
+
+        var result = Arbiter.Run("gate", manifestPath, "--rekey", "v0.112.0");
+
+        Assert.False(result.Verified, result.All);
+        Assert.Equal(seeded, File.ReadAllText(verdictsPath));
+    }
+
     private static string ShippedFights =>
         Arbiter.Manifest.Replace(".replay.json", ".recorded-fights.json", StringComparison.Ordinal);
 
