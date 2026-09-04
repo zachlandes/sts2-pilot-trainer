@@ -179,6 +179,43 @@ public sealed class ProtectedFilesLedgerTests : IDisposable
         Assert.Contains("different roots", compared.All, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AutomaticDiscoveryRefusesAmbiguousSupportedModDirectories()
+    {
+        var home = Path.Combine(_sandbox, "home");
+        var mods = DiscoverableModsPath(home);
+        Directory.CreateDirectory(mods);
+        Directory.CreateDirectory(mods + "_STEAMTEST");
+
+        var snapshot = Run(
+            "snapshot",
+            _ledger,
+            includeModsDirectory: false,
+            homeDirectory: home);
+
+        Assert.Equal(2, snapshot.ExitCode);
+        Assert.Contains("refusing to guess", snapshot.All, StringComparison.Ordinal);
+        Assert.Contains("--mods-dir", snapshot.All, StringComparison.Ordinal);
+        Assert.False(File.Exists(_ledger));
+    }
+
+    [Fact]
+    public void AutomaticDiscoveryFindsTheSteamTestModDirectory()
+    {
+        var home = Path.Combine(_sandbox, "home");
+        var steamTestMods = DiscoverableModsPath(home) + "_STEAMTEST";
+        Directory.CreateDirectory(steamTestMods);
+
+        var snapshot = Run(
+            "snapshot",
+            _ledger,
+            includeModsDirectory: false,
+            homeDirectory: home);
+
+        Assert.Equal(0, snapshot.ExitCode);
+        Assert.Contains(steamTestMods, snapshot.All, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("find", "enumerate every file")]
     [InlineData("shasum", "Could not hash")]
@@ -200,6 +237,19 @@ public sealed class ProtectedFilesLedgerTests : IDisposable
         Assert.False(File.Exists(_ledger));
     }
 
+    private static string DiscoverableModsPath(string home) => Path.Combine(
+        home,
+        "Library",
+        "Application Support",
+        "Steam",
+        "steamapps",
+        "common",
+        "Slay the Spire 2",
+        "SlayTheSpire2.app",
+        "Contents",
+        "MacOS",
+        "mods");
+
     private void Write(string relativePath, string content)
     {
         var path = Path.Combine(_sandbox, relativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -216,7 +266,9 @@ public sealed class ProtectedFilesLedgerTests : IDisposable
         string ledger,
         string? userDirectory = null,
         string? modsDirectory = null,
-        string? pathPrefix = null)
+        string? pathPrefix = null,
+        bool includeModsDirectory = true,
+        string? homeDirectory = null)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -231,8 +283,16 @@ public sealed class ProtectedFilesLedgerTests : IDisposable
         startInfo.ArgumentList.Add(ledger);
         startInfo.ArgumentList.Add("--user-dir");
         startInfo.ArgumentList.Add(userDirectory ?? _userDir);
-        startInfo.ArgumentList.Add("--mods-dir");
-        startInfo.ArgumentList.Add(modsDirectory ?? _modsDir);
+        if (includeModsDirectory)
+        {
+            startInfo.ArgumentList.Add("--mods-dir");
+            startInfo.ArgumentList.Add(modsDirectory ?? _modsDir);
+        }
+        else
+        {
+            startInfo.Environment["STS2_MODS_DIR"] = string.Empty;
+        }
+        if (homeDirectory is not null) startInfo.Environment["HOME"] = homeDirectory;
         if (pathPrefix is not null)
         {
             startInfo.Environment["PATH"] =

@@ -1,3 +1,4 @@
+using System.Reflection;
 using HarmonyLib;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
@@ -20,6 +21,34 @@ public sealed class RunmobileModuleTests
 
         Assert.Same(CombatTrainerModule.Instance, module);
         Assert.Equal("Combat Trainer", module.Name);
+    }
+
+    [GameFact]
+    public void EveryHarmonyPatchClassHasExactlyOneOwner()
+    {
+        _ = EngineHost.StartupPhase();
+        var annotated = typeof(RunmobileMod).Assembly.GetTypes()
+            .Where(type => type.GetCustomAttributes<HarmonyPatch>(inherit: false).Any() ||
+                           type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic |
+                                           BindingFlags.DeclaredOnly)
+                               .Any(method => method.GetCustomAttributes<HarmonyPatch>(inherit: false).Any()))
+            .OrderBy(type => type.FullName, StringComparer.Ordinal)
+            .ToList();
+        var ownership = RunmobileMod.ShellPatchClasses
+            .Select(type => (Type: type, Owner: "Runmobile shell"))
+            .Concat(CombatTrainerModule.PatchClasses.Select(type =>
+                (Type: type, Owner: CombatTrainerModule.Instance.Name)))
+            .GroupBy(entry => entry.Type)
+            .ToDictionary(group => group.Key, group => group.Select(entry => entry.Owner).ToList());
+
+        Assert.All(ownership, entry => Assert.Single(entry.Value));
+        Assert.Equal(
+            annotated,
+            ownership.Keys.OrderBy(type => type.FullName, StringComparer.Ordinal).ToList());
+        Assert.Equal("Runmobile shell", Assert.Single(ownership[typeof(ModeCard)]));
+        Assert.All(
+            CombatTrainerModule.PatchClasses,
+            type => Assert.Equal("Combat Trainer", Assert.Single(ownership[type])));
     }
 
     [GameFact]

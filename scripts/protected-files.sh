@@ -65,14 +65,25 @@ if [[ -z "$user_dir" ]]; then
 fi
 
 if [[ -z "$mods_dir" ]]; then
+  discovered_mods=()
   for candidate in \
     "$HOME/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods" \
     "$HOME/.steam/steam/steamapps/common/Slay the Spire 2/mods" \
     "$HOME/.local/share/Steam/steamapps/common/Slay the Spire 2/mods" \
     "/c/Program Files (x86)/Steam/steamapps/common/Slay the Spire 2/mods"
   do
-    if [[ -d "$candidate" ]]; then mods_dir="$candidate"; break; fi
+    for supported in "$candidate" "${candidate}_STEAMTEST"; do
+      if [[ -d "$supported" ]]; then discovered_mods+=("$supported"); fi
+    done
   done
+
+  if [[ "${#discovered_mods[@]}" -gt 1 ]]; then
+    echo "More than one supported game mods directory exists; refusing to guess which is active." >&2
+    printf '  %s\n' "${discovered_mods[@]}" >&2
+    echo "Pass the active directory with --mods-dir <path>." >&2
+    exit 2
+  fi
+  if [[ "${#discovered_mods[@]}" == 1 ]]; then mods_dir="${discovered_mods[0]}"; fi
 fi
 
 for pair in "user:$user_dir" "mods:$mods_dir"; do
