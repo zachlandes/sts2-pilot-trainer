@@ -116,22 +116,36 @@ public sealed record BoundaryEquality
             var listed = string.Join("; ", disagreements.Select(comparison =>
                 $"{comparison.Field}: the recording shows '{comparison.Expected}', this game produced " +
                 $"'{comparison.Actual}'"));
-            var opening = kind == ReplayBoundary.FloorEntryKind
-                ? "This floor was not arrived at the way the recording's was, so it was not entered."
-                : "This fight did not open the way the recording's did, so it was not entered.";
-            var closing = kind == ReplayBoundary.FloorEntryKind
-                ? "Something earlier in the run differed, and a floor arrived at from a different run is not " +
-                  "the recording's floor."
-                : "Something before the fight differed, and a fight that starts somewhere else cannot be " +
-                  "compared against the recording's.";
+            var (opening, closing) = kind switch
+            {
+                ReplayBoundary.FloorEntryKind =>
+                    ("This floor was not arrived at the way the recording's was, so it was not entered.",
+                     "Something earlier in the run differed, and a floor arrived at from a different run is " +
+                     "not the recording's floor."),
+                ReplayBoundary.TurnStartKind =>
+                    ("This turn did not start the way the recording's did, so it is not the recorded turn.",
+                     "Something before the turn differed, and a turn that starts from different state is not " +
+                     "the recording's turn."),
+                _ =>
+                    ("This fight did not open the way the recording's did, so it was not entered.",
+                     "Something before the fight differed, and a fight that starts somewhere else cannot be " +
+                     "compared against the recording's."),
+            };
             return $"{opening} At checkpoint '{boundary.Id}': {listed}. {closing}";
         }
 
-        var visible = kind == ReplayBoundary.FloorEntryKind
-            ? "This floor was arrived at with everything the recording shows and with different hidden state, " +
-              "so it was not entered."
-            : "This fight opened with everything the recording shows and with different hidden state, so it " +
-              "was not entered.";
+        var visible = kind switch
+        {
+            ReplayBoundary.FloorEntryKind =>
+                "This floor was arrived at with everything the recording shows and with different hidden state, " +
+                "so it was not entered.",
+            ReplayBoundary.TurnStartKind =>
+                "This turn started with everything the recording shows and with different hidden state, so it " +
+                "is not the recorded turn.",
+            _ =>
+                "This fight opened with everything the recording shows and with different hidden state, so it " +
+                "was not entered.",
+        };
         return
             $"{visible} The recorded snapshot is {expectedDigest} and this game reached {liveDigest}. The " +
             "difference is in state no video can show - a run-persistent random stream, or the order of the " +

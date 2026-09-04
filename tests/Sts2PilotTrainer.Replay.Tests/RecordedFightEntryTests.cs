@@ -266,6 +266,17 @@ public sealed class BoundaryEqualityTests
         },
     };
 
+    private static Checkpoint TurnBoundary(string turn = "2") => new()
+    {
+        Id = "turn-start-2",
+        AfterSeq = 5,
+        Kind = "turn_start",
+        Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+        {
+            ["combat.turn"] = Fact<string>.Observed(turn, FactEvidence.AtVideoTime(95000, "turn badge")),
+        },
+    };
+
     [Fact]
     public void AgreesOnAFloorArrivalWhenEveryReadingAgrees()
     {
@@ -299,6 +310,32 @@ public sealed class BoundaryEqualityTests
         Assert.False(equality.Matches);
         Assert.All(equality.Comparisons, comparison => Assert.True(comparison.Matches));
         Assert.Contains("This floor was arrived at with everything", equality.Refusal!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesATurnStartInItsOwnWords()
+    {
+        var live = new Dictionary<string, string>(StringComparer.Ordinal) { ["combat.turn"] = "3" };
+        var equality = BoundaryEquality.Compare(
+            ReplayBoundary.TurnStartKind, TurnBoundary(), live, "sha256:abc", "sha256:abc");
+
+        Assert.False(equality.Matches);
+        Assert.Contains("This turn did not start", equality.Refusal!, StringComparison.Ordinal);
+        Assert.DoesNotContain("fight", equality.Refusal!, StringComparison.Ordinal);
+        Assert.DoesNotContain("entered", equality.Refusal!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesATurnStartWhoseHiddenStateDisagreesInItsOwnWords()
+    {
+        var live = new Dictionary<string, string>(StringComparer.Ordinal) { ["combat.turn"] = "2" };
+        var equality = BoundaryEquality.Compare(
+            ReplayBoundary.TurnStartKind, TurnBoundary(), live, "sha256:live", "sha256:recorded");
+
+        Assert.False(equality.Matches);
+        Assert.Contains("This turn started with everything", equality.Refusal!, StringComparison.Ordinal);
+        Assert.DoesNotContain("fight", equality.Refusal!, StringComparison.Ordinal);
+        Assert.DoesNotContain("entered", equality.Refusal!, StringComparison.Ordinal);
     }
 
     /// <summary>The kinds are a closed set here too. A host that dispatched on an

@@ -621,7 +621,11 @@ public static partial class ManifestValidator
                     break;
             }
 
-            if (boundary.Digest.Source is not (FactSource.Engine or FactSource.Captured))
+            if (boundary.Digest.Source == FactSource.Captured)
+            {
+                RequireCapturedFact(boundary.Digest, $"the digest at {name}", problems, boundary.AfterSeq);
+            }
+            else if (boundary.Digest.Source != FactSource.Engine)
             {
                 problems.Add(
                     $"the digest at {name} is source={boundary.Digest.Source.ToString().ToLowerInvariant()}. A " +
@@ -644,18 +648,17 @@ public static partial class ManifestValidator
                 "snapshot cache.");
         }
 
-        if (manifest.Verification?.Trace is not { } trace) return;
+        if (manifest.Verification is not { Status: VerificationStatus.Verified, Trace: { } trace }) return;
 
-        foreach (var fight in RunCoverage.Of(trace).Fights)
+        var coveredFights = RunCoverage.Of(trace).Fights;
+        foreach (var boundary in boundaries.Where(boundary => boundary.IsCombatStart))
         {
-            var boundary = manifest.BoundaryAt(ReplayBoundary.CombatStartKind, fight: fight.Fight);
-            if (boundary is null)
+            var fight = coveredFights.FirstOrDefault(fight => fight.Fight == boundary.Fight);
+            if (fight is null)
             {
                 problems.Add(
-                    $"this history's verified trace holds fight " +
-                    $"{fight.Fight.ToString(CultureInfo.InvariantCulture)} and boundaries declares no " +
-                    "combat_start for it, so a fight the recording really contains has nowhere to be entered " +
-                    "from. Derive it by replaying the run.");
+                    $"boundaries declares {boundary.Describe()}, but this history's verified trace holds no " +
+                    "fight with that ordinal. A combat_start cannot name a fight the recording does not contain.");
             }
             else if (boundary.AfterSeq != fight.CombatStartSeq)
             {
@@ -665,6 +668,18 @@ public static partial class ManifestValidator
                     $"{fight.CombatStartSeq.ToString(CultureInfo.InvariantCulture)}, but its combat_start " +
                     $"boundary names action {boundary.AfterSeq.ToString(CultureInfo.InvariantCulture)}. A " +
                     "fight ordinal cannot point to another fight's boundary.");
+            }
+        }
+
+        foreach (var fight in coveredFights)
+        {
+            if (manifest.BoundaryAt(ReplayBoundary.CombatStartKind, fight: fight.Fight) is null)
+            {
+                problems.Add(
+                    $"this history's verified trace holds fight " +
+                    $"{fight.Fight.ToString(CultureInfo.InvariantCulture)} and boundaries declares no " +
+                    "combat_start for it, so a fight the recording really contains has nowhere to be entered " +
+                    "from. Derive it by replaying the run.");
             }
         }
     }
@@ -1321,7 +1336,7 @@ public static partial class ManifestValidator
         {
             problems.Add(
                 $"{path} was captured at action ordinal {actionOrdinal.ToString(CultureInfo.InvariantCulture)}, " +
-                $"but its checkpoint is after action {expected.ToString(CultureInfo.InvariantCulture)}.");
+                $"but it belongs after action {expected.ToString(CultureInfo.InvariantCulture)}.");
         }
     }
 

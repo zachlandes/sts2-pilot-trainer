@@ -38,8 +38,15 @@ public sealed record ActionRecord
     /// action that advances one is unforgiving. It is a documented expectation, not
     /// a measurement - the arbiter is what actually decides.
     /// </summary>
+    private IReadOnlyList<string>? consumesRng;
+
     [JsonPropertyName("consumes_rng")]
-    public IReadOnlyList<string> ConsumesRng { get; init; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? ConsumesRng
+    {
+        get => consumesRng;
+        init => consumesRng = value is { Count: > 0 } ? value : null;
+    }
 
     /// <summary>Free-text note for a human reviewer. Never load-bearing.</summary>
     [JsonPropertyName("note")]

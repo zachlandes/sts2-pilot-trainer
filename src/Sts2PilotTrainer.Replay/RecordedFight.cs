@@ -145,6 +145,17 @@ public sealed record RecordedFights
                 "compared against.");
         }
 
+        var duplicate = Fights
+            .GroupBy(fight => fight.Fight)
+            .FirstOrDefault(group => group.Count() > 1);
+        if (duplicate is not null)
+        {
+            throw new ManifestException(
+                $"The recorded fights file names fight " +
+                $"{duplicate.Key.ToString(CultureInfo.InvariantCulture)} more than once, so it carries competing " +
+                "lines for one fight.");
+        }
+
         foreach (var fight in Fights) fight.Bind(manifest);
     }
 

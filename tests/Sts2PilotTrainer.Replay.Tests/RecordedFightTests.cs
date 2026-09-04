@@ -153,6 +153,17 @@ public sealed class RecordedFightTests
     }
 
     [Fact]
+    public void RefusesDuplicateFightOrdinals()
+    {
+        var fights = RecordedFights.From(Manifest(), FullTrace(), Digests());
+        var duplicate = fights with { Fights = [fights.Fight(1), fights.Fight(1)] };
+
+        var thrown = Assert.Throws<ManifestException>(() => duplicate.Bind(Manifest()));
+
+        Assert.Contains("names fight 1 more than once", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SurvivesAJsonRoundTrip()
     {
         var fights = RecordedFights.From(Manifest(), FullTrace(), Digests());

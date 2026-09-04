@@ -72,8 +72,7 @@
       "args": {
         "option_index": "0"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 1,
@@ -83,8 +82,7 @@
         "column": "3",
         "row": "1"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 2,
@@ -93,8 +91,7 @@
         "card_id": "CARD.DEFEND_IRONCLAD",
         "hand_index": "0"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 3,
@@ -105,15 +102,13 @@
         "negative_control_substitute_card_id": "CARD.DEFEND_IRONCLAD",
         "negative_control_substitute_hand_index": "1"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 4,
       "verb": "EndTurn",
       "args": {},
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 5,
@@ -122,8 +117,7 @@
         "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "0"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 6,
@@ -132,8 +126,7 @@
         "card_id": "CARD.DEFEND_IRONCLAD",
         "hand_index": "0"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 7,
@@ -142,15 +135,13 @@
         "card_id": "CARD.DEFEND_IRONCLAD",
         "hand_index": "2"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 8,
       "verb": "EndTurn",
       "args": {},
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 9,
@@ -159,8 +150,7 @@
         "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "0"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 10,
@@ -169,15 +159,13 @@
         "card_id": "CARD.BASH",
         "hand_index": "0"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 11,
       "verb": "EndTurn",
       "args": {},
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 12,
@@ -186,8 +174,7 @@
         "card_id": "CARD.TEAR_ASUNDER",
         "hand_index": "0"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 13,
@@ -196,15 +183,13 @@
         "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "0"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 14,
       "verb": "EndTurn",
       "args": {},
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 15,
@@ -213,8 +198,7 @@
         "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "0"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     },
     {
       "seq": 16,
@@ -223,8 +207,7 @@
         "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "0"
       },
-      "source": "Declared",
-      "consumes_rng": []
+      "source": "Declared"
     }
   ],
   "checkpoints": [

@@ -61,6 +61,46 @@ public class ManifestValidatorTests
     }
 
     [Fact]
+    public void RejectsACapturedBoundaryDigestWithNoCoordinate()
+    {
+        var manifest = Fixtures.NativeManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(
+                    1, 1, new Fact<string>(Fixtures.Digest, FactSource.Captured)),
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("digest at the start of fight 1", StringComparison.Ordinal) &&
+            problem.Contains("names no action_ordinal", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsACapturedBoundaryDigestFromAnotherAction()
+    {
+        var manifest = Fixtures.NativeManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(
+                    1, 1, Fact<string>.Captured(Fixtures.Digest, FactEvidence.AtActionOrdinal(0))),
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("captured at action ordinal 0", StringComparison.Ordinal) &&
+            problem.Contains("belongs after action 1", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void RejectsABoundaryKindOutsideTheClosedSet()
     {
         var manifest = Fixtures.ValidManifest() with
@@ -255,6 +295,41 @@ public class ManifestValidatorTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, problem =>
             problem.Contains("fight 1 after action 0", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAVerifiedRecordingWithABoundaryForAFightItDoesNotHold()
+    {
+        var manifest = WithVerifiedTwoFightTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(3, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("start of fight 3", StringComparison.Ordinal) &&
+            problem.Contains("holds no fight with that ordinal", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void DoesNotTreatAPartialTraceAsRecordingAuthority()
+    {
+        var verified = WithVerifiedTwoFightTrace(Fixtures.ValidManifest());
+        var manifest = verified with
+        {
+            Verification = verified.Verification! with { Status = VerificationStatus.Partial },
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.True(result.IsValid, result.Describe());
     }
 
     /// <summary>A verified result whose trace entered combat, won, and entered a
@@ -1317,7 +1392,7 @@ public class NativeManifestValidatorTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, problem =>
             problem.Contains("captured at action ordinal 0", StringComparison.Ordinal) &&
-            problem.Contains("checkpoint is after action 1", StringComparison.Ordinal));
+            problem.Contains("belongs after action 1", StringComparison.Ordinal));
     }
 
     [Fact]

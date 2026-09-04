@@ -268,8 +268,7 @@
       "evidence": {
         "video_t_ms": 73500,
         "method": "the selected node is ringed on the map as the screen fades into the room; its position matches the centre column of row 1, which the generated map has as a Monster node"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 2,
@@ -282,8 +281,7 @@
       "evidence": {
         "video_t_ms": 76300,
         "method": "energy falls 3 -> 1 and the hand loses its second card; the played card's name floats above the player"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 3,
@@ -299,7 +297,6 @@
         "video_t_ms": 76750,
         "method": "energy falls 1 -> 0, the hand loses Defend, and 5 block appears beside the player's health bar. The hand index is 3 rather than 4 because playing Hellraiser already shifted the cards after it."
       },
-      "consumes_rng": [],
       "note": "The play the negative controls damage. Strike sits at hand index 0 at this moment and costs the same 1 energy, so substituting it balances every arithmetic check the frames allow while changing the fight; omitting this play changes the block that meets the enemy's opening attack, which the turn-2 checkpoint reads."
     },
     {
@@ -329,8 +326,7 @@
       "evidence": {
         "video_t_ms": 81850,
         "method": "turn 2's hand is Defend, Ascender's Bane, Defend, left to right; energy falls 3 -> 2 and it is the leftmost Defend that leaves the hand, so the play is hand index 0"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 6,
@@ -343,8 +339,7 @@
       "evidence": {
         "video_t_ms": 82150,
         "method": "energy falls 2 -> 1, block reads 10, and Ascender's Bane is all that is left in hand. The index is 1 rather than 2 because playing the first Defend already shifted the cards after it"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 7,
@@ -374,7 +369,6 @@
         "video_t_ms": 89700,
         "method": "Hellraiser is the only card in turn 3's hand after the draw resolves; energy falls 3 -> 1 for its cost of 2 and the hand empties"
       },
-      "consumes_rng": [],
       "note": "The second of the two Hellraisers the opening transform produced. The video gives no direct sign of which card it was: the power icon has been on the player since the first Hellraiser and carries no stack number, so the only visible evidence is the energy falling by two and the hand emptying. What the power counts to is hidden state a recording could not have shown either way, which is the class of thing the arbiter exists to check."
     },
     {
@@ -421,8 +415,7 @@
         "video_t_ms": 95800,
         "method": "the Loot! screen at t=95.3 lists three entries - '13 Gold', 'Orobic Acid', 'Add a card to your deck.' - and at t=95.8 the gold entry is gone and only the other two remain",
         "note": "The gold counter itself is animating through values that were never the total: it reads 99 as the loot screen opens, 108 while the card screen is up at t=96.0, and settles at 112 only once the map is back at t=97.0. So the reading here is the entry disappearing from the list, not the number in the top bar, and the settled total is checkpointed later."
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 12,
@@ -434,8 +427,7 @@
       "evidence": {
         "video_t_ms": 95900,
         "method": "at t=95.9 the Loot! screen holds only 'Add a card to your deck.'; the potion belt in the top bar carries a potion from here to the end of this history and the second slot stays empty"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 13,
@@ -451,8 +443,7 @@
         "video_t_ms": 97000,
         "method": "clicking the last loot entry opens 'Choose a Card' at t=96.0, offering, left to right, Pommel Strike ('Deal 9 damage. Draw 1 card.'), Tremble ('Apply 3 Vulnerable. Exhaust.') and Twin Strike ('Deal 5 damage twice.'); the leftmost card enlarges at t=97.0 and flies to the deck",
         "note": "The deck badge reads 11 before and 12 after, and the deck view at t=172.3 contains Pommel Strike. Tremble at option 1 is the alternative the negative controls take: a card this reward genuinely offered and the player did not take."
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 14,
@@ -468,8 +459,7 @@
         "video_t_ms": 107700,
         "method": "the map is on screen from t=97.7; the last map frame is t=107.6 and the screen has faded out by t=107.8. The travelled path drawn on the map at t=190.5 rings this node one row above the first fight's and one column to its right, which the map observation records as the act's only Unknown node in row 2",
         "note": "Column 2 is nominated as the negative control's alternative. It is a node the same row offers and the engine accepts as reachable from here; unlike everything else in this manifest it is not a reading of the video, because the map screen's connecting paths are the one thing the map observation declines to transcribe."
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 15,
@@ -483,8 +473,7 @@
         "video_t_ms": 120400,
         "method": "the event titled 'Waterlogged Scriptorium' offers, top to bottom, 'Bloody Ink - Gain 6 Max HP.', 'Tentacle Quill - Pay 55 Gold. Enchant a card with Steady.' and 'Prickly Sponge - Pay 99 Gold. Enchant 2 cards with Steady.'; the third is hovered from t=119.6 and the card-selection grid replaces the page between t=120.3 and t=120.5",
         "note": "Corroborated by the gold, which goes from 112 to 13 across this choice, and by maximum health, which stays at 68 rather than the 74 Bloody Ink would have given."
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 16,
@@ -498,8 +487,7 @@
         "video_t_ms": 129150,
         "method": "the selection screen reads 'Choose 2 cards to Enchant.' and renders the eleven enchantable cards in deck order, five to a row: four Strikes and a Defend, then two Defends, Bash, and two Hellraisers, then Pommel Strike. Ascender's Bane is absent, which is why there are eleven and not twelve. Bash is raised under the cursor from t=128.85 to t=129.15, and both chosen cards are presented together from t=129.30",
         "note": "The deck view at t=172.3 shows Bash reading 'Retain. Deal 8 damage. Apply 2 Vulnerable.'"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 17,
@@ -514,8 +502,7 @@
         "video_t_ms": 129270,
         "method": "the second card of the grid's second row - the sixth card in deck order - is raised under the cursor at t=129.20 and t=129.25, and the pair is presented together from t=129.30",
         "note": "Which of three identical Defends this is matters, and the frames alone cannot settle it, so it is settled by what the video shows two floors later. This Defend is the one carrying Retain in the floor-4 opening hand: at t=147.05 that hand is Strike, Defend, Strike, Defend, Defend with the retain marker on the fourth card, and at t=148.0 that same card is the one still in hand after two plain Defends have been played. The three candidate readings are distinguishable - enchanting the fifth card in deck order puts the marker on the third card of that hand, and enchanting the seventh leaves no marked Defend in it at all, which the retained card at t=150.5 rules out. The fifth card is nominated as the negative control's alternative for exactly that reason: it is the reading this one was chosen over, and the two are indistinguishable until the shuffle two floors later."
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 18,
@@ -529,8 +516,7 @@
       "evidence": {
         "video_t_ms": 142500,
         "method": "the map returns at t=130 and the last map frame is t=142.3; the screen has begun fading by t=142.5 and the next room's Battle Start banner is up at t=143.3. The path drawn at t=190.5 rings this node directly above the event's, in the same column as the first fight"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 19,
@@ -560,8 +546,7 @@
       "evidence": {
         "video_t_ms": 147400,
         "method": "Pommel Strike's draw leaves a five-card hand of Strike, Defend, Strike, Defend, Defend at t=147.05, with the retain marker on the fourth card. The rightmost card is raised at t=147.30 showing 'Gain 5 Block.' and energy falls 2 -> 1"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 21,
@@ -574,8 +559,7 @@
       "evidence": {
         "video_t_ms": 147700,
         "method": "the second card is raised at t=147.55 showing 'Gain 5 Block.', energy falls 1 -> 0 and the hand is left as Strike, Strike, Defend with the retain marker on the Defend"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 22,
@@ -653,8 +637,7 @@
       "evidence": {
         "video_t_ms": 157300,
         "method": "turn 3 opens with Defend, Ascender's Bane, Hellraiser, Bash, Strike, Defend at t=156.5, the first and fourth carrying the retain marker. The rightmost is raised at t=157.0 and energy falls 3 -> 2"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 27,
@@ -667,8 +650,7 @@
       "evidence": {
         "video_t_ms": 157800,
         "method": "the hand's leading Defend leaves it between t=157.5 and t=158.0, energy falls 2 -> 1, and what remains is Ascender's Bane, Hellraiser, Bash, Strike"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 28,
@@ -712,8 +694,7 @@
       "evidence": {
         "video_t_ms": 163600,
         "method": "the third card is raised at t=163.5 showing 'Gain 5 Block.' and energy falls 2 -> 1"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 31,
@@ -791,8 +772,7 @@
       "evidence": {
         "video_t_ms": 170100,
         "method": "the Loot! screen at t=169.8 lists two entries, '14 Gold' and 'Add a card to your deck.' - no potion this time - and by t=170.1 only the card entry is left"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 36,
@@ -803,8 +783,7 @@
         "video_t_ms": 190400,
         "method": "the card entry is opened at t=170.2, showing Twin Strike, Uppercut and Whirlwind with a Skip button beneath; the screen is dismissed at t=189.8 with the loot entry still unclaimed, and the Loot! screen itself is dismissed between t=190.2 and t=190.4",
         "note": "Two clicks, one engine state: declining the card and dismissing the screen leave the reward set completed with nothing else taken, which is exactly what skipping it does. Recorded as a decision rather than as an absence, because the engine discards an unfinished reward set on the way out of the room and an omitted action would replay identically to a deliberate refusal. The deck badge reads 12 either side of it."
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 37,
@@ -818,8 +797,7 @@
       "evidence": {
         "video_t_ms": 191500,
         "method": "the map returns at t=190.4 and the last map frame is t=191.3; the screen is black by t=191.7 and the next room's Battle Start banner is up at t=192.1. The path drawn at t=190.5 has this node directly above the one the player is standing on"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 38,
@@ -849,8 +827,7 @@
       "evidence": {
         "video_t_ms": 201800,
         "method": "the card Pommel Strike drew is a Defend and it joins the end of the hand by t=194.75, leaving Strike, Hellraiser, Ascender's Bane, Strike, Defend. It is raised at t=201.67 showing 'Gain 5 Block.' and energy falls 2 -> 1"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 40,
@@ -895,8 +872,7 @@
       "evidence": {
         "video_t_ms": 206400,
         "method": "turn 2's hand is Defend, Strike, Hellraiser, Defend, Strike at t=206.0, the first carrying the retain marker. It is raised at t=206.25 reading 'Retain. Gain 5 Block.' and energy falls 3 -> 2 by t=206.5"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 43,
@@ -909,8 +885,7 @@
       "evidence": {
         "video_t_ms": 206850,
         "method": "the remaining Defend is raised at t=206.75 showing 'Gain 3 Block.' - five reduced by the Frail the enemy turn applied - and energy falls 2 -> 1"
-      },
-      "consumes_rng": []
+      }
     },
     {
       "seq": 44,

@@ -21,6 +21,28 @@ public class ManifestJsonTests
     }
 
     [Fact]
+    public void OmitsAnEmptyRngClassificationFromAnAction()
+    {
+        var action = Fixtures.Action(0, ActionVerb.EndTurn) with { ConsumesRng = [] };
+
+        var document = System.Text.Json.Nodes.JsonNode.Parse(
+            System.Text.Json.JsonSerializer.Serialize(action, ManifestJson.Options))!.AsObject();
+
+        Assert.False(document.ContainsKey("consumes_rng"));
+    }
+
+    [Fact]
+    public void PreservesANonemptyRngClassificationOnAnAction()
+    {
+        var action = Fixtures.Action(0, ActionVerb.EndTurn) with { ConsumesRng = ["Shuffle"] };
+        var json = System.Text.Json.JsonSerializer.Serialize(action, ManifestJson.Options);
+
+        var restored = ManifestJson.DeserializeRequired<ActionRecord>(json, "Action");
+
+        Assert.Equal(["Shuffle"], restored.ConsumesRng);
+    }
+
+    [Fact]
     public void RefusesANullRequiredManifestMember()
     {
         var document = System.Text.Json.Nodes.JsonNode.Parse(
