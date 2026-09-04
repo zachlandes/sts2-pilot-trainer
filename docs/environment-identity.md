@@ -225,6 +225,43 @@ It reaches the run through `Player.CreateForNewRun` and nothing else, which is t
 Nothing is written back - the run is set up with saving off and the mod's profile write barrier stops the writes that flag does not cover - so a player's unlocks, ascension ceiling and progress are exactly what they were before the fight.
 `EnvironmentPreflight.EvaluateAscensionCeiling` already records that a host constructing a run directly never consults the profile ceiling.
 
+### What an unlock state is made of, and what "exact" can mean
+
+Read out of `UnlockState` on v0.111.0, because a requirement the format cannot
+construct is a requirement nothing can satisfy.
+
+An `UnlockState` holds exactly three things: a set of unlocked epoch ids, a set of
+encounter ids the player has seen, and a number of runs.
+Everything the preflight reports category by category - characters, cards, card pools,
+character card pools, relics, potions, shared ancients - is a **derived property**
+computed from those three against `ModelDb`, with no setter and no other way in.
+There are three public constructors: `UnlockState(epochIds, encountersSeen,
+numberOfRuns)`, `UnlockState(ProgressState)`, and one that merges several states; plus
+`ToSerializable`/`FromSerializable` over `SerializableUnlockState`, which carries the
+same three fields and nothing else.
+
+So an id inventory of the seven categories **cannot** construct a state.
+The constructible exact state is the triple, and a manifest asking for `exact`
+completeness should name it - the unlocked epoch ids, the encounters seen, and the
+number of runs - rather than a list of cards.
+The category inventory keeps its job on the other side of the question: it is what the
+build in front of us is checked against, and `UnlockState.all` on that build is what
+sets the bar. Nothing here changes.
+
+Two of the triple do real work that a card list would not capture.
+`HasSeenEncounter` reads the encounter set, and the number of runs is read by content
+that gates on it, so a recorder that captured only epochs would be capturing a state
+that generates different content from the creator's.
+
+The run keeps what it was created with.
+`Player.UnlockState` is a get-only property assigned in the constructor and never
+reassigned, so the state handed to `Player.CreateForNewRun` (`GameSession.cs:167`) is
+the state that run generates against for its whole life; `RunState.UnlockState` is the
+merge of its players' states, computed once when the run is constructed.
+A player restored from a save carries it too - `SerializablePlayer.unlock_state` -
+which is how a continued run keeps generating against the progress it started with
+rather than the progress the player has now.
+
 The remediation is always the same and always the game's: unlock the rest by playing.
 Nothing in this project writes to a save, a profile, an unlock or an installed build,
 and there is no flag that would - a tool that edited a player's progress to make a

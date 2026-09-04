@@ -344,6 +344,48 @@ And the popup's body scrolls when the evidence is longer than the panel, which i
 unmet rows are ordered first: what a player has to act on is above the fold, and the
 rows that already passed are below it.
 
+## Three more surfaces, and the hook each one needs
+
+Read out of v0.111.0 in a scratch decompile, ahead of building anything on them.
+Mechanism only: node paths and the lifecycle method a `[HarmonyPatch]` postfix would
+follow, in the shape the mode card already uses. Nothing here is a decision about what
+to draw.
+
+**A card in the Compendium.** `NCompendiumSubmenu._Ready` is the hook. It resolves
+every entry by Godot unique name: a top row of four `NShortSubmenuButton`s
+(`%CardLibraryButton`, `%RelicCollectionButton`, `%PotionLabButton`, `%BestiaryButton`)
+and a bottom row of three `NCompendiumBottomButton`s (`%LeaderboardsButton`,
+`%StatisticsButton`, `%RunHistoryButton`), wires each one's
+`NClickableControl.SignalName.Released`, and then assigns the focus neighbours
+explicitly, index by index. A duplicated card therefore has to be added *and* joined to
+that focus chain, or it will exist and be unreachable on a controller.
+`NCompendiumSubmenu.OnSubmenuOpened` is the second hook, and the honest one for
+visibility: the game hides `%LeaderboardsButton` there unconditionally and decides
+`%RunHistoryButton` and `%BestiaryButton` per run, so a card that should only appear
+when a recording is installed belongs there rather than in `_Ready`.
+
+**The Settings screen's mods surface.** There is no Mods tab to extend.
+`NSettingsTabManager._Ready` builds exactly four tabs, by plain node name -
+`General`, `Graphics`, `Sound`, `Input` - pairing each `NSettingsTab` with a
+`NSettingsPanel` resolved by unique name (`%GeneralSettings`, `%GraphicsSettings`,
+`%SoundSettings`, `%InputSettings`), and connects each tab's
+`NClickableControl.SignalName.Released` to its private `SwitchTabTo`. A fifth tab means
+duplicating a tab node and a panel, adding both to the private `_tabs` dictionary, and
+connecting to that private method - all three reflectively. What the game does have is
+`NSettingsScreen._Ready`, which resolves `%ModdingButton` (an
+`NOpenModdingScreenButton`) along with `%Modding` and `%ModdingDivider`, and makes them
+visible only when modding is enabled. That is the game's own modding entry point and
+the cheaper hook by a wide margin.
+
+**A run-history entry's `Released`.** `NMapPointHistoryEntry` is an
+`NClickableControl`, so it already emits `Released`; nothing in the game connects it.
+The hook is `NMapPointHistoryEntry._Ready`, which is where the entry calls
+`ConnectSignals` and resolves `%Icon`, `%Outline` and `%QuestIcon`. The entries are
+built by `NActHistoryEntry.Create`, one per floor, under `NRunHistory`'s
+`%MapPointHistory` in its `%Acts` container, and each carries a public `FloorNum` - the
+floor identity a "play this fight" action would need - alongside its private
+`MapPointHistoryEntry`, which is where the room type and encounter live.
+
 ## Running it
 
 ```bash
