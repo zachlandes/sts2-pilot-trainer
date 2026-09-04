@@ -199,6 +199,11 @@ A separate history-bound probe therefore records every `PowerCmd.Apply` call in 
 **The replay machinery has independent synthetic evidence** — a mechanically generated fixture uses a seed and action sequence absent from the VOD artifacts and pins its engine-produced checkpoints.
 Fresh-process determinism, corruption rejection, and snapshot restore are exercised against that fixture, so those checks do not borrow their expected values from the ineligible VOD trace.
 
+Regenerating a committed fixture is two commands, in order, and the second is not optional.
+`./scripts/arbiter generate-synthetic-fixture --out src/Sts2PilotTrainer.Replay/Fixtures/<name>.replay.json` writes the history; `./scripts/arbiter migrate-manifest src/Sts2PilotTrainer.Replay/Fixtures/<name>.replay.json --derive-boundaries` then replays that history through the real engine and writes in every boundary it passes, with the digest the replay produced.
+Generation cannot know a boundary - only a replay produces one - and the game-free tests select boundaries out of the committed fixtures.
+So a fixture regenerated with the first command alone comes out with no `boundaries` at all, the validator does not catch it, and every test that reads one fails with no hint of why.
+
 ## What is still not established
 
 - **This is not the retail client.** Everything above is agreement at points a video

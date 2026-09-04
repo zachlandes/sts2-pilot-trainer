@@ -87,17 +87,15 @@ internal static class Program
               member still exists, and every verb in the format is either mapped or
               carries a written reason it is not.
 
-          preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile] [--out <path>]
+          preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile]
               Compare a manifest's environment identity and its player prerequisites
               against this machine's game: build, content hash, unlocks category by
               category, whether the run's acts are unlocked at all, and - reading a
               real profile - whether its ascension is available. Refuses, with
               diagnostics and in-game remediation, rather than replaying into a
               mismatch. Without --progress, the state checked is the one a run from
-              this recording would actually be constructed with. --out writes the
-              reading itself, including the epoch and encounter ids this build ships,
-              which an exact requirement is checked against and the console has no
-              room for. Nothing here writes to a save, a profile or the install.
+              this recording would actually be constructed with. Nothing here writes
+              to a save, a profile or the install.
 
           preflight-live  <manifest> [--progress local-profile]
               Demonstrate the future live gate inside this headless process. It reads
@@ -136,6 +134,12 @@ internal static class Program
               and stops at the first fight in which a turn began with a card screen,
               which is the one place a boundary's own action opens one. None of them is
               a claim about how to play.
+              Regenerating a committed fixture takes two steps, in order: generate it
+              here, then `migrate-manifest --derive-boundaries` over the written file.
+              Generation cannot know a boundary - only a replay through the engine
+              produces one - and the game-free tests read them, so a fixture written
+              without the second step comes out with no `boundaries` and breaks every
+              test that selects one.
 
           replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
                                      [--progress <model>] [--show-trace]

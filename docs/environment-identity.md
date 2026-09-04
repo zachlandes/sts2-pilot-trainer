@@ -208,7 +208,7 @@ What "the state itself" means is the game's own answer and not ours.
 So `unlocks.inventory` records epochs, encounters seen and the run count, which is what a state can actually be built from; a per-category list of cards and relics would be asking for something no environment could be constructed to satisfy however exactly it matched.
 `Player.UnlockState` is get-only and set in the constructor, so a run keeps the state it was created with.
 The preflight's `exact` arm therefore checks that this build ships every epoch id and every encounter id the recording names, and reports the run count rather than comparing it: the state is supplied to the run being constructed, so nothing about this installation has to match it.
-What the build ships is enumerated by `LocalEnvironment.ReadPrerequisites` - every epoch `UnlockState.all` holds and every encounter the model database ships - and `./scripts/arbiter preflight --out <path>` writes both lists, because the console has no room for them.
+What the build ships is enumerated by `LocalEnvironment.ReadPrerequisites` - every epoch `UnlockState.all` holds and every encounter the model database ships - and the preflight reports each list as met, missing with samples, or not enumerated.
 A reading that could not enumerate them leaves the lists absent and every exact requirement refuses as unchecked, which is the honest answer rather than a silent pass.
 
 **For a video recording, what the source player had** is an inference, and stays one. The manifest records

@@ -7,6 +7,13 @@ namespace Sts2PilotTrainer.Replay;
 /// game and committed, so that a machine with no game - continuous integration, most
 /// obviously - can still read a history the engine really produced. Neither carries a
 /// verification: what a replay of one yields is what a replay is for.
+///
+/// Regenerating one is two steps, in order, because generation cannot know a
+/// boundary and the game-free tests read them: <c>arbiter generate-synthetic-fixture
+/// --out &lt;fixture&gt;</c>, then <c>arbiter migrate-manifest &lt;fixture&gt;
+/// --derive-boundaries</c>, which replays the written history through the real engine
+/// and writes in every boundary it passes. A fixture written without the second step
+/// carries no boundaries at all, and every test that selects one out of it fails.
 /// </summary>
 public static class SyntheticReplayFixture
 {

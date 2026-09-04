@@ -34,27 +34,6 @@ internal static partial class Commands
         Console.WriteLine("acts this build ships:");
         foreach (var act in Engine.EngineHost.AvailableActs()) Console.WriteLine($"  {act}");
 
-        // The reading itself, on request, because what this machine has is a fact
-        // somebody may need to check the verdict against - and for the two id lists an
-        // exact requirement names, the console has no room to print it.
-        if (Args.Value(args, "--out") is { } outPath)
-        {
-            var artifact = EvidenceArtifact.PreparePath(outPath);
-            artifact.WriteAtomic(
-                JsonSerializer.Serialize(new
-                {
-                    schema = "sts2-pilot-trainer/preflight/v1",
-                    manifest = manifest.RunId,
-                    progress = progress.ToString(),
-                    progress_origin = LocalEnvironment.OriginOf(progress),
-                    matches = result.Matches,
-                    reading,
-                    fields = result.Fields,
-                }, Json.Indented) + "\n");
-            Console.WriteLine();
-            Console.WriteLine($"reading: {Paths.Display(artifact.Path)}");
-        }
-
         Console.WriteLine();
         Console.WriteLine(result.Matches
             ? "environment matches; replay may proceed"
