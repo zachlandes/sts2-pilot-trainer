@@ -586,12 +586,28 @@ internal static class RecordedFightRun
     /// state is restored, so the fight that comes back is the recorded one on the same
     /// terms it was the first time.
     /// </summary>
-    private static void StartTheFightAgain()
+    private static async void StartTheFightAgain()
     {
-        var recording = _entry?.Manifest;
-        LeaveTheRun();
-        Finish();
-        if (recording is not null) _ = Start(recording);
+        try
+        {
+            var recording = _entry?.Manifest;
+
+            // The attempt is being discarded rather than left, so the result the
+            // teardown queues for it is dropped before the return that would show it.
+            await LeaveTheRun(keepTheResult: false);
+            Finish();
+
+            // Only once the menu is back: the game's own return task completing is the
+            // signal the run it is tearing down has gone, and building the next run
+            // over it is building it on the old one.
+            if (recording is not null) await Start(recording);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not start the recorded fight again: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     /// <summary>
@@ -610,7 +626,7 @@ internal static class RecordedFightRun
         try
         {
             _resultAfterMainMenu = FightResultScreen.Left();
-            LeaveTheRun();
+            _ = LeaveTheRun(keepTheResult: true);
             Finish();
         }
         catch (Exception ex)
@@ -621,11 +637,23 @@ internal static class RecordedFightRun
         }
     }
 
-    private static void LeaveTheRun()
+    /// <summary>
+    /// Tears the run down and returns to the main menu, answering when the menu is
+    /// there.
+    ///
+    /// Cleaning the run up is what makes the teardown patch queue a result for the
+    /// fight being left, so a caller that does not want one drops it here - between
+    /// the clean-up that queues it and the return that shows it, which is the only
+    /// point where the drop cannot race the return completing.
+    /// </summary>
+    /// <param name="keepTheResult">Whether the queued result is the one the player
+    /// asked for. False where the attempt is being discarded.</param>
+    private static Task LeaveTheRun(bool keepTheResult)
     {
         PlaybackTransportDock.Detach();
         if (RunManager.Instance is { IsInProgress: true }) RunManager.Instance.CleanUp();
-        NGame.Instance?.ReturnToMainMenu();
+        if (!keepTheResult) _resultAfterMainMenu = null;
+        return NGame.Instance?.ReturnToMainMenu() ?? Task.CompletedTask;
     }
 
     /// <summary>
@@ -692,7 +720,7 @@ internal static class RecordedFightRun
         // Asked only while there is one. Between the last commit and the hand-over the
         // run has no next decision, and the tag refuses what would move it rather than
         // offering a step that does not exist.
-        if (entry.AtBoundary) return PlaybackTransport.OpeningTheFight(identity, count);
+        if (entry.AtBoundary) return PlaybackTransport.OpeningTheFight(identity, count, Speed);
 
         var next = entry.DescribeNextStep();
 

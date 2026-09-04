@@ -337,12 +337,13 @@ public sealed record PlaybackTransport(
     /// </summary>
     /// <param name="count">How many decisions the recording made, all of them now
     /// behind the run.</param>
-    public static PlaybackTransport OpeningTheFight(TransportIdentity identity, int count) =>
+    public static PlaybackTransport OpeningTheFight(
+        TransportIdentity identity, int count, PlaybackSpeed speed = PlaybackSpeed.Normal) =>
         new(
             Mode: TransportMode.Watching,
             Identity: identity,
             Counter: new TransportCounter(count, count, null),
-            Speed: PlaybackSpeed.Normal,
+            Speed: speed,
             Back: BackControl(false) with { DisabledReason = TrainerCopy.OpeningTheFightDisabledReason },
             Play: PlayControl(playing: false) with
             {

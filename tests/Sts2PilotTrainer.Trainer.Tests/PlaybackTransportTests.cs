@@ -209,9 +209,10 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void NothingMovesTheRunWhileTheFightIsOpening()
     {
-        var transport = PlaybackTransport.OpeningTheFight(NaveGreed, count: 2);
+        var transport = PlaybackTransport.OpeningTheFight(NaveGreed, count: 2, PlaybackSpeed.Double);
 
         Assert.True(transport.HasControls);
+        Assert.Equal("2×", transport.SpeedLabel);
         Assert.Equal("2 of 2", transport.Counter.Numerals);
         foreach (var control in new[] { transport.Back, transport.Play, transport.Step })
         {

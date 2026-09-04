@@ -40,13 +40,6 @@ internal static class PrefightScreen
     private static Control? _openResult;
 
     /// <summary>
-    /// Says why the fight was not entered.
-    ///
-    /// The sentence is the engine's or the comparison's, shown word for word: a
-    /// drifted boundary already has an owner that explains itself, and rewriting it
-    /// here would put a second account of the same failure on screen.
-    /// </summary>
-    /// <summary>
     /// Says why the fight was not entered, in a player's words, without losing the
     /// engine's.
     ///

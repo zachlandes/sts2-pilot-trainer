@@ -265,6 +265,34 @@ public sealed class PlaybackTransportStripTests
     }
 
     /// <summary>
+    /// The chip says nothing until it is pressed, which means it can be pressed. Its
+    /// press target is the whole plate and carries no words of its own; without one
+    /// the two directions it offers - back to the beginning, and to the end - cannot
+    /// be reached in the client at all.
+    /// </summary>
+    [Fact]
+    public void TheChipIsPressableOverItsWholePlate()
+    {
+        var strip = Build(Revealing(MapMove, 2, noteShown: true));
+
+        strip.Apply(PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: true));
+
+        var plate = Find<Polygon2D>(strip.Root, "Plate").Polygon;
+        var press = strip.Speed;
+
+        Assert.True(press.Visible);
+        Assert.False(press.Disabled);
+        Assert.Equal(plate.Min(point => point.X), press.Position.X, 1);
+        Assert.Equal(plate.Min(point => point.Y), press.Position.Y, 1);
+        Assert.Equal(plate.Max(point => point.X) - plate.Min(point => point.X), press.Size.X, 1);
+        Assert.Equal(plate.Max(point => point.Y) - plate.Min(point => point.Y), press.Size.Y, 1);
+        Assert.False(Label(strip, "SpeedLabel").Visible);
+
+        press.EmitHover(entered: true);
+        Assert.False(strip.Tooltip.Visible);
+    }
+
+    /// <summary>
     /// The chip is out of the way twice over: a plate the width of its own words, and
     /// one hung from the same right-hand anchor as the tag. The band under the game's
     /// top bar carries the run's relic inventory along its left, and a chip parked

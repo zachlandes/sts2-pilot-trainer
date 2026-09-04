@@ -286,7 +286,13 @@ internal sealed class PlaybackTransportStrip
         strip.Wire(strip._back, () => strip._state.Back.TooltipTitle, () => strip.Body(strip._state.Back));
         strip.Wire(strip._play, () => strip._state.Play.TooltipTitle, () => strip.Body(strip._state.Play));
         strip.Wire(strip._step, () => strip._state.Step.TooltipTitle, () => strip.Body(strip._state.Step));
-        strip.Wire(strip._speed, () => TrainerCopy.SpeedTooltipTitle, () => TrainerCopy.SpeedTooltipBody);
+        // Silent on the chip, where the same button is the chip's press target: a
+        // tooltip about how long a choice is held is not what pressing it does, and
+        // the chip says nothing until it is pressed.
+        strip.Wire(
+            strip._speed,
+            () => strip._state.Mode == TransportMode.Chip ? string.Empty : TrainerCopy.SpeedTooltipTitle,
+            () => strip._state.Mode == TransportMode.Chip ? string.Empty : TrainerCopy.SpeedTooltipBody);
 
         strip.Apply(state);
         return strip;
@@ -375,10 +381,18 @@ internal sealed class PlaybackTransportStrip
     private void ApplyControls(
         PlaybackTransport state, float left, float top, float width, float height, bool tag)
     {
-        foreach (var control in new Control[] { _numerals, _pips, _speed, _back, _play, _step })
+        foreach (var control in new Control[] { _numerals, _pips, _back, _play, _step })
         {
             control.Visible = tag;
         }
+
+        // The chip's own press target, and the only thing in it that takes input: the
+        // whole plate, so the two directions it offers can be reached with a mouse or
+        // with a controller. Same node as the speed control, because the tag and the
+        // chip are one node and the press means whichever of the two the tag is.
+        var chip = !tag && state.Mode == TransportMode.Chip;
+        _speed.Visible = tag || chip;
+        _speedLabel.Visible = tag;
 
         _holdTrack.Visible = false;
         _holdFill.Visible = false;
@@ -386,6 +400,12 @@ internal sealed class PlaybackTransportStrip
         if (!tag)
         {
             _tip.Visible = false;
+            if (chip)
+            {
+                Bare(_speed);
+                Place(_speed, left, top, width, height);
+            }
+
             return;
         }
 
@@ -778,6 +798,31 @@ internal sealed class PlaybackTransportStrip
 
     private static readonly StringName FontColour = "font_color";
 
+    /// <summary>
+    /// Takes a control's face off, leaving the plate it sits on to be what is seen.
+    ///
+    /// The chip says nothing until it is pressed, so its press target cannot carry a
+    /// button of its own; it keeps the hover and focus rim, which is the game's own
+    /// language for "this is the thing you are about to press" and the only way a
+    /// player is told the chip does anything at all.
+    /// </summary>
+    private void Bare(Button button)
+    {
+        var none = new StyleBoxFlat { BgColor = new Color(0, 0, 0, 0), BorderColor = new Color(0, 0, 0, 0) };
+        none.SetCornerRadiusAll(5);
+        none.SetBorderWidthAll(0);
+        foreach (var state in new[] { "normal", "pressed", "disabled" })
+        {
+            button.AddThemeStyleboxOverride(state, none);
+        }
+
+        var lit = new StyleBoxFlat { BgColor = new Color(0, 0, 0, 0), BorderColor = Gold };
+        lit.SetCornerRadiusAll(5);
+        lit.SetBorderWidthAll(2);
+        button.AddThemeStyleboxOverride("hover", lit);
+        button.AddThemeStyleboxOverride("focus", lit);
+    }
+
     private void Face(Button button, bool enabled)
     {
         var fill = enabled ? ButtonFace : DisabledFace;
@@ -820,6 +865,12 @@ internal sealed class PlaybackTransportStrip
 
     private void ShowTooltip(Control anchor, string title, string body)
     {
+        if (title.Length == 0 && body.Length == 0)
+        {
+            HideTooltip();
+            return;
+        }
+
         _tipTitle.Text = title;
         _tipBody.Text = body;
         _tip.Visible = true;

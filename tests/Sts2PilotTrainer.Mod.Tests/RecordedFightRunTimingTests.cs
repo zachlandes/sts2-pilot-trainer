@@ -15,7 +15,7 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// </summary>
 public sealed class RecordedFightRunTimingTests
 {
-    private static string ModAssemblyPath => Path.Combine(AppContext.BaseDirectory, "CombatTrainer.dll");
+    private static string ModAssemblyPath => Path.Combine(AppContext.BaseDirectory, "Runmobile.dll");
 
     [TimingFact]
     public async Task AFightThatIsStillOpeningIsWaitedForRatherThanRead()
@@ -78,7 +78,7 @@ public sealed class RecordedFightRunTimingTests
 
     private static Assembly ModAssembly() =>
         AssemblyLoadContext.Default.Assemblies
-            .FirstOrDefault(assembly => assembly.GetName().Name == "CombatTrainer")
+            .FirstOrDefault(assembly => assembly.GetName().Name == "Runmobile")
         ?? AssemblyLoadContext.Default.LoadFromAssemblyPath(ModAssemblyPath);
 
     public sealed class TimingFactAttribute : FactAttribute
@@ -88,7 +88,7 @@ public sealed class RecordedFightRunTimingTests
             if (!File.Exists(Path.Combine(Arbiter.RepoRoot, "build", "lib", "sts2.dll")) ||
                 !File.Exists(ModAssemblyPath))
             {
-                Skip = "Needs the prepared game and built Combat Trainer mod. Run ./scripts/build.sh.";
+                Skip = "Needs the prepared game and built Runmobile mod. Run ./scripts/build.sh.";
             }
         }
     }
