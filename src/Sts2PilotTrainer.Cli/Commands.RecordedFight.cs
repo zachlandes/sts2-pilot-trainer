@@ -31,7 +31,12 @@ internal static partial class Commands
         var outPath = Args.Value(args, "--out")
             ?? Path.Combine("build", "evidence", Path.GetFileName(manifestPath)
                 .Replace(".replay.json", ".recorded-fights.json", StringComparison.Ordinal));
-        var artifact = EvidenceArtifact.PreparePath(outPath);
+        // Never cleared first. The destination holds somebody's evidence - a re-key
+        // points this at manifests/<id>.recorded-fights.json, the file the mod ships -
+        // and the replay between here and the write refuses in four named ways, so
+        // clearing would leave nothing where the old measurement was. The atomic write
+        // replaces the file it read beside.
+        var artifact = EvidenceArtifact.PreparePath(outPath, clearExisting: false);
         var scratch = Path.Combine(
             Path.GetDirectoryName(artifact.Path)!,
             $".{Path.GetFileName(artifact.Path)}.{Guid.NewGuid():N}.scratch");

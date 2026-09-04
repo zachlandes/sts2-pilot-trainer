@@ -88,11 +88,7 @@ internal static partial class Commands
 
         foreach (var declared in manifest.Boundaries)
         {
-            var derived = report.Boundaries.FirstOrDefault(boundary =>
-                boundary.Kind == declared.Kind &&
-                boundary.Fight == declared.Fight &&
-                boundary.Floor == declared.Floor &&
-                boundary.Turn == declared.Turn);
+            var derived = Matching(report.Boundaries, declared);
 
             if (derived is null)
             {
@@ -114,9 +110,31 @@ internal static partial class Commands
             }
         }
 
+        // A boundary the manifest already declares is kept as it was declared, not
+        // replaced by the derived entry the checks above just found identical. The two
+        // agree about the digest and say different things about where it came from: a
+        // digest captured from a live game names the coordinates somebody would
+        // re-check it by, and a derived one is stamped Engine and carries none. Only a
+        // boundary this manifest did not have is taken from the replay.
+        var boundaries = report.Boundaries
+            .Select(derived => Matching(manifest.Boundaries, derived) ?? derived)
+            .ToList();
+
         Console.WriteLine(
             $"derived  : {report.Boundaries.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)} " +
             $"boundaries from a verified replay");
-        return manifest with { Boundaries = report.Boundaries };
+        return manifest with { Boundaries = boundaries };
     }
+
+    /// <summary>The boundary in a list naming the same place as this one, or null where
+    /// the list has none. Matched on the kind's own coordinates, because that is what
+    /// identifies a boundary, and asked of both lists here so the check and the rewrite
+    /// cannot disagree about which entries are the same one.</summary>
+    private static ReplayBoundary? Matching(
+        IReadOnlyList<ReplayBoundary> boundaries, ReplayBoundary sought) =>
+        boundaries.FirstOrDefault(boundary =>
+            boundary.Kind == sought.Kind &&
+            boundary.Fight == sought.Fight &&
+            boundary.Floor == sought.Floor &&
+            boundary.Turn == sought.Turn);
 }
