@@ -327,6 +327,36 @@ public sealed record PlaybackTransport(
             ]);
 
     /// <summary>
+    /// Every recorded decision has been made and the game is opening the fight.
+    ///
+    /// The window is as long as the fight takes to open, and the run is not the
+    /// player's yet, so the tag stays where it was and refuses everything that would
+    /// move it. Refused rather than absent: a control that moves the run cannot be
+    /// left offered over a run with nothing left to commit, and controls that vanish
+    /// for a second and come back are the popup this design replaced.
+    /// </summary>
+    /// <param name="count">How many decisions the recording made, all of them now
+    /// behind the run.</param>
+    public static PlaybackTransport OpeningTheFight(TransportIdentity identity, int count) =>
+        new(
+            Mode: TransportMode.Watching,
+            Identity: identity,
+            Counter: new TransportCounter(count, count, null),
+            Speed: PlaybackSpeed.Normal,
+            Back: BackControl(false) with { DisabledReason = TrainerCopy.OpeningTheFightDisabledReason },
+            Play: PlayControl(playing: false) with
+            {
+                Enabled = false, DisabledReason = TrainerCopy.OpeningTheFightDisabledReason,
+            },
+            Step: StepControl(0, 0, string.Empty) with
+            {
+                Enabled = false, DisabledReason = TrainerCopy.OpeningTheFightDisabledReason,
+            },
+            Ledger: [],
+            Note: string.Empty,
+            ChipMenu: []);
+
+    /// <summary>
     /// A screen could not be driven.
     ///
     /// The tag says so and stops offering anything; the sentence a player reads is

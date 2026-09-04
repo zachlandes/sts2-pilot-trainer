@@ -200,6 +200,26 @@ public sealed class PlaybackTransportTests
         Assert.True(menu[1].Enabled);
     }
 
+    /// <summary>
+    /// Between the last recorded choice and the fight it leads to there is nothing
+    /// left to commit, and the fight takes as long as it takes to open. Every control
+    /// that would move the run is refused there and says why, rather than staying
+    /// offered over a run that has run out of decisions.
+    /// </summary>
+    [Fact]
+    public void NothingMovesTheRunWhileTheFightIsOpening()
+    {
+        var transport = PlaybackTransport.OpeningTheFight(NaveGreed, count: 2);
+
+        Assert.True(transport.HasControls);
+        Assert.Equal("2 of 2", transport.Counter.Numerals);
+        foreach (var control in new[] { transport.Back, transport.Play, transport.Step })
+        {
+            Assert.False(control.Enabled);
+            Assert.Equal("The fight is opening.", control.DisabledReason);
+        }
+    }
+
     /// <summary>At turn one with nothing played there is no attempt to finish, so the
     /// end is refused and says why rather than producing an empty result.</summary>
     [Fact]

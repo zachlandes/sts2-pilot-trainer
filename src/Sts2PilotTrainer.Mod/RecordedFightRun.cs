@@ -413,6 +413,10 @@ internal static class RecordedFightRun
         var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
         if (_committing) return;
 
+        // Nothing left to commit: the last decision is already made and the fight is
+        // opening. Reached only by a press that beat the transport's own refusal.
+        if (entry.AtBoundary) return;
+
         // Any hold still in flight is invalidated: this decision is being made now,
         // and a timer that woke up afterwards would make the next one unrevealed.
         _hold++;
@@ -438,6 +442,10 @@ internal static class RecordedFightRun
             return;
         }
 
+        // Put on the tag before the wait rather than after it: the fight takes as long
+        // to open as it takes, and until it has, the controls that would move the run
+        // must be refused rather than left showing the decision just made.
+        ShowTransport();
         HandOverWhenTheGameHasFinishedMoving();
     }
 
@@ -682,9 +690,9 @@ internal static class RecordedFightRun
         var count = entry.Plan.PrefixActions.Count;
 
         // Asked only while there is one. Between the last commit and the hand-over the
-        // run has no next decision, and the tag shows the chip rather than a caption
-        // for a step that does not exist.
-        if (entry.AtBoundary) return PlaybackTransport.DuringYourFight(identity, anythingPlayed: false);
+        // run has no next decision, and the tag refuses what would move it rather than
+        // offering a step that does not exist.
+        if (entry.AtBoundary) return PlaybackTransport.OpeningTheFight(identity, count);
 
         var next = entry.DescribeNextStep();
 

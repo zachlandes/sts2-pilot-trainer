@@ -338,6 +338,26 @@ public sealed class PlaybackTransportStripTests
         Assert.False(strip.Menu.Visible);
     }
 
+    /// <summary>
+    /// A menu belongs to the tag it was opened on. Left open across the collapse to
+    /// the chip it would hang under a chip that says nothing until it is pressed, and
+    /// the chip's first press would close it instead of opening its own two
+    /// directions.
+    /// </summary>
+    [Fact]
+    public void AMenuLeftOpenIsClosedWhenTheTagChangesWhatItIs()
+    {
+        var strip = Build(Revealing(MapMove, 2, noteShown: true));
+
+        strip.OpenMenu(chip: false, _ => { });
+        Assert.True(strip.MenuIsOpen);
+
+        strip.Apply(PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: true));
+
+        Assert.False(strip.MenuIsOpen);
+        Assert.False(strip.Menu.Visible);
+    }
+
     /// <summary>The identity block is a control because pressing it opens the video,
     /// and it is refused on a recording with nowhere to open.</summary>
     [Fact]

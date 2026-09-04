@@ -306,6 +306,15 @@ internal sealed class PlaybackTransportStrip
     /// </summary>
     internal void Apply(PlaybackTransport state)
     {
+        // A menu belongs to the tag it was opened on. Carried across a mode change it
+        // would hang under a chip that is meant to say nothing until it is pressed,
+        // and swallow that first press closing itself.
+        if (_menuOpen && state.Mode != _state.Mode)
+        {
+            _menuOpen = false;
+            _onChoose = null;
+        }
+
         _state = state;
         var tag = state.HasControls || state.Mode == TransportMode.Refused;
         var width = (tag ? TagWidth : ChipWidth) * _unit;
@@ -690,8 +699,10 @@ internal sealed class PlaybackTransportStrip
         _holdFill.Visible = false;
     }
 
-    /// <summary>Moves the tag when the game's own furniture moves under it - the relic
-    /// row grows, the window changes.</summary>
+    /// <summary>Redraws the tag against a viewport and an anchor measured again. The
+    /// anchor is measured once, in <c>PlaybackTransportDock.Attach</c>, and nothing in
+    /// the mod remeasures it, so a relic row that grows past the measured band or a
+    /// window resized mid-journey leaves the tag where it was.</summary>
     internal void Reanchor(Vector2 viewport, Vector2 anchor)
     {
         _viewport = viewport;

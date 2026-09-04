@@ -117,6 +117,10 @@ public static class TrainerCopy
     /// <summary>Why every control is refused while a refusal popup is up.</summary>
     public const string RefusedDisabledReason = "Combat Trainer stopped; dismiss the message first.";
 
+    /// <summary>Why every control is refused between the last recorded choice and the
+    /// fight it leads to.</summary>
+    public const string OpeningTheFightDisabledReason = "The fight is opening.";
+
     /// <summary>Where in the recording's decisions this is.</summary>
     public static string StepCounter(int step, int count) =>
         $"{step.ToString(CultureInfo.InvariantCulture)} of {count.ToString(CultureInfo.InvariantCulture)}";
