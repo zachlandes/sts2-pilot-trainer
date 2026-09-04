@@ -85,6 +85,40 @@ public class ManifestValidatorTests
         Assert.True(result.IsValid, result.Describe());
     }
 
+    /// <summary>A video reconstruction had no recorder inside the game, so a boundary
+    /// digest there is what this project's own replay produced.</summary>
+    [Fact]
+    public void RejectsACapturedBoundaryDigestOnAVideoRecording()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(
+                    1, 1, Fact<string>.Captured(Fixtures.Digest, FactEvidence.AtActionOrdinal(1))),
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("digest at the start of fight 1", StringComparison.Ordinal) &&
+            problem.Contains("is marked source=captured and this is a vod recording", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AcceptsAnEngineBoundaryDigestOnAVideoRecording()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Boundaries = [ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest))],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+        Assert.True(result.IsValid, result.Describe());
+    }
+
     [Fact]
     public void RejectsACapturedBoundaryDigestWithNoCoordinate()
     {

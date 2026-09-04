@@ -534,7 +534,7 @@ public static partial class ManifestValidator
         }
 
         RequireCapturedFact(
-            native.WitnessedRunStart, "source.native.witnessed_run_start", maxActionOrdinal, problems);
+            native.WitnessedRunStart, "source.native.witnessed_run_start", "native", maxActionOrdinal, problems);
 
         if (!native.WitnessedRunStart.Value)
         {
@@ -660,7 +660,8 @@ public static partial class ManifestValidator
             if (boundary.Digest.Source == FactSource.Captured)
             {
                 RequireCapturedFact(
-                    boundary.Digest, $"the digest at {name}", maxSeq, problems, boundary.AfterSeq);
+                    boundary.Digest, $"the digest at {name}", manifest.Source.Kind, maxSeq, problems,
+                    boundary.AfterSeq);
             }
             else if (boundary.Digest.Source == FactSource.Engine)
             {
@@ -923,7 +924,7 @@ public static partial class ManifestValidator
                 else
                 {
                     ValidateCapturedEvidence(
-                        action.Evidence, path, actions.Count - 1, problems, action.Seq);
+                        action.Evidence, path, sourceKind, actions.Count - 1, problems, action.Seq);
                 }
                 continue;
             }
@@ -1168,7 +1169,7 @@ public static partial class ManifestValidator
                 else if (sourceKind == "native")
                 {
                     RequireCapturedFact(
-                        fact, $"checkpoint '{checkpoint.Id}' field '{field}'", maxSeq, problems,
+                        fact, $"checkpoint '{checkpoint.Id}' field '{field}'", sourceKind, maxSeq, problems,
                         checkpoint.AfterSeq);
                 }
                 else
@@ -1338,17 +1339,7 @@ public static partial class ManifestValidator
 
         if (fact.Source == FactSource.Captured)
         {
-            if (sourceKind != "native")
-            {
-                problems.Add(
-                    $"{path} is marked source=captured and this is a {sourceKind} recording. Captured is what a " +
-                    "recorder read out of the live game it was running in, which only a native recording has: a " +
-                    "reading off a video is observed or inferred, and a fixture's values are declared.");
-            }
-            else
-            {
-                ValidateCapturedEvidence(fact.Evidence, path, maxActionOrdinal, problems);
-            }
+            ValidateCapturedEvidence(fact.Evidence, path, sourceKind, maxActionOrdinal, problems);
         }
     }
 
@@ -1375,7 +1366,7 @@ public static partial class ManifestValidator
     /// history - which is also what its identity is made of.
     /// </summary>
     private static void RequireCapturedFact<T>(
-        Fact<T> fact, string path, int maxActionOrdinal, List<string> problems,
+        Fact<T> fact, string path, string sourceKind, int maxActionOrdinal, List<string> problems,
         int? expectedActionOrdinal = null)
     {
         if (fact.Source != FactSource.Captured)
@@ -1387,13 +1378,30 @@ public static partial class ManifestValidator
         }
 
         ValidateCapturedEvidence(
-            fact.Evidence, path, maxActionOrdinal, problems, expectedActionOrdinal);
+            fact.Evidence, path, sourceKind, maxActionOrdinal, problems, expectedActionOrdinal);
     }
 
+    /// <summary>
+    /// Every captured value in a manifest passes through here, which is what makes
+    /// the native-only rule impossible to miss: captured is what a recorder read out
+    /// of the live game it was running in, so a recording made from anything else
+    /// cannot claim it, and a path added later inherits the refusal rather than having
+    /// to remember it.
+    /// </summary>
     private static void ValidateCapturedEvidence(
-        FactEvidence? evidence, string path, int maxActionOrdinal, List<string> problems,
+        FactEvidence? evidence, string path, string sourceKind, int maxActionOrdinal, List<string> problems,
         int? expectedActionOrdinal = null)
     {
+        if (sourceKind != "native")
+        {
+            problems.Add(
+                $"{path} is marked source=captured and this is a {sourceKind} recording. Captured is what a " +
+                "recorder read out of the live game it was running in, which only a native recording has: a " +
+                "reading off a video is observed or inferred, a value this project's own replay produced is " +
+                "engine, and a fixture's values are declared.");
+            return;
+        }
+
         if (evidence?.ActionOrdinal is not { } actionOrdinal)
         {
             problems.Add(
