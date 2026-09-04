@@ -39,7 +39,10 @@ internal static partial class Commands
                 $"{boundary.Digest.Source.ToString().ToLowerInvariant()} {boundary.Digest.Value}");
         }
 
-        if (string.Equals(before, after, StringComparison.Ordinal))
+        var rewritingInPlace = string.Equals(
+            Path.GetFullPath(outPath), Path.GetFullPath(manifestPath), StringComparison.Ordinal);
+
+        if (rewritingInPlace && string.Equals(before, after, StringComparison.Ordinal))
         {
             Console.WriteLine();
             Console.WriteLine($"unchanged: {Paths.Display(manifestPath)} is already in this format.");
