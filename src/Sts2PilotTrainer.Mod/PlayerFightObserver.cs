@@ -84,10 +84,10 @@ internal sealed class PlayerFightObserver : IDisposable
     /// </summary>
     /// <param name="fightEnded">Called once, on the game's own combat-ended event,
     /// after the capture has been closed one way or the other.</param>
-    /// <param name="sampled">Called after each action this samples. The transport is a
+    /// <param name="sampled">Called whenever a step opens or closes. The transport is a
     /// function of the run's facts, and whether the player has played anything is one
-    /// of them - without this the chip is derived once at the hand-over and goes on
-    /// stating what was true at turn one for the rest of the fight.</param>
+    /// of them - it becomes true when a step closes, so a re-derivation only where one
+    /// opens leaves the chip a whole action behind.</param>
     internal static PlayerFightObserver Start(
         RecordedFightEntry entry, FightCapture capture, Action fightEnded, Action sampled)
     {
@@ -209,6 +209,7 @@ internal sealed class PlayerFightObserver : IDisposable
             Log.Info(
                 $"[{RunmobileMod.ModId}] the player's fight ended; capture {_capture.State}, " +
                 $"{(_capture.Trace.Steps.Count - 1).ToString(CultureInfo.InvariantCulture)} action(s) sampled", 2);
+            _sampled();
         }
         catch (Exception ex)
         {
@@ -231,6 +232,7 @@ internal sealed class PlayerFightObserver : IDisposable
     private async Task CompleteWhenSettled()
     {
         var waitingFor = _openedSteps;
+        var closed = false;
         try
         {
             var queues = RunManager.Instance.ActionQueueSet;
@@ -257,6 +259,7 @@ internal sealed class PlayerFightObserver : IDisposable
             // action after it.
             if (_ended || _disposed || _combat.IsOverOrEnding || _openedSteps != waitingFor) return;
             _capture.CompleteStep(_entry.SampleLiveState());
+            closed = true;
         }
         catch (Exception ex)
         {
@@ -266,6 +269,21 @@ internal sealed class PlayerFightObserver : IDisposable
                     $"The engine could not settle after an action: {ex.GetType().Name}: {ex.Message}");
             }
             Log.Error($"[{RunmobileMod.ModId}] could not sample after an action: {ex.GetType().Name}: {ex.Message}", 2);
+        }
+
+        // Outside the wait's own catch: a re-derivation that throws is a surface
+        // problem and must not mark the capture incomplete.
+        if (!closed) return;
+
+        try
+        {
+            _sampled();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not re-derive the transport after an action: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 
