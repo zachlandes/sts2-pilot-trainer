@@ -34,9 +34,18 @@ so it outlives a room, and `RecordedFightReveal` does the lighting.
 **How this session ran the client.** Slay the Spire 2 v0.111.0, the shipped retail
 build, launched with MegaCrit's own `--force-steam=off` flag - so the session has no
 Steam account, writes into the isolated `default/1/modded/profile1` save tree rather
-than the player's, and cannot construct a cloud save store at all. Only Combat Trainer
-was enabled; BaseLib, Hindsight and STS2_MCP were disabled in that tree so nothing but
-the mod under test loaded. The profile the run was measured against was seeded by
+than the player's, and cannot construct a cloud save store at all. Only this mod was
+enabled; BaseLib, Hindsight and STS2_MCP were disabled in that tree so nothing but the
+mod under test loaded.
+
+One thing about these photographs is worth stating rather than leaving for a reader to
+notice. They were taken before this branch was rebased onto the shell rename, so the mod
+loaded from a directory called `CombatTrainer` rather than `Runmobile`. That name appears
+in no screenshot: it is the shell's, and the mod list is the only place it is shown.
+Everything the shots do carry - the mode card, the eligibility screen, the tag, the
+chip, the refusal - still reads Combat Trainer on the current head, because the rename
+deliberately kept Combat Trainer as the module and as the training feature a player
+sees. The profile the run was measured against was seeded by
 copying the player's own `progress.save` into the isolated tree, so the client stands
 where the player's does without a byte of the player's tree being written.
 
