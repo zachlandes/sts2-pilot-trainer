@@ -139,7 +139,9 @@ public class RewardAndScreenVerbTests
     {
         // A card selection has to follow the action that opens its screen. One that
         // does not is an action recorded against a screen this run never opened, and
-        // it has to fail rather than sit in the history doing nothing.
+        // it has to fail rather than sit in the history doing nothing. It is refused
+        // by the action it was queued against, which is the one that could have opened
+        // a screen and did not.
         var result = Replay(Actions(manifest =>
         {
             var actions = manifest.Actions.Take(11).ToList();
@@ -147,7 +149,7 @@ public class RewardAndScreenVerbTests
             return actions;
         }));
 
-        Assert.Contains("no screen consumed it", result.All, StringComparison.Ordinal);
+        Assert.Contains("no screen asked for", result.All, StringComparison.Ordinal);
     }
 
     [GameFact]

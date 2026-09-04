@@ -1,6 +1,8 @@
 using System.Reflection;
 using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.TestSupport;
@@ -124,6 +126,69 @@ public static class EngineCommands
                 "The engine asks. The driver queues the manifest's picks before the action that opens the " +
                 "screen and confirms afterwards that a screen consumed each one.",
         },
+        new()
+        {
+            Verb = ActionVerb.ChooseRestSiteOption,
+            Type = typeof(RestSiteSynchronizer),
+            Member = nameof(RestSiteSynchronizer.ChooseLocalOption),
+            Kind = EngineCommandKind.Issued,
+            Note =
+                "The option is found by the id it declares, never by position: which options a rest site " +
+                "offers depends on the run that reached it.",
+        },
+        new()
+        {
+            Verb = ActionVerb.TakeChestRelic,
+            Type = typeof(TreasureRoomRelicSynchronizer),
+            Member = nameof(TreasureRoomRelicSynchronizer.PickRelicLocally),
+            Kind = EngineCommandKind.Issued,
+            Note = "The chest's relics were rolled by the engine when the room was entered.",
+        },
+        new()
+        {
+            Verb = ActionVerb.SkipChestRelic,
+            Type = typeof(TreasureRoomRelicSynchronizer),
+            Member = nameof(TreasureRoomRelicSynchronizer.SkipRelicLocally),
+            Kind = EngineCommandKind.Issued,
+            Note = "The engine's own name for leaving the relic, and its own way of recording that.",
+        },
+        new()
+        {
+            Verb = ActionVerb.ProceedToNextAct,
+            Type = typeof(ActChangeSynchronizer),
+            Member = nameof(ActChangeSynchronizer.SetLocalPlayerReady),
+            Kind = EngineCommandKind.Issued,
+            Note =
+                "A vote rather than a call. RunManager.EnterNextAct is what it leads to, and calling that " +
+                "directly would skip the act floor the vote advances.",
+        },
+        new()
+        {
+            Verb = ActionVerb.ShopPurchase,
+            Type = typeof(MerchantEntry),
+            Member = nameof(MerchantEntry.OnTryPurchaseWrapper),
+            Kind = EngineCommandKind.Issued,
+            Note =
+                "One member for all five kinds, because the merchant's own entries are what differ. A card " +
+                "removal reaches OneOffSynchronizer.DoLocalMerchantCardRemoval through it, and its screen " +
+                "is answered as any other card screen is.",
+        },
+        new()
+        {
+            Verb = ActionVerb.UsePotion,
+            Type = typeof(PotionModel),
+            Member = nameof(PotionModel.EnqueueManualUse),
+            Kind = EngineCommandKind.Issued,
+            Note = "What the potion holder in the retail client calls when a potion is dragged onto a target.",
+        },
+        new()
+        {
+            Verb = ActionVerb.DiscardPotion,
+            Type = typeof(DiscardPotionGameAction),
+            Member = ConstructorMember,
+            Kind = EngineCommandKind.Issued,
+            Note = "Enqueued on the run's own queue, which is what the potion popup's discard button does.",
+        },
     ];
 
     /// <summary>
@@ -135,16 +200,19 @@ public static class EngineCommands
     private static readonly IReadOnlyDictionary<ActionVerb, string> Unmapped =
         new SortedDictionary<ActionVerb, string>
         {
-            [ActionVerb.ChooseRestSiteOption] = "Not yet mapped.",
-            [ActionVerb.UsePotion] = "Not yet mapped.",
-            [ActionVerb.DiscardPotion] = "Not yet mapped.",
-            [ActionVerb.SelectHandCards] = "Not yet mapped.",
-            [ActionVerb.ShopPurchase] = "Not yet mapped.",
-            [ActionVerb.CloseShop] = "Not yet mapped.",
+            [ActionVerb.CloseShop] =
+                "Nothing to map. The merchant is a room the run leaves by moving on the map, and the shop " +
+                "screen's own proceed button only hides the screen - MerchantRoom.Exit returns immediately " +
+                "under the headless flag. Closing a shop is presentation, like ProceedToMap.",
+            [ActionVerb.SelectHandCards] =
+                "Nothing of its own to map. Every card screen this build opens - over the hand, the deck or " +
+                "a pile - is answered through the one ICardSelector seam, by position in the list that " +
+                "screen offered, which SelectCardFromScreen already names. A prompt over the hand offers a " +
+                "filtered subset of it, so a hand position would not even be the right coordinate. A second " +
+                "verb here would be a second name for one thing.",
             [ActionVerb.ProceedToMap] =
                 "Returning to the map is presentation, not a decision: the engine is already standing " +
                 "wherever the previous action left it. See docs/proof-of-concept-path.md.",
-            [ActionVerb.ProceedToNextAct] = "Not yet mapped.",
         };
 
     /// <summary>How a constructor is named in a row, since it has no name of its own.</summary>

@@ -1260,8 +1260,10 @@ public class ManifestValidatorTests
     {
         // The alphabet is deliberately larger than what is implemented. A named verb
         // that quietly did nothing would be the worst of both worlds, so the ones with
-        // no mapping have to fail at ingestion rather than at replay.
-        var manifest = WithActions(Fixtures.Action(0, ActionVerb.UsePotion, ("slot_index", "0")));
+        // no mapping have to fail at ingestion rather than at replay. Closing a shop is
+        // one of the two: the merchant is a room the run leaves by moving on the map,
+        // so there is nothing behind the verb to run.
+        var manifest = WithActions(Fixtures.Action(0, ActionVerb.CloseShop));
 
         var result = ManifestValidator.Validate(manifest);
 

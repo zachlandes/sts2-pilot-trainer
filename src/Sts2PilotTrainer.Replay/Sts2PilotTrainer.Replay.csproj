@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Fixtures/synthetic-v0111-pilot-trainer.replay.json" />
+    <EmbeddedResource Include="Fixtures/synthetic-v0111-whole-act.replay.json" />
   </ItemGroup>
 
   <ItemGroup>

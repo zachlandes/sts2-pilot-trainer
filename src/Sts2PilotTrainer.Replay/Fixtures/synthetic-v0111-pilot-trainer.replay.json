@@ -58,7 +58,7 @@
     "kind": "synthetic-engine",
     "synthetic": {
       "fixture_id": "v0111-pilot-trainer",
-      "fixture_version": 2,
+      "fixture_version": 3,
       "generator": "sts2-pilot-trainer",
       "generated_build": "v0.111.0"
     },

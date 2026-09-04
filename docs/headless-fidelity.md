@@ -51,9 +51,9 @@ mechanism rather than an unsupported hook.
 | `SaveManager.SaveRun`, `SaveProgressFile`, `SavePrefsFile`, `SaveProfileFile` | **The player's save directory is a read-only input.** The run is created with `shouldSave: false`, but the engine still reaches for the save subsystem on room entry. |
 | `LocManager.GetTable`, `LocString.GetFormattedText/GetRawText`, `LocTable.*` | Localization is stubbed with no data at all — see below. |
 
-### Two screens the host has to stand in for
+### Three screens the host has to stand in for
 
-The engine does not take a command for everything a player does. Two of its surfaces
+The engine does not take a command for everything a player does. Three of its surfaces
 are driven by the UI, and there is no UI here.
 
 **The loot screen a won fight puts up.** `NCombatUi.ShowRewards` waits out the death
@@ -91,7 +91,22 @@ them - are handed to the selector before the call is made. Only a contiguous run
 `SelectCardFromScreen` immediately after the opening action is ever read, and a
 selection no screen consumed is refused.
 
-**Neither stand-in is installed inside the retail client.** The same `RunDriver` runs
+**The chest a treasure room puts in front of the player.** `NTreasureRoom.OpenChest`
+is what calls `TreasureRoom.DoNormalRewards` and `TreasureRoom.DoExtraRewardsIfNeeded`,
+and nothing else does, so a headless replay that walked into a treasure room would
+find an unopened chest and refuse every decision about it.
+The driver calls the same two methods at the same point - immediately after the map
+move that entered the room - and generates nothing itself: the relics were rolled by
+the engine's own `BeginRelicPicking` when the room was entered, and the gold and any
+extra rewards are the engine's too.
+
+Opening is not a decision. Taking the relic is `TakeChestRelic` and leaving it is
+`SkipChestRelic`, for exactly the reason `SkipRewards` exists: the engine discards an
+undecided relic when the room is left and says nothing, so a history that omitted the
+decision would replay into the state of one that declined it. A map move or an act
+transition that would leave either decision unmade is refused.
+
+**Neither of the first two stand-ins is installed inside the retail client.** The same `RunDriver` runs
 there, walking a constructed run through the recording's decisions before its fight,
 and in there both of these screens are on a player's screen: answering one would take
 a decision away from somebody who was looking at it. So the driver installs no

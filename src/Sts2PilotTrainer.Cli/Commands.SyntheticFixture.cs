@@ -26,9 +26,22 @@ internal static partial class Commands
             _ => throw new ManifestException(
                 $"Unknown fixture line '{line}'. Known lines: reference, alternate."),
         };
+
+        var journeyName = Args.Value(args, "--journey") ?? "first-fight";
+        var journey = journeyName switch
+        {
+            "first-fight" => Engine.SyntheticJourney.FirstFight,
+            "whole-act" => Engine.SyntheticJourney.WholeAct,
+            _ => throw new ManifestException(
+                $"Unknown fixture journey '{journeyName}'. Known journeys: first-fight, whole-act."),
+        };
+
         var artifact = EvidenceArtifact.PreparePath(outPath);
-        artifact.WriteAtomic(ManifestJson.Serialize(Engine.SyntheticFixtureGenerator.Generate(combatLine)) + "\n");
-        Console.WriteLine($"generated synthetic fixture: {Paths.Display(artifact.Path)} ({line} line)");
+        artifact.WriteAtomic(
+            ManifestJson.Serialize(Engine.SyntheticFixtureGenerator.Generate(journey, combatLine)) + "\n");
+        Console.WriteLine(
+            $"generated synthetic fixture: {Paths.Display(artifact.Path)} ({journeyName}" +
+            $"{(journey == Engine.SyntheticJourney.FirstFight ? $", {line} line" : "")})");
         return 0;
     }
 }

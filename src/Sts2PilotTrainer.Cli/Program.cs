@@ -123,10 +123,13 @@ internal static class Program
               Compare the verified prefix under the real build's standard, custom and
               daily run construction, with a behavior-changing modifier control.
 
-          synthetic-fixture / generate-synthetic-fixture --out <path> [--line reference|alternate]
-              Emit the mechanically generated engine fixture. Both lines play the
-              first combat to its end; they differ only in which end of the hand they
-              play from, and neither is a claim about how to play.
+          synthetic-fixture / generate-synthetic-fixture --out <path>
+                                     [--journey first-fight|whole-act] [--line reference|alternate]
+              Emit the mechanically generated engine fixture. The first-fight journey
+              plays the first combat to its end, and its two lines differ only in which
+              end of the hand they play from; the whole-act journey walks one act from
+              Neow through a shop, a rest site, a chest and an elite to the act's boss
+              and into the next act. Neither is a claim about how to play.
 
           replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
                                      [--progress <model>] [--show-trace]

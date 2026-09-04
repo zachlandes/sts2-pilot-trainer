@@ -1,3 +1,5 @@
+using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
@@ -22,23 +24,94 @@ public enum CombatLine
     Alternate,
 }
 
-public static class SyntheticFixtureGenerator
+/// <summary>
+/// How far a generated fixture goes.
+///
+/// The two are different instruments. A first-fight journey is the smallest history
+/// that has a whole fight in it, which is what the comparison contract is defined
+/// over; a whole-act journey is the smallest history that has a whole act in it,
+/// which is what the rest of the decision alphabet, the later boundaries and the
+/// act transition need in order to be exercised at all.
+/// </summary>
+public enum SyntheticJourney
+{
+    /// <summary>Run start to the end of the first fight.</summary>
+    FirstFight,
+
+    /// <summary>Run start to the far side of the act's boss.</summary>
+    WholeAct,
+}
+
+public static partial class SyntheticFixtureGenerator
 {
     /// <summary>How many turns a generated fight may take before the generator gives
     /// up. A fixture that never resolves is a defect in the generator or the host, and
     /// silently emitting an unfinished fight would hide it.</summary>
     private const int TurnLimit = 40;
 
+    /// <summary>
+    /// The seed whose first act this journey walks.
+    ///
+    /// A different seed from the first-fight fixture's, and chosen rather than picked.
+    /// Two things had to be true of it and neither is common. Most acts have no path
+    /// at all that reaches the boss through a shop, a rest site, a treasure room and an
+    /// elite without passing a question mark, which this journey will not enter; and of
+    /// the acts that do, most kill a run played by a mechanical rule before its boss.
+    /// Twenty-four seeds were generated through the real engine, eight had such a path,
+    /// and this is the first of the two whose act the journey survives.
+    ///
+    /// Both are properties of what this seed generates rather than assumptions about
+    /// it: the route is planned before a step is taken and the journey refuses if no
+    /// route exists, and the act transition at the end refuses if the boss was not
+    /// beaten.
+    /// </summary>
+    private const string WholeActSeed = "E3R3E28JS9";
+
+    /// <summary>Rest, when the run has taken damage worth getting back.</summary>
+    private const string RestSiteHeal = "HEAL";
+
+    /// <summary>Upgrade a card, when it has not. The card the screen offers is
+    /// answered from the front and written down, like every other screen a generated
+    /// history opens.</summary>
+    private const string RestSiteSmith = "SMITH";
+
+    /// <summary>How many map moves an act journey may make before the generator gives
+    /// up. An act is sixteen rows plus its boss; anything past this is a routing defect
+    /// rather than a long act.</summary>
+    private const int MapMoveLimit = 40;
+
+    /// <summary>
+    /// The generator's own version, carried by every fixture it emits.
+    ///
+    /// Bumped to 3 when the generator learned to walk a whole act. It describes the
+    /// generator rather than any one journey, so both journeys carry it: a reader who
+    /// wants to know what produced a fixture on disk is asking about this.
+    /// </summary>
+    private const int FixtureVersion = 3;
+
     public static ReplayManifest Generate() => Generate(CombatLine.Reference);
+
+    /// <summary>The fixture for one journey. The combat line only means anything to
+    /// the first-fight journey, whose whole content is one fight.</summary>
+    public static ReplayManifest Generate(SyntheticJourney journey, CombatLine line) => journey switch
+    {
+        SyntheticJourney.FirstFight => Generate(line),
+        SyntheticJourney.WholeAct => GenerateWholeAct(),
+        _ => throw new EngineException($"Unknown synthetic journey '{journey}'."),
+    };
+
+    private static GameIdentity RequireSupportedBuild()
+    {
+        var identity = GameIdentity.Read();
+        return identity.BuildVersion == "v0.111.0"
+            ? identity
+            : throw new EngineException(
+                $"Synthetic fixture generation supports v0.111.0, not {identity.BuildVersion}.");
+    }
 
     public static ReplayManifest Generate(CombatLine line)
     {
-        var identity = GameIdentity.Read();
-        if (identity.BuildVersion != "v0.111.0")
-        {
-            throw new EngineException(
-                $"Synthetic fixture generation supports v0.111.0, not {identity.BuildVersion}.");
-        }
+        var identity = RequireSupportedBuild();
         const string seed = "P1L0TTRA1NER";
         string[] acts = ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"];
         var session = new GameSession();
@@ -119,9 +192,7 @@ public static class SyntheticFixtureGenerator
                     FixtureId = line == CombatLine.Reference
                         ? "v0111-pilot-trainer"
                         : "v0111-pilot-trainer-alternate",
-                    // Bumped when the fixture stopped after the opening turn and
-                    // started playing the fight to its end.
-                    FixtureVersion = 2,
+                    FixtureVersion = FixtureVersion,
                     Generator = "sts2-pilot-trainer",
                     GeneratedBuild = identity.BuildVersion,
                 },
@@ -152,19 +223,39 @@ public static class SyntheticFixtureGenerator
     /// never gets there, not the exit condition.
     /// </summary>
     private static void PlayToTheEndOfTheFight(
-        RunDriver driver, GameSession session, List<ActionRecord> actions, CombatLine line)
+        RunDriver driver, GameSession session, List<ActionRecord> actions, CombatLine line) =>
+        PlayToTheEndOfTheFight(driver, session, actions, current => PlayableIndex(current, line));
+
+    /// <inheritdoc cref="PlayToTheEndOfTheFight(RunDriver, GameSession, List{ActionRecord}, CombatLine)"/>
+    /// <param name="playableIndex">Which hand position this line plays next, or -1
+    /// when it plays nothing further this turn. A rule over the hand the engine dealt,
+    /// supplied by the journey rather than fixed here, because a journey that has to
+    /// survive a whole act needs a different mechanical rule from one that plays a
+    /// single fight and stops.</param>
+    private static void PlayToTheEndOfTheFight(
+        RunDriver driver, GameSession session, List<ActionRecord> actions,
+        Func<GameSession, int> playableIndex)
     {
         for (var turn = 0; turn < TurnLimit; turn++)
         {
             while (Outcome(session) == "in_progress")
             {
-                var hand = CanonicalStateProjection.Project(session.RunState).Fields["combat.hand"];
-                var index = PlayableIndex(session, line);
+                var index = playableIndex(session);
                 if (index < 0) break;
 
+                // The card's own id, not the canonical description of it. The
+                // projection decorates an upgraded card with its level and an
+                // enchanted one with its enchantment, and the driver compares against
+                // the id - so a fixture that recorded the decorated form would refuse
+                // the moment anything in the run upgraded a card.
+                var card = session.RunState.Players[0].PlayerCombatState!.Hand.Cards[index];
+
                 Apply(driver, actions, ActionVerb.PlayCard,
-                    ("card_id", hand.Split('|')[index]),
-                    ("hand_index", index.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                [
+                    ("card_id", card.Id.ToString()),
+                    ("hand_index", index.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                    .. ChosenTarget(session, index),
+                ]);
             }
 
             if (Outcome(session) != "in_progress") return;
@@ -196,6 +287,23 @@ public static class SyntheticFixtureGenerator
             if (hand[index].CanPlay(out _, out _)) return index;
         }
         return -1;
+    }
+
+    /// <summary>
+    /// The enemy this play names, when the engine would otherwise have to be told.
+    ///
+    /// Only when the card targets an enemy and more than one is alive: with one alive
+    /// the driver resolves it and an argument would be noise, and with none the play
+    /// is refused. The first living enemy, which is a rule over the order the engine
+    /// keeps them in rather than a choice about which to hit.
+    /// </summary>
+    private static (string Key, string Value)[] ChosenTarget(GameSession session, int handIndex)
+    {
+        var card = session.RunState.Players[0].PlayerCombatState?.Hand.Cards[handIndex];
+        if (card?.TargetType != TargetType.AnyEnemy) return [];
+
+        var alive = CombatManager.Instance.DebugOnlyGetState()?.Enemies.Count(enemy => enemy is { IsAlive: true }) ?? 0;
+        return alive > 1 ? [("target_index", "0")] : [];
     }
 
     private static string Outcome(GameSession session) =>
@@ -258,6 +366,25 @@ public static class SyntheticFixtureGenerator
         };
         driver.Apply(action);
         actions.Add(action);
+
+        // A screen the action opened answered itself, because a generated history has
+        // no way to name a card before the call that offers it. What it answered is
+        // written down here, immediately after the action that opened it, which is
+        // exactly where a replay looks for it.
+        foreach (var (cardId, optionIndex) in driver.TakeImprovisedCardSelections())
+        {
+            actions.Add(new ActionRecord
+            {
+                Seq = actions.Count,
+                Verb = ActionVerb.SelectCardFromScreen,
+                Args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["card_id"] = cardId,
+                    ["option_index"] = optionIndex.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                },
+                Source = FactSource.Declared,
+            });
+        }
     }
 
     private static Checkpoint Capture(
