@@ -664,6 +664,36 @@ public sealed class PlaybackTransportStripTests
     }
 
     /// <summary>
+    /// A tooltip already on screen moves when what hangs under the tag changes.
+    ///
+    /// Pressing a control focuses it and focus raises its tooltip, which happens
+    /// before the press has changed anything - so the sentence is placed against the
+    /// measure of a moment ago. Look back is the case that shows it in the client: the
+    /// tooltip went up against the tag's own foot, the ledger then appeared beneath
+    /// it, and the sentence sat over the rows it was meant to hang below.
+    /// </summary>
+    [Fact]
+    public void ATooltipAlreadyUpMovesBelowWhateverAppearsUnderIt()
+    {
+        var strip = Build(Revealing(MapMove, 2, noteShown: true));
+
+        strip.Back.EmitFocus(entered: true);
+        Assert.True(strip.Tooltip.Visible);
+        var before = strip.Tooltip.Position.Y;
+
+        strip.Apply(LookingBack());
+
+        var ledger = strip.Ledger;
+        Assert.True(ledger.Visible);
+        Assert.True(strip.Tooltip.Visible);
+        Assert.True(strip.Tooltip.Position.Y > before, "the tooltip did not move at all");
+        Assert.True(
+            strip.Tooltip.Position.Y >= ledger.Position.Y + ledger.Size.Y,
+            $"the tooltip starts at {strip.Tooltip.Position.Y} and the ledger runs to " +
+            $"{ledger.Position.Y + ledger.Size.Y}");
+    }
+
+    /// <summary>
     /// Opening a menu takes down the tooltip that the same press raised.
     ///
     /// Pressing a control focuses it, and focus raises its tooltip - which happens

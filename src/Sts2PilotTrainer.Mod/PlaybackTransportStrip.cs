@@ -152,6 +152,18 @@ internal sealed class PlaybackTransportStrip
     /// one at all; this says whether there is one to draw.</summary>
     private bool _holding;
 
+    /// <summary>
+    /// The control a visible tooltip belongs to, so it can be put back where it
+    /// belongs when what hangs under the tag changes.
+    ///
+    /// Pressing a control focuses it, and focus raises the tooltip - which happens
+    /// before the press has changed anything, so the sentence is placed against
+    /// whatever was hanging a moment ago. Look back is the case that shows it: the
+    /// tooltip went up, then the ledger appeared underneath it, and the sentence sat
+    /// on top of the rows it had been placed above.
+    /// </summary>
+    private Control? _tipAnchor;
+
     private PlaybackTransportStrip(Nodes nodes, Vector2 viewport, Vector2 anchor, Font? font)
     {
         _root = nodes.Root;
@@ -389,6 +401,14 @@ internal sealed class PlaybackTransportStrip
         ApplyNote(state, surface, left, top, height, width);
         ApplyLedger(state, surface, left, top, height, width);
         ApplyMenu(state, left, width);
+
+        // Last, once everything that hangs has been laid out and the measure is final.
+        // A tooltip that is already up was placed against the measure of a moment ago,
+        // and this is the only point at which the right answer is known.
+        if (_tip.Visible && _tipAnchor is { } anchor)
+        {
+            ShowTooltip(anchor, _tipTitle.Text, _tipBody.Text);
+        }
     }
 
     /// <summary>
@@ -1014,6 +1034,7 @@ internal sealed class PlaybackTransportStrip
         _tipTitle.Text = title;
         _tipBody.Text = body;
         _tip.Visible = true;
+        _tipAnchor = anchor;
 
         // Sized to the body once it has wrapped, not to the newlines in it: at this
         // width "Shows an earlier choice again. Nothing is undone." is two lines and
@@ -1038,7 +1059,11 @@ internal sealed class PlaybackTransportStrip
         Place(_tipBody, inset, bodyTop, width - (2 * inset), bodyHeight);
     }
 
-    private void HideTooltip() => _tip.Visible = false;
+    private void HideTooltip()
+    {
+        _tip.Visible = false;
+        _tipAnchor = null;
+    }
 
     // ── Node plumbing ──────────────────────────────────────────────────────
 
