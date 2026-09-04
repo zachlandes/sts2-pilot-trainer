@@ -129,7 +129,7 @@ public sealed class RecordedFightTests
             Boundaries = [ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(FirstDigest))],
         };
 
-        var thrown = Assert.Throws<ManifestException>(() => fights.Bind(undeclared));
+        var thrown = Assert.Throws<ManifestException>(() => fights.Fight(2).Bind(undeclared));
         Assert.Contains("no combat-start boundary for fight 2", thrown.Message, StringComparison.Ordinal);
     }
 
@@ -161,6 +161,45 @@ public sealed class RecordedFightTests
         var thrown = Assert.Throws<ManifestException>(() => duplicate.Bind(Manifest()));
 
         Assert.Contains("names fight 1 more than once", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesAFileMissingADeclaredFight()
+    {
+        var fights = RecordedFights.From(Manifest(), FullTrace(), Digests());
+        var incomplete = fights with { Fights = [fights.Fight(1)] };
+
+        var thrown = Assert.Throws<ManifestException>(() => incomplete.Bind(Manifest()));
+
+        Assert.Contains("recording declares fights 1, 2", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains("file holds 1", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesFightsOutOfRunOrder()
+    {
+        var fights = RecordedFights.From(Manifest(), FullTrace(), Digests());
+        var reordered = fights with { Fights = [fights.Fight(2), fights.Fight(1)] };
+
+        var thrown = Assert.Throws<ManifestException>(() => reordered.Bind(Manifest()));
+
+        Assert.Contains("recording declares fights 1, 2", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains("file holds 2, 1", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesAFileCarryingAnUndeclaredFight()
+    {
+        var fights = RecordedFights.From(Manifest(), FullTrace(), Digests());
+        var extra = fights with
+        {
+            Fights = [.. fights.Fights, fights.Fight(2) with { Fight = 3 }],
+        };
+
+        var thrown = Assert.Throws<ManifestException>(() => extra.Bind(Manifest()));
+
+        Assert.Contains("recording declares fights 1, 2", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains("file holds 1, 2, 3", thrown.Message, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -53,11 +53,13 @@ public static partial class ManifestValidator
     {
         var problems = new List<string>();
 
-        ValidateSource(manifest.Source, problems);
+        var maxActionOrdinal = manifest.Actions.Count - 1;
+        ValidateSource(manifest.Source, maxActionOrdinal, problems);
         var videoDurationMs = manifest.Source.Video is { DurationSeconds: > 0 } video
             ? checked(video.DurationSeconds * 1000)
             : 0;
-        ValidateEnvironment(manifest.Environment, manifest.Source.Kind, videoDurationMs, problems);
+        ValidateEnvironment(
+            manifest.Environment, manifest.Source.Kind, videoDurationMs, maxActionOrdinal, problems);
         if (manifest.Source.Synthetic is { } synthetic &&
             !string.Equals(
                 synthetic.GeneratedBuild, manifest.Environment.BuildVersion.Value, StringComparison.Ordinal))
@@ -82,7 +84,8 @@ public static partial class ManifestValidator
     }
 
     private static void ValidateEnvironment(
-        EnvironmentIdentity env, string sourceKind, int videoDurationMs, List<string> problems)
+        EnvironmentIdentity env, string sourceKind, int videoDurationMs, int maxActionOrdinal,
+        List<string> problems)
     {
         if (!BuildVersionPattern.IsMatch(env.BuildVersion.Value))
         {
@@ -230,16 +233,19 @@ public static partial class ManifestValidator
             problems.Add($"environment.acts contains '{act}', which is not a model id (expected ACT.*).");
         }
 
-        ValidateInputFact(env.BuildVersion, "environment.build_version", videoDurationMs, problems);
-        ValidateInputFact(env.BuildDateUtc, "environment.build_date_utc", videoDurationMs, problems);
-        ValidateInputFact(env.GameMode, "environment.game_mode", videoDurationMs, problems);
-        ValidateInputFact(env.Seed, "environment.seed", videoDurationMs, problems);
-        ValidateInputFact(env.ContentHash, "environment.content_hash", videoDurationMs, problems);
-        ValidateInputFact(env.Ascension, "environment.ascension", videoDurationMs, problems);
-        ValidateInputFact(env.Unlocks, "environment.unlocks", videoDurationMs, problems);
-        ValidateInputFact(env.Character, "environment.character", videoDurationMs, problems);
-        ValidateInputFact(env.Acts, "environment.acts", videoDurationMs, problems);
-        ValidateInputFact(env.Mods, "environment.mods", videoDurationMs, problems);
+        ValidateInputFact(
+            env.BuildVersion, "environment.build_version", videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.BuildDateUtc, "environment.build_date_utc", videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(env.GameMode, "environment.game_mode", videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(env.Seed, "environment.seed", videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.ContentHash, "environment.content_hash", videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(env.Ascension, "environment.ascension", videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(env.Unlocks, "environment.unlocks", videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(env.Character, "environment.character", videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(env.Acts, "environment.acts", videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(env.Mods, "environment.mods", videoDurationMs, maxActionOrdinal, problems);
 
         if (sourceKind == "native")
         {
@@ -370,7 +376,8 @@ public static partial class ManifestValidator
         }
     }
 
-    private static void ValidateSource(SourceProvenance source, List<string> problems)
+    private static void ValidateSource(
+        SourceProvenance source, int maxActionOrdinal, List<string> problems)
     {
         if (source.Kind is not ("vod" or "native" or "synthetic-engine"))
         {
@@ -423,7 +430,7 @@ public static partial class ManifestValidator
         }
         else if (source.Kind == "native")
         {
-            ValidateNativeSource(source, problems);
+            ValidateNativeSource(source, maxActionOrdinal, problems);
         }
         else if (source.Kind == "synthetic-engine")
         {
@@ -469,7 +476,8 @@ public static partial class ManifestValidator
     /// half way through a run, or from two disconnected stretches of one, replays
     /// perfectly and reconstructs a different run.
     /// </summary>
-    private static void ValidateNativeSource(SourceProvenance source, List<string> problems)
+    private static void ValidateNativeSource(
+        SourceProvenance source, int maxActionOrdinal, List<string> problems)
     {
         if (source.Video is not null || source.Synthetic is not null)
         {
@@ -518,7 +526,8 @@ public static partial class ManifestValidator
                 "recording: the run is over and the fights in it were really played.");
         }
 
-        RequireCapturedFact(native.WitnessedRunStart, "source.native.witnessed_run_start", problems);
+        RequireCapturedFact(
+            native.WitnessedRunStart, "source.native.witnessed_run_start", maxActionOrdinal, problems);
 
         if (!native.WitnessedRunStart.Value)
         {
@@ -631,7 +640,8 @@ public static partial class ManifestValidator
 
             if (boundary.Digest.Source == FactSource.Captured)
             {
-                RequireCapturedFact(boundary.Digest, $"the digest at {name}", problems, boundary.AfterSeq);
+                RequireCapturedFact(
+                    boundary.Digest, $"the digest at {name}", maxSeq, problems, boundary.AfterSeq);
             }
             else if (boundary.Digest.Source != FactSource.Engine)
             {
@@ -866,25 +876,17 @@ public static partial class ManifestValidator
 
             if (sourceKind == "native")
             {
+                var path = $"actions[{action.Seq}] ({action.Verb})";
                 if (action.Source != FactSource.Captured)
                 {
                     problems.Add(
-                        $"actions[{action.Seq}] ({action.Verb}) must be source=captured for a native recording: " +
-                        "a recorder watched the decision being made rather than reading it off a video.");
+                        $"{path} must be source=captured for a native recording: a recorder watched the " +
+                        "decision being made rather than reading it off a video.");
                 }
-                else if (action.Evidence?.ActionOrdinal is not { } ordinal)
+                else
                 {
-                    problems.Add(
-                        $"actions[{action.Seq}] ({action.Verb}) is captured and names no action_ordinal, so " +
-                        "where in the run it was taken cannot be re-checked.");
-                }
-                else if (ordinal != action.Seq)
-                {
-                    problems.Add(
-                        $"actions[{action.Seq}] ({action.Verb}) was captured at action ordinal " +
-                        $"{ordinal.ToString(CultureInfo.InvariantCulture)}. The ordinal is the run's own " +
-                        "coordinate for the moment, so one that disagrees with the sequence number means the " +
-                        "history has been reordered since it was recorded.");
+                    ValidateCapturedEvidence(
+                        action.Evidence, path, actions.Count - 1, problems, action.Seq);
                 }
                 continue;
             }
@@ -1129,7 +1131,8 @@ public static partial class ManifestValidator
                 else if (sourceKind == "native")
                 {
                     RequireCapturedFact(
-                        fact, $"checkpoint '{checkpoint.Id}' field '{field}'", problems, checkpoint.AfterSeq);
+                        fact, $"checkpoint '{checkpoint.Id}' field '{field}'", maxSeq, problems,
+                        checkpoint.AfterSeq);
                 }
                 else
                 {
@@ -1276,7 +1279,7 @@ public static partial class ManifestValidator
     }
 
     private static void ValidateInputFact<T>(
-        Fact<T> fact, string path, int videoDurationMs, List<string> problems)
+        Fact<T> fact, string path, int videoDurationMs, int maxActionOrdinal, List<string> problems)
     {
         if (!Enum.IsDefined(fact.Source))
         {
@@ -1295,11 +1298,9 @@ public static partial class ManifestValidator
             RequireObservedVideoFact(fact, path, videoDurationMs, problems);
         }
 
-        if (fact.Source == FactSource.Captured && fact.Evidence?.ActionOrdinal is null)
+        if (fact.Source == FactSource.Captured)
         {
-            problems.Add(
-                $"{path} is captured and names no action_ordinal, so where in the run it was read cannot be " +
-                "re-checked. A run has no public clock; its ordered history is the coordinate.");
+            ValidateCapturedEvidence(fact.Evidence, path, maxActionOrdinal, problems);
         }
     }
 
@@ -1326,25 +1327,49 @@ public static partial class ManifestValidator
     /// history - which is also what its identity is made of.
     /// </summary>
     private static void RequireCapturedFact<T>(
-        Fact<T> fact, string path, List<string> problems, int? expectedActionOrdinal = null)
+        Fact<T> fact, string path, int maxActionOrdinal, List<string> problems,
+        int? expectedActionOrdinal = null)
     {
         if (fact.Source != FactSource.Captured)
         {
             problems.Add(
                 $"{path} must be source=captured because it is what a recorder read out of the game as it " +
                 "happened.");
+            return;
         }
-        else if (fact.Evidence?.ActionOrdinal is not { } actionOrdinal)
+
+        ValidateCapturedEvidence(
+            fact.Evidence, path, maxActionOrdinal, problems, expectedActionOrdinal);
+    }
+
+    private static void ValidateCapturedEvidence(
+        FactEvidence? evidence, string path, int maxActionOrdinal, List<string> problems,
+        int? expectedActionOrdinal = null)
+    {
+        if (evidence?.ActionOrdinal is not { } actionOrdinal)
         {
             problems.Add(
                 $"{path} is captured and names no action_ordinal, so nobody could say where in the run it was " +
                 "read.");
+        }
+        else if (actionOrdinal < -1 || actionOrdinal > maxActionOrdinal)
+        {
+            problems.Add(
+                $"{path} was captured at action ordinal {actionOrdinal.ToString(CultureInfo.InvariantCulture)}, " +
+                $"outside the action range [-1, {maxActionOrdinal.ToString(CultureInfo.InvariantCulture)}].");
         }
         else if (expectedActionOrdinal is { } expected && actionOrdinal != expected)
         {
             problems.Add(
                 $"{path} was captured at action ordinal {actionOrdinal.ToString(CultureInfo.InvariantCulture)}, " +
                 $"but it belongs after action {expected.ToString(CultureInfo.InvariantCulture)}.");
+        }
+
+        if (evidence?.RunClockMs is < 0)
+        {
+            problems.Add(
+                $"{path} has run_clock_ms={evidence.RunClockMs.Value.ToString(CultureInfo.InvariantCulture)}. " +
+                "A run clock cannot name a moment before the run began.");
         }
     }
 

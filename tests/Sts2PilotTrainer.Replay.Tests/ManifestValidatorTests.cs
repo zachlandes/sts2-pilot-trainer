@@ -1350,14 +1350,15 @@ public class NativeManifestValidatorTests
         {
             Actions =
             [
-                manifest.Actions[0] with { Evidence = FactEvidence.AtActionOrdinal(7) },
+                manifest.Actions[0] with { Evidence = FactEvidence.AtActionOrdinal(1) },
                 .. manifest.Actions.Skip(1),
             ],
         });
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, problem =>
-            problem.Contains("was captured at action ordinal 7", StringComparison.Ordinal));
+            problem.Contains("captured at action ordinal 1", StringComparison.Ordinal) &&
+            problem.Contains("belongs after action 0", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1449,6 +1450,41 @@ public class NativeManifestValidatorTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, problem =>
             problem.Contains("environment.seed is captured and names no action_ordinal", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsACapturedCoordinateOutsideTheActionRange()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Seed = Fact<string>.Captured("SFXT47K77RFK", FactEvidence.AtActionOrdinal(999)),
+            },
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("environment.seed was captured at action ordinal 999", StringComparison.Ordinal) &&
+            problem.Contains("outside the action range [-1, 1]", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsANegativeCapturedRunClock()
+    {
+        var native = Fixtures.NativeSourceBlock() with
+        {
+            WitnessedRunStart = Fact<bool>.Captured(
+                true, FactEvidence.AtActionOrdinal(0, runClockMs: -1)),
+        };
+
+        var result = Validate(native);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("source.native.witnessed_run_start", StringComparison.Ordinal) &&
+            problem.Contains("run_clock_ms=-1", StringComparison.Ordinal));
     }
 
     /// <summary>An identifier this project chose is declared rather than captured, and

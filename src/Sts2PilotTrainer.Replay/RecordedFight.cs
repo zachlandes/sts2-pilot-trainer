@@ -156,6 +156,20 @@ public sealed record RecordedFights
                 "lines for one fight.");
         }
 
+        var declaredOrdinals = manifest.Boundaries
+            .Where(boundary => boundary.IsCombatStart && boundary.Fight is not null)
+            .OrderBy(boundary => boundary.Fight)
+            .Select(boundary => boundary.Fight!.Value)
+            .ToList();
+        var recordedOrdinals = Fights.Select(fight => fight.Fight).ToList();
+        if (!recordedOrdinals.SequenceEqual(declaredOrdinals))
+        {
+            throw new ManifestException(
+                $"The recording declares fights {string.Join(", ", declaredOrdinals)} in order, but the " +
+                $"recorded fights file holds {string.Join(", ", recordedOrdinals)}. It must carry exactly the " +
+                "recording's fights in run order.");
+        }
+
         foreach (var fight in Fights) fight.Bind(manifest);
     }
 
