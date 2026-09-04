@@ -84,14 +84,16 @@ internal static partial class Commands
         // the two disagreeing. docs/ingestion.md requires this in the same step.
         if (verdict.Status == ReproductionStatus.Reproduces)
         {
-            var fights = SelfProcess.Run("recorded-fight", manifestPath);
+            var fights = SelfProcess.Run(
+                "recorded-fight", manifestPath, "--out", RecordedFightPathFor(manifestPath));
             Console.Write(fights.StandardOutput);
             Console.Error.Write(fights.StandardError);
             if (fights.ExitCode != 0)
             {
                 Console.Error.WriteLine(
-                    "The recording's own fights could not be regenerated, so the verdict above stands beside a " +
-                    "recorded-fights file that was measured on another build.");
+                    "The history reproduces on this build and the recording does not carry forward to it: the " +
+                    "lines above say what its own fights refused. The verdict is written either way, because " +
+                    "what the engine did with the history is the question this command answers.");
                 return 1;
             }
         }

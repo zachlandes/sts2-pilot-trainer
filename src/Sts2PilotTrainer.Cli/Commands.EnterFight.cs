@@ -36,7 +36,7 @@ internal static partial class Commands
         var recording = ManifestJson.Load(manifestPath);
         if (Args.Value(args, "--control") is { } controlName)
         {
-            recording = ApplyEntryControl(recording, controlName);
+            recording = ApplyEntryControl(recording, controlName, PlanFor(recording, args));
         }
 
         // Nullable, because a generated fixture has nobody behind it. Every caption
@@ -50,6 +50,13 @@ internal static partial class Commands
                 "whose run it is. Every line the result screen prints names them, so there is nobody to " +
                 "attribute the comparison to. Enter the boundary without --play, or use a recording that " +
                 "carries source.video.channel_name.");
+        }
+
+        if (Args.Has(args, "--play") && Args.Value(args, "--floor") is not null)
+        {
+            throw new ManifestException(
+                "--play plays a recorded fight back, and --floor stands you at a floor arrival, where no fight " +
+                "has started. Ask for the fight with --fight n, or enter the floor without --play.");
         }
 
         // The state the recording's run is generated against, which is the recorded
@@ -143,8 +150,8 @@ internal static partial class Commands
             !string.Equals(cachedDigest, equality.ExpectedDigest, StringComparison.Ordinal))
         {
             throw new ManifestException(
-                $"The cached combat-start snapshot is {cachedDigest}, but the recording declares " +
-                $"{equality.ExpectedDigest}. Re-run combat-snapshot before entering the fight.");
+                $"The cached snapshot for {plan.Describe()} is {cachedDigest}, but the recording declares " +
+                $"{equality.ExpectedDigest}. Re-run combat-snapshot before entering this boundary.");
         }
 
         Console.WriteLine();
@@ -281,7 +288,7 @@ internal static partial class Commands
         RecordedFightEntry entry, BoundaryEquality equality, string creator, string manifestPath,
         string? recordedFightPath)
     {
-        recordedFightPath ??= manifestPath.Replace(".replay.json", ".recorded-fights.json", StringComparison.Ordinal);
+        recordedFightPath ??= RecordedFightPathFor(manifestPath);
         var recorded = RecordedFights.Load(recordedFightPath);
         recorded.Bind(entry.Manifest);
 
@@ -324,7 +331,8 @@ internal static partial class Commands
     /// damaged a card play would leave the entry boundary untouched and prove nothing
     /// about it.
     /// </summary>
-    private static ReplayManifest ApplyEntryControl(ReplayManifest manifest, string name)
+    private static ReplayManifest ApplyEntryControl(
+        ReplayManifest manifest, string name, IBoundaryPlan plan)
     {
         var control = Corruption.All.FirstOrDefault(candidate => candidate.Name == name)
             ?? throw new ManifestException(
@@ -343,7 +351,7 @@ internal static partial class Commands
         // boundary untouched, and an entry that then succeeded would look like
         // evidence that drift is caught when nothing had drifted. So the control has
         // to reach the prefix, and one that does not is refused rather than run.
-        var prefix = RecordedFightPlan.For(manifest).PrefixActions;
+        var prefix = plan.PrefixActions;
         var damagedPrefix = damaged.Actions
             .OrderBy(action => action.Seq)
             .Take(prefix.Count)
@@ -355,8 +363,8 @@ internal static partial class Commands
         if (!reachesPrefix)
         {
             throw new ManifestException(
-                $"Control '{control.Name}' changes nothing the recording decides before its fight, so entering " +
-                "the damaged history would prove nothing about the combat-start boundary. Use a control that " +
+                $"Control '{control.Name}' changes nothing the recording decides before {plan.Describe()}, so " +
+                "entering the damaged history would prove nothing about that boundary. Use a control that " +
                 "damages one of the first " +
                 $"{prefix.Count.ToString(CultureInfo.InvariantCulture)} action(s).");
         }

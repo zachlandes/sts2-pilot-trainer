@@ -96,13 +96,16 @@ internal static partial class Commands
         artifact.WriteAtomic(fights.Serialize() + "\n");
 
         Console.WriteLine($"recording       : {fights.RunId}");
+        var unsummarised = new SortedDictionary<int, string>();
         foreach (var fight in fights.Fights)
         {
             // The projection is a description of one fight and can refuse - a fight
-            // whose enemy roster the trace cannot follow has no honest summary. That
-            // refusal is about that fight and is printed as such: the file above is
-            // what this command produces, it holds every declared fight's own line,
-            // and one fight nobody can summarise does not make the rest unwritten.
+            // whose enemy roster the trace cannot follow has no honest summary. The
+            // file is still written, because what it holds is the declared fights'
+            // traces and those are the replay's own; the refusal is collected and
+            // answered at the end, because a file one consumer cannot read is not a
+            // clean result and the retail client would otherwise meet it after the
+            // player had fought the whole fight.
             CombatProjection? projection = null;
             string? refusal = null;
             try
@@ -112,6 +115,7 @@ internal static partial class Commands
             catch (ManifestException ex)
             {
                 refusal = ex.Message;
+                unsummarised[fight.Fight] = ex.Message;
             }
 
             Console.WriteLine();
@@ -133,6 +137,45 @@ internal static partial class Commands
         }
         Console.WriteLine();
         Console.WriteLine($"recorded fights: {Paths.Display(artifact.Path)}");
+
+        if (unsummarised.Count > 0)
+        {
+            Console.Error.WriteLine();
+            Console.Error.WriteLine(
+                $"{Path.GetFileName(artifact.Path)} was written and holds every declared fight's trace, and " +
+                $"{unsummarised.Count.ToString(CultureInfo.InvariantCulture)} of them cannot be summarised, so " +
+                "this recording is not one a player can be stood in yet:");
+            foreach (var (fight, refusal) in unsummarised)
+            {
+                Console.Error.WriteLine(
+                    $"  fight {fight.ToString(CultureInfo.InvariantCulture)}: {refusal}");
+            }
+
+            return 1;
+        }
+
         return 0;
+    }
+
+    /// <summary>
+    /// Where a recording's own fights live: beside the recording, under its own name.
+    ///
+    /// The one place that spelling is worked out, because the file the mod ships and
+    /// the file <c>--play</c> reads have to be the file a re-key regenerates. A
+    /// recording not named that way is refused rather than guessed at, since the
+    /// guess would be a path this command then writes to.
+    /// </summary>
+    internal static string RecordedFightPathFor(string manifestPath)
+    {
+        const string suffix = ".replay.json";
+        if (!manifestPath.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            throw new ManifestException(
+                $"{Path.GetFileName(manifestPath)} is not named <id>{suffix}, so where its own fights live " +
+                "cannot be worked out from it. Name the recording that way, or name the recorded-fights file " +
+                "explicitly.");
+        }
+
+        return manifestPath[..^suffix.Length] + ".recorded-fights.json";
     }
 }

@@ -104,6 +104,9 @@ build installed now, appends the verdict to `manifests/<id>.verdicts.json` keyed
 hash, and regenerates the recorded fights whenever the verdict reproduces.
 It refuses to answer for a build that is not the one installed, because a verdict is what the engine
 actually did.
+A recording whose regenerated fights cannot all be summarised does not carry forward: the verdict is
+still measured and written, and the command exits non-zero naming the fights that refused, because a
+fight nobody can summarise is one the retail client would refuse after the player had fought it.
 
 ## Running it
 
