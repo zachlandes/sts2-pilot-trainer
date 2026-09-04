@@ -30,6 +30,14 @@ internal static partial class Commands
     {
         var target = Args.Value(args, "--rekey")!;
         var manifest = ManifestJson.Load(manifestPath);
+
+        // Asked before anything is measured or prepared, because a re-key that
+        // reproduces has to regenerate the recording's own fights in the same step. A
+        // name this rule cannot handle is refused while it still costs nothing, rather
+        // than after a full replay has written a verdict beside fights nobody
+        // regenerated.
+        var fightsPath = RecordedFightPathFor(manifestPath);
+
         var verdictsPath = ReproductionVerdicts.PathFor(manifestPath);
         var artifact = EvidenceArtifact.PreparePath(verdictsPath);
 
@@ -84,8 +92,7 @@ internal static partial class Commands
         // the two disagreeing. docs/ingestion.md requires this in the same step.
         if (verdict.Status == ReproductionStatus.Reproduces)
         {
-            var fights = SelfProcess.Run(
-                "recorded-fight", manifestPath, "--out", RecordedFightPathFor(manifestPath));
+            var fights = SelfProcess.Run("recorded-fight", manifestPath, "--out", fightsPath);
             Console.Write(fights.StandardOutput);
             Console.Error.Write(fights.StandardError);
             if (fights.ExitCode != 0)
