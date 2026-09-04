@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.IO;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Cli;
@@ -34,22 +35,26 @@ internal static partial class Commands
             return SnapshotRestorePhase(args, manifestPath, phase);
         }
 
-        var outDir = Args.Value(args, "--out") ?? "build/evidence";
+        var outDir = WorktreePath.Require(Args.Value(args, "--out") ?? "build/evidence");
         var control = Args.Value(args, "--control");
+        Directory.CreateDirectory(outDir);
 
-        // A control writes beside the real report rather than over it. The evidence a
-        // decision rests on and a demonstration that the guard fires are two different
-        // artifacts, and one file holding whichever ran last is neither.
-        var reportArtifact = EvidenceArtifact.Prepare(
-            outDir,
-            control is null ? "snapshot-restore-probe.json" : $"snapshot-restore-probe.control-{control}.json");
+        // A private workspace keeps concurrent probes from combining one run's
+        // capture with another run's save into a coherent-looking report.
+        var workspace = PathContainment.RequireContained(
+            outDir, Path.Combine(outDir, $".snapshot-restore-probe.{Guid.NewGuid():N}"));
+        Directory.CreateDirectory(workspace);
+        try
+        {
+            var combatStart = LocateCombatStart(manifestPath, workspace);
+            if (combatStart is null) return 1;
 
-        var combatStart = LocateCombatStart(manifestPath, outDir);
-        if (combatStart is null) return 1;
-
-        var savePath = EvidenceArtifact.Prepare(outDir, "snapshot-restore-probe.run-save.json").Path;
-        var capturePath = EvidenceArtifact.Prepare(outDir, "snapshot-restore-probe.capture.json").Path;
-        var restorePath = EvidenceArtifact.Prepare(outDir, "snapshot-restore-probe.restore.json").Path;
+            var savePath = EvidenceArtifact.Prepare(
+                workspace, "snapshot-restore-probe.run-save.json").Path;
+            var capturePath = EvidenceArtifact.Prepare(
+                workspace, "snapshot-restore-probe.capture.json").Path;
+            var restorePath = EvidenceArtifact.Prepare(
+                workspace, "snapshot-restore-probe.restore.json").Path;
 
         var capture = RunPhase<SnapshotRestoreCapture>(
             capturePath,
@@ -72,9 +77,25 @@ internal static partial class Commands
                 "reading, so their digests agree and mean nothing");
         }
 
-        var report = Engine.SnapshotRestoreProbe.Compare(
-            Path.GetFileName(manifestPath), capture, restoration);
-        reportArtifact.WriteAtomic(JsonSerializer.Serialize(report, Json.Indented) + "\n");
+            var report = Engine.SnapshotRestoreProbe.Compare(
+                Path.GetFileName(manifestPath), capture, restoration);
+
+            EvidenceArtifact reportArtifact;
+            using (AcquireProbePublicationLock(outDir))
+            {
+                PublishProbeArtifact(outDir, capturePath, "snapshot-restore-probe.capture.json");
+                PublishProbeArtifact(outDir, restorePath, "snapshot-restore-probe.restore.json");
+                PublishProbeArtifact(outDir, savePath, "snapshot-restore-probe.run-save.json");
+
+                // A control writes beside the real report rather than over it. The
+                // evidence and the demonstration that its guard fires are distinct.
+                reportArtifact = EvidenceArtifact.Prepare(
+                    outDir,
+                    control is null
+                        ? "snapshot-restore-probe.json"
+                        : $"snapshot-restore-probe.control-{control}.json");
+                reportArtifact.WriteAtomic(JsonSerializer.Serialize(report, Json.Indented) + "\n");
+            }
 
         Console.WriteLine($"manifest        : {report.RunId}");
         Console.WriteLine($"combat starts   : after action {report.CombatStartSeq}");
@@ -125,6 +146,39 @@ internal static partial class Commands
             "digests and the probe called it agreement, which is the one reading this probe must never " +
             "produce.");
         return 1;
+        }
+        finally
+        {
+            var confinedWorkspace = PathContainment.RequireContained(outDir, workspace);
+            if (Directory.Exists(confinedWorkspace))
+            {
+                Directory.Delete(confinedWorkspace, recursive: true);
+            }
+        }
+    }
+
+    private static void PublishProbeArtifact(string outDir, string sourcePath, string fileName)
+    {
+        EvidenceArtifact.Prepare(outDir, fileName).WriteAtomic(File.ReadAllText(sourcePath));
+    }
+
+    private static FileStream AcquireProbePublicationLock(string outDir)
+    {
+        var path = PathContainment.RequireContained(
+            outDir, Path.Combine(outDir, ".snapshot-restore-probe.publish.lock"));
+        for (var attempt = 0; attempt < 400; attempt++)
+        {
+            try
+            {
+                return new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            }
+            catch (IOException) when (attempt < 399)
+            {
+                Thread.Sleep(25);
+            }
+        }
+
+        throw new IOException("Could not acquire the snapshot restore probe publication lock.");
     }
 
     private static int SnapshotRestorePhase(string[] args, string manifestPath, string phase)

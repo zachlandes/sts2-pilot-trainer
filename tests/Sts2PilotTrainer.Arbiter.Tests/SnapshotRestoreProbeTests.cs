@@ -67,10 +67,37 @@ public class SnapshotRestoreProbeTests
         Assert.Equal(
             report.GetProperty("save_sha256").GetString(),
             Report(outDir, "snapshot-restore-probe.restore.json").GetProperty("save_sha256").GetString());
+        Assert.True(File.Exists(Path.Combine(outDir, "snapshot-restore-probe.capture.json")));
+        Assert.True(File.Exists(Path.Combine(outDir, "snapshot-restore-probe.run-save.json")));
+        Assert.Empty(Directory.EnumerateDirectories(outDir, ".snapshot-restore-probe.*"));
         foreach (var step in report.GetProperty("restore_steps").EnumerateArray())
         {
             Assert.Equal("ran", step.GetProperty("outcome").GetString());
         }
+    }
+
+    [GameFact]
+    public void ConcurrentProbesPublishOneCoherentArtifactSet()
+    {
+        var outDir = TempDir();
+        var firstManifest = Fixture("concurrent-probe-first");
+        var secondManifest = Fixture("concurrent-probe-second");
+
+        var first = Task.Run(() =>
+            Arbiter.Run("snapshot-restore-probe", firstManifest, "--out", outDir));
+        var second = Task.Run(() =>
+            Arbiter.Run("snapshot-restore-probe", secondManifest, "--out", outDir));
+        Task.WaitAll(first, second);
+
+        Assert.True(first.Result.Verified, first.Result.All);
+        Assert.True(second.Result.Verified, second.Result.All);
+        var report = Report(outDir, "snapshot-restore-probe.json");
+        var capture = Report(outDir, "snapshot-restore-probe.capture.json");
+        var restoration = Report(outDir, "snapshot-restore-probe.restore.json");
+        Assert.Equal(report.GetProperty("run_id").GetString(), capture.GetProperty("run_id").GetString());
+        Assert.Equal(report.GetProperty("save_sha256").GetString(), capture.GetProperty("save_sha256").GetString());
+        Assert.Equal(report.GetProperty("save_sha256").GetString(), restoration.GetProperty("save_sha256").GetString());
+        Assert.Empty(Directory.EnumerateDirectories(outDir, ".snapshot-restore-probe.*"));
     }
 
     /// <summary>
@@ -112,6 +139,15 @@ public class SnapshotRestoreProbeTests
 
     private static JsonElement Report(string outDir, string fileName) =>
         JsonDocument.Parse(File.ReadAllText(Path.Combine(outDir, fileName))).RootElement.Clone();
+
+    private static string Fixture(string runId)
+    {
+        var path = Path.Combine(
+            Arbiter.RepoRoot, "build", "test-scratch", $"{runId}-{Guid.NewGuid():N}.replay.json");
+        Sts2PilotTrainer.Replay.ManifestJson.Save(
+            Sts2PilotTrainer.Replay.SyntheticReplayFixture.Create() with { RunId = runId }, path);
+        return path;
+    }
 
     private static string TempDir()
     {
