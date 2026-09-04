@@ -40,10 +40,11 @@ internal static partial class Commands
         Console.WriteLine("ingestion gates, fed inputs that should be refused:");
         Console.WriteLine();
 
+        var corruptions = IngestionCorruption.For(manifest);
         var reports = new List<object>();
         var allRejected = true;
 
-        foreach (var corruption in IngestionCorruption.All)
+        foreach (var corruption in corruptions)
         {
             var corrupted = corruption.Apply(manifest);
             var corruptedResult = ManifestValidator.Validate(corrupted);
@@ -80,7 +81,7 @@ internal static partial class Commands
             }, Json.Indented) + "\n");
 
         Console.WriteLine(allRejected
-            ? $"all {IngestionCorruption.All.Count} damaged provenance records were refused; the real one is valid"
+            ? $"all {corruptions.Count} damaged provenance records were refused; the real one is valid"
             : "AT LEAST ONE DAMAGED PROVENANCE RECORD WAS ACCEPTED");
 
         return result.IsValid && allRejected ? 0 : 1;

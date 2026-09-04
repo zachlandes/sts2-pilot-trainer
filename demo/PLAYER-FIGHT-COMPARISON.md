@@ -23,29 +23,31 @@ same actions. The second is the retail client, with a person playing.
 ## The recording's side, and the proof it is this recording's
 
 The client cannot replay - one process, one run, and it is the player's - so the
-recording's line is produced here from a fresh replay and shipped inside the mod as
-`manifests/navegreed-OJ-6QXhNgdg.recorded-fight.json`. Every value in it is
+recording's lines are produced here from a fresh replay and shipped inside the mod as
+`manifests/navegreed-OJ-6QXhNgdg.recorded-fights.json`, one entry per fight the
+manifest declares a boundary for. Every value in it is
 engine-produced. The block regenerates it into `build/evidence` and compares it with
 the shipped file byte for byte after canonical serialisation: the shipped line is the
 engine's own replay, or this fails.
 
 ```bash
-set -o pipefail; ./scripts/arbiter recorded-fight manifests/navegreed-OJ-6QXhNgdg.replay.json --out build/evidence/regenerated.recorded-fight.json 2>&1 | grep -vE '^SentryGodotInitializer|^\[INFO\]|^\[WARN\]|^\[ERROR\]|^   at '; python3 -c "
+set -o pipefail; ./scripts/arbiter recorded-fight manifests/navegreed-OJ-6QXhNgdg.replay.json --out build/evidence/regenerated.recorded-fights.json 2>&1 | grep -vE '^SentryGodotInitializer|^\[INFO\]|^\[WARN\]|^\[ERROR\]|^   at '; python3 -c "
 import json
-a=json.load(open('manifests/navegreed-OJ-6QXhNgdg.recorded-fight.json'))
-b=json.load(open('build/evidence/regenerated.recorded-fight.json'))
+a=json.load(open('manifests/navegreed-OJ-6QXhNgdg.recorded-fights.json'))
+b=json.load(open('build/evidence/regenerated.recorded-fights.json'))
 print('shipped == regenerated:', a==b)"
 ```
 
 ```output
 recording       : navegreed-OJ-6QXhNgdg
-fight           : ENCOUNTER.SLUDGE_SPINNER_WEAK
-covered         : actions through 10, 12 sampled step(s)
+
+fight 1         : ENCOUNTER.SLUDGE_SPINNER_WEAK
+covered         : actions 1 through 10, 10 sampled step(s)
 history hash    : sha256:da8eee5bce087da0b5d51c2e5fd445b730d37ebdc7d7a88ef23bcf731da6d35c
 snapshot digest : sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae
 outcome         : victory on turn 4, 64 -> 57 health
 
-recorded fight: build/evidence/regenerated.recorded-fight.json
+recorded fights: build/evidence/regenerated.recorded-fights.json
 shipped == regenerated: True
 ```
 

@@ -93,10 +93,10 @@ public sealed class RecordedFightEntry : IDisposable
     /// consult it.
     /// </summary>
     public static bool CanConstruct(
-        EnvironmentIdentity expected, out PreflightResult gate,
+        ReplayManifest recording, out PreflightResult gate,
         PlayerProgress progress = SuppliedProgress)
     {
-        gate = Preflight.Evaluate(expected, progress);
+        gate = Preflight.Evaluate(recording.Environment, progress, recording.Source.Kind);
         return gate.Matches && LocalEnvironment.ReadStartedRun() is null;
     }
 
@@ -159,7 +159,7 @@ public sealed class RecordedFightEntry : IDisposable
         // generated against. The same question the arbiter asks before it constructs
         // a run, and the same rules; what differs between a host and a person is
         // which reading the rules are asked about, not the rules.
-        var prerequisites = Preflight.Evaluate(manifest.Environment, progress);
+        var prerequisites = Preflight.Evaluate(manifest.Environment, progress, manifest.Source.Kind);
         if (!prerequisites.Matches)
         {
             throw new EngineException(Refusal(
@@ -332,7 +332,7 @@ public sealed class RecordedFightEntry : IDisposable
     /// fight at all, or it is in one that does not match what the recording observed
     /// and the engine-produced snapshot digest. Both are drift, and neither is entered.
     /// </summary>
-    public CombatStartEquality VerifyCombatStart()
+    public BoundaryEquality VerifyCombatStart()
     {
         if (!AtCombatStart)
         {
@@ -341,14 +341,17 @@ public sealed class RecordedFightEntry : IDisposable
                 "have not been made yet, so there is no combat start to compare against.");
         }
 
-        var expectedDigest = Manifest.Source.CombatStartSnapshotDigest?.Value
+        var expectedDigest = Manifest.CombatStartDigest(Plan.Fight)
             ?? throw new ManifestException(
-                "The recording has no engine-produced combat-start snapshot digest.");
+                $"The recording declares no combat-start boundary for fight " +
+                $"{Plan.Fight.ToString(System.Globalization.CultureInfo.InvariantCulture)}, so there is no " +
+                "digest to compare the live state against.");
         var state = LiveState();
         if (!InCombat())
         {
-            return new CombatStartEquality
+            return new BoundaryEquality
             {
+                Kind = ReplayBoundary.CombatStartKind,
                 Matches = false,
                 Comparisons = [],
                 ExpectedDigest = expectedDigest,
@@ -382,7 +385,7 @@ public sealed class RecordedFightEntry : IDisposable
     /// </summary>
     /// <exception cref="EngineException">When the boundary did not match, or a
     /// capture already exists.</exception>
-    public FightCapture BeginCapture(CombatStartEquality boundary)
+    public FightCapture BeginCapture(BoundaryEquality boundary)
     {
         if (!boundary.Matches)
         {

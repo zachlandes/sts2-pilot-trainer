@@ -6,7 +6,7 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 
 /// <summary>
 /// What can be checked about the in-game capture on a machine that is not running
-/// the game: that the mod ships the recording's fight and refuses one that is not
+/// the game: that the mod ships the recording's fights and refuses a set that is not
 /// this recording's, and that every game surface the observer subscribes to or reads
 /// is still there on this build. A build that renamed one would install an observer
 /// with a hole in it, and the hole would be a fight sampled on one side only, which
@@ -17,15 +17,15 @@ public sealed class PlayerFightObserverTests
     private static string ModAssemblyPath => Path.Combine(AppContext.BaseDirectory, "Runmobile.dll");
 
     [ObserverFact]
-    public void TheModShipsTheRecordingsFightBoundToTheRecording()
+    public void TheModShipsTheRecordingsFightsBoundToTheRecording()
     {
         var shipped = ModAssembly().GetType("Sts2PilotTrainer.Mod.ShippedRecording")!;
         var recording = shipped.GetMethod("Read", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;
-        var fight = shipped.GetMethod("ReadFight", BindingFlags.Static | BindingFlags.NonPublic)!
+        var fights = shipped.GetMethod("ReadFights", BindingFlags.Static | BindingFlags.NonPublic)!
             .Invoke(null, [recording]);
 
-        Assert.NotNull(fight);
-        Assert.Equal("navegreed-OJ-6QXhNgdg", fight!.GetType().GetProperty("RunId")!.GetValue(fight));
+        Assert.NotNull(fights);
+        Assert.Equal("navegreed-OJ-6QXhNgdg", fights!.GetType().GetProperty("RunId")!.GetValue(fights));
     }
 
     [ObserverFact]

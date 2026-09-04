@@ -20,7 +20,7 @@ internal static partial class Commands
     {
         var manifest = ManifestJson.Load(Args.Positional(args, 0, "manifest path"));
         var progress = ParseProgress(args);
-        var result = Engine.Preflight.Evaluate(manifest.Environment, progress);
+        var result = Engine.Preflight.Evaluate(manifest.Environment, progress, manifest.Source.Kind);
 
         Console.WriteLine($"manifest : {manifest.RunId}");
         Console.WriteLine($"progress : {progress}");
@@ -103,7 +103,7 @@ internal static partial class Commands
         PreflightResult combined;
         if (demoStartRun)
         {
-            var prerequisites = Engine.Preflight.Evaluate(environment, progress);
+            var prerequisites = Engine.Preflight.Evaluate(environment, progress, manifest.Source.Kind);
             PrintFields(prerequisites);
 
             var seed = Args.Value(args, "--seed") ?? environment.Seed.Value;
@@ -136,7 +136,7 @@ internal static partial class Commands
         }
         else
         {
-            combined = Engine.Preflight.EvaluateLiveGame(environment);
+            combined = Engine.Preflight.EvaluateLiveGame(environment, manifest.Source.Kind);
             PrintFields(combined);
         }
         Console.WriteLine();

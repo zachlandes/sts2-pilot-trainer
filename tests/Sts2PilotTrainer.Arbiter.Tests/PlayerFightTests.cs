@@ -17,15 +17,15 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 public class PlayerFightTests
 {
     private static string RecordedFightPath =>
-        Path.Combine(Arbiter.RepoRoot, "manifests", "navegreed-OJ-6QXhNgdg.recorded-fight.json");
+        Path.Combine(Arbiter.RepoRoot, "manifests", "navegreed-OJ-6QXhNgdg.recorded-fights.json");
 
     [Fact]
     public void TheShippedRecordedFightBindsToTheShippedManifest()
     {
-        var fight = RecordedFight.Load(RecordedFightPath);
-        fight.Bind(ManifestJson.Load(Arbiter.Manifest));
+        var fights = RecordedFights.Load(RecordedFightPath);
+        fights.Bind(ManifestJson.Load(Arbiter.Manifest));
 
-        var projection = fight.Projection();
+        var projection = fights.Projection();
         Assert.Equal("victory", projection.Summary.Outcome);
         Assert.Equal(4, projection.Summary.TotalTurns);
         Assert.Equal(64, projection.Summary.StartingHealth);
@@ -36,12 +36,12 @@ public class PlayerFightTests
     public void TheShippedRecordedFightIsTheEnginesOwnReplayOfTheManifest()
     {
         var outDir = TempDir();
-        var outPath = Path.Combine(outDir, "regenerated.recorded-fight.json");
+        var outPath = Path.Combine(outDir, "regenerated.recorded-fights.json");
         var result = Arbiter.Run("recorded-fight", Arbiter.Manifest, "--out", outPath);
         Assert.True(result.Verified, result.All);
 
-        var regenerated = RecordedFight.Load(outPath);
-        var shipped = RecordedFight.Load(RecordedFightPath);
+        var regenerated = RecordedFights.Load(outPath);
+        var shipped = RecordedFights.Load(RecordedFightPath);
         Assert.Equal(shipped.Serialize(), regenerated.Serialize());
     }
 

@@ -19,6 +19,51 @@ public static class IngestionCorruption
         string WhyItMatters,
         Func<ReplayManifest, ReplayManifest> Apply);
 
+    /// <summary>
+    /// The corruptions that apply to the recording in hand.
+    ///
+    /// Provenance corruptions are kind-specific by construction: a video recording's
+    /// account of where it came from is made of readings off the video, and a native
+    /// one's is made of what the recorder witnessed. Damaging a field the manifest
+    /// does not have is not a control, so the set is chosen rather than filtered.
+    /// </summary>
+    public static IReadOnlyList<Case> For(ReplayManifest manifest) =>
+        manifest.Source.Kind == "native" ? Native : All;
+
+    /// <summary>
+    /// Damage to a native recording's account of itself.
+    ///
+    /// The two here are the native counterparts of the two checks that cannot move
+    /// downstream. A recorder that joined a run late, and one that stopped and
+    /// started again, both produce a history that replays perfectly against a run
+    /// that is not the one it describes.
+    /// </summary>
+    public static IReadOnlyList<Case> Native =>
+    [
+        new("recorder-joined-a-run-in-progress",
+            "Marks the recording as one the recorder did not see begin.",
+            "The native counterpart of a resumed run. The seed, build, content hash and acts all still match, " +
+            "so every environment gate passes and the replay runs cleanly - against a history that does not " +
+            "start where the run did. Nothing downstream can see this.",
+            m => WithNative(m, n => n with
+            {
+                WitnessedRunStart = Fact<bool>.Captured(false, FactEvidence.AtActionOrdinal(0)),
+            })),
+
+        new("recording-has-a-hole-in-it",
+            "Marks the recorder's watch as broken.",
+            "A recorder that stopped and started again saw two stretches of a run and cannot know what " +
+            "happened between them. The history it wrote is missing decisions, and a history missing " +
+            "decisions replays into a different run while every value in it is individually true.",
+            m => WithNative(m, n => n with { Continuity = NativeSource.BrokenContinuity })),
+
+        new("unidentified-mod",
+            "Drops one mod from the environment while leaving the reported count where it was.",
+            "An unidentified mod is precisely the gap the content hash cannot close, so a shortfall has to be " +
+            "visible rather than rounded away by a list that looks complete.",
+            m => WithMods(m, e => e with { Mods = e.Mods.Take(e.Mods.Count - 1).ToList() })),
+    ];
+
     public static IReadOnlyList<Case> All =>
     [
         new("resumed-from-run-history",
@@ -82,6 +127,17 @@ public static class IngestionCorruption
         {
             RunId = manifest.RunId + "+corrupted",
             Source = manifest.Source with { RunSummary = change(summary) },
+        };
+    }
+
+    private static ReplayManifest WithNative(ReplayManifest manifest, Func<NativeSource, NativeSource> change)
+    {
+        var native = manifest.Source.Native
+            ?? throw new ManifestException("This corruption needs a manifest the recorder produced.");
+        return manifest with
+        {
+            RunId = manifest.RunId + "+corrupted",
+            Source = manifest.Source with { Native = change(native) },
         };
     }
 

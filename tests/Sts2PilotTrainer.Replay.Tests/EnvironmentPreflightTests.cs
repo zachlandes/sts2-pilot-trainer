@@ -309,8 +309,8 @@ public class EnvironmentPreflightTests
         var result = EnvironmentPreflight.Prerequisites(environment, Local());
 
         Assert.False(result.Matches);
-        Assert.Contains("Only 'complete' is expressible", Diagnostic(result, "unlocks_requirement"),
-            StringComparison.Ordinal);
+        Assert.Contains("The expressible requirements are complete and exact",
+            Diagnostic(result, "unlocks_requirement"), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -554,4 +554,174 @@ public class EnvironmentPreflightTests
         string.Join("\n", result.Fields
             .Where(field => !field.Matches)
             .Select(field => $"{field.Field}: expected '{field.Expected}', got '{field.Actual}'"));
+
+    // ── The exact requirement, and a native recording's mod list ───────────
+
+    /// <summary>
+    /// An exact requirement asks for named ids, so what is checked is whether this
+    /// environment has each of them. The counts agreeing proves nothing: two states
+    /// with the same number of cards unlocked draw from different pools.
+    /// </summary>
+    [Fact]
+    public void AnExactRequirementPassesWhenThisEnvironmentHasEveryIdItNames()
+    {
+        var result = EnvironmentPreflight.Prerequisites(Exact(), Enumerated(), sourceKind: "native");
+
+        Assert.True(result.Matches, Describe(result));
+        Assert.Equal(UnlockRequirement.ExactCompleteness, Field(result, "unlocks_requirement").Expected);
+    }
+
+    [Fact]
+    public void AnExactRequirementRefusesABuildMissingAnIdItNames()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Exact(), Enumerated(epochs: ["EPOCH.ONE"]), sourceKind: "native");
+
+        Assert.False(result.Matches);
+        Assert.Contains("Missing, for example: EPOCH.TWO", Diagnostic(result, "unlocks_epochs"),
+            StringComparison.Ordinal);
+        Assert.Contains(EnvironmentPreflight.UnlockRemediation, Diagnostic(result, "unlocks_epochs"),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>A reader that could not enumerate what the build ships says so rather
+    /// than reporting a pass it did not establish. This is every real reading today -
+    /// nothing populates ShippedIds until the engine reader enumerates the build's
+    /// epoch and encounter ids, which lands with the recorder - so the refusal is the
+    /// documented dependency rather than the desired end state.</summary>
+    [Fact]
+    public void AnExactRequirementRefusesAReadingThatEnumeratedNothing()
+    {
+        var result = EnvironmentPreflight.Prerequisites(Exact(), Local(), sourceKind: "native");
+
+        Assert.False(result.Matches);
+        Assert.Contains("did not enumerate what it ships", Diagnostic(result, "unlocks_epochs"),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>The state is constructed from the recording's own run count, so
+    /// nothing about this installation has to match it.</summary>
+    [Fact]
+    public void AnExactRequirementReportsTheRunCountRatherThanComparingIt()
+    {
+        var result = EnvironmentPreflight.Prerequisites(Exact(), Enumerated(), sourceKind: "native");
+
+        var runs = Field(result, "unlocks_runs");
+        Assert.True(runs.Matches);
+        Assert.Equal("137", runs.Expected);
+    }
+
+    [Fact]
+    public void AnExactRequirementWithNoInventoryRefuses()
+    {
+        var environment = Environment() with
+        {
+            Unlocks = Fact<UnlockRequirement>.Declared(new UnlockRequirement
+            {
+                Completeness = UnlockRequirement.ExactCompleteness,
+                Basis = "test",
+            }),
+        };
+
+        var result = EnvironmentPreflight.Prerequisites(environment, Enumerated(), sourceKind: "native");
+
+        Assert.False(result.Matches);
+        Assert.Contains("names no inventory", Diagnostic(result, "unlocks_requirement"), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A native recording's mod list is a reading rather than an audit, so it is
+    /// judged by a rule instead of against a fixed set of audited names: every mod
+    /// that was loaded has to declare itself non-gameplay.
+    /// </summary>
+    [Fact]
+    public void ANativeRecordingsModsPassWhenEveryOneDeclaresItselfNonGameplay()
+    {
+        var environment = Environment() with
+        {
+            Mods = Fact<ModEnvironment>.Captured(
+                Fixtures.NativeModEnvironment(), FactEvidence.AtActionOrdinal(0)),
+        };
+
+        var result = EnvironmentPreflight.Prerequisites(environment, Local(), sourceKind: "native");
+
+        Assert.True(Field(result, "mod_environment").Matches, Describe(result));
+    }
+
+    [Fact]
+    public void ANativeRecordingsModsRefuseAGameplayAffectingMod()
+    {
+        var result = NativeMods(new ModEnvironment
+        {
+            Name = "the player's own game",
+            ReportedCount = 2,
+            Mods =
+            [
+                new InstalledMod("Runmobile", "the recorder itself", "reads only", AffectsGameplay: false),
+                new InstalledMod("Rebalance", "changes cards", "unbounded", AffectsGameplay: true),
+            ],
+        });
+
+        Assert.False(result.Matches);
+        Assert.Contains("declare themselves gameplay-affecting", Diagnostic(result, "mod_environment"),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>An absent declaration is a reading nobody took, not a mod that
+    /// changes nothing.</summary>
+    [Fact]
+    public void ANativeRecordingsModsRefuseAModThatDeclaredNothing()
+    {
+        var result = NativeMods(new ModEnvironment
+        {
+            Name = "the player's own game",
+            ReportedCount = 1,
+            Mods = [new InstalledMod("Mystery", "unknown", "unbounded")],
+        });
+
+        Assert.False(result.Matches);
+        Assert.Contains("say nothing about whether they change gameplay",
+            Diagnostic(result, "mod_environment"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ANativeRecordingsModsRefuseAnUnidentifiedMod()
+    {
+        var result = NativeMods(Fixtures.NativeModEnvironment() with { ReportedCount = 3 });
+
+        Assert.False(result.Matches);
+        Assert.Contains("An unidentified mod", Diagnostic(result, "mod_environment"), StringComparison.Ordinal);
+    }
+
+    private static PreflightResult NativeMods(ModEnvironment mods) =>
+        EnvironmentPreflight.Prerequisites(
+            Environment() with { Mods = Fact<ModEnvironment>.Captured(mods, FactEvidence.AtActionOrdinal(0)) },
+            Local(),
+            sourceKind: "native");
+
+    private static EnvironmentIdentity Exact() => Environment() with
+    {
+        Unlocks = Fact<UnlockRequirement>.Captured(
+            UnlockRequirement.Exact("read from the player's own profile", Fixtures.UnlockInventory()),
+            FactEvidence.AtActionOrdinal(0)),
+        Mods = Fact<ModEnvironment>.Captured(Fixtures.NativeModEnvironment(), FactEvidence.AtActionOrdinal(0)),
+    };
+
+    /// <summary>A reading that enumerated what this build ships, which is what an
+    /// exact requirement can actually be checked against.</summary>
+    private static LocalPrerequisites Enumerated(IReadOnlyList<string>? epochs = null)
+    {
+        var inventory = Fixtures.UnlockInventory();
+        return Local() with
+        {
+            Unlocks = Local().Unlocks with
+            {
+                ShippedIds = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                {
+                    ["epochs"] = epochs ?? inventory.Epochs,
+                    ["encounters_seen"] = inventory.EncountersSeen,
+                },
+            },
+        };
+    }
 }

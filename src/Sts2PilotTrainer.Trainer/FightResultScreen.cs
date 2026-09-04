@@ -88,7 +88,7 @@ public sealed record FightResultScreen(
     /// won, and a completed win compared with the recording's. A comparison that
     /// refuses - a boundary that is not the recording's - is shown in its own words.
     /// </summary>
-    public static FightResultScreen Of(string creator, FightCapture capture, RecordedFight recording)
+    public static FightResultScreen Of(string creator, FightCapture capture, CombatProjection recording)
     {
         switch (capture.State)
         {
@@ -106,7 +106,7 @@ public sealed record FightResultScreen(
                 return Lost(creator);
             }
 
-            return For(creator, CombatComparison.Between(yours, recording.Projection()));
+            return For(creator, CombatComparison.Between(yours, recording));
         }
         catch (ManifestException refusal)
         {

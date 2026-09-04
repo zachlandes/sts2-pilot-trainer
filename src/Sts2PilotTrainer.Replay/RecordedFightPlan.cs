@@ -1,8 +1,8 @@
 namespace Sts2PilotTrainer.Replay;
 
 /// <summary>
-/// What a host has to do, in order, to stand a player in the recording's first
-/// fight: the decisions the recording made before that fight, and the boundary the
+/// What a host has to do, in order, to stand a player in one of the recording's
+/// fights: the decisions the recording made before that fight, and the boundary the
 /// fight starts at.
 ///
 /// Derived from the manifest and from nothing else, so the whole plan can be read
@@ -11,9 +11,16 @@ namespace Sts2PilotTrainer.Replay;
 /// already fixes, and the boundary is the same combat-start boundary
 /// <see cref="CombatProjection.CoverageOf"/> reads back out of a replay. A host
 /// checks the two against each other rather than trusting either alone - see
-/// <see cref="CombatStartEquality"/>.
+/// <see cref="BoundaryEquality"/>.
 ///
-/// It refuses rather than guessing. A manifest that reaches no fight, or that
+/// Which fight is asked for by ordinal, and the manifest's
+/// <see cref="ReplayManifest.Boundaries"/> is what says where that fight begins.
+/// The first fight has a second, older way of being found - the first action that
+/// could only have been taken inside a fight - which is how a recording's first
+/// boundary gets derived before any boundary exists. Nothing past the first fight
+/// can be found that way, and guessing is not on offer.
+///
+/// It refuses rather than guessing. A manifest that reaches no such fight, or that
 /// reaches one without recording what the fight opened with, has nothing an entry
 /// could be proved correct against, and entering it anyway is exactly the confident
 /// wrong answer this project exists to prevent.
@@ -30,6 +37,9 @@ public sealed record RecordedFightPlan
     /// starting.</summary>
     private static readonly string[] LiveCombatFields =
         ["combat.turn", "combat.hand", "combat.encounter", "combat.enemy_count"];
+
+    /// <summary>Which fight of the run this plan reaches, counting from 1.</summary>
+    public required int Fight { get; init; }
 
     /// <summary>The recording's decisions before the fight, in order. Every one of
     /// them is executed; none is optional, and none is ours.</summary>
@@ -49,10 +59,81 @@ public sealed record RecordedFightPlan
     /// history the other came from.</summary>
     public required SnapshotCacheKey SnapshotKey { get; init; }
 
-    public static RecordedFightPlan For(ReplayManifest manifest)
+    /// <summary>The plan for the recording's first fight.</summary>
+    public static RecordedFightPlan For(ReplayManifest manifest) => For(manifest, fight: 1);
+
+    /// <summary>The plan for the fight with this ordinal, counting from 1.</summary>
+    public static RecordedFightPlan For(ReplayManifest manifest, int fight)
     {
+        if (fight < 1)
+        {
+            throw new ManifestException(
+                $"Fight {fight.ToString(System.Globalization.CultureInfo.InvariantCulture)} is not a fight. " +
+                "Fights are numbered from 1, in the order the run played them.");
+        }
+
         var ordered = manifest.Actions.OrderBy(action => action.Seq).ToList();
-        var firstCombatAction = ordered.FindIndex(action => CombatVerbs.Contains(action.Verb));
+        var combatStartSeq = CombatStartSeqOf(manifest, ordered, fight);
+        var prefix = ordered.TakeWhile(action => action.Seq <= combatStartSeq).ToList();
+
+        var boundary = manifest.Checkpoints
+            .Where(checkpoint => checkpoint.AfterSeq == combatStartSeq)
+            .FirstOrDefault(checkpoint => checkpoint.Expect.Keys.Any(LiveCombatFields.Contains));
+
+        if (boundary is null)
+        {
+            throw new ManifestException(
+                $"This recording enters fight {fight.ToString(System.Globalization.CultureInfo.InvariantCulture)} " +
+                $"after action {combatStartSeq.ToString(System.Globalization.CultureInfo.InvariantCulture)} and " +
+                "records nothing it observed there. Entering it would put a player in a fight nobody could show " +
+                "was the recorded one, which is the failure this arbiter exists to prevent. Add a checkpoint at " +
+                "that boundary.");
+        }
+
+        return new RecordedFightPlan
+        {
+            Fight = fight,
+            PrefightActions = prefix,
+            CombatStartSeq = combatStartSeq,
+            Boundary = boundary,
+            SnapshotKey = SnapshotCacheKey.For(manifest, combatStartSeq),
+        };
+    }
+
+    /// <summary>
+    /// Where the recording's first fight begins, read the way the format read it
+    /// before boundaries were a list: the action before the first that could only have
+    /// been taken inside a fight.
+    ///
+    /// Separate from <see cref="For(ReplayManifest)"/> because migrating an older
+    /// manifest needs the sequence number and nothing else. A plan additionally
+    /// requires the recording to have observed something at that boundary, which is a
+    /// condition on entering a fight rather than on reading where one starts.
+    /// </summary>
+    internal static int FirstCombatStartSeq(ReplayManifest manifest) =>
+        CombatStartSeqOf(manifest, manifest.Actions.OrderBy(action => action.Seq).ToList(), fight: 1);
+
+    private static int CombatStartSeqOf(ReplayManifest manifest, IReadOnlyList<ActionRecord> ordered, int fight)
+    {
+        if (manifest.BoundaryAt(ReplayBoundary.CombatStartKind, fight: fight) is { } declared)
+        {
+            return declared.AfterSeq;
+        }
+
+        if (fight > 1)
+        {
+            throw new ManifestException(
+                $"This recording declares no combat-start boundary for fight " +
+                $"{fight.ToString(System.Globalization.CultureInfo.InvariantCulture)}. Where a later fight " +
+                "begins is a fact about what the engine did, so it is derived by replaying the run and written " +
+                "into the manifest's boundaries - never guessed from the shape of the history.");
+        }
+
+        // The recording's first boundary has to be findable before any boundary
+        // exists, because deriving it is what produces the first entry in the list.
+        // The first action that could only have been taken inside a fight is what
+        // makes the action before it the one that entered the fight.
+        var firstCombatAction = ordered.ToList().FindIndex(action => CombatVerbs.Contains(action.Verb));
 
         if (firstCombatAction < 0)
         {
@@ -68,28 +149,7 @@ public sealed record RecordedFightPlan
                 "decisions that led to it. A fight can only be entered by replaying the run that reaches it.");
         }
 
-        var prefight = ordered.Take(firstCombatAction).ToList();
-        var combatStartSeq = prefight[^1].Seq;
-
-        var boundary = manifest.Checkpoints
-            .Where(checkpoint => checkpoint.AfterSeq == combatStartSeq)
-            .FirstOrDefault(checkpoint => checkpoint.Expect.Keys.Any(LiveCombatFields.Contains));
-
-        if (boundary is null)
-        {
-            throw new ManifestException(
-                $"This recording enters a fight after action {combatStartSeq} and records nothing it observed " +
-                "there. Entering it would put a player in a fight nobody could show was the recorded one, " +
-                "which is the failure this arbiter exists to prevent. Add a checkpoint at that boundary.");
-        }
-
-        return new RecordedFightPlan
-        {
-            PrefightActions = prefight,
-            CombatStartSeq = combatStartSeq,
-            Boundary = boundary,
-            SnapshotKey = SnapshotCacheKey.For(manifest, combatStartSeq),
-        };
+        return ordered[firstCombatAction - 1].Seq;
     }
 
     /// <summary>
@@ -103,4 +163,104 @@ public sealed record RecordedFightPlan
         stepIndex >= 0 &&
         stepIndex < PrefightActions.Count &&
         PrefightActions[stepIndex].Seq == action.Seq;
+}
+
+/// <summary>
+/// What a host has to do to stand a player at the moment a recording arrived on one
+/// of its floors, before whatever that floor turned out to be.
+///
+/// The same shape as <see cref="RecordedFightPlan"/> and deliberately not the same
+/// type: the boundary it ends at is a different kind of moment and is proved by
+/// different fields. A fight's boundary is observed through what the fight opened
+/// with; a floor's is observed through where the run now stands - the floor number
+/// and the position on the map - because none of the combat fields exist yet.
+///
+/// Where a floor begins is never inferred here. The recording's
+/// <see cref="ReplayManifest.Boundaries"/> says which action arrived on it, derived
+/// by replaying the run; reading it off the shape of the history would be inventing
+/// a moment nobody measured.
+/// </summary>
+public sealed record FloorEntryPlan
+{
+    /// <summary>Canonical fields that place a run on the map. A floor-entry boundary
+    /// checkpoint has to name both, or it is not an observation of arriving
+    /// anywhere.</summary>
+    public static readonly string[] RequiredBoundaryFields = ["run.total_floor", "run.map_coord"];
+
+    /// <summary>Which floor of the run this plan reaches.</summary>
+    public required int Floor { get; init; }
+
+    /// <summary>The recording's decisions before arriving, in order.</summary>
+    public required IReadOnlyList<ActionRecord> PrefixActions { get; init; }
+
+    /// <summary>The sequence number the run stands on this floor after: the map move
+    /// that entered it.</summary>
+    public required int FloorEntrySeq { get; init; }
+
+    /// <summary>What the recording observed on arrival.</summary>
+    public required Checkpoint Boundary { get; init; }
+
+    /// <summary>Identity of the snapshot this plan reproduces.</summary>
+    public required SnapshotCacheKey SnapshotKey { get; init; }
+
+    public static FloorEntryPlan For(ReplayManifest manifest, int floor)
+    {
+        var declared = manifest.BoundaryAt(ReplayBoundary.FloorEntryKind, floor: floor)
+            ?? throw new ManifestException(
+                $"This recording declares no floor-entry boundary for floor " +
+                $"{floor.ToString(System.Globalization.CultureInfo.InvariantCulture)}. Which action arrives on " +
+                "a floor is a fact about what the engine did; it is derived by replaying the run and written " +
+                "into the manifest's boundaries, never read off the shape of the history.");
+
+        var ordered = manifest.Actions.OrderBy(action => action.Seq).ToList();
+        var entry = ordered.FirstOrDefault(action => action.Seq == declared.AfterSeq)
+            ?? throw new ManifestException(
+                $"This recording's floor-{floor.ToString(System.Globalization.CultureInfo.InvariantCulture)} " +
+                $"boundary names action {declared.AfterSeq.ToString(System.Globalization.CultureInfo.InvariantCulture)}, " +
+                "which is not in its history.");
+
+        if (entry.Verb != ActionVerb.MapMove)
+        {
+            throw new ManifestException(
+                $"This recording's floor-{floor.ToString(System.Globalization.CultureInfo.InvariantCulture)} " +
+                $"boundary names action {entry.Seq.ToString(System.Globalization.CultureInfo.InvariantCulture)} " +
+                $"({entry.Verb}), and a floor is arrived on by moving on the map. A boundary pointing at any " +
+                "other action is not the moment it claims to be.");
+        }
+
+        var boundary = manifest.Checkpoints
+            .Where(checkpoint => checkpoint.AfterSeq == declared.AfterSeq)
+            .FirstOrDefault(checkpoint =>
+                RequiredBoundaryFields.All(field => checkpoint.Expect.ContainsKey(field)))
+            ?? throw new ManifestException(
+                $"This recording arrives on floor {floor.ToString(System.Globalization.CultureInfo.InvariantCulture)} " +
+                $"after action {declared.AfterSeq.ToString(System.Globalization.CultureInfo.InvariantCulture)} and " +
+                $"records no checkpoint there naming {string.Join(" and ", RequiredBoundaryFields)}. A floor " +
+                "arrival is proved by where the run stands, not by what a fight opened with, and standing a " +
+                "player somewhere nobody observed is the failure this arbiter exists to prevent.");
+
+        var expectedFloor = floor.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (!string.Equals(boundary.Expect["run.total_floor"].Value, expectedFloor, StringComparison.Ordinal))
+        {
+            throw new ManifestException(
+                $"This recording declares a boundary for floor {expectedFloor}, but the checkpoint there says " +
+                $"run.total_floor is {boundary.Expect["run.total_floor"].Value}. A floor plan cannot hand over " +
+                "a checkpoint for another floor.");
+        }
+
+        return new FloorEntryPlan
+        {
+            Floor = floor,
+            PrefixActions = ordered.TakeWhile(action => action.Seq <= declared.AfterSeq).ToList(),
+            FloorEntrySeq = declared.AfterSeq,
+            Boundary = boundary,
+            SnapshotKey = SnapshotCacheKey.For(manifest, declared.AfterSeq),
+        };
+    }
+
+    /// <inheritdoc cref="RecordedFightPlan.Authorises"/>
+    public bool Authorises(int stepIndex, ActionRecord action) =>
+        stepIndex >= 0 &&
+        stepIndex < PrefixActions.Count &&
+        PrefixActions[stepIndex].Seq == action.Seq;
 }

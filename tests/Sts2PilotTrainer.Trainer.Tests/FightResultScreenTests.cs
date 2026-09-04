@@ -66,7 +66,7 @@ public sealed class FightResultScreenTests
         capture.BeginStep("PlayCard", Args(), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("victory", 1, 64, 0, enemies: 0));
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, Recording());
+        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
         Assert.False(screen.HasComparison);
         Assert.Contains("carries no 'card_id'", screen.Notice, StringComparison.Ordinal);
     }
@@ -96,7 +96,7 @@ public sealed class FightResultScreenTests
         var capture = Live();
         capture.Abandon();
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, Recording());
+        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
         Assert.False(screen.HasComparison);
         Assert.Equal("Combat Trainer", screen.Title);
         Assert.Equal("This fight was left before it ended, so there is nothing to compare.", screen.Notice);
@@ -110,7 +110,7 @@ public sealed class FightResultScreenTests
         capture.Finish(Sample("victory", 1, 64, 0, enemies: 0));
         Assert.Equal(FightCaptureState.Incomplete, capture.State);
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, Recording());
+        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
         Assert.Equal(capture.Refusal, screen.Notice);
         Assert.StartsWith("Your fight could not be captured completely, so it is not compared.", screen.Notice, StringComparison.Ordinal);
     }
@@ -118,7 +118,7 @@ public sealed class FightResultScreenTests
     [Fact]
     public void AFightStillBeingFoughtIsNotCompared()
     {
-        var screen = FightResultScreen.Of("NaveGreed", Live(), Recording());
+        var screen = FightResultScreen.Of("NaveGreed", Live(), RecordingsLine());
         Assert.False(screen.HasComparison);
         Assert.Contains("has not ended", screen.Notice, StringComparison.Ordinal);
     }
@@ -130,7 +130,7 @@ public sealed class FightResultScreenTests
         capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("defeat", 1, 0, 42));
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, Recording());
+        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
         Assert.Equal(
             "You did not win this fight, so there is no completed line to compare with NaveGreed's.", screen.Notice);
     }
@@ -142,7 +142,7 @@ public sealed class FightResultScreenTests
         capture.BeginStep("PlayCard", Card("CARD.BASH"), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("victory", 1, 64, 0, enemies: 0));
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, Recording());
+        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
         Assert.False(screen.HasComparison);
         Assert.Contains("different complete combat-start snapshot digests", screen.Notice, StringComparison.Ordinal);
     }
@@ -158,7 +158,7 @@ public sealed class FightResultScreenTests
         capture.BeginStep("PlayCard", Card("CARD.BASH"), Sample("in_progress", 2, 58, 34));
         capture.CompleteStep(Sample("victory", 2, 58, 0, enemies: 0));
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, Recording());
+        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
         Assert.True(screen.HasComparison);
         Assert.All(screen.Rows, row => Assert.True(row.Matches));
         Assert.Equal(["CARD.BASH"], screen.Turns[1].Yours!.CardModelIds);
@@ -188,7 +188,7 @@ public sealed class FightResultScreenTests
     }
 
     /// <summary>Two turns, no potion, a net loss of six.</summary>
-    private static CombatProjection RecordingsLine() => Recording().Projection();
+    private static CombatProjection RecordingsLine() => Recording().Projection("test-run");
 
     private static RecordedFight Recording()
     {
@@ -201,8 +201,8 @@ public sealed class FightResultScreenTests
         capture.CompleteStep(Sample("victory", 2, 58, 0, enemies: 0));
         return new RecordedFight
         {
-            SchemaId = RecordedFight.Schema,
-            RunId = "test-run",
+            Fight = 1,
+            CombatStartSeq = 0,
             CoveredThroughSeq = 2,
             ActionHistoryHash = "sha256:unbound-in-this-test",
             CombatStartSnapshotDigest = Digest,

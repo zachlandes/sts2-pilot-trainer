@@ -134,10 +134,13 @@ were measured against, so it is shown only where a profile was read; over rows t
 host supplied, it would send a player to import progress that nothing here consults.
 
 **The fight is proved before it is handed over.**
-`CombatStartEquality` compares the live state against both readings of the boundary:
-every value the recording observed there, and the manifest's engine-produced
-combat-start snapshot digest, which covers the run-persistent random streams and the
-draw pile's order that no video can show. A boundary that disagrees on either abandons the run and says why.
+`BoundaryEquality` compares the live state against both readings of the boundary:
+every value the recording observed there, and the digest on the manifest's
+`combat_start` boundary for that fight, which covers the run-persistent random streams
+and the draw pile's order that no video can show. A boundary that disagrees on either
+abandons the run and says why. The rule is one rule for every boundary kind; only the
+sentence a refusal is written in differs, because what a player is being told they did
+not get differs.
 
 ## The player's fight, captured and compared
 
@@ -186,10 +189,12 @@ produces a comparison.
 **The recording's side travels with the manifest.**
 The client cannot replay - one process, one run, and it is the player's - so the
 recording's line is produced headlessly by `./scripts/arbiter recorded-fight` and
-embedded as `manifests/navegreed-OJ-6QXhNgdg.recorded-fight.json`.
-`RecordedFight.Bind` refuses it at mod start unless its run id, its history hash
-through the fight's end and its combat-start digest are the shipped manifest's, and a
-test regenerates it in a fresh process and compares.
+embedded as `manifests/navegreed-OJ-6QXhNgdg.recorded-fights.json`.
+`RecordedFights.Bind` refuses it at mod start unless its schema and run id are the
+shipped manifest's, and then refuses per fight unless that fight's history hash
+through its end and its combat-start digest are the manifest's boundary of the same
+ordinal - so a file carrying five fights refuses on the one that drifted. A test
+regenerates it in a fresh process and compares.
 
 **The result is a panel this mod draws, after the fight stops.**
 For a completed fight, the result is computed the moment `CombatEnded` fires and drawn two seconds later, over the loot on a win or the death screen on a loss.
@@ -431,8 +436,8 @@ floor identity a "play this fight" action would need - alongside its private
 ./scripts/arbiter adopt-live             # the refusal, from a process that is not a running game
 ./scripts/arbiter enter-fight <manifest> # the journey into the recorded fight, without a scene tree
 ./scripts/arbiter enter-fight <manifest> --play   # and the fight played through the capture and compared
-./scripts/arbiter recorded-fight <manifest> --out manifests/<id>.recorded-fight.json
-                                         # regenerate the recording's shipped line after the manifest changes
+./scripts/arbiter recorded-fight <manifest> --out manifests/<id>.recorded-fights.json
+                                         # regenerate the recording's shipped lines after the manifest changes
 ```
 
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.

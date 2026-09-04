@@ -30,9 +30,19 @@ public static class Preflight
     /// will construct the recorded run with; callers asking whether a player could
     /// start a run themselves pass <see cref="PlayerProgress.LocalProfile"/>.
     /// </param>
+    /// <param name="sourceKind">
+    /// What kind of recording this environment belongs to. It selects the mod rule:
+    /// a video recording's mod list is judged against the audited set, because
+    /// nothing could read a mod's own manifest off a video, and a recording this
+    /// project's recorder made is judged by the rule that every mod it read declares
+    /// itself non-gameplay. Pass the manifest's own kind wherever there is one.
+    /// </param>
     public static PreflightResult Evaluate(
-        EnvironmentIdentity expected, PlayerProgress progress = PlayerProgress.AllUnlocked) =>
-        EnvironmentPreflight.Prerequisites(expected, LocalEnvironment.ReadPrerequisites(expected, progress));
+        EnvironmentIdentity expected,
+        PlayerProgress progress = PlayerProgress.AllUnlocked,
+        string sourceKind = "vod") =>
+        EnvironmentPreflight.Prerequisites(
+            expected, LocalEnvironment.ReadPrerequisites(expected, progress), sourceKind);
 
     /// <summary>
     /// The gate on the run that now exists, read back out of the game.
@@ -47,9 +57,9 @@ public static class Preflight
         EnvironmentPreflight.RunIdentity(expected, LocalEnvironment.ReadStartedRun());
 
     /// <summary>Both gates, which a host must ask of a live game.</summary>
-    public static PreflightResult EvaluateLiveGame(EnvironmentIdentity expected) =>
+    public static PreflightResult EvaluateLiveGame(EnvironmentIdentity expected, string sourceKind = "vod") =>
         EnvironmentPreflight.Combine(
-            Evaluate(expected, PlayerProgress.LocalProfile),
+            Evaluate(expected, PlayerProgress.LocalProfile, sourceKind),
             EvaluateStartedRun(expected));
 
     /// <summary>
@@ -73,9 +83,11 @@ public static class Preflight
     /// requirement that is not one. Named rather than defaulted: which question is
     /// being asked is the whole difference between the two answers.
     /// </param>
-    public static LivePreflight EvaluateLiveHost(EnvironmentIdentity expected, PlayerProgress progress) =>
+    public static LivePreflight EvaluateLiveHost(
+        EnvironmentIdentity expected, PlayerProgress progress, string sourceKind = "vod") =>
         EnvironmentPreflight.LiveGame(
             expected,
             LocalEnvironment.ReadPrerequisites(expected, progress),
-            LocalEnvironment.ReadStartedRun());
+            LocalEnvironment.ReadStartedRun(),
+            sourceKind);
 }

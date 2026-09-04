@@ -52,7 +52,7 @@ And one input is a field that no video can fill in:
 
 | Field | Why it is identity |
 |---|---|
-| **unlocks** | The game generates a run's content against the player's unlock state. Nothing in a video shows it, so the manifest records a *requirement* - complete - rather than an observation, and the preflight checks the environment that is about to replay actually meets it. See [the progress problem](#the-progress-problem). |
+| **unlocks** | The game generates a run's content against the player's unlock state. Nothing in a video shows it, so a video manifest records a *requirement* - `complete` - rather than an observation. A recording this project's own recorder made records the state it read, as `exact`. Either way the preflight checks the environment that is about to replay actually meets it. See [the progress problem](#the-progress-problem). |
 
 ## The act variant
 
@@ -111,6 +111,15 @@ separate investigation and the manifest marks them as an inference for that reas
 The validator refuses an environment that lists fewer mods than it reports loaded,
 because an unidentified mod is exactly the gap the hash cannot close.
 
+That is why the preflight's rule for a video recording is a fixed set of three
+audited names: nothing could read a mod's own manifest off a video, so each identity
+had to be argued one at a time.
+A recording this project's recorder made reads the loaded list out of the game it is
+running in, so its rule can be a rule - every mod that was loaded must declare itself
+non-gameplay, and one that declares otherwise, or says nothing, is refused with the
+same reasoning, because the content hash is blind to a behaviour patch.
+The shortfall check is the same on both sides.
+
 Naming them does not establish that they changed nothing.
 What it buys is the ability to reason about each one — and, for the dangerous one, to write a check.
 The three utilities are treated as non-gameplay tooling tied to the dated visible build, not as evidence that the VOD is ineligible.
@@ -138,6 +147,19 @@ be caught at ingestion, on the recording itself, so a video source must carry
 The game's run timer starts at zero and the map is the first thing shown, so a
 from-start recording reads a handful of seconds. A resumed run reads whatever the
 original had accumulated. The selected video reads `00:04` on floor 1.
+
+A recording this project's own recorder made answers the same question without a
+video, and carries no `source.run_start` or `source.run_summary` at all - those read
+a public video, and there is none.
+What it carries instead is `source.native.witnessed_run_start`, captured because it is
+a fact about the recorder's own session, and `source.native.continuity`.
+A recorder that joined a run already in progress did not see the run begin, and one
+that stopped and started again saw two stretches of a run and cannot know what
+happened between them; either way the history it wrote replays perfectly into a run
+that is not the one it describes.
+So the manifest is publishable and enterable only when the recorder witnessed the run
+start and its watch was `continuous`, which is the native half of the same rule and
+not a weaker one.
 
 `./scripts/arbiter validate <manifest> --show-rejections` demonstrates the gate
 refusing each way a provenance record can be wrong, and
@@ -179,7 +201,15 @@ The map was byte-identical in both cases.
 Nothing in a video shows a creator's unlock state, so the two halves of the problem
 are answered differently and kept apart.
 
-**What the source player had** is an inference, and stays one. The manifest records
+**A recording made by this project's own recorder answers the first half by reading it.**
+The recorder runs inside the player's game, so `environment.unlocks` can be `exact`: the state itself, `captured`, rather than an inference about a stranger.
+What "the state itself" means is the game's own answer and not ours.
+`UnlockState` is constructed from three values - the epochs unlocked, the encounters seen, and how many runs have been played - and the seven categories the preflight reports are derived properties computed over the model database from those three.
+So `unlocks.inventory` records epochs, encounters seen and the run count, which is what a state can actually be built from; a per-category list of cards and relics would be asking for something no environment could be constructed to satisfy however exactly it matched.
+`Player.UnlockState` is get-only and set in the constructor, so a run keeps the state it was created with.
+The preflight's `exact` arm therefore checks that this build ships every epoch id and every encounter id the recording names, and reports the run count rather than comparing it: the state is supplied to the run being constructed, so nothing about this installation has to match it.
+
+**For a video recording, what the source player had** is an inference, and stays one. The manifest records
 it as `environment.unlocks` with `source: inferred` and the reasoning next to it: the
 run on screen is Ascension 10 on Ironclad, through the Underdocks act variant, on a
 typed seed. The act variant is the part that is measured rather than argued -

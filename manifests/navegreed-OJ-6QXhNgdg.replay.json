@@ -1,2246 +1,2229 @@
 {
- "manifest_version": 4,
- "run_id": "navegreed-OJ-6QXhNgdg",
- "environment": {
-  "build_version": {
-   "Value": "v0.111.0",
-   "Source": "Observed",
-   "Evidence": {
-    "video_t_ms": 9000,
-    "method": "read from the game's own version-info overlay, top right, at 3840x2160"
-   }
-  },
-  "build_date_utc": {
-   "Value": "2026.08.14",
-   "Source": "Observed",
-   "Evidence": {
-    "video_t_ms": 9000,
-    "method": "same overlay line; the game renders the release timestamp in UTC"
-   }
-  },
-  "game_mode": {
-   "Value": "standard",
-   "Source": "Inferred",
-   "Evidence": {
-    "note": "Not rendered anywhere. The real-engine mode-discrimination report shows that standard, custom with no modifiers, and daily without its date-selected modifiers match at every observed checkpoint and in final canonical state for this reconstructed prefix. That report does not bind the source to an actual custom or daily modifier configuration, so neither daily nor custom mode is excluded by the evidence available here. The mode remains an inference, not an observation."
-   }
-  },
-  "seed": {
-   "Value": "SFXT47K77RFK",
-   "Source": "Observed",
-   "Evidence": {
-    "video_t_ms": 9000,
-    "method": "read from the version-info overlay, then disambiguated by map topology. The overlay's glyphs for E and F are not separable at this rendering; both readings were generated through the engine and compared against the Act 1 map the video shows. SFXT47K77RFK reproduces all 61 observed nodes; SEXT47K77REK reproduces 12.",
-    "note": "An earlier OCR pass reported SEXT47K77REK with per-character confidence 1.0. It was wrong. Agreement between readings that share a source and an engine is not evidence of accuracy."
-   }
-  },
-  "content_hash": {
-   "Value": "1568834832",
-   "Source": "Observed",
-   "Evidence": {
-    "video_t_ms": 9000,
-    "method": "read from the overlay's HASH line"
-   }
-  },
-  "ascension": {
-   "Value": 10,
-   "Source": "Observed",
-   "Evidence": {
-    "video_t_ms": 9000,
-    "method": "ascension badge in the top-left corner; the run summary screen states Ascension 10 again at the end"
-   }
-  },
-  "unlocks": {
-   "Value": {
-    "completeness": "complete",
-    "basis": "Nothing in the video shows an unlock screen, so this is an inference from what the run itself displays: Ascension 10 on Ironclad, the Underdocks act variant, and a seeded standard run. The act variant is the part that is measured rather than argued - this build's ACT.UNDERDOCKS reports itself locked under UnlockState.none and unlocked under UnlockState.all - so the run on screen could not have been played without it. A creator that far in is assumed to have the rest. The assumption is load-bearing and is recorded as a caveat on every verification this manifest produces."
-   },
-   "Source": "Inferred",
-   "Evidence": {
-    "note": "Unlock state is never rendered on screen. Measured effect of getting it wrong: replaying this run against UnlockState.none instead of UnlockState.all moves the upfront RNG counter from 412 to 370, changes the act's generated encounters, and locks ACT.UNDERDOCKS outright."
-   }
-  },
-  "character": {
-   "Value": "CHARACTER.IRONCLAD",
-   "Source": "Observed",
-   "Evidence": {
-    "video_t_ms": 75600,
-    "method": "player sprite and starting deck at the first combat"
-   }
-  },
-  "acts": {
-   "Value": [
-    "ACT.UNDERDOCKS",
-    "ACT.HIVE",
-    "ACT.GLORY"
-   ],
-   "Source": "Inferred",
-   "Evidence": {
-    "video_t_ms": 9000,
-    "method": "Act 1's identity is read from the map screen, which titles it 'Underdocks'. This build ships two acts at index 0 - Overgrowth and Underdocks - and Overgrowth is the default, so taking the default would have replayed a different run. Acts 2 and 3 are not read from the video; the build ships exactly one variant at each of those indices, which is why the whole list is marked inferred rather than observed."
-   }
-  },
-  "mods": {
-   "Value": {
-    "name": "navegreed-2026-08",
-    "reported_count": 3,
-    "mods": [
-     {
-      "name": "Slay the Relics Exporter",
-      "role": "Exports relic and HUD state for a stream overlay to read.",
-      "replay_risk": "Reads game state and writes it outward. No content, no gameplay hooks. The lowest risk of the three, and the only one whose purpose is incompatible with changing anything."
-     },
-     {
-      "name": "BaseLib",
-      "role": "The community modding framework most StS2 mods build on.",
-      "replay_risk": "Infrastructure: hook registration, config UI, menu surfaces. Ships in lockstep with the game. It adds no gameplay content of its own, but it is a patching framework, so 'adds nothing' is a statement about this version rather than about the category."
-     },
-     {
-      "name": "Hindsight",
-      "role": "Resumes a past run from a chosen floor in run history.",
-      "replay_risk": "The one that can invalidate a reconstruction outright. A resumed run has the same seed, build, content hash and acts as a fresh one, so no environment gate would notice - the recording would simply not start where the history says it does. Defended against directly by source.run_start rather than by argument."
-     }
-    ]
-   },
-   "Source": "Inferred",
-   "Evidence": {
-    "video_t_ms": 9000,
-    "method": "The count is observed: the game's version overlay reads MODDED (3) throughout. The three identities were established by a separate investigation of this creator's environment and are not readable from the video, which names no mod anywhere. Recorded as an inference for that reason.",
-    "note": "The content hash is kept as a separate and necessary gate. It checks content ids contributed by mods that declare themselves gameplay-affecting; it is blind to a behaviour patch and to a mod declaring itself non-gameplay. Naming the environment does not make the hash an environment fingerprint, and it does not by itself establish that these three changed nothing."
-   }
-  }
- },
- "source": {
-  "kind": "vod",
-  "video": {
-   "platform": "youtube",
-   "video_id": "OJ-6QXhNgdg",
-   "channel_id": "UCuuDxwofGcur0Lt6iP-aDww",
-   "channel_name": "NaveGreed",
-   "duration_s": 2049
-  },
-  "extraction_method": "manual",
-  "coverage": "Run start through the start of the third turn of the floor-5 combat: Neow's blessing, four map moves, two whole fights played to their victories, the loot each of them offered and what the player did with it, the Waterlogged Scriptorium and the two cards it enchanted, and the first two turns of the floor-5 two-enemy fight. It stops at the boundary that opens the 209-215 second window - the moment turn 3 begins - and nothing after that is transcribed. The unit the comparison contract is defined over is a whole fight, and this history covers two of them from their combat starts to their ends.",
-  "combat_start_snapshot_digest": {
-   "Value": "sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae",
-   "Source": "Engine"
-  },
-  "run_start": {
-   "first_observed_run_time_s": {
-    "Value": 4,
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 9000,
-     "method": "the map screen's run timer reads 00:04 at the first frame that renders it"
+  "manifest_version": 5,
+  "run_id": "navegreed-OJ-6QXhNgdg",
+  "environment": {
+    "build_version": {
+      "Value": "v0.111.0",
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "read from the game's own version-info overlay, top right, at 3840x2160"
+      }
+    },
+    "build_date_utc": {
+      "Value": "2026.08.14",
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "same overlay line; the game renders the release timestamp in UTC"
+      }
+    },
+    "game_mode": {
+      "Value": "standard",
+      "Source": "Inferred",
+      "Evidence": {
+        "note": "Not rendered anywhere. The real-engine mode-discrimination report shows that standard, custom with no modifiers, and daily without its date-selected modifiers match at every observed checkpoint and in final canonical state for this reconstructed prefix. That report does not bind the source to an actual custom or daily modifier configuration, so neither daily nor custom mode is excluded by the evidence available here. The mode remains an inference, not an observation."
+      }
+    },
+    "seed": {
+      "Value": "SFXT47K77RFK",
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "read from the version-info overlay, then disambiguated by map topology. The overlay's glyphs for E and F are not separable at this rendering; both readings were generated through the engine and compared against the Act 1 map the video shows. SFXT47K77RFK reproduces all 61 observed nodes; SEXT47K77REK reproduces 12.",
+        "note": "An earlier OCR pass reported SEXT47K77REK with per-character confidence 1.0. It was wrong. Agreement between readings that share a source and an engine is not evidence of accuracy."
+      }
+    },
+    "content_hash": {
+      "Value": "1568834832",
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "read from the overlay's HASH line"
+      }
+    },
+    "ascension": {
+      "Value": 10,
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "ascension badge in the top-left corner; the run summary screen states Ascension 10 again at the end"
+      }
+    },
+    "unlocks": {
+      "Value": {
+        "completeness": "complete",
+        "basis": "Nothing in the video shows an unlock screen, so this is an inference from what the run itself displays: Ascension 10 on Ironclad, the Underdocks act variant, and a seeded standard run. The act variant is the part that is measured rather than argued - this build's ACT.UNDERDOCKS reports itself locked under UnlockState.none and unlocked under UnlockState.all - so the run on screen could not have been played without it. A creator that far in is assumed to have the rest. The assumption is load-bearing and is recorded as a caveat on every verification this manifest produces."
+      },
+      "Source": "Inferred",
+      "Evidence": {
+        "note": "Unlock state is never rendered on screen. Measured effect of getting it wrong: replaying this run against UnlockState.none instead of UnlockState.all moves the upfront RNG counter from 412 to 370, changes the act's generated encounters, and locks ACT.UNDERDOCKS outright."
+      }
+    },
+    "character": {
+      "Value": "CHARACTER.IRONCLAD",
+      "Source": "Observed",
+      "Evidence": {
+        "video_t_ms": 75600,
+        "method": "player sprite and starting deck at the first combat"
+      }
+    },
+    "mods": {
+      "Value": {
+        "name": "navegreed-2026-08",
+        "reported_count": 3,
+        "mods": [
+          {
+            "name": "Slay the Relics Exporter",
+            "role": "Exports relic and HUD state for a stream overlay to read.",
+            "replay_risk": "Reads game state and writes it outward. No content, no gameplay hooks. The lowest risk of the three, and the only one whose purpose is incompatible with changing anything."
+          },
+          {
+            "name": "BaseLib",
+            "role": "The community modding framework most StS2 mods build on.",
+            "replay_risk": "Infrastructure: hook registration, config UI, menu surfaces. Ships in lockstep with the game. It adds no gameplay content of its own, but it is a patching framework, so 'adds nothing' is a statement about this version rather than about the category."
+          },
+          {
+            "name": "Hindsight",
+            "role": "Resumes a past run from a chosen floor in run history.",
+            "replay_risk": "The one that can invalidate a reconstruction outright. A resumed run has the same seed, build, content hash and acts as a fresh one, so no environment gate would notice - the recording would simply not start where the history says it does. Defended against directly by source.run_start rather than by argument."
+          }
+        ]
+      },
+      "Source": "Inferred",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "The count is observed: the game's version overlay reads MODDED (3) throughout. The three identities were established by a separate investigation of this creator's environment and are not readable from the video, which names no mod anywhere. Recorded as an inference for that reason.",
+        "note": "The content hash is kept as a separate and necessary gate. It checks content ids contributed by mods that declare themselves gameplay-affecting; it is blind to a behaviour patch and to a mod declaring itself non-gameplay. Naming the environment does not make the hash an environment fingerprint, and it does not by itself establish that these three changed nothing."
+      }
+    },
+    "acts": {
+      "Value": [
+        "ACT.UNDERDOCKS",
+        "ACT.HIVE",
+        "ACT.GLORY"
+      ],
+      "Source": "Inferred",
+      "Evidence": {
+        "video_t_ms": 9000,
+        "method": "Act 1's identity is read from the map screen, which titles it 'Underdocks'. This build ships two acts at index 0 - Overgrowth and Underdocks - and Overgrowth is the default, so taking the default would have replayed a different run. Acts 2 and 3 are not read from the video; the build ships exactly one variant at each of those indices, which is why the whole list is marked inferred rather than observed."
+      }
     }
-   },
-   "first_observed_floor": {
-    "Value": 1,
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 9000,
-     "method": "the floor counter in the top bar reads 1, and the position marker sits at the map's starting node"
+  },
+  "source": {
+    "kind": "vod",
+    "video": {
+      "platform": "youtube",
+      "video_id": "OJ-6QXhNgdg",
+      "channel_id": "UCuuDxwofGcur0Lt6iP-aDww",
+      "channel_name": "NaveGreed",
+      "duration_s": 2049
+    },
+    "extraction_method": "manual",
+    "coverage": "Run start through the start of the third turn of the floor-5 combat: Neow's blessing, four map moves, two whole fights played to their victories, the loot each of them offered and what the player did with it, the Waterlogged Scriptorium and the two cards it enchanted, and the first two turns of the floor-5 two-enemy fight. It stops at the boundary that opens the 209-215 second window - the moment turn 3 begins - and nothing after that is transcribed. The unit the comparison contract is defined over is a whole fight, and this history covers two of them from their combat starts to their ends.",
+    "run_start": {
+      "first_observed_run_time_s": {
+        "Value": 4,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 9000,
+          "method": "the map screen's run timer reads 00:04 at the first frame that renders it"
+        }
+      },
+      "first_observed_floor": {
+        "Value": 1,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 9000,
+          "method": "the floor counter in the top bar reads 1, and the position marker sits at the map's starting node"
+        }
+      },
+      "entered_from_run_history": {
+        "Value": false,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 9000,
+          "method": "the recording opens on the Act 1 map of a run in progress at four seconds; no run-history screen appears before it"
+        }
+      },
+      "resume_modal_seen": {
+        "Value": false,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 9000,
+          "method": "no resume confirmation dialog appears at any point before the first combat",
+          "note": "This matters specifically because one of the three mods in this environment resumes a run from a chosen floor. A resumed run would pass every other gate in this manifest."
+        }
+      }
+    },
+    "run_summary": {
+      "video_t_ms": 2047000,
+      "seed": {
+        "Value": "SFXT47K77RFK",
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "the version overlay is still rendered on the end-of-run screen",
+          "note": "The same overlay as at t=9s, read again 2038 seconds later. Two readings that agree across that gap cannot both be a drifted reading of one moment, and a recording spliced from two runs could not agree at both ends."
+        }
+      },
+      "build_version": {
+        "Value": "v0.111.0",
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "version overlay, first line"
+        }
+      },
+      "build_date_utc": {
+        "Value": "2026.08.14",
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "version overlay, first line"
+        }
+      },
+      "content_hash": {
+        "Value": "1568834832",
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "version overlay, HASH line"
+        }
+      },
+      "ascension": {
+        "Value": 10,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "the summary lists 'Ascension: 10', independently of the in-run badge"
+        }
+      },
+      "floors_climbed": {
+        "Value": 49,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "the summary lists 'Floors Climbed: 49'"
+        }
+      },
+      "player_max_hp": {
+        "Value": 68,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "the health readout in the top bar reads 0/68",
+          "note": "Corroborates the opening blessing from the other end of the run: the character starts at 80 maximum health and the blessing taken at t=26s costs 12."
+        }
+      },
+      "deck_size": {
+        "Value": 18,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "the deck badge in the top bar reads 18"
+        }
+      },
+      "relic_count": {
+        "Value": 12,
+        "Source": "Observed",
+        "Evidence": {
+          "video_t_ms": 2047000,
+          "method": "twelve relic icons are shown in the relic bar"
+        }
+      },
+      "not_shown": [
+        "The game mode. This screen does not state whether the run was standard, custom or daily, which is why the manifest carries the mode as an inference. What it does show is an ordinary summary with no daily-run leaderboard or score submission, which is weak evidence against daily and none either way about custom.",
+        "The run timer. It is rendered on the map screen, not here.",
+        "The deck contents and relic identities. Only the counts are legible without opening those screens, which this recording does not do."
+      ]
     }
-   },
-   "entered_from_run_history": {
-    "Value": false,
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 9000,
-     "method": "the recording opens on the Act 1 map of a run in progress at four seconds; no run-history screen appears before it"
+  },
+  "actions": [
+    {
+      "seq": 0,
+      "verb": "ChooseNeowBlessing",
+      "args": {
+        "option_index": "2"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 26000,
+        "method": "Neow offers three options in a fixed order: Arcane Scroll, Lost Coffer, Leafy Poultice. Which one was taken is read from its effect rather than from the click: by t=31s max HP has gone 80 -> 68 (Leafy Poultice's -12) and two cards have been transformed, which no other option does."
+      },
+      "consumes_rng": [
+        "Transformations"
+      ],
+      "note": "The transform produced two copies of Hellraiser. That is a specific random outcome, so reproducing it is a sharper test than reproducing the max-HP change."
+    },
+    {
+      "seq": 1,
+      "verb": "MapMove",
+      "args": {
+        "act": "0",
+        "row": "1",
+        "column": "3"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 73500,
+        "method": "the selected node is ringed on the map as the screen fades into the room; its position matches the centre column of row 1, which the generated map has as a Monster node"
+      }
+    },
+    {
+      "seq": 2,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.HELLRAISER",
+        "hand_index": "1"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 76300,
+        "method": "energy falls 3 -> 1 and the hand loses its second card; the played card's name floats above the player"
+      }
+    },
+    {
+      "seq": 3,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "3",
+        "negative_control_substitute_card_id": "CARD.STRIKE_IRONCLAD",
+        "negative_control_substitute_hand_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 76750,
+        "method": "energy falls 1 -> 0, the hand loses Defend, and 5 block appears beside the player's health bar. The hand index is 3 rather than 4 because playing Hellraiser already shifted the cards after it."
+      },
+      "note": "The play the negative controls damage. Strike sits at hand index 0 at this moment and costs the same 1 energy, so substituting it balances every arithmetic check the frames allow while changing the fight; omitting this play changes the block that meets the enemy's opening attack, which the turn-2 checkpoint reads."
+    },
+    {
+      "seq": 4,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 77000,
+        "method": "the turn ends with Strike, Strike and Bash unplayed; the enemy then attacks and the Turn 2 banner appears"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ],
+      "note": "Hellraiser plays every drawn Strike against a random enemy, so the turn-2 draw consumes the combat-targets stream. This turn is squarely in the unforgiving class."
+    },
+    {
+      "seq": 5,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 81850,
+        "method": "turn 2's hand is Defend, Ascender's Bane, Defend, left to right; energy falls 3 -> 2 and it is the leftmost Defend that leaves the hand, so the play is hand index 0"
+      }
+    },
+    {
+      "seq": 6,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "1"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 82150,
+        "method": "energy falls 2 -> 1, block reads 10, and Ascender's Bane is all that is left in hand. The index is 1 rather than 2 because playing the first Defend already shifted the cards after it"
+      }
+    },
+    {
+      "seq": 7,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 82500,
+        "method": "the End Turn 2 button is pressed with Ascender's Bane, which is unplayable, still in hand; the card leaves the hand as the turn ends, the enemy attacks, and the Turn 3 banner follows"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ],
+      "note": "The turn-3 draw empties the draw pile and reshuffles the discard, and every Strike it turns up is played by Hellraiser against a random enemy. This is the most unforgiving action in the history."
+    },
+    {
+      "seq": 8,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.HELLRAISER",
+        "hand_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 89700,
+        "method": "Hellraiser is the only card in turn 3's hand after the draw resolves; energy falls 3 -> 1 for its cost of 2 and the hand empties"
+      },
+      "note": "The second of the two Hellraisers the opening transform produced. The video gives no direct sign of which card it was: the power icon has been on the player since the first Hellraiser and carries no stack number, so the only visible evidence is the energy falling by two and the hand emptying. What the power counts to is hidden state a recording could not have shown either way, which is the class of thing the arbiter exists to check."
+    },
+    {
+      "seq": 9,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 90250,
+        "method": "the End Turn 3 button disappears, the enemy takes its turn, and the Turn 4 banner follows"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 10,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.BASH",
+        "hand_index": "3"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 94500,
+        "method": "turn 4's hand is Defend, Defend, Defend, Bash, left to right; Bash is hovered showing 'Deal 8 damage. Apply 2 Vulnerable.', energy falls 3 -> 1, Bash leaves the hand and the enemy's health bar reads Dead"
+      },
+      "consumes_rng": [
+        "CombatTargets",
+        "Rewards"
+      ],
+      "note": "The killing blow: the enemy is at 4 health and Bash deals 8. One enemy is alive, so no target_index is recorded - there is no choice to record. It is also the moment the loot is generated: the gold amount, the roll for a potion and the three cards the reward offers are all drawn as the fight ends, before the player has decided anything about them."
+    },
+    {
+      "seq": 11,
+      "verb": "ClaimReward",
+      "args": {
+        "reward_type": "gold"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 95800,
+        "method": "the Loot! screen at t=95.3 lists three entries - '13 Gold', 'Orobic Acid', 'Add a card to your deck.' - and at t=95.8 the gold entry is gone and only the other two remain",
+        "note": "The gold counter itself is animating through values that were never the total: it reads 99 as the loot screen opens, 108 while the card screen is up at t=96.0, and settles at 112 only once the map is back at t=97.0. So the reading here is the entry disappearing from the list, not the number in the top bar, and the settled total is checkpointed later."
+      }
+    },
+    {
+      "seq": 12,
+      "verb": "ClaimReward",
+      "args": {
+        "reward_type": "potion"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 95900,
+        "method": "at t=95.9 the Loot! screen holds only 'Add a card to your deck.'; the potion belt in the top bar carries a potion from here to the end of this history and the second slot stays empty"
+      }
+    },
+    {
+      "seq": 13,
+      "verb": "TakeCard",
+      "args": {
+        "card_id": "CARD.POMMEL_STRIKE",
+        "option_index": "0",
+        "negative_control_alternative_card_id": "CARD.TREMBLE",
+        "negative_control_alternative_option_index": "1"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 97000,
+        "method": "clicking the last loot entry opens 'Choose a Card' at t=96.0, offering, left to right, Pommel Strike ('Deal 9 damage. Draw 1 card.'), Tremble ('Apply 3 Vulnerable. Exhaust.') and Twin Strike ('Deal 5 damage twice.'); the leftmost card enlarges at t=97.0 and flies to the deck",
+        "note": "The deck badge reads 11 before and 12 after, and the deck view at t=172.3 contains Pommel Strike. Tremble at option 1 is the alternative the negative controls take: a card this reward genuinely offered and the player did not take."
+      }
+    },
+    {
+      "seq": 14,
+      "verb": "MapMove",
+      "args": {
+        "act": "0",
+        "row": "2",
+        "column": "4",
+        "negative_control_alternative_column": "2"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 107700,
+        "method": "the map is on screen from t=97.7; the last map frame is t=107.6 and the screen has faded out by t=107.8. The travelled path drawn on the map at t=190.5 rings this node one row above the first fight's and one column to its right, which the map observation records as the act's only Unknown node in row 2",
+        "note": "Column 2 is nominated as the negative control's alternative. It is a node the same row offers and the engine accepts as reachable from here; unlike everything else in this manifest it is not a reading of the video, because the map screen's connecting paths are the one thing the map observation declines to transcribe."
+      }
+    },
+    {
+      "seq": 15,
+      "verb": "ChooseEventOption",
+      "args": {
+        "event_id": "EVENT.WATERLOGGED_SCRIPTORIUM",
+        "option_index": "2"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 120400,
+        "method": "the event titled 'Waterlogged Scriptorium' offers, top to bottom, 'Bloody Ink - Gain 6 Max HP.', 'Tentacle Quill - Pay 55 Gold. Enchant a card with Steady.' and 'Prickly Sponge - Pay 99 Gold. Enchant 2 cards with Steady.'; the third is hovered from t=119.6 and the card-selection grid replaces the page between t=120.3 and t=120.5",
+        "note": "Corroborated by the gold, which goes from 112 to 13 across this choice, and by maximum health, which stays at 68 rather than the 74 Bloody Ink would have given."
+      }
+    },
+    {
+      "seq": 16,
+      "verb": "SelectCardFromScreen",
+      "args": {
+        "card_id": "CARD.BASH",
+        "option_index": "7"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 129150,
+        "method": "the selection screen reads 'Choose 2 cards to Enchant.' and renders the eleven enchantable cards in deck order, five to a row: four Strikes and a Defend, then two Defends, Bash, and two Hellraisers, then Pommel Strike. Ascender's Bane is absent, which is why there are eleven and not twelve. Bash is raised under the cursor from t=128.85 to t=129.15, and both chosen cards are presented together from t=129.30",
+        "note": "The deck view at t=172.3 shows Bash reading 'Retain. Deal 8 damage. Apply 2 Vulnerable.'"
+      }
+    },
+    {
+      "seq": 17,
+      "verb": "SelectCardFromScreen",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "option_index": "5",
+        "negative_control_alternative_option_index": "4"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 129270,
+        "method": "the second card of the grid's second row - the sixth card in deck order - is raised under the cursor at t=129.20 and t=129.25, and the pair is presented together from t=129.30",
+        "note": "Which of three identical Defends this is matters, and the frames alone cannot settle it, so it is settled by what the video shows two floors later. This Defend is the one carrying Retain in the floor-4 opening hand: at t=147.05 that hand is Strike, Defend, Strike, Defend, Defend with the retain marker on the fourth card, and at t=148.0 that same card is the one still in hand after two plain Defends have been played. The three candidate readings are distinguishable - enchanting the fifth card in deck order puts the marker on the third card of that hand, and enchanting the seventh leaves no marked Defend in it at all, which the retained card at t=150.5 rules out. The fifth card is nominated as the negative control's alternative for exactly that reason: it is the reading this one was chosen over, and the two are indistinguishable until the shuffle two floors later."
+      }
+    },
+    {
+      "seq": 18,
+      "verb": "MapMove",
+      "args": {
+        "act": "0",
+        "row": "3",
+        "column": "3"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 142500,
+        "method": "the map returns at t=130 and the last map frame is t=142.3; the screen has begun fading by t=142.5 and the next room's Battle Start banner is up at t=143.3. The path drawn at t=190.5 rings this node directly above the event's, in the same column as the first fight"
+      }
+    },
+    {
+      "seq": 19,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.POMMEL_STRIKE",
+        "hand_index": "1",
+        "target_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 145550,
+        "method": "turn 1's hand is Strike, Pommel Strike, Defend, Strike, Defend, left to right; the second card is raised at t=145.3 reading 'Deal 9 damage. Draw 1 card.', energy falls 3 -> 2 and the left enemy's health bar goes 23/23 to 14/23 while the right one stays at 26/26"
+      },
+      "consumes_rng": [
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 20,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "4"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 147400,
+        "method": "Pommel Strike's draw leaves a five-card hand of Strike, Defend, Strike, Defend, Defend at t=147.05, with the retain marker on the fourth card. The rightmost card is raised at t=147.30 showing 'Gain 5 Block.' and energy falls 2 -> 1"
+      }
+    },
+    {
+      "seq": 21,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "1"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 147700,
+        "method": "the second card is raised at t=147.55 showing 'Gain 5 Block.', energy falls 1 -> 0 and the hand is left as Strike, Strike, Defend with the retain marker on the Defend"
+      }
+    },
+    {
+      "seq": 22,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 148300,
+        "method": "the End Turn 1 button is pressed at t=148.3 with Strike, Strike and the retained Defend unplayed; the enemies take their turn and the Turn 2 banner follows"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 23,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.BASH",
+        "hand_index": "5",
+        "target_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 152300,
+        "method": "turn 2 opens with six cards - the retained Defend plus five drawn - reading Defend, Hellraiser, Hellraiser, Strike, Strike, Bash at t=151.5. The rightmost is raised at t=152.0 showing 'Retain. Deal 8 damage. Apply 2 Vulnerable.', energy falls 3 -> 1 and the left enemy takes the damage"
+      },
+      "consumes_rng": [
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 24,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "3",
+        "target_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 152800,
+        "method": "a Strike is raised at t=152.5 previewing 'Deal 9 damage' - six, half again for the Vulnerable Bash just applied - energy falls 1 -> 0 and the left enemy's bar reads Dead at t=153.0 while the right one is still 26/26",
+        "note": "Two Strikes sit side by side in this hand and they are the same card with the same history, so which of the two indices was clicked is not readable from the frames and makes no difference to any state the arbiter compares: both produce the same canonical piles."
+      },
+      "consumes_rng": [
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 25,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 153300,
+        "method": "the hand is left as Defend, Hellraiser, Hellraiser, Strike at t=153.0 and the Enemy Turn banner is up by t=154.0"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 26,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "5"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 157300,
+        "method": "turn 3 opens with Defend, Ascender's Bane, Hellraiser, Bash, Strike, Defend at t=156.5, the first and fourth carrying the retain marker. The rightmost is raised at t=157.0 and energy falls 3 -> 2"
+      }
+    },
+    {
+      "seq": 27,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 157800,
+        "method": "the hand's leading Defend leaves it between t=157.5 and t=158.0, energy falls 2 -> 1, and what remains is Ascender's Bane, Hellraiser, Bash, Strike"
+      }
+    },
+    {
+      "seq": 28,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 158800,
+        "method": "the End Turn 3 button is pressed with one energy unspent; Ascender's Bane leaves the hand and only the retained Bash is still drawn at t=159.5"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 29,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.POMMEL_STRIKE",
+        "hand_index": "3"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 162900,
+        "method": "turn 4 opens with Bash, Strike, Defend, Pommel Strike, Hellraiser, Strike at t=162.5. The fourth is raised at t=162.75 reading 'Deal 9 damage. Draw 1 card.' and energy falls 3 -> 2; the drawn Strike joins the end of the hand by t=163.5"
+      },
+      "consumes_rng": [
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 30,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "2"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 163600,
+        "method": "the third card is raised at t=163.5 showing 'Gain 5 Block.' and energy falls 2 -> 1"
+      }
+    },
+    {
+      "seq": 31,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "3"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 164100,
+        "method": "a Strike is raised at t=164.0 reading 'Deal 6 damage', energy falls 1 -> 0, and the hand is left as Bash, Strike, Hellraiser, Strike at t=164.25",
+        "note": "Two identical Strikes again; see the turn-2 play."
+      },
+      "consumes_rng": [
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 32,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 164400,
+        "method": "the hand empties into the discard at t=164.5 and only the retained Bash is drawn through the enemy turn"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 33,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.BASH",
+        "hand_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 168400,
+        "method": "turn 5 opens with Bash, Defend, Defend, Strike, Defend, Hellraiser at t=167.75. Bash is raised at t=168.25 reading 'Retain. Deal 8 damage.' and energy falls 3 -> 1"
+      },
+      "consumes_rng": [
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 34,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 168900,
+        "method": "the Strike is raised at t=168.75 reading 'Deal 6 damage', energy falls 1 -> 0, the hand is left as Defend, Defend, Defend, Hellraiser, and the enemy's bar reads Dead by t=169.0"
+      },
+      "consumes_rng": [
+        "CombatTargets",
+        "Rewards"
+      ],
+      "note": "The killing blow, with the second enemy already dead since turn 2, so again no target_index. It is also the moment the loot is generated: the gold amount, the roll for a potion and the three cards the reward offers are all drawn as the fight ends, before the player has decided anything about them."
+    },
+    {
+      "seq": 35,
+      "verb": "ClaimReward",
+      "args": {
+        "reward_type": "gold"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 170100,
+        "method": "the Loot! screen at t=169.8 lists two entries, '14 Gold' and 'Add a card to your deck.' - no potion this time - and by t=170.1 only the card entry is left"
+      }
+    },
+    {
+      "seq": 36,
+      "verb": "SkipRewards",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 190400,
+        "method": "the card entry is opened at t=170.2, showing Twin Strike, Uppercut and Whirlwind with a Skip button beneath; the screen is dismissed at t=189.8 with the loot entry still unclaimed, and the Loot! screen itself is dismissed between t=190.2 and t=190.4",
+        "note": "Two clicks, one engine state: declining the card and dismissing the screen leave the reward set completed with nothing else taken, which is exactly what skipping it does. Recorded as a decision rather than as an absence, because the engine discards an unfinished reward set on the way out of the room and an omitted action would replay identically to a deliberate refusal. The deck badge reads 12 either side of it."
+      }
+    },
+    {
+      "seq": 37,
+      "verb": "MapMove",
+      "args": {
+        "act": "0",
+        "row": "4",
+        "column": "3"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 191500,
+        "method": "the map returns at t=190.4 and the last map frame is t=191.3; the screen is black by t=191.7 and the next room's Battle Start banner is up at t=192.1. The path drawn at t=190.5 has this node directly above the one the player is standing on"
+      }
+    },
+    {
+      "seq": 38,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.POMMEL_STRIKE",
+        "hand_index": "1",
+        "target_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 194100,
+        "method": "turn 1's hand is Strike, Pommel Strike, Hellraiser, Ascender's Bane, Strike at t=193.5. The second card is raised at t=194.0 reading 'Deal 9 damage. Draw 1 card.', energy falls 3 -> 2 and the left enemy goes 27/27 to 18/27 while the right one stays at 29/29"
+      },
+      "consumes_rng": [
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 39,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "4"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 201800,
+        "method": "the card Pommel Strike drew is a Defend and it joins the end of the hand by t=194.75, leaving Strike, Hellraiser, Ascender's Bane, Strike, Defend. It is raised at t=201.67 showing 'Gain 5 Block.' and energy falls 2 -> 1"
+      }
+    },
+    {
+      "seq": 40,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "3",
+        "target_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 202100,
+        "method": "a Strike is raised at t=202.0 reading 'Deal 6 damage', energy falls 1 -> 0, the left enemy reads 12/27 and the hand is left as Strike, Hellraiser, Ascender's Bane at t=202.33"
+      },
+      "consumes_rng": [
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 41,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 202500,
+        "method": "the hand leaves the screen at t=202.67 with Ascender's Bane last, and the enemy turn follows"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 42,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 206400,
+        "method": "turn 2's hand is Defend, Strike, Hellraiser, Defend, Strike at t=206.0, the first carrying the retain marker. It is raised at t=206.25 reading 'Retain. Gain 5 Block.' and energy falls 3 -> 2 by t=206.5"
+      }
+    },
+    {
+      "seq": 43,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "2"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 206850,
+        "method": "the remaining Defend is raised at t=206.75 showing 'Gain 3 Block.' - five reduced by the Frail the enemy turn applied - and energy falls 2 -> 1"
+      }
+    },
+    {
+      "seq": 44,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 207150,
+        "method": "a Strike is raised at t=207.0 reading 'Deal 6 damage', energy falls 1 -> 0, the hand is left as Strike, Hellraiser at t=207.25 and the left enemy reads 6/27",
+        "note": "Two identical Strikes again; see the floor-4 turn-2 play."
+      },
+      "consumes_rng": [
+        "CombatTargets"
+      ]
+    },
+    {
+      "seq": 45,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Observed",
+      "evidence": {
+        "video_t_ms": 207600,
+        "method": "the hand leaves the screen by t=207.75 and the enemy turn runs; the Turn 3 banner - the opening of the 209-215 s window this history is a trusted prefix for - follows at t=210.0"
+      },
+      "consumes_rng": [
+        "Shuffle",
+        "MonsterAi",
+        "CombatTargets"
+      ]
     }
-   },
-   "resume_modal_seen": {
-    "Value": false,
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 9000,
-     "method": "no resume confirmation dialog appears at any point before the first combat",
-     "note": "This matters specifically because one of the three mods in this environment resumes a run from a chosen floor. A resumed run would pass every other gate in this manifest."
+  ],
+  "checkpoints": [
+    {
+      "id": "floor2-combat-start",
+      "after_seq": 1,
+      "kind": "combat_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "the End Turn button reads 'End Turn 1'"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "energy orb reads 3/3"
+          }
+        },
+        "combat.max_energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "energy orb reads 3/3"
+          }
+        },
+        "combat.block": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "no block value is shown beside the health bar"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "64",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "read from the combat HUD at 3840x2160"
+          }
+        },
+        "player.max_hp": {
+          "Value": "68",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "read from the combat HUD at 3840x2160"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "the five cards in hand, left to right, by card face and title"
+          }
+        },
+        "combat.draw_pile_count": {
+          "Value": "6",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "draw-pile badge, bottom left"
+          }
+        },
+        "combat.discard_pile_count": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "discard-pile badge, bottom right"
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "one enemy is present"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "42",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "enemy health bar reads 42/42"
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "42",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "enemy health bar reads 42/42"
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:9+Debuff",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 75600,
+            "method": "two intent icons are rendered above the enemy: a debuff glyph and an attack arrow, with the number 9 beside them",
+            "note": "Recorded as 'Attack:9' on the first pass, which read the number and the arrow and missed the debuff glyph to their left. The engine reported a second intent component, that frame was re-read at source resolution, and the glyph is plainly there - so this is a corrected reading of the video, not a value taken from the engine. Stated explicitly because it is the one checkpoint the engine prompted a second look at, and a reader should be able to weigh that themselves. The debuff is corroborated independently: the player carries Weak at the start of turn 2."
+          }
+        }
+      },
+      "note": "Everything the video shows at the moment the first combat begins, before any card is played."
+    },
+    {
+      "id": "after-hellraiser",
+      "after_seq": 2,
+      "kind": "mid_turn",
+      "expect": {
+        "combat.energy": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 76300,
+            "method": "energy orb reads 1/3"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "4",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 76300,
+            "method": "four cards remain in hand"
+          }
+        }
+      }
+    },
+    {
+      "id": "after-defend",
+      "after_seq": 3,
+      "kind": "mid_turn",
+      "expect": {
+        "combat.energy": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 76900,
+            "method": "energy orb reads 0/3"
+          }
+        },
+        "combat.block": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 76900,
+            "method": "block 5 shown beside the player's health bar"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 76900,
+            "method": "Strike, Strike and Bash remain in hand"
+          }
+        }
+      }
+    },
+    {
+      "id": "turn2-start",
+      "after_seq": 4,
+      "kind": "turn_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 79200,
+            "method": "the banner reads 'Player Turn / Turn 2'"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "60",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 79200,
+            "method": "health bar reads 60/68"
+          }
+        }
+      },
+      "note": "The enemy's 9-damage attack met 5 block, so 4 got through. This is the arithmetic the video-only checks could close on their own; the point of asserting it here is that the engine agrees."
+    },
+    {
+      "id": "turn2-after-first-defend",
+      "after_seq": 5,
+      "kind": "mid_turn",
+      "expect": {
+        "combat.energy": {
+          "Value": "2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82000,
+            "method": "energy orb reads 2/3"
+          }
+        },
+        "combat.block": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82000,
+            "method": "block 5 beside the player's health bar"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82000,
+            "method": "Ascender's Bane and one Defend remain in hand"
+          }
+        }
+      }
+    },
+    {
+      "id": "turn2-after-second-defend",
+      "after_seq": 6,
+      "kind": "mid_turn",
+      "expect": {
+        "combat.energy": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82250,
+            "method": "energy orb reads 1/3"
+          }
+        },
+        "combat.block": {
+          "Value": "10",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82250,
+            "method": "block 10 beside the player's health bar"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 82250,
+            "method": "Ascender's Bane is the only card left in hand"
+          }
+        }
+      },
+      "note": "Two Defends in one turn is the reading most at risk of being one Defend seen twice, so the block total is asserted as well as the count."
+    },
+    {
+      "id": "turn3-start",
+      "after_seq": 7,
+      "kind": "turn_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 84750,
+            "method": "the banner reads 'Player Turn / Turn 3'"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "58",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 84750,
+            "method": "health bar reads 58/68"
+          }
+        },
+        "player.max_hp": {
+          "Value": "68",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 84750,
+            "method": "health bar reads 58/68"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 85000,
+            "method": "energy orb reads 3/3, nothing played yet"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.HELLRAISER",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89500,
+            "method": "one card is left in hand and its face and title are Hellraiser's"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89500,
+            "method": "a single card in hand"
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89000,
+            "method": "one enemy is present"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "10",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89000,
+            "method": "enemy health bar reads 10/42 after four Strikes Hellraiser played on the draw, each for 6"
+          }
+        }
+      },
+      "note": "The block held for 10 of the enemy's attack and 2 got through. The hand and the enemy's health are read after the turn-3 draw has resolved, because Hellraiser plays each Strike it turns up before the player can act."
+    },
+    {
+      "id": "after-second-hellraiser",
+      "after_seq": 8,
+      "kind": "mid_turn",
+      "expect": {
+        "combat.energy": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89750,
+            "method": "energy orb reads 1/3"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 89750,
+            "method": "the hand is empty"
+          }
+        }
+      }
+    },
+    {
+      "id": "turn4-start",
+      "after_seq": 9,
+      "kind": "turn_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "4",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 92250,
+            "method": "the banner reads 'Player Turn / Turn 4'"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "51",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 91500,
+            "method": "health bar reads 51/68"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 93900,
+            "method": "energy orb reads 3/3, nothing played yet"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.BASH",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 93900,
+            "method": "the four cards in hand, left to right, by card face and title"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "4",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 93900,
+            "method": "four cards in hand"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "4",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 93750,
+            "method": "enemy health bar reads 4/42 after the Strike Hellraiser played on the draw"
+          }
+        }
+      }
+    },
+    {
+      "id": "combat-victory",
+      "after_seq": 10,
+      "kind": "combat_end",
+      "expect": {
+        "combat.outcome": {
+          "Value": "victory",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 94500,
+            "method": "the enemy's health bar is replaced by 'Dead' and the loot screen follows"
+          }
+        },
+        "combat.in_progress": {
+          "Value": "false",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 94500,
+            "method": "the enemy's bar reads 'Dead' in place of a health value and telegraphs no intent; the loot screen replaces the fight a moment later",
+            "note": "The End Turn button is still drawn in this frame, which is why the enemy rather than the button is what this reads."
+          }
+        },
+        "combat.player_hp": {
+          "Value": "57",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 94500,
+            "method": "health bar reads 57/68"
+          }
+        },
+        "player.hp": {
+          "Value": "57",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 94500,
+            "method": "health bar reads 57/68"
+          }
+        },
+        "player.max_hp": {
+          "Value": "68",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 94500,
+            "method": "health bar reads 57/68"
+          }
+        }
+      },
+      "note": "The fight is over, which is what makes this history one side of a whole-combat comparison. Final health is 57 rather than 51 because the starting relic heals six the moment the last enemy dies - the video shows the jump in the same frame that shows the enemy dead."
+    },
+    {
+      "id": "floor2-loot-taken",
+      "after_seq": 13,
+      "kind": "mid_turn",
+      "expect": {
+        "player.gold": {
+          "Value": "112",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 105000,
+            "method": "read from the top bar at 3840x2160, after the coin counter has finished animating; it reads 99 before the loot screen, 108 while the card screen is up, and holds 112 from t=97 to the event at t=120"
+          }
+        },
+        "player.potions": {
+          "Value": "POTION.OROBIC_ACID|empty",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 105000,
+            "method": "the potion belt shows one potion in the first slot and an empty second slot; the loot entry that filled it named 'Orobic Acid'"
+          }
+        },
+        "player.deck_count": {
+          "Value": "12",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 105000,
+            "method": "the deck badge in the top bar reads 12, up from 11 before the card reward"
+          }
+        },
+        "player.max_hp": {
+          "Value": "68",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 105000,
+            "method": "read from the top bar at 3840x2160"
+          }
+        },
+        "player.hp": {
+          "Value": "57",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 105000,
+            "method": "read from the top bar at 3840x2160"
+          }
+        }
+      },
+      "note": "The first fight's loot, once every counter has settled. Read from the map screen the player returns to rather than from the loot window, where gold is still counting up."
+    },
+    {
+      "id": "floor3-enchantment-done",
+      "after_seq": 17,
+      "kind": "mid_turn",
+      "expect": {
+        "player.gold": {
+          "Value": "13",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 131000,
+            "method": "the coin counter has finished counting down from 112 and reads 13 on the map screen the event returns to"
+          }
+        },
+        "player.max_hp": {
+          "Value": "68",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 131000,
+            "method": "read from the top bar at 3840x2160; Bloody Ink would have made it 74"
+          }
+        },
+        "player.deck_count": {
+          "Value": "12",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 131000,
+            "method": "the deck badge still reads 12 - this event enchants cards and adds none"
+          }
+        },
+        "run.total_floor": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 131000,
+            "method": "the floor badge reads 3"
+          }
+        }
+      },
+      "note": "What the Waterlogged Scriptorium cost and what it did not do. Maximum health is here because it is what separates this choice from the other two the event offered."
+    },
+    {
+      "id": "floor4-combat-start",
+      "after_seq": 18,
+      "kind": "combat_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "the End Turn button reads 'End Turn 1'"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "energy orb reads 3/3"
+          }
+        },
+        "combat.block": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "no block value is shown beside the health bar"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "the five cards in hand, left to right, by card face and title; the rightmost carries the retain marker the Steady enchantment adds and the other Defend does not"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "five cards are dealt"
+          }
+        },
+        "combat.draw_pile_count": {
+          "Value": "7",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "draw-pile badge, bottom left"
+          }
+        },
+        "combat.discard_pile_count": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "discard-pile badge, bottom right"
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "two enemies are present"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "23",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "the left enemy's health bar reads 23/23"
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "23",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "the left enemy's health bar reads 23/23"
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "26",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "the right enemy's health bar reads 26/26"
+          }
+        },
+        "combat.enemy.1.max_hp": {
+          "Value": "26",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "the right enemy's health bar reads 26/26"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "57",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "health bar reads 57/68"
+          }
+        },
+        "player.gold": {
+          "Value": "13",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "read from the top bar at 3840x2160"
+          }
+        },
+        "player.deck_count": {
+          "Value": "12",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "the deck badge reads 12"
+          }
+        },
+        "run.total_floor": {
+          "Value": "4",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 144800,
+            "method": "the floor badge reads 4"
+          }
+        }
+      },
+      "note": "Everything the video shows as the second transcribed fight begins. The enchanted Defend in the opening hand is what settles which of three identical Defends the event enchanted."
+    },
+    {
+      "id": "floor4-turn2-start",
+      "after_seq": 22,
+      "kind": "turn_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 151500,
+            "method": "the End Turn button reads 'End Turn 2'"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 151500,
+            "method": "energy orb reads 3/3"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.HELLRAISER|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH@ENCHANTMENT.STEADY",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 151500,
+            "method": "six cards, left to right; the leading Defend is the one retained from turn 1 and still carries the retain marker, and Bash reads 'Retain. Deal 8 damage. Apply 2 Vulnerable.' when it is raised at t=152.0"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "6",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 151500,
+            "method": "six cards in hand - five drawn onto one retained"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "14",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 151500,
+            "method": "the left enemy's bar reads 14/23"
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "26",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 151500,
+            "method": "the right enemy's bar reads 26/26"
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "POWER.THORNS_POWER:2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 151750,
+            "method": "a badge under the left enemy reads 2, and hovering it says 'When hit by an attack, deal 2 damage back' - the effect the game names Thorns, which is what makes this badge identifiable where the floor-5 enemies' is not"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "57",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 151500,
+            "method": "health bar reads 57/68"
+          }
+        }
+      },
+      "note": "The first turn whose hand carries a retained card. Six cards rather than five is the retained Defend, and it is the sharpest evidence in this fight: it is a fact about where the shuffle put five cards on top of one the enchantment kept."
+    },
+    {
+      "id": "floor4-turn3-start",
+      "after_seq": 25,
+      "kind": "turn_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 156500,
+            "method": "the End Turn button reads 'End Turn 3'"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.ASCENDERS_BANE|CARD.HELLRAISER|CARD.BASH@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 156500,
+            "method": "six cards, left to right, with the retain marker on the first and the fourth"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "6",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 156500,
+            "method": "six cards in hand"
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 156500,
+            "method": "one enemy is left; the other's bar read Dead at t=153.0"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "26",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 156500,
+            "method": "the surviving enemy's bar reads 26/26"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "53",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 156500,
+            "method": "health bar reads 53/68"
+          }
+        }
+      },
+      "note": "One enemy left, and the curse the opening blessing left in the deck arrives."
+    },
+    {
+      "id": "floor4-turn4-start",
+      "after_seq": 28,
+      "kind": "turn_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "4",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 162500,
+            "method": "the End Turn button reads 'End Turn 4'"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.BASH@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.POMMEL_STRIKE|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 162500,
+            "method": "six cards, left to right; Bash leads, retained from turn 3"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "6",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 162500,
+            "method": "six cards in hand"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "51",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 162500,
+            "method": "health bar reads 51/68"
+          }
+        }
+      }
+    },
+    {
+      "id": "floor4-turn5-start",
+      "after_seq": 32,
+      "kind": "turn_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 167750,
+            "method": "the End Turn button reads 'End Turn 5'"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.BASH@ENCHANTMENT.STEADY|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.HELLRAISER",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 167750,
+            "method": "six cards, left to right; the retain marker is on Bash and on the fifth card"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "6",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 167750,
+            "method": "six cards in hand"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "48",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 167750,
+            "method": "health bar reads 48/68"
+          }
+        }
+      }
+    },
+    {
+      "id": "floor4-combat-victory",
+      "after_seq": 34,
+      "kind": "combat_end",
+      "expect": {
+        "combat.outcome": {
+          "Value": "victory",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 169000,
+            "method": "the enemy's health bar is replaced by 'Dead' and the loot screen follows at t=169.7"
+          }
+        },
+        "combat.in_progress": {
+          "Value": "false",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 169000,
+            "method": "the enemy's bar reads Dead and telegraphs no intent; the hand stops being interactive and the Loot! window replaces the fight"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "54",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 169000,
+            "method": "health bar reads 54/68"
+          }
+        },
+        "player.hp": {
+          "Value": "54",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 169000,
+            "method": "health bar reads 54/68"
+          }
+        }
+      },
+      "note": "The second transcribed fight ends. Health is 54 rather than 48 because the starting relic heals six the moment the last enemy dies, the same jump the first fight showed."
+    },
+    {
+      "id": "floor5-combat-start",
+      "after_seq": 37,
+      "kind": "combat_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "the End Turn button reads 'End Turn 1'"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "energy orb reads 3/3"
+          }
+        },
+        "combat.block": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "no block value is shown beside the health bar"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.HELLRAISER|CARD.ASCENDERS_BANE|CARD.STRIKE_IRONCLAD",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "the five cards in hand, left to right, by card face and title"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "five cards are dealt"
+          }
+        },
+        "combat.draw_pile_count": {
+          "Value": "7",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "draw-pile badge, bottom left"
+          }
+        },
+        "combat.discard_pile_count": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "discard-pile badge, bottom right"
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "two enemies are present"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "27",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "the left enemy's health bar reads 27/27"
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "27",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "the left enemy's health bar reads 27/27"
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:9",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "an attack glyph and the number 9 are rendered above the left enemy"
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "29",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "the right enemy's health bar reads 29/29"
+          }
+        },
+        "combat.enemy.1.max_hp": {
+          "Value": "29",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "the right enemy's health bar reads 29/29"
+          }
+        },
+        "combat.enemy.1.intent": {
+          "Value": "Debuff",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "a downward debuff glyph with no damage number is rendered above the right enemy; the Frail the player carries from t=205 is what it applied"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "54",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "health bar reads 54/68"
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "no status badge is drawn under the player's health bar"
+          }
+        },
+        "player.gold": {
+          "Value": "27",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "read from the top bar at 3840x2160"
+          }
+        },
+        "player.potions": {
+          "Value": "POTION.OROBIC_ACID|empty",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "the potion belt still shows the one potion taken on floor 2 and an empty second slot"
+          }
+        },
+        "player.deck_count": {
+          "Value": "12",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "the deck badge reads 12"
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "two relic icons are shown, the starting relic and the one Neow's blessing gave"
+          }
+        },
+        "run.total_floor": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 193600,
+            "method": "the floor badge reads 5"
+          }
+        }
+      },
+      "note": "The boundary this history exists to reach: the two-enemy fight the 209-215 s window is inside, at its combat start. Everything a video can show about it is here - which is not everything there is. Each slug carries one status badge reading 5, drawn as an icon with no text, and the recording never hovers it. The count is legible and the power's identity is not, so combat.enemy.N.powers is deliberately absent from this checkpoint rather than filled in from the engine."
+    },
+    {
+      "id": "floor5-turn2-start",
+      "after_seq": 41,
+      "kind": "turn_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 206000,
+            "method": "the End Turn button reads 'End Turn 2'"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 206000,
+            "method": "energy orb reads 3/3"
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 206000,
+            "method": "five cards, left to right; the leading Defend reads 'Retain. Gain 5 Block.' when it is raised at t=206.25"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 206000,
+            "method": "five cards in hand"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "50",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 206000,
+            "method": "health bar reads 50/68"
+          }
+        },
+        "combat.player_powers": {
+          "Value": "POWER.FRAIL_POWER:2",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 206000,
+            "method": "one status badge under the health bar, a cracked shield reading 2"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "12",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 206000,
+            "method": "the left enemy's bar reads 12/27"
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "29",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 206000,
+            "method": "the right enemy's bar reads 29/29"
+          }
+        }
+      }
+    },
+    {
+      "id": "floor5-window-boundary",
+      "after_seq": 45,
+      "kind": "turn_start",
+      "expect": {
+        "combat.turn": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "the banner reads 'Player Turn / Turn 3'"
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "energy orb reads 3/3"
+          }
+        },
+        "combat.block": {
+          "Value": "0",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "no block value is drawn beside the health bar",
+            "note": "The only badge under the bar at this frame is the cracked shield of Frail, reading 3. It is easy to read as a block value and it is not one - block is drawn on the bar itself, and turn 3 opens with none."
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.BASH@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "the five cards in hand, left to right, by card face and title; Bash carries the retain marker"
+          }
+        },
+        "combat.hand_count": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "five cards in hand"
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "6",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "the left enemy's bar reads 6/27"
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:6",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "the left enemy telegraphs an attack rendered as 3x2 - three damage twice, which is the six the canonical intent states as a total"
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "29",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "the right enemy's bar reads 29/29",
+            "note": "A chat message from the stream overlay sits across this bar from t=211.6. The numerals read through it at this frame, which is why this reading is anchored here rather than to a later one."
+          }
+        },
+        "combat.enemy.1.intent": {
+          "Value": "Attack:9",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "the right enemy telegraphs an attack with the number 9"
+          }
+        },
+        "combat.player_hp": {
+          "Value": "50",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "health bar reads 50/68"
+          }
+        },
+        "combat.player_powers": {
+          "Value": "POWER.FRAIL_POWER:3",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "one status badge under the health bar, a cracked shield reading 3"
+          }
+        },
+        "player.gold": {
+          "Value": "27",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "read from the top bar at 3840x2160"
+          }
+        },
+        "player.deck_count": {
+          "Value": "12",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "the deck badge reads 12"
+          }
+        },
+        "run.total_floor": {
+          "Value": "5",
+          "Source": "Observed",
+          "Evidence": {
+            "video_t_ms": 212000,
+            "method": "the floor badge reads 5"
+          }
+        }
+      },
+      "note": "The far end of this history: the opening of the 209-215 s turn a candidate search would enumerate. Nothing here is replayed past it, and everything in it is what the recording shows at t=212.0."
     }
-   }
-  },
-  "run_summary": {
-   "video_t_ms": 2047000,
-   "seed": {
-    "Value": "SFXT47K77RFK",
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 2047000,
-     "method": "the version overlay is still rendered on the end-of-run screen",
-     "note": "The same overlay as at t=9s, read again 2038 seconds later. Two readings that agree across that gap cannot both be a drifted reading of one moment, and a recording spliced from two runs could not agree at both ends."
+  ],
+  "boundaries": [
+    {
+      "kind": "combat_start",
+      "after_seq": 1,
+      "fight": 1,
+      "digest": {
+        "Value": "sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae",
+        "Source": "Engine"
+      }
     }
-   },
-   "build_version": {
-    "Value": "v0.111.0",
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 2047000,
-     "method": "version overlay, first line"
-    }
-   },
-   "build_date_utc": {
-    "Value": "2026.08.14",
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 2047000,
-     "method": "version overlay, first line"
-    }
-   },
-   "content_hash": {
-    "Value": "1568834832",
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 2047000,
-     "method": "version overlay, HASH line"
-    }
-   },
-   "ascension": {
-    "Value": 10,
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 2047000,
-     "method": "the summary lists 'Ascension: 10', independently of the in-run badge"
-    }
-   },
-   "floors_climbed": {
-    "Value": 49,
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 2047000,
-     "method": "the summary lists 'Floors Climbed: 49'"
-    }
-   },
-   "player_max_hp": {
-    "Value": 68,
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 2047000,
-     "method": "the health readout in the top bar reads 0/68",
-     "note": "Corroborates the opening blessing from the other end of the run: the character starts at 80 maximum health and the blessing taken at t=26s costs 12."
-    }
-   },
-   "deck_size": {
-    "Value": 18,
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 2047000,
-     "method": "the deck badge in the top bar reads 18"
-    }
-   },
-   "relic_count": {
-    "Value": 12,
-    "Source": "Observed",
-    "Evidence": {
-     "video_t_ms": 2047000,
-     "method": "twelve relic icons are shown in the relic bar"
-    }
-   },
-   "not_shown": [
-    "The game mode. This screen does not state whether the run was standard, custom or daily, which is why the manifest carries the mode as an inference. What it does show is an ordinary summary with no daily-run leaderboard or score submission, which is weak evidence against daily and none either way about custom.",
-    "The run timer. It is rendered on the map screen, not here.",
-    "The deck contents and relic identities. Only the counts are legible without opening those screens, which this recording does not do."
-   ]
-  }
- },
- "actions": [
-  {
-   "seq": 0,
-   "verb": "ChooseNeowBlessing",
-   "args": {
-    "option_index": "2"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 26000,
-    "method": "Neow offers three options in a fixed order: Arcane Scroll, Lost Coffer, Leafy Poultice. Which one was taken is read from its effect rather than from the click: by t=31s max HP has gone 80 -> 68 (Leafy Poultice's -12) and two cards have been transformed, which no other option does."
-   },
-   "consumes_rng": [
-    "Transformations"
-   ],
-   "note": "The transform produced two copies of Hellraiser. That is a specific random outcome, so reproducing it is a sharper test than reproducing the max-HP change."
-  },
-  {
-   "seq": 1,
-   "verb": "MapMove",
-   "args": {
-    "act": "0",
-    "row": "1",
-    "column": "3"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 73500,
-    "method": "the selected node is ringed on the map as the screen fades into the room; its position matches the centre column of row 1, which the generated map has as a Monster node"
-   }
-  },
-  {
-   "seq": 2,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.HELLRAISER",
-    "hand_index": "1"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 76300,
-    "method": "energy falls 3 -> 1 and the hand loses its second card; the played card's name floats above the player"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 3,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "3",
-    "negative_control_substitute_card_id": "CARD.STRIKE_IRONCLAD",
-    "negative_control_substitute_hand_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 76750,
-    "method": "energy falls 1 -> 0, the hand loses Defend, and 5 block appears beside the player's health bar. The hand index is 3 rather than 4 because playing Hellraiser already shifted the cards after it."
-   },
-   "consumes_rng": [],
-   "note": "The play the negative controls damage. Strike sits at hand index 0 at this moment and costs the same 1 energy, so substituting it balances every arithmetic check the frames allow while changing the fight; omitting this play changes the block that meets the enemy's opening attack, which the turn-2 checkpoint reads."
-  },
-  {
-   "seq": 4,
-   "verb": "EndTurn",
-   "args": {},
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 77000,
-    "method": "the turn ends with Strike, Strike and Bash unplayed; the enemy then attacks and the Turn 2 banner appears"
-   },
-   "consumes_rng": [
-    "Shuffle",
-    "MonsterAi",
-    "CombatTargets"
-   ],
-   "note": "Hellraiser plays every drawn Strike against a random enemy, so the turn-2 draw consumes the combat-targets stream. This turn is squarely in the unforgiving class."
-  },
-  {
-   "seq": 5,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 81850,
-    "method": "turn 2's hand is Defend, Ascender's Bane, Defend, left to right; energy falls 3 -> 2 and it is the leftmost Defend that leaves the hand, so the play is hand index 0"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 6,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "1"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 82150,
-    "method": "energy falls 2 -> 1, block reads 10, and Ascender's Bane is all that is left in hand. The index is 1 rather than 2 because playing the first Defend already shifted the cards after it"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 7,
-   "verb": "EndTurn",
-   "args": {},
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 82500,
-    "method": "the End Turn 2 button is pressed with Ascender's Bane, which is unplayable, still in hand; the card leaves the hand as the turn ends, the enemy attacks, and the Turn 3 banner follows"
-   },
-   "consumes_rng": [
-    "Shuffle",
-    "MonsterAi",
-    "CombatTargets"
-   ],
-   "note": "The turn-3 draw empties the draw pile and reshuffles the discard, and every Strike it turns up is played by Hellraiser against a random enemy. This is the most unforgiving action in the history."
-  },
-  {
-   "seq": 8,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.HELLRAISER",
-    "hand_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 89700,
-    "method": "Hellraiser is the only card in turn 3's hand after the draw resolves; energy falls 3 -> 1 for its cost of 2 and the hand empties"
-   },
-   "consumes_rng": [],
-   "note": "The second of the two Hellraisers the opening transform produced. The video gives no direct sign of which card it was: the power icon has been on the player since the first Hellraiser and carries no stack number, so the only visible evidence is the energy falling by two and the hand emptying. What the power counts to is hidden state a recording could not have shown either way, which is the class of thing the arbiter exists to check."
-  },
-  {
-   "seq": 9,
-   "verb": "EndTurn",
-   "args": {},
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 90250,
-    "method": "the End Turn 3 button disappears, the enemy takes its turn, and the Turn 4 banner follows"
-   },
-   "consumes_rng": [
-    "Shuffle",
-    "MonsterAi",
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 10,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.BASH",
-    "hand_index": "3"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 94500,
-    "method": "turn 4's hand is Defend, Defend, Defend, Bash, left to right; Bash is hovered showing 'Deal 8 damage. Apply 2 Vulnerable.', energy falls 3 -> 1, Bash leaves the hand and the enemy's health bar reads Dead"
-   },
-   "consumes_rng": [
-    "CombatTargets",
-    "Rewards"
-   ],
-   "note": "The killing blow: the enemy is at 4 health and Bash deals 8. One enemy is alive, so no target_index is recorded - there is no choice to record. It is also the moment the loot is generated: the gold amount, the roll for a potion and the three cards the reward offers are all drawn as the fight ends, before the player has decided anything about them."
-  },
-  {
-   "seq": 11,
-   "verb": "ClaimReward",
-   "args": {
-    "reward_type": "gold"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 95800,
-    "method": "the Loot! screen at t=95.3 lists three entries - '13 Gold', 'Orobic Acid', 'Add a card to your deck.' - and at t=95.8 the gold entry is gone and only the other two remain",
-    "note": "The gold counter itself is animating through values that were never the total: it reads 99 as the loot screen opens, 108 while the card screen is up at t=96.0, and settles at 112 only once the map is back at t=97.0. So the reading here is the entry disappearing from the list, not the number in the top bar, and the settled total is checkpointed later."
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 12,
-   "verb": "ClaimReward",
-   "args": {
-    "reward_type": "potion"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 95900,
-    "method": "at t=95.9 the Loot! screen holds only 'Add a card to your deck.'; the potion belt in the top bar carries a potion from here to the end of this history and the second slot stays empty"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 13,
-   "verb": "TakeCard",
-   "args": {
-    "card_id": "CARD.POMMEL_STRIKE",
-    "option_index": "0",
-    "negative_control_alternative_card_id": "CARD.TREMBLE",
-    "negative_control_alternative_option_index": "1"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 97000,
-    "method": "clicking the last loot entry opens 'Choose a Card' at t=96.0, offering, left to right, Pommel Strike ('Deal 9 damage. Draw 1 card.'), Tremble ('Apply 3 Vulnerable. Exhaust.') and Twin Strike ('Deal 5 damage twice.'); the leftmost card enlarges at t=97.0 and flies to the deck",
-    "note": "The deck badge reads 11 before and 12 after, and the deck view at t=172.3 contains Pommel Strike. Tremble at option 1 is the alternative the negative controls take: a card this reward genuinely offered and the player did not take."
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 14,
-   "verb": "MapMove",
-   "args": {
-    "act": "0",
-    "row": "2",
-    "column": "4",
-    "negative_control_alternative_column": "2"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 107700,
-    "method": "the map is on screen from t=97.7; the last map frame is t=107.6 and the screen has faded out by t=107.8. The travelled path drawn on the map at t=190.5 rings this node one row above the first fight's and one column to its right, which the map observation records as the act's only Unknown node in row 2",
-    "note": "Column 2 is nominated as the negative control's alternative. It is a node the same row offers and the engine accepts as reachable from here; unlike everything else in this manifest it is not a reading of the video, because the map screen's connecting paths are the one thing the map observation declines to transcribe."
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 15,
-   "verb": "ChooseEventOption",
-   "args": {
-    "event_id": "EVENT.WATERLOGGED_SCRIPTORIUM",
-    "option_index": "2"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 120400,
-    "method": "the event titled 'Waterlogged Scriptorium' offers, top to bottom, 'Bloody Ink - Gain 6 Max HP.', 'Tentacle Quill - Pay 55 Gold. Enchant a card with Steady.' and 'Prickly Sponge - Pay 99 Gold. Enchant 2 cards with Steady.'; the third is hovered from t=119.6 and the card-selection grid replaces the page between t=120.3 and t=120.5",
-    "note": "Corroborated by the gold, which goes from 112 to 13 across this choice, and by maximum health, which stays at 68 rather than the 74 Bloody Ink would have given."
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 16,
-   "verb": "SelectCardFromScreen",
-   "args": {
-    "card_id": "CARD.BASH",
-    "option_index": "7"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 129150,
-    "method": "the selection screen reads 'Choose 2 cards to Enchant.' and renders the eleven enchantable cards in deck order, five to a row: four Strikes and a Defend, then two Defends, Bash, and two Hellraisers, then Pommel Strike. Ascender's Bane is absent, which is why there are eleven and not twelve. Bash is raised under the cursor from t=128.85 to t=129.15, and both chosen cards are presented together from t=129.30",
-    "note": "The deck view at t=172.3 shows Bash reading 'Retain. Deal 8 damage. Apply 2 Vulnerable.'"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 17,
-   "verb": "SelectCardFromScreen",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "option_index": "5",
-    "negative_control_alternative_option_index": "4"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 129270,
-    "method": "the second card of the grid's second row - the sixth card in deck order - is raised under the cursor at t=129.20 and t=129.25, and the pair is presented together from t=129.30",
-    "note": "Which of three identical Defends this is matters, and the frames alone cannot settle it, so it is settled by what the video shows two floors later. This Defend is the one carrying Retain in the floor-4 opening hand: at t=147.05 that hand is Strike, Defend, Strike, Defend, Defend with the retain marker on the fourth card, and at t=148.0 that same card is the one still in hand after two plain Defends have been played. The three candidate readings are distinguishable - enchanting the fifth card in deck order puts the marker on the third card of that hand, and enchanting the seventh leaves no marked Defend in it at all, which the retained card at t=150.5 rules out. The fifth card is nominated as the negative control's alternative for exactly that reason: it is the reading this one was chosen over, and the two are indistinguishable until the shuffle two floors later."
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 18,
-   "verb": "MapMove",
-   "args": {
-    "act": "0",
-    "row": "3",
-    "column": "3"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 142500,
-    "method": "the map returns at t=130 and the last map frame is t=142.3; the screen has begun fading by t=142.5 and the next room's Battle Start banner is up at t=143.3. The path drawn at t=190.5 rings this node directly above the event's, in the same column as the first fight"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 19,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.POMMEL_STRIKE",
-    "hand_index": "1",
-    "target_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 145550,
-    "method": "turn 1's hand is Strike, Pommel Strike, Defend, Strike, Defend, left to right; the second card is raised at t=145.3 reading 'Deal 9 damage. Draw 1 card.', energy falls 3 -> 2 and the left enemy's health bar goes 23/23 to 14/23 while the right one stays at 26/26"
-   },
-   "consumes_rng": [
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 20,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "4"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 147400,
-    "method": "Pommel Strike's draw leaves a five-card hand of Strike, Defend, Strike, Defend, Defend at t=147.05, with the retain marker on the fourth card. The rightmost card is raised at t=147.30 showing 'Gain 5 Block.' and energy falls 2 -> 1"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 21,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "1"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 147700,
-    "method": "the second card is raised at t=147.55 showing 'Gain 5 Block.', energy falls 1 -> 0 and the hand is left as Strike, Strike, Defend with the retain marker on the Defend"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 22,
-   "verb": "EndTurn",
-   "args": {},
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 148300,
-    "method": "the End Turn 1 button is pressed at t=148.3 with Strike, Strike and the retained Defend unplayed; the enemies take their turn and the Turn 2 banner follows"
-   },
-   "consumes_rng": [
-    "Shuffle",
-    "MonsterAi",
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 23,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.BASH",
-    "hand_index": "5",
-    "target_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 152300,
-    "method": "turn 2 opens with six cards - the retained Defend plus five drawn - reading Defend, Hellraiser, Hellraiser, Strike, Strike, Bash at t=151.5. The rightmost is raised at t=152.0 showing 'Retain. Deal 8 damage. Apply 2 Vulnerable.', energy falls 3 -> 1 and the left enemy takes the damage"
-   },
-   "consumes_rng": [
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 24,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.STRIKE_IRONCLAD",
-    "hand_index": "3",
-    "target_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 152800,
-    "method": "a Strike is raised at t=152.5 previewing 'Deal 9 damage' - six, half again for the Vulnerable Bash just applied - energy falls 1 -> 0 and the left enemy's bar reads Dead at t=153.0 while the right one is still 26/26",
-    "note": "Two Strikes sit side by side in this hand and they are the same card with the same history, so which of the two indices was clicked is not readable from the frames and makes no difference to any state the arbiter compares: both produce the same canonical piles."
-   },
-   "consumes_rng": [
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 25,
-   "verb": "EndTurn",
-   "args": {},
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 153300,
-    "method": "the hand is left as Defend, Hellraiser, Hellraiser, Strike at t=153.0 and the Enemy Turn banner is up by t=154.0"
-   },
-   "consumes_rng": [
-    "Shuffle",
-    "MonsterAi",
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 26,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "5"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 157300,
-    "method": "turn 3 opens with Defend, Ascender's Bane, Hellraiser, Bash, Strike, Defend at t=156.5, the first and fourth carrying the retain marker. The rightmost is raised at t=157.0 and energy falls 3 -> 2"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 27,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 157800,
-    "method": "the hand's leading Defend leaves it between t=157.5 and t=158.0, energy falls 2 -> 1, and what remains is Ascender's Bane, Hellraiser, Bash, Strike"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 28,
-   "verb": "EndTurn",
-   "args": {},
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 158800,
-    "method": "the End Turn 3 button is pressed with one energy unspent; Ascender's Bane leaves the hand and only the retained Bash is still drawn at t=159.5"
-   },
-   "consumes_rng": [
-    "Shuffle",
-    "MonsterAi",
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 29,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.POMMEL_STRIKE",
-    "hand_index": "3"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 162900,
-    "method": "turn 4 opens with Bash, Strike, Defend, Pommel Strike, Hellraiser, Strike at t=162.5. The fourth is raised at t=162.75 reading 'Deal 9 damage. Draw 1 card.' and energy falls 3 -> 2; the drawn Strike joins the end of the hand by t=163.5"
-   },
-   "consumes_rng": [
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 30,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "2"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 163600,
-    "method": "the third card is raised at t=163.5 showing 'Gain 5 Block.' and energy falls 2 -> 1"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 31,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.STRIKE_IRONCLAD",
-    "hand_index": "3"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 164100,
-    "method": "a Strike is raised at t=164.0 reading 'Deal 6 damage', energy falls 1 -> 0, and the hand is left as Bash, Strike, Hellraiser, Strike at t=164.25",
-    "note": "Two identical Strikes again; see the turn-2 play."
-   },
-   "consumes_rng": [
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 32,
-   "verb": "EndTurn",
-   "args": {},
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 164400,
-    "method": "the hand empties into the discard at t=164.5 and only the retained Bash is drawn through the enemy turn"
-   },
-   "consumes_rng": [
-    "Shuffle",
-    "MonsterAi",
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 33,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.BASH",
-    "hand_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 168400,
-    "method": "turn 5 opens with Bash, Defend, Defend, Strike, Defend, Hellraiser at t=167.75. Bash is raised at t=168.25 reading 'Retain. Deal 8 damage.' and energy falls 3 -> 1"
-   },
-   "consumes_rng": [
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 34,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.STRIKE_IRONCLAD",
-    "hand_index": "2"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 168900,
-    "method": "the Strike is raised at t=168.75 reading 'Deal 6 damage', energy falls 1 -> 0, the hand is left as Defend, Defend, Defend, Hellraiser, and the enemy's bar reads Dead by t=169.0"
-   },
-   "consumes_rng": [
-    "CombatTargets",
-    "Rewards"
-   ],
-   "note": "The killing blow, with the second enemy already dead since turn 2, so again no target_index. It is also the moment the loot is generated: the gold amount, the roll for a potion and the three cards the reward offers are all drawn as the fight ends, before the player has decided anything about them."
-  },
-  {
-   "seq": 35,
-   "verb": "ClaimReward",
-   "args": {
-    "reward_type": "gold"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 170100,
-    "method": "the Loot! screen at t=169.8 lists two entries, '14 Gold' and 'Add a card to your deck.' - no potion this time - and by t=170.1 only the card entry is left"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 36,
-   "verb": "SkipRewards",
-   "args": {},
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 190400,
-    "method": "the card entry is opened at t=170.2, showing Twin Strike, Uppercut and Whirlwind with a Skip button beneath; the screen is dismissed at t=189.8 with the loot entry still unclaimed, and the Loot! screen itself is dismissed between t=190.2 and t=190.4",
-    "note": "Two clicks, one engine state: declining the card and dismissing the screen leave the reward set completed with nothing else taken, which is exactly what skipping it does. Recorded as a decision rather than as an absence, because the engine discards an unfinished reward set on the way out of the room and an omitted action would replay identically to a deliberate refusal. The deck badge reads 12 either side of it."
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 37,
-   "verb": "MapMove",
-   "args": {
-    "act": "0",
-    "row": "4",
-    "column": "3"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 191500,
-    "method": "the map returns at t=190.4 and the last map frame is t=191.3; the screen is black by t=191.7 and the next room's Battle Start banner is up at t=192.1. The path drawn at t=190.5 has this node directly above the one the player is standing on"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 38,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.POMMEL_STRIKE",
-    "hand_index": "1",
-    "target_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 194100,
-    "method": "turn 1's hand is Strike, Pommel Strike, Hellraiser, Ascender's Bane, Strike at t=193.5. The second card is raised at t=194.0 reading 'Deal 9 damage. Draw 1 card.', energy falls 3 -> 2 and the left enemy goes 27/27 to 18/27 while the right one stays at 29/29"
-   },
-   "consumes_rng": [
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 39,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "4"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 201800,
-    "method": "the card Pommel Strike drew is a Defend and it joins the end of the hand by t=194.75, leaving Strike, Hellraiser, Ascender's Bane, Strike, Defend. It is raised at t=201.67 showing 'Gain 5 Block.' and energy falls 2 -> 1"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 40,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.STRIKE_IRONCLAD",
-    "hand_index": "3",
-    "target_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 202100,
-    "method": "a Strike is raised at t=202.0 reading 'Deal 6 damage', energy falls 1 -> 0, the left enemy reads 12/27 and the hand is left as Strike, Hellraiser, Ascender's Bane at t=202.33"
-   },
-   "consumes_rng": [
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 41,
-   "verb": "EndTurn",
-   "args": {},
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 202500,
-    "method": "the hand leaves the screen at t=202.67 with Ascender's Bane last, and the enemy turn follows"
-   },
-   "consumes_rng": [
-    "Shuffle",
-    "MonsterAi",
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 42,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 206400,
-    "method": "turn 2's hand is Defend, Strike, Hellraiser, Defend, Strike at t=206.0, the first carrying the retain marker. It is raised at t=206.25 reading 'Retain. Gain 5 Block.' and energy falls 3 -> 2 by t=206.5"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 43,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.DEFEND_IRONCLAD",
-    "hand_index": "2"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 206850,
-    "method": "the remaining Defend is raised at t=206.75 showing 'Gain 3 Block.' - five reduced by the Frail the enemy turn applied - and energy falls 2 -> 1"
-   },
-   "consumes_rng": []
-  },
-  {
-   "seq": 44,
-   "verb": "PlayCard",
-   "args": {
-    "card_id": "CARD.STRIKE_IRONCLAD",
-    "hand_index": "2",
-    "target_index": "0"
-   },
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 207150,
-    "method": "a Strike is raised at t=207.0 reading 'Deal 6 damage', energy falls 1 -> 0, the hand is left as Strike, Hellraiser at t=207.25 and the left enemy reads 6/27",
-    "note": "Two identical Strikes again; see the floor-4 turn-2 play."
-   },
-   "consumes_rng": [
-    "CombatTargets"
-   ]
-  },
-  {
-   "seq": 45,
-   "verb": "EndTurn",
-   "args": {},
-   "source": "Observed",
-   "evidence": {
-    "video_t_ms": 207600,
-    "method": "the hand leaves the screen by t=207.75 and the enemy turn runs; the Turn 3 banner - the opening of the 209-215 s window this history is a trusted prefix for - follows at t=210.0"
-   },
-   "consumes_rng": [
-    "Shuffle",
-    "MonsterAi",
-    "CombatTargets"
-   ]
-  }
- ],
- "checkpoints": [
-  {
-   "id": "floor2-combat-start",
-   "after_seq": 1,
-   "kind": "combat_start",
-   "note": "Everything the video shows at the moment the first combat begins, before any card is played.",
-   "expect": {
-    "combat.turn": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "the End Turn button reads 'End Turn 1'"
-     }
-    },
-    "combat.energy": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "energy orb reads 3/3"
-     }
-    },
-    "combat.max_energy": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "energy orb reads 3/3"
-     }
-    },
-    "combat.block": {
-     "Value": "0",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "no block value is shown beside the health bar"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "64",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "read from the combat HUD at 3840x2160"
-     }
-    },
-    "player.max_hp": {
-     "Value": "68",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "read from the combat HUD at 3840x2160"
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "the five cards in hand, left to right, by card face and title"
-     }
-    },
-    "combat.draw_pile_count": {
-     "Value": "6",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "draw-pile badge, bottom left"
-     }
-    },
-    "combat.discard_pile_count": {
-     "Value": "0",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "discard-pile badge, bottom right"
-     }
-    },
-    "combat.enemy_count": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "one enemy is present"
-     }
-    },
-    "combat.enemy.0.hp": {
-     "Value": "42",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "enemy health bar reads 42/42"
-     }
-    },
-    "combat.enemy.0.max_hp": {
-     "Value": "42",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "enemy health bar reads 42/42"
-     }
-    },
-    "combat.enemy.0.intent": {
-     "Value": "Attack:9+Debuff",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 75600,
-      "method": "two intent icons are rendered above the enemy: a debuff glyph and an attack arrow, with the number 9 beside them",
-      "note": "Recorded as 'Attack:9' on the first pass, which read the number and the arrow and missed the debuff glyph to their left. The engine reported a second intent component, that frame was re-read at source resolution, and the glyph is plainly there - so this is a corrected reading of the video, not a value taken from the engine. Stated explicitly because it is the one checkpoint the engine prompted a second look at, and a reader should be able to weigh that themselves. The debuff is corroborated independently: the player carries Weak at the start of turn 2."
-     }
-    }
-   }
-  },
-  {
-   "id": "after-hellraiser",
-   "after_seq": 2,
-   "kind": "mid_turn",
-   "expect": {
-    "combat.energy": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 76300,
-      "method": "energy orb reads 1/3"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "4",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 76300,
-      "method": "four cards remain in hand"
-     }
-    }
-   }
-  },
-  {
-   "id": "after-defend",
-   "after_seq": 3,
-   "kind": "mid_turn",
-   "expect": {
-    "combat.energy": {
-     "Value": "0",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 76900,
-      "method": "energy orb reads 0/3"
-     }
-    },
-    "combat.block": {
-     "Value": "5",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 76900,
-      "method": "block 5 shown beside the player's health bar"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 76900,
-      "method": "Strike, Strike and Bash remain in hand"
-     }
-    }
-   }
-  },
-  {
-   "id": "turn2-start",
-   "after_seq": 4,
-   "kind": "turn_start",
-   "note": "The enemy's 9-damage attack met 5 block, so 4 got through. This is the arithmetic the video-only checks could close on their own; the point of asserting it here is that the engine agrees.",
-   "expect": {
-    "combat.turn": {
-     "Value": "2",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 79200,
-      "method": "the banner reads 'Player Turn / Turn 2'"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "60",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 79200,
-      "method": "health bar reads 60/68"
-     }
-    }
-   }
-  },
-  {
-   "id": "turn2-after-first-defend",
-   "after_seq": 5,
-   "kind": "mid_turn",
-   "expect": {
-    "combat.energy": {
-     "Value": "2",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 82000,
-      "method": "energy orb reads 2/3"
-     }
-    },
-    "combat.block": {
-     "Value": "5",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 82000,
-      "method": "block 5 beside the player's health bar"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "2",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 82000,
-      "method": "Ascender's Bane and one Defend remain in hand"
-     }
-    }
-   }
-  },
-  {
-   "id": "turn2-after-second-defend",
-   "after_seq": 6,
-   "kind": "mid_turn",
-   "note": "Two Defends in one turn is the reading most at risk of being one Defend seen twice, so the block total is asserted as well as the count.",
-   "expect": {
-    "combat.energy": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 82250,
-      "method": "energy orb reads 1/3"
-     }
-    },
-    "combat.block": {
-     "Value": "10",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 82250,
-      "method": "block 10 beside the player's health bar"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 82250,
-      "method": "Ascender's Bane is the only card left in hand"
-     }
-    }
-   }
-  },
-  {
-   "id": "turn3-start",
-   "after_seq": 7,
-   "kind": "turn_start",
-   "note": "The block held for 10 of the enemy's attack and 2 got through. The hand and the enemy's health are read after the turn-3 draw has resolved, because Hellraiser plays each Strike it turns up before the player can act.",
-   "expect": {
-    "combat.turn": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 84750,
-      "method": "the banner reads 'Player Turn / Turn 3'"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "58",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 84750,
-      "method": "health bar reads 58/68"
-     }
-    },
-    "player.max_hp": {
-     "Value": "68",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 84750,
-      "method": "health bar reads 58/68"
-     }
-    },
-    "combat.energy": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 85000,
-      "method": "energy orb reads 3/3, nothing played yet"
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.HELLRAISER",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 89500,
-      "method": "one card is left in hand and its face and title are Hellraiser's"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 89500,
-      "method": "a single card in hand"
-     }
-    },
-    "combat.enemy_count": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 89000,
-      "method": "one enemy is present"
-     }
-    },
-    "combat.enemy.0.hp": {
-     "Value": "10",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 89000,
-      "method": "enemy health bar reads 10/42 after four Strikes Hellraiser played on the draw, each for 6"
-     }
-    }
-   }
-  },
-  {
-   "id": "after-second-hellraiser",
-   "after_seq": 8,
-   "kind": "mid_turn",
-   "expect": {
-    "combat.energy": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 89750,
-      "method": "energy orb reads 1/3"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "0",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 89750,
-      "method": "the hand is empty"
-     }
-    }
-   }
-  },
-  {
-   "id": "turn4-start",
-   "after_seq": 9,
-   "kind": "turn_start",
-   "expect": {
-    "combat.turn": {
-     "Value": "4",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 92250,
-      "method": "the banner reads 'Player Turn / Turn 4'"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "51",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 91500,
-      "method": "health bar reads 51/68"
-     }
-    },
-    "combat.energy": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 93900,
-      "method": "energy orb reads 3/3, nothing played yet"
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.BASH",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 93900,
-      "method": "the four cards in hand, left to right, by card face and title"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "4",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 93900,
-      "method": "four cards in hand"
-     }
-    },
-    "combat.enemy.0.hp": {
-     "Value": "4",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 93750,
-      "method": "enemy health bar reads 4/42 after the Strike Hellraiser played on the draw"
-     }
-    }
-   }
-  },
-  {
-   "id": "combat-victory",
-   "after_seq": 10,
-   "kind": "combat_end",
-   "note": "The fight is over, which is what makes this history one side of a whole-combat comparison. Final health is 57 rather than 51 because the starting relic heals six the moment the last enemy dies - the video shows the jump in the same frame that shows the enemy dead.",
-   "expect": {
-    "combat.outcome": {
-     "Value": "victory",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 94500,
-      "method": "the enemy's health bar is replaced by 'Dead' and the loot screen follows"
-     }
-    },
-    "combat.in_progress": {
-     "Value": "false",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 94500,
-      "method": "the enemy's bar reads 'Dead' in place of a health value and telegraphs no intent; the loot screen replaces the fight a moment later",
-      "note": "The End Turn button is still drawn in this frame, which is why the enemy rather than the button is what this reads."
-     }
-    },
-    "combat.player_hp": {
-     "Value": "57",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 94500,
-      "method": "health bar reads 57/68"
-     }
-    },
-    "player.hp": {
-     "Value": "57",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 94500,
-      "method": "health bar reads 57/68"
-     }
-    },
-    "player.max_hp": {
-     "Value": "68",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 94500,
-      "method": "health bar reads 57/68"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor2-loot-taken",
-   "after_seq": 13,
-   "kind": "mid_turn",
-   "note": "The first fight's loot, once every counter has settled. Read from the map screen the player returns to rather than from the loot window, where gold is still counting up.",
-   "expect": {
-    "player.gold": {
-     "Value": "112",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 105000,
-      "method": "read from the top bar at 3840x2160, after the coin counter has finished animating; it reads 99 before the loot screen, 108 while the card screen is up, and holds 112 from t=97 to the event at t=120"
-     }
-    },
-    "player.potions": {
-     "Value": "POTION.OROBIC_ACID|empty",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 105000,
-      "method": "the potion belt shows one potion in the first slot and an empty second slot; the loot entry that filled it named 'Orobic Acid'"
-     }
-    },
-    "player.deck_count": {
-     "Value": "12",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 105000,
-      "method": "the deck badge in the top bar reads 12, up from 11 before the card reward"
-     }
-    },
-    "player.max_hp": {
-     "Value": "68",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 105000,
-      "method": "read from the top bar at 3840x2160"
-     }
-    },
-    "player.hp": {
-     "Value": "57",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 105000,
-      "method": "read from the top bar at 3840x2160"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor3-enchantment-done",
-   "after_seq": 17,
-   "kind": "mid_turn",
-   "note": "What the Waterlogged Scriptorium cost and what it did not do. Maximum health is here because it is what separates this choice from the other two the event offered.",
-   "expect": {
-    "player.gold": {
-     "Value": "13",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 131000,
-      "method": "the coin counter has finished counting down from 112 and reads 13 on the map screen the event returns to"
-     }
-    },
-    "player.max_hp": {
-     "Value": "68",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 131000,
-      "method": "read from the top bar at 3840x2160; Bloody Ink would have made it 74"
-     }
-    },
-    "player.deck_count": {
-     "Value": "12",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 131000,
-      "method": "the deck badge still reads 12 - this event enchants cards and adds none"
-     }
-    },
-    "run.total_floor": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 131000,
-      "method": "the floor badge reads 3"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor4-combat-start",
-   "after_seq": 18,
-   "kind": "combat_start",
-   "note": "Everything the video shows as the second transcribed fight begins. The enchanted Defend in the opening hand is what settles which of three identical Defends the event enchanted.",
-   "expect": {
-    "combat.turn": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "the End Turn button reads 'End Turn 1'"
-     }
-    },
-    "combat.energy": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "energy orb reads 3/3"
-     }
-    },
-    "combat.block": {
-     "Value": "0",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "no block value is shown beside the health bar"
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "the five cards in hand, left to right, by card face and title; the rightmost carries the retain marker the Steady enchantment adds and the other Defend does not"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "5",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "five cards are dealt"
-     }
-    },
-    "combat.draw_pile_count": {
-     "Value": "7",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "draw-pile badge, bottom left"
-     }
-    },
-    "combat.discard_pile_count": {
-     "Value": "0",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "discard-pile badge, bottom right"
-     }
-    },
-    "combat.enemy_count": {
-     "Value": "2",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "two enemies are present"
-     }
-    },
-    "combat.enemy.0.hp": {
-     "Value": "23",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "the left enemy's health bar reads 23/23"
-     }
-    },
-    "combat.enemy.0.max_hp": {
-     "Value": "23",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "the left enemy's health bar reads 23/23"
-     }
-    },
-    "combat.enemy.1.hp": {
-     "Value": "26",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "the right enemy's health bar reads 26/26"
-     }
-    },
-    "combat.enemy.1.max_hp": {
-     "Value": "26",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "the right enemy's health bar reads 26/26"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "57",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "health bar reads 57/68"
-     }
-    },
-    "player.gold": {
-     "Value": "13",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "read from the top bar at 3840x2160"
-     }
-    },
-    "player.deck_count": {
-     "Value": "12",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "the deck badge reads 12"
-     }
-    },
-    "run.total_floor": {
-     "Value": "4",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 144800,
-      "method": "the floor badge reads 4"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor4-turn2-start",
-   "after_seq": 22,
-   "kind": "turn_start",
-   "note": "The first turn whose hand carries a retained card. Six cards rather than five is the retained Defend, and it is the sharpest evidence in this fight: it is a fact about where the shuffle put five cards on top of one the enchantment kept.",
-   "expect": {
-    "combat.turn": {
-     "Value": "2",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 151500,
-      "method": "the End Turn button reads 'End Turn 2'"
-     }
-    },
-    "combat.energy": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 151500,
-      "method": "energy orb reads 3/3"
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.HELLRAISER|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH@ENCHANTMENT.STEADY",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 151500,
-      "method": "six cards, left to right; the leading Defend is the one retained from turn 1 and still carries the retain marker, and Bash reads 'Retain. Deal 8 damage. Apply 2 Vulnerable.' when it is raised at t=152.0"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "6",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 151500,
-      "method": "six cards in hand - five drawn onto one retained"
-     }
-    },
-    "combat.enemy.0.hp": {
-     "Value": "14",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 151500,
-      "method": "the left enemy's bar reads 14/23"
-     }
-    },
-    "combat.enemy.1.hp": {
-     "Value": "26",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 151500,
-      "method": "the right enemy's bar reads 26/26"
-     }
-    },
-    "combat.enemy.0.powers": {
-     "Value": "POWER.THORNS_POWER:2",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 151750,
-      "method": "a badge under the left enemy reads 2, and hovering it says 'When hit by an attack, deal 2 damage back' - the effect the game names Thorns, which is what makes this badge identifiable where the floor-5 enemies' is not"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "57",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 151500,
-      "method": "health bar reads 57/68"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor4-turn3-start",
-   "after_seq": 25,
-   "kind": "turn_start",
-   "note": "One enemy left, and the curse the opening blessing left in the deck arrives.",
-   "expect": {
-    "combat.turn": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 156500,
-      "method": "the End Turn button reads 'End Turn 3'"
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.ASCENDERS_BANE|CARD.HELLRAISER|CARD.BASH@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 156500,
-      "method": "six cards, left to right, with the retain marker on the first and the fourth"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "6",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 156500,
-      "method": "six cards in hand"
-     }
-    },
-    "combat.enemy_count": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 156500,
-      "method": "one enemy is left; the other's bar read Dead at t=153.0"
-     }
-    },
-    "combat.enemy.0.hp": {
-     "Value": "26",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 156500,
-      "method": "the surviving enemy's bar reads 26/26"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "53",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 156500,
-      "method": "health bar reads 53/68"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor4-turn4-start",
-   "after_seq": 28,
-   "kind": "turn_start",
-   "expect": {
-    "combat.turn": {
-     "Value": "4",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 162500,
-      "method": "the End Turn button reads 'End Turn 4'"
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.BASH@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.POMMEL_STRIKE|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 162500,
-      "method": "six cards, left to right; Bash leads, retained from turn 3"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "6",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 162500,
-      "method": "six cards in hand"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "51",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 162500,
-      "method": "health bar reads 51/68"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor4-turn5-start",
-   "after_seq": 32,
-   "kind": "turn_start",
-   "expect": {
-    "combat.turn": {
-     "Value": "5",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 167750,
-      "method": "the End Turn button reads 'End Turn 5'"
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.BASH@ENCHANTMENT.STEADY|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.HELLRAISER",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 167750,
-      "method": "six cards, left to right; the retain marker is on Bash and on the fifth card"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "6",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 167750,
-      "method": "six cards in hand"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "48",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 167750,
-      "method": "health bar reads 48/68"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor4-combat-victory",
-   "after_seq": 34,
-   "kind": "combat_end",
-   "note": "The second transcribed fight ends. Health is 54 rather than 48 because the starting relic heals six the moment the last enemy dies, the same jump the first fight showed.",
-   "expect": {
-    "combat.outcome": {
-     "Value": "victory",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 169000,
-      "method": "the enemy's health bar is replaced by 'Dead' and the loot screen follows at t=169.7"
-     }
-    },
-    "combat.in_progress": {
-     "Value": "false",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 169000,
-      "method": "the enemy's bar reads Dead and telegraphs no intent; the hand stops being interactive and the Loot! window replaces the fight"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "54",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 169000,
-      "method": "health bar reads 54/68"
-     }
-    },
-    "player.hp": {
-     "Value": "54",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 169000,
-      "method": "health bar reads 54/68"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor5-combat-start",
-   "after_seq": 37,
-   "kind": "combat_start",
-   "note": "The boundary this history exists to reach: the two-enemy fight the 209-215 s window is inside, at its combat start. Everything a video can show about it is here - which is not everything there is. Each slug carries one status badge reading 5, drawn as an icon with no text, and the recording never hovers it. The count is legible and the power's identity is not, so combat.enemy.N.powers is deliberately absent from this checkpoint rather than filled in from the engine.",
-   "expect": {
-    "combat.turn": {
-     "Value": "1",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "the End Turn button reads 'End Turn 1'"
-     }
-    },
-    "combat.energy": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "energy orb reads 3/3"
-     }
-    },
-    "combat.block": {
-     "Value": "0",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "no block value is shown beside the health bar"
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.HELLRAISER|CARD.ASCENDERS_BANE|CARD.STRIKE_IRONCLAD",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "the five cards in hand, left to right, by card face and title"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "5",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "five cards are dealt"
-     }
-    },
-    "combat.draw_pile_count": {
-     "Value": "7",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "draw-pile badge, bottom left"
-     }
-    },
-    "combat.discard_pile_count": {
-     "Value": "0",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "discard-pile badge, bottom right"
-     }
-    },
-    "combat.enemy_count": {
-     "Value": "2",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "two enemies are present"
-     }
-    },
-    "combat.enemy.0.hp": {
-     "Value": "27",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "the left enemy's health bar reads 27/27"
-     }
-    },
-    "combat.enemy.0.max_hp": {
-     "Value": "27",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "the left enemy's health bar reads 27/27"
-     }
-    },
-    "combat.enemy.0.intent": {
-     "Value": "Attack:9",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "an attack glyph and the number 9 are rendered above the left enemy"
-     }
-    },
-    "combat.enemy.1.hp": {
-     "Value": "29",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "the right enemy's health bar reads 29/29"
-     }
-    },
-    "combat.enemy.1.max_hp": {
-     "Value": "29",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "the right enemy's health bar reads 29/29"
-     }
-    },
-    "combat.enemy.1.intent": {
-     "Value": "Debuff",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "a downward debuff glyph with no damage number is rendered above the right enemy; the Frail the player carries from t=205 is what it applied"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "54",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "health bar reads 54/68"
-     }
-    },
-    "combat.player_powers": {
-     "Value": "",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "no status badge is drawn under the player's health bar"
-     }
-    },
-    "player.gold": {
-     "Value": "27",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "read from the top bar at 3840x2160"
-     }
-    },
-    "player.potions": {
-     "Value": "POTION.OROBIC_ACID|empty",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "the potion belt still shows the one potion taken on floor 2 and an empty second slot"
-     }
-    },
-    "player.deck_count": {
-     "Value": "12",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "the deck badge reads 12"
-     }
-    },
-    "player.relics": {
-     "Value": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "two relic icons are shown, the starting relic and the one Neow's blessing gave"
-     }
-    },
-    "run.total_floor": {
-     "Value": "5",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 193600,
-      "method": "the floor badge reads 5"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor5-turn2-start",
-   "after_seq": 41,
-   "kind": "turn_start",
-   "expect": {
-    "combat.turn": {
-     "Value": "2",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 206000,
-      "method": "the End Turn button reads 'End Turn 2'"
-     }
-    },
-    "combat.energy": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 206000,
-      "method": "energy orb reads 3/3"
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 206000,
-      "method": "five cards, left to right; the leading Defend reads 'Retain. Gain 5 Block.' when it is raised at t=206.25"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "5",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 206000,
-      "method": "five cards in hand"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "50",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 206000,
-      "method": "health bar reads 50/68"
-     }
-    },
-    "combat.player_powers": {
-     "Value": "POWER.FRAIL_POWER:2",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 206000,
-      "method": "one status badge under the health bar, a cracked shield reading 2"
-     }
-    },
-    "combat.enemy.0.hp": {
-     "Value": "12",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 206000,
-      "method": "the left enemy's bar reads 12/27"
-     }
-    },
-    "combat.enemy.1.hp": {
-     "Value": "29",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 206000,
-      "method": "the right enemy's bar reads 29/29"
-     }
-    }
-   }
-  },
-  {
-   "id": "floor5-window-boundary",
-   "after_seq": 45,
-   "kind": "turn_start",
-   "note": "The far end of this history: the opening of the 209-215 s turn a candidate search would enumerate. Nothing here is replayed past it, and everything in it is what the recording shows at t=212.0.",
-   "expect": {
-    "combat.turn": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "the banner reads 'Player Turn / Turn 3'"
-     }
-    },
-    "combat.energy": {
-     "Value": "3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "energy orb reads 3/3"
-     }
-    },
-    "combat.block": {
-     "Value": "0",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "no block value is drawn beside the health bar",
-      "note": "The only badge under the bar at this frame is the cracked shield of Frail, reading 3. It is easy to read as a block value and it is not one - block is drawn on the bar itself, and turn 3 opens with none."
-     }
-    },
-    "combat.hand": {
-     "Value": "CARD.BASH@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.HELLRAISER",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "the five cards in hand, left to right, by card face and title; Bash carries the retain marker"
-     }
-    },
-    "combat.hand_count": {
-     "Value": "5",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "five cards in hand"
-     }
-    },
-    "combat.enemy.0.hp": {
-     "Value": "6",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "the left enemy's bar reads 6/27"
-     }
-    },
-    "combat.enemy.0.intent": {
-     "Value": "Attack:6",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "the left enemy telegraphs an attack rendered as 3x2 - three damage twice, which is the six the canonical intent states as a total"
-     }
-    },
-    "combat.enemy.1.hp": {
-     "Value": "29",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "the right enemy's bar reads 29/29",
-      "note": "A chat message from the stream overlay sits across this bar from t=211.6. The numerals read through it at this frame, which is why this reading is anchored here rather than to a later one."
-     }
-    },
-    "combat.enemy.1.intent": {
-     "Value": "Attack:9",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "the right enemy telegraphs an attack with the number 9"
-     }
-    },
-    "combat.player_hp": {
-     "Value": "50",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "health bar reads 50/68"
-     }
-    },
-    "combat.player_powers": {
-     "Value": "POWER.FRAIL_POWER:3",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "one status badge under the health bar, a cracked shield reading 3"
-     }
-    },
-    "player.gold": {
-     "Value": "27",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "read from the top bar at 3840x2160"
-     }
-    },
-    "player.deck_count": {
-     "Value": "12",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "the deck badge reads 12"
-     }
-    },
-    "run.total_floor": {
-     "Value": "5",
-     "Source": "Observed",
-     "Evidence": {
-      "video_t_ms": 212000,
-      "method": "the floor badge reads 5"
-     }
-    }
-   }
-  }
- ]
+  ]
 }

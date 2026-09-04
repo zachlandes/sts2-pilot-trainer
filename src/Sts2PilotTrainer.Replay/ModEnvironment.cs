@@ -72,7 +72,20 @@ public sealed record HeadlessParityWaiver
 public sealed record InstalledMod(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("role")] string Role,
-    [property: JsonPropertyName("replay_risk")] string ReplayRisk);
+    [property: JsonPropertyName("replay_risk")] string ReplayRisk,
+
+    /// <summary>
+    /// What the mod's own manifest declares about whether it changes gameplay, when
+    /// something read it.
+    ///
+    /// Null for a list assembled from a video, where nobody could read a manifest and
+    /// a guess would be worse than an absence. A recorder running inside the game
+    /// reads it, which is what lets a native recording's mod set be judged by a rule
+    /// instead of against a fixed list of audited names.
+    /// </summary>
+    [property: JsonPropertyName("affects_gameplay")]
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    bool? AffectsGameplay = null);
 
 /// <summary>
 /// Evidence that the recording starts at the beginning of the run, rather than part

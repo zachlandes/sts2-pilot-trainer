@@ -209,11 +209,11 @@ internal static partial class Commands
     /// because it is the reason the mod's barrier exists.
     /// </summary>
     private static object PlayAndCompare(
-        RecordedFightEntry entry, CombatStartEquality equality, string creator, string manifestPath,
+        RecordedFightEntry entry, BoundaryEquality equality, string creator, string manifestPath,
         string? recordedFightPath)
     {
-        recordedFightPath ??= manifestPath.Replace(".replay.json", ".recorded-fight.json", StringComparison.Ordinal);
-        var recorded = RecordedFight.Load(recordedFightPath);
+        recordedFightPath ??= manifestPath.Replace(".replay.json", ".recorded-fights.json", StringComparison.Ordinal);
+        var recorded = RecordedFights.Load(recordedFightPath);
         recorded.Bind(entry.Manifest);
 
         var sandboxBefore = SandboxDigest();
@@ -232,7 +232,7 @@ internal static partial class Commands
             "stops what a won fight would write");
 
         var yours = capture.Project();
-        var comparison = CombatComparison.Between(yours, recorded.Projection());
+        var comparison = CombatComparison.Between(yours, recorded.Projection(entry.Plan.Fight));
         var screen = FightResultScreen.For(creator, comparison);
 
         Panel(screen);

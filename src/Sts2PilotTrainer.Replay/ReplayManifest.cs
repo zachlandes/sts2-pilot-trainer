@@ -15,7 +15,7 @@ public sealed record ReplayManifest
 {
     /// <summary>Bumped whenever a change would make an older arbiter misread a
     /// newer manifest. Readers must refuse an unknown version rather than guess.</summary>
-    public const int CurrentManifestVersion = 4;
+    public const int CurrentManifestVersion = 5;
 
     [JsonPropertyName("manifest_version")]
     public int ManifestVersion { get; init; } = CurrentManifestVersion;
@@ -42,11 +42,42 @@ public sealed record ReplayManifest
     [JsonPropertyName("checkpoints")]
     public required IReadOnlyList<Checkpoint> Checkpoints { get; init; }
 
+    /// <summary>
+    /// Every point in this history a player can be stood at, with the digest that
+    /// proves the state reached there is the recorded one.
+    ///
+    /// Empty for a fixture that makes no publication claim. Never a place to record
+    /// a boundary nobody derived: each digest is engine-produced or captured live,
+    /// and one that was neither would be an identity nobody established.
+    /// </summary>
+    [JsonPropertyName("boundaries")]
+    public IReadOnlyList<ReplayBoundary> Boundaries { get; init; } = [];
+
     /// <summary>Filled in by the arbiter. Null means unverified - and an unverified
     /// manifest is never evidence of anything.</summary>
     [JsonPropertyName("verification")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public VerificationReport? Verification { get; init; }
+
+    /// <summary>
+    /// The boundary of this kind that matches the ordinal asked for, or null when the
+    /// recording records none.
+    ///
+    /// One lookup so that "which boundary is fight 2's" has one answer. A caller that
+    /// searched the list itself would be a second answer waiting to disagree with the
+    /// plan and the equality check about which moment they all mean.
+    /// </summary>
+    public ReplayBoundary? BoundaryAt(string kind, int? fight = null, int? floor = null, int? turn = null) =>
+        Boundaries.FirstOrDefault(boundary =>
+            string.Equals(boundary.Kind, kind, StringComparison.Ordinal) &&
+            (fight is null || boundary.Fight == fight) &&
+            (floor is null || boundary.Floor == floor) &&
+            (turn is null || boundary.Turn == turn));
+
+    /// <summary>The engine-produced or captured digest at the start of the fight with
+    /// this ordinal, or null when the recording carries none for it.</summary>
+    public string? CombatStartDigest(int fight = 1) =>
+        BoundaryAt(ReplayBoundary.CombatStartKind, fight: fight)?.Digest.Value;
 }
 
 /// <summary>
@@ -129,8 +160,10 @@ public sealed record EnvironmentIdentity
 /// <summary>Where the reconstruction came from, in enough detail to re-check it.</summary>
 public sealed record SourceProvenance
 {
-    /// <summary><c>vod</c> for publication evidence and <c>synthetic-engine</c> for
-    /// pinned engine fixtures that exercise replay without making a source claim.</summary>
+    /// <summary><c>vod</c> for publication evidence from a public video,
+    /// <c>native</c> for a run this project's own recorder watched being played, and
+    /// <c>synthetic-engine</c> for pinned engine fixtures that exercise replay
+    /// without making a source claim.</summary>
     [JsonPropertyName("kind")]
     public required string Kind { get; init; }
 
@@ -141,6 +174,10 @@ public sealed record SourceProvenance
     [JsonPropertyName("synthetic")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public SyntheticSource? Synthetic { get; init; }
+
+    [JsonPropertyName("native")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public NativeSource? Native { get; init; }
 
     /// <summary>How the ordered history was produced. <c>manual</c> means a human
     /// read the frames; that is the honest label for this milestone and it should
@@ -153,16 +190,6 @@ public sealed record SourceProvenance
     /// complete is not.</summary>
     [JsonPropertyName("coverage")]
     public required string Coverage { get; init; }
-
-    /// <summary>
-    /// The complete canonical state digest at the first combat boundary, produced by
-    /// <c>combat-snapshot</c> after it re-derived the boundary in a fresh process.
-    /// Required for a video source so a retail host can compare hidden state without
-    /// carrying or trusting a machine-local snapshot cache.
-    /// </summary>
-    [JsonPropertyName("combat_start_snapshot_digest")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public Fact<string>? CombatStartSnapshotDigest { get; init; }
 
     /// <summary>
     /// Evidence that the recording begins at the run's beginning. Required for a
@@ -180,6 +207,56 @@ public sealed record SourceProvenance
     [JsonPropertyName("run_summary")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public RunSummaryObservation? RunSummary { get; init; }
+}
+
+/// <summary>
+/// A run this project's own recorder watched being played, on the player's machine.
+///
+/// It carries what makes the recording checkable and nothing that identifies the
+/// person who made it: no Steam id, no path on their disk, no profile id, no
+/// hardware. A recording is meant to be shareable, and a field here that named its
+/// author would travel with every copy of it forever.
+///
+/// The two facts that cannot be established downstream live here.
+/// <see cref="WitnessedRunStart"/> is the native counterpart of a video's run-start
+/// evidence: a history replayed from run start against a run the recorder joined
+/// half way through reconstructs a different run, and every other gate passes.
+/// <see cref="Continuity"/> is the counterpart of the end-of-run reading: a recorder
+/// that stopped and started again saw two stretches of a run and cannot know what
+/// happened between them.
+/// </summary>
+public sealed record NativeSource
+{
+    /// <summary>An unbroken watch from the first decision to the last.</summary>
+    public const string ContinuousContinuity = "continuous";
+
+    /// <summary>The recorder missed part of the run, so the history is not this run's.</summary>
+    public const string BrokenContinuity = "broken";
+
+    public static readonly string[] Continuities = [ContinuousContinuity, BrokenContinuity];
+
+    /// <summary>Won, lost, or given up. A give-up is a completed recording: the run is
+    /// over, the history is whole, and the fights in it were really played.</summary>
+    public static readonly string[] Outcomes = ["won", "lost", "abandoned"];
+
+    /// <summary>Which build of the recorder produced this, so a defect found in one
+    /// can be traced to everything it wrote.</summary>
+    [JsonPropertyName("recorder_version")]
+    public required string RecorderVersion { get; init; }
+
+    /// <summary>Whether the recorder was watching when the run began. Captured,
+    /// because it is a fact about the recorder's own session.</summary>
+    [JsonPropertyName("witnessed_run_start")]
+    public required Fact<bool> WitnessedRunStart { get; init; }
+
+    [JsonPropertyName("continuity")]
+    public required string Continuity { get; init; }
+
+    [JsonPropertyName("outcome")]
+    public required string Outcome { get; init; }
+
+    [JsonIgnore]
+    public bool IsContinuous => string.Equals(Continuity, ContinuousContinuity, StringComparison.Ordinal);
 }
 
 public sealed record SyntheticSource
@@ -242,7 +319,7 @@ public sealed record VideoSource
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Title { get; init; }
 
-    [JsonPropertyName("url")]
+    [JsonIgnore]
     public string Url => Platform == "youtube"
         ? $"https://www.youtube.com/watch?v={VideoId}"
         : VideoId;

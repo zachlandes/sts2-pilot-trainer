@@ -433,7 +433,8 @@ internal static class RecordedFightRun
             var capture = entry.Capture
                 ?? throw new InvalidOperationException("The fight ended before its capture began.");
             var screen = FightResultScreen.Of(
-                RecordingIdentity.Creator(entry.Manifest), capture, CombatTrainerModule.Instance.RecordedFight);
+                RecordingIdentity.Creator(entry.Manifest), capture,
+                CombatTrainerModule.Instance.RecordedFights.Projection(entry.Plan.Fight));
             _observer?.Dispose();
             _observer = null;
             Phase = RecordedFightPhase.Result;

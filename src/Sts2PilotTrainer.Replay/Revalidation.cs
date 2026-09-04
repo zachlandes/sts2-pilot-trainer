@@ -119,7 +119,7 @@ public static class Revalidation
         string? firstDivergence,
         string? derivedCombatStartDigest)
     {
-        var recordedDigest = manifest.Source.CombatStartSnapshotDigest?.Value;
+        var recordedDigest = manifest.CombatStartDigest();
         var boundaryMoved = recordedDigest is not null && derivedCombatStartDigest is not null &&
                             !string.Equals(recordedDigest, derivedCombatStartDigest, StringComparison.Ordinal);
 

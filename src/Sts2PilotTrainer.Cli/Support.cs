@@ -77,13 +77,20 @@ internal sealed class EvidenceArtifact
 
     internal string Path { get; }
 
-    internal static EvidenceArtifact PreparePath(string path)
+    internal static EvidenceArtifact PreparePath(string path, bool clearExisting = true)
     {
         var full = System.IO.Path.GetFullPath(path);
-        return Prepare(System.IO.Path.GetDirectoryName(full)!, System.IO.Path.GetFileName(full));
+        return Prepare(
+            System.IO.Path.GetDirectoryName(full)!, System.IO.Path.GetFileName(full), clearExisting);
     }
 
-    internal static EvidenceArtifact Prepare(string directory, string fileName)
+    /// <summary>
+    /// Clearing an existing file first is what makes a failed run leave no stale
+    /// evidence behind. A rewriter whose input is its own destination must not, so
+    /// it passes <paramref name="clearExisting"/> false and lets the atomic write
+    /// replace the file it read.
+    /// </summary>
+    internal static EvidenceArtifact Prepare(string directory, string fileName, bool clearExisting = true)
     {
         if (System.IO.Path.GetFileName(fileName) != fileName)
         {
@@ -93,7 +100,7 @@ internal sealed class EvidenceArtifact
         var root = WorktreePath.Require(directory);
         Directory.CreateDirectory(root);
         var path = WorktreePath.RequireChild(root, fileName);
-        if (File.Exists(path)) File.Delete(path);
+        if (clearExisting && File.Exists(path)) File.Delete(path);
         return new EvidenceArtifact(path);
     }
 

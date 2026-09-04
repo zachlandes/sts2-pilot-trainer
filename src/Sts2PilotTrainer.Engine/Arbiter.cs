@@ -26,7 +26,7 @@ public static class Arbiter
             throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
         }
 
-        var preflight = Preflight.Evaluate(manifest.Environment, progress);
+        var preflight = Preflight.Evaluate(manifest.Environment, progress, manifest.Source.Kind);
         if (!preflight.Matches)
         {
             return new ArbiterOutcome(

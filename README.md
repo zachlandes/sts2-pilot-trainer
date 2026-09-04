@@ -119,7 +119,11 @@ output.
 
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
 `verify-seed`, `determinism`, `negative-controls`, `combat-snapshot`,
-`snapshot-restore-probe`. `validate` needs no game.
+`snapshot-restore-probe`, `migrate-manifest`. `validate` and `migrate-manifest` need
+no game; `migrate-manifest` is the only command that rewrites a manifest on disk, so
+reading somebody's evidence never edits it.
+It rewrites the manifest in place, or writes to `--out <path>`, which is written even when the input was already in this format, so a script that migrates and then reads its output never meets a missing file.
+Like every command here that writes, it refuses a destination outside this repository.
 
 The full walkthrough, with commands and their real output, is in
 [demo/DEMO.md](demo/DEMO.md).

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 
 namespace Sts2PilotTrainer.Replay;
@@ -52,11 +53,13 @@ public static partial class ManifestValidator
     {
         var problems = new List<string>();
 
-        ValidateSource(manifest.Source, problems);
+        var maxActionOrdinal = manifest.Actions.Count - 1;
+        ValidateSource(manifest.Source, maxActionOrdinal, problems);
         var videoDurationMs = manifest.Source.Video is { DurationSeconds: > 0 } video
             ? checked(video.DurationSeconds * 1000)
             : 0;
-        ValidateEnvironment(manifest.Environment, manifest.Source.Kind, videoDurationMs, problems);
+        ValidateEnvironment(
+            manifest.Environment, manifest.Source.Kind, videoDurationMs, maxActionOrdinal, problems);
         if (manifest.Source.Synthetic is { } synthetic &&
             !string.Equals(
                 synthetic.GeneratedBuild, manifest.Environment.BuildVersion.Value, StringComparison.Ordinal))
@@ -69,6 +72,7 @@ public static partial class ManifestValidator
         ValidateActions(manifest.Actions, manifest.Source.Kind, videoDurationMs, problems);
         ValidateCheckpoints(
             manifest.Checkpoints, manifest.Actions, manifest.Source.Kind, videoDurationMs, problems);
+        ValidateBoundaries(manifest, problems);
         ValidateEvidenceTimeline(manifest, problems);
 
         if (string.IsNullOrWhiteSpace(manifest.RunId))
@@ -80,7 +84,8 @@ public static partial class ManifestValidator
     }
 
     private static void ValidateEnvironment(
-        EnvironmentIdentity env, string sourceKind, int videoDurationMs, List<string> problems)
+        EnvironmentIdentity env, string sourceKind, int videoDurationMs, int maxActionOrdinal,
+        List<string> problems)
     {
         if (!BuildVersionPattern.IsMatch(env.BuildVersion.Value))
         {
@@ -116,12 +121,65 @@ public static partial class ManifestValidator
         }
 
         var unlocks = env.Unlocks.Value;
-        if (!unlocks.IsComplete)
+        if (!unlocks.IsComplete && !unlocks.IsExact)
         {
             problems.Add(
-                $"environment.unlocks.completeness '{unlocks.Completeness}' is not " +
-                $"'{UnlockRequirement.CompleteCompleteness}'. Completeness is the only requirement a build can " +
-                "enumerate for itself; a partial one would name unlock ids nobody read off the video.");
+                $"environment.unlocks.completeness '{unlocks.Completeness}' is not one of: " +
+                $"{string.Join(", ", UnlockRequirement.Completenesses)}. Those two are expressible because " +
+                "something can check them - the build enumerates what it ships, and a recorder enumerates what " +
+                "the player had. Anything else would name unlock ids nobody read.");
+        }
+
+        if (sourceKind == "native" && !unlocks.IsExact)
+        {
+            problems.Add(
+                "environment.unlocks.completeness must be 'exact' for a native recording. A recorder running " +
+                "inside the player's own game reads the unlock state it was played with rather than inferring " +
+                "completeness about its own author.");
+        }
+
+        if (unlocks.IsComplete && unlocks.Inventory is not null)
+        {
+            problems.Add(
+                "environment.unlocks names an inventory alongside completeness 'complete'. Completeness against " +
+                "the build and an enumerated inventory are two different requirements, and carrying both leaves " +
+                "the reader to decide which one was meant.");
+        }
+
+        if (unlocks.IsExact)
+        {
+            if (unlocks.Inventory is not { } inventory)
+            {
+                problems.Add(
+                    "environment.unlocks.completeness is 'exact' and no inventory is present. An exact " +
+                    "requirement is exactly the ids it names, so one that names none asks for nothing.");
+            }
+            else
+            {
+                foreach (var (name, ids) in inventory.IdLists())
+                {
+                    if (ids.Any(string.IsNullOrWhiteSpace))
+                    {
+                        problems.Add($"environment.unlocks.inventory.{name} contains an empty id.");
+                    }
+
+                    if (ids.Distinct(StringComparer.Ordinal).Count() != ids.Count)
+                    {
+                        problems.Add(
+                            $"environment.unlocks.inventory.{name} names the same id more than once, so what it " +
+                            "asks for cannot be read off it.");
+                    }
+                }
+
+                if (inventory.Runs < 0)
+                {
+                    problems.Add(
+                        $"environment.unlocks.inventory.runs is " +
+                        $"{inventory.Runs.ToString(CultureInfo.InvariantCulture)}. The run count is one of the " +
+                        "three values the game's unlock state is constructed from, and a negative one is not a " +
+                        "state anything could be built into.");
+                }
+            }
         }
 
         if (string.IsNullOrWhiteSpace(unlocks.Basis))
@@ -175,16 +233,41 @@ public static partial class ManifestValidator
             problems.Add($"environment.acts contains '{act}', which is not a model id (expected ACT.*).");
         }
 
-        ValidateInputFact(env.BuildVersion, "environment.build_version", videoDurationMs, problems);
-        ValidateInputFact(env.BuildDateUtc, "environment.build_date_utc", videoDurationMs, problems);
-        ValidateInputFact(env.GameMode, "environment.game_mode", videoDurationMs, problems);
-        ValidateInputFact(env.Seed, "environment.seed", videoDurationMs, problems);
-        ValidateInputFact(env.ContentHash, "environment.content_hash", videoDurationMs, problems);
-        ValidateInputFact(env.Ascension, "environment.ascension", videoDurationMs, problems);
-        ValidateInputFact(env.Unlocks, "environment.unlocks", videoDurationMs, problems);
-        ValidateInputFact(env.Character, "environment.character", videoDurationMs, problems);
-        ValidateInputFact(env.Acts, "environment.acts", videoDurationMs, problems);
-        ValidateInputFact(env.Mods, "environment.mods", videoDurationMs, problems);
+        ValidateInputFact(
+            env.BuildVersion, "environment.build_version", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.BuildDateUtc, "environment.build_date_utc", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.GameMode, "environment.game_mode", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Seed, "environment.seed", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.ContentHash, "environment.content_hash", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Ascension, "environment.ascension", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Unlocks, "environment.unlocks", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Character, "environment.character", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Acts, "environment.acts", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+        ValidateInputFact(
+            env.Mods, "environment.mods", sourceKind, videoDurationMs, maxActionOrdinal, problems);
+
+        if (sourceKind == "native")
+        {
+            foreach (var (name, source, _) in EnvironmentFactSources(env))
+            {
+                if (source is not (FactSource.Captured or FactSource.Declared))
+                {
+                    problems.Add(
+                        $"environment.{name} in a native recording is " +
+                        $"source={source.ToString().ToLowerInvariant()}. A recorder reads the environment " +
+                        "out of the game it is running in, so each field is captured - or declared, where it is " +
+                        "a constant this project chose rather than a reading.");
+                }
+            }
+        }
 
         if (sourceKind == "synthetic-engine")
         {
@@ -213,6 +296,24 @@ public static partial class ManifestValidator
                 problems.Add("a synthetic-engine fixture must declare the unmodded headless environment.");
             }
         }
+    }
+
+    /// <summary>Every environment identity field, paired with the name it is reported
+    /// under. One listing, so a rule about "every environment fact" cannot quietly
+    /// mean a different set in two places.</summary>
+    private static IEnumerable<(string Name, FactSource Source, FactEvidence? Evidence)> EnvironmentFactSources(
+        EnvironmentIdentity env)
+    {
+        yield return ("build_version", env.BuildVersion.Source, env.BuildVersion.Evidence);
+        yield return ("build_date_utc", env.BuildDateUtc.Source, env.BuildDateUtc.Evidence);
+        yield return ("game_mode", env.GameMode.Source, env.GameMode.Evidence);
+        yield return ("seed", env.Seed.Source, env.Seed.Evidence);
+        yield return ("content_hash", env.ContentHash.Source, env.ContentHash.Evidence);
+        yield return ("ascension", env.Ascension.Source, env.Ascension.Evidence);
+        yield return ("unlocks", env.Unlocks.Source, env.Unlocks.Evidence);
+        yield return ("character", env.Character.Source, env.Character.Evidence);
+        yield return ("acts", env.Acts.Source, env.Acts.Evidence);
+        yield return ("mods", env.Mods.Source, env.Mods.Evidence);
     }
 
     private static void ValidateParityWaiver(HeadlessParityWaiver waiver, List<string> problems)
@@ -282,13 +383,19 @@ public static partial class ManifestValidator
         }
     }
 
-    private static void ValidateSource(SourceProvenance source, List<string> problems)
+    private static void ValidateSource(
+        SourceProvenance source, int maxActionOrdinal, List<string> problems)
     {
-        if (source.Kind is not ("vod" or "synthetic-engine"))
+        if (source.Kind is not ("vod" or "native" or "synthetic-engine"))
         {
             problems.Add(
-                $"source.kind '{source.Kind}' is unsupported. This milestone accepts 'vod' and " +
+                $"source.kind '{source.Kind}' is unsupported. This milestone accepts 'vod', 'native' and " +
                 "'synthetic-engine'.");
+        }
+
+        if (source.Kind != "native" && source.Native is not null)
+        {
+            problems.Add($"source.native must be absent for a {source.Kind} manifest.");
         }
 
         if (source.Kind == "vod")
@@ -327,35 +434,17 @@ public static partial class ManifestValidator
             {
                 problems.Add("source.synthetic must be absent for a VOD manifest.");
             }
-
-            if (source.CombatStartSnapshotDigest is not { } snapshot)
-            {
-                problems.Add(
-                    "source.combat_start_snapshot_digest is absent. A video recording must carry the " +
-                    "engine-produced combat-start boundary used to verify hidden state in the retail host.");
-            }
-            else
-            {
-                if (snapshot.Source != FactSource.Engine || snapshot.Evidence is not null)
-                {
-                    problems.Add(
-                        "source.combat_start_snapshot_digest must be source=engine and carry no video evidence.");
-                }
-                if (!SnapshotDigestPattern.IsMatch(snapshot.Value))
-                {
-                    problems.Add(
-                        "source.combat_start_snapshot_digest must be a lowercase sha256 digest.");
-                }
-            }
+        }
+        else if (source.Kind == "native")
+        {
+            ValidateNativeSource(source, maxActionOrdinal, problems);
         }
         else if (source.Kind == "synthetic-engine")
         {
-            if (source.Video is not null || source.RunStart is not null || source.RunSummary is not null ||
-                source.CombatStartSnapshotDigest is not null)
+            if (source.Video is not null || source.RunStart is not null || source.RunSummary is not null)
             {
                 problems.Add(
-                    "a synthetic-engine source cannot carry video, run-start, run-summary, or a published " +
-                    "combat-start snapshot digest.");
+                    "a synthetic-engine source cannot carry video, run-start or run-summary evidence.");
             }
 
             if (source.Synthetic is not { } synthetic ||
@@ -380,6 +469,274 @@ public static partial class ManifestValidator
             problems.Add(
                 "source.coverage is empty. A partial history is acceptable; a partial history that does not " +
                 "say where it stops is not.");
+        }
+    }
+
+    /// <summary>
+    /// A recording this project's own recorder made carries the two facts nothing
+    /// downstream could establish, and carries nothing that identifies its author.
+    ///
+    /// <c>witnessed_run_start</c> is the native counterpart of a video's run-start
+    /// evidence and <c>continuity</c> is the counterpart of the end-of-run reading.
+    /// Both are refused here rather than deferred, for the same reason
+    /// <c>AGENTS.md</c> gives for their video equivalents: a history recorded from
+    /// half way through a run, or from two disconnected stretches of one, replays
+    /// perfectly and reconstructs a different run.
+    /// </summary>
+    private static void ValidateNativeSource(
+        SourceProvenance source, int maxActionOrdinal, List<string> problems)
+    {
+        if (source.Video is not null || source.Synthetic is not null)
+        {
+            problems.Add("a native source cannot carry a video or synthetic-fixture block.");
+        }
+
+        if (source.RunStart is not null || source.RunSummary is not null)
+        {
+            problems.Add(
+                "a native source cannot carry source.run_start or source.run_summary. Those read a public " +
+                "video; a recorder watching the game reports what it witnessed, in source.native.");
+        }
+
+        if (source.ExtractionMethod != "captured")
+        {
+            problems.Add("a native source must use extraction_method 'captured'.");
+        }
+
+        if (source.Native is not { } native)
+        {
+            problems.Add(
+                "source.native is absent, so nothing says which recorder produced this history, whether it saw " +
+                "the run begin, or whether it watched the whole of it.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(native.RecorderVersion))
+        {
+            problems.Add(
+                "source.native.recorder_version is empty. A defect found in one recorder build has to be " +
+                "traceable to everything that build wrote.");
+        }
+
+        if (!NativeSource.Continuities.Contains(native.Continuity, StringComparer.Ordinal))
+        {
+            problems.Add(
+                $"source.native.continuity '{native.Continuity}' is not one of: " +
+                $"{string.Join(", ", NativeSource.Continuities)}.");
+        }
+
+        if (!NativeSource.Outcomes.Contains(native.Outcome, StringComparer.Ordinal))
+        {
+            problems.Add(
+                $"source.native.outcome '{native.Outcome}' is not one of: " +
+                $"{string.Join(", ", NativeSource.Outcomes)}. Giving up is 'abandoned' and is a completed " +
+                "recording: the run is over and the fights in it were really played.");
+        }
+
+        RequireCapturedFact(
+            native.WitnessedRunStart, "source.native.witnessed_run_start", "native", maxActionOrdinal, problems);
+
+        if (!native.WitnessedRunStart.Value)
+        {
+            problems.Add(
+                "source.native.witnessed_run_start is false. The recorder joined a run already in progress, so " +
+                "the history it holds is not this run's from its start - and replaying it from run start " +
+                "reconstructs a different run while every other gate passes.");
+        }
+
+        if (!native.IsContinuous)
+        {
+            problems.Add(
+                $"source.native.continuity is '{native.Continuity}'. The recorder stopped and started again, so " +
+                "it cannot know what happened in between, and a history with a hole in it is not this run's.");
+        }
+    }
+
+    /// <summary>
+    /// The places a player can be stood in this recording.
+    ///
+    /// The kinds are a closed set because a host dispatches on them: a kind nothing
+    /// knows how to reach would be a place the recording says a player can go and
+    /// nothing can take them. Every digest is engine-produced or captured live, since
+    /// no video shows draw order or a random stream's position, which is the whole
+    /// reason a boundary carries a digest at all.
+    ///
+    /// Where a manifest carries a verified whole-run trace, every fight the trace
+    /// holds and finishes must have a boundary, and every combat_start it declares
+    /// must name one of those fights: a run whose third fight has nowhere to be
+    /// entered from is a recording that silently offers less than it holds, and a
+    /// boundary on a fight the recording stops in the middle of is a place nobody
+    /// could enter. There is no completed recorded line to compare against there, and
+    /// <see cref="RecordedFights.From"/> cuts only finished fights, so both directions
+    /// of the rule are asked of the same set.
+    ///
+    /// The rule is only ever asked of a manifest that already carries a verified
+    /// trace. Nothing re-validates what <c>replay --out</c> writes, so it does not
+    /// bite on the publication path today: the shipped recording carries one
+    /// combat_start while its history reaches further. Deriving the remaining
+    /// boundaries through the engine and putting this check on the publication path is
+    /// the next phase's work.
+    /// </summary>
+    private static void ValidateBoundaries(ReplayManifest manifest, List<string> problems)
+    {
+        var boundaries = manifest.Boundaries;
+        var maxSeq = manifest.Actions.Count - 1;
+
+        if (manifest.Source.Kind == "synthetic-engine")
+        {
+            if (boundaries.Count > 0)
+            {
+                problems.Add(
+                    "a synthetic-engine fixture cannot declare boundaries. It makes no publication claim and " +
+                    "there is nobody to stand in it.");
+            }
+            return;
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var boundary in boundaries)
+        {
+            var name = $"boundaries[{boundary.Kind}]";
+
+            if (!ReplayBoundary.Kinds.Contains(boundary.Kind, StringComparer.Ordinal))
+            {
+                problems.Add(
+                    $"boundaries entry has kind '{boundary.Kind}', which is not one of: " +
+                    $"{string.Join(", ", ReplayBoundary.Kinds)}. The kinds are a closed set because a host " +
+                    "dispatches on them, so an unrecognised one is a place nothing could take a player.");
+                continue;
+            }
+
+            name = boundary.Describe();
+
+            if (!seen.Add($"{boundary.Kind}|{boundary.Fight}|{boundary.Floor}|{boundary.Turn}"))
+            {
+                problems.Add($"boundaries names {name} more than once.");
+            }
+
+            if (boundary.AfterSeq < -1 || boundary.AfterSeq > maxSeq)
+            {
+                problems.Add(
+                    $"the boundary at {name} has after_seq={boundary.AfterSeq.ToString(CultureInfo.InvariantCulture)}, " +
+                    $"outside the action range [-1, {maxSeq.ToString(CultureInfo.InvariantCulture)}].");
+            }
+
+            switch (boundary.Kind)
+            {
+                case ReplayBoundary.CombatStartKind:
+                    if (boundary.Fight is not > 0)
+                    {
+                        problems.Add("a combat_start boundary must name which fight of the run it starts, from 1.");
+                    }
+                    if (boundary.Floor is not null || boundary.Turn is not null)
+                    {
+                        problems.Add($"the boundary at {name} names a floor or a turn, which a combat start is not.");
+                    }
+                    break;
+                case ReplayBoundary.FloorEntryKind:
+                    if (boundary.Floor is not > 0)
+                    {
+                        problems.Add("a floor_entry boundary must name which floor of the run it arrives on, from 1.");
+                    }
+                    if (boundary.Fight is not null || boundary.Turn is not null)
+                    {
+                        problems.Add($"the boundary at {name} names a fight or a turn, which a floor entry is not.");
+                    }
+                    break;
+                case ReplayBoundary.TurnStartKind:
+                    if (boundary.Fight is not > 0 || boundary.Turn is not > 0)
+                    {
+                        problems.Add(
+                            "a turn_start boundary must name both the fight it is in and the turn it starts, " +
+                            "each from 1.");
+                    }
+                    if (boundary.Floor is not null)
+                    {
+                        problems.Add($"the boundary at {name} names a floor, which a turn start is not.");
+                    }
+                    break;
+            }
+
+            if (boundary.Digest.Source == FactSource.Captured)
+            {
+                RequireCapturedFact(
+                    boundary.Digest, $"the digest at {name}", manifest.Source.Kind, maxSeq, problems,
+                    boundary.AfterSeq);
+            }
+            else if (boundary.Digest.Source == FactSource.Engine)
+            {
+                if (boundary.Digest.Evidence is not null)
+                {
+                    problems.Add(
+                        $"the engine-produced digest at {name} must carry no evidence. It is what replaying the " +
+                        "history yielded, not a reading taken at a video timestamp or in a live session; " +
+                        "evidence attached to it would describe a reading nobody took.");
+                }
+            }
+            else
+            {
+                problems.Add(
+                    $"the digest at {name} is source={boundary.Digest.Source.ToString().ToLowerInvariant()}. A " +
+                    "boundary digest covers draw order and every random stream's position, which no video " +
+                    "shows and no reasoning reaches: it is produced by the engine or captured from the live " +
+                    "game, or it is not established at all.");
+            }
+
+            if (!SnapshotDigestPattern.IsMatch(boundary.Digest.Value))
+            {
+                problems.Add($"the digest at {name} must be a lowercase sha256 digest.");
+            }
+        }
+
+        if (!boundaries.Any(boundary => boundary.IsCombatStart))
+        {
+            problems.Add(
+                "boundaries names no combat_start. A recording must carry the boundary a retail host compares " +
+                "hidden state against, or nobody can be stood in its fight without trusting a machine-local " +
+                "snapshot cache.");
+        }
+
+        if (manifest.Verification is not { Status: VerificationStatus.Verified, Trace: { } trace }) return;
+
+        var coveredFights = RunCoverage.Of(trace).Fights;
+        foreach (var boundary in boundaries.Where(boundary => boundary.IsCombatStart))
+        {
+            var fight = coveredFights.FirstOrDefault(fight => fight.Fight == boundary.Fight);
+            if (fight is null)
+            {
+                problems.Add(
+                    $"boundaries declares {boundary.Describe()}, but this history's verified trace holds no " +
+                    "fight with that ordinal. A combat_start cannot name a fight the recording does not contain.");
+            }
+            else if (!fight.Finished)
+            {
+                problems.Add(
+                    $"boundaries declares {boundary.Describe()}, and this history's verified trace never " +
+                    "finishes that fight. A boundary is a place a player can be stood and have their line " +
+                    "compared against the recording's completed one, and a fight the recording stops in the " +
+                    "middle of has no such line, so declaring it names a place nobody could enter.");
+            }
+            else if (boundary.AfterSeq != fight.CombatStartSeq)
+            {
+                problems.Add(
+                    $"this history's verified trace starts fight " +
+                    $"{fight.Fight.ToString(CultureInfo.InvariantCulture)} after action " +
+                    $"{fight.CombatStartSeq.ToString(CultureInfo.InvariantCulture)}, but its combat_start " +
+                    $"boundary names action {boundary.AfterSeq.ToString(CultureInfo.InvariantCulture)}. A " +
+                    "fight ordinal cannot point to another fight's boundary.");
+            }
+        }
+
+        foreach (var fight in coveredFights.Where(fight => fight.Finished))
+        {
+            if (manifest.BoundaryAt(ReplayBoundary.CombatStartKind, fight: fight.Fight) is null)
+            {
+                problems.Add(
+                    $"this history's verified trace holds fight " +
+                    $"{fight.Fight.ToString(CultureInfo.InvariantCulture)} and boundaries declares no " +
+                    "combat_start for it, so a fight the recording really contains has nowhere to be entered " +
+                    "from. Derive it by replaying the run.");
+            }
         }
     }
 
@@ -551,6 +908,23 @@ public static partial class ManifestValidator
                     problems.Add(
                         $"actions[{action.Seq}] ({action.Verb}) in a synthetic fixture must be declared " +
                         "and carry no video evidence.");
+                }
+                continue;
+            }
+
+            if (sourceKind == "native")
+            {
+                var path = $"actions[{action.Seq}] ({action.Verb})";
+                if (action.Source != FactSource.Captured)
+                {
+                    problems.Add(
+                        $"{path} must be source=captured for a native recording: a recorder watched the " +
+                        "decision being made rather than reading it off a video.");
+                }
+                else
+                {
+                    ValidateCapturedEvidence(
+                        action.Evidence, path, sourceKind, actions.Count - 1, problems, action.Seq);
                 }
                 continue;
             }
@@ -792,6 +1166,12 @@ public static partial class ManifestValidator
                             "engine-produced and carry no video evidence.");
                     }
                 }
+                else if (sourceKind == "native")
+                {
+                    RequireCapturedFact(
+                        fact, $"checkpoint '{checkpoint.Id}' field '{field}'", sourceKind, maxSeq, problems,
+                        checkpoint.AfterSeq);
+                }
                 else
                 {
                     RequireObservedVideoFact(
@@ -937,7 +1317,8 @@ public static partial class ManifestValidator
     }
 
     private static void ValidateInputFact<T>(
-        Fact<T> fact, string path, int videoDurationMs, List<string> problems)
+        Fact<T> fact, string path, string sourceKind, int videoDurationMs, int maxActionOrdinal,
+        List<string> problems)
     {
         if (!Enum.IsDefined(fact.Source))
         {
@@ -955,6 +1336,11 @@ public static partial class ManifestValidator
         {
             RequireObservedVideoFact(fact, path, videoDurationMs, problems);
         }
+
+        if (fact.Source == FactSource.Captured)
+        {
+            ValidateCapturedEvidence(fact.Evidence, path, sourceKind, maxActionOrdinal, problems);
+        }
     }
 
     private static void RequireObservedVideoFact<T>(
@@ -971,6 +1357,75 @@ public static partial class ManifestValidator
         else
         {
             ValidateVideoTimestamp(timestamp, path, videoDurationMs, problems);
+        }
+    }
+
+    /// <summary>
+    /// A value a recorder read out of the live game has to say where in the run it
+    /// read it. A run has no public clock, so the coordinate is the run's own ordered
+    /// history - which is also what its identity is made of.
+    /// </summary>
+    private static void RequireCapturedFact<T>(
+        Fact<T> fact, string path, string sourceKind, int maxActionOrdinal, List<string> problems,
+        int? expectedActionOrdinal = null)
+    {
+        if (fact.Source != FactSource.Captured)
+        {
+            problems.Add(
+                $"{path} must be source=captured because it is what a recorder read out of the game as it " +
+                "happened.");
+            return;
+        }
+
+        ValidateCapturedEvidence(
+            fact.Evidence, path, sourceKind, maxActionOrdinal, problems, expectedActionOrdinal);
+    }
+
+    /// <summary>
+    /// Every captured value in a manifest passes through here, which is what makes
+    /// the native-only rule impossible to miss: captured is what a recorder read out
+    /// of the live game it was running in, so a recording made from anything else
+    /// cannot claim it, and a path added later inherits the refusal rather than having
+    /// to remember it.
+    /// </summary>
+    private static void ValidateCapturedEvidence(
+        FactEvidence? evidence, string path, string sourceKind, int maxActionOrdinal, List<string> problems,
+        int? expectedActionOrdinal = null)
+    {
+        if (sourceKind != "native")
+        {
+            problems.Add(
+                $"{path} is marked source=captured and this is a {sourceKind} recording. Captured is what a " +
+                "recorder read out of the live game it was running in, which only a native recording has: a " +
+                "reading off a video is observed or inferred, a value this project's own replay produced is " +
+                "engine, and a fixture's values are declared.");
+            return;
+        }
+
+        if (evidence?.ActionOrdinal is not { } actionOrdinal)
+        {
+            problems.Add(
+                $"{path} is captured and names no action_ordinal, so nobody could say where in the run it was " +
+                "read.");
+        }
+        else if (actionOrdinal < -1 || actionOrdinal > maxActionOrdinal)
+        {
+            problems.Add(
+                $"{path} was captured at action ordinal {actionOrdinal.ToString(CultureInfo.InvariantCulture)}, " +
+                $"outside the action range [-1, {maxActionOrdinal.ToString(CultureInfo.InvariantCulture)}].");
+        }
+        else if (expectedActionOrdinal is { } expected && actionOrdinal != expected)
+        {
+            problems.Add(
+                $"{path} was captured at action ordinal {actionOrdinal.ToString(CultureInfo.InvariantCulture)}, " +
+                $"but it belongs after action {expected.ToString(CultureInfo.InvariantCulture)}.");
+        }
+
+        if (evidence?.RunClockMs is < 0)
+        {
+            problems.Add(
+                $"{path} has run_clock_ms={evidence.RunClockMs.Value.ToString(CultureInfo.InvariantCulture)}. " +
+                "A run clock cannot name a moment before the run began.");
         }
     }
 
