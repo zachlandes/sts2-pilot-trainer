@@ -123,14 +123,7 @@ public sealed record RecordedFights
     /// <exception cref="ManifestException">On any disagreement.</exception>
     public void Bind(ReplayManifest manifest)
     {
-        if (!string.Equals(SchemaId, Schema, StringComparison.Ordinal))
-        {
-            throw new ManifestException(
-                string.Equals(SchemaId, RetiredSchema, StringComparison.Ordinal)
-                    ? $"This is a single-fight recorded-fight file ('{RetiredSchema}'), and this build reads " +
-                      $"'{Schema}', which holds every fight of a recording. Re-run recorded-fight to produce one."
-                    : $"The recorded fights' schema is '{SchemaId}', and this build reads '{Schema}'.");
-        }
+        RefuseUnreadableSchema(SchemaId);
 
         if (!string.Equals(RunId, manifest.RunId, StringComparison.Ordinal))
         {
@@ -186,8 +179,47 @@ public sealed record RecordedFights
 
     public string Serialize() => JsonSerializer.Serialize(this, ManifestJson.Options);
 
+    /// <summary>
+    /// Reads a file, refusing a schema this build does not hold by name.
+    ///
+    /// The schema is read out of the parsed document before anything is bound to this
+    /// record, the same way <see cref="ManifestJson.Deserialize"/> reads
+    /// manifest_version: the retired single-fight file has no <c>fights</c> at all, so
+    /// binding it first would refuse it for a missing property and never tell the
+    /// holder what they are actually holding.
+    /// </summary>
     public static RecordedFights Deserialize(string json) =>
-        ManifestJson.DeserializeRequired<RecordedFights>(json, "Recorded fights");
+        ManifestJson.RefuseInvalidJson("Recorded fights", () => DeserializeCore(json));
+
+    private static RecordedFights DeserializeCore(string json)
+    {
+        using var probe = JsonDocument.Parse(json);
+        if (!probe.RootElement.TryGetProperty("schema", out var schema) ||
+            schema.ValueKind != JsonValueKind.String)
+        {
+            throw new ManifestException(
+                "This recorded fights file names no 'schema'. Refusing to guess which format it is.");
+        }
+
+        RefuseUnreadableSchema(schema.GetString()!);
+
+        var fights = JsonSerializer.Deserialize<RecordedFights>(json, ManifestJson.Options)
+            ?? throw new ManifestException("Recorded fights deserialized to null.");
+        ManifestJson.ValidateRequiredMembers(fights, "Recorded fights");
+        return fights;
+    }
+
+    private static void RefuseUnreadableSchema(string schemaId)
+    {
+        if (string.Equals(schemaId, Schema, StringComparison.Ordinal)) return;
+
+        throw new ManifestException(
+            string.Equals(schemaId, RetiredSchema, StringComparison.Ordinal)
+                ? $"This is a single-fight recorded-fight file ('{RetiredSchema}'), and this build reads " +
+                  $"'{Schema}', which holds every fight of a recording. Re-run recorded-fight to produce one."
+                : $"The recorded fights' schema is '{schemaId}', and this build reads '{Schema}'. Re-run " +
+                  "recorded-fight to produce one this build can read.");
+    }
 
     public static RecordedFights Load(string path) => Deserialize(File.ReadAllText(path));
 

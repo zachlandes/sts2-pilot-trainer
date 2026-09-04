@@ -135,6 +135,55 @@ public class CorruptionTests
         }
     }
 
+    /// <summary>
+    /// A boundary after the omitted play names the same action it named before, so a
+    /// host entering the corrupted recording is refused by the engine replaying it
+    /// rather than by a coordinate the control moved out from under.
+    /// </summary>
+    [Fact]
+    public void OmitPlayCarriesALaterBoundaryBackWithTheActionItNames()
+    {
+        var recording = Playable(native: true) with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(
+                    2, 5, Fact<string>.Captured(Fixtures.Digest, FactEvidence.AtActionOrdinal(5))),
+            ],
+        };
+
+        var corrupted = Corruption.All.Single(c => c.Name == "omit-play").Apply(recording);
+
+        var later = corrupted.Boundaries.Single(boundary => boundary.Fight == 2);
+        Assert.Equal(4, later.AfterSeq);
+        Assert.Equal(4, later.Digest.Evidence!.ActionOrdinal);
+        Assert.Equal(ActionVerb.EndTurn, corrupted.Actions.Single(action => action.Seq == 4).Verb);
+        Assert.Equal(1, corrupted.Boundaries.Single(boundary => boundary.Fight == 1).AfterSeq);
+
+        var result = ManifestValidator.Validate(corrupted);
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    /// <summary>The place a boundary named is gone with the action it stood on, so it
+    /// goes too rather than silently naming whatever slid into the slot.</summary>
+    [Fact]
+    public void OmitPlayDropsABoundaryStandingOnTheRemovedAction()
+    {
+        var recording = Playable(native: true) with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(2, 3, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        };
+
+        var corrupted = Corruption.All.Single(c => c.Name == "omit-play").Apply(recording);
+
+        Assert.Equal([1], corrupted.Boundaries.Select(boundary => boundary.Fight));
+    }
+
     [Fact]
     public void CoversBothCorruptionsVideoOnlyChecksCannotSee()
     {

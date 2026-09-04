@@ -253,6 +253,7 @@ public static class Corruption
             RunId = manifest.RunId + "+omit-play",
             Actions = Renumber(actions),
             Checkpoints = ShiftCheckpoints(manifest.Checkpoints, target.Seq),
+            Boundaries = ShiftBoundaries(manifest.Boundaries, target.Seq),
         };
     }
 
@@ -468,6 +469,28 @@ public static class Corruption
             .Where(c => c.AfterSeq != removedSeq)
             .Select(c => c.AfterSeq > removedSeq ? MoveCheckpointToSequence(c, c.AfterSeq - 1) : c)
             .ToList();
+
+    /// <summary>
+    /// Moves boundaries back past a removed action, for the same reason checkpoints
+    /// move: a boundary's after_seq is a coordinate into the history, and left alone
+    /// it would name whatever action slid into that slot. A boundary standing on the
+    /// removed action is dropped - the place it named is gone, and pointing it at the
+    /// next action would invent a boundary nobody derived.
+    /// </summary>
+    private static IReadOnlyList<ReplayBoundary> ShiftBoundaries(
+        IReadOnlyList<ReplayBoundary> boundaries, int removedSeq) =>
+        boundaries
+            .Where(b => b.AfterSeq != removedSeq)
+            .Select(b => b.AfterSeq > removedSeq ? MoveBoundaryToSequence(b, b.AfterSeq - 1) : b)
+            .ToList();
+
+    private static ReplayBoundary MoveBoundaryToSequence(ReplayBoundary boundary, int sequence) => boundary with
+    {
+        AfterSeq = sequence,
+        Digest = boundary.Digest is { Source: FactSource.Captured, Evidence: { } evidence }
+            ? boundary.Digest with { Evidence = evidence with { ActionOrdinal = sequence } }
+            : boundary.Digest,
+    };
 
     // A captured field's action_ordinal is a coordinate into the history, so it moves
     // with the checkpoint. A video timestamp is not, and stays where it was.

@@ -223,19 +223,53 @@ public sealed class RecordedFightTests
         Assert.Contains("schema", thrown.Message, StringComparison.Ordinal);
     }
 
-    /// <summary>The single-fight file this replaced is named rather than called
-    /// unrecognisable, so somebody holding one is told what to do about it.</summary>
+    /// <summary>
+    /// The single-fight file this replaced has no fights[] at all, so it has to be
+    /// refused on its schema before anything is bound: refused on the missing property
+    /// instead, somebody holding one is never told what they are holding.
+    /// </summary>
     [Fact]
-    public void RefusesTheRetiredSingleFightFileByName()
+    public void RefusesTheRetiredSingleFightDocumentByName()
     {
-        var fights = RecordedFights.From(Manifest(), FullTrace(), Digests()) with
-        {
-            SchemaId = RecordedFights.RetiredSchema,
-        };
+        var thrown = Assert.Throws<ManifestException>(
+            () => RecordedFights.Deserialize(RetiredDocument(RecordedFights.RetiredSchema)));
 
-        var thrown = Assert.Throws<ManifestException>(() => fights.Bind(Manifest()));
         Assert.Contains("single-fight recorded-fight file", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains("Re-run recorded-fight", thrown.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void RefusesADocumentFromAnUnknownSchemaByName()
+    {
+        var thrown = Assert.Throws<ManifestException>(
+            () => RecordedFights.Deserialize(RetiredDocument("sts2-pilot-trainer/recorded-fights/v9")));
+
+        Assert.Contains("sts2-pilot-trainer/recorded-fights/v9", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains(RecordedFights.Schema, thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesADocumentThatNamesNoSchema()
+    {
+        var thrown = Assert.Throws<ManifestException>(
+            () => RecordedFights.Deserialize("""{"run_id": "test-run", "fights": []}"""));
+
+        Assert.Contains("names no 'schema'", thrown.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>The retired schema's real top-level shape: one fight's line spread
+    /// across the document, and no fights[].</summary>
+    private static string RetiredDocument(string schema) =>
+        $$"""
+        {
+          "schema": "{{schema}}",
+          "run_id": "test-run",
+          "covered_through_seq": 3,
+          "action_history_hash": "sha256:{{new string('a', 64)}}",
+          "combat_start_snapshot_digest": "{{FirstDigest}}",
+          "trace": { "steps": [] }
+        }
+        """;
 
     [Fact]
     public void NamesWhatItHoldsWhenAskedForAFightItDoesNot()
