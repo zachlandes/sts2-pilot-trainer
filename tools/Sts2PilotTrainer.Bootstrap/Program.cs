@@ -49,6 +49,7 @@ internal static class Program
         {
             var gameDir = ArgValue(args, "--game-dir") ?? DetectGameDir();
             var outDir = Path.GetFullPath(ArgValue(args, "--out") ?? "build/lib");
+            var archiveArg = ArgValue(args, "--archive");
 
             if (gameDir is null || !Directory.Exists(gameDir))
             {
@@ -67,6 +68,18 @@ internal static class Program
             gameDir = PathContainment.ResolveExistingPath(Path.GetFullPath(gameDir));
             outDir = WorktreePath.Require(outDir);
             RefuseProtectedOutput(gameDir, outDir);
+
+            // Resolved here, with the output directory, and not at the moment the copy
+            // happens. Every refusal this tool makes about where it may write is made
+            // before it has written anything, so a rejected destination is a run that
+            // left the disk as it found it.
+            string? archiveDir = null;
+            if (archiveArg is not null)
+            {
+                archiveDir = WorktreePath.Require(Path.GetFullPath(archiveArg));
+                RefuseProtectedOutput(gameDir, archiveDir);
+                RefuseOverlappingArchive(outDir, archiveDir);
+            }
 
             Console.WriteLine($"game install : {Redact(gameDir)}");
             var identity = ReadInstalledIdentity(gameDir);
@@ -91,6 +104,13 @@ internal static class Program
             var outputHashes = HashPreparedOutputs(outDir, copied);
             WriteReceipt(outDir, identity, before, copied, patches, outputHashes);
             Console.WriteLine($"prepared     : {copied.Count} assemblies, {patches.Count} IL patches -> {Relative(outDir)}");
+
+            if (archiveDir is not null)
+            {
+                var archived = Archive(outDir, archiveDir, identity, before, outputHashes);
+                Console.WriteLine($"archived     : {identity.Version} -> {Relative(archived)}");
+            }
+
             return 0;
         }
         catch (Exception ex)
@@ -169,7 +189,7 @@ internal static class Program
 
     private static void RemovePriorPreparedOutputs(string outDir)
     {
-        foreach (var name in RequiredAssemblies.Append("release_info.json").Append("prepared-assembly.json"))
+        foreach (var name in RequiredAssemblies.Append("release_info.json").Append(ReceiptName))
         {
             var path = Path.Combine(outDir, name);
             if (File.Exists(path)) File.Delete(path);
@@ -288,6 +308,107 @@ internal static class Program
         return applied;
     }
 
+    // ── Archive ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Keeps a copy of the prepared set under the build it was prepared from, so a
+    /// recording made on this build can still be verified after the installed game
+    /// updates.
+    ///
+    /// The bootstrap already owns copying and receipting these files, and this is the
+    /// same set: the assemblies it copied, the release info the engine reads its
+    /// version from, and the receipt that says what all of them hash to. Splitting the
+    /// archive off into its own tool would mean a second definition of "the prepared
+    /// set", and the two would eventually disagree about a file.
+    ///
+    /// Every archived file is verified against the receipt after it lands, and an
+    /// existing archive of this version prepared from a different installation is
+    /// refused rather than overwritten. One version string naming two different builds
+    /// is exactly the drift the receipt exists to catch, and quietly replacing the
+    /// older copy would destroy the evidence that it happened.
+    /// </summary>
+    private static string Archive(
+        string outDir, string archiveDir, InstalledIdentity identity, string installHash,
+        IReadOnlyDictionary<string, string> outputHashes)
+    {
+        var target = WorktreePath.RequireChild(archiveDir, identity.Version);
+        var existingReceipt = Path.Combine(target, ReceiptName);
+        if (File.Exists(existingReceipt))
+        {
+            RefuseDriftedArchive(existingReceipt, identity, installHash);
+        }
+
+        Directory.CreateDirectory(target);
+        foreach (var name in outputHashes.Keys.Append(ReceiptName))
+        {
+            var source = Path.Combine(outDir, name);
+            if (!File.Exists(source)) continue;
+
+            var destination = WorktreePath.RequireChild(target, name);
+            File.Copy(source, destination, overwrite: true);
+
+            // Verified after landing rather than trusted to have copied. The archive's
+            // whole purpose is to still be the prepared set months later, and a file
+            // that arrived truncated would look like a build that changed.
+            if (outputHashes.TryGetValue(name, out var expected) && HashFile(destination) != expected)
+            {
+                throw new InvalidOperationException(
+                    $"Archived {name} does not hash to what the receipt says it should. Refusing: an archive " +
+                    "that is not the prepared set is worse than no archive.");
+            }
+        }
+
+        return target;
+    }
+
+    /// <summary>
+    /// Refuses to archive over a copy of the same version prepared from a different
+    /// installation.
+    ///
+    /// Compared on the pristine assembly's hash and the build commit, which are what
+    /// the receipt records about the game. Not on the prepared files' bytes: those are
+    /// rewritten by the IL patcher on every run and do not reproduce byte for byte, so
+    /// comparing them would report every second bootstrap as version drift and teach
+    /// everyone to ignore the one that mattered.
+    /// </summary>
+    private static void RefuseDriftedArchive(
+        string existingReceipt, InstalledIdentity identity, string installHash)
+    {
+        var archived = JsonNode.Parse(File.ReadAllText(existingReceipt))!.AsObject();
+        var archivedInstall = archived["pristine_sts2_sha256"]?.GetValue<string>();
+        var archivedCommit = archived["build"]?["commit"]?.GetValue<string>();
+
+        if (archivedInstall == installHash && archivedCommit == identity.Commit) return;
+
+        throw new InvalidOperationException(
+            $"""
+             Build {identity.Version} is already archived, from a different installation.
+
+             archived : commit {archivedCommit ?? "unknown"}, sts2.dll {Abbreviate(archivedInstall)}
+             this run : commit {identity.Commit}, sts2.dll {Abbreviate(installHash)}
+
+             One version string is naming two different builds. Refusing to overwrite the archived copy:
+             it is the evidence of what that build was, and a recording verified against it would
+             silently be verified against something else. Archive this one under a directory of its own.
+             """);
+    }
+
+    private const string ReceiptName = "prepared-assembly.json";
+
+    private static string Abbreviate(string? hash) =>
+        hash is null ? "unknown" : hash.Length <= 16 ? hash : hash[..16] + "...";
+
+    private static void RefuseOverlappingArchive(string outDir, string archiveDir)
+    {
+        if (PathContainment.IsResolvedWithin(archiveDir, outDir) ||
+            PathContainment.IsResolvedWithin(outDir, archiveDir))
+        {
+            throw new InvalidOperationException(
+                $"Archive directory {Relative(archiveDir)} overlaps the prepared output directory " +
+                $"{Relative(outDir)}. The archive is a copy of that set and cannot live inside it.");
+        }
+    }
+
     // ── Receipt ─────────────────────────────────────────────────────────────
 
     private static void WriteReceipt(
@@ -321,7 +442,7 @@ internal static class Program
             }),
         };
         File.WriteAllText(
-            Path.Combine(outDir, "prepared-assembly.json"),
+            Path.Combine(outDir, ReceiptName),
             JsonSerializer.Serialize(receipt, new JsonSerializerOptions { WriteIndented = true }));
     }
 
