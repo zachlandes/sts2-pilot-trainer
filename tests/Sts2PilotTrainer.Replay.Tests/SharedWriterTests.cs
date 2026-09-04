@@ -68,6 +68,19 @@ public sealed class SharedWriterTests : IDisposable
             ProtectedInstallPath.HasProtectedComponent(alternatePath));
     }
 
+    [Fact]
+    public void ASymlinkIntoAProtectedInstallationIsRefused()
+    {
+        var protectedRoot = Path.Combine(_directory, "Steam", "steamapps", "common");
+        Directory.CreateDirectory(protectedRoot);
+        var link = Path.Combine(_directory, "safe");
+        Directory.CreateSymbolicLink(link, protectedRoot);
+
+        Assert.True(ProtectedInstallPath.HasProtectedComponent(Path.Combine(link, "output")));
+        Assert.Throws<ProtectedInstallPathException>(
+            () => ProtectedInstallPath.RequireUnprotected(Path.Combine(link, "output")));
+    }
+
     /// <summary>
     /// The component rule is about a whole path component, not a substring: a
     /// directory whose name merely contains "steam" is somebody's ordinary folder.

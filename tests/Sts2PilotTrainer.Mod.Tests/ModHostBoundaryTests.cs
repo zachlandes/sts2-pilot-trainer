@@ -112,7 +112,7 @@ public sealed class ModHostBoundaryTests
             var declared = manifest.GetProperty("id").GetString()!;
             Assert.Equal("Runmobile", declared);
             Assert.Equal(declared, AssemblyName.GetAssemblyName(Path.Combine(installed, "Runmobile.dll")).Name);
-            Assert.Equal(declared, RunmobileMod.ModId);
+            Assert.Equal(RunmobileMod.ModId, declared);
 
             var expected = CombatTrainerModule.Instance.Recording.Environment;
             var preflight = EnvironmentPreflight.LiveGame(

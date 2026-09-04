@@ -1,9 +1,4 @@
 using HarmonyLib;
-using MegaCrit.Sts2.Core.Map;
-using MegaCrit.Sts2.Core.Multiplayer.Game;
-using MegaCrit.Sts2.Core.Nodes;
-using MegaCrit.Sts2.Core.Nodes.Screens.MainMenu;
-using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Trainer;
@@ -13,9 +8,8 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// <summary>
 /// The seam between the shell and its features.
 ///
-/// None of this loads a game: what is being tested is that the shell installs
-/// exactly what its modules own, that a module owns every patch class in the
-/// assembly, and that the surfaces a module contributes are the ones drawn.
+/// What is being tested is that the shell and module install only their own runtime
+/// boundaries, and that the surfaces a module contributes are the ones drawn.
 /// </summary>
 public sealed class RunmobileModuleTests
 {
@@ -35,12 +29,13 @@ public sealed class RunmobileModuleTests
         var harmony = new Harmony($"sts2-pilot-trainer.combat-trainer-test.{Guid.NewGuid():N}");
         var boundaries = new[]
         {
-            AccessTools.Method(typeof(NSingleplayerSubmenu), nameof(NSingleplayerSubmenu._Ready)),
-            AccessTools.Method(typeof(RunManager), nameof(RunManager.CleanUp)),
-            AccessTools.Method(typeof(NGame), nameof(NGame.ReturnToMainMenu)),
-            AccessTools.Method(typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption)),
-            AccessTools.Method(typeof(RunManager), nameof(RunManager.EnterMapCoord)),
+            GameMethod("MegaCrit.Sts2.Core.Runs.RunManager", "CleanUp"),
+            GameMethod("MegaCrit.Sts2.Core.Nodes.NGame", "ReturnToMainMenu"),
+            GameMethod("MegaCrit.Sts2.Core.Multiplayer.Game.EventSynchronizer", "ChooseLocalOption"),
+            GameMethod("MegaCrit.Sts2.Core.Runs.RunManager", "EnterMapCoord"),
         };
+        var renderer = GameMethod(
+            "MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSingleplayerSubmenu", "_Ready");
 
         try
         {
@@ -49,6 +44,28 @@ public sealed class RunmobileModuleTests
             Assert.All(boundaries, boundary => Assert.Contains(
                 Harmony.GetPatchInfo(boundary)!.Owners,
                 owner => owner == harmony.Id));
+            var rendererOwners = Harmony.GetPatchInfo(renderer)?.Owners;
+            Assert.True(rendererOwners is null || !rendererOwners.Contains(harmony.Id));
+        }
+        finally
+        {
+            harmony.UnpatchAll(harmony.Id);
+        }
+    }
+
+    [GameFact]
+    public void InstallingTheShellPatchesTheModuleCardRenderer()
+    {
+        _ = EngineHost.StartupPhase();
+        var harmony = new Harmony($"sts2-pilot-trainer.shell-test.{Guid.NewGuid():N}");
+        var boundary = GameMethod(
+            "MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSingleplayerSubmenu", "_Ready");
+
+        try
+        {
+            RunmobileMod.InstallShellPatches(harmony);
+
+            Assert.Contains(Harmony.GetPatchInfo(boundary)!.Owners, owner => owner == harmony.Id);
         }
         finally
         {
@@ -98,10 +115,20 @@ public sealed class RunmobileModuleTests
         var installer = new RecordingModule();
         var harmony = new Harmony($"sts2-pilot-trainer.module-seam-test.{Guid.NewGuid():N}");
 
-        var installed = RunmobileMod.InstallModules(harmony, [new StubModule(), installer]);
+        var modules = new IRunmobileModule[] { new StubModule(), installer };
+        var installed = RunmobileMod.InstallModules(harmony, modules);
+        var card = Assert.Single(RunmobileMod.MenuCardsFrom(modules));
 
         Assert.Equal(["Recording"], installed);
         Assert.True(installer.Installed);
+        Assert.Equal("Recording", card.Title);
+    }
+
+    private static System.Reflection.MethodInfo GameMethod(string typeName, string methodName)
+    {
+        var game = AppDomain.CurrentDomain.GetAssemblies()
+            .Single(assembly => assembly.GetName().Name == "sts2");
+        return AccessTools.Method(game.GetType(typeName)!, methodName);
     }
 
     private sealed class RecordingModule : IRunmobileModule
@@ -114,7 +141,10 @@ public sealed class RunmobileModuleTests
 
         public string? Refusal => null;
 
-        public IReadOnlyList<MenuCard> MenuCards => [];
+        public IReadOnlyList<MenuCard> MenuCards =>
+        [
+            new MenuCard("RecordingButton", "Recording", () => "Record a run", () => { }),
+        ];
 
         public void Install(Harmony harmony) => Installed = true;
     }

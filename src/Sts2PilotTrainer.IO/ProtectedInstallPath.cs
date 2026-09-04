@@ -29,7 +29,7 @@ public static class ProtectedInstallPath
 
     public static bool HasProtectedComponent(string path)
     {
-        var full = Path.GetFullPath(path);
+        var full = PathContainment.ResolveExistingPath(path);
         var comparison = IsCaseInsensitiveFileSystem(full)
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;

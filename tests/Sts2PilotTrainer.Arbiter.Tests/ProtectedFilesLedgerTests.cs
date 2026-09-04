@@ -87,6 +87,21 @@ public sealed class ProtectedFilesLedgerTests : IDisposable
     }
 
     [Fact]
+    public void AFileWhoseNameStartsWithAChurnFileRemainsProtected()
+    {
+        Write("user/sentry.database", "before");
+        Snapshot();
+        Write("user/sentry.database", "after");
+
+        var compared = Compare();
+
+        Assert.Equal(1, compared.ExitCode);
+        Assert.Contains("changed  user/sentry.database", compared.All, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "mod or not):\n  changed  user/sentry.database", compared.All, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AnAddedAndARemovedProtectedFileAreDifferentFindings()
     {
         Snapshot();

@@ -10,8 +10,8 @@ namespace Sts2PilotTrainer.Mod;
 ///
 /// This is the module the proof of concept was, wrapped in the seam the other two
 /// features will arrive through. It owns the recording this build ships, the
-/// singleplayer card that opens the trainer, and the four patch classes the journey
-/// needs; it owns nothing about how the mod is loaded.
+/// singleplayer card that opens the trainer, and the three patch classes the journey
+/// needs; it owns nothing about how the mod is loaded or how module cards are drawn.
 ///
 /// Its recording is read here rather than by the shell because a build whose
 /// embedded recording cannot be read is a broken Combat Trainer, not a broken mod.
@@ -24,14 +24,10 @@ internal sealed class CombatTrainerModule : IRunmobileModule
     /// The patch classes this module owns, listed rather than discovered.
     ///
     /// <c>PatchAll</c> over the assembly would install another module's patches too,
-    /// and would install these for a Combat Trainer that had refused to start. A
-    /// test pins this list against every Harmony-annotated type in the assembly, so
-    /// a patch class added without an owner fails the build rather than quietly
-    /// belonging to nobody.
+    /// and would install these for a Combat Trainer that had refused to start.
     /// </summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
-        typeof(ModeCard),
         typeof(RecordedFightRun.TrainerRunTeardown),
         typeof(RecordedFightRun.MainMenuReturn),
         typeof(RecordedFightRun.DeviationLock),

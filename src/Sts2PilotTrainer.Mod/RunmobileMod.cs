@@ -14,8 +14,8 @@ namespace Sts2PilotTrainer.Mod;
 /// The game finds this class because it carries <see cref="ModInitializerAttribute"/>,
 /// calls <see cref="Initialize"/>, and does nothing else on our behalf - in
 /// particular it does not call <c>Harmony.PatchAll</c> for a mod that declares an
-/// initializer, so every patch this mod installs is installed here, through the
-/// module that owns it.
+/// initializer, so the shell installs its own patches and each enabled module
+/// installs the patches for its feature.
 ///
 /// It is a shell: what is true of the mod however it is configured lives here, and
 /// each feature lives behind <see cref="IRunmobileModule"/>. Today there is one
@@ -37,6 +37,8 @@ public static class RunmobileMod
     internal const string ModId = "Runmobile";
 
     private const string HarmonyId = "sts2-pilot-trainer.runmobile";
+
+    internal static IReadOnlyList<Type> ShellPatchClasses { get; } = [typeof(ModeCard)];
 
     private static readonly Lock AdoptionGate = new();
 
@@ -60,8 +62,10 @@ public static class RunmobileMod
     internal static IEnumerable<IRunmobileModule> EnabledModules => Modules.Where(module => module.Enabled);
 
     /// <summary>Every singleplayer-menu card the enabled modules contribute.</summary>
-    internal static IReadOnlyList<MenuCard> MenuCards =>
-        EnabledModules.SelectMany(module => module.MenuCards).ToList();
+    internal static IReadOnlyList<MenuCard> MenuCards => MenuCardsFrom(Modules);
+
+    internal static IReadOnlyList<MenuCard> MenuCardsFrom(IReadOnlyList<IRunmobileModule> modules) =>
+        modules.Where(module => module.Enabled).SelectMany(module => module.MenuCards).ToList();
 
     public static void Initialize()
     {
@@ -98,10 +102,18 @@ public static class RunmobileMod
         // shell's rather than a module's: it is about what this mod may do to a
         // player's profile, which no feature gets to decide for itself.
         ProfileWriteBarrier.Install(harmony);
-
+        InstallShellPatches(harmony);
         InstallModules(harmony, Modules);
         Started = true;
         Log.Info($"[{ModId}] loaded; its cards are added when the singleplayer menu opens", 2);
+    }
+
+    internal static void InstallShellPatches(Harmony harmony)
+    {
+        foreach (var patchClass in ShellPatchClasses)
+        {
+            harmony.CreateClassProcessor(patchClass).Patch();
+        }
     }
 
     /// <summary>

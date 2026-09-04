@@ -159,10 +159,12 @@ store_prefix="user/Runmobile/"
 # these are the game's own is established by a control launch with no trainer run,
 # which is how the first 154-file measurement established it too (docs/in-game-host.md);
 # re-check it rather than trusting this list.
-game_churn_paths=(
+game_churn_directories=(
   "user/logs/"
   "user/shader_cache/"
   "user/vulkan/"
+)
+game_churn_files=(
   "user/sentry.dat"
 )
 
@@ -223,14 +225,37 @@ LC_ALL=C join -t"$(printf '\t')" -j 2 -o 0,1.1,2.1 \
   <(LC_ALL=C sort -t"$(printf '\t')" -k2,2 "$after") \
   | awk -F'\t' '$2 != $3 { print "changed\t" $1 }' >> "$report"
 
-churn_filter="$(mktemp)"
-trap 'rm -f "$before" "$after" "$after_ledger" "$report" "$churn_filter"' EXIT
-printf '\t%s\n' "$store_prefix" "${game_churn_paths[@]}" > "$churn_filter"
+store_report="$(mktemp)"
+churn_report="$(mktemp)"
+protected_report="$(mktemp)"
+trap 'rm -f "$before" "$after" "$after_ledger" "$report" "$store_report" "$churn_report" "$protected_report"' EXIT
 
-sorted="$(LC_ALL=C sort "$report")"
-store="$(printf '%s' "$sorted" | grep "	$store_prefix" || true)"
-churn="$(printf '%s' "$sorted" | grep -v "	$store_prefix" | grep -F -f <(printf '\t%s\n' "${game_churn_paths[@]}") || true)"
-protected="$(printf '%s' "$sorted" | grep -v -F -f "$churn_filter" || true)"
+while IFS=$'\t' read -r verdict path; do
+  if [[ "$path" == "$store_prefix"* ]]; then
+    printf '%s\t%s\n' "$verdict" "$path" >> "$store_report"
+    continue
+  fi
+
+  is_churn=0
+  for churn_file in "${game_churn_files[@]}"; do
+    if [[ "$path" == "$churn_file" ]]; then is_churn=1; break; fi
+  done
+  if [[ "$is_churn" == 0 ]]; then
+    for churn_directory in "${game_churn_directories[@]}"; do
+      if [[ "$path" == "$churn_directory"* ]]; then is_churn=1; break; fi
+    done
+  fi
+
+  if [[ "$is_churn" == 1 ]]; then
+    printf '%s\t%s\n' "$verdict" "$path" >> "$churn_report"
+  else
+    printf '%s\t%s\n' "$verdict" "$path" >> "$protected_report"
+  fi
+done < <(LC_ALL=C sort "$report")
+
+store="$(cat "$store_report")"
+churn="$(cat "$churn_report")"
+protected="$(cat "$protected_report")"
 
 print_section() {
   local title="$1" body="$2"
