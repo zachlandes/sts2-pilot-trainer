@@ -239,6 +239,15 @@ public sealed record FloorEntryPlan
                 "arrival is proved by where the run stands, not by what a fight opened with, and standing a " +
                 "player somewhere nobody observed is the failure this arbiter exists to prevent.");
 
+        var expectedFloor = floor.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (!string.Equals(boundary.Expect["run.total_floor"].Value, expectedFloor, StringComparison.Ordinal))
+        {
+            throw new ManifestException(
+                $"This recording declares a boundary for floor {expectedFloor}, but the checkpoint there says " +
+                $"run.total_floor is {boundary.Expect["run.total_floor"].Value}. A floor plan cannot hand over " +
+                "a checkpoint for another floor.");
+        }
+
         return new FloorEntryPlan
         {
             Floor = floor,

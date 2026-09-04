@@ -134,6 +134,25 @@ public sealed class RecordedFightTests
     }
 
     [Fact]
+    public void RefusesToBindATraceFromAnotherFight()
+    {
+        var fights = RecordedFights.From(Manifest(), FullTrace(), Digests());
+        var mislabeled = fights with
+        {
+            Fights =
+            [
+                fights.Fight(1),
+                fights.Fight(2) with { Trace = fights.Fight(1).Trace },
+            ],
+        };
+
+        var thrown = Assert.Throws<ManifestException>(() => mislabeled.Bind(Manifest()));
+
+        Assert.Contains("says its trace covers actions 5 through 6", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains("trace holds actions 1 through 3", thrown.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SurvivesAJsonRoundTrip()
     {
         var fights = RecordedFights.From(Manifest(), FullTrace(), Digests());

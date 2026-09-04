@@ -211,6 +211,34 @@ public sealed class FloorEntryPlanTests
 
         Assert.Contains("run.total_floor and run.map_coord", refusal.Message, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void RefusesACheckpointWhoseFloorDisagreesWithTheBoundary()
+    {
+        var recording = EntryFixtures.WholeRun();
+        var wrongFloor = recording with
+        {
+            Checkpoints =
+            [
+                .. recording.Checkpoints.Select(checkpoint => checkpoint.Id == "floor-entry-2"
+                    ? checkpoint with
+                    {
+                        Expect = checkpoint.Expect.ToDictionary(
+                            entry => entry.Key,
+                            entry => entry.Key == "run.total_floor"
+                                ? Fact<string>.Observed("8", FactEvidence.AtVideoTime(75600, "floor counter"))
+                                : entry.Value,
+                            StringComparer.Ordinal),
+                    }
+                    : checkpoint),
+            ],
+        };
+
+        var refusal = Assert.Throws<ManifestException>(() => FloorEntryPlan.For(wrongFloor, 2));
+
+        Assert.Contains("boundary for floor 2", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("run.total_floor is 8", refusal.Message, StringComparison.Ordinal);
+    }
 }
 
 /// <summary>

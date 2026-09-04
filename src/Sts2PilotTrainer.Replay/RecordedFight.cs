@@ -256,6 +256,22 @@ public sealed record RecordedFight
                 $"Fight {Fight.ToString(CultureInfo.InvariantCulture)} does not hold a completed fight: " +
                 coverage.Refusal);
         }
+
+        var traceFights = RunCoverage.Of(Trace).Fights;
+        if (traceFights.Count != 1 ||
+            traceFights[0].CombatStartSeq != CombatStartSeq ||
+            traceFights[0].EndSeq != CoveredThroughSeq)
+        {
+            var actualCoverage = traceFights.Count == 1
+                ? $"actions {traceFights[0].CombatStartSeq.ToString(CultureInfo.InvariantCulture)} through " +
+                  $"{traceFights[0].EndSeq?.ToString(CultureInfo.InvariantCulture) ?? "an unfinished fight"}"
+                : $"{traceFights.Count.ToString(CultureInfo.InvariantCulture)} fights";
+            throw new ManifestException(
+                $"Fight {Fight.ToString(CultureInfo.InvariantCulture)} says its trace covers actions " +
+                $"{CombatStartSeq.ToString(CultureInfo.InvariantCulture)} through " +
+                $"{CoveredThroughSeq.ToString(CultureInfo.InvariantCulture)}, but the trace holds " +
+                $"{actualCoverage}.");
+        }
     }
 
     /// <summary>This fight's line, as the comparison contract reads it.</summary>

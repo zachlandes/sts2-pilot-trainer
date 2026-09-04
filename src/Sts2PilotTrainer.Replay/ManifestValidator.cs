@@ -147,14 +147,6 @@ public static partial class ManifestValidator
             {
                 foreach (var (name, ids) in inventory.IdLists())
                 {
-                    if (ids.Count == 0)
-                    {
-                        problems.Add(
-                            $"environment.unlocks.inventory.{name} is empty. An exact requirement is a reading " +
-                            "of the player's own unlock state, and a list nothing was read for is an absence " +
-                            "wearing the face of a value.");
-                    }
-
                     if (ids.Any(string.IsNullOrWhiteSpace))
                     {
                         problems.Add($"environment.unlocks.inventory.{name} contains an empty id.");
@@ -656,13 +648,23 @@ public static partial class ManifestValidator
 
         foreach (var fight in RunCoverage.Of(trace).Fights)
         {
-            if (manifest.BoundaryAt(ReplayBoundary.CombatStartKind, fight: fight.Fight) is null)
+            var boundary = manifest.BoundaryAt(ReplayBoundary.CombatStartKind, fight: fight.Fight);
+            if (boundary is null)
             {
                 problems.Add(
                     $"this history's verified trace holds fight " +
                     $"{fight.Fight.ToString(CultureInfo.InvariantCulture)} and boundaries declares no " +
                     "combat_start for it, so a fight the recording really contains has nowhere to be entered " +
                     "from. Derive it by replaying the run.");
+            }
+            else if (boundary.AfterSeq != fight.CombatStartSeq)
+            {
+                problems.Add(
+                    $"this history's verified trace starts fight " +
+                    $"{fight.Fight.ToString(CultureInfo.InvariantCulture)} after action " +
+                    $"{fight.CombatStartSeq.ToString(CultureInfo.InvariantCulture)}, but its combat_start " +
+                    $"boundary names action {boundary.AfterSeq.ToString(CultureInfo.InvariantCulture)}. A " +
+                    "fight ordinal cannot point to another fight's boundary.");
             }
         }
     }
@@ -1103,7 +1105,8 @@ public static partial class ManifestValidator
                 }
                 else if (sourceKind == "native")
                 {
-                    RequireCapturedFact(fact, $"checkpoint '{checkpoint.Id}' field '{field}'", problems);
+                    RequireCapturedFact(
+                        fact, $"checkpoint '{checkpoint.Id}' field '{field}'", problems, checkpoint.AfterSeq);
                 }
                 else
                 {
@@ -1299,7 +1302,8 @@ public static partial class ManifestValidator
     /// read it. A run has no public clock, so the coordinate is the run's own ordered
     /// history - which is also what its identity is made of.
     /// </summary>
-    private static void RequireCapturedFact<T>(Fact<T> fact, string path, List<string> problems)
+    private static void RequireCapturedFact<T>(
+        Fact<T> fact, string path, List<string> problems, int? expectedActionOrdinal = null)
     {
         if (fact.Source != FactSource.Captured)
         {
@@ -1307,11 +1311,17 @@ public static partial class ManifestValidator
                 $"{path} must be source=captured because it is what a recorder read out of the game as it " +
                 "happened.");
         }
-        else if (fact.Evidence?.ActionOrdinal is null)
+        else if (fact.Evidence?.ActionOrdinal is not { } actionOrdinal)
         {
             problems.Add(
                 $"{path} is captured and names no action_ordinal, so nobody could say where in the run it was " +
                 "read.");
+        }
+        else if (expectedActionOrdinal is { } expected && actionOrdinal != expected)
+        {
+            problems.Add(
+                $"{path} was captured at action ordinal {actionOrdinal.ToString(CultureInfo.InvariantCulture)}, " +
+                $"but its checkpoint is after action {expected.ToString(CultureInfo.InvariantCulture)}.");
         }
     }
 

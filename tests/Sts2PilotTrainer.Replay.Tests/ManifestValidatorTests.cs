@@ -229,13 +229,32 @@ public class ManifestValidatorTests
         {
             Boundaries =
             [
-                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
                 ReplayBoundary.CombatStart(2, 1, Fact<string>.Engine(Fixtures.Digest)),
             ],
         });
 
         var result = ManifestValidator.Validate(manifest);
         Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Fact]
+    public void RejectsAVerifiedRecordingWhoseFightOrdinalPointsToAnotherBoundary()
+    {
+        var manifest = WithVerifiedTwoFightTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(2, 0, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("fight 1 after action 0", StringComparison.Ordinal));
     }
 
     /// <summary>A verified result whose trace entered combat, won, and entered a
@@ -1247,6 +1266,13 @@ public class NativeManifestValidatorTests
     }
 
     [Fact]
+    public void AcceptsACheckpointFieldCapturedAtItsCheckpointSequence()
+    {
+        var result = ManifestValidator.Validate(Fixtures.NativeManifest());
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Fact]
     public void RejectsACheckpointFieldTheRecorderDidNotCapture()
     {
         var manifest = Fixtures.NativeManifest();
@@ -1267,6 +1293,31 @@ public class NativeManifestValidatorTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, problem =>
             problem.Contains("must be source=captured", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsACheckpointFieldCapturedAtAnotherAction()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var checkpoint = manifest.Checkpoints[0];
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Checkpoints =
+            [
+                checkpoint with
+                {
+                    Expect = checkpoint.Expect.ToDictionary(
+                        entry => entry.Key,
+                        entry => Fact<string>.Captured(entry.Value.Value, FactEvidence.AtActionOrdinal(0)),
+                        StringComparer.Ordinal),
+                },
+            ],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("captured at action ordinal 0", StringComparison.Ordinal) &&
+            problem.Contains("checkpoint is after action 1", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1357,14 +1408,13 @@ public class ExactUnlockValidatorTests
     }
 
     [Fact]
-    public void RejectsAnExactRequirementWithAnEmptyIdList()
+    public void AcceptsAnExactRequirementForAFreshPlayer()
     {
         var result = WithUnlocks(UnlockRequirement.Exact(
-            "read from the player's own profile", Fixtures.UnlockInventory() with { EncountersSeen = [] }));
+            "read from the player's own profile",
+            Fixtures.UnlockInventory() with { Epochs = [], EncountersSeen = [], Runs = 0 }));
 
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Problems, problem =>
-            problem.Contains("inventory.encounters_seen is empty", StringComparison.Ordinal));
+        Assert.True(result.IsValid, result.Describe());
     }
 
     /// <summary>The run count is one of the three values the game's unlock state is
