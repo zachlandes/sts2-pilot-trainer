@@ -177,6 +177,36 @@ public sealed class RunmobileStoreTests : IDisposable
         Assert.Throws<InvalidOperationException>(() => RunmobileStore.ScopedUserPath(gameScope));
     }
 
+    /// <summary>
+    /// The store's own root has to sit inside the game's user directory, not merely
+    /// point somewhere from it: a <c>Runmobile</c> directory that is a symlink to an
+    /// ordinary directory elsewhere would satisfy every per-entry containment check
+    /// while every write landed where the protected-files ledger cannot see it.
+    /// </summary>
+    [Fact]
+    public void ARootThatResolvesOutsideTheGamesUserDirectoryIsRefused()
+    {
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-escape-{Guid.NewGuid():N}");
+        var userDirectory = Path.Combine(sandbox, "user");
+        var elsewhere = Path.Combine(sandbox, "elsewhere");
+        Directory.CreateDirectory(userDirectory);
+        Directory.CreateDirectory(elsewhere);
+        Directory.CreateSymbolicLink(Path.Combine(userDirectory, "Runmobile"), elsewhere);
+        var scoped = Path.Combine(userDirectory, "Runmobile", "steam", "1", "profile1");
+
+        try
+        {
+            Assert.Equal(scoped, RunmobileStore.ResolveRoot(scoped));
+            Assert.Throws<PathContainmentException>(
+                () => RunmobileStore.ResolveRoot(scoped, userDirectory));
+            Assert.Empty(Directory.EnumerateFileSystemEntries(elsewhere));
+        }
+        finally
+        {
+            Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
     [Fact]
     public void AGameThatDoesNotSayWhereItsUserDirectoryIsGetsNoStore()
     {

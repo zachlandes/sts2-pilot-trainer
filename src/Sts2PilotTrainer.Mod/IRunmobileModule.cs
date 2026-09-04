@@ -16,6 +16,11 @@ namespace Sts2PilotTrainer.Mod;
 /// log once - which is the same outcome a player saw before there were modules, with
 /// the difference that the other two features are not taken down with it.
 ///
+/// That holds for a module which declares itself disabled. A module whose
+/// <see cref="Install"/> throws instead aborts the shell's start and may leave its
+/// partial patches applied; that is a broken build rather than a runtime condition,
+/// and the lifecycle that isolates a failed install arrives with the second module.
+///
 /// The seam is internal. A second plugin author would need it public, and until one
 /// exists a public surface is a promise about a shape nothing has tested. See
 /// docs/in-game-host.md.

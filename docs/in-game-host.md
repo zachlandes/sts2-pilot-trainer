@@ -6,6 +6,7 @@ adopting the running game, the write barrier and the store - and `IRunmobileModu
 is the line between it and a feature. A module says whether it can run, installs its
 own patches and contributes its own surfaces; one that cannot establish what it needs
 is skipped by name in the game's log and the rest of the mod loads without it.
+That promise is about a module which declares itself disabled: a module whose `Install` throws propagates out of the loop, aborts `Start` before the shell is marked started, and may leave its partial patches applied, which is a broken-build condition rather than a runtime one, and the failure-isolation lifecycle that would contain it arrives with the second module.
 `CombatTrainerModule` is the only one built. The recorder and the run library are the
 other two.
 
@@ -43,7 +44,7 @@ The scope is `UserDataPathProvider.GetProfileScopedBasePath` - the game's own an
 Two accounts on one machine, and two profiles on one account, therefore do not share a library.
 Those identifiers are local path scoping and nothing else: no platform directory, account id or profile number belongs in an exported manifest, an upload or a shared recording's identity.
 
-`RunmobileStore` is the only thing in the mod that writes at all: it takes the root from the game's own `ProjectSettings.GlobalizePath`, checks every path against that root with `PathContainment.RequireContained`, refuses any path with a `Steam`, `steamapps` or `Slay the Spire 2` component, and writes a whole file through a temporary sibling and a move so a crash leaves the previous file rather than half of a new one.
+`RunmobileStore` is the only thing in the mod that writes at all: it takes the root from the game's own `ProjectSettings.GlobalizePath`, requires that root to resolve inside `user://` by the same containment rule, so a `Runmobile` directory that is a symlink elsewhere is refused rather than followed out of the ledger's reach, checks every path against that root with `PathContainment.RequireContained`, refuses any path with a `Steam`, `steamapps` or `Slay the Spire 2` component, and writes a whole file through a temporary sibling and a move so a crash leaves the previous file rather than half of a new one.
 `PrepareForWrite` is the containment gate rather than the atomic writer, because not every write is a whole file - the recorder appends to a journal - and the point is one place that decides where this mod may write, not one way of writing.
 The `Steam` component is matched exactly: the game's own user data has a lower-case `steam` platform level, which is where this store lives.
 A traversal, an absolute path and a sibling directory whose name merely starts with the root's are all refused before anything is opened.

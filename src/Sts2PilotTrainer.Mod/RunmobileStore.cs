@@ -72,10 +72,22 @@ internal static class RunmobileStore
     /// <c>user://</c> is, so this mod never derives the player's data directory
     /// itself. The answer is checked before it is used: a game whose user directory
     /// resolved inside its own installation is one this mod declines to write in at
-    /// all.
+    /// all, and a scoped root that resolves outside <c>user://</c> - a
+    /// <c>Runmobile</c> directory that is a symlink to somewhere else - is refused by
+    /// the same containment rule every entry goes through, because a store outside the
+    /// game's user data is one the protected-files ledger cannot measure.
     /// </summary>
-    internal static string Root => ResolveRoot(
-        _rootForTesting?.Invoke() ?? ProjectSettings.GlobalizePath(ScopedUserPath()));
+    internal static string Root
+    {
+        get
+        {
+            if (_rootForTesting is not null) return ResolveRoot(_rootForTesting());
+
+            return ResolveRoot(
+                ProjectSettings.GlobalizePath(ScopedUserPath()),
+                ProjectSettings.GlobalizePath(UserScheme));
+        }
+    }
 
     /// <summary>
     /// The full path of an entry in the store, refused unless it is inside it.
@@ -184,8 +196,13 @@ internal static class RunmobileStore
     /// <see cref="Root"/>. Kept apart from the property so the rules can be exercised
     /// in a process with no game, against a root under the test's own temporary
     /// directory.
+    ///
+    /// <paramref name="userDirectory"/> is where the game says <c>user://</c> is, and
+    /// the root has to resolve inside it: the store's own directory being a symlink
+    /// elsewhere would otherwise put every contained write outside the game's user
+    /// data, where the protected-files ledger cannot see it.
     /// </summary>
-    internal static string ResolveRoot(string globalizedPath)
+    internal static string ResolveRoot(string globalizedPath, string? userDirectory = null)
     {
         if (string.IsNullOrWhiteSpace(globalizedPath))
         {
@@ -193,7 +210,8 @@ internal static class RunmobileStore
                 $"This game did not say where '{UserPath}' is, so Runmobile has nowhere it may write.");
         }
 
-        return ProtectedInstallPath.RequireUnprotected(Path.GetFullPath(globalizedPath));
+        var root = ProtectedInstallPath.RequireUnprotected(Path.GetFullPath(globalizedPath));
+        return userDirectory is null ? root : PathContainment.RequireContained(userDirectory, root);
     }
 
     /// <summary>

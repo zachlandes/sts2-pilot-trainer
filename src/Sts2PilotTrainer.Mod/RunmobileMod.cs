@@ -122,6 +122,13 @@ public static class RunmobileMod
     ///
     /// A module that cannot establish what it needs is skipped rather than thrown
     /// out of: the feature is gone for this session and the rest of the mod is not.
+    ///
+    /// That promise is about a module which declares itself disabled. A module whose
+    /// <see cref="IRunmobileModule.Install"/> throws propagates out of this loop,
+    /// aborts <see cref="Start"/> before <see cref="Started"/> is set, and may leave
+    /// the patches it had already applied in place. That is a broken build rather than
+    /// a runtime condition, and the failure-isolation lifecycle that would contain it
+    /// arrives with the second module, where it can be built against a concrete one.
     /// </summary>
     internal static IReadOnlyList<string> InstallModules(
         Harmony harmony, IReadOnlyList<IRunmobileModule> modules)
