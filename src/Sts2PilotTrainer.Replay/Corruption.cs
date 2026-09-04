@@ -190,18 +190,14 @@ public static class Corruption
         var firstAfterSecondIndex = firstIndex - (secondInitialIndex < firstIndex ? 1 : 0);
         var reordered = new List<ActionRecord>
         {
-            second with
+            MoveToSequence(second, first.Seq, first.Evidence) with
             {
-                Seq = first.Seq,
                 Args = WithArg(second.Args, "hand_index", secondInitialIndex.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-                Evidence = first.Evidence,
                 Note = "reordered by a negative control",
             },
-            first with
+            MoveToSequence(first, second.Seq, second.Evidence) with
             {
-                Seq = second.Seq,
                 Args = WithArg(first.Args, "hand_index", firstAfterSecondIndex.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-                Evidence = second.Evidence,
                 Note = "reordered by a negative control",
             },
         };
@@ -451,7 +447,16 @@ public static class Corruption
     }
 
     private static IReadOnlyList<ActionRecord> Renumber(IReadOnlyList<ActionRecord> actions) =>
-        actions.Select((a, i) => a with { Seq = i }).ToList();
+        actions.Select((action, sequence) => MoveToSequence(action, sequence, action.Evidence)).ToList();
+
+    private static ActionRecord MoveToSequence(
+        ActionRecord action, int sequence, FactEvidence? observedEvidence) => action with
+        {
+            Seq = sequence,
+            Evidence = action.Source == FactSource.Captured && action.Evidence is { } capturedEvidence
+                ? capturedEvidence with { ActionOrdinal = sequence }
+                : observedEvidence,
+        };
 
     /// <summary>
     /// Moves checkpoints back past a removed action so they stay attached to the same

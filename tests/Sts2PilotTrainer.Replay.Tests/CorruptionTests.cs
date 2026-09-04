@@ -22,39 +22,49 @@ public class CorruptionTests
     /// about whether a corruption changes a history and leaves it structurally valid -
     /// so the actions only have to be individually well formed.
     /// </summary>
-    private static ReplayManifest Playable()
+    private static ReplayManifest Playable(bool native = false)
     {
-        var manifest = Fixtures.ValidManifest();
-        return manifest with
+        var manifest = native ? Fixtures.NativeManifest() : Fixtures.ValidManifest();
+        IReadOnlyList<ActionRecord> actions =
+        [
+            At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+            At(1, Fixtures.Action(1, ActionVerb.MapMove,
+                ("act", "0"), ("row", "1"), ("column", "3"),
+                (Corruption.AlternativeColumn, "1"))),
+            At(2, Fixtures.Action(2, ActionVerb.PlayCard, ("card_id", "CARD.HELLRAISER"), ("hand_index", "1"))),
+            At(3, Fixtures.Action(3, ActionVerb.PlayCard,
+                ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "3"),
+                ("negative_control_substitute_card_id", "CARD.STRIKE_IRONCLAD"),
+                ("negative_control_substitute_hand_index", "0"))),
+            At(4, Fixtures.Action(4, ActionVerb.PlayCard,
+                ("card_id", "CARD.BASH"), ("hand_index", "2"), ("target_index", "0"))),
+            At(5, Fixtures.Action(5, ActionVerb.EndTurn)),
+            At(6, Fixtures.Action(6, ActionVerb.ClaimReward, ("reward_type", "gold"))),
+            At(7, Fixtures.Action(7, ActionVerb.TakeCard,
+                ("card_id", "CARD.POMMEL_STRIKE"), ("option_index", "0"),
+                (Corruption.AlternativeCardId, "CARD.TREMBLE"),
+                (Corruption.AlternativeOptionIndex, "1"))),
+            At(8, Fixtures.Action(8, ActionVerb.ChooseEventOption,
+                ("event_id", "EVENT.WATERLOGGED_SCRIPTORIUM"), ("option_index", "2"))),
+            At(9, Fixtures.Action(9, ActionVerb.SelectCardFromScreen,
+                ("card_id", "CARD.DEFEND_IRONCLAD"), ("option_index", "5"),
+                (Corruption.AlternativeOptionIndex, "4"))),
+            At(10, Fixtures.Action(10, ActionVerb.SkipRewards)),
+        ];
+        if (native)
         {
-            Actions =
-            [
-                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
-                At(1, Fixtures.Action(1, ActionVerb.MapMove,
-                    ("act", "0"), ("row", "1"), ("column", "3"),
-                    (Corruption.AlternativeColumn, "1"))),
-                At(2, Fixtures.Action(2, ActionVerb.PlayCard, ("card_id", "CARD.HELLRAISER"), ("hand_index", "1"))),
-                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
-                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "3"),
-                    ("negative_control_substitute_card_id", "CARD.STRIKE_IRONCLAD"),
-                    ("negative_control_substitute_hand_index", "0"))),
-                At(4, Fixtures.Action(4, ActionVerb.PlayCard,
-                    ("card_id", "CARD.BASH"), ("hand_index", "2"), ("target_index", "0"))),
-                At(5, Fixtures.Action(5, ActionVerb.EndTurn)),
-                At(6, Fixtures.Action(6, ActionVerb.ClaimReward, ("reward_type", "gold"))),
-                At(7, Fixtures.Action(7, ActionVerb.TakeCard,
-                    ("card_id", "CARD.POMMEL_STRIKE"), ("option_index", "0"),
-                    (Corruption.AlternativeCardId, "CARD.TREMBLE"),
-                    (Corruption.AlternativeOptionIndex, "1"))),
-                At(8, Fixtures.Action(8, ActionVerb.ChooseEventOption,
-                    ("event_id", "EVENT.WATERLOGGED_SCRIPTORIUM"), ("option_index", "2"))),
-                At(9, Fixtures.Action(9, ActionVerb.SelectCardFromScreen,
-                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("option_index", "5"),
-                    (Corruption.AlternativeOptionIndex, "4"))),
-                At(10, Fixtures.Action(10, ActionVerb.SkipRewards)),
-            ],
-        };
+            actions = actions.Select(action => action with
+            {
+                Source = FactSource.Captured,
+                Evidence = FactEvidence.AtActionOrdinal(
+                    action.Seq, runClockMs: PlayableTimes[action.Seq]),
+            }).ToList();
+        }
+
+        return manifest with { Actions = actions };
     }
+
+    private static IReadOnlyList<ReplayManifest> PlayableRecordings() => [Playable(), Playable(native: true)];
 
     private static ActionRecord At(int index, ActionRecord action) => action with
     {
@@ -64,24 +74,32 @@ public class CorruptionTests
     [Fact]
     public void EveryCorruptionChangesTheActionHistory()
     {
-        var original = SnapshotCacheKey.HashActions(Playable().Actions);
-
-        foreach (var corruption in Corruption.All)
+        foreach (var recording in PlayableRecordings())
         {
-            var corrupted = corruption.Apply(Playable());
-            Assert.True(
-                SnapshotCacheKey.HashActions(corrupted.Actions) != original,
-                $"corruption '{corruption.Name}' left the action history unchanged");
+            var original = SnapshotCacheKey.HashActions(recording.Actions);
+            foreach (var corruption in Corruption.All)
+            {
+                var corrupted = corruption.Apply(recording);
+                Assert.True(
+                    SnapshotCacheKey.HashActions(corrupted.Actions) != original,
+                    $"corruption '{corruption.Name}' left the {recording.Source.Kind} action history unchanged");
+            }
         }
     }
 
     [Fact]
     public void EveryCorruptionStillProducesAStructurallyValidManifest()
     {
-        foreach (var corruption in Corruption.All)
+        foreach (var recording in PlayableRecordings())
         {
-            var result = ManifestValidator.Validate(corruption.Apply(Playable()));
-            Assert.True(result.IsValid, $"corruption '{corruption.Name}' produced an invalid manifest:\n{result.Describe()}");
+            foreach (var corruption in Corruption.All)
+            {
+                var result = ManifestValidator.Validate(corruption.Apply(recording));
+                Assert.True(
+                    result.IsValid,
+                    $"corruption '{corruption.Name}' produced an invalid {recording.Source.Kind} manifest:\n" +
+                    result.Describe());
+            }
         }
     }
 
