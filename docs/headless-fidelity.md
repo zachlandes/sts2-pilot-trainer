@@ -200,19 +200,19 @@ A separate history-bound probe therefore records every `PowerCmd.Apply` call in 
 Fresh-process determinism, corruption rejection, and snapshot restore are exercised against that fixture, so those checks do not borrow their expected values from the ineligible VOD trace.
 
 Regenerating a committed fixture is two commands, in order, and each committed fixture has its own journey.
-Take the pair for the one being regenerated, into its own path, and run them in this order:
+Every pair below is complete on its own: run one pair to regenerate one fixture, or paste the whole block to regenerate all three.
 
 ```bash
-F=src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-pilot-trainer.replay.json
-./scripts/arbiter generate-synthetic-fixture --out $F --journey first-fight --line reference
+D=src/Sts2PilotTrainer.Replay/Fixtures
 
-F=src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-whole-act.replay.json
-./scripts/arbiter generate-synthetic-fixture --out $F --journey whole-act
+./scripts/arbiter generate-synthetic-fixture --out $D/synthetic-v0111-pilot-trainer.replay.json --journey first-fight --line reference
+./scripts/arbiter migrate-manifest $D/synthetic-v0111-pilot-trainer.replay.json --derive-boundaries
 
-F=src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-screen-at-boundary.replay.json
-./scripts/arbiter generate-synthetic-fixture --out $F --journey screen-at-boundary
+./scripts/arbiter generate-synthetic-fixture --out $D/synthetic-v0111-whole-act.replay.json --journey whole-act
+./scripts/arbiter migrate-manifest $D/synthetic-v0111-whole-act.replay.json --derive-boundaries
 
-./scripts/arbiter migrate-manifest $F --derive-boundaries   # always, whichever was generated
+./scripts/arbiter generate-synthetic-fixture --out $D/synthetic-v0111-screen-at-boundary.replay.json --journey screen-at-boundary
+./scripts/arbiter migrate-manifest $D/synthetic-v0111-screen-at-boundary.replay.json --derive-boundaries
 ```
 
 Two ways to get this wrong, and neither one announces itself.

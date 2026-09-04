@@ -29,8 +29,7 @@ internal static partial class Commands
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var outPath = Args.Value(args, "--out")
-            ?? Path.Combine("build", "evidence", Path.GetFileName(manifestPath)
-                .Replace(".replay.json", ".recorded-fights.json", StringComparison.Ordinal));
+            ?? Path.Combine("build", "evidence", Path.GetFileName(RecordedFightPathFor(manifestPath)));
         // Never cleared first. The destination holds somebody's evidence - it is
         // manifests/<id>.recorded-fights.json, the file the mod ships - and the replay
         // between here and the write refuses in four named ways, so clearing would
