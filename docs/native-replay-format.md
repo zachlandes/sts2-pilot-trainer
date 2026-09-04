@@ -73,6 +73,7 @@ field by field, refusing before it compares anything if either side's act room s
 degraded to the `"unavailable"` sentinel — two states that both lost `_rooms` agree on
 that sentinel exactly, and `--control unreadable-room-set` demonstrates the refusal by
 making the two digests agree and showing the probe decline to call it agreement.
+Only the terminal `room_re_entered` stage decides whether the boundary is restorable, because that is where the retail sequence hands control back to the player; the pre-entry `save_restored` stage is diagnostic only.
 
 On v0.111.0, against the synthetic whole-run fixture, the answer is that a
 combat-start boundary cannot be stored this way.
@@ -99,5 +100,5 @@ entering a recorded fight keeps meaning "replay the prefix".
 What the measurement does *not* refuse is a boundary at a floor entry, where the
 game's own save is taken and where every field the probe saw restore correctly is the
 whole of the state; that is a separate measurement, and it has not been made.
-The probe's artifact is `build/evidence/snapshot-restore-probe.json`, with the two
-phase artifacts beside it.
+The probe's report is `build/evidence/snapshot-restore-probe.json`.
+Its `snapshot-restore-probe.capture.json`, `snapshot-restore-probe.restore.json`, and `snapshot-restore-probe.run-save.json` inputs are published beside it as the coherent evidence set.
