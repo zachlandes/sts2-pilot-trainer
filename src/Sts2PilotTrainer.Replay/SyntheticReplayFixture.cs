@@ -8,12 +8,17 @@ namespace Sts2PilotTrainer.Replay;
 /// obviously - can still read a history the engine really produced. Neither carries a
 /// verification: what a replay of one yields is what a replay is for.
 ///
-/// Regenerating one is two steps, in order, because generation cannot know a
-/// boundary and the game-free tests read them: <c>arbiter generate-synthetic-fixture
-/// --out &lt;fixture&gt;</c>, then <c>arbiter migrate-manifest &lt;fixture&gt;
-/// --derive-boundaries</c>, which replays the written history through the real engine
-/// and writes in every boundary it passes. A fixture written without the second step
-/// carries no boundaries at all, and every test that selects one out of it fails.
+/// Regenerating one is two steps, in order, and each fixture has its own journey:
+/// <c>arbiter generate-synthetic-fixture --out &lt;fixture&gt; --journey &lt;journey&gt;</c>,
+/// then <c>arbiter migrate-manifest &lt;fixture&gt; --derive-boundaries</c>, which
+/// replays the written history through the real engine and writes in every boundary
+/// it passes. The journeys are <c>first-fight --line reference</c> for
+/// synthetic-v0111-pilot-trainer, <c>whole-act</c> for synthetic-v0111-whole-act and
+/// <c>screen-at-boundary</c> for synthetic-v0111-screen-at-boundary. Leaving
+/// <c>--journey</c> off falls back to first-fight and writes the wrong history at the
+/// right path; leaving the second step off writes a fixture with no boundaries at
+/// all. Either one is a well-formed file that breaks the tests reading it.
+/// docs/headless-fidelity.md carries the same recipe as runnable commands.
 /// </summary>
 public static class SyntheticReplayFixture
 {

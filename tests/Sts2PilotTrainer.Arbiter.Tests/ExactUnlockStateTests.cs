@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -158,26 +157,36 @@ public sealed class ExactUnlockStateTests
     }
 
     /// <summary>The two id lists this build ships, read out of the preflight's own
-    /// artifact so the test asks the same question the preflight answers.</summary>
+    /// enumeration so the test asks the same question the preflight answers.</summary>
     private static IReadOnlyDictionary<string, IReadOnlyList<string>> ShippedIds()
     {
-        var path = Path.Combine(Scratch(), "preflight-reading.json");
-        var result = Arbiter.Run("preflight", Fixture, "--out", path);
+        var result = Arbiter.Run("preflight", Fixture, "--shipped-ids");
         Assert.True(result.Verified, result.All);
-
-        using var document = JsonDocument.Parse(File.ReadAllText(path));
-        var shipped = document.RootElement
-            .GetProperty("reading").GetProperty("unlocks").GetProperty("shipped_ids");
 
         return new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
         {
-            ["epochs"] = Ids(shipped, "epochs"),
-            ["encounters_seen"] = Ids(shipped, "encounters_seen"),
+            ["epochs"] = Ids(result.Output, "epochs"),
+            ["encounters_seen"] = Ids(result.Output, "encounters_seen"),
         };
     }
 
-    private static IReadOnlyList<string> Ids(JsonElement shipped, string name) =>
-        shipped.GetProperty(name).EnumerateArray().Select(id => id.GetString()!).ToList();
+    /// <summary>One list out of that output: the ids indented under their heading, to
+    /// the next heading or the end.</summary>
+    private static IReadOnlyList<string> Ids(string output, string name)
+    {
+        var lines = output.Split('\n').Select(line => line.TrimEnd('\r')).ToList();
+        var start = lines.FindIndex(line => line == $"{name}:");
+        if (start < 0)
+        {
+            throw new InvalidOperationException(
+                $"The preflight enumerated no '{name}' list:\n{output}");
+        }
+
+        return lines.Skip(start + 1)
+            .TakeWhile(line => line.StartsWith("  ", StringComparison.Ordinal))
+            .Select(line => line.Trim())
+            .ToList();
+    }
 
     /// <summary>The fixture with its unlock requirement rewritten as the state itself.
     /// Written to scratch rather than over the fixture: a manifest is somebody's

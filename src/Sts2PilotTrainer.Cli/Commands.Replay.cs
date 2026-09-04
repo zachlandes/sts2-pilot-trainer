@@ -17,12 +17,21 @@ internal static partial class Commands
     /// carries it, and the complete one where it does not, which is every recording
     /// read off a video. The same question asked of a host rather than of a person,
     /// and reported as such rather than as a reading of anybody's save.
+    ///
+    /// <c>--shipped-ids</c> prints the two id lists an exact unlock requirement is
+    /// checked against - the epochs and the encounters this build ships - and nothing
+    /// else. The rows report each list as met, short or unenumerated, which is the
+    /// verdict; this is the enumeration behind it, which no row has room for and which
+    /// is the only way to write a manifest that names this installation's own ids.
     /// </summary>
     internal static int Preflight(string[] args)
     {
         var manifest = ManifestJson.Load(Args.Positional(args, 0, "manifest path"));
         var progress = ParseProgress(args, RecordedFightEntry.SuppliedProgressFor(manifest));
         var reading = LocalEnvironment.ReadPrerequisites(manifest.Environment, progress);
+
+        if (Args.Has(args, "--shipped-ids")) return PrintShippedIds(reading);
+
         var result = EnvironmentPreflight.Prerequisites(manifest.Environment, reading, manifest.Source.Kind);
 
         Console.WriteLine($"manifest : {manifest.RunId}");
@@ -39,6 +48,30 @@ internal static partial class Commands
             ? "environment matches; replay may proceed"
             : "environment does NOT match; refusing to replay");
         return result.Matches ? 0 : 1;
+    }
+
+    /// <summary>
+    /// The two id lists, one per line under their own heading, and a refusal where the
+    /// reading could not enumerate them - because an empty list and a list that could
+    /// not be read are different answers and only one of them can be acted on.
+    /// </summary>
+    private static int PrintShippedIds(LocalPrerequisites reading)
+    {
+        if (reading.Unlocks.ShippedIds is not { } shipped)
+        {
+            Console.Error.WriteLine(
+                "This reading could not enumerate what the build ships, so there is nothing to " +
+                "print. Every exact unlock requirement refuses as unchecked for the same reason.");
+            return 1;
+        }
+
+        foreach (var (name, ids) in shipped.OrderBy(entry => entry.Key, StringComparer.Ordinal))
+        {
+            Console.WriteLine($"{name}:");
+            foreach (var id in ids) Console.WriteLine($"  {id}");
+        }
+
+        return 0;
     }
 
     /// <summary>

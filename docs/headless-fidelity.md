@@ -199,10 +199,25 @@ A separate history-bound probe therefore records every `PowerCmd.Apply` call in 
 **The replay machinery has independent synthetic evidence** — a mechanically generated fixture uses a seed and action sequence absent from the VOD artifacts and pins its engine-produced checkpoints.
 Fresh-process determinism, corruption rejection, and snapshot restore are exercised against that fixture, so those checks do not borrow their expected values from the ineligible VOD trace.
 
-Regenerating a committed fixture is two commands, in order, and the second is not optional.
-`./scripts/arbiter generate-synthetic-fixture --out src/Sts2PilotTrainer.Replay/Fixtures/<name>.replay.json` writes the history; `./scripts/arbiter migrate-manifest src/Sts2PilotTrainer.Replay/Fixtures/<name>.replay.json --derive-boundaries` then replays that history through the real engine and writes in every boundary it passes, with the digest the replay produced.
-Generation cannot know a boundary - only a replay produces one - and the game-free tests select boundaries out of the committed fixtures.
-So a fixture regenerated with the first command alone comes out with no `boundaries` at all, the validator does not catch it, and every test that reads one fails with no hint of why.
+Regenerating a committed fixture is two commands, in order, and each committed fixture has its own journey.
+Take the pair for the one being regenerated, into its own path, and run them in this order:
+
+```bash
+F=src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-pilot-trainer.replay.json
+./scripts/arbiter generate-synthetic-fixture --out $F --journey first-fight --line reference
+
+F=src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-whole-act.replay.json
+./scripts/arbiter generate-synthetic-fixture --out $F --journey whole-act
+
+F=src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-screen-at-boundary.replay.json
+./scripts/arbiter generate-synthetic-fixture --out $F --journey screen-at-boundary
+
+./scripts/arbiter migrate-manifest $F --derive-boundaries   # always, whichever was generated
+```
+
+Two ways to get this wrong, and neither one announces itself.
+`--journey` defaults to `first-fight`, so omitting it on either of the other two writes a first-fight history at the whole-act or screen-at-boundary path, and the tests that expect nine fights or a card screen at a boundary then fail against a file that is perfectly well formed.
+And generation cannot know a boundary - only a replay through the real engine produces one - so a fixture written without the `migrate-manifest --derive-boundaries` step carries no `boundaries` at all, the validator does not catch it, and every game-free test that selects one out of it fails with no hint of why.
 
 ## What is still not established
 

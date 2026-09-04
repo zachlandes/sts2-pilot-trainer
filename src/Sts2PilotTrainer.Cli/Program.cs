@@ -88,14 +88,18 @@ internal static class Program
               carries a written reason it is not.
 
           preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile]
+                                     [--shipped-ids]
               Compare a manifest's environment identity and its player prerequisites
               against this machine's game: build, content hash, unlocks category by
               category, whether the run's acts are unlocked at all, and - reading a
               real profile - whether its ascension is available. Refuses, with
               diagnostics and in-game remediation, rather than replaying into a
               mismatch. Without --progress, the state checked is the one a run from
-              this recording would actually be constructed with. Nothing here writes
-              to a save, a profile or the install.
+              this recording would actually be constructed with. --shipped-ids prints
+              this build's epoch and encounter ids instead of the report, because an
+              exact unlock requirement is checked against those two lists and the
+              rows have no room to name them. Nothing here writes to a save, a
+              profile or the install.
 
           preflight-live  <manifest> [--progress local-profile]
               Demonstrate the future live gate inside this headless process. It reads
@@ -134,12 +138,17 @@ internal static class Program
               and stops at the first fight in which a turn began with a card screen,
               which is the one place a boundary's own action opens one. None of them is
               a claim about how to play.
-              Regenerating a committed fixture takes two steps, in order: generate it
-              here, then `migrate-manifest --derive-boundaries` over the written file.
-              Generation cannot know a boundary - only a replay through the engine
-              produces one - and the game-free tests read them, so a fixture written
-              without the second step comes out with no `boundaries` and breaks every
-              test that selects one.
+              Regenerating a committed fixture takes two steps, in order, and its own
+              journey - synthetic-v0111-pilot-trainer is --journey first-fight --line
+              reference, synthetic-v0111-whole-act is --journey whole-act, and
+              synthetic-v0111-screen-at-boundary is --journey screen-at-boundary.
+              Generate it here with that journey named, then run `migrate-manifest
+              <fixture> --derive-boundaries` over the written file. --journey defaults
+              to first-fight, so leaving it off writes the wrong history at the right
+              path; and generation cannot know a boundary - only a replay through the
+              engine produces one - so skipping the second step writes a fixture with
+              no `boundaries`. Either mistake produces a well-formed file and breaks
+              the game-free tests that read it.
 
           replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
                                      [--progress <model>] [--show-trace]
