@@ -327,11 +327,12 @@ internal static class Program
     /// is exactly the drift the receipt exists to catch, and quietly replacing the
     /// older copy would destroy the evidence that it happened.
     /// </summary>
-    private static string Archive(
+    internal static string Archive(
         string outDir, string archiveDir, InstalledIdentity identity, string installHash,
         IReadOnlyDictionary<string, string> outputHashes)
     {
-        var target = WorktreePath.RequireChild(archiveDir, identity.Version);
+        var target = PathContainment.RequireContained(
+            archiveDir, WorktreePath.RequireChild(archiveDir, identity.Version));
         var existingReceipt = Path.Combine(target, ReceiptName);
         if (File.Exists(existingReceipt))
         {
@@ -345,7 +346,10 @@ internal static class Program
             var source = Path.Combine(outDir, name);
             if (!File.Exists(source)) continue;
 
-            var destination = WorktreePath.RequireChild(target, name);
+            // An entry already in the archive may be a symlink, so confinement must
+            // check the resolved destination at copy time rather than only its name.
+            var destination = PathContainment.RequireContained(
+                target, WorktreePath.RequireChild(target, name));
             File.Copy(source, destination, overwrite: true);
 
             // Verified after landing rather than trusted to have copied. The archive's
@@ -569,7 +573,7 @@ internal static class Program
         Console.Error.WriteLine();
     }
 
-    private sealed record InstalledIdentity(
+    internal sealed record InstalledIdentity(
         string Version, string BuildDateUtc, string Commit, string Branch, long MainAssemblyHash);
 
     private sealed record IlPatch(string Name, string Type, string Method, string Rationale);

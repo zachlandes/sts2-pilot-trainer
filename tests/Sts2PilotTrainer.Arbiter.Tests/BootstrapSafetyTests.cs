@@ -1,5 +1,5 @@
 using System.Diagnostics;
-
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -65,6 +65,55 @@ public class BootstrapSafetyTests
 
         Assert.NotEqual(0, result.ExitCode);
         Assert.Contains("Option --archive requires a value", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesAVersionDirectorySymlinkOutsideTheArchive()
+    {
+        var prepared = WritePreparedSet();
+        var archiveDir = ScratchDirectory("archive-version-link");
+        var redirected = ScratchDirectory("archive-version-target");
+        Directory.CreateDirectory(archiveDir);
+        Directory.CreateSymbolicLink(
+            Path.Combine(archiveDir, PreparedIdentity.Version), redirected);
+
+        Assert.Throws<Sts2PilotTrainer.IO.PathContainmentException>(() =>
+            Sts2PilotTrainer.Bootstrap.Program.Archive(
+                prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(redirected));
+    }
+
+    [Fact]
+    public void RefusesAnArchivedFileSymlinkOutsideTheVersionDirectory()
+    {
+        var prepared = WritePreparedSet();
+        var archiveDir = ScratchDirectory("archive-file-link");
+        var versionDir = Path.Combine(archiveDir, PreparedIdentity.Version);
+        Directory.CreateDirectory(versionDir);
+        var victim = Path.Combine(ScratchDirectory("archive-file-target"), "victim.dll");
+        File.WriteAllText(victim, "must remain unchanged");
+        File.CreateSymbolicLink(Path.Combine(versionDir, "0Harmony.dll"), victim);
+
+        Assert.Throws<Sts2PilotTrainer.IO.PathContainmentException>(() =>
+            Sts2PilotTrainer.Bootstrap.Program.Archive(
+                prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes));
+        Assert.Equal("must remain unchanged", File.ReadAllText(victim));
+    }
+
+    [Fact]
+    public void ArchivesACleanPreparedSetIdempotently()
+    {
+        var prepared = WritePreparedSet();
+        var archiveDir = ScratchDirectory("archive-clean");
+
+        var first = Sts2PilotTrainer.Bootstrap.Program.Archive(
+            prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes);
+        var second = Sts2PilotTrainer.Bootstrap.Program.Archive(
+            prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes);
+
+        Assert.Equal(first, second);
+        Assert.Equal("prepared harmony", File.ReadAllText(Path.Combine(first, "0Harmony.dll")));
+        Assert.True(File.Exists(Path.Combine(first, "prepared-assembly.json")));
     }
 
     [Fact]
@@ -137,9 +186,7 @@ public class BootstrapSafetyTests
 
     private static string WriteArchiveReceipt(IReadOnlyDictionary<string, string> outputHashes)
     {
-        var directory = Path.Combine(
-            Arbiter.RepoRoot, "build", "test-scratch", $"archive-receipt-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(directory);
+        var directory = ScratchDirectory("archive-receipt");
         var path = Path.Combine(directory, "prepared-assembly.json");
         File.WriteAllText(path, JsonSerializer.Serialize(new
         {
@@ -149,6 +196,37 @@ public class BootstrapSafetyTests
         }));
         return path;
     }
+
+    private static (string Directory, IReadOnlyDictionary<string, string> Hashes) WritePreparedSet()
+    {
+        var directory = ScratchDirectory("prepared-set");
+        var assembly = Path.Combine(directory, "0Harmony.dll");
+        File.WriteAllText(assembly, "prepared harmony");
+        var hashes = new Dictionary<string, string>
+        {
+            ["0Harmony.dll"] = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(assembly))),
+        };
+        File.WriteAllText(Path.Combine(directory, "prepared-assembly.json"), JsonSerializer.Serialize(new
+        {
+            build = new { commit = PreparedIdentity.Commit },
+            pristine_sts2_sha256 = PristineHash,
+            prepared_output_sha256 = hashes,
+        }));
+        return (directory, hashes);
+    }
+
+    private static string ScratchDirectory(string name)
+    {
+        var directory = Path.Combine(
+            Arbiter.RepoRoot, "build", "test-scratch", $"{name}-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    private const string PristineHash = "same-pristine-sts2";
+
+    private static readonly Sts2PilotTrainer.Bootstrap.Program.InstalledIdentity PreparedIdentity =
+        new("v0.111.0", "2026.01.01", "same-commit", "main", 123);
 
     private static string OutsideThisWorktree(string name) =>
         Path.GetFullPath(Path.Combine(Arbiter.RepoRoot, "..", $"{name}-{Guid.NewGuid():N}"));
