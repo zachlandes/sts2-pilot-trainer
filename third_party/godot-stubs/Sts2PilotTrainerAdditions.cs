@@ -268,7 +268,13 @@ public class StyleBoxFlat : StyleBox
 {
     public Color BgColor { get; set; }
     public Color BorderColor { get; set; }
-    public void SetBorderWidthAll(int width) { }
+
+    /// <summary>Godot sets the four edges at once. Recorded rather than discarded, so
+    /// a test can tell a control that carries a face from one that carries none.</summary>
+    public int BorderWidth { get; private set; }
+
+    public void SetBorderWidthAll(int width) => BorderWidth = width;
+
     public void SetCornerRadiusAll(int radius) { }
 }
 
@@ -300,7 +306,22 @@ public partial class Control
 
     public void AddThemeFontOverride(StringName name, Font font) { }
     public void AddThemeColorOverride(StringName name, Color color) { }
-    public void AddThemeStyleboxOverride(StringName name, StyleBox stylebox) { }
+
+    private readonly Dictionary<string, StyleBox> _styleboxes = [];
+
+    public void AddThemeStyleboxOverride(StringName name, StyleBox stylebox) =>
+        _styleboxes[name.ToString()] = stylebox;
+
+    /// <summary>
+    /// What a control's stylebox for one of its states was set to.
+    ///
+    /// The client reads these through its theme when it draws; this is how the mod's
+    /// game-free tests read the same answer. It is what lets a silent press target -
+    /// present, taking input, drawing nothing - be told apart from a drawn one, which
+    /// is a distinction that cost the chip its only control when it could not be made.
+    /// </summary>
+    public StyleBox? ThemeStylebox(string name) =>
+        _styleboxes.TryGetValue(name, out var stylebox) ? stylebox : null;
 }
 
 public partial class Button

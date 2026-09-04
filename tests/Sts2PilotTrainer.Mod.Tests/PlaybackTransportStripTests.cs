@@ -232,8 +232,7 @@ public sealed class PlaybackTransportStripTests
         var strip = Build(Revealing(Blessing, 1, noteShown: true));
         strip.DrawArtWith(modelId => modelId == "RELIC.LEAFY_POULTICE" ? art : null);
 
-        strip.Apply(PlaybackTransport.LookingBackAt(
-            NaveGreed, [Blessing], shown: 1, current: 2, count: 2, next: MapMove));
+        strip.Apply(LookingBack());
 
         Assert.True(strip.Ledger.Visible);
         Assert.Equal("Leafy Poultice", Label(strip.Ledger, "Ledger1").Text);
@@ -253,7 +252,7 @@ public sealed class PlaybackTransportStripTests
     {
         var strip = Build(Revealing(MapMove, 2, noteShown: true));
 
-        strip.Apply(PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: true));
+        strip.Apply(Chip(anythingPlayed: true));
 
         Assert.Equal("NaveGreed", Label(strip, "Creator").Text);
         Assert.False(Label(strip, "Counter").Visible);
@@ -275,7 +274,7 @@ public sealed class PlaybackTransportStripTests
     {
         var strip = Build(Revealing(MapMove, 2, noteShown: true));
 
-        strip.Apply(PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: true));
+        strip.Apply(Chip(anythingPlayed: true));
 
         var plate = Find<Polygon2D>(strip.Root, "Plate").Polygon;
         var press = strip.Speed;
@@ -290,6 +289,227 @@ public sealed class PlaybackTransportStripTests
 
         press.EmitHover(entered: true);
         Assert.False(strip.Tooltip.Visible);
+
+        // Present and silent: it takes input over the whole plate and draws nothing
+        // but the rim the game uses for "this is the thing you are about to press".
+        Assert.Equal(0f, Stylebox(press, "normal").BgColor.A, 3);
+        Assert.Equal(0, Stylebox(press, "normal").BorderWidth);
+        Assert.True(Stylebox(press, "hover").BorderWidth > 0);
+    }
+
+    /// <summary>
+    /// Present, drawn and pressable are three answers, and every mode answers all
+    /// three for every element.
+    ///
+    /// The refactor this asserts replaced one boolean that decided all three at once,
+    /// which is what made "silent but pressable" unsayable and left the chip with no
+    /// control at all.
+    /// </summary>
+    [Fact]
+    public void EachModeSaysSeparatelyWhatIsThereWhatIsDrawnAndWhatCanBePressed()
+    {
+        var strip = Build(Revealing(MapMove, 2, noteShown: true));
+
+        // Watching: the tag, everything drawn, everything on offer.
+        Assert.True(strip.Step.Visible);
+        Assert.False(strip.Step.Disabled);
+        Assert.True(Stylebox(strip.Step, "normal").BgColor.A > 0);
+
+        // Opening: the same tag, the same controls, none of them on offer - and the
+        // speed control still is, because it does not move the run.
+        strip.Apply(Opening(PlaybackSpeed.Double));
+        foreach (var button in new[] { strip.Back, strip.Play, strip.Step })
+        {
+            Assert.True(button.Visible);
+            Assert.True(button.Disabled);
+            Assert.True(Stylebox(button, "normal").BgColor.A > 0);
+        }
+
+        Assert.True(strip.Speed.Visible);
+        Assert.False(strip.Speed.Disabled);
+        Assert.Equal("2×", Label(strip, "SpeedLabel").Text);
+
+        // The chip: those three gone entirely, one silent press target left.
+        strip.Apply(Chip(anythingPlayed: false));
+        foreach (var button in new[] { strip.Back, strip.Play, strip.Step, strip.Identity })
+        {
+            Assert.False(button.Visible);
+        }
+
+        Assert.True(strip.Speed.Visible);
+        Assert.False(strip.Speed.Disabled);
+
+        // Refused: the tag again, and this time nothing works at all, the speed
+        // included.
+        strip.Apply(RefusedTag());
+        foreach (var button in new[] { strip.Back, strip.Play, strip.Step, strip.Speed, strip.Identity })
+        {
+            Assert.True(button.Visible);
+            Assert.True(button.Disabled);
+        }
+
+        Assert.False(Label(strip, "Counter").Visible);
+    }
+
+    /// <summary>
+    /// The chip carries the mark and the name. A recording whose manifest has a title
+    /// does not put it on a plate a third the width of the tag.
+    /// </summary>
+    [Fact]
+    public void TheChipCarriesTheMarkAndTheNameAndNothingElse()
+    {
+        var strip = Build(Revealing(MapMove, 2, noteShown: true));
+        Assert.True(Label(strip, "VideoTitle").Visible);
+
+        strip.Apply(Chip(anythingPlayed: true));
+
+        Assert.True(Label(strip, "Creator").Visible);
+        Assert.False(Label(strip, "VideoTitle").Visible);
+        Assert.False(Label(strip, "SpeedLabel").Visible);
+    }
+
+    /// <summary>
+    /// A menu survives the decisions its own surface keeps offering it, and only
+    /// closes when the surface starts offering a different one.
+    ///
+    /// Closing on every change would shut the speed menu under the player's hand
+    /// between one decision and the next; not closing at all is what left it hanging
+    /// under the chip.
+    /// </summary>
+    [Fact]
+    public void AMenuSurvivesADecisionAndNotAChangeOfWhatIsOffered()
+    {
+        var strip = Build(Revealing(Blessing, 1, noteShown: false));
+        strip.OpenMenu(_ => { });
+        Assert.True(strip.MenuIsOpen);
+
+        strip.Apply(Revealing(MapMove, 2, noteShown: true));
+        Assert.True(strip.MenuIsOpen);
+
+        strip.Apply(Opening(PlaybackSpeed.Normal));
+        Assert.True(strip.MenuIsOpen);
+
+        strip.Apply(Chip(anythingPlayed: true));
+        Assert.False(strip.MenuIsOpen);
+    }
+
+    /// <summary>
+    /// The chip's press target opens the chip's own two directions, and the strip is
+    /// not told which menu that is - it is the one the surface offers.
+    /// </summary>
+    [Fact]
+    public void ThePressTargetOpensWhicheverMenuTheSurfaceOffers()
+    {
+        var strip = Build(Revealing(MapMove, 2, noteShown: true));
+
+        strip.OpenMenu(_ => { });
+        Assert.Equal("1×", Label(strip.Menu, "MenuRow1.Label").Text);
+        strip.CloseMenu();
+
+        strip.Apply(Chip(anythingPlayed: true));
+        strip.OpenMenu(_ => { });
+
+        Assert.True(strip.Menu.Visible);
+        Assert.Equal("Jump to the beginning", Label(strip.Menu, "MenuRow0.Label").Text);
+    }
+
+    /// <summary>
+    /// A refused tag offers nothing, so there is no menu to open on it either.
+    /// </summary>
+    [Fact]
+    public void ARefusedTagHasNoMenuToOpen()
+    {
+        var strip = Build(RefusedTag());
+
+        strip.OpenMenu(_ => { });
+
+        Assert.False(strip.MenuIsOpen);
+        Assert.False(strip.Menu.Visible);
+    }
+
+    /// <summary>
+    /// Step is drawn and refused between committing one choice and revealing the next,
+    /// which is a window a fast second press used to get inside.
+    /// </summary>
+    [Fact]
+    public void StepIsDrawnAndRefusedWhileNothingIsRevealed()
+    {
+        var strip = Build(For(JourneyPhase.Watching, next: MapMove, stepsTaken: 1, revealed: false));
+
+        Assert.True(strip.Step.Visible);
+        Assert.True(strip.Step.Disabled);
+
+        strip.Apply(For(JourneyPhase.Watching, next: MapMove, stepsTaken: 1, revealed: true));
+        Assert.False(strip.Step.Disabled);
+    }
+
+    /// <summary>
+    /// While the game is between screens the same line travels instead of draining.
+    ///
+    /// Those two windows refuse everything that moves the run and say nothing about
+    /// why, so the tag has to show that it is waiting rather than stopped. It carries
+    /// no fraction: neither window has a known length, and a line draining toward a
+    /// deadline would be claiming one.
+    /// </summary>
+    [Fact]
+    public void BetweenScreensTheLineTravelsRatherThanDraining()
+    {
+        var strip = Build(Opening(PlaybackSpeed.Normal));
+        var track = Find<Line2D>(strip.Root, "HoldTrack");
+        var fill = Find<Line2D>(strip.Root, "Hold");
+
+        strip.ShowMoving(0.4);
+        Assert.True(track.Visible);
+        Assert.True(fill.Visible);
+        var at40 = fill.Points[0].X;
+        var width = fill.Points[1].X - fill.Points[0].X;
+
+        strip.ShowMoving(0.6);
+        Assert.True(fill.Points[0].X > at40);
+
+        // A segment of the track rather than a measure of it: the same size wherever
+        // it is, which is what says it is not counting anything down.
+        Assert.Equal(width, fill.Points[1].X - fill.Points[0].X, 1);
+        Assert.True(width < (track.Points[1].X - track.Points[0].X) / 2);
+
+        // It enters and leaves at the ends rather than jumping, and never runs past
+        // the track it travels on.
+        strip.ShowMoving(0.0);
+        Assert.Equal(track.Points[0].X, fill.Points[0].X, 1);
+        Assert.True(fill.Points[1].X - fill.Points[0].X < width);
+
+        strip.ShowMoving(1.0);
+        Assert.Equal(track.Points[1].X, fill.Points[1].X, 1);
+        Assert.True(fill.Points[1].X - fill.Points[0].X < width);
+
+        // And there is nothing to show on a surface with no line.
+        strip.Apply(Chip(anythingPlayed: false));
+        strip.ShowMoving(0.5);
+        Assert.False(fill.Visible);
+    }
+
+    /// <summary>
+    /// The hold survives the surface being re-derived under it.
+    ///
+    /// Every fact that changes re-derives the tag, and Play re-derives on each hold
+    /// tick, so a pass that cleared the line each time would leave it flickering or
+    /// blank - which is the stall the drained line exists to rule out.
+    /// </summary>
+    [Fact]
+    public void AHoldInFlightSurvivesTheTagBeingRedrawn()
+    {
+        var strip = Build(Revealing(Blessing, 1, noteShown: false));
+        var fill = Find<Line2D>(strip.Root, "Hold");
+
+        strip.ShowHold(0.5);
+        Assert.True(fill.Visible);
+
+        strip.Apply(Revealing(Blessing, 1, noteShown: true));
+        Assert.True(fill.Visible);
+
+        // And it goes with a mode that has no hold to draw.
+        strip.Apply(Chip(anythingPlayed: false));
+        Assert.False(fill.Visible);
     }
 
     /// <summary>
@@ -306,7 +526,7 @@ public sealed class PlaybackTransportStripTests
         var tagLeft = tag.Min(point => point.X);
         var tagRight = tag.Max(point => point.X);
 
-        strip.Apply(PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: true));
+        strip.Apply(Chip(anythingPlayed: true));
 
         var chip = Find<Polygon2D>(strip.Root, "Plate").Polygon;
         Assert.True(chip.Max(point => point.X) - chip.Min(point => point.X) < (tagRight - tagLeft) / 2);
@@ -339,7 +559,7 @@ public sealed class PlaybackTransportStripTests
         Assert.Equal(2, Descendants(Find<Control>(strip.Root, "Pips"))
             .Count(node => node.Name.ToString().StartsWith("Pip", StringComparison.Ordinal)));
 
-        strip.Apply(PlaybackTransport.Revealing(NaveGreed, MapMove, 2, 40, false, true));
+        strip.Apply(For(JourneyPhase.Watching, next: MapMove, stepsTaken: 1, count: 40));
         Assert.False(Find<Control>(strip.Root, "Pips").Visible);
         Assert.Equal("2 of 40", Label(strip, "Counter").Text);
     }
@@ -352,9 +572,9 @@ public sealed class PlaybackTransportStripTests
     public void AMenuOffersItsRowsAndARefusedRowCannotBeChosen()
     {
         var chosen = new List<int>();
-        var strip = Build(PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: false));
+        var strip = Build(Chip(anythingPlayed: false));
 
-        strip.OpenMenu(chip: true, chosen.Add);
+        strip.OpenMenu(chosen.Add);
 
         Assert.True(strip.Menu.Visible);
         Assert.Equal("Jump to the beginning", Label(strip.Menu, "MenuRow0.Label").Text);
@@ -377,10 +597,10 @@ public sealed class PlaybackTransportStripTests
     {
         var strip = Build(Revealing(MapMove, 2, noteShown: true));
 
-        strip.OpenMenu(chip: false, _ => { });
+        strip.OpenMenu(_ => { });
         Assert.True(strip.MenuIsOpen);
 
-        strip.Apply(PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: true));
+        strip.Apply(Chip(anythingPlayed: true));
 
         Assert.False(strip.MenuIsOpen);
         Assert.False(strip.Menu.Visible);
@@ -394,8 +614,9 @@ public sealed class PlaybackTransportStripTests
         var strip = Build(Revealing(MapMove, 2, noteShown: true));
         Assert.False(strip.Identity.Disabled);
 
-        strip.Apply(PlaybackTransport.Revealing(
-            new TransportIdentity("NaveGreed", null, null, null), MapMove, 2, 2, false, true));
+        strip.Apply(For(
+            JourneyPhase.Watching, new TransportIdentity("NaveGreed", null, null, null),
+            next: MapMove, stepsTaken: 1));
 
         Assert.True(strip.Identity.Disabled);
         Assert.False(Label(strip, "VideoTitle").Visible);
@@ -470,9 +691,8 @@ public sealed class PlaybackTransportStripTests
     [Fact]
     public void WhatHangsUnderTheTagHangsBelowWhateverIsAlreadyThere()
     {
-        var strip = Build(PlaybackTransport.LookingBackAt(
-            NaveGreed, [Blessing], shown: 1, current: 2, count: 2, next: MapMove));
-        strip.OpenMenu(chip: false, _ => { });
+        var strip = Build(LookingBack());
+        strip.OpenMenu(_ => { });
 
         var ledger = strip.Ledger;
         Assert.True(ledger.Visible);
@@ -493,7 +713,44 @@ public sealed class PlaybackTransportStripTests
     }
 
     private static PlaybackTransport Revealing(PrefightChoice choice, int number, bool noteShown) =>
-        PlaybackTransport.Revealing(NaveGreed, choice, number, count: 2, playing: false, noteShown: noteShown);
+        For(JourneyPhase.Watching, next: choice, stepsTaken: number - 1, noteShown: noteShown);
+
+    /// <summary>
+    /// The one way to get a state, here as everywhere: the strip draws what the phase
+    /// and the run's facts say, and there is no hand-built state to draw instead.
+    /// </summary>
+    private static PlaybackTransport For(
+        JourneyPhase phase,
+        TransportIdentity? identity = null,
+        IReadOnlyList<PrefightChoice>? made = null,
+        PrefightChoice? next = null,
+        int stepsTaken = 0,
+        int count = 2,
+        bool atCombatStart = false,
+        bool revealed = true,
+        int? lookingBackAt = null,
+        bool playing = false,
+        bool noteShown = true,
+        PlaybackSpeed speed = PlaybackSpeed.Normal,
+        bool anythingPlayed = false) =>
+        PlaybackTransport.For(phase, new TransportFacts(
+            identity ?? NaveGreed, made ?? [], next, stepsTaken, count, atCombatStart, revealed,
+            lookingBackAt, playing, noteShown, speed, anythingPlayed))
+        ?? throw new InvalidOperationException($"{phase} puts nothing on screen.");
+
+    private static PlaybackTransport LookingBack() =>
+        For(JourneyPhase.Watching, made: [Blessing], next: MapMove, stepsTaken: 1, lookingBackAt: 1);
+
+    private static PlaybackTransport Chip(bool anythingPlayed) =>
+        For(JourneyPhase.InFight, anythingPlayed: anythingPlayed);
+
+    private static PlaybackTransport Opening(PlaybackSpeed speed) =>
+        For(JourneyPhase.Watching, stepsTaken: 2, atCombatStart: true, speed: speed);
+
+    private static PlaybackTransport RefusedTag() => For(JourneyPhase.Refused);
+
+    private static StyleBoxFlat Stylebox(Control control, string state) =>
+        Assert.IsType<StyleBoxFlat>(control.ThemeStylebox(state));
 
     private static PlaybackTransportStrip Build(PlaybackTransport state) =>
         PlaybackTransportStrip.Build(

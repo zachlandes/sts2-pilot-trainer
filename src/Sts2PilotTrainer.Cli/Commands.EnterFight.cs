@@ -109,10 +109,20 @@ internal static partial class Commands
             var target = choice is null ? null : entry.DescribeNextTarget();
             var transport = choice is null
                 ? null
-                : PlaybackTransport.Revealing(
+                : PlaybackTransport.For(JourneyPhase.Watching, new TransportFacts(
                     new TransportIdentity(
                         creator!, recording.Source.Video?.Title, recording.Source.Video?.Url, null),
-                    choice, number, plan.PrefixActions.Count, playing: false, noteShown);
+                    Made: [],
+                    Next: choice,
+                    StepsTaken: entry.StepsTaken,
+                    Count: plan.PrefixActions.Count,
+                    AtCombatStart: false,
+                    Revealed: true,
+                    LookingBackAt: null,
+                    Playing: false,
+                    NoteShown: noteShown,
+                    Speed: PlaybackSpeed.Normal,
+                    AnythingPlayed: false))!;
             if (transport is not null)
             {
                 noteShown |= transport.Note.Length > 0;

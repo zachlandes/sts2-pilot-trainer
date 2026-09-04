@@ -92,8 +92,9 @@ One rule carries meaning rather than decoration: **a filled shape moves the run,
 
 **States.** Holding, with the target lit by the game's own selected state. Playing, with the hold drawn as a line draining along the tag's foot.
 Looking back, with a ledger of the decisions already made hung beneath - it exists because those screens are gone, and the run must never be rewound to answer for them.
+Opening, between the last recorded choice and the fight it leads to: the tag stays exactly where it was and everything that would move the run is refused, because a run with nothing left to commit must not still be offering to commit it. The speed control is not refused there - it does not move the run.
 The chip during the player's own fight: the mark and the name, silent until pressed.
-Refused: the mark becomes the warning glyph and every control is drawn and refused.
+Refused: the mark becomes the warning glyph and every control is drawn and refused, the speed control included.
 
 **The chip offers two directions and no third.** Jump to the beginning rebuilds the run to the proven combat start; jump to the end finishes the attempt where it is.
 Both leave the attempt, so both ask through the game's own confirmation popup first.
@@ -105,10 +106,23 @@ The refusal is not softened; only the sentence a player reads changes.
 **One measure for everything that hangs below the tag.** The note, the look-back ledger, the speed menu and a tooltip all hang under it, and the plates are translucent because the game is meant to show through them - so two of them on the same band are not one covering the other, they are both legible at once and neither readable.
 Each hangs below whatever is already there. The client drew the speed menu straight over the ledger before this rule existed.
 
+## One derivation, and three questions per element
+
+**What the tag is at any moment is derived in exactly one place, from the phase and the run's facts.**
+`PlaybackTransport.For(phase, facts)` is total and pure: every phase has an answer, null included for the two that put nothing on screen, and there is no other way to construct a state.
+`RecordedFightRun.Transition` is the only thing that changes the phase, and it re-derives; every fact that can change - a decision revealed, a card played, a speed chosen - re-derives too.
+This rule is not tidiness. Four defects on this surface came from a state built by hand at the site that changed it and then never re-derived: a menu still hanging under a chip, a chip with no press target, an opening window stating a speed that was not in force, and a chip whose one remaining offer stated a reason that had stopped being true at the first card.
+
+**Every element answers three questions separately: is it present, is it drawn, can it be pressed.**
+`TransportSurface` is that table, one column per mode, and `PlaybackTransportStrip` projects it without reading the mode at all.
+The three cannot be one answer, because in Godot a control that is not visible receives no input: "present but silent" is the chip's press target and is unsayable while one boolean decides both.
+Absent is the only state that hides a node, and an absent element is never hit-tested, never tooltipped and carries no handler.
+
 ## What a redesign owns, and what it does not
 
 Change what `PlaybackTransportStrip` draws.
-Leave `PlaybackTransportDock` (where the tag lives and what it is anchored to), `RecordedFightReveal` (the game's own selected states) and `PlaybackTransport` (what it says) alone - the last of these owns the words and is the one place to change them.
+Leave `PlaybackTransportDock` (where the tag lives and what it is anchored to), `RecordedFightReveal` (the game's own selected states) and `PlaybackTransport` (what it says, and the one derivation of what it is) alone - the last of these owns the words and is the one place to change them.
+A redesign that needs an element to appear, disappear or refuse somewhere new changes a cell in that table, and the strip follows.
 
 ## Carried forward, not built
 

@@ -405,6 +405,9 @@ things a wider playback design depends on.
 - `PlaybackTransport` in `Sts2PilotTrainer.Trainer`: the one owner of what the
   transport says at each moment - the chip, the counter, the caption, the once-only
   sentence, and the three controls with whether each is offered.
+  `PlaybackTransport.For(phase, facts)` is the only way to get one, and it is total:
+  every phase a journey can be in has an answer, null included for the two that put
+  nothing on screen. `Surface` is the per-element table the strip draws.
   Pure, so every state has a test on a machine with no game.
 - `PlaybackTransportStrip` in the mod draws it from stock Godot nodes, so it is
   asserted on node by node in a process with no game too, and `PlaybackTransportDock`
@@ -422,7 +425,9 @@ things a wider playback design depends on.
 - Forward commits one recorded action, Play runs the sequence with a hold on each -
   shorter on the map, where the game supplies a second of its own - and Back re-shows
   a decision already made without rewinding anything.
-  During the player's own fight the strip collapses to a chip and offers nothing.
+  During the player's own fight the strip collapses to a chip that says nothing until
+  it is pressed, and offers two directions when it is: back to the proven combat
+  start, or to the end of the attempt. Both leave the attempt and both confirm first.
 
 **Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json`
 prints, for each recorded decision, exactly what the transport says and what it would

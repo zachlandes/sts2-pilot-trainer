@@ -117,9 +117,18 @@ public static class TrainerCopy
     /// <summary>Why every control is refused while a refusal popup is up.</summary>
     public const string RefusedDisabledReason = "Combat Trainer stopped; dismiss the message first.";
 
-    /// <summary>Why every control is refused between the last recorded choice and the
-    /// fight it leads to.</summary>
-    public const string OpeningTheFightDisabledReason = "The fight is opening.";
+    /// <summary>
+    /// Why the controls that move the run are refused while the game is between
+    /// screens - opening the fight after the last recorded choice, and the moment
+    /// between committing one choice and revealing the next.
+    ///
+    /// Deliberately unwritten. Every sentence a player reads on this surface is the
+    /// captain's, and this one has not been approved; until it is, a control refused
+    /// in those two windows falls back to saying what it does, which is what a refused
+    /// control with no reason has always said. It is one string away from being said
+    /// in both windows at once, which is why there is one constant and not two.
+    /// </summary>
+    public const string? BetweenScreensDisabledReason = null;
 
     /// <summary>Where in the recording's decisions this is.</summary>
     public static string StepCounter(int step, int count) =>

@@ -230,12 +230,18 @@ public sealed class ProfileWriteBarrierTests
         var barrier = BarrierType();
         var recordedRun = barrier.Assembly.GetType("Sts2PilotTrainer.Mod.RecordedFightRun")!;
         var phase = recordedRun.GetProperty("Phase", BindingFlags.Static | BindingFlags.NonPublic)!;
+
+        // Set through the field the phase is held in rather than through the property.
+        // The phase enum lives in the Trainer assembly and a static field of a sibling
+        // assembly's value type takes the whole mod down at load, so the mod holds it
+        // as a number and reads it back as a cast. See RecordedFightRun._phase.
+        var phaseField = recordedRun.GetField("_phase", BindingFlags.Static | BindingFlags.NonPublic)!;
         var teardown = recordedRun.GetNestedType("TrainerRunTeardown", BindingFlags.NonPublic)!;
         var pendingResult = recordedRun.GetField(
             "_resultAfterMainMenu", BindingFlags.Static | BindingFlags.NonPublic)!;
 
         barrier.GetMethod("Raise", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);
-        phase.SetValue(null, Enum.Parse(phase.PropertyType, "InFight"));
+        phaseField.SetValue(null, (int)Enum.Parse(phase.PropertyType, "InFight"));
         try
         {
             teardown.GetMethod("AfterRunEnds", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null);

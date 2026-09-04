@@ -16,28 +16,6 @@ using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
-/// <summary>Where a trainer run has got to.</summary>
-internal enum RecordedFightPhase
-{
-    /// <summary>There is no trainer run.</summary>
-    None,
-
-    /// <summary>The run exists and the game is putting it on screen.</summary>
-    Starting,
-
-    /// <summary>The recording is making its decisions, on the game's own screens,
-    /// and the player is watching.</summary>
-    Watching,
-
-    /// <summary>The fight has been proved to be the recorded one and is the
-    /// player's. Every action they take is being sampled either side.</summary>
-    InFight,
-
-    /// <summary>The fight has ended and its result is on screen. The run still
-    /// exists underneath until the player leaves.</summary>
-    Result,
-}
-
 /// <summary>
 /// The trainer's run inside the retail client: constructing it, walking it through
 /// the recording's decisions, and handing the fight over once it has been shown to
@@ -136,13 +114,51 @@ internal static class RecordedFightRun
     /// The result is computed before the wait; only the drawing is deferred.</summary>
     private const double EndingTheFightSeconds = 2.0;
 
-    internal static RecordedFightPhase Phase { get; private set; } = RecordedFightPhase.None;
+    /// <summary>
+    /// Where the journey has got to, held as a number.
+    ///
+    /// An <c>int</c> for the reason <see cref="_speedIndex"/> records: the phase enum
+    /// lives in the Trainer, where the transport's derivation can be tested without a
+    /// game, and a static field of a sibling assembly's value type makes the whole mod
+    /// fail to load one startup phase before the runtime knows where its siblings are.
+    /// Reading it back is a cast, which happens when the property runs rather than
+    /// when this type's layout is computed.
+    /// </summary>
+    private static int _phase;
+
+    /// <summary>
+    /// Whether the recording's next decision is on the game's own screen yet.
+    ///
+    /// Cleared before a decision is committed and set once the next one has been
+    /// revealed, with a re-derivation on each. Between those two points Step is
+    /// refused: the window is a screen transition long, and a step taken inside it
+    /// would make the next decision without anybody having been shown it, which is
+    /// exactly what reveal, hold and commit exists to prevent.
+    /// </summary>
+    private static bool _revealed;
+
+    internal static JourneyPhase Phase => (JourneyPhase)_phase;
+
+    /// <summary>
+    /// Moves the journey to a phase and re-derives what the transport says.
+    ///
+    /// The only way the phase changes. Every surface the mod draws is a function of
+    /// the phase and the run's facts, so a phase set without this is a surface left
+    /// saying what the last phase said - which is how a chip came to state a reason
+    /// that had stopped being true and a menu came to hang under a tag that no longer
+    /// offered it.
+    /// </summary>
+    private static void Transition(JourneyPhase phase)
+    {
+        _phase = (int)phase;
+        ShowTransport();
+    }
 
     /// <summary>
     /// Whether the recording, rather than the player, owns the decisions the game is
     /// currently asking for.
     ///
-    /// <see cref="RecordedFightPhase.Starting"/> is deliberately not one of them, and
+    /// <see cref="JourneyPhase.Starting"/> is deliberately not one of them, and
     /// this is load-bearing rather than a tidy boundary: the game's own
     /// <c>RunManager.EnterAct</c> enters the act's starting node with the same
     /// <c>EnterMapCoord</c> the lock below guards, while the run is still being put on
@@ -150,7 +166,7 @@ internal static class RecordedFightRun
     /// is nothing to lock during that phase either - no screen is up and no player has
     /// anything to click.
     /// </summary>
-    internal static bool IsWatching => Phase == RecordedFightPhase.Watching;
+    internal static bool IsWatching => Phase == JourneyPhase.Watching;
 
     /// <summary>
     /// Starts the recording's run and walks it to the fight.
@@ -162,7 +178,7 @@ internal static class RecordedFightRun
     /// </summary>
     internal static async Task Start(ReplayManifest recording)
     {
-        if (Phase != RecordedFightPhase.None)
+        if (Phase != JourneyPhase.None)
         {
             Log.Warn($"[{RunmobileMod.ModId}] a recorded fight is already under way; ignoring.", 2);
             return;
@@ -171,7 +187,7 @@ internal static class RecordedFightRun
         // Raised before the run exists rather than after, so there is no moment in
         // which a trainer run could reach a write.
         ProfileWriteBarrier.Raise();
-        Phase = RecordedFightPhase.Starting;
+        Transition(JourneyPhase.Starting);
 
         try
         {
@@ -182,7 +198,8 @@ internal static class RecordedFightRun
             // in its first room; the task completes when it has.
             await LaunchThroughTheGame(_entry.PreparedRun);
 
-            Phase = RecordedFightPhase.Watching;
+            Transition(JourneyPhase.Watching);
+            SweepWhileTheGameIsBetweenScreens();
             Log.Info(
                 $"[{RunmobileMod.ModId}] constructed {creator}'s run; watching " +
                 $"{_entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)} recorded " +
@@ -356,7 +373,7 @@ internal static class RecordedFightRun
             for (var step = 0; step < steps; step++)
             {
                 if (hold != _hold || !_playing || !ReferenceEquals(mine, _entry)) break;
-                if (Phase != RecordedFightPhase.Watching) break;
+                if (Phase != JourneyPhase.Watching) break;
 
                 PlaybackTransportDock.Current?.ShowHold(1.0 - ((double)step / steps));
                 await LetTheGameRun(seconds / steps);
@@ -365,7 +382,7 @@ internal static class RecordedFightRun
             PlaybackTransportDock.Current?.HideHold();
 
             if (hold != _hold || !_playing || !ReferenceEquals(mine, _entry)) return;
-            if (Phase != RecordedFightPhase.Watching) return;
+            if (Phase != JourneyPhase.Watching) return;
 
             await CommitOne();
         }
@@ -378,6 +395,59 @@ internal static class RecordedFightRun
     /// <summary>How often the draining line is redrawn. Frequent enough to read as
     /// motion, rare enough that a hold is not a hundred timers.</summary>
     private const double HoldTick = 0.08;
+
+    /// <summary>How long one pass of the between-screens line takes.</summary>
+    private const double SweepSeconds = 1.1;
+
+    private const double SweepTick = 0.05;
+
+    /// <summary>Which between-screens line is current, for the reason
+    /// <see cref="_hold"/> records: a timer cannot be recalled, so a pass that wakes
+    /// up on an old number draws nothing.</summary>
+    private static int _sweep;
+
+    /// <summary>
+    /// Runs the tag's line while the game is between screens.
+    ///
+    /// The two windows this covers are the ones where every control that would move
+    /// the run is refused: the game putting the next screen up after a decision, and
+    /// the fight opening after the last one. Both say nothing about why, by the
+    /// captain's ruling that this surface shows rather than explains - so this is what
+    /// does the showing, and it is the tag's own line rather than new ornament.
+    ///
+    /// One treatment for both, because the condition is one thing rather than two: the
+    /// run is in a watched phase and nothing is revealed. That is the same condition
+    /// that refuses Step, so what the player sees moving and what they find inert have
+    /// the same cause rather than two that happen to coincide.
+    /// </summary>
+    private static async void SweepWhileTheGameIsBetweenScreens()
+    {
+        var sweep = ++_sweep;
+        try
+        {
+            for (var step = 0; ; step++)
+            {
+                if (sweep != _sweep) return;
+                if (_entry is null || Phase != JourneyPhase.Watching || _revealed) break;
+
+                PlaybackTransportDock.Current?.ShowMoving(step * SweepTick / SweepSeconds % 1.0);
+                await LetTheGameRun(SweepTick);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Info(
+                $"[{RunmobileMod.ModId}] the between-screens line stopped: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+        finally
+        {
+            // Not while Play has the line: the reveal that ends this window starts the
+            // hold on the same node in the same frame, and putting it out here would
+            // blink it off for a tick on the way past.
+            if (sweep == _sweep && !_playing) PlaybackTransportDock.Current?.HideHold();
+        }
+    }
 
     /// <summary>The speed in use. A property rather than a field for the reason
     /// <see cref="_speedIndex"/> records.</summary>
@@ -429,6 +499,14 @@ internal static class RecordedFightRun
             Shown.Add(entry.DescribeNextStep());
             RecordedFightReveal.Clear();
 
+            // Nothing is revealed from here until the next reveal lands, and the tag
+            // is re-derived to say so. The window between the two is a screen
+            // transition long and a second Step pressed inside it used to make the
+            // next decision unrevealed.
+            _revealed = false;
+            ShowTransport();
+            SweepWhileTheGameIsBetweenScreens();
+
             await AdvanceOne();
         }
         finally
@@ -464,6 +542,7 @@ internal static class RecordedFightRun
 
         _lookingBackAt = null;
         var what = await RevealWhenTheScreenIsReady(entry.DescribeNextTarget());
+        _revealed = true;
         Log.Info(
             $"[{RunmobileMod.ModId}] revealed decision " +
             $"{(entry.StepsTaken + 1).ToString(CultureInfo.InvariantCulture)} of " +
@@ -512,14 +591,16 @@ internal static class RecordedFightRun
     }
 
     /// <summary>
-    /// Opens the speed menu, or the chip's two directions, depending on what the tag
-    /// currently is.
+    /// Opens whatever the one press target offers.
     ///
     /// One button, because the tag and the chip are one node: while the recording is
     /// deciding it sets how long each choice is held, and once the fight is the
-    /// player's it is the chip they press to leave it.
+    /// player's it is the chip they press to leave it. Which of the two it is comes
+    /// off the surface rather than being re-derived from the phase here - that
+    /// re-derivation was one of the four places the mode was decided over again, and
+    /// the one that read the phase a frame after it had changed.
     /// </summary>
-    private static void OpenSpeedMenu()
+    private static void OpenTheMenu()
     {
         if (PlaybackTransportDock.Current is not { } strip) return;
 
@@ -529,17 +610,13 @@ internal static class RecordedFightRun
             return;
         }
 
-        if (Phase != RecordedFightPhase.Watching)
-        {
-            strip.OpenMenu(chip: true, Jump);
-            return;
-        }
+        strip.OpenMenu(strip.Surface.Menu == MenuKind.Chip ? Jump : ChooseSpeed);
+    }
 
-        strip.OpenMenu(chip: false, index =>
-        {
-            _speedIndex = index;
-            ShowTransport();
-        });
+    private static void ChooseSpeed(int index)
+    {
+        _speedIndex = index;
+        ShowTransport();
     }
 
     /// <summary>
@@ -689,7 +766,16 @@ internal static class RecordedFightRun
     /// </summary>
     private static void ShowTransport()
     {
-        var state = TransportState();
+        var state = _entry is { } entry ? PlaybackTransport.For(Phase, Facts(entry)) : null;
+
+        // Nothing is docked in the phases that have no surface, and detaching is how
+        // that is said. It is idempotent, so the paths that also tear the strip down
+        // themselves are not doing it twice.
+        if (state is null)
+        {
+            PlaybackTransportDock.Detach();
+            return;
+        }
 
         // Said once, and "once" means once it has been on the strip rather than once
         // it has been composed.
@@ -697,42 +783,48 @@ internal static class RecordedFightRun
 
         if (PlaybackTransportDock.Current is null)
         {
+            // Attached while the recording is deciding, and at no other moment. Every
+            // later phase either has a strip already or is tearing the run down, and
+            // parenting one to a persistent interface that is being freed is the crash
+            // this journey has already paid for once.
+            if (Phase != JourneyPhase.Watching) return;
+
             PlaybackTransportDock.Attach(
-                state, Back, PlayOrPause, Forward, OpenSpeedMenu, OpenTheVideo, ModelArt.Of);
+                state, Back, PlayOrPause, Forward, OpenTheMenu, OpenTheVideo, ModelArt.Of);
             return;
         }
 
         PlaybackTransportDock.Apply(state);
     }
 
-    private static PlaybackTransport TransportState()
-    {
-        var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
-        var identity = Identity(entry);
-
-        if (Phase != RecordedFightPhase.Watching)
-        {
-            return PlaybackTransport.DuringYourFight(identity, AnythingPlayed(entry));
-        }
-
-        var count = entry.Plan.PrefixActions.Count;
-
-        // Asked only while there is one. Between the last commit and the hand-over the
-        // run has no next decision, and the tag refuses what would move it rather than
-        // offering a step that does not exist.
-        if (entry.AtBoundary) return PlaybackTransport.OpeningTheFight(identity, count, Speed);
-
-        var next = entry.DescribeNextStep();
-
-        if (_lookingBackAt is { } step)
-        {
-            return PlaybackTransport.LookingBackAt(
-                identity, Shown, step, entry.StepsTaken + 1, count, next, Speed);
-        }
-
-        return PlaybackTransport.Revealing(
-            identity, next, entry.StepsTaken + 1, count, _playing, _noteShown, Speed);
-    }
+    /// <summary>
+    /// Everything the transport is derived from, read off the run as it is now.
+    ///
+    /// Gathering rather than deciding: what any of these values <em>means</em> is
+    /// <see cref="PlaybackTransport.For"/>'s, which is what lets the whole table be
+    /// asserted without a game.
+    ///
+    /// The next decision is asked for only while the recording is the thing making
+    /// decisions, and that guard is not an optimisation. An entry that has reached its
+    /// fight throws when asked - and so does one whose next decision this host has no
+    /// way to describe, which is the commonest reason a run is being refused at all.
+    /// Asking during a refusal would throw inside the teardown that is trying to say
+    /// so, and the tag would never get to show it. While watching it still throws, and
+    /// still should: that is the refusal, arriving where it can be reported.
+    /// </summary>
+    private static TransportFacts Facts(RecordedFightEntry entry) => new(
+        Identity(entry),
+        Shown,
+        Phase == JourneyPhase.Watching && !entry.AtBoundary ? entry.DescribeNextStep() : null,
+        entry.StepsTaken,
+        entry.Plan.PrefixActions.Count,
+        entry.AtBoundary,
+        _revealed,
+        _lookingBackAt,
+        _playing,
+        _noteShown,
+        Speed,
+        AnythingPlayed(entry));
 
     /// <summary>
     /// Whose recording this is, and where in the video the decision being shown was
@@ -1037,12 +1129,13 @@ internal static class RecordedFightRun
 
         Pause();
         RecordedFightReveal.Clear();
-        Phase = RecordedFightPhase.InFight;
 
         // The strip collapses rather than closing. A player fighting wants nothing in
         // the way, and the chip is what a peek will be reached from later; nothing is
-        // drawn unbidden from here until the fight has ended.
-        PlaybackTransportDock.Apply(PlaybackTransport.DuringYourFight(Identity(entry), anythingPlayed: false));
+        // drawn unbidden from here until the fight has ended. Derived from the phase
+        // like every other surface, so what the chip offers keeps up with the fight -
+        // built by hand here, it stated at turn fifteen what had been true at turn one.
+        Transition(JourneyPhase.InFight);
         Log.Info(
             $"[{RunmobileMod.ModId}] standing in the recorded fight; canonical state at combat start is " +
             $"{equality.ActualDigest}", 2);
@@ -1050,7 +1143,7 @@ internal static class RecordedFightRun
         // The capture begins at the boundary just proved, and from nowhere else: it
         // carries the digest the comparison will require to be the recording's.
         var capture = entry.BeginCapture(equality);
-        _observer = PlayerFightObserver.Start(entry, capture, TheFightEnded);
+        _observer = PlayerFightObserver.Start(entry, capture, TheFightEnded, ShowTransport);
     }
 
     /// <summary>
@@ -1074,7 +1167,7 @@ internal static class RecordedFightRun
                 CombatTrainerModule.Instance.RecordedFights.Projection(entry.Fight));
             _observer?.Dispose();
             _observer = null;
-            Phase = RecordedFightPhase.Result;
+            Transition(JourneyPhase.Result);
             Log.Info(
                 $"[{RunmobileMod.ModId}] result: " +
                 (screen.HasComparison ? $"comparison, {screen.Rows.Count} row(s)" : screen.Notice), 2);
@@ -1140,9 +1233,10 @@ internal static class RecordedFightRun
 
             // The tag says so before it goes: the mark becomes the warning and every
             // control is refused, so a player looking at the screen behind the popup
-            // is not looking at a transport that appears to still be running.
-            PlaybackTransportDock.Apply(PlaybackTransport.Refused(
-                _entry is { } refused ? Identity(refused) : new TransportIdentity(creator, null, null, null)));
+            // is not looking at a transport that appears to still be running. It is
+            // applied to a strip that is already there and never attaches one - the
+            // run this would hang on is being torn down in the next two lines.
+            Transition(JourneyPhase.Refused);
             PlaybackTransportDock.Detach();
 
             if (RunManager.Instance is { IsInProgress: true }) RunManager.Instance.CleanUp();
@@ -1176,8 +1270,9 @@ internal static class RecordedFightRun
     {
         try
         {
-            if (NGame.Instance is { } game) await game.ReturnToMainMenu();
-            PrefightScreen.ShowRefusal(creator, screen, reason);
+            await ExplainOnceTheMenuIsBack(
+                NGame.Instance?.ReturnToMainMenu() ?? Task.CompletedTask,
+                () => PrefightScreen.ShowRefusal(creator, screen, reason));
         }
         catch (Exception ex)
         {
@@ -1186,6 +1281,22 @@ internal static class RecordedFightRun
                 $"{ex.GetType().Name}: {ex.Message}",
                 2);
         }
+    }
+
+    /// <summary>
+    /// The order above, separated from the two calls that need a game to make.
+    ///
+    /// Neither the return nor the popup can be reached in a process with no client, but
+    /// which happens first can be, and that is the whole of the fix: a refusal put up
+    /// before the return was freed with the run it was explaining and left the player
+    /// at the main menu with no account of what had happened. The same separation the
+    /// hand-over's wait already uses, for the same reason - the bug was an ordering and
+    /// an ordering is testable.
+    /// </summary>
+    internal static async Task ExplainOnceTheMenuIsBack(Task returned, Action explain)
+    {
+        await returned;
+        explain();
     }
 
     /// <summary>
@@ -1224,10 +1335,15 @@ internal static class RecordedFightRun
         _committing = false;
         _speedIndex = 1;
         _hold++;
+        _sweep++;
         _lookingBackAt = null;
         _noteShown = false;
+        _revealed = false;
         Shown.Clear();
-        Phase = RecordedFightPhase.None;
+
+        // Last, and after the entry has gone: there is no surface for a journey that
+        // has none, so this detaches rather than drawing.
+        Transition(JourneyPhase.None);
         try
         {
             RecordedFightReveal.Clear();
@@ -1255,14 +1371,14 @@ internal static class RecordedFightRun
         [HarmonyPostfix]
         internal static void AfterRunEnds()
         {
-            if (Phase == RecordedFightPhase.InFight)
+            if (Phase == JourneyPhase.InFight)
             {
                 _resultAfterMainMenu = FightResultScreen.Left();
                 Finish();
                 return;
             }
 
-            if (Phase != RecordedFightPhase.None || ProfileWriteBarrier.IsActive) Finish();
+            if (Phase != JourneyPhase.None || ProfileWriteBarrier.IsActive) Finish();
         }
     }
 

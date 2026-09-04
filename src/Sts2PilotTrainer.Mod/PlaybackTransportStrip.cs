@@ -136,6 +136,22 @@ internal sealed class PlaybackTransportStrip
     private float _unit;
     private PlaybackTransport _state;
 
+    /// <summary>
+    /// What the tag is, element by element - and the only thing this class reads to
+    /// decide anything.
+    ///
+    /// A reference-typed field on purpose, like every other cross-assembly field here:
+    /// the game enumerates this assembly's types before the mod initializer runs, and
+    /// a field whose layout needs a sibling assembly's value type resolved takes the
+    /// whole mod down one phase before it knows where its siblings are. A pointer is
+    /// always a pointer. See docs/in-game-host.md.
+    /// </summary>
+    private TransportSurface _surface;
+
+    /// <summary>Whether a hold is running. The surface says whether this mode draws
+    /// one at all; this says whether there is one to draw.</summary>
+    private bool _holding;
+
     private PlaybackTransportStrip(Nodes nodes, Vector2 viewport, Vector2 anchor, Font? font)
     {
         _root = nodes.Root;
@@ -170,6 +186,7 @@ internal sealed class PlaybackTransportStrip
         _anchor = anchor;
         _unit = viewport.Y / ReferenceHeight;
         _state = nodes.State;
+        _surface = nodes.State.Surface;
     }
 
     internal Control Root => _root;
@@ -192,6 +209,10 @@ internal sealed class PlaybackTransportStrip
 
     /// <summary>What the tag is currently saying, for a host that has to ask.</summary>
     internal PlaybackTransport State => _state;
+
+    /// <summary>What the tag currently is. The host asks this rather than re-deriving
+    /// the mode when it needs to know what a press means.</summary>
+    internal TransportSurface Surface => _surface;
 
     /// <summary>
     /// Assembles the tag.
@@ -281,18 +302,14 @@ internal sealed class PlaybackTransportStrip
         });
         identityButton.Pressed += () => identity();
         strip._identity = identityButton;
-        strip.Wire(identityButton, () => strip._state.Identity.TooltipTitle, () => strip._state.Identity.TooltipBody);
-
-        strip.Wire(strip._back, () => strip._state.Back.TooltipTitle, () => strip.Body(strip._state.Back));
-        strip.Wire(strip._play, () => strip._state.Play.TooltipTitle, () => strip.Body(strip._state.Play));
-        strip.Wire(strip._step, () => strip._state.Step.TooltipTitle, () => strip.Body(strip._state.Step));
-        // Silent on the chip, where the same button is the chip's press target: a
-        // tooltip about how long a choice is held is not what pressing it does, and
-        // the chip says nothing until it is pressed.
-        strip.Wire(
-            strip._speed,
-            () => strip._state.Mode == TransportMode.Chip ? string.Empty : TrainerCopy.SpeedTooltipTitle,
-            () => strip._state.Mode == TransportMode.Chip ? string.Empty : TrainerCopy.SpeedTooltipBody);
+        // Every control's words come off its own element, the speed control included -
+        // which is what makes the chip silent without a special case: its press target
+        // is an element whose tooltip is empty, rather than a mode this class checks.
+        strip.Wire(identityButton, () => strip._surface.Identity);
+        strip.Wire(strip._back, () => strip._surface.Back);
+        strip.Wire(strip._play, () => strip._surface.Play);
+        strip.Wire(strip._step, () => strip._surface.Step);
+        strip.Wire(strip._speed, () => strip._surface.Speed);
 
         strip.Apply(state);
         return strip;
@@ -312,31 +329,38 @@ internal sealed class PlaybackTransportStrip
     /// </summary>
     internal void Apply(PlaybackTransport state)
     {
-        // A menu belongs to the tag it was opened on. Carried across a mode change it
-        // would hang under a chip that is meant to say nothing until it is pressed,
-        // and swallow that first press closing itself.
-        if (_menuOpen && state.Mode != _state.Mode)
+        _state = state;
+        var surface = state.Surface;
+
+        // A menu belongs to the surface that offered it. Left hanging when the surface
+        // starts offering a different one it would sit under a chip that is meant to
+        // say nothing until it is pressed, and swallow that first press closing itself.
+        // Asked of the surface rather than of the mode, so a mode that keeps the same
+        // menu keeps it open and one that changes it never can.
+        if (_openMenu != None && _openMenu != Code(surface.Menu))
         {
-            _menuOpen = false;
+            _openMenu = None;
             _onChoose = null;
         }
 
-        _state = state;
-        var tag = state.HasControls || state.Mode == TransportMode.Refused;
-        var width = (tag ? TagWidth : ChipWidth) * _unit;
-        var height = (tag ? TagHeight : ChipHeight) * _unit;
+        _surface = surface;
+        var width = (surface.ChipPlate ? ChipWidth : TagWidth) * _unit;
+        var height = (surface.ChipPlate ? ChipHeight : TagHeight) * _unit;
         var left = _anchor.X - width;
         var top = _anchor.Y;
 
         Plate(left, top, width, height);
 
         var mark = MarkSize * _unit;
-        SetGlyph(_mark, state.Mark, mark, mark, state.Mode == TransportMode.Refused ? Red : Gold);
+        Show(_mark, surface.Mark);
+        SetGlyph(_mark, state.Mark, mark, mark, surface.Mark.Glyph == TransportGlyph.Warn ? Red : Gold);
         Place(_mark, left + (12 * _unit), top + ((height - mark) / 2), mark, mark);
 
+        // The creator is on every surface there is - it is the whole of what a chip
+        // says - so it is the one label with nothing to decide.
         _creator.Text = state.Identity.Creator;
         _title.Text = state.Identity.VideoTitle ?? string.Empty;
-        _title.Visible = state.Identity.VideoTitle is not null;
+        Show(_title, surface.Title);
 
         // Two lines when there is a video title, one centred line when there is not.
         // The fallback is the design's: a recording whose manifest has no title says
@@ -354,19 +378,41 @@ internal sealed class PlaybackTransportStrip
 
         Place(
             _identity, identityLeft, top + (6 * _unit), IdentityWidth * _unit, height - (12 * _unit));
-        _identity.Visible = tag;
-        _identity.Disabled = !state.Identity.IsLink;
+        Project(_identity, surface.Identity);
 
         // Everything that hangs under the tag hangs off this rather than off the tag,
         // so two of them are never stacked on the same band. Reset before the things
         // that move it, and read by the things that hang below them.
         _hangingBottom = top + height;
 
-        ApplyControls(state, left, top, width, height, tag);
-        ApplyNote(state, left, top, height, width);
-        ApplyLedger(state, left, top, height, width);
+        ApplyControls(state, surface, left, top, width, height);
+        ApplyNote(state, surface, left, top, height, width);
+        ApplyLedger(state, surface, left, top, height, width);
         ApplyMenu(state, left, width);
     }
+
+    /// <summary>
+    /// One element onto one button: what it is, whether it can be pressed, and what it
+    /// looks like - in that order and separately.
+    ///
+    /// The whole of the refactor is here. A Godot control that is not visible receives
+    /// no input, so while one boolean decided both, "present but silent" could not be
+    /// said and the chip had no press target at all. Presence decides visibility,
+    /// pressability decides input, and the face is a third answer that neither of them
+    /// implies.
+    /// </summary>
+    private void Project(Button button, ElementSurface element)
+    {
+        button.Visible = element.Presence != Presence.Absent;
+        button.Disabled = !element.Pressable;
+
+        if (element.Presence == Presence.Silent) Bare(button);
+        else if (element.Presence == Presence.Drawn) Face(button, element.Pressable);
+    }
+
+    /// <summary>The same for something that is only ever looked at.</summary>
+    private static void Show(Control control, ElementSurface element) =>
+        control.Visible = element.Presence != Presence.Absent;
 
     /// <summary>
     /// The bottom of the lowest thing hanging under the tag.
@@ -379,33 +425,34 @@ internal sealed class PlaybackTransportStrip
     private float _hangingBottom;
 
     private void ApplyControls(
-        PlaybackTransport state, float left, float top, float width, float height, bool tag)
+        PlaybackTransport state, TransportSurface surface, float left, float top, float width, float height)
     {
-        foreach (var control in new Control[] { _numerals, _pips, _back, _play, _step })
-        {
-            control.Visible = tag;
-        }
+        Show(_numerals, surface.Counter);
+        Project(_speed, surface.Speed);
+        Project(_back, surface.Back);
+        Project(_play, surface.Play);
+        Project(_step, surface.Step);
 
-        // The chip's own press target, and the only thing in it that takes input: the
-        // whole plate, so the two directions it offers can be reached with a mouse or
-        // with a controller. Same node as the speed control, because the tag and the
-        // chip are one node and the press means whichever of the two the tag is.
-        var chip = !tag && state.Mode == TransportMode.Chip;
-        _speed.Visible = tag || chip;
-        _speedLabel.Visible = tag;
+        // The label belongs to the speed control's face rather than to the node, so a
+        // press target that is present and silent carries no words. That is what lets
+        // the chip be pressed and still say nothing.
+        _speedLabel.Visible = surface.Speed.Presence == Presence.Drawn;
+        _speedLabel.Text = state.SpeedLabel;
 
-        _holdTrack.Visible = false;
-        _holdFill.Visible = false;
+        // Drawn while a hold is actually running, rather than cleared on every pass:
+        // the surface is re-derived on every fact that changes, and a hold that went
+        // out each time would be the stall the drained line exists to rule out.
+        _holdTrack.Visible = _holdFill.Visible = surface.HoldLine && _holding;
 
-        if (!tag)
+        ApplyPips(state.Counter, surface, left + (182 * _unit), top + (36 * _unit));
+
+        // The chip is the one place geometry differs, and it differs completely: one
+        // press target over the whole plate, so a mouse hits it anywhere on the chip
+        // and a controller reaches it by focus.
+        if (surface.ChipPlate)
         {
             _tip.Visible = false;
-            if (chip)
-            {
-                Bare(_speed);
-                Place(_speed, left, top, width, height);
-            }
-
+            Place(_speed, left, top, width, height);
             return;
         }
 
@@ -413,10 +460,6 @@ internal sealed class PlaybackTransportStrip
         _numerals.AddThemeColorOverride(FontColour, state.Counter.LookingAt is null ? Muted : Cream);
         Place(_numerals, left + (178 * _unit), top + (12 * _unit), 48 * _unit, 18 * _unit);
 
-        ApplyPips(state.Counter, left + (182 * _unit), top + (36 * _unit));
-
-        _speedLabel.Text = state.SpeedLabel;
-        Face(_speed, enabled: true);
         Place(_speed, left + (232 * _unit), top + (13 * _unit), SpeedWidth * _unit, ButtonSize * _unit);
         Place(_speedLabel, 0, 0, SpeedWidth * _unit, ButtonSize * _unit);
         _speedLabel.HorizontalAlignment = HorizontalAlignment.Center;
@@ -424,21 +467,25 @@ internal sealed class PlaybackTransportStrip
         var buttonsLeft = left + (266 * _unit);
         var buttonTop = top + (13 * _unit);
         var pitch = (ButtonSize + ButtonGap) * _unit;
-        ApplyButton(_back, state.Back, buttonsLeft, buttonTop);
-        ApplyButton(_play, state.Play, buttonsLeft + pitch, buttonTop);
-        ApplyButton(_step, state.Step, buttonsLeft + (2 * pitch), buttonTop);
+        PlaceButton(_back, surface.Back, buttonsLeft, buttonTop);
+        PlaceButton(_play, surface.Play, buttonsLeft + pitch, buttonTop);
+        PlaceButton(_step, surface.Step, buttonsLeft + (2 * pitch), buttonTop);
     }
 
-    private void ApplyButton(Button button, TransportControl control, float x, float y)
+    private void PlaceButton(Button button, ElementSurface element, float x, float y)
     {
-        button.Disabled = !control.Enabled;
-        Face(button, control.Enabled);
-        SetGlyph(
-            button,
-            control.Glyph,
-            ButtonSize * _unit,
-            (ButtonSize - 10) * _unit,
-            control.Enabled ? Cream : DisabledGlyph);
+        if (element.Presence == Presence.Absent) return;
+
+        if (element.Glyph is { } glyph)
+        {
+            SetGlyph(
+                button,
+                glyph,
+                ButtonSize * _unit,
+                (ButtonSize - 10) * _unit,
+                element.Pressable ? Cream : DisabledGlyph);
+        }
+
         Place(button, x, y, ButtonSize * _unit, ButtonSize * _unit);
     }
 
@@ -450,10 +497,10 @@ internal sealed class PlaybackTransportStrip
     /// filled grey dot, the current one is teal, the ones ahead are hollow, and the
     /// one being looked at is ringed.
     /// </summary>
-    private void ApplyPips(TransportCounter counter, float x, float y)
+    private void ApplyPips(TransportCounter counter, TransportSurface surface, float x, float y)
     {
         Clear(_pips);
-        _pips.Visible = counter.ShowPips && counter.Count > 0;
+        _pips.Visible = surface.Counter.Presence != Presence.Absent && counter.ShowPips && counter.Count > 0;
         if (!_pips.Visible) return;
 
         Place(_pips, 0, 0, _viewport.X, _viewport.Y);
@@ -487,9 +534,10 @@ internal sealed class PlaybackTransportStrip
     /// A rule about how to read these screens rather than a caption, which is why it
     /// is said once, before the first decision anybody watches, and never again.
     /// </summary>
-    private void ApplyNote(PlaybackTransport state, float left, float top, float height, float width)
+    private void ApplyNote(
+        PlaybackTransport state, TransportSurface surface, float left, float top, float height, float width)
     {
-        _note.Visible = state.Note.Length > 0;
+        _note.Visible = surface.Note;
         if (!_note.Visible) return;
 
         _noteText.Text = state.Note;
@@ -519,10 +567,11 @@ internal sealed class PlaybackTransportStrip
     /// answer, so what was read at the time is listed instead. The artwork is the
     /// game's own, asked for by model id.
     /// </summary>
-    private void ApplyLedger(PlaybackTransport state, float left, float top, float height, float width)
+    private void ApplyLedger(
+        PlaybackTransport state, TransportSurface surface, float left, float top, float height, float width)
     {
         Clear(_ledger);
-        _ledger.Visible = state.Ledger.Count > 0;
+        _ledger.Visible = surface.Ledger && state.Ledger.Count > 0;
         if (!_ledger.Visible) return;
 
         var rowHeight = 32 * _unit;
@@ -588,9 +637,10 @@ internal sealed class PlaybackTransportStrip
         if (!_menu.Visible) return;
 
         var rowHeight = 32 * _unit;
-        var menuWidth = (_menuIsChip ? 260 : 96) * _unit;
+        var chip = _openMenu == Code(MenuKind.Chip);
+        var menuWidth = (chip ? 260 : 96) * _unit;
         var menuHeight = (10 * _unit) + (rowHeight * rows.Count);
-        var menuLeft = _menuIsChip ? left + width - menuWidth : left + (192 * _unit);
+        var menuLeft = chip ? left + width - menuWidth : left + (192 * _unit);
         Place(_menu, menuLeft, _hangingBottom + (6 * _unit), menuWidth, menuHeight);
         PlatePolygon(_menu, menuWidth, menuHeight);
 
@@ -631,7 +681,13 @@ internal sealed class PlaybackTransportStrip
     }
 
     /// <summary>
-    /// Which menu is open, if any - and deliberately not the rows themselves.
+    /// Which menu is open, if any - as a number rather than the enum, and deliberately
+    /// not the rows themselves.
+    ///
+    /// An <c>int</c> for the same reason <c>RecordedFightRun._speedIndex</c> is one: a
+    /// <c>MenuKind?</c> field is a generic instantiation over a sibling assembly's
+    /// value type, so computing this class's layout would resolve that sibling one
+    /// phase before the runtime has been taught where the siblings are.
     ///
     /// The indirection is not style, and it cost a startup to learn. The game
     /// enumerates this assembly's types before it calls the mod initializer, and a
@@ -643,9 +699,13 @@ internal sealed class PlaybackTransportStrip
     /// layout is a pointer; the rows are read off the state instead.
     /// See docs/in-game-host.md.
     /// </summary>
-    private bool _menuOpen;
+    private int _openMenu;
 
-    private bool _menuIsChip;
+    /// <summary>No menu open. <see cref="_openMenu"/> holds one more than the kind, so
+    /// zero is the empty answer and no separate flag is needed.</summary>
+    private const int None = 0;
+
+    private static int Code(MenuKind kind) => (int)kind + 1;
 
     private Action<int>? _onChoose;
 
@@ -654,30 +714,38 @@ internal sealed class PlaybackTransportStrip
     /// <summary>The rows the open menu is showing, read from the state rather than
     /// held.</summary>
     private IReadOnlyList<MenuRow> OpenRows =>
-        !_menuOpen ? [] : _menuIsChip ? _state.ChipMenu : _state.SpeedMenu;
+        _openMenu == Code(MenuKind.Chip) ? _state.ChipMenu
+        : _openMenu == Code(MenuKind.Speed) ? _state.SpeedMenu
+        : [];
 
     /// <summary>How the ledger gets the game's own artwork for a model id. Injected so
     /// the tag assembles in a process with no model database.</summary>
     internal void DrawArtWith(Func<string, Texture2D?> art) => _art = art;
 
-    /// <summary>Opens one of the two menus. <paramref name="chip"/> chooses which;
-    /// closing is <see cref="CloseMenu"/>.</summary>
-    internal void OpenMenu(bool chip, Action<int>? chosen)
+    /// <summary>
+    /// Opens whichever menu this surface offers, which is not the caller's to choose.
+    ///
+    /// A caller that named the menu would be re-deriving the mode to name it, and that
+    /// was one of the four places the mode was decided over again. A surface offering
+    /// none opens none.
+    /// </summary>
+    internal void OpenMenu(Action<int>? chosen)
     {
-        _menuOpen = true;
-        _menuIsChip = chip;
+        if (_surface.Menu == MenuKind.None) return;
+
+        _openMenu = Code(_surface.Menu);
         _onChoose = chosen;
         Apply(_state);
     }
 
     internal void CloseMenu()
     {
-        _menuOpen = false;
+        _openMenu = None;
         _onChoose = null;
         Apply(_state);
     }
 
-    internal bool MenuIsOpen => _menuOpen && OpenRows.Count > 0;
+    internal bool MenuIsOpen => _openMenu != None && OpenRows.Count > 0;
 
     private void Choose(int index)
     {
@@ -698,23 +766,68 @@ internal sealed class PlaybackTransportStrip
     /// </summary>
     internal void ShowHold(double fraction)
     {
-        var tag = _state.HasControls;
-        _holdTrack.Visible = tag;
-        _holdFill.Visible = tag;
-        if (!tag) return;
+        if (!BeginLine(out var from, out var to, out var y)) return;
 
-        var width = TagWidth * _unit;
-        var left = _anchor.X - width;
-        var y = _anchor.Y + (TagHeight * _unit) - (3 * _unit);
-        var from = left + (12 * _unit);
-        var to = left + width - (12 * _unit);
-        _holdTrack.Points = [new Vector2(from, y), new Vector2(to, y)];
         _holdFill.Points =
             [new Vector2(from, y), new Vector2(from + ((to - from) * (float)Math.Clamp(fraction, 0, 1)), y)];
     }
 
+    /// <summary>
+    /// The same line, travelling, while the game is between screens.
+    ///
+    /// The two windows where the run cannot be moved - the game putting the next
+    /// screen up after a decision, and the fight opening after the last one - refuse
+    /// every control that would move it, and by the captain's ruling say nothing about
+    /// why. A row of controls that all go dead with nothing else changing reads as
+    /// broken rather than as busy, so the state is shown instead of explained, in the
+    /// vocabulary the tag already has: this is the same line making the same claim it
+    /// always makes, that the transport is waiting on the game.
+    ///
+    /// It carries no fraction, and that is the honest part. Neither window has a known
+    /// length - one is a screen transition, the other is however long the fight takes
+    /// to open - and a line draining toward a deadline would be claiming one.
+    /// </summary>
+    /// <param name="phase">Where in one pass the travelling segment is, from zero to
+    /// one, wrapping.</param>
+    internal void ShowMoving(double phase)
+    {
+        if (!BeginLine(out var from, out var to, out var y)) return;
+
+        var segment = (to - from) * SweepWidth;
+        var head = from - segment + ((float)Math.Clamp(phase, 0, 1) * ((to - from) + segment));
+        _holdFill.Points =
+        [
+            new Vector2(Math.Max(from, head), y),
+            new Vector2(Math.Min(to, head + segment), y),
+        ];
+    }
+
+    /// <summary>How much of the tag's foot the travelling segment covers.</summary>
+    private const float SweepWidth = 0.26f;
+
+    /// <summary>Puts the track up and answers where it runs, or says this surface has
+    /// no line to draw on.</summary>
+    private bool BeginLine(out float from, out float to, out float y)
+    {
+        _holding = true;
+        var draw = _surface.HoldLine;
+        _holdTrack.Visible = draw;
+        _holdFill.Visible = draw;
+
+        var width = TagWidth * _unit;
+        var left = _anchor.X - width;
+        y = _anchor.Y + (TagHeight * _unit) - (3 * _unit);
+        from = left + (12 * _unit);
+        to = left + width - (12 * _unit);
+        if (!draw) return false;
+
+        _holdTrack.Points = [new Vector2(from, y), new Vector2(to, y)];
+        return true;
+    }
+
     internal void HideHold()
     {
+        _holding = false;
         _holdTrack.Visible = false;
         _holdFill.Visible = false;
     }
@@ -852,16 +965,16 @@ internal sealed class PlaybackTransportStrip
     /// carries the meaning and the sentence is one hover away. A refused control still
     /// has one, and it says why it is refused rather than repeating what it would do.
     /// </summary>
-    private void Wire(Button button, Func<string> title, Func<string> body)
+    private void Wire(Button button, Func<ElementSurface> element)
     {
-        button.MouseEntered += () => ShowTooltip(button, title(), body());
+        button.MouseEntered += () => ShowTooltip(button, element());
         button.MouseExited += HideTooltip;
-        button.FocusEntered += () => ShowTooltip(button, title(), body());
+        button.FocusEntered += () => ShowTooltip(button, element());
         button.FocusExited += HideTooltip;
     }
 
-    private string Body(TransportControl control) =>
-        control.Enabled ? control.TooltipBody : control.DisabledReason ?? control.TooltipBody;
+    private void ShowTooltip(Control anchor, ElementSurface element) =>
+        ShowTooltip(anchor, element.TooltipTitle, element.TooltipBody);
 
     private void ShowTooltip(Control anchor, string title, string body)
     {

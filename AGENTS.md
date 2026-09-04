@@ -185,6 +185,9 @@ test. That document also names three limits this path does not remove.
 `RecordedFightEntry` constructs the run, makes the recording's decisions in order and refuses a boundary that is not the recorded one; the mod owns retail timing, presentation, deviation locks and write isolation.
 The watched journey is one long-lived transport and not a popup per step: `PlaybackTransport` in `Sts2PilotTrainer.Trainer` owns what it says, `PlaybackTransportStrip` draws it, `PlaybackTransportDock` parents it to the run's own persistent interface so it survives the map-to-combat transition, and `RecordedFightReveal` lights the game's own selected state without clicking.
 Do not add a second playback path beside it; `docs/in-game-host.md` owns why.
+**What the transport *is* at any moment is derived in one place and never built by hand.**
+`PlaybackTransport.For(phase, facts)` is total and pure - every phase has an answer, null included for the two that draw nothing - and the five shapes behind it are private, so there is no way round it; `TransportSurface` answers present, drawn and pressable separately for every element and the strip projects that table without reading the mode; `RecordedFightRun.Transition` is the only thing that changes the phase and it re-derives, as does every fact that can change under it.
+Four defects came from the one boolean this replaced. `docs/mod-ui-direction.md` owns the table and the rule.
 What those surfaces look like is settled and is `docs/mod-ui-direction.md`: a hanging tag under the game's own meta cluster, icon-only controls with tooltips, the mod's own drawn glyph family where a filled shape moves the run and a hollow one only looks.
 A redesign changes what `PlaybackTransportStrip` draws and nothing else.
 Keeping construction in the engine owner lets `./scripts/arbiter enter-fight` exercise the journey without a scene tree.

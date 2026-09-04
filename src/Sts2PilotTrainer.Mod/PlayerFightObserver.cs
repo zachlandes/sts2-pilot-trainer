@@ -51,6 +51,7 @@ internal sealed class PlayerFightObserver : IDisposable
     private readonly CombatManager _combat;
     private readonly ActionExecutor _executor;
     private readonly Action _fightEnded;
+    private readonly Action _sampled;
 
     private bool _awaitingPlayerTurn;
 
@@ -64,11 +65,13 @@ internal sealed class PlayerFightObserver : IDisposable
     private bool _ended;
     private bool _disposed;
 
-    private PlayerFightObserver(RecordedFightEntry entry, FightCapture capture, Action fightEnded)
+    private PlayerFightObserver(
+        RecordedFightEntry entry, FightCapture capture, Action fightEnded, Action sampled)
     {
         _entry = entry;
         _capture = capture;
         _fightEnded = fightEnded;
+        _sampled = sampled;
         _player = entry.PreparedRun.Players[0];
         _combat = CombatManager.Instance
             ?? throw new InvalidOperationException("This build exposes no CombatManager to observe the fight through.");
@@ -81,9 +84,14 @@ internal sealed class PlayerFightObserver : IDisposable
     /// </summary>
     /// <param name="fightEnded">Called once, on the game's own combat-ended event,
     /// after the capture has been closed one way or the other.</param>
-    internal static PlayerFightObserver Start(RecordedFightEntry entry, FightCapture capture, Action fightEnded)
+    /// <param name="sampled">Called after each action this samples. The transport is a
+    /// function of the run's facts, and whether the player has played anything is one
+    /// of them - without this the chip is derived once at the hand-over and goes on
+    /// stating what was true at turn one for the rest of the fight.</param>
+    internal static PlayerFightObserver Start(
+        RecordedFightEntry entry, FightCapture capture, Action fightEnded, Action sampled)
     {
-        var observer = new PlayerFightObserver(entry, capture, fightEnded);
+        var observer = new PlayerFightObserver(entry, capture, fightEnded, sampled);
         observer._executor.BeforeActionExecuted += observer.BeforeAction;
         observer._executor.AfterActionExecuted += observer.AfterAction;
         observer._combat.TurnStarted += observer.TurnStarted;
@@ -153,6 +161,7 @@ internal sealed class PlayerFightObserver : IDisposable
         _capture.BeginStep(verb, args, _entry.SampleLiveState(), previousFinished);
         _openedSteps++;
         _openStepFinished = false;
+        _sampled();
     }
 
     private void AfterAction(GameAction action)

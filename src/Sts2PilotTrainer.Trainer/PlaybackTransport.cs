@@ -14,6 +14,11 @@ public enum TransportMode
     /// re-shown over a ledger of the ones before it; the run has not moved.</summary>
     LookingBack,
 
+    /// <summary>Every recorded decision is made and the game is opening the fight.
+    /// The tag stays where it was and refuses everything that would move a run with
+    /// nothing left to commit.</summary>
+    Opening,
+
     /// <summary>The fight is the player's. The tag is a chip and says nothing until
     /// it is pressed.</summary>
     Chip,
@@ -173,6 +178,72 @@ public static class PlaybackSpeeds
 }
 
 /// <summary>
+/// Where a watched journey has got to.
+///
+/// It lives here rather than with the run that walks it because the transport's whole
+/// state is derived from it, and a derivation the game has to be running to test is a
+/// derivation nobody tests. The run inside the retail client owns the transitions; this
+/// owns what each one means on screen.
+/// </summary>
+public enum JourneyPhase
+{
+    /// <summary>There is no trainer run.</summary>
+    None,
+
+    /// <summary>The run exists and the game is putting it on screen.</summary>
+    Starting,
+
+    /// <summary>The recording is making its decisions, on the game's own screens, and
+    /// the player is watching.</summary>
+    Watching,
+
+    /// <summary>The fight has been proved to be the recorded one and is the player's.
+    /// Every action they take is being sampled either side.</summary>
+    InFight,
+
+    /// <summary>The fight has ended and its result is on screen. The run still exists
+    /// underneath until the player leaves.</summary>
+    Result,
+
+    /// <summary>A screen could not be driven and the attempt is being torn down.</summary>
+    Refused,
+}
+
+/// <summary>
+/// Everything the transport is derived from, gathered in one place.
+///
+/// A record rather than a dozen arguments, because the point of it is that the whole
+/// input set is named: anything the tag can say is a function of these values and the
+/// phase, so a fact that changes is a re-derivation and never a state assembled by
+/// hand at the site that changed it. Four defects on this surface were exactly that -
+/// a mode applied once and never re-derived, a speed a hand-built state forgot to pass
+/// on - and none of them is expressible once this is the only way in.
+/// </summary>
+/// <param name="Made">The decisions already made, in order, as they were read at the
+/// time.</param>
+/// <param name="Next">The decision about to be made, absent once there is none.</param>
+/// <param name="AtCombatStart">Whether every recorded decision is behind the run, which
+/// is the window in which the game is opening the fight.</param>
+/// <param name="Revealed">Whether the decision about to be made is on the game's own
+/// screen yet. Between committing one and revealing the next it is not, and a step
+/// taken there would commit a decision nobody was shown.</param>
+/// <param name="AnythingPlayed">Whether the player has taken a turn in their own
+/// fight.</param>
+public sealed record TransportFacts(
+    TransportIdentity Identity,
+    IReadOnlyList<PrefightChoice> Made,
+    PrefightChoice? Next,
+    int StepsTaken,
+    int Count,
+    bool AtCombatStart,
+    bool Revealed,
+    int? LookingBackAt,
+    bool Playing,
+    bool NoteShown,
+    PlaybackSpeed Speed,
+    bool AnythingPlayed);
+
+/// <summary>
 /// The playback transport: one long-lived tag that carries the whole watched journey,
 /// and the one owner of what it says at each moment.
 ///
@@ -208,12 +279,169 @@ public sealed record PlaybackTransport(
     string Note,
     IReadOnlyList<MenuRow> ChipMenu)
 {
-    /// <summary>Whether the tag draws its controls at all. A chip has none: during
-    /// the player's own fight nothing is offered unbidden.</summary>
-    public bool HasControls => Mode is TransportMode.Watching or TransportMode.LookingBack;
-
     /// <summary>The mark, or the warning that replaces it while a refusal is up.</summary>
     public TransportGlyph Mark => Mode == TransportMode.Refused ? TransportGlyph.Warn : TransportGlyph.Mark;
+
+    /// <summary>
+    /// What the tag is, element by element - the table the strip draws and the one
+    /// place any of it is decided.
+    ///
+    /// Written out per mode rather than assembled from conditions, because the table
+    /// <em>is</em> the design: reading a column tells you the whole of what one mode
+    /// looks like, and a cell that is wrong is wrong in one legible place. The strip
+    /// projects this and never reads <see cref="Mode"/>.
+    /// </summary>
+    public TransportSurface Surface => Mode switch
+    {
+        TransportMode.Watching => new TransportSurface(
+            ChipPlate: false,
+            Mark: ElementSurface.Shown(Mark),
+            Identity: IdentityElement(Identity.IsLink),
+            Title: ElementSurface.ShownIf(Identity.VideoTitle is not null),
+            Counter: ElementSurface.Shown(),
+            Speed: SpeedElement(pressable: true),
+            Back: Projected(Back, Press.Back),
+            Play: Projected(Play, Press.PlayOrPause),
+            Step: Projected(Step, Press.Step),
+            HoldLine: true,
+            Note: Note.Length > 0,
+            Ledger: false,
+            Menu: MenuKind.Speed),
+
+        TransportMode.LookingBack => new TransportSurface(
+            ChipPlate: false,
+            Mark: ElementSurface.Shown(Mark),
+            Identity: IdentityElement(Identity.IsLink),
+            Title: ElementSurface.ShownIf(Identity.VideoTitle is not null),
+            Counter: ElementSurface.Shown(),
+            Speed: SpeedElement(pressable: true),
+            Back: Projected(Back, Press.Back),
+            Play: Projected(Play, Press.PlayOrPause),
+            Step: Projected(Step, Press.Step),
+            // No hold: look back stops Play, and a line draining under a decision
+            // nobody is about to commit would be saying something untrue.
+            HoldLine: false,
+            Note: false,
+            Ledger: Ledger.Count > 0,
+            Menu: MenuKind.Speed),
+
+        // The tag it was, with everything that moves the run refused. Refused rather
+        // than absent: controls that vanish for a second and come back are the popup
+        // this design replaced.
+        TransportMode.Opening => new TransportSurface(
+            ChipPlate: false,
+            Mark: ElementSurface.Shown(Mark),
+            Identity: IdentityElement(Identity.IsLink),
+            Title: ElementSurface.ShownIf(Identity.VideoTitle is not null),
+            Counter: ElementSurface.Shown(),
+            Speed: SpeedElement(pressable: true),
+            Back: Projected(Back, Press.Back),
+            Play: Projected(Play, Press.PlayOrPause),
+            Step: Projected(Step, Press.Step),
+            // The one thing on the tag that is still moving. A row of controls that
+            // all went dead with nothing else changing reads as broken rather than as
+            // busy, and this window says nothing in words by the captain's ruling, so
+            // what is happening is shown instead.
+            HoldLine: true,
+            Note: false,
+            Ledger: false,
+            Menu: MenuKind.Speed),
+
+        // The mark and the name, and one silent press target over the whole plate.
+        // Silent is what lets the chip say nothing until it is pressed and still be
+        // pressable at all; a video title on a plate this narrow is not "the mark and
+        // the name", so it goes.
+        TransportMode.Chip => new TransportSurface(
+            ChipPlate: true,
+            Mark: ElementSurface.Shown(Mark),
+            Identity: ElementSurface.Absent,
+            Title: ElementSurface.Absent,
+            Counter: ElementSurface.Absent,
+            Speed: new ElementSurface(Presence.Silent, Pressable: true, Press.OpenChipMenu),
+            Back: ElementSurface.Absent,
+            Play: ElementSurface.Absent,
+            Step: ElementSurface.Absent,
+            HoldLine: false,
+            Note: false,
+            Ledger: false,
+            Menu: MenuKind.Chip),
+
+        // Everything refused, the speed included: a tag that has lost its run has not
+        // kept one control that still works.
+        TransportMode.Refused => new TransportSurface(
+            ChipPlate: false,
+            Mark: ElementSurface.Shown(Mark),
+            Identity: IdentityElement(pressable: false),
+            Title: ElementSurface.ShownIf(Identity.VideoTitle is not null),
+            Counter: ElementSurface.Absent,
+            Speed: SpeedElement(pressable: false),
+            Back: Projected(Back, Press.Back),
+            Play: Projected(Play, Press.PlayOrPause),
+            Step: Projected(Step, Press.Step),
+            HoldLine: false,
+            Note: false,
+            Ledger: false,
+            Menu: MenuKind.None),
+
+        _ => throw new ManifestException($"The transport has no surface for {Mode}."),
+    };
+
+    private ElementSurface IdentityElement(bool pressable) => new(
+        Presence.Drawn, pressable, Press.OpenVideo, Glyph: null,
+        Identity.TooltipTitle, Identity.TooltipBody);
+
+    private ElementSurface SpeedElement(bool pressable) => new(
+        Presence.Drawn, pressable, Press.OpenSpeedMenu, Glyph: null,
+        TrainerCopy.SpeedTooltipTitle,
+        pressable ? TrainerCopy.SpeedTooltipBody : TrainerCopy.RefusedDisabledReason);
+
+    /// <summary>
+    /// One control as the strip sees it.
+    ///
+    /// A refused control's tooltip says why it is refused rather than repeating what
+    /// it would have done, and falls back to what it does where no reason has been
+    /// written - which is the case in the two windows whose sentence is
+    /// <see cref="TrainerCopy.BetweenScreensDisabledReason"/>, still unwritten.
+    /// </summary>
+    private static ElementSurface Projected(TransportControl control, Press press) => new(
+        Presence.Drawn,
+        control.Enabled,
+        press,
+        control.Glyph,
+        control.TooltipTitle,
+        control.Enabled ? control.TooltipBody : control.DisabledReason ?? control.TooltipBody);
+
+    /// <summary>
+    /// The one way to get a transport: total, pure, and the same answer for the same
+    /// facts however it is reached.
+    ///
+    /// Total is the part that matters. Every phase a journey can be in has an answer
+    /// here, <c>null</c> included for the two that put nothing on screen, so a phase
+    /// change is a re-derivation rather than a site that has to remember to build the
+    /// right state - which is what four defects on this surface came down to. The five
+    /// shapes below are private because of it: there is no way to construct a state
+    /// that the phase and the facts did not ask for.
+    /// </summary>
+    /// <returns>What the tag says, or null while nothing is docked.</returns>
+    public static PlaybackTransport? For(JourneyPhase phase, TransportFacts facts) => phase switch
+    {
+        JourneyPhase.None or JourneyPhase.Starting => null,
+        JourneyPhase.Watching when facts.AtCombatStart =>
+            OpeningTheFight(facts.Identity, facts.Count, facts.Speed),
+        JourneyPhase.Watching when facts.LookingBackAt is { } step => LookingBackAt(
+            facts.Identity, facts.Made, step, facts.StepsTaken + 1, facts.Count, Next(facts), facts.Speed),
+        JourneyPhase.Watching => Revealing(
+            facts.Identity, Next(facts), facts.StepsTaken + 1, facts.Count, facts.Playing, facts.NoteShown,
+            facts.Revealed, facts.Speed),
+        JourneyPhase.InFight or JourneyPhase.Result =>
+            DuringYourFight(facts.Identity, facts.AnythingPlayed, facts.Speed),
+        JourneyPhase.Refused => Refused(facts.Identity),
+        _ => throw new ManifestException($"A journey cannot be in phase {phase}."),
+    };
+
+    private static PrefightChoice Next(TransportFacts facts) =>
+        facts.Next ?? throw new ManifestException(
+            "The recording has no decision left to show, so the transport cannot be put on one.");
 
     /// <summary>The speed menu, with the current row marked.</summary>
     public IReadOnlyList<MenuRow> SpeedMenu =>
@@ -230,9 +458,13 @@ public sealed record PlaybackTransport(
     /// <param name="playing">Whether Play is running the sequence, which decides
     /// only which glyph the middle button carries.</param>
     /// <param name="noteShown">Whether the once-per-run sentence has been said.</param>
-    public static PlaybackTransport Revealing(
+    /// <param name="revealed">Whether the decision is on the game's own screen yet.
+    /// Between committing one and revealing the next it is not, and a step taken in
+    /// that window would make the next decision without anybody having been shown
+    /// it - which is the whole of what reveal, hold and commit exists to prevent.</param>
+    private static PlaybackTransport Revealing(
         TransportIdentity identity, PrefightChoice choice, int number, int count, bool playing,
-        bool noteShown, PlaybackSpeed speed = PlaybackSpeed.Normal) =>
+        bool noteShown, bool revealed, PlaybackSpeed speed) =>
         new(
             Mode: TransportMode.Watching,
             Identity: identity,
@@ -240,7 +472,7 @@ public sealed record PlaybackTransport(
             Speed: speed,
             Back: BackControl(number > 1),
             Play: PlayControl(playing),
-            Step: StepControl(number, count, Describe(identity.Creator, choice)),
+            Step: StepControl(number, count, Describe(identity.Creator, choice), revealed),
             Ledger: [],
             // Said once, before the first decision anybody watches. A rule about how
             // to read these screens is worth saying once and tiresome above every one.
@@ -259,9 +491,9 @@ public sealed record PlaybackTransport(
     /// <param name="current">The decision the run is actually holding on.</param>
     /// <param name="made">Every decision made so far, in order, as they were read at
     /// the time.</param>
-    public static PlaybackTransport LookingBackAt(
+    private static PlaybackTransport LookingBackAt(
         TransportIdentity identity, IReadOnlyList<PrefightChoice> made, int shown, int current, int count,
-        PrefightChoice next, PlaybackSpeed speed = PlaybackSpeed.Normal)
+        PrefightChoice next, PlaybackSpeed speed)
     {
         if (shown < 1 || shown > made.Count)
         {
@@ -307,12 +539,17 @@ public sealed record PlaybackTransport(
     /// </summary>
     /// <param name="anythingPlayed">Whether the player has taken a turn yet. At turn
     /// one with nothing played there is no end to jump to.</param>
-    public static PlaybackTransport DuringYourFight(TransportIdentity identity, bool anythingPlayed) =>
+    /// <param name="speed">The speed in force, carried through rather than reset. The
+    /// chip does not show it, but the tag it collapsed from did and the tag it becomes
+    /// again will, and a state that quietly answered Normal made a chosen speed appear
+    /// not to have taken.</param>
+    private static PlaybackTransport DuringYourFight(
+        TransportIdentity identity, bool anythingPlayed, PlaybackSpeed speed) =>
         new(
             Mode: TransportMode.Chip,
             Identity: identity,
             Counter: new TransportCounter(0, 0, null),
-            Speed: PlaybackSpeed.Normal,
+            Speed: speed,
             Back: BackControl(false),
             Play: PlayControl(playing: false) with { Enabled = false },
             Step: StepControl(0, 0, string.Empty) with { Enabled = false },
@@ -337,21 +574,21 @@ public sealed record PlaybackTransport(
     /// </summary>
     /// <param name="count">How many decisions the recording made, all of them now
     /// behind the run.</param>
-    public static PlaybackTransport OpeningTheFight(
-        TransportIdentity identity, int count, PlaybackSpeed speed = PlaybackSpeed.Normal) =>
+    private static PlaybackTransport OpeningTheFight(
+        TransportIdentity identity, int count, PlaybackSpeed speed) =>
         new(
-            Mode: TransportMode.Watching,
+            Mode: TransportMode.Opening,
             Identity: identity,
             Counter: new TransportCounter(count, count, null),
             Speed: speed,
-            Back: BackControl(false) with { DisabledReason = TrainerCopy.OpeningTheFightDisabledReason },
+            Back: BackControl(false) with { DisabledReason = TrainerCopy.BetweenScreensDisabledReason },
             Play: PlayControl(playing: false) with
             {
-                Enabled = false, DisabledReason = TrainerCopy.OpeningTheFightDisabledReason,
+                Enabled = false, DisabledReason = TrainerCopy.BetweenScreensDisabledReason,
             },
             Step: StepControl(0, 0, string.Empty) with
             {
-                Enabled = false, DisabledReason = TrainerCopy.OpeningTheFightDisabledReason,
+                Enabled = false, DisabledReason = TrainerCopy.BetweenScreensDisabledReason,
             },
             Ledger: [],
             Note: string.Empty,
@@ -364,7 +601,7 @@ public sealed record PlaybackTransport(
     /// the popup's. Every control is drawn and refused rather than removed, so the
     /// tag does not appear to have lost its controls as well as its run.
     /// </summary>
-    public static PlaybackTransport Refused(TransportIdentity identity) =>
+    private static PlaybackTransport Refused(TransportIdentity identity) =>
         new(
             Mode: TransportMode.Refused,
             Identity: identity,
@@ -397,11 +634,12 @@ public sealed record PlaybackTransport(
     /// tooltips-only ruling: the picture is the lit target on the game's own screen,
     /// and the words are one hover away.
     /// </summary>
-    private static TransportControl StepControl(int number, int count, string caption) => new(
-        TransportGlyph.Step, true, TrainerCopy.StepTooltipTitle,
+    private static TransportControl StepControl(int number, int count, string caption, bool enabled = true) => new(
+        TransportGlyph.Step, enabled, TrainerCopy.StepTooltipTitle,
         count == 0
             ? TrainerCopy.StepTooltipBody
-            : $"{TrainerCopy.StepTooltipBody}\n{TrainerCopy.StepCounter(number, count)} · {caption}");
+            : $"{TrainerCopy.StepTooltipBody}\n{TrainerCopy.StepCounter(number, count)} · {caption}",
+        enabled ? null : TrainerCopy.BetweenScreensDisabledReason);
 
     private static TransportCounter Check(int number, int count)
     {

@@ -117,7 +117,7 @@ public sealed class PlaybackTransportTests
         Assert.Equal(TransportGlyph.Play, Revealing(Blessing, 1, noteShown: true).Play.Glyph);
         Assert.Equal(
             TransportGlyph.Pause,
-            PlaybackTransport.Revealing(NaveGreed, Blessing, 1, 2, playing: true, noteShown: true).Play.Glyph);
+            For(JourneyPhase.Watching, next: Blessing, playing: true).Play.Glyph);
     }
 
     /// <summary>
@@ -128,11 +128,8 @@ public sealed class PlaybackTransportTests
     public void ThePipsAreDrawnOnlyWhileTheyCanBeRead()
     {
         Assert.True(Revealing(Blessing, 1, noteShown: true).Counter.ShowPips);
-        Assert.False(
-            PlaybackTransport.Revealing(NaveGreed, Blessing, 1, 40, false, true).Counter.ShowPips);
-        Assert.Equal(
-            "1 of 40",
-            PlaybackTransport.Revealing(NaveGreed, Blessing, 1, 40, false, true).Counter.Numerals);
+        Assert.False(For(JourneyPhase.Watching, next: Blessing, count: 40).Counter.ShowPips);
+        Assert.Equal("1 of 40", For(JourneyPhase.Watching, next: Blessing, count: 40).Counter.Numerals);
     }
 
     /// <summary>
@@ -143,8 +140,8 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void LookingBackListsTheDecisionsAlreadyMadeWithoutRepeatingTheName()
     {
-        var transport = PlaybackTransport.LookingBackAt(
-            NaveGreed, [Blessing], shown: 1, current: 2, count: 2, next: MapMove);
+        var transport = For(
+            JourneyPhase.Watching, made: [Blessing], next: MapMove, stepsTaken: 1, lookingBackAt: 1);
 
         Assert.Equal(TransportMode.LookingBack, transport.Mode);
         Assert.Equal("1 of 2", transport.Counter.Numerals);
@@ -163,8 +160,8 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void RefusesToLookBackAtADecisionThatWasNeverMade()
     {
-        Assert.Throws<ManifestException>(() => PlaybackTransport.LookingBackAt(
-            NaveGreed, [Blessing], shown: 2, current: 2, count: 2, next: MapMove));
+        Assert.Throws<ManifestException>(() => For(
+            JourneyPhase.Watching, made: [Blessing], next: MapMove, stepsTaken: 1, lookingBackAt: 2));
     }
 
     /// <summary>
@@ -175,12 +172,19 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void DuringThePlayersFightTheTagIsASilentChip()
     {
-        var transport = PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: true);
+        var transport = For(JourneyPhase.InFight, anythingPlayed: true);
 
         Assert.Equal(TransportMode.Chip, transport.Mode);
-        Assert.False(transport.HasControls);
         Assert.Equal("NaveGreed", transport.Identity.Creator);
         Assert.Equal(string.Empty, transport.Note);
+        foreach (var element in new[]
+                 {
+                     transport.Surface.Back, transport.Surface.Play, transport.Surface.Step,
+                     transport.Surface.Counter,
+                 })
+        {
+            Assert.Equal(Presence.Absent, element.Presence);
+        }
     }
 
     /// <summary>
@@ -190,7 +194,7 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void TheChipOffersTwoDirectionsAndNoThird()
     {
-        var menu = PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: true).ChipMenu;
+        var menu = For(JourneyPhase.InFight, anythingPlayed: true).ChipMenu;
 
         Assert.Equal(2, menu.Count);
         Assert.Equal("Jump to the beginning", menu[0].Label);
@@ -209,16 +213,23 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void NothingMovesTheRunWhileTheFightIsOpening()
     {
-        var transport = PlaybackTransport.OpeningTheFight(NaveGreed, count: 2, PlaybackSpeed.Double);
+        var transport = For(JourneyPhase.Watching, atCombatStart: true, speed: PlaybackSpeed.Double);
 
-        Assert.True(transport.HasControls);
+        Assert.Equal(TransportMode.Opening, transport.Mode);
         Assert.Equal("2×", transport.SpeedLabel);
         Assert.Equal("2 of 2", transport.Counter.Numerals);
         foreach (var control in new[] { transport.Back, transport.Play, transport.Step })
         {
             Assert.False(control.Enabled);
-            Assert.Equal("The fight is opening.", control.DisabledReason);
+
+            // No reason, because none has been approved for this window. A refused
+            // control with no reason says what it does, which is what the surface
+            // falls back to rather than inventing a sentence.
+            Assert.Null(control.DisabledReason);
         }
+
+        Assert.Equal(
+            "Makes the rest of the choices, pausing on each one.", transport.Surface.Play.TooltipBody);
     }
 
     /// <summary>At turn one with nothing played there is no attempt to finish, so the
@@ -226,7 +237,7 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void JumpingToTheEndIsRefusedBeforeATurnHasBeenPlayed()
     {
-        var menu = PlaybackTransport.DuringYourFight(NaveGreed, anythingPlayed: false).ChipMenu;
+        var menu = For(JourneyPhase.InFight, anythingPlayed: false).ChipMenu;
 
         Assert.False(menu[1].Enabled);
         Assert.Equal("You have not played a turn yet.", menu[1].DisabledReason);
@@ -240,7 +251,7 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void ARefusalTakesTheMarkAndEveryControl()
     {
-        var transport = PlaybackTransport.Refused(NaveGreed);
+        var transport = For(JourneyPhase.Refused);
 
         Assert.Equal(TransportGlyph.Warn, transport.Mark);
         Assert.False(transport.Back.Enabled);
@@ -255,7 +266,7 @@ public sealed class PlaybackTransportTests
     public void TheMarkIsTheReticleExceptWhileARefusalIsUp()
     {
         Assert.Equal(TransportGlyph.Mark, Revealing(Blessing, 1, noteShown: true).Mark);
-        Assert.Equal(TransportGlyph.Mark, PlaybackTransport.DuringYourFight(NaveGreed, true).Mark);
+        Assert.Equal(TransportGlyph.Mark, For(JourneyPhase.InFight, anythingPlayed: true).Mark);
     }
 
     /// <summary>
@@ -296,8 +307,7 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void TheSpeedMenuMarksTheSpeedInUse()
     {
-        var transport = PlaybackTransport.Revealing(
-            NaveGreed, Blessing, 1, 2, false, true, PlaybackSpeed.OneAndAHalf);
+        var transport = For(JourneyPhase.Watching, next: Blessing, speed: PlaybackSpeed.OneAndAHalf);
 
         Assert.Equal("1.5×", transport.SpeedLabel);
         Assert.Equal(["0.5×", "1×", "1.5×", "2×"], transport.SpeedMenu.Select(row => row.Label));
@@ -314,10 +324,10 @@ public sealed class PlaybackTransportTests
     public void AnotherRecordingIsDescribedByTheSameSentences()
     {
         var other = new TransportIdentity("Someone Else", null, null, null);
-        var blessing = PlaybackTransport.Revealing(
-            other, new PrefightChoice.Blessing(0, "RELIC.ARCANE_SCROLL"), 1, 2, false, true);
-        var move = PlaybackTransport.Revealing(
-            other, new PrefightChoice.MapMove(1, "Event", 0, 7), 2, 2, false, true);
+        var blessing = For(
+            JourneyPhase.Watching, other, next: new PrefightChoice.Blessing(0, "RELIC.ARCANE_SCROLL"));
+        var move = For(
+            JourneyPhase.Watching, other, next: new PrefightChoice.MapMove(1, "Event", 0, 7), stepsTaken: 1);
 
         Assert.Contains("Someone Else took Arcane Scroll", blessing.Step.TooltipBody, StringComparison.Ordinal);
         Assert.Contains(
@@ -327,8 +337,8 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void RefusesAStepNumberTheJourneyDoesNotHave()
     {
-        Assert.Throws<ManifestException>(() => PlaybackTransport.Revealing(NaveGreed, Blessing, 0, 2, false, true));
-        Assert.Throws<ManifestException>(() => PlaybackTransport.Revealing(NaveGreed, Blessing, 3, 2, false, true));
+        Assert.Throws<ManifestException>(() => For(JourneyPhase.Watching, next: Blessing, stepsTaken: -1));
+        Assert.Throws<ManifestException>(() => For(JourneyPhase.Watching, next: Blessing, stepsTaken: 2));
     }
 
     /// <summary>
@@ -340,13 +350,36 @@ public sealed class PlaybackTransportTests
     public void RefusesADecisionItHasNoApprovedCaptionFor()
     {
         var refusal = Assert.Throws<ManifestException>(() =>
-            PlaybackTransport.Revealing(NaveGreed, new UnknownChoice(4), 1, 1, false, true));
+            For(JourneyPhase.Watching, next: new UnknownChoice(4), count: 1));
 
         Assert.Contains("no way to describe", refusal.Message, StringComparison.Ordinal);
     }
 
     private static PlaybackTransport Revealing(PrefightChoice choice, int number, bool noteShown) =>
-        PlaybackTransport.Revealing(NaveGreed, choice, number, count: 2, playing: false, noteShown: noteShown);
+        For(JourneyPhase.Watching, next: choice, stepsTaken: number - 1, noteShown: noteShown);
+
+    /// <summary>
+    /// The one way in, which is the point of the model: a state is what the phase and
+    /// the facts say it is, and there is no other constructor to reach around it with.
+    /// </summary>
+    internal static PlaybackTransport For(
+        JourneyPhase phase,
+        TransportIdentity? identity = null,
+        IReadOnlyList<PrefightChoice>? made = null,
+        PrefightChoice? next = null,
+        int stepsTaken = 0,
+        int count = 2,
+        bool atCombatStart = false,
+        bool revealed = true,
+        int? lookingBackAt = null,
+        bool playing = false,
+        bool noteShown = true,
+        PlaybackSpeed speed = PlaybackSpeed.Normal,
+        bool anythingPlayed = false) =>
+        PlaybackTransport.For(phase, new TransportFacts(
+            identity ?? NaveGreed, made ?? [], next, stepsTaken, count, atCombatStart, revealed,
+            lookingBackAt, playing, noteShown, speed, anythingPlayed))
+        ?? throw new InvalidOperationException($"{phase} puts nothing on screen.");
 
     private sealed record UnknownChoice(int Seq) : PrefightChoice(Seq);
 }

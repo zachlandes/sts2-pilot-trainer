@@ -343,7 +343,9 @@ A module initializer does not rescue this, measured: type enumeration does not t
 **The strip has to be reachable and has to be out of the way.**
 Its root and everything on it except the buttons ignore the mouse, so the map, the event and the player's own fight keep every click that is not on a control.
 Its buttons take focus, so a controller can reach them.
-During the player's own fight it collapses to a chip carrying the trainer's name and nothing else.
+During the player's own fight it collapses to a chip carrying the mark and the creator's name, silent until it is pressed and offering two directions when it is.
+Silent and pressable at once is a distinction the strip has to be able to make: a Godot control that is not visible receives no input, so a chip drawn by hiding the tag's controls has nothing left that can be pressed.
+`Presence.Silent` is what says it - present, taking input over the whole plate, drawing nothing but the hover and focus rim.
 
 **A green content-hash row is not environment parity.**
 The row carries the engine's own sentence saying so, whether it is green or red.
