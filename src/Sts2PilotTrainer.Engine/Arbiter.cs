@@ -21,13 +21,18 @@ public static class Arbiter
         string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null,
         bool measuringBuildDrift = false)
     {
-        progress ??= PlayerProgress.AllUnlocked;
-
         var validation = ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
         {
             throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
         }
+
+        // The recording's own supplied state rather than everything-unlocked, because a
+        // run generated against the wrong unlocks is a different run from the same seed.
+        // derive-boundaries writes the digests this replay produces into the manifest and
+        // stamps them Engine, so getting it wrong here is corrupted provenance on disk
+        // rather than one wrong answer on a console.
+        progress ??= RecordedFightEntry.SuppliedProgressFor(manifest);
 
         var preflight = Preflight.Evaluate(
             manifest.Environment, progress, manifest.Source.Kind, measuringBuildDrift);

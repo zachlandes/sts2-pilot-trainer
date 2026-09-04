@@ -282,6 +282,7 @@ public sealed class RunDriver : IDisposable
         switch (action.Verb)
         {
             case ActionVerb.ChooseNeowBlessing:
+                QueueFollowingCardSelections(action, upcoming);
                 ChooseEventOption(Arg.Int(action, "option_index"));
                 break;
 

@@ -43,7 +43,9 @@ internal static partial class Commands
         // below is a player-facing sentence about a person, so where there is no
         // person there is no caption - the decisions are printed as themselves.
         var creator = RecordingIdentity.CreatorOrNull(recording);
-        var progress = ParseProgress(args);
+        // The state the recording's run is generated against, which is the recorded
+        // player's own where the recording carries it, exactly as replay resolves it.
+        var progress = ParseProgress(args, RecordedFightEntry.SuppliedProgressFor(recording));
 
         Console.WriteLine($"recording       : {recording.RunId}");
         Console.WriteLine(
@@ -227,9 +229,21 @@ internal static partial class Commands
                 "enter-fight takes --fight or --floor, not both. They are different places to be stood.");
         }
 
-        return floor is not null
-            ? FloorEntryPlan.For(recording, Ordinal(floor, "--floor"))
-            : RecordedFightPlan.For(recording, fight is null ? 1 : Ordinal(fight, "--fight"));
+        var selector = floor is not null
+            ? new BoundarySelector
+            {
+                Kind = ReplayBoundary.FloorEntryKind,
+                Floor = Ordinal(floor, "--floor"),
+            }
+            : fight is null
+                ? BoundarySelector.FirstFight
+                : new BoundarySelector
+                {
+                    Kind = ReplayBoundary.CombatStartKind,
+                    Fight = Ordinal(fight, "--fight"),
+                };
+
+        return selector.PlanFor(recording);
     }
 
     private static int Ordinal(string value, string option) =>

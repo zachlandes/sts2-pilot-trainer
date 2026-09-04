@@ -111,7 +111,10 @@ public sealed record ReproductionVerdicts
             {
                 throw new ManifestException(
                     $"A verdict names schema '{verdict.Schema}' and this build reads " +
-                    $"'{ReproductionVerdict.CurrentSchema}'. Re-run gate --rekey for that build.");
+                    $"'{ReproductionVerdict.CurrentSchema}'. A catalogue holding an entry this build cannot " +
+                    "read cannot be repaired by re-keying, because a re-key leaves every other build's entry " +
+                    "where it is: delete this catalogue and run gate --rekey again for each build you want a " +
+                    "verdict on.");
             }
         }
     }

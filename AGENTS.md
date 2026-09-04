@@ -75,8 +75,10 @@ a live game - no video shows draw order or a random stream's position. Reading a
 older manifest is `ManifestJson`'s job and happens in memory; rewriting one on disk
 happens only in `./scripts/arbiter migrate-manifest`, so reading somebody's evidence
 never edits it. Which boundary a command means is written the kind's own way -
-`combat_start:2`, `floor_entry:5`, `turn_start:2.3` - and `BoundarySelector` is the
-one reader of that; an ordinal counted across the list would mean a different thing
+`combat_start:2`, `floor_entry:5`, `turn_start:2.3` for the commands that take
+`--boundary`, `--fight n` or `--floor n` for `enter-fight` - and `BoundarySelector` is
+the one reader of a coordinate and the one place a boundary becomes a plan, whichever
+spelling asked for it; an ordinal counted across the list would mean a different thing
 per kind.
 
 **Whether a recording still reproduces on another build is a verdict, never an edit.**
