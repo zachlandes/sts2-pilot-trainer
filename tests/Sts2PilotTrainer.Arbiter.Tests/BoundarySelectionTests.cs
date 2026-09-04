@@ -6,11 +6,14 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// <summary>
 /// Asking for a boundary by its own coordinate, through the commands a person types.
 ///
-/// Every test here runs the real command against the engine-generated whole-act
-/// history, because the thing being checked is which boundary comes back: a fight
-/// after the first, a floor arrival, a turn of a later fight. A hand-built fixture
-/// would prove the selector parses; only a history that really passes sixty-seven
-/// boundaries proves the command reaches the one asked for.
+/// Every test here runs the real command against an engine-generated history, because
+/// the thing being checked is which boundary comes back: a fight after the first, a
+/// floor arrival, a turn of a later fight. A hand-built fixture would prove the
+/// selector parses; only a history that really passes sixty-seven boundaries proves
+/// the command reaches the one asked for, which is the whole-act history and what all
+/// but one of these use. The exception is the screen-at-boundary history, which is
+/// here for the one thing the whole-act history does not contain: a boundary whose own
+/// action opens a card screen.
 ///
 /// Known gap, the same one <see cref="MigrateManifestTests"/> carries: these need a
 /// prepared game, and CI runs the game-free domain filter, so CI never executes them.

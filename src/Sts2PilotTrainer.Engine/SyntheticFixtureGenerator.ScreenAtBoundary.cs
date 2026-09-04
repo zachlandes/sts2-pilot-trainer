@@ -10,9 +10,12 @@ namespace Sts2PilotTrainer.Engine;
 /// exercises the case where the screen belongs to the action a boundary is named
 /// after. A turn boundary is named after the end of the turn before it, and a power
 /// that acts at the start of a turn opens its screen inside that very call - so the
-/// recorded answer sits after the action a prefix replay stops at, and after the last
-/// step of a plan that walks to it. Both have to hand that action its own selections,
-/// and neither can be shown to against a history that never reaches the case.
+/// recorded answer sits after the action a prefix replay stops at, which is where the
+/// arbiter has to hand it over and cannot be shown to against a history that never
+/// reaches the case. This is that history. It is the arbiter's half only: the entry
+/// path walks to a combat start or a floor arrival, neither of which any history on
+/// this build follows with a selection, and <c>RecordedFightEntry.RemainingPrefix</c>
+/// records why.
 ///
 /// It is a narrow shape on v0.111.0. What opens a card screen at the start of a
 /// player's turn is Tools of the Trade, Tyranny, Entropy or Foregone Conclusion - each

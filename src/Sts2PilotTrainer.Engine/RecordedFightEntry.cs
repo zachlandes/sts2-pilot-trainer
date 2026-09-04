@@ -263,6 +263,20 @@ public sealed class RecordedFightEntry : IDisposable
     /// The plan stops at the boundary's own action, so the last step would otherwise be
     /// handed nothing at all; the screen it opens is answered from the recording's own
     /// selections immediately after it, exactly as a whole replay answers it.
+    ///
+    /// No history on v0.111.0 reaches that last case, and the reason is worth writing
+    /// down because it is a fact about the game rather than about these fixtures.
+    /// <see cref="BoundarySelector.PlanFor"/> refuses a turn boundary, so a plan only
+    /// ever ends at a combat start or a floor arrival. A floor arrival's action is
+    /// always a map move, and <c>MoveToMapNode</c> is the one verb <c>RunDriver.Apply</c>
+    /// hands no upcoming actions at all, so nothing can follow it. A combat start's
+    /// action is that same map move unless an event option began the fight - and of the
+    /// five events that call <c>EventModel.EnterCombatWithoutExitingEvent</c> on this
+    /// build (Punch Off, Fake Merchant, Battleworn Dummy, Dense Vegetation, The Lantern
+    /// Key), not one opens a card-selection screen. The two sets do not intersect. An
+    /// event that both opens a screen and starts its room's fight would disprove this
+    /// and would be the history to generate; the branch is here because the rule is the
+    /// arbiter's, not because this build happens to exercise it.
     /// </summary>
     private IReadOnlyList<ActionRecord> RemainingPrefix() =>
         StepsTaken + 1 < Plan.PrefixActions.Count
