@@ -10,8 +10,14 @@ namespace Sts2PilotTrainer.Replay;
 /// A snapshot is a derived cache and never a source of truth: it is only ever the
 /// result of replaying an action history from run start in a matching environment.
 /// The key is therefore everything that determines that result - the environment
-/// identity plus the exact ordered history - so a snapshot can never be served for
-/// a run that would not actually produce it.
+/// identity plus the exact ordered history the replay consumes - so a snapshot can
+/// never be served for a run that would not actually produce it.
+///
+/// That history runs past the boundary where the boundary's own action opens a card
+/// screen: the screen is answered inside the call that opened it, from
+/// the selections recorded after it, so those selections are part of what produced the
+/// state. <see cref="CardScreenAnswers"/> is the one definition of that window, and
+/// the replay reads the same one.
 /// </summary>
 public sealed record SnapshotCacheKey(
     string BuildVersion,
@@ -65,7 +71,11 @@ public sealed record SnapshotCacheKey(
         manifest.Environment.Ascension.Value,
         HashParts(manifest.Environment.Acts.Value),
         HashModEnvironment(manifest.Environment.Mods.Value),
-        HashActions(manifest.Actions.Where(a => a.Seq <= upToSeq)),
+        HashActions(
+        [
+            .. manifest.Actions.Where(a => a.Seq <= upToSeq),
+            .. CardScreenAnswers.After(manifest.Actions, upToSeq),
+        ]),
         upToSeq);
 
     /// <summary>Filesystem-safe rendering. Readable on purpose: a cache directory

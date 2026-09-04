@@ -268,8 +268,10 @@ public sealed class RecordedFightEntry : IDisposable
     /// down because it is a fact about the game rather than about these fixtures.
     /// <see cref="BoundarySelector.PlanFor"/> refuses a turn boundary, so a plan only
     /// ever ends at a combat start or a floor arrival. A floor arrival's action is
-    /// always a map move, and <c>MoveToMapNode</c> is the one verb <c>RunDriver.Apply</c>
-    /// hands no upcoming actions at all, so nothing can follow it. A combat start's
+    /// always a map move, and a map move is not one of the seven verbs
+    /// <c>RunDriver.Apply</c> hands the upcoming actions to - an opening blessing, an
+    /// event option, a potion, a shop purchase, a rest site option, a card played and
+    /// an end of turn - so nothing can follow it. A combat start's
     /// action is that same map move unless an event option began the fight - and of the
     /// five events that call <c>EventModel.EnterCombatWithoutExitingEvent</c> on this
     /// build (Punch Off, Fake Merchant, Battleworn Dummy, Dense Vegetation, The Lantern
