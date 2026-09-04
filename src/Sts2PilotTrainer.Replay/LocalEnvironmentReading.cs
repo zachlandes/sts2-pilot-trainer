@@ -87,6 +87,19 @@ public sealed record UnlockInventory
     [JsonPropertyName("categories")]
     public required IReadOnlyList<UnlockCategory> Categories { get; init; }
 
+    /// <summary>
+    /// The ids this build ships, for each of the two lists an exact requirement names.
+    ///
+    /// An exact requirement asks for a state made of epoch ids and encounter ids, so
+    /// what has to be checked is that this build knows each of them - not how many of
+    /// anything the reader has. Absent where the reader could not enumerate them,
+    /// which is a refusal rather than a pass: an unchecked requirement reported as met
+    /// is the confident wrong answer this project exists to prevent.
+    /// </summary>
+    [JsonPropertyName("shipped_ids")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, IReadOnlyList<string>>? ShippedIds { get; init; }
+
     public bool IsComplete => Categories.All(category => category.IsComplete);
 
     public IReadOnlyList<UnlockCategory> Incomplete =>

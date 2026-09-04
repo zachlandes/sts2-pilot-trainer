@@ -17,36 +17,271 @@ public class ManifestValidatorTests
     }
 
     [Fact]
-    public void RejectsAVideoManifestWithoutAnEngineProducedCombatStartSnapshot()
+    public void RejectsARecordingWithNoCombatStartBoundary()
     {
-        var manifest = Fixtures.ValidManifest();
-        manifest = manifest with
+        var manifest = Fixtures.ValidManifest() with { Boundaries = [] };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("boundaries names no combat_start", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(FactSource.Observed, Fixtures.Digest)]
+    [InlineData(FactSource.Inferred, Fixtures.Digest)]
+    [InlineData(FactSource.Engine, "sha256:not-a-digest")]
+    public void RejectsAnUnprovenBoundaryDigest(FactSource source, string digest)
+    {
+        var manifest = Fixtures.ValidManifest() with
         {
-            Source = manifest.Source with { CombatStartSnapshotDigest = null },
+            Boundaries = [ReplayBoundary.CombatStart(1, 1, new Fact<string>(digest, source))],
+        };
+
+        Assert.False(ManifestValidator.Validate(manifest).IsValid);
+    }
+
+    /// <summary>A digest a recorder read out of the live game is the other half of
+    /// what a boundary may be established by, and is accepted.</summary>
+    [Fact]
+    public void AcceptsACapturedBoundaryDigest()
+    {
+        var manifest = Fixtures.NativeManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(
+                    1, 1, Fact<string>.Captured(Fixtures.Digest, FactEvidence.AtActionOrdinal(1))),
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Fact]
+    public void RejectsABoundaryKindOutsideTheClosedSet()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                new ReplayBoundary
+                {
+                    Kind = "shop_entry",
+                    AfterSeq = 1,
+                    Digest = Fact<string>.Engine(Fixtures.Digest),
+                },
+            ],
         };
 
         var result = ManifestValidator.Validate(manifest);
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, problem =>
-            problem.Contains("combat_start_snapshot_digest is absent", StringComparison.Ordinal));
+            problem.Contains("which is not one of", StringComparison.Ordinal));
     }
 
-    [Theory]
-    [InlineData(FactSource.Observed, "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")]
-    [InlineData(FactSource.Engine, "sha256:not-a-digest")]
-    public void RejectsAnUnprovenCombatStartSnapshot(FactSource source, string digest)
+    [Fact]
+    public void RejectsABoundaryOutsideTheActionRange()
     {
-        var manifest = Fixtures.ValidManifest();
-        manifest = manifest with
+        var manifest = Fixtures.ValidManifest() with
         {
-            Source = manifest.Source with
-            {
-                CombatStartSnapshotDigest = new Fact<string>(digest, source),
-            },
+            Boundaries = [ReplayBoundary.CombatStart(1, 99, Fact<string>.Engine(Fixtures.Digest))],
         };
 
-        Assert.False(ManifestValidator.Validate(manifest).IsValid);
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("outside the action range", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsACombatStartThatDoesNotSayWhichFight()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                new ReplayBoundary
+                {
+                    Kind = ReplayBoundary.CombatStartKind,
+                    AfterSeq = 1,
+                    Digest = Fact<string>.Engine(Fixtures.Digest),
+                },
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("must name which fight of the run it starts", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsTheSameBoundaryDeclaredTwice()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("more than once", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AcceptsFloorEntryAndTurnStartBoundaries()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.TurnStart(1, 2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Fact]
+    public void RejectsAFloorEntryThatNamesAFight()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)) with { Fight = 1 },
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("names a fight or a turn, which a floor entry is not", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsATurnStartThatDoesNotSayWhichTurn()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                new ReplayBoundary
+                {
+                    Kind = ReplayBoundary.TurnStartKind,
+                    AfterSeq = 1,
+                    Fight = 1,
+                    Digest = Fact<string>.Engine(Fixtures.Digest),
+                },
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("must name both the fight it is in and the turn it starts", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A recording whose verified trace holds three fights and declares a boundary for
+    /// one of them silently offers less than it holds. The rule only has something to
+    /// say once a replay has produced a trace; a manifest as authored has no trace, so
+    /// this is a check on a result rather than on a claim.
+    /// </summary>
+    [Fact]
+    public void RejectsAVerifiedRecordingWithNowhereToEnterAFightItHolds()
+    {
+        var manifest = WithVerifiedTwoFightTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries = [ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest))],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("holds fight 2 and boundaries declares no combat_start", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AcceptsAVerifiedRecordingWithABoundaryForEveryFightItHolds()
+    {
+        var manifest = WithVerifiedTwoFightTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    /// <summary>A verified result whose trace entered combat, won, and entered a
+    /// second. Only the outcome samples matter to the rule under test, so the steps
+    /// carry nothing else.</summary>
+    private static ReplayManifest WithVerifiedTwoFightTrace(ReplayManifest manifest) => manifest with
+    {
+        Verification = new VerificationReport
+        {
+            Status = VerificationStatus.Verified,
+            ArbiterVersion = "test",
+            Preflight = new PreflightResult(true, []),
+            Trace = new ReplayTrace
+            {
+                Steps =
+                [
+                    TraceStep(-1, "none", "none"),
+                    TraceStep(0, "none", "in_progress"),
+                    TraceStep(1, "in_progress", "victory"),
+                    TraceStep(1, "victory", "in_progress"),
+                ],
+            },
+        },
+    };
+
+    private static ReplayStep TraceStep(int seq, string before, string after) => new()
+    {
+        Seq = seq,
+        Verb = "PlayCard",
+        Before = new Dictionary<string, string>(StringComparer.Ordinal) { ["combat.outcome"] = before },
+        After = new Dictionary<string, string>(StringComparer.Ordinal) { ["combat.outcome"] = after },
+    };
+
+    [Fact]
+    public void RejectsASyntheticFixtureThatDeclaresABoundary()
+    {
+        var manifest = Fixtures.SyntheticManifest() with
+        {
+            Boundaries = [ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest))],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("cannot declare boundaries", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -815,4 +1050,395 @@ public class ManifestValidatorTests
         return manifest with { Actions = [.. manifest.Actions, .. appended] };
     }
 
+}
+
+/// <summary>
+/// The rules for a recording this project's own recorder made.
+///
+/// The two that cannot move downstream are the point of this file. A recorder that
+/// joined a run late, and one that stopped and started again, both produce a history
+/// that replays perfectly against a run that is not the one it describes - the native
+/// counterparts of the resumed run and the missing end-of-run reading.
+/// </summary>
+public class NativeManifestValidatorTests
+{
+    [Fact]
+    public void AcceptsAWellFormedNativeRecording()
+    {
+        var result = ManifestValidator.Validate(Fixtures.NativeManifest());
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Fact]
+    public void RejectsARecordingWhoseRecorderDidNotSeeTheRunBegin()
+    {
+        var result = Validate(Fixtures.NativeSourceBlock(witnessedStart: false));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("witnessed_run_start is false", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsARecordingWithAHoleInIt()
+    {
+        var result = Validate(Fixtures.NativeSourceBlock(continuity: NativeSource.BrokenContinuity));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("stopped and started again", StringComparison.Ordinal));
+    }
+
+    /// <summary>Giving up is a completed recording: the run is over, the history is
+    /// whole, and the fights in it were really played.</summary>
+    [Theory]
+    [InlineData("won")]
+    [InlineData("lost")]
+    [InlineData("abandoned")]
+    public void AcceptsEveryWayARunCanEnd(string outcome)
+    {
+        var result = Validate(Fixtures.NativeSourceBlock(outcome: outcome));
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Fact]
+    public void RejectsAnOutcomeOutsideTheClosedSet()
+    {
+        var result = Validate(Fixtures.NativeSourceBlock(outcome: "in progress"));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("source.native.outcome", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAContinuityOutsideTheClosedSet()
+    {
+        var result = Validate(Fixtures.NativeSourceBlock() with { Continuity = "mostly" });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("source.native.continuity 'mostly'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsARecordingWithNoRecorderVersion()
+    {
+        var result = Validate(Fixtures.NativeSourceBlock() with { RecorderVersion = "  " });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("recorder_version is empty", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsANativeSourceWithNoNativeBlockAtAll()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Source = manifest.Source with { Native = null },
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("source.native is absent", StringComparison.Ordinal));
+    }
+
+    /// <summary>A recorder's account of itself is not a reading off a video, and a
+    /// manifest carrying both is claiming two different provenances for one run.</summary>
+    [Fact]
+    public void RejectsANativeSourceCarryingVideoEvidence()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Source = manifest.Source with { RunStart = Fixtures.RunStart() },
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("cannot carry source.run_start", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsANativeSourceWithAnotherExtractionMethod()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Source = manifest.Source with { ExtractionMethod = "manual" },
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("extraction_method 'captured'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAVodSourceCarryingANativeBlock()
+    {
+        var manifest = Fixtures.ValidManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Source = manifest.Source with { Native = Fixtures.NativeSourceBlock() },
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("source.native must be absent", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAnActionTheRecorderDidNotCapture()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Actions =
+            [
+                manifest.Actions[0] with { Source = FactSource.Inferred },
+                .. manifest.Actions.Skip(1),
+            ],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("must be source=captured for a native recording", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsACapturedActionWithNoActionOrdinal()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Actions =
+            [
+                manifest.Actions[0] with { Evidence = FactEvidence.Reasoning("no coordinate") },
+                .. manifest.Actions.Skip(1),
+            ],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("names no action_ordinal", StringComparison.Ordinal));
+    }
+
+    /// <summary>The ordinal is the run's own coordinate for the moment, so one that
+    /// disagrees with the sequence number means the history was reordered after it was
+    /// recorded - which is a different run.</summary>
+    [Fact]
+    public void RejectsAnOrdinalThatDisagreesWithTheSequenceNumber()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Actions =
+            [
+                manifest.Actions[0] with { Evidence = FactEvidence.AtActionOrdinal(7) },
+                .. manifest.Actions.Skip(1),
+            ],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("was captured at action ordinal 7", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsACheckpointFieldTheRecorderDidNotCapture()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Checkpoints =
+            [
+                manifest.Checkpoints[0] with
+                {
+                    Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+                    {
+                        ["combat.energy"] = Fact<string>.Observed("3", FactEvidence.AtVideoTime(1000, "orb")),
+                    },
+                },
+            ],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("must be source=captured", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAnEnvironmentFieldTheRecorderDidNotCapture()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Seed = Fact<string>.Inferred("SFXT47K77RFK", FactEvidence.Reasoning("guessed")),
+            },
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("environment.seed in a native recording", StringComparison.Ordinal));
+    }
+
+    /// <summary>A run has no public clock, so a captured value's coordinate is the
+    /// run's own ordered history. Without one nobody could go back and look.</summary>
+    [Fact]
+    public void RejectsACapturedEnvironmentFieldWithNoActionOrdinal()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Seed = Fact<string>.Captured("SFXT47K77RFK", FactEvidence.Reasoning("no coordinate")),
+            },
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("environment.seed is captured and names no action_ordinal", StringComparison.Ordinal));
+    }
+
+    /// <summary>An identifier this project chose is declared rather than captured, and
+    /// stays acceptable.</summary>
+    [Fact]
+    public void AcceptsADeclaredEnvironmentConstant()
+    {
+        var manifest = Fixtures.NativeManifest();
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Environment = manifest.Environment with { GameMode = Fact<string>.Declared("standard") },
+        });
+
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    private static ManifestValidator.ValidationResult Validate(NativeSource native)
+    {
+        var manifest = Fixtures.NativeManifest();
+        return ManifestValidator.Validate(manifest with
+        {
+            Source = manifest.Source with { Native = native },
+        });
+    }
+}
+
+/// <summary>
+/// The exact unlock requirement: named ids rather than a count, because two states
+/// with the same number of cards unlocked draw from different pools.
+/// </summary>
+public class ExactUnlockValidatorTests
+{
+    [Fact]
+    public void AcceptsAnExactRequirementNamingEveryCategory()
+    {
+        var result = ManifestValidator.Validate(Fixtures.NativeManifest());
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Fact]
+    public void RejectsAnExactRequirementWithNoInventory()
+    {
+        var result = WithUnlocks(new UnlockRequirement
+        {
+            Completeness = UnlockRequirement.ExactCompleteness,
+            Basis = "read from the player's own profile",
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("no inventory is present", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAnExactRequirementWithAnEmptyIdList()
+    {
+        var result = WithUnlocks(UnlockRequirement.Exact(
+            "read from the player's own profile", Fixtures.UnlockInventory() with { EncountersSeen = [] }));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("inventory.encounters_seen is empty", StringComparison.Ordinal));
+    }
+
+    /// <summary>The run count is one of the three values the game's unlock state is
+    /// constructed from, so a state cannot be built from a negative one.</summary>
+    [Fact]
+    public void RejectsANegativeRunCount()
+    {
+        var result = WithUnlocks(UnlockRequirement.Exact(
+            "read from the player's own profile", Fixtures.UnlockInventory() with { Runs = -1 }));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("inventory.runs is -1", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAnInventoryThatNamesTheSameIdTwice()
+    {
+        var result = WithUnlocks(UnlockRequirement.Exact(
+            "read from the player's own profile",
+            Fixtures.UnlockInventory() with { Epochs = ["EPOCH.ONE", "EPOCH.ONE"] }));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("names the same id more than once", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAnInventoryCarryingAnEmptyId()
+    {
+        var result = WithUnlocks(UnlockRequirement.Exact(
+            "read from the player's own profile",
+            Fixtures.UnlockInventory() with { EncountersSeen = ["ENCOUNTER.TEST", "  "] }));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("contains an empty id", StringComparison.Ordinal));
+    }
+
+    /// <summary>Completeness against the build and an enumerated inventory are two
+    /// different requirements, and a manifest carrying both leaves the reader to
+    /// decide which one was meant.</summary>
+    [Fact]
+    public void RejectsACompleteRequirementThatAlsoNamesAnInventory()
+    {
+        var result = WithUnlocks(UnlockRequirement.Complete("experienced creator") with
+        {
+            Inventory = Fixtures.UnlockInventory(),
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("names an inventory alongside completeness 'complete'", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsACompletenessOutsideTheExpressibleSet()
+    {
+        var result = WithUnlocks(new UnlockRequirement { Completeness = "partial", Basis = "test" });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("is not one of: complete, exact", StringComparison.Ordinal));
+    }
+
+    private static ManifestValidator.ValidationResult WithUnlocks(UnlockRequirement requirement)
+    {
+        var manifest = Fixtures.NativeManifest();
+        return ManifestValidator.Validate(manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Unlocks = Fact<UnlockRequirement>.Captured(requirement, FactEvidence.AtActionOrdinal(0)),
+            },
+        });
+    }
 }

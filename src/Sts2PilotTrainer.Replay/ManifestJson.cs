@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace Sts2PilotTrainer.Replay;
@@ -41,18 +42,76 @@ public static class ManifestJson
         }
 
         var version = versionElement.GetInt32();
+        if (version == PreviousManifestVersion) return MigrateFromVersion4(json);
+
         if (version != ReplayManifest.CurrentManifestVersion)
         {
             throw new ManifestException(
                 $"Manifest version {version} is not supported by this build " +
-                $"(which reads version {ReplayManifest.CurrentManifestVersion}). " +
-                "Refusing rather than reading it partially.");
+                $"(which reads version {ReplayManifest.CurrentManifestVersion}, and migrates version " +
+                $"{PreviousManifestVersion} in memory). Refusing rather than reading it partially.");
         }
 
         var manifest = JsonSerializer.Deserialize<ReplayManifest>(json, Options)
             ?? throw new ManifestException("Manifest deserialized to null.");
         ValidateRequiredMembers(manifest, "Manifest");
         return manifest;
+    }
+
+    /// <summary>
+    /// The one older version this build still reads. Version 4 carried a single
+    /// combat-start digest on the source; version 5 carries a list of boundaries, and
+    /// the old scalar is the first entry of that list.
+    /// </summary>
+    public const int PreviousManifestVersion = 4;
+
+    /// <summary>
+    /// Reads a version-4 manifest as the version-5 manifest it means.
+    ///
+    /// In memory and never on disk: a file on disk is migrated once, deliberately, by
+    /// <c>arbiter migrate-manifest</c>, so a reader can never silently rewrite
+    /// somebody's evidence. Nothing is invented here - the digest was engine-produced
+    /// and stays engine-produced, and where the first fight begins is read the same
+    /// way the version-4 entry path read it.
+    /// </summary>
+    private static ReplayManifest MigrateFromVersion4(string json)
+    {
+        var node = JsonNode.Parse(json)?.AsObject()
+            ?? throw new ManifestException("Manifest deserialized to null.");
+        node["manifest_version"] = ReplayManifest.CurrentManifestVersion;
+
+        var source = node["source"]?.AsObject();
+        var digest = source?["combat_start_snapshot_digest"]?.DeepClone();
+        source?.Remove("combat_start_snapshot_digest");
+        node.Remove("boundaries");
+
+        var migrated = JsonSerializer.Deserialize<ReplayManifest>(node.ToJsonString(), Options)
+            ?? throw new ManifestException("Manifest deserialized to null.");
+        ValidateRequiredMembers(migrated, "Manifest");
+
+        if (digest is null) return migrated;
+
+        var fact = digest.Deserialize<Fact<string>>(Options)
+            ?? throw new ManifestException(
+                "This version-4 manifest's combat_start_snapshot_digest could not be read, so its boundary " +
+                "cannot be migrated.");
+
+        int combatStartSeq;
+        try
+        {
+            combatStartSeq = RecordedFightPlan.FirstCombatStartSeq(migrated);
+        }
+        catch (ManifestException refusal)
+        {
+            throw new ManifestException(
+                $"This version-{PreviousManifestVersion} manifest declares a combat-start digest and its history " +
+                $"does not reach a fight, so where that boundary sits cannot be established: {refusal.Message}");
+        }
+
+        return migrated with
+        {
+            Boundaries = [ReplayBoundary.CombatStart(fight: 1, afterSeq: combatStartSeq, digest: fact)],
+        };
     }
 
     public static ReplayManifest Load(string path) => Deserialize(File.ReadAllText(path));

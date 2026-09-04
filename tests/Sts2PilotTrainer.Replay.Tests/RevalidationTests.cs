@@ -55,7 +55,7 @@ public class RevalidationTests
     public void ACleanReplayOntoTheRecordedBoundarySurvivesThePatch()
     {
         var manifest = Manifest();
-        var recorded = manifest.Source.CombatStartSnapshotDigest!.Value;
+        var recorded = manifest.CombatStartDigest()!;
 
         var verdict = Revalidation.Decide(
             manifest, "v0.112.0", "999", "sha256:abc", replayedCleanly: true,
@@ -112,7 +112,7 @@ public class RevalidationTests
         var verdict = Revalidation.Decide(
             Manifest(), "v0.112.0", "999", "sha256:deadbeef", replayedCleanly: true,
             firstDivergence: null,
-            derivedCombatStartDigest: Manifest().Source.CombatStartSnapshotDigest!.Value);
+            derivedCombatStartDigest: Manifest().CombatStartDigest()!);
 
         Assert.Equal("sha256:deadbeef", verdict.ActionHistoryHash);
     }

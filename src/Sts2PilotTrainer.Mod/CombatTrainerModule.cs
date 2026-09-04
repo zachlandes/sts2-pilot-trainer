@@ -36,7 +36,7 @@ internal sealed class CombatTrainerModule : IRunmobileModule
     private readonly Lock _gate = new();
 
     private ReplayManifest? _recording;
-    private RecordedFight? _recordedFight;
+    private RecordedFights? _recordedFights;
     private string? _refusal;
     private bool _examined;
 
@@ -84,14 +84,14 @@ internal sealed class CombatTrainerModule : IRunmobileModule
             : throw new InvalidOperationException($"This build ships no readable recording: {_refusal}");
 
     /// <summary>
-    /// The recording's own line of its fight, replayed through the real engine and
-    /// shipped beside the manifest. Bound to the recording before anything reads it:
-    /// a file that is not the replay of exactly this manifest's fight is refused at
-    /// mod start rather than compared against.
+    /// The recording's own line of each of its fights, replayed through the real
+    /// engine and shipped beside the manifest. Bound to the recording before anything
+    /// reads it: a file that is not the replay of exactly this manifest's fights is
+    /// refused at mod start rather than compared against.
     /// </summary>
-    internal RecordedFight RecordedFight =>
+    internal RecordedFights RecordedFights =>
         Enabled
-            ? _recordedFight!
+            ? _recordedFights!
             : throw new InvalidOperationException($"This build ships no readable recording: {_refusal}");
 
     public void Install(Harmony harmony)
@@ -111,12 +111,12 @@ internal sealed class CombatTrainerModule : IRunmobileModule
             try
             {
                 _recording = ShippedRecording.Read();
-                _recordedFight = ShippedRecording.ReadFight(_recording);
+                _recordedFights = ShippedRecording.ReadFights(_recording);
             }
             catch (Exception ex)
             {
                 _recording = null;
-                _recordedFight = null;
+                _recordedFights = null;
                 _refusal = $"{ex.GetType().Name}: {ex.Message}";
             }
         }
@@ -134,7 +134,7 @@ internal static class ShippedRecording
 {
     private const string ResourceName = "Sts2PilotTrainer.Mod.recording.json";
 
-    private const string FightResourceName = "Sts2PilotTrainer.Mod.recorded-fight.json";
+    private const string FightResourceName = "Sts2PilotTrainer.Mod.recorded-fights.json";
 
     internal static ReplayManifest Read()
     {
@@ -143,12 +143,12 @@ internal static class ShippedRecording
         return ManifestJson.Deserialize(Resource(ResourceName));
     }
 
-    /// <summary>The recording's fight, and the proof it is this recording's.</summary>
-    internal static RecordedFight ReadFight(ReplayManifest recording)
+    /// <summary>The recording's fights, and the proof they are this recording's.</summary>
+    internal static RecordedFights ReadFights(ReplayManifest recording)
     {
-        var fight = RecordedFight.Deserialize(Resource(FightResourceName));
-        fight.Bind(recording);
-        return fight;
+        var fights = RecordedFights.Deserialize(Resource(FightResourceName));
+        fights.Bind(recording);
+        return fights;
     }
 
     private static string Resource(string name)

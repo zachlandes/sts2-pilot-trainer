@@ -53,11 +53,12 @@ public static class EnvironmentPreflight
     /// Everything checkable before a run exists: the build, the content, and the
     /// player prerequisites the run's generation will read.
     /// </summary>
-    public static PreflightResult Prerequisites(EnvironmentIdentity expected, LocalPrerequisites actual) =>
-        Prerequisites(expected, actual, requireHost: false);
+    public static PreflightResult Prerequisites(
+        EnvironmentIdentity expected, LocalPrerequisites actual, string sourceKind = "vod") =>
+        Prerequisites(expected, actual, requireHost: false, sourceKind);
 
     private static PreflightResult Prerequisites(
-        EnvironmentIdentity expected, LocalPrerequisites actual, bool requireHost)
+        EnvironmentIdentity expected, LocalPrerequisites actual, bool requireHost, string sourceKind = "vod")
     {
         var fields = new List<PreflightField>
         {
@@ -74,7 +75,7 @@ public static class EnvironmentPreflight
 
             EvaluateSeedAlphabet(expected.Seed.Value),
             EvaluateSupportedMode(expected.GameMode.Value),
-            EvaluateSourceMods(expected.Mods.Value),
+            EvaluateSourceMods(expected.Mods.Value, sourceKind),
             EvaluateLocalMods(actual.Mods, requireHost),
         };
 
@@ -151,21 +152,32 @@ public static class EnvironmentPreflight
     /// <see cref="LivePreflight"/>.
     /// </summary>
     public static LivePreflight LiveGame(
-        EnvironmentIdentity expected, LocalPrerequisites prerequisites, LocalRunReading? run) =>
-        new(Prerequisites(expected, prerequisites, requireHost: true), RunIdentity(expected, run),
+        EnvironmentIdentity expected, LocalPrerequisites prerequisites, LocalRunReading? run,
+        string sourceKind = "vod") =>
+        new(Prerequisites(expected, prerequisites, requireHost: true, sourceKind), RunIdentity(expected, run),
             run is not null, prerequisites);
 
     private static IEnumerable<PreflightField> EvaluateUnlocks(
         EnvironmentIdentity expected, LocalPrerequisites actual)
     {
         var requirement = expected.Unlocks.Value;
+        if (requirement.IsExact)
+        {
+            foreach (var field in EvaluateExactUnlocks(requirement, actual)) yield return field;
+            yield return EvaluateActUnlocks(expected, actual);
+            yield return EvaluateAscensionCeiling(expected, actual);
+            yield break;
+        }
+
         if (!requirement.IsComplete)
         {
             yield return new PreflightField(
-                "unlocks_requirement", UnlockRequirement.CompleteCompleteness, requirement.Completeness, false,
+                "unlocks_requirement", string.Join(" or ", UnlockRequirement.Completenesses),
+                requirement.Completeness, false,
                 $"The manifest asks for unlock completeness '{requirement.Completeness}', which this arbiter " +
-                "cannot check. Only 'complete' is expressible, because it is the only requirement the build " +
-                "can enumerate for itself - a partial one would name ids nobody read off the video.");
+                $"cannot check. The expressible requirements are " +
+                $"{string.Join(" and ", UnlockRequirement.Completenesses)}, because something can check each: " +
+                "the build enumerates what it ships, and a recorder enumerates what the player had.");
             yield break;
         }
 
@@ -193,6 +205,71 @@ public static class EnvironmentPreflight
         yield return EvaluateActUnlocks(expected, actual);
         yield return EvaluateAscensionCeiling(expected, actual);
     }
+
+    /// <summary>
+    /// An exact requirement names the values the game's own unlock state is
+    /// constructed from, so the question is whether this build knows every id in it.
+    ///
+    /// The state is built and supplied rather than found, which is why the run count
+    /// is reported and not compared: nothing about this installation has to match it
+    /// for the state to be constructible. The two id lists do have to be known here,
+    /// because an id this build never heard of cannot go into a state at all.
+    /// </summary>
+    private static IEnumerable<PreflightField> EvaluateExactUnlocks(
+        UnlockRequirement requirement, LocalPrerequisites actual)
+    {
+        if (requirement.Inventory is not { } inventory)
+        {
+            yield return new PreflightField(
+                "unlocks_requirement", UnlockRequirement.ExactCompleteness, "no inventory", false,
+                "The manifest asks for unlock completeness 'exact' and names no inventory, so there is nothing " +
+                "to check this environment against. An exact requirement is exactly the state it names.");
+            yield break;
+        }
+
+        yield return new PreflightField(
+            "unlocks_requirement", UnlockRequirement.ExactCompleteness, actual.Unlocks.Origin, true);
+
+        foreach (var (name, ids) in inventory.IdLists())
+        {
+            if (actual.Unlocks.ShippedIds is not { } shipped ||
+                !shipped.TryGetValue(name, out var available))
+            {
+                yield return new PreflightField(
+                    $"unlocks_{name}", ids.Count.ToString(CultureInfo.InvariantCulture), "not enumerated", false,
+                    $"The recording names {ids.Count.ToString(CultureInfo.InvariantCulture)} {name} and this " +
+                    "environment did not enumerate what it ships, so the requirement was not checked. An " +
+                    "unchecked requirement reported as met is the answer this project exists to prevent.");
+                continue;
+            }
+
+            var missing = ids.Where(id => !available.Contains(id, StringComparer.Ordinal)).ToList();
+            var sample = missing.Count == 0
+                ? string.Empty
+                : $" Missing, for example: {string.Join(", ", missing.Take(MissingSampleLimit))}.";
+
+            yield return new PreflightField(
+                $"unlocks_{name}",
+                ids.Count.ToString(CultureInfo.InvariantCulture),
+                available.Count.ToString(CultureInfo.InvariantCulture),
+                missing.Count == 0,
+                missing.Count == 0
+                    ? null
+                    : $"This build does not ship {missing.Count.ToString(CultureInfo.InvariantCulture)} of the " +
+                      $"{ids.Count.ToString(CultureInfo.InvariantCulture)} {name} the recording was played " +
+                      $"with, so the unlock state it was generated against cannot be built here and the same " +
+                      $"seed produces a different run.{sample} {UnlockRemediation}");
+        }
+
+        // Reported rather than compared: the state is constructed from the recording's
+        // own run count, so nothing about this installation has to match it.
+        yield return new PreflightField(
+            "unlocks_runs", inventory.Runs.ToString(CultureInfo.InvariantCulture), "supplied to the run", true);
+    }
+
+    /// <summary>How many missing ids a diagnostic names before it stops listing them.
+    /// A shortfall of three hundred cards is a sentence, not a wall of ids.</summary>
+    private const int MissingSampleLimit = 8;
 
     /// <summary>
     /// Whether the acts this run climbs are available in this unlock state.
@@ -360,8 +437,10 @@ public static class EnvironmentPreflight
         }
     }
 
-    private static PreflightField EvaluateSourceMods(ModEnvironment mods)
+    private static PreflightField EvaluateSourceMods(ModEnvironment mods, string sourceKind)
     {
+        if (sourceKind == "native") return EvaluateNativeSourceMods(mods);
+
         var isVanilla = mods.ReportedCount == 0 && mods.Mods.Count == 0;
         var expectedUtilities = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -384,5 +463,46 @@ public static class EnvironmentPreflight
                 : $"This host does not load the unrecognized source environment {mods.Name}: " +
                   $"{string.Join("; ", mods.Mods.Select(mod => mod.Name))}. Refusing because its gameplay " +
                   "behavior has not been bounded.");
+    }
+
+    /// <summary>
+    /// A native recording's mod list is a reading rather than an audit, so the rule is
+    /// a rule rather than a fixed set of names.
+    ///
+    /// The recorder reads the loaded list out of the game it is running in, which is
+    /// why this can be a general rule at all - a video only ever showed a count. Every
+    /// mod that was loaded must declare itself non-gameplay: the content hash is blind
+    /// to behaviour patches, so a mod that says it changes gameplay is one whose
+    /// effect on the run nothing here has bounded.
+    /// </summary>
+    private static PreflightField EvaluateNativeSourceMods(ModEnvironment mods)
+    {
+        var undeclared = mods.Mods.Where(mod => mod.AffectsGameplay is null).ToList();
+        var gameplayAffecting = mods.Mods.Where(mod => mod.AffectsGameplay is true).ToList();
+        var identified = mods.Mods.Count == mods.ReportedCount;
+        var matches = identified && gameplayAffecting.Count == 0 && undeclared.Count == 0;
+
+        return new PreflightField(
+            "mod_environment",
+            $"{mods.Name} ({mods.ReportedCount.ToString(CultureInfo.InvariantCulture)} mod(s))",
+            matches
+                ? "every recorded mod declares itself non-gameplay"
+                : $"{gameplayAffecting.Count.ToString(CultureInfo.InvariantCulture)} gameplay-affecting, " +
+                  $"{undeclared.Count.ToString(CultureInfo.InvariantCulture)} undeclared, " +
+                  $"{(mods.ReportedCount - mods.Mods.Count).ToString(CultureInfo.InvariantCulture)} unidentified",
+            matches,
+            matches
+                ? null
+                : !identified
+                    ? $"The recorder reported {mods.ReportedCount.ToString(CultureInfo.InvariantCulture)} mod(s) " +
+                      $"loaded and identified {mods.Mods.Count.ToString(CultureInfo.InvariantCulture)}. An " +
+                      "unidentified mod is exactly the gap the content hash cannot close."
+                    : undeclared.Count > 0
+                        ? $"This recording lists mod(s) that say nothing about whether they change gameplay: " +
+                          $"{string.Join("; ", undeclared.Select(mod => mod.Name))}. A recorder reads that " +
+                          $"declaration out of each mod's own manifest, so an absence here is a reading that was " +
+                          $"never taken rather than a mod that changes nothing. {ContentHashScope}"
+                        : $"This recording was played with mod(s) that declare themselves gameplay-affecting: " +
+                          $"{string.Join("; ", gameplayAffecting.Select(mod => mod.Name))}. {ContentHashScope}");
     }
 }

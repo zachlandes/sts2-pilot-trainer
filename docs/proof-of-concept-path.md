@@ -217,7 +217,7 @@ captured fight at the combat-start boundary.
 The snapshot machinery already defined that boundary; this is what walks a run to it
 and proves it arrived.
 
-- `RecordedFightPlan` and `CombatStartEquality` in `Sts2PilotTrainer.Replay`: the
+- `RecordedFightPlan` and `BoundaryEquality` in `Sts2PilotTrainer.Replay`: the
   recording's decisions before its fight, the boundary they end at, and the two
   readings a live entry is compared against there.
   Pure, so both have tests on a machine with no game.
@@ -301,10 +301,10 @@ sides to the S1 contract, and show him the result.
 - The recording's side cannot be replayed in the client - one process, one run, and
   it is the player's - so it is produced headlessly by `./scripts/arbiter
   recorded-fight` and shipped inside the mod as
-  `manifests/navegreed-OJ-6QXhNgdg.recorded-fight.json`: the engine-produced trace
-  through the end of the first fight, bound by run id, history hash and combat-start
-  digest.
-  `RecordedFight.Bind` refuses it at mod start unless it is the replay of exactly the
+  `manifests/navegreed-OJ-6QXhNgdg.recorded-fights.json`: the engine-produced trace
+  through the end of each cut fight, bound by run id and, per fight, history hash and
+  combat-start boundary.
+  `RecordedFights.Bind` refuses it at mod start unless it is the replay of exactly the
   shipped manifest, and a test regenerates it in a fresh process and compares.
 - `PlayerFightObserver` in the mod subscribes to the game's own action executor,
   which announces every action before it runs and after it finishes, and to the

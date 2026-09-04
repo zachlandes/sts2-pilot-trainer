@@ -31,7 +31,7 @@ public static class BaseLibReachabilityProbe
             throw new ManifestException("BaseLib reachability evidence must replay a VOD manifest.");
         }
 
-        var preflight = Preflight.Evaluate(manifest.Environment);
+        var preflight = Preflight.Evaluate(manifest.Environment, sourceKind: manifest.Source.Kind);
         if (!preflight.Matches)
         {
             var mismatches = preflight.Fields

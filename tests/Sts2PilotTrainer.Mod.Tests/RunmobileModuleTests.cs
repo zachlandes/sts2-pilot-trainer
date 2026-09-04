@@ -110,7 +110,7 @@ public sealed class RunmobileModuleTests
         Assert.True(module.Enabled, module.Refusal);
         Assert.Null(module.Refusal);
         Assert.NotNull(module.Recording.Source);
-        Assert.NotNull(module.RecordedFight);
+        Assert.NotEmpty(module.RecordedFights.Fights);
     }
 
     /// <summary>

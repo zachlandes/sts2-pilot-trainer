@@ -87,11 +87,11 @@ internal static partial class Commands
         }
 
         var snapshotDigest = DigestOf(snapshot);
-        if (manifest.Source.CombatStartSnapshotDigest is { } declaredSnapshot &&
-            !string.Equals(declaredSnapshot.Value, snapshotDigest, StringComparison.Ordinal))
+        if (manifest.CombatStartDigest() is { } declaredSnapshot &&
+            !string.Equals(declaredSnapshot, snapshotDigest, StringComparison.Ordinal))
         {
             Console.Error.WriteLine(
-                $"The manifest declares combat-start snapshot {declaredSnapshot.Value}, but replaying its " +
+                $"The manifest declares combat-start snapshot {declaredSnapshot}, but replaying its " +
                 $"recorded prefix produced {snapshotDigest}. Refusing a drifted publication boundary.");
             return 1;
         }

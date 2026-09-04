@@ -42,8 +42,6 @@ internal static class Fixtures
             },
             ExtractionMethod = "manual",
             Coverage = "opening turn only",
-            CombatStartSnapshotDigest = Fact<string>.Engine(
-                "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
             RunStart = RunStart(),
             RunSummary = RunSummary(),
         },
@@ -84,9 +82,94 @@ internal static class Fixtures
                 },
             },
         ],
+        Boundaries = [ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Digest))],
     };
 
+    /// <summary>A well-formed engine digest, so a test that is not about digest shape
+    /// does not have to spell one out.</summary>
+    internal const string Digest =
+        "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
     internal static ReplayManifest SyntheticManifest() => SyntheticReplayFixture.Create();
+
+    /// <summary>
+    /// A minimal valid recording made by this project's own recorder.
+    ///
+    /// The same run as <see cref="ValidManifest"/> and a different kind of claim about
+    /// it: every value is what a recorder read out of the live game, so the evidence
+    /// coordinate is the run's own ordered history rather than a public timestamp.
+    /// </summary>
+    internal static ReplayManifest NativeManifest()
+    {
+        var vod = ValidManifest();
+        return vod with
+        {
+            RunId = "test-native-run",
+            Environment = vod.Environment with
+            {
+                BuildVersion = Captured("v0.111.0", 0),
+                BuildDateUtc = Captured("2026.08.14", 0),
+                GameMode = Captured("standard", 0),
+                Seed = Captured("SFXT47K77RFK", 0),
+                ContentHash = Captured("1568834832", 0),
+                Ascension = Fact<int>.Captured(10, FactEvidence.AtActionOrdinal(0)),
+                Unlocks = Fact<UnlockRequirement>.Captured(
+                    UnlockRequirement.Exact("read from the player's own profile", UnlockInventory()),
+                    FactEvidence.AtActionOrdinal(0)),
+                Character = Captured("CHARACTER.IRONCLAD", 0),
+                Acts = Fact<IReadOnlyList<string>>.Captured(
+                    ["ACT.UNDERDOCKS"], FactEvidence.AtActionOrdinal(0)),
+                Mods = Fact<ModEnvironment>.Captured(NativeModEnvironment(), FactEvidence.AtActionOrdinal(0)),
+            },
+            Source = new SourceProvenance
+            {
+                Kind = "native",
+                ExtractionMethod = "captured",
+                Coverage = "the whole run, as it was played",
+                Native = NativeSourceBlock(),
+            },
+            Actions = [.. vod.Actions.Select(action => action with
+            {
+                Source = FactSource.Captured,
+                Evidence = FactEvidence.AtActionOrdinal(action.Seq, runClockMs: 1000 * (action.Seq + 1)),
+            })],
+            Checkpoints = [.. vod.Checkpoints.Select(checkpoint => checkpoint with
+            {
+                Expect = checkpoint.Expect.ToDictionary(
+                    entry => entry.Key,
+                    entry => Captured(entry.Value.Value, checkpoint.AfterSeq),
+                    StringComparer.Ordinal),
+            })],
+        };
+    }
+
+    internal static NativeSource NativeSourceBlock(
+        bool witnessedStart = true,
+        string continuity = NativeSource.ContinuousContinuity,
+        string outcome = "won") => new()
+        {
+            RecorderVersion = "runmobile-recorder/0.1.0",
+            WitnessedRunStart = Fact<bool>.Captured(witnessedStart, FactEvidence.AtActionOrdinal(0)),
+            Continuity = continuity,
+            Outcome = outcome,
+        };
+
+    internal static UnlockStateInventory UnlockInventory() => new()
+    {
+        Epochs = ["EPOCH.ONE", "EPOCH.TWO"],
+        EncountersSeen = ["ENCOUNTER.SLUDGE_SPINNER_WEAK", "ENCOUNTER.TEST"],
+        Runs = 137,
+    };
+
+    internal static ModEnvironment NativeModEnvironment() => new()
+    {
+        Name = "the player's own game",
+        ReportedCount = 1,
+        Mods = [new InstalledMod("Runmobile", "the recorder itself", "reads only", AffectsGameplay: false)],
+    };
+
+    private static Fact<string> Captured(string value, int actionOrdinal) =>
+        Fact<string>.Captured(value, FactEvidence.AtActionOrdinal(actionOrdinal));
 
     internal static ModEnvironment ModEnvironment(int reportedCount = 1) => new()
     {

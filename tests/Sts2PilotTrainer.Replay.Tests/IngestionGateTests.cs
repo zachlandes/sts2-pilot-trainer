@@ -308,6 +308,45 @@ public class IngestionCorruptionTests
     }
 
     [Fact]
+    public void EveryNativeCorruptionIsRefused()
+    {
+        foreach (var corruption in IngestionCorruption.Native)
+        {
+            var result = ManifestValidator.Validate(corruption.Apply(Fixtures.NativeManifest()));
+            Assert.False(result.IsValid, $"'{corruption.Name}' was accepted");
+        }
+    }
+
+    [Fact]
+    public void TheUncorruptedNativeRecordingIsAccepted()
+    {
+        var result = ManifestValidator.Validate(Fixtures.NativeManifest());
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    /// <summary>The set is chosen by kind rather than filtered: damaging a field the
+    /// manifest does not have is not a control.</summary>
+    [Fact]
+    public void ChoosesTheCorruptionSetByWhatTheRecordingIs()
+    {
+        Assert.Equal(IngestionCorruption.All, IngestionCorruption.For(Fixtures.ValidManifest()));
+        Assert.Equal(IngestionCorruption.Native, IngestionCorruption.For(Fixtures.NativeManifest()));
+    }
+
+    /// <summary>
+    /// The native counterparts of the two checks an engine replay cannot make. A
+    /// recorder that joined late, or that stopped and started again, produces a
+    /// history that replays perfectly against a run that is not the one it describes.
+    /// </summary>
+    [Fact]
+    public void CoversTheRecorderThatDidNotWatchTheWholeRun()
+    {
+        var names = IngestionCorruption.Native.Select(c => c.Name).ToList();
+        Assert.Contains("recorder-joined-a-run-in-progress", names);
+        Assert.Contains("recording-has-a-hole-in-it", names);
+    }
+
+    [Fact]
     public void CoversTheResumedRunSpecifically()
     {
         // This is the one an engine replay cannot catch: a resumed run replays

@@ -52,7 +52,7 @@ And one input is a field that no video can fill in:
 
 | Field | Why it is identity |
 |---|---|
-| **unlocks** | The game generates a run's content against the player's unlock state. Nothing in a video shows it, so the manifest records a *requirement* - complete - rather than an observation, and the preflight checks the environment that is about to replay actually meets it. See [the progress problem](#the-progress-problem). |
+| **unlocks** | The game generates a run's content against the player's unlock state. Nothing in a video shows it, so a video manifest records a *requirement* - `complete` - rather than an observation. A recording this project's own recorder made records the state it read, as `exact`. Either way the preflight checks the environment that is about to replay actually meets it. See [the progress problem](#the-progress-problem). |
 
 ## The act variant
 
@@ -179,7 +179,15 @@ The map was byte-identical in both cases.
 Nothing in a video shows a creator's unlock state, so the two halves of the problem
 are answered differently and kept apart.
 
-**What the source player had** is an inference, and stays one. The manifest records
+**A recording made by this project's own recorder answers the first half by reading it.**
+The recorder runs inside the player's game, so `environment.unlocks` can be `exact`: the state itself, `captured`, rather than an inference about a stranger.
+What "the state itself" means is the game's own answer and not ours.
+`UnlockState` is constructed from three values - the epochs unlocked, the encounters seen, and how many runs have been played - and the seven categories the preflight reports are derived properties computed over the model database from those three.
+So `unlocks.inventory` records epochs, encounters seen and the run count, which is what a state can actually be built from; a per-category list of cards and relics would be asking for something no environment could be constructed to satisfy however exactly it matched.
+`Player.UnlockState` is get-only and set in the constructor, so a run keeps the state it was created with.
+The preflight's `exact` arm therefore checks that this build ships every epoch id and every encounter id the recording names, and reports the run count rather than comparing it: the state is supplied to the run being constructed, so nothing about this installation has to match it.
+
+**For a video recording, what the source player had** is an inference, and stays one. The manifest records
 it as `environment.unlocks` with `source: inferred` and the reasoning next to it: the
 run on screen is Ascension 10 on Ironclad, through the Underdocks act variant, on a
 typed seed. The act variant is the part that is measured rather than argued -

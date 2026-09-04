@@ -23,6 +23,7 @@ internal static class Program
             {
                 "gate" => Commands.Gate(args[1..]),
                 "validate" => Commands.Validate(args[1..]),
+                "migrate-manifest" => Commands.MigrateManifest(args[1..]),
                 "preflight" => Commands.Preflight(args[1..]),
                 "preflight-live" => Commands.PreflightLive(args[1..]),
                 "adopt-live" => Commands.AdoptLive(args[1..]),
@@ -146,11 +147,18 @@ internal static class Program
               scene tree, standing in the recording for the player.
 
           recorded-fight  <manifest> [--out <path>]
-              Replay the manifest and write the recording's own line of its first
-              fight: the engine-produced trace through the end of that fight, bound to
-              the history it replayed and to the combat-start snapshot digest. This is
-              the recording's side of the in-game comparison, shipped inside the mod;
-              the retail client cannot replay, so it is produced here.
+              Replay the manifest and write the recording's own line of every fight it
+              declares a combat-start boundary for: the engine-produced trace through
+              the end of each fight, bound to the history it replayed and to that
+              boundary's snapshot digest. This is the recording's side of the in-game
+              comparison, shipped inside the mod; the retail client cannot replay, so
+              it is produced here.
+
+          migrate-manifest <manifest> [--out <path>]
+              Rewrite a manifest on disk in the current format. Reading an older one is
+              something every command does in memory; writing it back happens only
+              here, so a file changes when a person chose it rather than as a side
+              effect of being read.
 
           combat-compare  <manifest> <manifest> [--out <dir>]
               Replay two manifests of the same fight, project each one's completed

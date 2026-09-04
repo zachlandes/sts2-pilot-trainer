@@ -119,4 +119,17 @@ public sealed record ReplayStep
 
     [JsonPropertyName("after")]
     public required IReadOnlyDictionary<string, string> After { get; init; }
+
+    /// <summary>
+    /// Marks a step that happened and was then unwound - a line a player tried before
+    /// rewinding away from it.
+    ///
+    /// Absent by default and read by nothing in these phases. It is here so that when
+    /// a rewind exists, a discarded branch can stay in the trace where it can be
+    /// looked at, rather than needing a format change or, worse, being dropped on the
+    /// floor to keep the trace looking linear.
+    /// </summary>
+    [JsonPropertyName("discarded")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Discarded { get; init; }
 }

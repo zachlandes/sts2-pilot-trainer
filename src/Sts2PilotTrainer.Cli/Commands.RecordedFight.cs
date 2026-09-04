@@ -7,8 +7,15 @@ internal static partial class Commands
 {
     /// <summary>
     /// Replays a manifest through the real engine and writes the recording's own line
-    /// of its first fight: the trace through the end of that fight, bound to the
-    /// history it replayed and to the combat-start snapshot digest.
+    /// of each fight the manifest declares a combat-start boundary for: the trace
+    /// through the end of that fight, bound to the history it replayed and to the
+    /// boundary's combat-start snapshot digest.
+    ///
+    /// Exactly the declared boundaries, and never a fight the replay happened to
+    /// reach. A fight with no declared boundary has no digest a comparison could be
+    /// shown to be against, so cutting one would put a line in the file that nothing
+    /// could ever bind - and deriving the boundary is the arbiter's other job, not
+    /// something to be done implicitly here.
     ///
     /// This is the recording's side of the in-game comparison. The retail client
     /// cannot replay - there is one process and one run in it, and the run is the
@@ -23,7 +30,7 @@ internal static partial class Commands
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var outPath = Args.Value(args, "--out")
             ?? Path.Combine("build", "evidence", Path.GetFileName(manifestPath)
-                .Replace(".replay.json", ".recorded-fight.json", StringComparison.Ordinal));
+                .Replace(".replay.json", ".recorded-fights.json", StringComparison.Ordinal));
         var artifact = EvidenceArtifact.PreparePath(outPath);
         var scratch = Path.Combine(
             Path.GetDirectoryName(artifact.Path)!,
@@ -42,7 +49,7 @@ internal static partial class Commands
     private static int WriteRecordedFight(string manifestPath, EvidenceArtifact artifact, string scratch)
     {
         var manifest = ManifestJson.Load(manifestPath);
-        var verifiedPath = Path.Combine(scratch, "recorded-fight.verified.json");
+        var verifiedPath = Path.Combine(scratch, "recorded-fights.verified.json");
         var replay = SelfProcess.Run("replay", manifestPath, "--out", verifiedPath);
         if (replay.ExitCode != 0)
         {
@@ -57,30 +64,59 @@ internal static partial class Commands
         var trace = verified.Verification?.Trace
             ?? throw new ManifestException(
                 $"The replay of {Path.GetFileName(manifestPath)} wrote no trace, so its fight cannot be recorded.");
-        var combatStart = CombatStartSeq(trace)
-            ?? throw new ManifestException(
-                $"The replay of {Path.GetFileName(manifestPath)} never entered combat, so it has no fight to record.");
-        var snapshot = ReplayPrefix(manifestPath, combatStart, Path.Combine(scratch, "recorded-fight.start.state"));
+        var declared = manifest.Boundaries
+            .Where(boundary => boundary.IsCombatStart && boundary.Fight is not null)
+            .OrderBy(boundary => boundary.Fight!.Value)
+            .ToList();
+        if (declared.Count == 0)
+        {
+            throw new ManifestException(
+                $"{Path.GetFileName(manifestPath)} declares no combat-start boundary, so there is no fight of it " +
+                "a comparison could be shown to be against. Derive one with combat-snapshot first.");
+        }
 
-        var fight = RecordedFight.From(manifest, trace, DigestOf(snapshot));
-        fight.Bind(manifest);
-        artifact.WriteAtomic(fight.Serialize() + "\n");
+        var digests = new SortedDictionary<int, string>();
+        foreach (var boundary in declared)
+        {
+            var state = ReplayPrefix(
+                manifestPath, boundary.AfterSeq,
+                Path.Combine(scratch, $"recorded-fight.{boundary.Fight!.Value}.start.state"));
+            var derived = DigestOf(state);
+            if (!string.Equals(derived, boundary.Digest.Value, StringComparison.Ordinal))
+            {
+                throw new ManifestException(
+                    $"Replaying to {boundary.Describe()} produced {derived} and the recording declares " +
+                    $"{boundary.Digest.Value}. Refusing to record a fight from a boundary that has drifted.");
+            }
+            digests[boundary.Fight!.Value] = derived;
+        }
 
-        var projection = fight.Projection();
-        Console.WriteLine($"recording       : {fight.RunId}");
-        Console.WriteLine($"fight           : {projection.Boundary.GetValueOrDefault("combat.encounter", "unknown")}");
-        Console.WriteLine(
-            $"covered         : actions through {fight.CoveredThroughSeq.ToString(CultureInfo.InvariantCulture)}, " +
-            $"{fight.Trace.Steps.Count.ToString(CultureInfo.InvariantCulture)} sampled step(s)");
-        Console.WriteLine($"history hash    : {fight.ActionHistoryHash}");
-        Console.WriteLine($"snapshot digest : {fight.CombatStartSnapshotDigest}");
-        Console.WriteLine(
-            $"outcome         : {projection.Summary.Outcome} on turn " +
-            $"{projection.Summary.TotalTurns.ToString(CultureInfo.InvariantCulture)}, " +
-            $"{projection.Summary.StartingHealth.ToString(CultureInfo.InvariantCulture)} -> " +
-            $"{projection.Summary.FinalHealth.ToString(CultureInfo.InvariantCulture)} health");
+        var fights = RecordedFights.From(manifest, trace, digests);
+        fights.Bind(manifest);
+        artifact.WriteAtomic(fights.Serialize() + "\n");
+
+        Console.WriteLine($"recording       : {fights.RunId}");
+        foreach (var fight in fights.Fights)
+        {
+            var projection = fights.Projection(fight.Fight);
+            Console.WriteLine();
+            Console.WriteLine(
+                $"fight {fight.Fight.ToString(CultureInfo.InvariantCulture)}         : " +
+                $"{projection.Boundary.GetValueOrDefault("combat.encounter", "unknown")}");
+            Console.WriteLine(
+                $"covered         : actions {fight.CombatStartSeq.ToString(CultureInfo.InvariantCulture)} " +
+                $"through {fight.CoveredThroughSeq.ToString(CultureInfo.InvariantCulture)}, " +
+                $"{fight.Trace.Steps.Count.ToString(CultureInfo.InvariantCulture)} sampled step(s)");
+            Console.WriteLine($"history hash    : {fight.ActionHistoryHash}");
+            Console.WriteLine($"snapshot digest : {fight.CombatStartSnapshotDigest}");
+            Console.WriteLine(
+                $"outcome         : {projection.Summary.Outcome} on turn " +
+                $"{projection.Summary.TotalTurns.ToString(CultureInfo.InvariantCulture)}, " +
+                $"{projection.Summary.StartingHealth.ToString(CultureInfo.InvariantCulture)} -> " +
+                $"{projection.Summary.FinalHealth.ToString(CultureInfo.InvariantCulture)} health");
+        }
         Console.WriteLine();
-        Console.WriteLine($"recorded fight: {Paths.Display(artifact.Path)}");
+        Console.WriteLine($"recorded fights: {Paths.Display(artifact.Path)}");
         return 0;
     }
 }

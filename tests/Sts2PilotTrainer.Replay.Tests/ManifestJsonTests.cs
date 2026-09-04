@@ -62,13 +62,93 @@ public class ManifestJsonTests
         Assert.Contains("Refusing to guess", thrown.Message, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void RefusesAVersionThisBuildDoesNotRead()
+    [Theory]
+    [InlineData(3)]
+    [InlineData(6)]
+    [InlineData(99)]
+    public void RefusesAVersionThisBuildDoesNotRead(int version)
     {
         // Reading a newer manifest partially is how a replay ends up exact-looking and
-        // wrong: the fields this build understands would all agree.
+        // wrong: the fields this build understands would all agree. An older one this
+        // build has no migration for is refused for the mirror-image reason.
         var thrown = Assert.Throws<ManifestException>(
-            () => ManifestJson.Deserialize("""{"manifest_version":99,"run_id":"x"}"""));
+            () => ManifestJson.Deserialize(
+                $$"""{"manifest_version":{{version}},"run_id":"x"}"""));
         Assert.Contains("not supported", thrown.Message, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Version 4 carried one combat-start digest on the source. It reads as the first
+    /// entry of the boundary list, with its engine provenance intact - the value was
+    /// produced by the engine and copying it does not make it less so.
+    /// </summary>
+    [Fact]
+    public void ReadsAVersionFourManifestAsItsVersionFiveMeaning()
+    {
+        var migrated = ManifestJson.Deserialize(VersionFour(Fixtures.ValidManifest()));
+
+        Assert.Equal(ReplayManifest.CurrentManifestVersion, migrated.ManifestVersion);
+        var boundary = Assert.Single(migrated.Boundaries);
+        Assert.Equal(ReplayBoundary.CombatStartKind, boundary.Kind);
+        Assert.Equal(1, boundary.Fight);
+        Assert.Equal(1, boundary.AfterSeq);
+        Assert.Equal(FactSource.Engine, boundary.Digest.Source);
+        Assert.Equal(Fixtures.Digest, boundary.Digest.Value);
+        Assert.True(ManifestValidator.Validate(migrated).IsValid);
+    }
+
+    /// <summary>A version-4 fixture carried no digest, so it migrates to a manifest
+    /// with no boundary rather than to one with an invented boundary.</summary>
+    [Fact]
+    public void MigratesAVersionFourManifestThatDeclaredNoBoundary()
+    {
+        var document = System.Text.Json.Nodes.JsonNode.Parse(VersionFour(Fixtures.ValidManifest()))!.AsObject();
+        document["source"]!.AsObject().Remove("combat_start_snapshot_digest");
+
+        var migrated = ManifestJson.Deserialize(document.ToJsonString());
+
+        Assert.Empty(migrated.Boundaries);
+    }
+
+    /// <summary>Migration happens in memory. The file on disk is only rewritten by
+    /// the command that exists to rewrite it, so reading somebody's evidence never
+    /// edits it.</summary>
+    [Fact]
+    public void MigratingDoesNotTouchTheProvenanceAroundTheBoundary()
+    {
+        var original = Fixtures.ValidManifest();
+        var migrated = ManifestJson.Deserialize(VersionFour(original));
+
+        Assert.Equal(original.RunId, migrated.RunId);
+        Assert.Equal(
+            original.Actions[1].Evidence!.Method, migrated.Actions[1].Evidence!.Method);
+        Assert.Equal(
+            original.Source.RunStart!.FirstObservedRunTimeSeconds.Value,
+            migrated.Source.RunStart!.FirstObservedRunTimeSeconds.Value);
+    }
+
+    /// <summary>The version-4 shape of a manifest: version 4, one combat-start digest
+    /// on the source, no boundary list.</summary>
+    private static string VersionFour(ReplayManifest manifest)
+    {
+        var document = System.Text.Json.Nodes.JsonNode.Parse(
+            ManifestJson.Serialize(manifest with { Boundaries = [], Actions = ReachesAFight(manifest) }))!.AsObject();
+        document["manifest_version"] = ManifestJson.PreviousManifestVersion;
+        document["source"]!.AsObject()["combat_start_snapshot_digest"] =
+            System.Text.Json.Nodes.JsonNode.Parse(
+                System.Text.Json.JsonSerializer.Serialize(
+                    Fact<string>.Engine(Fixtures.Digest), ManifestJson.Options));
+        return document.ToJsonString();
+    }
+
+    /// <summary>The version-4 boundary was found by the first action that could only
+    /// have been taken inside a fight, so a fixture being migrated has to reach one.</summary>
+    private static IReadOnlyList<ActionRecord> ReachesAFight(ReplayManifest manifest) =>
+    [
+        .. manifest.Actions,
+        Fixtures.Action(2, ActionVerb.PlayCard, ("card_id", "CARD.BASH"), ("hand_index", "0")) with
+        {
+            Evidence = FactEvidence.AtVideoTime(80_000, "the card leaves the hand"),
+        },
+    ];
 }

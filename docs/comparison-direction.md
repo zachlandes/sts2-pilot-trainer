@@ -39,7 +39,7 @@ Its report states whether combat remains active at the end of that history, and 
 The smaller sampled boundary in each trace remains descriptive; it is not treated as identity because it omits hidden state such as draw-pile order and RNG positions.
 
 Entering a fight is held to the same boundary from the other direction.
-`RecordedFightEntry` walks a constructed run through the recording's decisions and stops there, and `CombatStartEquality` refuses to hand the fight over unless the live state is the recorded boundary on both readings - every value the recording observed, and the complete canonical snapshot's digest.
+`RecordedFightEntry` walks a constructed run through the recording's decisions and stops there, and `BoundaryEquality` refuses to hand the fight over unless the live state is the recorded boundary on both readings - every value the recording observed, and the complete canonical snapshot's digest.
 That is the same reason the digest is required of a comparison: a boundary that agreed on everything a video shows and differed in a random stream's position is a fight that diverges at the next shuffle.
 There is no entry at any other point, and a fight that has already started is never resumed mid-way.
 

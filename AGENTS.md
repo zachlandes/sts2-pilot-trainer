@@ -16,7 +16,7 @@ dotnet test sts2-pilot-trainer.sln -c Release
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
                             # combat-snapshot | combat-compare | enter-fight | recorded-fight |
-                            # snapshot-restore-probe
+                            # snapshot-restore-probe | migrate-manifest
 ./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
 ```
 
@@ -52,9 +52,18 @@ seconds; on a Homebrew .NET it needs `DOTNET_ROOT` set to the `libexec` director
 `DOTNET_ROLL_FORWARD=Major`.
 
 **Provenance is not decoration.** Every value in a manifest records whether it was
-observed, inferred, engine-produced or declared, and observations carry the video
-timestamp that lets someone re-check them. The validator enforces the parts it can.
-Do not add a field without deciding which of those it is.
+observed, inferred, engine-produced, declared or captured, and each carries the
+coordinates that let someone re-check it - the video timestamp for an observation,
+the action ordinal in the run for a captured value. The validator enforces the parts
+it can. Do not add a field without deciding which of those it is.
+
+**Where a player can be stood is `boundaries[]`, and its kinds are a closed set.**
+`combat_start`, `floor_entry` and `turn_start`, enforced by the validator, because a
+host dispatches on them. Every boundary's digest is engine-produced or captured from
+a live game - no video shows draw order or a random stream's position. Reading an
+older manifest is `ManifestJson`'s job and happens in memory; rewriting one on disk
+happens only in `./scripts/arbiter migrate-manifest`, so reading somebody's evidence
+never edits it.
 
 **Real-engine reproduction is the publication standard.** `gate` is where it is
 written down and computed. No condition may be satisfied by a cheaper proxy - not
@@ -154,7 +163,7 @@ path that writes what the barrier suppresses.
 **A fight a person plays is captured, never re-read.**
 `FightCapture` in `Sts2PilotTrainer.Replay` is the one owner of turning what the game's own action executor announces into the same `ReplayTrace` the headless arbiter produces; `PlayerFightObserver` in the mod only decides when a sample is taken.
 A projection is handed over only once the fight ended inside a sampled action, and a gap between two samples is refused rather than bridged.
-The recording's side of the in-game comparison is `manifests/<id>.recorded-fight.json`, produced by `./scripts/arbiter recorded-fight` from a fresh replay and bound to the manifest by run id, history hash and combat-start digest; regenerate it in the same change that edits the manifest's fight.
+The recording's side of the in-game comparison is `manifests/<id>.recorded-fights.json`, produced by `./scripts/arbiter recorded-fight` from a fresh replay and bound to the manifest per fight by run id, history hash and the combat-start boundary of the same ordinal; regenerate it in the same change that edits the manifest's fights.
 Do not add a second capture path, a turn-level reset, a score or a verdict; `docs/comparison-direction.md` owns why.
 
 **Player-facing wording is a template, never a recording.** Everything the mod says
