@@ -81,13 +81,11 @@ internal static class Program
               from - including that it starts at the run's start, which nothing
               downstream can check. No game needed.
 
-          engine-commands [--probe]
+          engine-commands
               Print which of the game's own members each recorded decision maps onto,
               and check that the mapping still describes this build: every named
               member still exists, and every verb in the format is either mapped or
-              carries a written reason it is not. --probe additionally pushes one
-              action per mapped verb through a real driver, so that a table entry the
-              driver has no case for is caught here rather than mid-replay.
+              carries a written reason it is not.
 
           preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile] [--out <path>]
               Compare a manifest's environment identity and its player prerequisites

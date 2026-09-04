@@ -55,8 +55,9 @@ internal static partial class Commands
         if (Args.Has(args, "--play") && Args.Value(args, "--floor") is not null)
         {
             throw new ManifestException(
-                "--play plays a recorded fight back, and --floor stands you at a floor arrival, where no fight " +
-                "has started. Ask for the fight with --fight n, or enter the floor without --play.");
+                "--play plays a recorded fight back and the unit it compares is a whole fight, which a floor " +
+                "arrival is not the boundary of. Ask for the fight with --fight n, or enter the floor " +
+                "without --play.");
         }
 
         // The state the recording's run is generated against, which is the recorded

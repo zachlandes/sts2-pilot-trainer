@@ -8,9 +8,9 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 ///
 /// Two things can rot it and neither is visible by reading it. The game can rename or
 /// remove a member, which turns a mapping into a sentence about nothing; and this
-/// repository can add a row without the driver's switch gaining a case, which turns a
-/// mapping into a promise the driver cannot keep. The command answers both, and this
-/// runs it - through the CLI, like every other integration test here, because the
+/// repository can add a row without the driver's switch gaining a case, which the
+/// driver itself reports as drift the moment such a verb is applied. The command
+/// answers the first, and this runs it - through the CLI, like every other integration test here, because the
 /// table lives in the project that carries the game assembly and nothing in CI may
 /// reference it.
 /// </summary>
@@ -23,15 +23,6 @@ public class EngineCommandTableTests
 
         Assert.True(result.ExitCode == 0, result.All);
         Assert.Contains("every verb is accounted for", result.Output, StringComparison.Ordinal);
-    }
-
-    [GameFact]
-    public void TheDriverHasACaseForEveryMappedVerb()
-    {
-        var result = Arbiter.Run("engine-commands", "--probe");
-
-        Assert.True(result.ExitCode == 0, result.All);
-        Assert.Contains("case for each mapping", result.Output, StringComparison.Ordinal);
     }
 
     /// <summary>

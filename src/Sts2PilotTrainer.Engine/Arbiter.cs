@@ -134,21 +134,7 @@ public static class Arbiter
             var before = Sample(CanonicalStateProjection.Project(session.RunState));
             try
             {
-                // The rest of the replayed history is passed with each action because
-                // a card screen is answered inside the call that opens it; see RunDriver.
-                //
-                // Truncated at the stop point, and deliberately. A prefix replay may not
-                // reach past its own end for an answer: a history that stops before the
-                // selections an action needs does not contain that decision, and
-                // consuming it anyway would make a partial replay quietly depend on
-                // actions it never replayed. The driver refuses such an action in words,
-                // which is the honest answer for a boundary a truncated history cannot
-                // materialise.
-                var upcoming = ordered
-                    .Skip(index + 1)
-                    .TakeWhile(next => stopAfterSeq is not { } limit || next.Seq <= limit)
-                    .ToList();
-                driver.Apply(action, upcoming);
+                driver.Apply(action, Upcoming(ordered, index, stopAfterSeq));
             }
             catch (EngineException ex)
             {
@@ -234,6 +220,34 @@ public static class Arbiter
                 Diagnostics = diagnostics,
             },
             finalState);
+    }
+
+    /// <summary>
+    /// The rest of the history an action is allowed to read, which is where a card
+    /// screen it opens is answered from.
+    ///
+    /// Truncated at the stop point, because a prefix replay may not reach past its own
+    /// end for a later action's decisions - that would make a partial replay quietly
+    /// depend on actions it never replayed. The one exception is the action standing at
+    /// the stop point: the selections immediately after it are that action's own answer,
+    /// so a boundary taken there is materialised from the manifest rather than refused
+    /// for an omission the truncation caused. Where the manifest supplies fewer than the
+    /// screen asks for, the driver still refuses in words.
+    /// </summary>
+    private static IReadOnlyList<ActionRecord> Upcoming(
+        IReadOnlyList<ActionRecord> ordered, int index, int? stopAfterSeq)
+    {
+        var rest = ordered.Skip(index + 1);
+        if (stopAfterSeq is not { } limit) return rest.ToList();
+
+        var within = rest.TakeWhile(next => next.Seq <= limit).ToList();
+        if (ordered[index].Seq != limit) return within;
+
+        return within
+            .Concat(rest
+                .SkipWhile(next => next.Seq <= limit)
+                .TakeWhile(next => next.Verb == ActionVerb.SelectCardFromScreen))
+            .ToList();
     }
 
     /// <summary>

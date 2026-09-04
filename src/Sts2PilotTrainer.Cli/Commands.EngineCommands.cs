@@ -14,18 +14,9 @@ internal static partial class Commands
     /// them - and a shared table nobody can inspect is a shared table that drifts.
     /// It is also the patch-day question in one line: after a game update, does this
     /// build still know how to make every decision it claims to?
-    ///
-    /// <c>--probe</c> answers the other half. Reflection says the game still has the
-    /// member; only pushing a verb through the driver says the driver still has a
-    /// case for it. Each mapped verb is applied to a freshly constructed run, and the
-    /// only outcome this rejects is the driver reporting that the table names a
-    /// command it has no case for. Every other refusal is the verb's own, which is
-    /// exactly what a decision made in the wrong place should produce.
     /// </summary>
     internal static int EngineCommandsCommand(string[] args)
     {
-        var probe = Args.Has(args, "--probe");
-
         Console.WriteLine($"build    : {GameIdentity.Read().BuildVersion}");
         Console.WriteLine();
 
@@ -43,15 +34,11 @@ internal static partial class Commands
         }
 
         var problems = EngineCommands.Verify().ToList();
-        if (probe) problems.AddRange(EngineCommands.ProbeDriver());
 
         Console.WriteLine();
         if (problems.Count == 0)
         {
-            Console.WriteLine(probe
-                ? "sound - every mapped member exists, every verb is accounted for, and the driver has a " +
-                  "case for each mapping."
-                : "sound - every mapped member exists on this build and every verb is accounted for.");
+            Console.WriteLine("sound - every mapped member exists on this build and every verb is accounted for.");
             return 0;
         }
 

@@ -170,7 +170,6 @@ public class RewardAndScreenVerbTests
     }
 
     [GameTheory]
-    [InlineData(15, 0)]
     [InlineData(16, 1)]
     public void APartialReplayCannotConsumeSelectionsOutsideItsHistory(
         int stopAfter, int suppliedSelections)
@@ -181,6 +180,25 @@ public class RewardAndScreenVerbTests
         Assert.Contains("asked for 2 card(s)", result.All, StringComparison.Ordinal);
         Assert.Contains(
             $"the manifest supplies {suppliedSelections}", result.All, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void TheActionAtTheStopPointStillGetsTheSelectionsTheManifestSuppliesForIt()
+    {
+        // Action 15 is the Waterlogged Scriptorium event, which enchants two cards off
+        // a screen answered by actions 16 and 17. Stopping there is how a boundary
+        // whose after_seq opens a screen is snapshotted, and those two selections are
+        // that action's own answer rather than history it never replayed - so it
+        // materialises instead of being refused for an omission the truncation caused.
+        var statePath = Path.Combine(TempDir(), "stop-point.state");
+
+        var result = Arbiter.Run(
+            "replay", Arbiter.Manifest, "--stop-after", "15", "--state-out", statePath);
+
+        Assert.True(result.Verified, result.All);
+        Assert.DoesNotContain("asked for 2 card(s)", result.All, StringComparison.Ordinal);
+        Assert.Contains(
+            "CARD.BASH@ENCHANTMENT.STEADY", File.ReadAllText(statePath), StringComparison.Ordinal);
     }
 
     [GameFact]

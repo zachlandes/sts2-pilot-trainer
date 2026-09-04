@@ -382,7 +382,7 @@ public sealed class RunDriver : IDisposable
         EngineCommands.For(action.Verb) is { } mapped
             ? new EngineException(
                 $"Action {action.Seq} uses verb '{action.Verb}', which EngineCommands maps onto " +
-                $"{mapped.Describe()} and this driver {EngineCommands.SwitchDriftMarker}. The table and " +
+                $"{mapped.Describe()} and this driver has no case for. The table and " +
                 "the switch have drifted; one of the two is wrong.")
             : new EngineException(
                 $"Action {action.Seq} uses verb '{action.Verb}', which the format names but this build " +
