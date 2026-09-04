@@ -335,7 +335,8 @@ internal static class Program
         var existingReceipt = Path.Combine(target, ReceiptName);
         if (File.Exists(existingReceipt))
         {
-            RefuseDriftedArchive(existingReceipt, identity, installHash);
+            RefuseDriftedArchive(
+                existingReceipt, identity.Commit, installHash, outputHashes);
         }
 
         Directory.CreateDirectory(target);
@@ -362,34 +363,70 @@ internal static class Program
     }
 
     /// <summary>
-    /// Refuses to archive over a copy of the same version prepared from a different
-    /// installation.
+    /// Refuses to archive over a copy of the same version whose build identity or
+    /// deterministic prepared outputs differ.
     ///
-    /// Compared on the pristine assembly's hash and the build commit, which are what
-    /// the receipt records about the game. Not on the prepared files' bytes: those are
-    /// rewritten by the IL patcher on every run and do not reproduce byte for byte, so
-    /// comparing them would report every second bootstrap as version drift and teach
-    /// everyone to ignore the one that mattered.
+    /// The patched <c>sts2.dll</c> is the only prepared output excluded: the IL
+    /// patcher rewrites it on every bootstrap, and Mono.Cecil does not reproduce it
+    /// byte for byte. Its identity is carried by <c>pristine_sts2_sha256</c> instead.
+    /// Every sibling assembly and release-info file is deterministic, including
+    /// whether the file is present at all.
     /// </summary>
-    private static void RefuseDriftedArchive(
-        string existingReceipt, InstalledIdentity identity, string installHash)
+    internal static void RefuseDriftedArchive(
+        string existingReceipt, string currentCommit, string installHash,
+        IReadOnlyDictionary<string, string> currentOutputHashes)
     {
         var archived = JsonNode.Parse(File.ReadAllText(existingReceipt))!.AsObject();
         var archivedInstall = archived["pristine_sts2_sha256"]?.GetValue<string>();
         var archivedCommit = archived["build"]?["commit"]?.GetValue<string>();
+        var archivedOutputs = archived["prepared_output_sha256"] as JsonObject;
+        var differences = new List<string>();
 
-        if (archivedInstall == installHash && archivedCommit == identity.Commit) return;
+        if (archivedCommit != currentCommit)
+        {
+            differences.Add(
+                $"commit: archived {archivedCommit ?? "unknown"}, this run {currentCommit}");
+        }
+        if (archivedInstall != installHash)
+        {
+            differences.Add(
+                $"pristine sts2.dll: archived {Abbreviate(archivedInstall)}, " +
+                $"this run {Abbreviate(installHash)}");
+        }
+
+        if (archivedOutputs is null)
+        {
+            differences.Add("prepared_output_sha256: archived receipt is missing it");
+        }
+        else
+        {
+            var outputNames = archivedOutputs.Select(entry => entry.Key)
+                .Union(currentOutputHashes.Keys, StringComparer.Ordinal)
+                .Where(name => !name.Equals("sts2.dll", StringComparison.Ordinal))
+                .Order(StringComparer.Ordinal);
+            foreach (var name in outputNames)
+            {
+                var archivedHash = archivedOutputs[name]?.GetValue<string>();
+                currentOutputHashes.TryGetValue(name, out var currentHash);
+                if (archivedHash == currentHash) continue;
+
+                differences.Add(
+                    $"prepared output {name}: archived {Abbreviate(archivedHash)}, " +
+                    $"this run {Abbreviate(currentHash)}");
+            }
+        }
+
+        if (differences.Count == 0) return;
 
         throw new InvalidOperationException(
             $"""
-             Build {identity.Version} is already archived, from a different installation.
+             This build version is already archived, but its prepared set differs.
 
-             archived : commit {archivedCommit ?? "unknown"}, sts2.dll {Abbreviate(archivedInstall)}
-             this run : commit {identity.Commit}, sts2.dll {Abbreviate(installHash)}
+             {string.Join(Environment.NewLine, differences.Select(difference => "- " + difference))}
 
-             One version string is naming two different builds. Refusing to overwrite the archived copy:
-             it is the evidence of what that build was, and a recording verified against it would
-             silently be verified against something else. Archive this one under a directory of its own.
+             Refusing to overwrite the archived copy: it is the evidence of what that build was,
+             and a recording verified against it would silently be verified against something else.
+             Archive this one under a directory of its own.
              """);
     }
 

@@ -1,5 +1,7 @@
 using System.Diagnostics;
 
+using System.Text.Json;
+
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
 public class BootstrapSafetyTests
@@ -42,6 +44,89 @@ public class BootstrapSafetyTests
         // have followed. A refusal that arrived after the copying had started would
         // still be a refusal, and would not be this one.
         Assert.DoesNotContain("build        :", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AcceptsAnIdenticalPreparedSetDespitePatchedSts2BytesChanging()
+    {
+        var receipt = WriteArchiveReceipt(new Dictionary<string, string>
+        {
+            ["sts2.dll"] = "archived-patched-bytes",
+            ["0Harmony.dll"] = "same-harmony",
+            ["release_info.json"] = "same-release-info",
+        });
+        var current = new Dictionary<string, string>
+        {
+            ["sts2.dll"] = "new-patched-bytes",
+            ["0Harmony.dll"] = "same-harmony",
+            ["release_info.json"] = "same-release-info",
+        };
+
+        Sts2PilotTrainer.Bootstrap.Program.RefuseDriftedArchive(
+            receipt, "same-commit", "same-pristine-sts2", current);
+    }
+
+    [Fact]
+    public void RefusesAChangedPreparedSiblingBeforeItCanBeOverwritten()
+    {
+        var receipt = WriteArchiveReceipt(new Dictionary<string, string>
+        {
+            ["sts2.dll"] = "archived-patched-bytes",
+            ["0Harmony.dll"] = "archived-harmony",
+        });
+        var current = new Dictionary<string, string>
+        {
+            ["sts2.dll"] = "new-patched-bytes",
+            ["0Harmony.dll"] = "current-harmony",
+        };
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            Sts2PilotTrainer.Bootstrap.Program.RefuseDriftedArchive(
+                receipt, "same-commit", "same-pristine-sts2", current));
+
+        Assert.Contains("prepared output 0Harmony.dll", error.Message, StringComparison.Ordinal);
+        Assert.Contains("archived archived-harmony", error.Message, StringComparison.Ordinal);
+        Assert.Contains("this run current-harmony", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void RefusesAPreparedSiblingPresentOnOnlyOneSide(bool presentInArchive)
+    {
+        var archived = new Dictionary<string, string> { ["sts2.dll"] = "archived-patched-bytes" };
+        var current = new Dictionary<string, string> { ["sts2.dll"] = "new-patched-bytes" };
+        if (presentInArchive)
+        {
+            archived["0Harmony.dll"] = "harmony";
+        }
+        else
+        {
+            current["0Harmony.dll"] = "harmony";
+        }
+        var receipt = WriteArchiveReceipt(archived);
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            Sts2PilotTrainer.Bootstrap.Program.RefuseDriftedArchive(
+                receipt, "same-commit", "same-pristine-sts2", current));
+
+        Assert.Contains("prepared output 0Harmony.dll", error.Message, StringComparison.Ordinal);
+        Assert.Contains("unknown", error.Message, StringComparison.Ordinal);
+    }
+
+    private static string WriteArchiveReceipt(IReadOnlyDictionary<string, string> outputHashes)
+    {
+        var directory = Path.Combine(
+            Arbiter.RepoRoot, "build", "test-scratch", $"archive-receipt-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var path = Path.Combine(directory, "prepared-assembly.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(new
+        {
+            build = new { commit = "same-commit" },
+            pristine_sts2_sha256 = "same-pristine-sts2",
+            prepared_output_sha256 = outputHashes,
+        }));
+        return path;
     }
 
     private static string OutsideThisWorktree(string name) =>

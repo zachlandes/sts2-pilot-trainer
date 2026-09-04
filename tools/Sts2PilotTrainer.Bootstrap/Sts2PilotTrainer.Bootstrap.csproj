@@ -11,4 +11,8 @@
     <ProjectReference Include="../../src/Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sts2PilotTrainer.Arbiter.Tests" />
+  </ItemGroup>
+
 </Project>
