@@ -357,6 +357,54 @@ public class ManifestValidatorTests
         Assert.True(result.IsValid, result.Describe());
     }
 
+    [Fact]
+    public void RejectsACombatStartForAFightTheRecordingNeverFinishes()
+    {
+        var manifest = WithTwoFinishedFightsAndAnUnfinishedThird(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(3, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("the start of fight 3", StringComparison.Ordinal) &&
+            problem.Contains("never finishes that fight", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AcceptsBoundariesForOnlyTheFightsTheRecordingFinishes()
+    {
+        var manifest = WithTwoFinishedFightsAndAnUnfinishedThird(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    /// <summary>A verified result whose trace won two fights and stopped inside a
+    /// third, the shape of a recording that ends mid-fight.</summary>
+    private static ReplayManifest WithTwoFinishedFightsAndAnUnfinishedThird(ReplayManifest manifest) =>
+        WithVerifiedTrace(manifest,
+            TraceStep(-1, "none", "none"),
+            TraceStep(0, "none", "in_progress"),
+            TraceStep(0, "in_progress", "victory"),
+            TraceStep(1, "victory", "in_progress"),
+            TraceStep(1, "in_progress", "victory"),
+            TraceStep(1, "victory", "in_progress"));
+
     /// <summary>
     /// A recording that stops two turns into a fight offers nowhere to be stood in it:
     /// there is no completed recorded line to compare a player against, and

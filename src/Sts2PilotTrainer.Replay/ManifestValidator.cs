@@ -555,12 +555,13 @@ public static partial class ManifestValidator
     /// reason a boundary carries a digest at all.
     ///
     /// Where a manifest carries a verified whole-run trace, every fight the trace
-    /// holds and finishes must have a boundary: a run whose third fight has nowhere to
-    /// be entered from is a recording that silently offers less than it holds. A fight
-    /// the recording stops in the middle of is not a place a player can be stood -
-    /// there is no completed recorded line to compare against, and
-    /// <see cref="RecordedFights.From"/> cuts only finished fights - so the rule skips
-    /// it rather than demanding a boundary nobody could use.
+    /// holds and finishes must have a boundary, and every combat_start it declares
+    /// must name one of those fights: a run whose third fight has nowhere to be
+    /// entered from is a recording that silently offers less than it holds, and a
+    /// boundary on a fight the recording stops in the middle of is a place nobody
+    /// could enter. There is no completed recorded line to compare against there, and
+    /// <see cref="RecordedFights.From"/> cuts only finished fights, so both directions
+    /// of the rule are asked of the same set.
     ///
     /// The rule is only ever asked of a manifest that already carries a verified
     /// trace. Nothing re-validates what <c>replay --out</c> writes, so it does not
@@ -698,6 +699,14 @@ public static partial class ManifestValidator
                 problems.Add(
                     $"boundaries declares {boundary.Describe()}, but this history's verified trace holds no " +
                     "fight with that ordinal. A combat_start cannot name a fight the recording does not contain.");
+            }
+            else if (!fight.Finished)
+            {
+                problems.Add(
+                    $"boundaries declares {boundary.Describe()}, and this history's verified trace never " +
+                    "finishes that fight. A boundary is a place a player can be stood and have their line " +
+                    "compared against the recording's completed one, and a fight the recording stops in the " +
+                    "middle of has no such line, so declaring it names a place nobody could enter.");
             }
             else if (boundary.AfterSeq != fight.CombatStartSeq)
             {
