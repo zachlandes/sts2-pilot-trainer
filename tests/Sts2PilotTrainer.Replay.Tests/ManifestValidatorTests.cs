@@ -42,6 +42,31 @@ public class ManifestValidatorTests
         Assert.False(ManifestValidator.Validate(manifest).IsValid);
     }
 
+    [Fact]
+    public void RejectsAnEngineBoundaryDigestCarryingSourceEvidence()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(
+                    1, 1,
+                    new Fact<string>(
+                        Fixtures.Digest,
+                        FactSource.Engine,
+                        FactEvidence.AtVideoTime(75600, "not an engine production coordinate"))),
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("engine-produced digest", StringComparison.Ordinal) &&
+            problem.Contains("must carry no evidence", StringComparison.Ordinal) &&
+            problem.Contains("reading nobody took", StringComparison.Ordinal));
+    }
+
     /// <summary>A digest a recorder read out of the live game is the other half of
     /// what a boundary may be established by, and is accepted.</summary>
     [Fact]

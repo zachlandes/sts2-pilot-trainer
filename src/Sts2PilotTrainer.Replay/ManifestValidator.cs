@@ -643,7 +643,17 @@ public static partial class ManifestValidator
                 RequireCapturedFact(
                     boundary.Digest, $"the digest at {name}", maxSeq, problems, boundary.AfterSeq);
             }
-            else if (boundary.Digest.Source != FactSource.Engine)
+            else if (boundary.Digest.Source == FactSource.Engine)
+            {
+                if (boundary.Digest.Evidence is not null)
+                {
+                    problems.Add(
+                        $"the engine-produced digest at {name} must carry no evidence. It is what replaying the " +
+                        "history yielded, not a reading taken at a video timestamp or in a live session; " +
+                        "evidence attached to it would describe a reading nobody took.");
+                }
+            }
+            else
             {
                 problems.Add(
                     $"the digest at {name} is source={boundary.Digest.Source.ToString().ToLowerInvariant()}. A " +
