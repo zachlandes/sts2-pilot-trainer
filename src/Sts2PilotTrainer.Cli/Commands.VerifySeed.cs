@@ -68,7 +68,8 @@ internal static partial class Commands
         foreach (var candidate in candidates)
         {
             var path = candidateArtifacts[candidate].Json.Path;
-            var child = SelfProcess.Run(
+            var childArgs = new List<string>
+            {
                 "verify-seed", observationPath,
                 "--seed", candidate,
                 "--out", outDir,
@@ -76,7 +77,12 @@ internal static partial class Commands
                 "--character", character,
                 "--ascension", ascension,
                 "--game-mode", gameMode,
-                "--manifest", manifestPath ?? "");
+            };
+            if (manifestPath is not null)
+            {
+                childArgs.AddRange(["--manifest", manifestPath]);
+            }
+            var child = SelfProcess.Run([.. childArgs]);
             Console.Write(child.StandardOutput);
             if (child.ExitCode is not 0 and not 1 || !File.Exists(path))
             {
