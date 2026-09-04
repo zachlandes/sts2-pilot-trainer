@@ -271,10 +271,7 @@ public sealed class RunDriver : IDisposable
                 break;
 
             default:
-                throw new EngineException(
-                    $"Action {action.Seq} uses verb '{action.Verb}', which the format names but this " +
-                    "milestone does not implement. Refusing: a verb that silently does nothing would " +
-                    "produce a replay that looks complete and is not.");
+                throw Unhandled(action);
         }
 
         // A card screen answers inside the engine call the action above made, and the
@@ -293,6 +290,27 @@ public sealed class RunDriver : IDisposable
                 "describes a screen this run does not open.");
         }
     }
+
+    /// <summary>
+    /// The refusal for a verb no case above handles.
+    ///
+    /// Which refusal depends on <see cref="EngineCommands"/>, because the two ways of
+    /// arriving here are different defects. A verb the table does not map is one this
+    /// build has not implemented, and the reason it has not is written down there. A
+    /// verb the table does map and the switch does not handle is drift between the
+    /// two, which is a defect in this file rather than a limit of this build, and
+    /// saying so is what makes the table's coverage checkable at all.
+    /// </summary>
+    private static EngineException Unhandled(ActionRecord action) =>
+        EngineCommands.For(action.Verb) is { } mapped
+            ? new EngineException(
+                $"Action {action.Seq} uses verb '{action.Verb}', which EngineCommands maps onto " +
+                $"{mapped.Describe()} and this driver {EngineCommands.SwitchDriftMarker}. The table and " +
+                "the switch have drifted; one of the two is wrong.")
+            : new EngineException(
+                $"Action {action.Seq} uses verb '{action.Verb}', which the format names but this build " +
+                "does not implement. Refusing: a verb that silently does nothing would produce a replay " +
+                $"that looks complete and is not. {EngineCommands.UnmappedReason(action.Verb)}");
 
     /// <summary>
     /// Puts up the loot a finished fight earned, exactly where the retail client does.

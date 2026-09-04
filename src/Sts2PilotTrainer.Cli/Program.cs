@@ -23,6 +23,7 @@ internal static class Program
             {
                 "gate" => Commands.Gate(args[1..]),
                 "validate" => Commands.Validate(args[1..]),
+                "engine-commands" => Commands.EngineCommandsCommand(args[1..]),
                 "migrate-manifest" => Commands.MigrateManifest(args[1..]),
                 "preflight" => Commands.Preflight(args[1..]),
                 "preflight-live" => Commands.PreflightLive(args[1..]),
@@ -79,6 +80,14 @@ internal static class Program
               Check a manifest's structure and its account of where the recording came
               from - including that it starts at the run's start, which nothing
               downstream can check. No game needed.
+
+          engine-commands [--probe]
+              Print which of the game's own members each recorded decision maps onto,
+              and check that the mapping still describes this build: every named
+              member still exists, and every verb in the format is either mapped or
+              carries a written reason it is not. --probe additionally pushes one
+              action per mapped verb through a real driver, so that a table entry the
+              driver has no case for is caught here rather than mid-replay.
 
           preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile]
               Compare a manifest's environment identity and its player prerequisites
