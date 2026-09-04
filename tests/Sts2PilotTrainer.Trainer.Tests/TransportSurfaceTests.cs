@@ -258,10 +258,14 @@ public sealed class TransportSurfaceTests
         Assert.True(revealed.Surface.Step.Pressable);
         Assert.False(committing.Surface.Step.Pressable);
 
+        // Play is refused there for the same reason: starting the sequence would make
+        // the next decision without anybody having been shown it.
+        Assert.False(committing.Surface.Play.Pressable);
+
         // The rest of the tag is unchanged: nothing moves, nothing vanishes, and the
         // counter still says which decision the run is on.
         Assert.Equal(Presence.Drawn, committing.Surface.Step.Presence);
-        Assert.True(committing.Surface.Play.Pressable);
+        Assert.Equal(Presence.Drawn, committing.Surface.Play.Presence);
         Assert.Equal("2 of 2", committing.Counter.Numerals);
     }
 

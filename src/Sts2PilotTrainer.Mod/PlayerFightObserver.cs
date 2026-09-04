@@ -209,11 +209,23 @@ internal sealed class PlayerFightObserver : IDisposable
             Log.Info(
                 $"[{RunmobileMod.ModId}] the player's fight ended; capture {_capture.State}, " +
                 $"{(_capture.Trace.Steps.Count - 1).ToString(CultureInfo.InvariantCulture)} action(s) sampled", 2);
-            _sampled();
         }
         catch (Exception ex)
         {
             Log.Error($"[{RunmobileMod.ModId}] could not sample the end of the fight: {ex.GetType().Name}: {ex.Message}", 2);
+        }
+
+        // Outside the capture's own catch: the capture is closed by the line above, so
+        // a re-derivation that throws is a surface problem and is reported as one.
+        try
+        {
+            _sampled();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not re-derive the transport at the end of the fight: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
         }
 
         _fightEnded();

@@ -438,8 +438,8 @@ public sealed record PlaybackTransport(
         JourneyPhase.Watching => Revealing(
             facts.Identity, Next(facts), facts.StepsTaken + 1, facts.Count, facts.Playing, facts.NoteShown,
             facts.Revealed, facts.Speed),
-        JourneyPhase.InFight or JourneyPhase.Result =>
-            DuringYourFight(facts.Identity, facts.AnythingPlayed, facts.Speed),
+        JourneyPhase.InFight or JourneyPhase.Result => DuringYourFight(
+            facts.Identity, facts.AnythingPlayed, facts.Speed, phase == JourneyPhase.Result),
         JourneyPhase.Refused => Refused(facts.Identity, facts.Speed),
         _ => throw new ManifestException($"A journey cannot be in phase {phase}."),
     };
@@ -548,8 +548,15 @@ public sealed record PlaybackTransport(
     /// chip does not show it, but the tag it collapsed from did and the tag it becomes
     /// again will, and a state that quietly answered Normal made a chosen speed appear
     /// not to have taken.</param>
+    /// <param name="fightOver">Whether the fight has ended and its result is waiting to
+    /// be shown. Both directions act on a fight that no longer exists - one would
+    /// finish a fight that has finished, the other would discard an attempt whose
+    /// result is already in hand and then show it over the run that replaced it - so
+    /// both are refused there. The chip itself stays, drawn and pressable, because a
+    /// press target that disappears for two seconds is the flicker this design
+    /// replaced.</param>
     private static PlaybackTransport DuringYourFight(
-        TransportIdentity identity, bool anythingPlayed, PlaybackSpeed speed) =>
+        TransportIdentity identity, bool anythingPlayed, PlaybackSpeed speed, bool fightOver) =>
         new(
             Mode: TransportMode.Chip,
             Identity: identity,
@@ -562,10 +569,10 @@ public sealed record PlaybackTransport(
             Note: string.Empty,
             ChipMenu:
             [
-                new MenuRow(TransportGlyph.Again, TrainerCopy.JumpToTheBeginning),
+                new MenuRow(TransportGlyph.Again, TrainerCopy.JumpToTheBeginning, !fightOver),
                 new MenuRow(
-                    TransportGlyph.Jump, TrainerCopy.JumpToTheEnd, anythingPlayed,
-                    anythingPlayed ? null : TrainerCopy.NothingPlayedYet),
+                    TransportGlyph.Jump, TrainerCopy.JumpToTheEnd, anythingPlayed && !fightOver,
+                    !fightOver && !anythingPlayed ? TrainerCopy.NothingPlayedYet : null),
             ]);
 
     /// <summary>

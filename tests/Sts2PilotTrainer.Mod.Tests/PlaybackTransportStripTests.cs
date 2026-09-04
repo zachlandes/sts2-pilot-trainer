@@ -657,6 +657,31 @@ public sealed class PlaybackTransportStripTests
     }
 
     /// <summary>
+    /// Once the fight has ended the chip offers neither direction.
+    ///
+    /// The result is computed and waiting to be shown for a couple of seconds, and
+    /// both rows act on a fight that no longer exists: one would finish a fight that
+    /// finished, the other would discard an attempt whose result is already in hand.
+    /// The chip stays drawn and pressable, as it is everywhere else on this surface.
+    /// </summary>
+    [Fact]
+    public void OnceTheFightIsOverTheChipOffersNeitherDirection()
+    {
+        var strip = Build(Chip(anythingPlayed: true));
+        strip.OpenMenu(_ => { });
+        Assert.False(Find<Button>(strip.Menu, "MenuRow0").Disabled);
+        Assert.False(Find<Button>(strip.Menu, "MenuRow1").Disabled);
+
+        strip.Apply(AfterTheFight());
+        strip.OpenMenu(_ => { });
+
+        Assert.True(strip.Menu.Visible);
+        Assert.True(Find<Button>(strip.Menu, "MenuRow0").Disabled);
+        Assert.True(Find<Button>(strip.Menu, "MenuRow1").Disabled);
+        Assert.False(strip.Speed.Disabled);
+    }
+
+    /// <summary>
     /// Pressing a menu row runs that row's action.
     ///
     /// It did not, for either menu, in every build this surface has ever had. The rows
@@ -942,6 +967,9 @@ public sealed class PlaybackTransportStripTests
 
     private static PlaybackTransport Chip(bool anythingPlayed) =>
         For(JourneyPhase.InFight, anythingPlayed: anythingPlayed);
+
+    private static PlaybackTransport AfterTheFight() =>
+        For(JourneyPhase.Result, anythingPlayed: true);
 
     private static PlaybackTransport Opening(PlaybackSpeed speed) =>
         For(JourneyPhase.Watching, stepsTaken: 2, atCombatStart: true, speed: speed);
