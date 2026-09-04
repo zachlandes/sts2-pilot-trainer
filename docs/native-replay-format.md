@@ -57,7 +57,47 @@ and never a source of truth.
   content hash and offers an explicit override for developers. This project gates the
   same way and offers no override, which is the right default for an artifact meant
   to be shared.
-- **`SerializableRun` as snapshot storage.** Worth revisiting. It would turn
-  "restore" from re-deriving into deserializing, at the cost that a deserialized
-  snapshot no longer re-proves itself on every restore. The current design prefers
-  the slower option for that reason; the cache key is the same either way.
+- **`SerializableRun` as snapshot storage.** Measured, and the answer is no for the
+  boundary this project uses. See below.
+
+## Whether a boundary can be stored as a serialized run
+
+`./scripts/arbiter snapshot-restore-probe <manifest>` replays a manifest to its
+combat-start boundary, hands the run to the game's own `RunManager.ToSave`, and
+restores it in a fresh process through the retail continue-run call sequence
+(`RunState.FromSerializable`, `RunManager.SetUpSavedSingleplayer`, which reaches the
+private `InitializeSavedRun`, then the engine half of `NGame.LoadRun`: `Launch`,
+`GenerateMap`, `LoadIntoLatestMapCoord`).
+It projects both sides through `CanonicalStateProjection.Project` and compares them
+field by field, refusing before it compares anything if either side's act room set
+degraded to the `"unavailable"` sentinel — two states that both lost `_rooms` agree on
+that sentinel exactly, and `--control unreadable-room-set` demonstrates the refusal by
+making the two digests agree and showing the probe decline to call it agreement.
+
+On v0.111.0, against the synthetic whole-run fixture, the answer is that a
+combat-start boundary cannot be stored this way.
+The save carries the run and not the fight: of the 42 fields the restored run
+projects, 39 agree exactly — seed, act list, act room set and its visited counts,
+every run-persistent RNG stream position, gold, deck order, relics, potions — while 27
+of the replay's 29 `combat.*` fields are absent from it altogether and the remaining
+two say there is no combat.
+`SerializableRun` has no representation of an in-progress combat at all:
+`SerializablePlayer` holds a deck, relics, potions and RNG, and no hand, draw pile or
+enemy.
+(The one non-combat field that differs, `run.act_floor`, reads 0 until a room is
+entered.)
+Going on through `LoadIntoLatestMapCoord`, which is how a continued run gets a room to
+be in, does not recover it and makes matters worse: re-entering the last visited map
+coordinate generates a *fresh* fight, so the restored run stands at total floor 3
+against the replay's 2, in `ENCOUNTER.SLIMES_WEAK` rather than
+`ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK`, with `Shuffle` advanced from 10 to 20.
+That is the failure mode this project exists to catch, in its most convincing costume:
+a run that loaded cleanly, reports the same seed and build, and is not the run.
+
+So the boundary stays a derived cache keyed by the history that produced it, and
+entering a recorded fight keeps meaning "replay the prefix".
+What the measurement does *not* refuse is a boundary at a floor entry, where the
+game's own save is taken and where every field the probe saw restore correctly is the
+whole of the state; that is a separate measurement, and it has not been made.
+The probe's artifact is `build/evidence/snapshot-restore-probe.json`, with the two
+phase artifacts beside it.

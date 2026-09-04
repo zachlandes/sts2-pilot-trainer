@@ -113,8 +113,8 @@ engine-produced combat-start snapshot digest - with the profile unchanged either
 output.
 
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
-`verify-seed`, `determinism`, `negative-controls`, `combat-snapshot`. `validate` needs
-no game.
+`verify-seed`, `determinism`, `negative-controls`, `combat-snapshot`,
+`snapshot-restore-probe`. `validate` needs no game.
 
 The full walkthrough, with commands and their real output, is in
 [demo/DEMO.md](demo/DEMO.md).
