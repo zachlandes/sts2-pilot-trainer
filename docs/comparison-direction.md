@@ -17,10 +17,11 @@ The generated engine fixture now plays its first combat to the end, in both of i
 The shipped VOD reconstruction now covers its whole first combat, read off the video with the same provenance as its opening turn, so the recording is a completed side rather than a history the comparison has to refuse.
 A history that stops mid-combat is still refused, and that refusal is exercised against the shipped manifest cut back to where it used to stop.
 
-That history now runs past that first fight - through a second one it also plays to a victory, and into the opening turns of a third - and none of that changes what is read.
-The projection reads the first fight the history enters and requires it to have finished; later fights are state the replay passed through, not additional sides.
+That history now runs past that first fight - through a second one it also plays to a victory, and into the opening turns of a third - and none of that changes what a comparison is.
+One projection reads one fight and requires it to have finished; `RunCoverage` reads the whole trace into the fights and floors it holds, as an index for a catalogue entry's count and a run view's strip, and computes nothing else.
 Two fights in one history are not a comparison and are not treated as one: a comparison has two runs, and reading a run against itself would be inventing a second line nobody played.
-Where a later fight's boundary matters is as a *destination* - the floor-5 combat start the current history reaches is the boundary an eventual reset would restore to, and it is checkpointed for that reason and not compared against anything.
+Where a later fight matters is as a *destination*: once its boundary is derived it is declared in `boundaries[]` as a place a player can be stood, gets its own line in the recording's `recorded-fights.json`, and is compared only against the fight a player then plays there - never against another fight of the same run.
+The shipped reconstruction declares the first fight's boundary and no other yet, so the floor-5 combat start it reaches is still only checkpointed.
 
 That is a product decision with teeth, so here is what it rules out. No turn-level
 state reset. No pre-turn branching into an alternative line. No turn-level solver.

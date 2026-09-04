@@ -117,7 +117,9 @@ seed, build, content hash and acts, and replays perfectly — it is simply not t
 its history describes. That is caught at ingestion, on the recording, or not at all.
 Same for the end-of-run reading: one reading of the environment cannot catch its own
 drift. Do not weaken `source.run_start` or `source.run_summary` on the grounds that
-the replay would catch it.
+the replay would catch it, nor their native counterparts
+`source.native.witnessed_run_start` and `source.native.continuity`, which answer the
+same two questions for a recording made inside the player's own game.
 
 **Read [docs/headless-fidelity.md](docs/headless-fidelity.md) before changing what
 the host patches or stands in for.** Each patch has a stated reason and the set is
