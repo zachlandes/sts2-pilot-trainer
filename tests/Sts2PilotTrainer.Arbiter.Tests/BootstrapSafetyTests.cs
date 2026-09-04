@@ -101,6 +101,23 @@ public class BootstrapSafetyTests
     }
 
     [Fact]
+    public void RefusesAPreparedSourceThatDisappearedAfterHashing()
+    {
+        var prepared = WritePreparedSet();
+        var archiveDir = ScratchDirectory("archive-missing-source");
+        File.Delete(Path.Combine(prepared.Directory, "0Harmony.dll"));
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            Sts2PilotTrainer.Bootstrap.Program.Archive(
+                prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes));
+
+        Assert.Contains("0Harmony.dll disappeared", error.Message, StringComparison.Ordinal);
+        Assert.Contains("not the whole prepared set", error.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(
+            archiveDir, PreparedIdentity.Version, "prepared-assembly.json")));
+    }
+
+    [Fact]
     public void ArchivesACleanPreparedSetIdempotently()
     {
         var prepared = WritePreparedSet();

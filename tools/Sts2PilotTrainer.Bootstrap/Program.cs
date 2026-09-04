@@ -344,7 +344,12 @@ internal static class Program
         foreach (var name in outputHashes.Keys.Append(ReceiptName))
         {
             var source = Path.Combine(outDir, name);
-            if (!File.Exists(source)) continue;
+            if (!File.Exists(source))
+            {
+                throw new InvalidOperationException(
+                    $"Prepared source {name} disappeared before it could be archived. Refusing: " +
+                    "an archive that is not the whole prepared set is worse than no archive.");
+            }
 
             // An entry already in the archive may be a symlink, so confinement must
             // check the resolved destination at copy time rather than only its name.
