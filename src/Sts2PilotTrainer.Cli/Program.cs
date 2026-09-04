@@ -76,17 +76,6 @@ internal static class Program
               may this reconstruction be published as exact? Nothing here accepts a
               cheaper proxy in place of replaying through the real engine.
 
-          gate            <manifest> --rekey <build>
-              A different question about the same recording: does it still reproduce on
-              the build installed now? The one path here that deliberately replays a
-              history against a build it was not recorded on, so it reads past the
-              build's own three fields and past nothing else - anything else differing
-              is Blocked rather than measured. The manifest is never edited; the answer
-              is appended to <manifest-without-.replay>.verdicts.json, keyed by build
-              and content hash. Regenerates the recording's own fights in the same step
-              when it reproduces, and reports the instruments pinned to v0.111.0 as
-              blocked rather than relaxing them.
-
           validate        <manifest> [--show-rejections]
               Check a manifest's structure and its account of where the recording came
               from - including that it starts at the run's start, which nothing

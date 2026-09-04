@@ -105,8 +105,8 @@ internal static partial class Commands
                     $"digest {declared.Digest.Value}, and replaying it here reaches it after action " +
                     $"{derived.AfterSeq.ToString(System.Globalization.CultureInfo.InvariantCulture)} with " +
                     $"digest {derived.Digest.Value}. Overwriting the older digest would erase the evidence " +
-                    "that this build and that one disagree; use gate --rekey to record the disagreement " +
-                    "instead.");
+                    "that this build and the one this recording was made on disagree, which is the finding " +
+                    "rather than something to smooth away.");
             }
         }
 

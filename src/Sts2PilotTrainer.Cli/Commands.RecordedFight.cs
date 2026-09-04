@@ -31,11 +31,11 @@ internal static partial class Commands
         var outPath = Args.Value(args, "--out")
             ?? Path.Combine("build", "evidence", Path.GetFileName(manifestPath)
                 .Replace(".replay.json", ".recorded-fights.json", StringComparison.Ordinal));
-        // Never cleared first. The destination holds somebody's evidence - a re-key
-        // points this at manifests/<id>.recorded-fights.json, the file the mod ships -
-        // and the replay between here and the write refuses in four named ways, so
-        // clearing would leave nothing where the old measurement was. The atomic write
-        // replaces the file it read beside.
+        // Never cleared first. The destination holds somebody's evidence - it is
+        // manifests/<id>.recorded-fights.json, the file the mod ships - and the replay
+        // between here and the write refuses in four named ways, so clearing would
+        // leave nothing where the old measurement was. The atomic write replaces the
+        // file it read beside.
         var artifact = EvidenceArtifact.PreparePath(outPath, clearExisting: false);
         var scratch = Path.Combine(
             Path.GetDirectoryName(artifact.Path)!,
@@ -166,7 +166,7 @@ internal static partial class Commands
     /// Where a recording's own fights live: beside the recording, under its own name.
     ///
     /// The one place that spelling is worked out, because the file the mod ships and
-    /// the file <c>--play</c> reads have to be the file a re-key regenerates. A
+    /// the file <c>--play</c> reads have to be the same file this command writes. A
     /// recording not named that way is refused rather than guessed at, since the
     /// guess would be a path this command then writes to.
     /// </summary>

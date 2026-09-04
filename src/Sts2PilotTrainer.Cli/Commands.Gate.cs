@@ -25,12 +25,6 @@ internal static partial class Commands
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
 
-        // A different question, asked through the same command because it is the same
-        // subject: this one is whether a recording already published still reproduces
-        // on the build installed now. It has its own answer file and does not write a
-        // publication verdict, because "still works" is not "may be published".
-        if (Args.Value(args, "--rekey") is not null) return Rekey(args, manifestPath);
-
         var gateArtifact = EvidenceArtifact.Prepare(outDir, "publication-gate.json");
         var manifest = ManifestJson.Load(manifestPath);
         var mapObservationPath = Args.Value(args, "--map-observation") ??

@@ -138,7 +138,9 @@ public sealed class RecordedFightEntryTests
 
         Assert.False(result.Verified);
         Assert.Contains(
-            "changes nothing the recording decides before its fight", result.All, StringComparison.Ordinal);
+            "changes nothing the recording decides before the start of fight 1",
+            result.All,
+            StringComparison.Ordinal);
     }
 
     /// <summary>

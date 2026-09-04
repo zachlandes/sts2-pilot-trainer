@@ -94,7 +94,7 @@ public sealed class ExactUnlockStateTests
         Assert.Contains("does not ship 1 of the", result.Output, StringComparison.Ordinal);
         Assert.Contains("EPOCH.THIS.BUILD.NEVER.HEARD.OF", result.Output, StringComparison.Ordinal);
         Assert.Contains(
-            "environment or run does NOT match; refusing to replay", result.Output, StringComparison.Ordinal);
+            "environment does NOT match; refusing to replay", result.Output, StringComparison.Ordinal);
 
         // And the acts row says it was never asked, rather than reporting a state that
         // could not be built as one with nothing locked.

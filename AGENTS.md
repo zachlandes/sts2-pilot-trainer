@@ -13,7 +13,6 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
 ./scripts/protected-files.sh compare  <ledger>   # ... and say what a session changed
 ./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && dotnet test sts2-pilot-trainer.sln -c Release
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
-./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json --rekey v0.111.0  # still reproduces?
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
                             # combat-snapshot | combat-compare | enter-fight | recorded-fight |
@@ -80,15 +79,6 @@ never edits it. Which boundary a command means is written the kind's own way -
 the one reader of a coordinate and the one place a boundary becomes a plan, whichever
 spelling asked for it; an ordinal counted across the list would mean a different thing
 per kind.
-
-**Whether a recording still reproduces on another build is a verdict, never an edit.**
-`gate --rekey <build>` is the one path here that deliberately replays a history against
-a build it was not recorded on: it reads past the build's own three fields, past
-nothing else, and appends the answer to `manifests/<id>.verdicts.json` keyed by build
-and content hash. The manifest is never rewritten to match a build under test, and
-`Revalidation` records at length why the obvious rebase is wrong. A moved boundary of
-any kind retires the recording for that build, and a re-key that reproduces regenerates
-`recorded-fights.json` in the same step.
 
 **Real-engine reproduction is the publication standard.** `gate` is where it is
 written down and computed. No condition may be satisfied by a cheaper proxy - not

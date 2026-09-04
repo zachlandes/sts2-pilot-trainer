@@ -99,14 +99,6 @@ readable from a video. Relaxing them is a separate decision.
 to the manifest's run id and, per fight, to that fight's history hash and combat-start boundary, so
 anything that re-keys a recording to a new build has to regenerate it in the same step or leave the
 two disagreeing.
-`./scripts/arbiter gate <manifest> --rekey <build>` does that: it measures the recording against the
-build installed now, appends the verdict to `manifests/<id>.verdicts.json` keyed by build and content
-hash, and regenerates the recorded fights whenever the verdict reproduces.
-It refuses to answer for a build that is not the one installed, because a verdict is what the engine
-actually did.
-A recording whose regenerated fights cannot all be summarised does not carry forward: the verdict is
-still measured and written, and the command exits non-zero naming the fights that refused, because a
-fight nobody can summarise is one the retail client would refuse after the player had fought it.
 
 ## Running it
 

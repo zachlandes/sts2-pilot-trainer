@@ -42,8 +42,7 @@ public sealed record VerificationReport
     /// Derived rather than copied: where the boundaries are is a rule over the trace,
     /// and what the state was at each is the whole canonical state, which no trace
     /// carries. This is what <c>migrate-manifest --derive-boundaries</c> writes into a
-    /// manifest's <see cref="ReplayManifest.Boundaries"/>, and what a re-key compares a
-    /// later build's boundaries against.
+    /// manifest's <see cref="ReplayManifest.Boundaries"/>.
     ///
     /// Present only on a replay that ran to the end of the history, because a partial
     /// one has not established where the boundaries after its stop are.

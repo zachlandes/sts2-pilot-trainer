@@ -54,25 +54,11 @@ public static class EnvironmentPreflight
     /// player prerequisites the run's generation will read.
     /// </summary>
     public static PreflightResult Prerequisites(
-        EnvironmentIdentity expected, LocalPrerequisites actual, string sourceKind = "vod",
-        bool measuringBuildDrift = false) =>
-        Prerequisites(expected, actual, requireHost: false, sourceKind, measuringBuildDrift);
+        EnvironmentIdentity expected, LocalPrerequisites actual, string sourceKind = "vod") =>
+        Prerequisites(expected, actual, requireHost: false, sourceKind);
 
-    /// <param name="measuringBuildDrift">
-    /// Whether this reading is being taken in order to answer "does this recording
-    /// still reproduce on the build installed now" - the one question in this project
-    /// that deliberately runs a history against a build it was not recorded on.
-    ///
-    /// It relaxes exactly <see cref="Revalidation.BuildScopedFields"/>, and only when
-    /// nothing else disagrees: a mismatched ascension, character, mode or unlock state
-    /// is not patch drift, and a reading that softened one would be answering a
-    /// question nobody asked while burying a refusal that had its own remedy. Each
-    /// relaxed field keeps both values and says in words that it was relaxed, so no
-    /// artifact can be read as a match that was measured.
-    /// </param>
     private static PreflightResult Prerequisites(
-        EnvironmentIdentity expected, LocalPrerequisites actual, bool requireHost, string sourceKind = "vod",
-        bool measuringBuildDrift = false)
+        EnvironmentIdentity expected, LocalPrerequisites actual, bool requireHost, string sourceKind = "vod")
     {
         var fields = new List<PreflightField>
         {
@@ -94,38 +80,7 @@ public static class EnvironmentPreflight
         };
 
         fields.AddRange(EvaluateUnlocks(expected, actual));
-        if (measuringBuildDrift) fields = RelaxBuildDrift(fields);
         return new PreflightResult(fields.All(field => field.Matches), fields);
-    }
-
-    /// <summary>
-    /// The same fields with the build's own three reported as relaxed, when the build
-    /// is the only thing that differs.
-    ///
-    /// Gated on <see cref="Revalidation.IsBuildDriftOnly"/> rather than applied field
-    /// by field, because "only the build differs" is a statement about the whole
-    /// reading. Relaxing the build fields beside a mismatched ascension would turn a
-    /// refusal with its own remedy into a measurement of something else.
-    /// </summary>
-    private static List<PreflightField> RelaxBuildDrift(List<PreflightField> fields)
-    {
-        var mismatched = fields.Where(field => !field.Matches).Select(field => field.Field).ToList();
-        if (!Revalidation.IsBuildDriftOnly(mismatched)) return fields;
-
-        return fields
-            .Select(field => field.Matches || !Revalidation.BuildScopedFields.Contains(
-                field.Field, StringComparer.Ordinal)
-                ? field
-                : field with
-                {
-                    Matches = true,
-                    Diagnostic =
-                        $"Relaxed: this reading is measuring whether the recording still reproduces on the " +
-                        $"build installed now. The recording names '{field.Expected}' and this machine has " +
-                        $"'{field.Actual}', and that difference is the subject of the measurement rather than " +
-                        "a reason to refuse it. Nothing else about this environment differs.",
-                })
-            .ToList();
     }
 
     /// <summary>

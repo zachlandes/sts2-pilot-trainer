@@ -18,8 +18,7 @@ public static class Arbiter
     public static ArbiterOutcome Run(
         ReplayManifest manifest, int? stopAfterSeq = null,
         PlayerProgress? progress = null,
-        string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null,
-        bool measuringBuildDrift = false)
+        string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null)
     {
         var validation = ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
@@ -34,8 +33,7 @@ public static class Arbiter
         // rather than one wrong answer on a console.
         progress ??= RecordedFightEntry.SuppliedProgressFor(manifest);
 
-        var preflight = Preflight.Evaluate(
-            manifest.Environment, progress, manifest.Source.Kind, measuringBuildDrift);
+        var preflight = Preflight.Evaluate(manifest.Environment, progress, manifest.Source.Kind);
         if (!preflight.Matches)
         {
             return new ArbiterOutcome(

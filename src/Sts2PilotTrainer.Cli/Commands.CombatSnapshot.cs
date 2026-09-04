@@ -19,7 +19,7 @@ internal static partial class Commands
     /// a fresh process replays the history to that action and the digest of the state
     /// it produced is compared with what the cache and the manifest hold. Nothing is
     /// entered and nothing is resumed - what is proved is that this build reaches the
-    /// recorded state there, which is what a re-key and a later rewind both need.
+    /// recorded state there, which is what a later rewind needs.
     ///
     /// "Restore" means re-derive and verify, not deserialise. The snapshot's content
     /// is the canonical state at the boundary together with the key that determines
