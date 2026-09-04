@@ -18,6 +18,13 @@ namespace Sts2PilotTrainer.IO;
 /// store lives and is not an installation. Matching case-insensitively refused the
 /// store's own root. The other two follow the host filesystem's casing semantics.
 ///
+/// Both tests are applied to the path as the filesystem has it rather than as it was
+/// written: the path is resolved first, so a symlink into an installation cannot walk
+/// past this, and each component is compared under the name it actually carries on
+/// disk, so an alias spelling such as <c>sTEAM</c> on a case-insensitive volume is
+/// judged by the real <c>Steam</c> directory it names. A component that does not
+/// exist has no on-disk name and is judged as written.
+///
 /// It is not the containment rule and does not replace it. Containment answers "is
 /// this inside the one root I own"; this answers "is this somewhere nothing here may
 /// ever write". Both are applied, because a store root that was itself inside a game

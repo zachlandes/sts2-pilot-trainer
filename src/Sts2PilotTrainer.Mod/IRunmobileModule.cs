@@ -8,8 +8,11 @@ namespace Sts2PilotTrainer.Mod;
 /// Runmobile is one mod made of three features - the recorder, the run library, and
 /// the Combat Trainer - and this is the line between them. The shell owns what is
 /// true of the mod however it is configured: the assembly resolver, the Harmony
-/// instance, adopting the running game, and the write barrier. A module owns one
-/// feature's patches and the surfaces it puts in front of a player.
+/// instance, adopting the running game, the write barrier, and drawing the
+/// singleplayer-menu cards. A module owns one feature's patches and the surfaces it
+/// puts in front of a player, which it contributes as <see cref="MenuCard"/> entries
+/// rather than by installing the renderer itself - so a module that refuses cannot
+/// take another module's card down with it.
 ///
 /// A module that cannot establish what it needs is disabled rather than fatal. It
 /// installs no patch and contributes no surface, and the reason goes to the game's

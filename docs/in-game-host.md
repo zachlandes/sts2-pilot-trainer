@@ -6,6 +6,9 @@ adopting the running game, the write barrier and the store - and `IRunmobileModu
 is the line between it and a feature. A module says whether it can run, installs its
 own patches and contributes its own surfaces; one that cannot establish what it needs
 is skipped by name in the game's log and the rest of the mod loads without it.
+Drawing the singleplayer-menu cards is the shell's: a module contributes `MenuCard`
+entries and `ModeCard` is a shell patch class, so a module that refuses cannot take
+another enabled module's card down with it.
 That promise is about a module which declares itself disabled: a module whose `Install` throws propagates out of the loop, aborts `Start` before the shell is marked started, and may leave its partial patches applied, which is a broken-build condition rather than a runtime one, and the failure-isolation lifecycle that would contain it arrives with the second module.
 `CombatTrainerModule` is the only one built. The recorder and the run library are the
 other two.
@@ -46,7 +49,8 @@ Those identifiers are local path scoping and nothing else: no platform directory
 
 `RunmobileStore` is the only thing in the mod that writes at all: it takes the root from the game's own `ProjectSettings.GlobalizePath`, requires that root to resolve inside `user://` by the same containment rule, so a `Runmobile` directory that is a symlink elsewhere is refused rather than followed out of the ledger's reach, checks every path against that root with `PathContainment.RequireContained`, refuses any path with a `Steam`, `steamapps` or `Slay the Spire 2` component, and writes a whole file through a temporary sibling and a move so a crash leaves the previous file rather than half of a new one.
 `PrepareForWrite` is the containment gate rather than the atomic writer, because not every write is a whole file - the recorder appends to a journal - and the point is one place that decides where this mod may write, not one way of writing.
-The `Steam` component is matched exactly: the game's own user data has a lower-case `steam` platform level, which is where this store lives.
+Each component is judged by the name it actually has on disk, after the path itself is resolved, so neither a symlink into an installation nor an alias spelling on a case-insensitive volume gets past it.
+`Steam` is then matched exactly: the game's own user data has a lower-case `steam` platform level, which is where this store lives.
 A traversal, an absolute path and a sibling directory whose name merely starts with the root's are all refused before anything is opened.
 Nothing else ever goes there: not a save, a profile, run history, settings, an unlock, another mod's files or anything read out of the game.
 It is not `ProfileWriteBarrier` and does not replace it - the barrier suppresses the *game's* writes while a trainer run is live, and has nothing to say about this mod's own files.
@@ -434,7 +438,7 @@ floor identity a "play this fight" action would need - alongside its private
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory, either `mods` or the game's Steam test-branch variant `mods_STEAMTEST`.
 It also removes a `CombatTrainer` directory left there by a build from before the rename, on install and on `--uninstall`, because two directories declaring this mod would be reported to the player as a duplicate.
-An upgrade stages the complete named file set in a temporary sibling there and replaces the old directory rather than overlaying it.
+An upgrade stages the complete named file set in a temporary sibling there and replaces the old directory rather than overlaying it; the pre-rename removal is part of that same replacement, so a failure anywhere in it leaves the previous installation as it was.
 That is the game's own mod surface — the same location Steam Workshop installs into — and the game offers no user-data alternative, because it derives the path from its executable's location.
 
 [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) has the pre-rename mod card and eligibility

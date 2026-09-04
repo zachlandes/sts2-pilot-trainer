@@ -18,6 +18,11 @@
 #
 # Read-only. It opens files to hash them and writes only the ledger path it is given,
 # which must not be inside either root.
+#
+# It refuses rather than guessing: a ledger records the two roots it was taken over
+# and a comparison against different roots is refused instead of reported clean, and
+# an installation with both a mods and a mods_STEAMTEST directory has to say which is
+# active with --mods-dir.
 set -euo pipefail
 
 usage() {
