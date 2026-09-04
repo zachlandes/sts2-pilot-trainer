@@ -972,7 +972,7 @@ public sealed class RunDriver : IDisposable
     {
         if (_session.RunState.CurrentRoom is TreasureRoom room &&
             !ReferenceEquals(_chestRelicDecidedForRoom, room) &&
-            RunManager.Instance.TreasureRoomRelicSynchronizer.CurrentRelics is { } relics)
+            RunManager.Instance.TreasureRoomRelicSynchronizer.CurrentRelics is { Count: > 0 } relics)
         {
             return relics;
         }
@@ -1309,9 +1309,15 @@ public sealed class RunDriver : IDisposable
             return null;
         }
 
-        var enemies = CombatManager.Instance.DebugOnlyGetState()?.Enemies
+        var combat = CombatManager.Instance?.DebugOnlyGetState()
+            ?? throw new EngineException(
+                $"Action {action.Seq} aims {modelId} at an enemy and no fight is in progress here, so there " +
+                "is nobody to aim it at. The run this build generated is not the one the recording " +
+                "describes.");
+
+        var enemies = combat.Enemies
             .Where(e => e is { IsAlive: true })
-            .ToList() ?? [];
+            .ToList();
 
         if (action.Args.TryGetValue("target_index", out var raw))
         {
