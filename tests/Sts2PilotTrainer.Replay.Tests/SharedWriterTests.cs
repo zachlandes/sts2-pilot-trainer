@@ -68,6 +68,21 @@ public sealed class SharedWriterTests : IDisposable
             ProtectedInstallPath.HasProtectedComponent(alternatePath));
     }
 
+    [Theory]
+    [InlineData("Steam", true)]
+    [InlineData("steam", false)]
+    public void SteamUsesTheExistingComponentsActualCasing(string actualName, bool protectedComponent)
+    {
+        var actual = Path.Combine(_directory, actualName);
+        Directory.CreateDirectory(actual);
+        var alias = Path.Combine(_directory, "sTEAM");
+
+        Assert.Equal(protectedComponent, ProtectedInstallPath.HasProtectedComponent(actual));
+        Assert.Equal(
+            Directory.Exists(alias) && protectedComponent,
+            ProtectedInstallPath.HasProtectedComponent(Path.Combine(alias, "output")));
+    }
+
     [Fact]
     public void ASymlinkIntoAProtectedInstallationIsRefused()
     {

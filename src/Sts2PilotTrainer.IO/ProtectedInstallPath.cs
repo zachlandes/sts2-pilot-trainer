@@ -33,13 +33,44 @@ public static class ProtectedInstallPath
         var comparison = IsCaseInsensitiveFileSystem(full)
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;
-        return full
-            .Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
-                StringSplitOptions.RemoveEmptyEntries)
+        return ComponentsWithActualCasing(full)
             .Any(component =>
                 component.Equals("Steam", StringComparison.Ordinal) ||
                 FileSystemProtectedComponents.Any(protectedComponent =>
                     component.Equals(protectedComponent, comparison)));
+    }
+
+    private static IReadOnlyList<string> ComponentsWithActualCasing(string path)
+    {
+        var full = Path.GetFullPath(path);
+        var root = Path.GetPathRoot(full)!;
+        var current = root;
+        var result = new List<string>();
+        var components = full[root.Length..].Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (var component in components)
+        {
+            var actual = component;
+            var candidate = Path.Combine(current, component);
+            if ((Directory.Exists(candidate) || File.Exists(candidate)) && Directory.Exists(current))
+            {
+                var names = Directory.EnumerateFileSystemEntries(current)
+                    .Select(Path.GetFileName)
+                    .Where(name => name is not null)
+                    .Cast<string>()
+                    .ToList();
+                actual = names.FirstOrDefault(name => name.Equals(component, StringComparison.Ordinal))
+                    ?? names.FirstOrDefault(name => name.Equals(component, StringComparison.OrdinalIgnoreCase))
+                    ?? component;
+            }
+
+            result.Add(actual);
+            current = Path.Combine(current, actual);
+        }
+
+        return result;
     }
 
     private static bool IsCaseInsensitiveFileSystem(string path)
