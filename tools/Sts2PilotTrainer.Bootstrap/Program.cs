@@ -334,8 +334,17 @@ internal static class Program
         var target = PathContainment.RequireContained(
             archiveDir, WorktreePath.RequireChild(archiveDir, identity.Version));
         var existingReceipt = Path.Combine(target, ReceiptName);
-        if (File.Exists(existingReceipt))
+        if (Directory.Exists(target))
         {
+            if (!File.Exists(existingReceipt))
+            {
+                throw new InvalidOperationException(
+                    $"Build {identity.Version} already has an archive directory, but it has no receipt. Its " +
+                    "identity cannot be established, and replacing it could destroy the only retained copy " +
+                    "of a build a recording was made on. Move it aside or archive this build under a " +
+                    "directory of its own.");
+            }
+
             RefuseDriftedArchive(
                 existingReceipt, identity.Commit, installHash, outputHashes);
         }

@@ -303,7 +303,12 @@ public static class SnapshotRestoreProbe
                 "hashing the state it reported; refusing to draw a conclusion from either.");
         }
 
-        var restorable = refusals.Count == 0 && comparisons.Any(comparison => comparison.DigestsAgree);
+        // A boundary is restorable only where the retail sequence hands control back
+        // to the player. Earlier agreement remains diagnostic: it distinguishes a save
+        // that lost state from room entry destroying state the save did carry.
+        var terminal = comparisons.SingleOrDefault(
+            comparison => comparison.Stage == TerminalRestoreStage);
+        var restorable = refusals.Count == 0 && terminal?.DigestsAgree == true;
         return new SnapshotRestoreReport(
             Schema: ReportSchema,
             Manifest: manifestFileName,
@@ -364,12 +369,14 @@ public static class SnapshotRestoreProbe
             return "No answer. The comparison was refused before the digests were read; see refusals.";
         }
 
-        if (comparisons.FirstOrDefault(comparison => comparison.DigestsAgree) is { } agreeing)
+        var terminal = comparisons.SingleOrDefault(
+            comparison => comparison.Stage == TerminalRestoreStage);
+        if (terminal?.DigestsAgree == true)
         {
             return
                 "A run serialized at combat start and restored in a fresh process through the game's own save " +
-                $"format produces the same canonical state at stage '{agreeing.Stage}', field for field. A " +
-                "boundary cache may store the save.";
+                $"format produces the same canonical state at terminal stage '{terminal.Stage}', field for " +
+                "field. A boundary cache may store the save.";
         }
 
         var detail = string.Join(
@@ -378,11 +385,12 @@ public static class SnapshotRestoreProbe
                 $"{comparison.Stage}: {comparison.DifferingFields.Count} field(s)"));
         return
             "A run serialized at combat start and restored in a fresh process does not produce the same " +
-            $"canonical state at any stage of the retail continue-run sequence ({detail}). A boundary cache " +
-            "that stored the save would be storing a different run, so the boundary has to keep being " +
-            "re-derived by replaying the history that produced it.";
+            $"canonical state at terminal stage '{TerminalRestoreStage}' ({detail}). Earlier stages are " +
+            "diagnostic only; a boundary cache that stored the save would be storing a different run, so the " +
+            "boundary has to keep being re-derived by replaying the history that produced it.";
     }
 
+    private const string TerminalRestoreStage = "room_re_entered";
     private const string Absent = "<absent>";
 
     /// <summary>

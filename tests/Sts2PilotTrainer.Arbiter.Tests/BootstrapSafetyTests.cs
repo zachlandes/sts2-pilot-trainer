@@ -90,6 +90,9 @@ public class BootstrapSafetyTests
         var archiveDir = ScratchDirectory("archive-file-link");
         var versionDir = Path.Combine(archiveDir, PreparedIdentity.Version);
         Directory.CreateDirectory(versionDir);
+        File.Copy(
+            Path.Combine(prepared.Directory, "prepared-assembly.json"),
+            Path.Combine(versionDir, "prepared-assembly.json"));
         var victim = Path.Combine(ScratchDirectory("archive-file-target"), "victim.dll");
         File.WriteAllText(victim, "must remain unchanged");
         File.CreateSymbolicLink(Path.Combine(versionDir, "0Harmony.dll"), victim);
@@ -98,6 +101,25 @@ public class BootstrapSafetyTests
             Sts2PilotTrainer.Bootstrap.Program.Archive(
                 prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes));
         Assert.Equal("must remain unchanged", File.ReadAllText(victim));
+    }
+
+    [Fact]
+    public void RefusesAnExistingArchiveDirectoryWithoutAReceipt()
+    {
+        var prepared = WritePreparedSet();
+        var archiveDir = ScratchDirectory("archive-without-receipt");
+        var target = Path.Combine(archiveDir, PreparedIdentity.Version);
+        Directory.CreateDirectory(target);
+        var retained = Path.Combine(target, "only-retained-copy.dll");
+        File.WriteAllText(retained, "retained build");
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            Sts2PilotTrainer.Bootstrap.Program.Archive(
+                prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes));
+
+        Assert.Contains("has no receipt", error.Message, StringComparison.Ordinal);
+        Assert.Contains("Move it aside", error.Message, StringComparison.Ordinal);
+        Assert.Equal("retained build", File.ReadAllText(retained));
     }
 
     [Fact]

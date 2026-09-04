@@ -43,19 +43,23 @@ public class SnapshotRestoreProbeTests
         Assert.Empty(report.GetProperty("refusals").EnumerateArray());
 
         // Whatever the answer is, it has to be the answer its own numbers support: a
-        // stage's digests agree exactly when none of its fields differ, and the run is
-        // reported restorable exactly when some stage agreed.
+        // stage's digests agree exactly when none of its fields differ, and only the
+        // terminal stage decides whether the retail restore is usable.
         var replayedDigest = report.GetProperty("replayed_digest").GetString();
-        var anyStageAgrees = false;
+        JsonElement? terminal = null;
         foreach (var stage in report.GetProperty("stages").EnumerateArray())
         {
             var agree = stage.GetProperty("digests_agree").GetBoolean();
-            anyStageAgrees |= agree;
             Assert.Equal(agree, stage.GetProperty("restored_digest").GetString() == replayedDigest);
             Assert.Equal(agree, stage.GetProperty("differing_fields").GetArrayLength() == 0);
+            if (stage.GetProperty("stage").GetString() == "room_re_entered") terminal = stage;
         }
 
-        Assert.Equal(anyStageAgrees, report.GetProperty("restorable").GetBoolean());
+        Assert.True(terminal.HasValue);
+        Assert.Equal(
+            terminal.Value.GetProperty("digests_agree").GetBoolean(),
+            report.GetProperty("restorable").GetBoolean());
+        Assert.Contains("terminal stage 'room_re_entered'", report.GetProperty("answer").GetString());
 
         // The restore has to have started from the bytes the replay wrote and finished
         // the sequence it says it ran; a step that threw would leave a half-restored run
