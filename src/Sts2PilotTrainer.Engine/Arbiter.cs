@@ -136,10 +136,18 @@ public static class Arbiter
             {
                 // The rest of the replayed history is passed with each action because
                 // a card screen is answered inside the call that opens it; see RunDriver.
-                // The whole rest, past a stop point too: a prefix that stops on an
-                // action which opens a screen still has to answer it, and truncating
-                // here would refuse it for a manifest that supplies the answer.
-                var upcoming = ordered.Skip(index + 1).ToList();
+                //
+                // Truncated at the stop point, and deliberately. A prefix replay may not
+                // reach past its own end for an answer: a history that stops before the
+                // selections an action needs does not contain that decision, and
+                // consuming it anyway would make a partial replay quietly depend on
+                // actions it never replayed. The driver refuses such an action in words,
+                // which is the honest answer for a boundary a truncated history cannot
+                // materialise.
+                var upcoming = ordered
+                    .Skip(index + 1)
+                    .TakeWhile(next => stopAfterSeq is not { } limit || next.Seq <= limit)
+                    .ToList();
                 driver.Apply(action, upcoming);
             }
             catch (EngineException ex)
