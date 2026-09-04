@@ -528,7 +528,17 @@ internal static class Program
     private static string? ArgValue(string[] args, string name)
     {
         var i = Array.IndexOf(args, name);
-        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+        if (i < 0) return null;
+
+        var value = i + 1 < args.Length ? args[i + 1] : null;
+        // A patch-day run must not report success without retaining the build because
+        // its archive option was present but empty, so every present option is strict.
+        if (string.IsNullOrWhiteSpace(value) || value.StartsWith("--", StringComparison.Ordinal))
+        {
+            throw new ArgumentException($"Option {name} requires a value.");
+        }
+
+        return value;
     }
 
     /// <summary>

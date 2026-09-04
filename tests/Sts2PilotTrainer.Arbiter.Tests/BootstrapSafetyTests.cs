@@ -46,6 +46,27 @@ public class BootstrapSafetyTests
         Assert.DoesNotContain("build        :", result.Output, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("--game-dir")]
+    [InlineData("--out")]
+    [InlineData("--archive")]
+    public void RefusesAPresentOptionWithoutAValue(string option)
+    {
+        var result = RunBootstrapRaw(option);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains($"Option {option} requires a value", result.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RefusesAnArchiveOptionFollowedByAnotherFlag()
+    {
+        var result = RunBootstrap("--archive", "--out", "build/lib");
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains("Option --archive requires a value", result.Output, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void AcceptsAnIdenticalPreparedSetDespitePatchedSts2BytesChanging()
     {
@@ -138,6 +159,11 @@ public class BootstrapSafetyTests
             Arbiter.RepoRoot, "build", "test-scratch", Guid.NewGuid().ToString("N"));
         var gameDir = Path.Combine(scratch, "game");
         Directory.CreateDirectory(gameDir);
+        return RunBootstrapRaw(["--game-dir", gameDir, .. args]);
+    }
+
+    private static (int ExitCode, string Output) RunBootstrapRaw(params string[] args)
+    {
         var bootstrap = Path.Combine(
             Arbiter.RepoRoot, "build", "bin", "Sts2PilotTrainer.Bootstrap", "Release", "net9.0",
             "Sts2PilotTrainer.Bootstrap.dll");
@@ -151,8 +177,6 @@ public class BootstrapSafetyTests
             UseShellExecute = false,
         };
         startInfo.ArgumentList.Add(bootstrap);
-        startInfo.ArgumentList.Add("--game-dir");
-        startInfo.ArgumentList.Add(gameDir);
         foreach (var arg in args) startInfo.ArgumentList.Add(arg);
 
         using var process = Process.Start(startInfo)!;
