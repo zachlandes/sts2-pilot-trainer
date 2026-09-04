@@ -7,7 +7,8 @@ If everything agrees, the run's verified gameplay history has been reproduced ex
 This does not identify an unobserved source configuration when multiple configurations reproduce that history; the report states that limit.
 If anything disagrees, it says which field, at which moment, and stops.
 
-This is now a tryable training proof of concept: once a combat-start position is reconstructed exactly, the Combat Trainer mod lets a player fight it, captures that fight, and compares it with the VOD solution replayed from the same boundary.
+The pre-rename `CombatTrainer` artifact demonstrated the training proof of concept: once a combat-start position is reconstructed exactly, its Combat Trainer lets a player fight it, captures that fight, and compares it with the VOD solution replayed from the same boundary.
+The renamed `Runmobile` package has not yet been loaded or exercised in a retail session, so its mod-list, initialization and protected-files proof remain explicitly pending.
 [The proof-of-concept path](docs/proof-of-concept-path.md) records how that loop was built, slice by slice.
 
 ## What has been demonstrated
@@ -30,7 +31,7 @@ Against [one NaveGreed run](https://www.youtube.com/watch?v=OJ-6QXhNgdg), on
   The shipped VOD reconstruction now covers its whole first combat, read off the video action by action, so the recording is one of those completed sides.
   It runs on past that fight to the start of the floor-5 fight's third turn, which is the boundary a candidate search over that turn would have to begin from; the projection still reads the first fight the history enters and requires it to have finished.
   A history that stops mid-combat is still refused, which is what the recording used to be.
-  The fight a person plays in the retail client is captured as the same trace by the Combat Trainer mod, projected the same way, and shown beside the recording's on the mod's visual result panel.
+  The fight a person played in the retail client was captured as the same trace by the pre-rename Combat Trainer mod, projected the same way, and shown beside the recording's on the mod's visual result panel.
 
 - **Provenance is gated before any engine starts.** A run resumed from run history
   matches on seed, build, content hash and acts and replays perfectly — it is just
@@ -84,15 +85,16 @@ Its user data is redirected to `build/sandbox`, it cannot see the retail `RunMan
 `Preflight.EvaluateLiveHost` is the API the in-game host calls before showing a player anything, and the mod is where it meets a real client:
 
 ```bash
-./scripts/install-mod.sh                # build the Combat Trainer mod into the game's own mods directory
+./scripts/install-mod.sh                # build the Runmobile mod into the game's own mods directory
 ./scripts/install-mod.sh --uninstall    # remove it
 ./scripts/arbiter adopt-live            # the refusal, from a process that is not a running game
 ```
 
-Launch Slay the Spire 2 and open Singleplayer: a fourth mode card, `Combat Trainer`, checks whether this install can reproduce the recording and offers `Enter the fight` when it can.
-Win the fight and the mod's visual result panel shows your fight beside the recording's: compact summary figures, card and potion art by turn, and a chart of enemy and player health lost each turn.
-The two lines stay distinct by colour and marker shape, and the panel states differences without scoring either line or giving a verdict.
-The trainer supplies the recording's unlocks, acts, and Ascension 10 in memory, then visibly makes the recording's pre-fight decisions and hands over only after the live combat-start state matches the manifest's observed fields and snapshot digest.
+The corresponding retail flow was demonstrated with the pre-rename Combat Trainer artifact: opening Singleplayer showed a fourth mode card, `Combat Trainer`, which checked whether that install could reproduce the recording and offered `Enter the fight` when it could.
+Winning the fight showed the mod's visual result panel with the player's fight beside the recording's: compact summary figures, card and potion art by turn, and a chart of enemy and player health lost each turn.
+The two lines stayed distinct by colour and marker shape, and the panel stated differences without scoring either line or giving a verdict.
+The trainer supplied the recording's unlocks, acts, and Ascension 10 in memory, then visibly made the recording's pre-fight decisions and handed over only after the live combat-start state matched the manifest's observed fields and snapshot digest.
+That behavior must still be repeated with the renamed `Runmobile` artifact before it is claimed for that package.
 See [docs/in-game-host.md](docs/in-game-host.md), [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md), and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md).
 
 ```bash

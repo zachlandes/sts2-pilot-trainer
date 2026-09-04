@@ -97,21 +97,7 @@ internal sealed class EvidenceArtifact
         return new EvidenceArtifact(path);
     }
 
-    internal void WriteAtomic(string content)
-    {
-        var directory = System.IO.Path.GetDirectoryName(Path)!;
-        var temporary = PathContainment.RequireContained(
-            directory, System.IO.Path.Combine(directory, $".{System.IO.Path.GetFileName(Path)}.{Guid.NewGuid():N}.tmp"));
-        try
-        {
-            File.WriteAllText(temporary, content);
-            File.Move(temporary, Path, overwrite: true);
-        }
-        finally
-        {
-            if (File.Exists(temporary)) File.Delete(temporary);
-        }
-    }
+    internal void WriteAtomic(string content) => AtomicFile.WriteAllText(Path, content);
 }
 
 internal static class Paths

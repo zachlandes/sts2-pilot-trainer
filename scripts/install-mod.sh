@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Builds the Combat Trainer mod and puts it where the game looks for mods.
+# Builds the Runmobile mod and puts it where the game looks for mods.
 #
 # This is the one script in this repository that writes inside a Slay the Spire 2
-# installation. Its final state is exactly CombatTrainer under the selected supported
+# installation. Its final state is exactly Runmobile under the selected supported
 # mod directory (mods or mods_STEAMTEST); upgrades use temporary siblings there so the
 # complete named file set replaces the old one. That is the game's own mod surface -
 # the same directory Steam Workshop installs into
@@ -10,14 +10,20 @@
 # offers no user-data alternative.
 #
 # Nothing outside the selected mod directory is touched, and nothing here reads or
-# writes a save, a profile or a run. --uninstall removes the final directory and
+# writes a save, a profile or a run. --uninstall removes the final directory, and
+# the directory this mod was called CombatTrainer under before the rename, and
 # nothing more.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
-mod_id="CombatTrainer"
+mod_id="Runmobile"
+
+# What this mod was called before it was renamed. Only ever removed: an install that
+# left the old directory behind would put a second copy of this mod in the player's
+# mod list, and the game would report one of them as a duplicate.
+former_mod_id="CombatTrainer"
 uninstall=0
 mods_dir="${STS2_MODS_DIR:-}"
 
@@ -66,10 +72,15 @@ esac
 target="$mods_dir/$mod_id"
 
 if [[ "$uninstall" == 1 ]]; then
-  if [[ -d "$target" ]]; then
-    rm -rf "$target"
-    echo "removed      : $target"
-  else
+  removed=0
+  for directory in "$target" "$mods_dir/$former_mod_id"; do
+    if [[ -d "$directory" ]]; then
+      rm -rf "$directory"
+      echo "removed      : $directory"
+      removed=1
+    fi
+  done
+  if [[ "$removed" == 0 ]]; then
     echo "nothing to remove at $target"
   fi
   exit 0
@@ -99,16 +110,25 @@ done
 
 staging="$(mktemp -d "$mods_dir/.${mod_id}.install.XXXXXX")"
 backup=""
+former_backup=""
+replacement_started=0
+committed=0
 cleanup() {
   if [[ -n "$staging" ]]; then
     rm -rf "$staging"
   fi
-  if [[ -n "$backup" && ( -e "$backup" || -L "$backup" ) ]]; then
-    if [[ ! -e "$target" && ! -L "$target" ]]; then
+  if [[ "$committed" == 0 ]]; then
+    if [[ "$replacement_started" == 1 ]]; then rm -rf "$target"; fi
+    if [[ -n "$backup" && ( -e "$backup" || -L "$backup" ) ]]; then
       mv "$backup" "$target"
-    else
-      rm -rf "$backup"
     fi
+    if [[ -n "$former_backup" && ( -e "$former_backup" || -L "$former_backup" ) ]]; then
+      rm -rf "$mods_dir/$former_mod_id"
+      mv "$former_backup" "$mods_dir/$former_mod_id"
+    fi
+  else
+    if [[ -n "$backup" ]]; then rm -rf "$backup"; fi
+    if [[ -n "$former_backup" ]]; then rm -rf "$former_backup"; fi
   fi
 }
 trap cleanup EXIT
@@ -122,11 +142,23 @@ if [[ -e "$target" || -L "$target" ]]; then
   rmdir "$backup"
   mv "$target" "$backup"
 fi
+if [[ -e "$mods_dir/$former_mod_id" || -L "$mods_dir/$former_mod_id" ]]; then
+  former_backup="$(mktemp -d "$mods_dir/.${former_mod_id}.previous.XXXXXX")"
+  rmdir "$former_backup"
+  mv "$mods_dir/$former_mod_id" "$former_backup"
+fi
+replacement_started=1
 mv "$staging" "$target"
 staging=""
+committed=1
 if [[ -n "$backup" ]]; then
   rm -rf "$backup"
   backup=""
+fi
+if [[ -n "$former_backup" ]]; then
+  rm -rf "$former_backup"
+  former_backup=""
+  echo "removed      : $mods_dir/$former_mod_id (renamed to $mod_id)"
 fi
 trap - EXIT
 

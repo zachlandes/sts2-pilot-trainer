@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!-- ═══════════════════════════════════════════════════════════════════════
-       The Combat Trainer mod: the only project that runs inside the retail
-       Slay the Spire 2 process.
+       Runmobile: the only project that runs inside the retail Slay the Spire 2
+       process. The Combat Trainer is one module inside it.
 
        It owns the game's UI surfaces the way Sts2PilotTrainer.Engine owns its
        gameplay surfaces - both are game-version-specific, and both are the
@@ -10,12 +10,12 @@
        eligibility verdict comes from Preflight, the wording and row logic from
        Sts2PilotTrainer.Trainer, and this project draws the answer.
 
-       The published artifact is CombatTrainer.dll, its manifest and the four
+       The published artifact is Runmobile.dll, its manifest and the four
        project assemblies it uses; see docs/distribution.md.
        ═══════════════════════════════════════════════════════════════════════ -->
   <PropertyGroup>
     <RootNamespace>Sts2PilotTrainer.Mod</RootNamespace>
-    <AssemblyName>CombatTrainer</AssemblyName>
+    <AssemblyName>Runmobile</AssemblyName>
     <PreparedLibDir>$(MSBuildThisFileDirectory)../../build/lib</PreparedLibDir>
     <!-- The mod is loaded by the game, never launched. -->
     <OutputType>Library</OutputType>
@@ -47,7 +47,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="CombatTrainer.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Runmobile.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

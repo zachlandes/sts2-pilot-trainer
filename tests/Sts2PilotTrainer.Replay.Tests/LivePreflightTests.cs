@@ -48,7 +48,7 @@ public sealed class LivePreflightTests
         Assert.False(live.Matches);
         var field = Assert.Single(live.Fields, field => field.Field == "loaded_mod_environment");
         Assert.False(field.Matches);
-        Assert.Contains("did not report Combat Trainer as loaded", field.Diagnostic, StringComparison.Ordinal);
+        Assert.Contains("did not report Runmobile as loaded", field.Diagnostic, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public sealed class LivePreflightTests
         BuildVersion = "v0.111.0",
         BuildDateUtc = "2026.08.14",
         ContentHash = "1568834832",
-        Mods = [new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Loaded")],
+        Mods = [new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Loaded")],
         Unlocks = new UnlockInventory
         {
             Origin = "test reading",

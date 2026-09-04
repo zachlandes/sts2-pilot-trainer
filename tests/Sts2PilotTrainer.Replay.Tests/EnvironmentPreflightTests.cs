@@ -129,7 +129,7 @@ public class EnvironmentPreflightTests
             {
                 Mods =
                 [
-                    new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Loaded"),
+                    new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Loaded"),
                     new LocalMod("broken", "Broken Resource Mod", "1.0.0", false, "Failed"),
                 ],
             });
@@ -143,7 +143,7 @@ public class EnvironmentPreflightTests
     /// The host failing on its own is our defect, not a compatibility problem.
     ///
     /// Every nonempty failure used to be reported as another active or failed mod,
-    /// which on a clean install with only Combat Trainer present sent the player off
+    /// which on a clean install with only Runmobile present sent the player off
     /// to disable mods they do not have and blamed their game for ours.
     /// </summary>
     [Fact]
@@ -153,13 +153,13 @@ public class EnvironmentPreflightTests
             Environment(),
             Local() with
             {
-                Mods = [new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Failed")],
+                Mods = [new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Failed")],
             },
             run: null);
 
         Assert.False(result.Prerequisites.Matches);
         Assert.Equal(
-            "Combat Trainer failed to load. Restart the game and check again.",
+            "Runmobile failed to load. Restart the game and check again.",
             Diagnostic(result.Prerequisites, "loaded_mod_environment"));
     }
 
@@ -176,7 +176,7 @@ public class EnvironmentPreflightTests
             {
                 Mods =
                 [
-                    new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Failed"),
+                    new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Failed"),
                     new LocalMod("baselib", "BaseLib", "3.4.5", false, "Loaded"),
                 ],
             },
@@ -203,14 +203,14 @@ public class EnvironmentPreflightTests
             {
                 Mods =
                 [
-                    new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Failed"),
+                    new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Failed"),
                     new LocalMod("baselib", "BaseLib", "3.4.5", false, "Disabled"),
                 ],
             },
             run: null);
 
         Assert.Equal(
-            "Combat Trainer failed to load. Restart the game and check again.",
+            "Runmobile failed to load. Restart the game and check again.",
             Diagnostic(result.Prerequisites, "loaded_mod_environment"));
     }
 
@@ -224,7 +224,7 @@ public class EnvironmentPreflightTests
         var result = EnvironmentPreflight.LiveGame(Environment(), Local() with { Mods = [] }, run: null);
 
         Assert.Contains(
-            "did not report Combat Trainer as loaded",
+            "did not report Runmobile as loaded",
             Diagnostic(result.Prerequisites, "loaded_mod_environment"),
             StringComparison.Ordinal);
     }
@@ -238,7 +238,7 @@ public class EnvironmentPreflightTests
             {
                 Mods =
                 [
-                    new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Loaded"),
+                    new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Loaded"),
                     new LocalMod("disabled", "Disabled Mod", "1.0.0", true, "Disabled"),
                 ],
             });
@@ -253,7 +253,7 @@ public class EnvironmentPreflightTests
             Environment(),
             Local() with
             {
-                Mods = [new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", false, "Loaded")],
+                Mods = [new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Loaded")],
             });
 
         Assert.True(result.Matches, Describe(result));
@@ -266,7 +266,7 @@ public class EnvironmentPreflightTests
             Environment(),
             Local() with
             {
-                Mods = [new LocalMod("CombatTrainer", "Combat Trainer", "0.1.0", true, "Loaded")],
+                Mods = [new LocalMod("Runmobile", "Runmobile", "0.1.0", true, "Loaded")],
             });
 
         Assert.False(result.Matches);

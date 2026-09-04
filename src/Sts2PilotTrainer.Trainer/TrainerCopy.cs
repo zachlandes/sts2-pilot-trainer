@@ -16,7 +16,10 @@ namespace Sts2PilotTrainer.Trainer;
 /// </summary>
 public static class TrainerCopy
 {
-    /// <summary>The mod's name, in the game's mod list and on its mode card.</summary>
+    /// <summary>The training feature's name, on its mode card and above its result
+    /// panel. Not the mod's name: a player installs Runmobile, and the Combat Trainer
+    /// is one module inside it. The mod list shows the shell, this shows the
+    /// feature.</summary>
     public const string Name = "Combat Trainer";
 
     /// <summary>
@@ -37,7 +40,8 @@ public static class TrainerCopy
     /// <inheritdoc cref="FightFloor"/>
     public const string FightEnemy = "Sludge Spinner";
 
-    /// <summary>The mod list's description, and the mode card's.</summary>
+    /// <summary>The mode card's description. The mod list's own line belongs to the
+    /// shell and lives in <c>Runmobile.json</c>.</summary>
     public static string Description(string creator) =>
         $"Fight {creator}'s {FightFloor} {FightEnemy} exactly as recorded, then compare your fight with " +
         "the recording. Reads your game; never writes to it.";

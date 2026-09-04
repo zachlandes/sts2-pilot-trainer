@@ -139,7 +139,7 @@ internal static class PrefightScreen
         catch (Exception ex)
         {
             Log.Error(
-                $"[{CombatTrainerMod.ModId}] could not close the watching popup: " +
+                $"[{RunmobileMod.ModId}] could not close the watching popup: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
         finally
@@ -200,7 +200,7 @@ internal static class PrefightScreen
             catch (Exception cleanup)
             {
                 Log.Error(
-                    $"[{CombatTrainerMod.ModId}] could not clear a failed watching popup: " +
+                    $"[{RunmobileMod.ModId}] could not clear a failed watching popup: " +
                     $"{cleanup.GetType().Name}: {cleanup.Message}", 2);
             }
 

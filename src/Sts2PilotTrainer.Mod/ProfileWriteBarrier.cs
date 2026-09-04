@@ -106,7 +106,7 @@ internal static class ProfileWriteBarrier
             SuppressedWrites);
 
         Log.Info(
-            $"[{CombatTrainerMod.ModId}] profile write barrier installed over " +
+            $"[{RunmobileMod.ModId}] profile write barrier installed over " +
             $"{installed.ToString(System.Globalization.CultureInfo.InvariantCulture)} write(s); " +
             "inactive until a trainer run exists", 2);
     }

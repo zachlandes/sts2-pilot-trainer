@@ -5,12 +5,17 @@ using MegaCrit.Sts2.addons.mega_text;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
 using MegaCrit.Sts2.Core.Nodes.Screens.MainMenu;
-using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
 /// <summary>
 /// Puts a fourth card in the singleplayer menu, beside Standard, Daily and Custom.
+///
+/// Which card is the module's, not this class's: it draws whatever the enabled
+/// modules contribute through <see cref="MenuCard"/>. Today that is exactly one, the
+/// Combat Trainer's, and more than one is refused rather than drawn - the row's
+/// spacing is measured for a fourth card and nothing here has been seen to place a
+/// fifth.
 ///
 /// The card is a duplicate of the game's own Custom Run card rather than a control
 /// built from parts. That is what makes it native: it keeps the scene's panel,
@@ -34,10 +39,6 @@ internal static class ModeCard
     private const string StandardCardPath = "StandardButton";
     private const string DailyCardPath = "DailyButton";
 
-    /// <summary>The name given to the card this mod adds, so a second pass can see
-    /// its own work rather than adding another one.</summary>
-    private const string CardNodeName = "CombatTrainerButton";
-
     /// <summary>
     /// Runs after the game has built the singleplayer menu.
     ///
@@ -51,17 +52,31 @@ internal static class ModeCard
     {
         try
         {
-            if (__instance.GetNodeOrNull<NSubmenuButton>(CardNodeName) is not null) return;
+            var cards = RunmobileMod.MenuCards;
+            if (cards.Count == 0) return;
+            if (cards.Count > 1)
+            {
+                // The row is re-centred by one measured step, which places a fourth
+                // card and says nothing about a fifth. Drawing them anyway would put
+                // cards on top of each other in the player's main menu.
+                Log.Warn(
+                    $"[{RunmobileMod.ModId}] {cards.Count} modules contribute a singleplayer card and the " +
+                    "measured layout places one; not adding any.", 2);
+                return;
+            }
+
+            var surface = cards[0];
+            if (__instance.GetNodeOrNull<NSubmenuButton>(surface.NodeName) is not null) return;
 
             // The first moment there is demonstrably a running game to read. Mod
             // loading is not: it runs before the game has a model database at all.
-            if (!CombatTrainerMod.EnsureAdopted()) return;
+            if (!RunmobileMod.EnsureAdopted()) return;
 
             var source = __instance.GetNodeOrNull<NSubmenuButton>(SourceCardPath);
             if (source is null)
             {
                 Log.Warn(
-                    $"[{CombatTrainerMod.ModId}] this build's singleplayer menu has no '{SourceCardPath}' " +
+                    $"[{RunmobileMod.ModId}] this build's singleplayer menu has no '{SourceCardPath}' " +
                     "card to model a fourth one on; not adding one.", 2);
                 return;
             }
@@ -71,7 +86,7 @@ internal static class ModeCard
             if (source.Duplicate(duplicateFlags) is not NSubmenuButton card)
             {
                 Log.Warn(
-                    $"[{CombatTrainerMod.ModId}] the singleplayer card could not be duplicated; not adding " +
+                    $"[{RunmobileMod.ModId}] the singleplayer card could not be duplicated; not adding " +
                     "a fourth one.", 2);
                 return;
             }
@@ -80,11 +95,12 @@ internal static class ModeCard
                 __instance,
                 source,
                 card,
+                surface,
                 () =>
                 {
                     var error = card.Connect(
                         NClickableControl.SignalName.Released,
-                        Callable.From<NButton>(_ => TrainerScreen.Open()));
+                        Callable.From<NButton>(_ => surface.Open()));
                     if (error != Error.Ok)
                     {
                         throw new InvalidOperationException($"Connecting the mode card failed with {error}.");
@@ -96,7 +112,7 @@ internal static class ModeCard
             // The player's main menu is not ours to break. A card that failed to
             // appear is a bug report; a menu that failed to open is a broken game.
             Log.Error(
-                $"[{CombatTrainerMod.ModId}] could not add the mode card: {ex.GetType().Name}: {ex.Message}", 2);
+                $"[{RunmobileMod.ModId}] could not add the mode card: {ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 
@@ -104,16 +120,17 @@ internal static class ModeCard
         NSingleplayerSubmenu submenu,
         NSubmenuButton source,
         NSubmenuButton card,
+        MenuCard surface,
         Action connect)
     {
         var layout = Layout.Capture(submenu, source);
         var added = false;
         try
         {
-            card.Name = CardNodeName;
+            card.Name = surface.NodeName;
             submenu.AddChild(card);
             added = true;
-            SetLabels(card);
+            SetLabels(card, surface);
             Layout.PlaceBeside(layout, card);
             connect();
         }
@@ -147,13 +164,13 @@ internal static class ModeCard
     /// The duplicate's localization prefix is cleared so a translation refresh
     /// leaves these labels unchanged.
     /// </summary>
-    private static void SetLabels(NSubmenuButton card)
+    private static void SetLabels(NSubmenuButton card, MenuCard surface)
     {
         ClearLocalization(card);
         var title = Field<MegaLabel>(card, "_title");
         var description = Field<MegaRichTextLabel>(card, "_description");
-        title.SetTextAutoSize(TrainerCopy.Name);
-        description.SetTextAutoSize(RecordingIdentity.Description(CombatTrainerMod.Recording));
+        title.SetTextAutoSize(surface.Title);
+        description.SetTextAutoSize(surface.Description());
     }
 
     private static T Field<T>(NSubmenuButton card, string name) where T : class

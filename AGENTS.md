@@ -9,6 +9,8 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
 ```bash
 ./scripts/build.sh          # bootstrap the game assembly copy, then build everything
 ./scripts/install-mod.sh    # build the in-game mod and install it into the game's mods directory
+./scripts/protected-files.sh snapshot <ledger>   # hash everything the mod must not change
+./scripts/protected-files.sh compare  <ledger>   # ... and say what a session changed
 dotnet test sts2-pilot-trainer.sln -c Release
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
@@ -123,7 +125,14 @@ way in. Two traps in that process cost a crash each and are written down there: 
 initialization runs before the game has a model database, and Godot does not load the
 game into the default assembly load context. `./scripts/install-mod.sh` is the one
 script here that writes inside a Slay the Spire 2 installation.
-Its final state is exactly `CombatTrainer` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions.
+Its final state is exactly `Runmobile` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions, and remove the `CombatTrainer` directory the mod was installed under before the rename.
+
+**The mod a player installs is `Runmobile`, and the Combat Trainer is one module inside it.**
+`RunmobileMod` is the shell and `IRunmobileModule` the line between it and a feature; a module says whether it can run, installs its own patches and contributes its own surfaces, and one that refuses does not take the rest of the mod with it.
+`RunmobileStore` is the only thing in the mod that writes, under `user://Runmobile/` scoped by the game's own resolved platform, account and profile - taken whole from `UserDataPathProvider`, never reassembled here, and never part of an exported recording's identity.
+`ProfileWriteBarrier` is a different thing and stays as it is: it suppresses the game's own writes during a trainer run.
+`./scripts/protected-files.sh` is how "nothing outside that subtree changed" is measured rather than asserted.
+Do not add a second writer, a second path rule or a second account-identity mechanism; [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
 
 **Read [docs/ingestion.md](docs/ingestion.md) before touching how a recording is found or
 dated.** Screening runs on free metadata and establishes nothing: a seed it recovers is a

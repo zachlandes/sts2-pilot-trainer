@@ -9,14 +9,14 @@ public sealed class ModeCardTests
 {
     private static string ModAssemblyPath =>
         Path.Combine(
-            Arbiter.RepoRoot, "build", "bin", "Sts2PilotTrainer.Mod", "Release", "net9.0", "CombatTrainer.dll");
+            Arbiter.RepoRoot, "build", "bin", "Sts2PilotTrainer.Mod", "Release", "net9.0", "Runmobile.dll");
 
     [ModeCardFact]
     public void TranslationChangeKeepsTheApprovedTitleAndDescription()
     {
         _ = EngineHost.StartupPhase();
         var modAssembly = AssemblyLoadContext.Default.Assemblies
-            .FirstOrDefault(assembly => assembly.GetName().Name == "CombatTrainer")
+            .FirstOrDefault(assembly => assembly.GetName().Name == "Runmobile")
             ?? AssemblyLoadContext.Default.LoadFromAssemblyPath(ModAssemblyPath);
         var gameAssembly = AppDomain.CurrentDomain.GetAssemblies()
             .Single(assembly => assembly.GetName().Name == "sts2");
@@ -32,7 +32,7 @@ public sealed class ModeCardTests
 
         var modeCard = modAssembly.GetType("Sts2PilotTrainer.Mod.ModeCard")!;
         modeCard.GetMethod("SetLabels", BindingFlags.NonPublic | BindingFlags.Static)!
-            .Invoke(null, [card]);
+            .Invoke(null, [card, TheCombatTrainersCard(modAssembly)]);
         cardType.GetMethod("_Notification")!.Invoke(card, [2010]);
 
         Assert.Null(GetField(cardType, card, "_locKeyPrefix"));
@@ -48,7 +48,7 @@ public sealed class ModeCardTests
     {
         _ = EngineHost.StartupPhase();
         var modAssembly = AssemblyLoadContext.Default.Assemblies
-            .FirstOrDefault(assembly => assembly.GetName().Name == "CombatTrainer")
+            .FirstOrDefault(assembly => assembly.GetName().Name == "Runmobile")
             ?? AssemblyLoadContext.Default.LoadFromAssemblyPath(ModAssemblyPath);
         var gameAssembly = AppDomain.CurrentDomain.GetAssemblies()
             .Single(assembly => assembly.GetName().Name == "sts2");
@@ -69,7 +69,10 @@ public sealed class ModeCardTests
         var modeCard = modAssembly.GetType("Sts2PilotTrainer.Mod.ModeCard")!;
         var failure = Assert.Throws<TargetInvocationException>(() =>
             modeCard.GetMethod("InstallCard", BindingFlags.NonPublic | BindingFlags.Static)!
-                .Invoke(null, [submenu, source, trainer, (Action)(() => throw new InvalidOperationException())]));
+                .Invoke(null, [
+                    submenu, source, trainer, TheCombatTrainersCard(modAssembly),
+                    (Action)(() => throw new InvalidOperationException()),
+                ]));
 
         Assert.IsType<InvalidOperationException>(failure.InnerException);
         Assert.Null(trainer.GetParent());
@@ -88,7 +91,7 @@ public sealed class ModeCardTests
     {
         _ = EngineHost.StartupPhase();
         var modAssembly = AssemblyLoadContext.Default.Assemblies
-            .FirstOrDefault(assembly => assembly.GetName().Name == "CombatTrainer")
+            .FirstOrDefault(assembly => assembly.GetName().Name == "Runmobile")
             ?? AssemblyLoadContext.Default.LoadFromAssemblyPath(ModAssemblyPath);
         var gameAssembly = AppDomain.CurrentDomain.GetAssemblies()
             .Single(assembly => assembly.GetName().Name == "sts2");
@@ -109,12 +112,28 @@ public sealed class ModeCardTests
         var modeCard = modAssembly.GetType("Sts2PilotTrainer.Mod.ModeCard")!;
         var failure = Assert.Throws<TargetInvocationException>(() =>
             modeCard.GetMethod("InstallCard", BindingFlags.NonPublic | BindingFlags.Static)!
-                .Invoke(null, [submenu, source, trainer, (Action)(() => { })]));
+                .Invoke(null, [
+                    submenu, source, trainer, TheCombatTrainersCard(modAssembly), (Action)(() => { }),
+                ]));
 
         Assert.IsType<InvalidOperationException>(failure.InnerException);
         Assert.Null(trainer.GetParent());
         Assert.Null(submenu.GetNodeOrNull<Node>("CombatTrainerButton"));
         Assert.Equal(originalPositions, new[] { standard.Position, daily.Position, source.Position });
+    }
+
+    /// <summary>
+    /// The surface the Combat Trainer module contributes, taken from the module
+    /// rather than built here: what these tests are about is what the menu does with
+    /// a module's card, and inventing one would stop pinning the real wording.
+    /// </summary>
+    private static object TheCombatTrainersCard(Assembly modAssembly)
+    {
+        var moduleType = modAssembly.GetType("Sts2PilotTrainer.Mod.CombatTrainerModule")!;
+        var instance = moduleType.GetProperty("Instance", BindingFlags.Static | BindingFlags.NonPublic)!
+            .GetValue(null)!;
+        var cards = (System.Collections.IEnumerable)moduleType.GetProperty("MenuCards")!.GetValue(instance)!;
+        return cards.Cast<object>().Single();
     }
 
     private static Control CreateCard(
@@ -148,7 +167,7 @@ public sealed class ModeCardTests
         {
             if (!Arbiter.GameAvailable || !File.Exists(ModAssemblyPath))
             {
-                Skip = "Needs the prepared game and built Combat Trainer mod. Run ./scripts/build.sh.";
+                Skip = "Needs the prepared game and built Runmobile mod. Run ./scripts/build.sh.";
             }
         }
     }
