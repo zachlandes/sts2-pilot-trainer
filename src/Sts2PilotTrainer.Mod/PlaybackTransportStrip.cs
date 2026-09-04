@@ -98,6 +98,10 @@ internal sealed class PlaybackTransportStrip
     private const int TipBodyFontSize = 12;
     private const int NoteFontSize = 12;
 
+    /// <summary>How tall a line of text is as a multiple of its font size. Used only
+    /// where there is no font to measure with, which is every test here.</summary>
+    private const float LineHeight = 1.35f;
+
     private readonly Control _root;
     private readonly Polygon2D _plateFill;
     private readonly Line2D _plateEdge;
@@ -242,7 +246,7 @@ internal sealed class PlaybackTransportStrip
             Name = "NotePlate",
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
-        nodes.NoteText = Add(nodes.Note, Text("NoteText", NoteFontSize, Muted, font));
+        nodes.NoteText = Add(nodes.Note, Wrapping(Text("NoteText", NoteFontSize, Muted, font)));
 
         nodes.Speed = Add(root, Pressable("Speed", font, speed));
         nodes.SpeedLabel = Add(nodes.Speed, Text("SpeedLabel", SpeedFontSize, Muted, font));
@@ -260,7 +264,7 @@ internal sealed class PlaybackTransportStrip
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
         nodes.TipTitle = Add(nodes.Tip, Text("TooltipTitle", TipTitleFontSize, Cream, font));
-        nodes.TipBody = Add(nodes.Tip, Text("TooltipBody", TipBodyFontSize, TipBody, font));
+        nodes.TipBody = Add(nodes.Tip, Wrapping(Text("TooltipBody", TipBodyFontSize, TipBody, font)));
 
         var strip = new PlaybackTransportStrip(nodes, viewport, anchor, font);
 
@@ -311,8 +315,9 @@ internal sealed class PlaybackTransportStrip
 
         Plate(left, top, width, height);
 
-        SetGlyph(_mark, state.Mark, MarkSize * _unit, state.Mode == TransportMode.Refused ? Red : Gold);
-        Place(_mark, left + (12 * _unit), top + ((height - (MarkSize * _unit)) / 2));
+        var mark = MarkSize * _unit;
+        SetGlyph(_mark, state.Mark, mark, mark, state.Mode == TransportMode.Refused ? Red : Gold);
+        Place(_mark, left + (12 * _unit), top + ((height - mark) / 2), mark, mark);
 
         _creator.Text = state.Identity.Creator;
         _title.Text = state.Identity.VideoTitle ?? string.Empty;
@@ -384,7 +389,12 @@ internal sealed class PlaybackTransportStrip
     {
         button.Disabled = !control.Enabled;
         Face(button, control.Enabled);
-        SetGlyph(button, control.Glyph, (ButtonSize - 10) * _unit, control.Enabled ? Cream : DisabledGlyph);
+        SetGlyph(
+            button,
+            control.Glyph,
+            ButtonSize * _unit,
+            (ButtonSize - 10) * _unit,
+            control.Enabled ? Cream : DisabledGlyph);
         Place(button, x, y, ButtonSize * _unit, ButtonSize * _unit);
     }
 
@@ -439,12 +449,19 @@ internal sealed class PlaybackTransportStrip
         if (!_note.Visible) return;
 
         _noteText.Text = state.Note;
-        var noteHeight = 34 * _unit;
+
+        // The sentence is longer than the tag is wide, so it wraps, and the panel is
+        // sized to the wrapped text rather than to one line. Sizing it to a line is
+        // what cut the sentence off after "what was cho" in the client.
+        var inset = 12 * _unit;
+        var textWidth = width - (2 * inset);
+        var noteHeight = WrappedHeight(state.Note, NoteFontSize, textWidth, fallbackLines: 2) + (16 * _unit);
+
         Place(_note, left, top + height + (6 * _unit), width, noteHeight);
         Clear(_notePlate);
         Place(_notePlate, 0, 0, width, noteHeight);
         PlatePolygon(_notePlate, width, noteHeight);
-        Place(_noteText, 12 * _unit, 0, width - (24 * _unit), noteHeight);
+        Place(_noteText, inset, 0, textWidth, noteHeight);
     }
 
     /// <summary>
@@ -776,9 +793,14 @@ internal sealed class PlaybackTransportStrip
         _tipBody.Text = body;
         _tip.Visible = true;
 
+        // Sized to the body once it has wrapped, not to the newlines in it: at this
+        // width "Shows an earlier choice again. Nothing is undone." is two lines and
+        // carries no newline of its own, and counting them lost the last word.
         var width = 250 * _unit;
-        var lines = body.Split('\n').Length;
-        var height = (30 + (15 * lines)) * _unit;
+        var inset = 12 * _unit;
+        var bodyTop = 24 * _unit;
+        var bodyHeight = WrappedHeight(body, TipBodyFontSize, width - (2 * inset), fallbackLines: 2);
+        var height = bodyTop + bodyHeight + (8 * _unit);
 
         // Below the control and pulled back on screen, never over the tag itself:
         // a tooltip that covers the counter it is explaining is worse than none.
@@ -788,16 +810,25 @@ internal sealed class PlaybackTransportStrip
         Clear(_tipPlate);
         Place(_tipPlate, 0, 0, width, height);
         PlatePolygon(_tipPlate, width, height);
-        Place(_tipTitle, 12 * _unit, 6 * _unit, width - (24 * _unit), 18 * _unit);
-        Place(_tipBody, 12 * _unit, 24 * _unit, width - (24 * _unit), height - (30 * _unit));
-        _tipBody.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        Place(_tipTitle, inset, 6 * _unit, width - (2 * inset), 18 * _unit);
+        Place(_tipBody, inset, bodyTop, width - (2 * inset), bodyHeight);
     }
 
     private void HideTooltip() => _tip.Visible = false;
 
     // ── Node plumbing ──────────────────────────────────────────────────────
 
-    private void SetGlyph(Control host, TransportGlyph glyph, float size, Color colour)
+    /// <summary>
+    /// Puts a glyph in the middle of its host.
+    ///
+    /// The box is passed in rather than read off the host, because the host is sized
+    /// by the same pass that sets its glyph and a <c>Control</c> asked for its size
+    /// before that pass has run answers with the size it had last frame - nothing at
+    /// all, the first time. That is what drew every control's glyph half a glyph up
+    /// and to the left of its plate on the first paint, and left the mark straddling
+    /// the tag's own edge for the whole run, since the mark is never given a size.
+    /// </summary>
+    private void SetGlyph(Control host, TransportGlyph glyph, float box, float size, Color colour)
     {
         foreach (var child in host.GetChildren().ToList())
         {
@@ -809,7 +840,7 @@ internal sealed class PlaybackTransportStrip
         }
 
         var art = TransportGlyphArt.Of(glyph, "Glyph", size, colour);
-        Place(art, (host.Size.X - size) / 2, (host.Size.Y - size) / 2);
+        Place(art, (box - size) / 2, (box - size) / 2);
         host.AddChild(art);
     }
 
@@ -860,6 +891,16 @@ internal sealed class PlaybackTransportStrip
         return label;
     }
 
+    /// <summary>Lets a label run onto as many lines as its box allows, and stops it
+    /// clipping. A sentence the tag says is always sized by <see cref="WrappedHeight"/>,
+    /// so the box is the right height and there is nothing left to clip.</summary>
+    private static Label Wrapping(Label label)
+    {
+        label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        label.ClipText = false;
+        return label;
+    }
+
     private static Control Plated(string name) => new()
     {
         Name = name,
@@ -890,6 +931,29 @@ internal sealed class PlaybackTransportStrip
     }
 
     private static void Place(Control control, float x, float y) => control.Position = new Vector2(x, y);
+
+    /// <summary>
+    /// How tall a sentence is once it has been wrapped to the width it is given.
+    ///
+    /// Counting the newlines in the text is not enough. Every sentence this tag says
+    /// is wrapped by width, so a panel sized from the text alone runs short and cuts
+    /// the sentence off mid-word - which is what the once-only note and the look-back
+    /// tooltip both did in the client. Measured with the font that will draw it;
+    /// with no font, which is every test here and nothing in the client, the caller's
+    /// own line count stands.
+    /// </summary>
+    private float WrappedHeight(string text, int fontSize, float width, int fallbackLines)
+    {
+        if (_font is null) return fallbackLines * LineHeight * fontSize;
+
+        return _font.GetMultilineStringSize(
+            text,
+            HorizontalAlignment.Left,
+            width,
+            fontSize,
+            maxLines: -1,
+            brkFlags: TextServer.LineBreakFlag.Mandatory | TextServer.LineBreakFlag.WordBound).Y;
+    }
 
     private static Color Rgb(int red, int green, int blue, float alpha = 1f) =>
         new(red / 255f, green / 255f, blue / 255f, alpha);

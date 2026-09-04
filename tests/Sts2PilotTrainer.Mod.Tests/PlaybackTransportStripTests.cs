@@ -353,6 +353,63 @@ public sealed class PlaybackTransportStripTests
         Assert.False(Label(strip, "VideoTitle").Visible);
     }
 
+    /// <summary>
+    /// A glyph sits inside the control it belongs to, on the first paint as well as on
+    /// every one after it.
+    ///
+    /// The tag draws each control's glyph in the same pass that sizes the control, so
+    /// a glyph centred against the size the host reports is centred against the size
+    /// it had last frame - nothing at all, the first time. In the client that put
+    /// every control's glyph half a glyph up and to the left of its plate on the
+    /// screen it first appeared on, and left the mark straddling the tag's own edge
+    /// for the whole run, because the mark is never resized after that.
+    /// </summary>
+    [Fact]
+    public void EveryGlyphIsDrawnInsideItsControlOnTheFirstPaint()
+    {
+        var strip = Build(Revealing(Blessing, 1, noteShown: false));
+
+        var hosts = new Control[] { strip.Back, strip.Play, strip.Step, Find<Control>(strip.Root, "Mark") };
+        foreach (var host in hosts)
+        {
+            var glyph = Descendants(host).OfType<Control>().Single(node => node.Name.ToString() == "Glyph");
+
+            Assert.True(glyph.Position.X >= 0, $"{host.Name} drew its glyph left of itself");
+            Assert.True(glyph.Position.Y >= 0, $"{host.Name} drew its glyph above itself");
+            Assert.True(
+                glyph.Position.X + glyph.Size.X <= host.Size.X,
+                $"{host.Name} drew its glyph past its right edge");
+            Assert.True(
+                glyph.Position.Y + glyph.Size.Y <= host.Size.Y,
+                $"{host.Name} drew its glyph past its bottom edge");
+
+            // Centred, not merely contained.
+            Assert.Equal(glyph.Position.X, (host.Size.X - glyph.Size.X) / 2, 3);
+            Assert.Equal(glyph.Position.Y, (host.Size.Y - glyph.Size.Y) / 2, 3);
+        }
+    }
+
+    /// <summary>
+    /// Every sentence the tag says is allowed to wrap, and none of them is clipped.
+    ///
+    /// Both panels that carry a sentence were sized from the text rather than from
+    /// the text once wrapped, so the once-only note stopped at "what was cho" and
+    /// look back's tooltip lost the word "undone." A panel is sized by measuring the
+    /// wrapped text, which leaves nothing to clip.
+    /// </summary>
+    [Fact]
+    public void TheSentencesTheTagSaysWrapRatherThanBeingCutOff()
+    {
+        var strip = Build(Revealing(Blessing, 1, noteShown: false));
+        strip.Back.EmitHover(entered: true);
+
+        foreach (var sentence in new[] { Label(strip, "NoteText"), Label(strip.Tooltip, "TooltipBody") })
+        {
+            Assert.False(sentence.ClipText, $"{sentence.Name} clips its sentence");
+            Assert.Equal(TextServer.AutowrapMode.WordSmart, sentence.AutowrapMode);
+        }
+    }
+
     private static PlaybackTransport Revealing(PrefightChoice choice, int number, bool noteShown) =>
         PlaybackTransport.Revealing(NaveGreed, choice, number, count: 2, playing: false, noteShown: noteShown);
 

@@ -215,6 +215,37 @@ public partial class Label
     public bool ClipText { get; set; }
 }
 
+public partial class Font
+{
+    /// <summary>
+    /// Godot: how large a string is once it has been wrapped to <paramref name="width"/>.
+    ///
+    /// The transport measures every sentence it hangs under its tag with this, so a
+    /// panel is as tall as its wrapped text rather than as tall as one line. It is
+    /// here so that code loads without a game; a test has no font to measure with and
+    /// never reaches it, but the runtime resolves the call before the transport's own
+    /// null check runs.
+    ///
+    /// The estimate mirrors the sibling <see cref="GetStringSize(string, int, float, int)"/>
+    /// above rather than Godot's real shaping, which needs a font.
+    /// </summary>
+    public Vector2 GetMultilineStringSize(
+        string text,
+        HorizontalAlignment alignment,
+        float width,
+        int fontSize,
+        int maxLines,
+        TextServer.LineBreakFlag brkFlags,
+        TextServer.JustificationFlag justificationFlags,
+        TextServer.Direction direction,
+        TextServer.Orientation orientation)
+    {
+        var run = text.Length * fontSize * 0.6f;
+        var lines = width <= 0 ? 1 : Math.Max(1, (int)Math.Ceiling(run / width));
+        return new Vector2(Math.Min(run, width <= 0 ? run : width), lines * fontSize * 1.35f);
+    }
+}
+
 public partial class TextureRect
 {
     public enum ExpandModeEnum { KeepSize, IgnoreSize, FitWidth, FitWidthProportional, FitHeight, FitHeightProportional }
