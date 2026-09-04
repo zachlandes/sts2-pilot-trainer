@@ -499,7 +499,7 @@ public sealed class RunDriver : IDisposable
                 $"{_session.RunState.CurrentRoom?.RoomType.ToString() ?? "no"} room, not an event.");
         }
 
-        var localEvent = RunManager.Instance.EventSynchronizer?.GetLocalEvent()
+        var localEvent = LocalEvent()
             ?? throw new EngineException(
                 $"Action {action.Seq} chooses an event option, but no event is in progress.");
 
@@ -514,12 +514,40 @@ public sealed class RunDriver : IDisposable
         ChooseEventOption(Arg.Int(action, "option_index"));
     }
 
+    /// <summary>
+    /// The event this player is in, or null when there is none.
+    ///
+    /// The engine's own reader indexes a per-player list and throws out of range when
+    /// the room has no event for this player, which is what a run that diverged
+    /// before this floor looks like from here. Turned into the refusal it is: the
+    /// alternative is an index exception escaping a replay, which says nothing about
+    /// the recording and reads as a defect in this tool rather than a divergence in
+    /// the run.
+    /// </summary>
+    private static EventModel? LocalEvent()
+    {
+        var synchronizer = RunManager.Instance.EventSynchronizer;
+        if (synchronizer is null) return null;
+
+        try
+        {
+            return synchronizer.GetLocalEvent();
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            throw new EngineException(
+                "This room has no event for this player, so there is no option list to choose from. The run " +
+                "generated here is not the one the recording describes; a divergence before this floor is " +
+                "what reaches this point.");
+        }
+    }
+
     private void ChooseEventOption(int optionIndex)
     {
         var synchronizer = RunManager.Instance.EventSynchronizer
             ?? throw new EngineException("No event synchronizer: the run is not in an event room.");
 
-        var localEvent = synchronizer.GetLocalEvent()
+        var localEvent = LocalEvent()
             ?? throw new EngineException("No event is in progress, so no option can be chosen.");
 
         var options = localEvent.CurrentOptions;

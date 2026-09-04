@@ -88,7 +88,8 @@ internal static class TrainerScreen
         // installation either way, because those are the ones no host can supply.
         return EligibilityScreen.For(
             recording,
-            Preflight.EvaluateLiveHost(expected, RecordedFightEntry.SuppliedProgress, recording.Source.Kind),
+            Preflight.EvaluateLiveHost(
+                expected, RecordedFightEntry.SuppliedProgressFor(recording), recording.Source.Kind),
             fightOffered: RecordedFightEntry.CanConstruct(recording, out _));
     }
 

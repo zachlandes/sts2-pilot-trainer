@@ -96,11 +96,12 @@ public sealed record UnlockInventory
     /// which is a refusal rather than a pass: an unchecked requirement reported as met
     /// is the confident wrong answer this project exists to prevent.
     ///
-    /// No reader fills this in yet: <c>LocalEnvironment.ReadPrerequisites</c>
-    /// constructs an inventory with origin, profile and categories only, so every
-    /// exact requirement currently refuses as not enumerated. The engine reader
-    /// enumerating this build's epoch and encounter ids is the work that closes it,
-    /// and it lands with the recorder that first produces a native manifest.
+    /// <c>LocalEnvironment.ReadPrerequisites</c> fills it from the build - every
+    /// epoch <c>UnlockState.all</c> holds and every encounter the model database
+    /// ships. A reader that could not enumerate them leaves it absent, and an exact
+    /// requirement then refuses as unchecked rather than passing: an unchecked
+    /// requirement reported as met is the confident wrong answer this project exists
+    /// to prevent.
     /// </summary>
     [JsonPropertyName("shipped_ids")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

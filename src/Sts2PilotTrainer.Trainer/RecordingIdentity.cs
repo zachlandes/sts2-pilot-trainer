@@ -16,17 +16,25 @@ namespace Sts2PilotTrainer.Trainer;
 /// </summary>
 public static class RecordingIdentity
 {
-    public static string Creator(ReplayManifest recording)
+    public static string Creator(ReplayManifest recording) =>
+        CreatorOrNull(recording)
+        ?? throw new ManifestException(
+            $"Recording '{recording.RunId}' does not say whose run it is (source.video.channel_name is " +
+            "absent), so nothing here can name them.");
+
+    /// <summary>
+    /// The same, and null rather than a refusal when the manifest names nobody.
+    ///
+    /// For the one caller that is not a screen: a generated fixture has no creator
+    /// because there is nobody behind it, and a tool walking one through its own
+    /// decisions should say so rather than fail. Everything a player reads goes
+    /// through <see cref="Creator"/>, which still refuses, because a screen with a
+    /// blank where a name goes is a screen that has lost track of whose run it is.
+    /// </summary>
+    public static string? CreatorOrNull(ReplayManifest recording)
     {
         var name = recording.Source.Video?.ChannelName;
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ManifestException(
-                $"Recording '{recording.RunId}' does not say whose run it is (source.video.channel_name is " +
-                "absent), so nothing here can name them.");
-        }
-
-        return name;
+        return string.IsNullOrWhiteSpace(name) ? null : name;
     }
 
     /// <summary>What this recording is, under the screen's title.</summary>

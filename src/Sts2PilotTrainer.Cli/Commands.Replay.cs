@@ -11,25 +11,49 @@ internal static partial class Commands
     /// replay this run at all?
     ///
     /// <c>--progress</c> chooses whose unlock state is checked. The Combat Trainer
-    /// host passes <c>local-profile</c> and gates on what the player actually has. The headless
-    /// arbiter defaults to <c>all-unlocked</c>, which is the state it will construct
-    /// the run with - the same question asked of a host rather than of a person, and
-    /// reported as such rather than as a reading of anybody's save.
+    /// host passes <c>local-profile</c> and gates on what the player actually has.
+    /// Without it, the state checked is the state a run from this recording would
+    /// actually be constructed with - the recorded player's own where the recording
+    /// carries it, and the complete one where it does not, which is every recording
+    /// read off a video. The same question asked of a host rather than of a person,
+    /// and reported as such rather than as a reading of anybody's save.
     /// </summary>
     internal static int Preflight(string[] args)
     {
         var manifest = ManifestJson.Load(Args.Positional(args, 0, "manifest path"));
-        var progress = ParseProgress(args);
-        var result = Engine.Preflight.Evaluate(manifest.Environment, progress, manifest.Source.Kind);
+        var progress = ParseProgress(args, RecordedFightEntry.SuppliedProgressFor(manifest));
+        var reading = LocalEnvironment.ReadPrerequisites(manifest.Environment, progress);
+        var result = EnvironmentPreflight.Prerequisites(manifest.Environment, reading, manifest.Source.Kind);
 
         Console.WriteLine($"manifest : {manifest.RunId}");
-        Console.WriteLine($"progress : {progress}");
+        Console.WriteLine($"progress : {progress} - {LocalEnvironment.OriginOf(progress)}");
         Console.WriteLine();
         PrintFields(result);
 
         Console.WriteLine();
         Console.WriteLine("acts this build ships:");
         foreach (var act in Engine.EngineHost.AvailableActs()) Console.WriteLine($"  {act}");
+
+        // The reading itself, on request, because what this machine has is a fact
+        // somebody may need to check the verdict against - and for the two id lists an
+        // exact requirement names, the console has no room to print it.
+        if (Args.Value(args, "--out") is { } outPath)
+        {
+            var artifact = EvidenceArtifact.PreparePath(outPath);
+            artifact.WriteAtomic(
+                JsonSerializer.Serialize(new
+                {
+                    schema = "sts2-pilot-trainer/preflight/v1",
+                    manifest = manifest.RunId,
+                    progress = progress.ToString(),
+                    progress_origin = LocalEnvironment.OriginOf(progress),
+                    matches = result.Matches,
+                    reading,
+                    fields = result.Fields,
+                }, Json.Indented) + "\n");
+            Console.WriteLine();
+            Console.WriteLine($"reading: {Paths.Display(artifact.Path)}");
+        }
 
         Console.WriteLine();
         Console.WriteLine(result.Matches
@@ -146,12 +170,10 @@ internal static partial class Commands
         return combined.Matches ? 0 : 1;
     }
 
-    private static PlayerProgress ParseProgress(
-        string[] args, PlayerProgress defaultProgress = PlayerProgress.AllUnlocked) =>
-        Enum.Parse<PlayerProgress>(
-            (Args.Value(args, "--progress") ?? defaultProgress.ToString())
-                .Replace("-", string.Empty, StringComparison.Ordinal),
-            ignoreCase: true);
+    private static PlayerProgress ParseProgress(string[] args, PlayerProgress? defaultProgress = null) =>
+        Args.Value(args, "--progress") is { } asked
+            ? PlayerProgress.Parse(asked)
+            : defaultProgress ?? PlayerProgress.AllUnlocked;
 
     private static void PrintFields(PreflightResult result)
     {
@@ -175,12 +197,17 @@ internal static partial class Commands
             ? int.Parse(raw, System.Globalization.CultureInfo.InvariantCulture)
             : (int?)null;
 
-        var progress = ParseProgress(args);
+        // The state the recording's run is generated against, which is the recorded
+        // player's own where the recording carries it. Supplied to the run being
+        // constructed rather than compared with anybody: nothing on this machine
+        // enters it, so the same recording replays the same way here and there.
+        var progress = ParseProgress(args, RecordedFightEntry.SuppliedProgressFor(manifest));
         var outcome = Arbiter.Run(manifest, stopAfter, progress);
         var report = outcome.Report;
 
         Console.WriteLine($"manifest       : {manifest.RunId}");
         Console.WriteLine($"actions        : {manifest.Actions.Count}");
+        Console.WriteLine($"progress       : {progress} - {LocalEnvironment.OriginOf(progress)}");
         Console.WriteLine($"status         : {report.Status.ToString().ToUpperInvariant()}");
         Console.WriteLine();
 

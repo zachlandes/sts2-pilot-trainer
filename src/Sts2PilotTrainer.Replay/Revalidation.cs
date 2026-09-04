@@ -31,7 +31,7 @@ public enum ReproductionStatus
 /// </summary>
 public sealed record ReproductionVerdict
 {
-    public const string CurrentSchema = "sts2-pilot-trainer/reproduction-verdict/v1";
+    public const string CurrentSchema = "sts2-pilot-trainer/reproduction-verdict/v2";
 
     [JsonPropertyName("schema")] public string Schema { get; init; } = CurrentSchema;
     [JsonPropertyName("run_id")] public required string RunId { get; init; }
@@ -59,6 +59,25 @@ public sealed record ReproductionVerdict
     [JsonPropertyName("combat_start_digest")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? CombatStartDigest { get; init; }
+
+    /// <summary>
+    /// Every boundary the recording declares that this build reaches differently, in
+    /// words.
+    ///
+    /// One entry retires the recording for this build, for the same reason a moved
+    /// combat start always did: a boundary is somewhere a player can be stood, and one
+    /// that moved is a place the recording can no longer be entered at. Empty on a
+    /// verdict that reproduces, and empty on a recording that declares no boundaries -
+    /// which is not the same as agreeing, and is why the count below is recorded
+    /// beside it.
+    /// </summary>
+    [JsonPropertyName("moved_boundaries")]
+    public IReadOnlyList<string> MovedBoundaries { get; init; } = [];
+
+    /// <summary>How many of the recording's boundaries were compared. A verdict that
+    /// checked none is not a verdict that found none moved.</summary>
+    [JsonPropertyName("boundaries_compared")]
+    public int BoundariesCompared { get; init; }
 
     [JsonPropertyName("note")] public required string Note { get; init; }
 }
@@ -110,6 +129,14 @@ public static class Revalidation
     /// Reads a verdict out of what the replay did. Pure, so the rule that decides whether a
     /// recording survives a patch has tests that need no game.
     /// </summary>
+    /// <param name="derivedBoundaries">
+    /// Every boundary the replay just passed, with the digest it produced at each. The
+    /// recording's own list is compared against this one, so a floor arrival that
+    /// moved retires the recording exactly as a moved combat start does: both are
+    /// places a player can be stood, and both are unenterable once they have moved.
+    /// Empty when the replay derived none, which is why a verdict records how many it
+    /// compared.
+    /// </param>
     public static ReproductionVerdict Decide(
         ReplayManifest manifest,
         string verifiedBuild,
@@ -117,23 +144,24 @@ public static class Revalidation
         string? actionHistoryHash,
         bool replayedCleanly,
         string? firstDivergence,
-        string? derivedCombatStartDigest)
+        IReadOnlyList<ReplayBoundary> derivedBoundaries)
     {
-        var recordedDigest = manifest.CombatStartDigest();
-        var boundaryMoved = recordedDigest is not null && derivedCombatStartDigest is not null &&
-                            !string.Equals(recordedDigest, derivedCombatStartDigest, StringComparison.Ordinal);
+        var moved = MovedBoundaries(manifest, derivedBoundaries);
+        var compared = manifest.Boundaries.Count(declared => Matching(declared, derivedBoundaries) is not null);
 
-        var status = replayedCleanly && !boundaryMoved
+        var status = replayedCleanly && moved.Count == 0
             ? ReproductionStatus.Reproduces
             : ReproductionStatus.Diverges;
 
         var note = status == ReproductionStatus.Reproduces
-            ? $"Every observed value still agrees on {verifiedBuild} and the fight still starts where it did. " +
+            ? $"Every observed value still agrees on {verifiedBuild} and every boundary is still where it was. " +
               "This recording carries forward; nothing about the manifest changes."
-            : boundaryMoved && replayedCleanly
-                ? $"Every checkpoint still passes on {verifiedBuild}, but the combat-start boundary moved. " +
-                  "The fight a player would enter is not the recorded one, so this recording is retired for " +
-                  "this build even though nothing observable disagreed."
+            : moved.Count > 0 && replayedCleanly
+                ? $"Every checkpoint still passes on {verifiedBuild}, but " +
+                  $"{moved.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)} boundary/ies " +
+                  $"moved: {string.Join("; ", moved)}. What a player would be stood in there is not what the " +
+                  "recording describes, so this recording is retired for this build even though nothing " +
+                  "observable disagreed."
                 : $"The history no longer reproduces on {verifiedBuild}. " +
                   (firstDivergence is null
                       ? "It is retired for this build."
@@ -149,10 +177,64 @@ public static class Revalidation
             VerifiedContentHash = verifiedContentHash,
             Status = status,
             FirstDivergence = firstDivergence,
-            CombatStartDigest = derivedCombatStartDigest,
+            CombatStartDigest = derivedBoundaries
+                .FirstOrDefault(boundary => boundary.IsCombatStart && boundary.Fight == 1)?.Digest.Value,
+            MovedBoundaries = moved,
+            BoundariesCompared = compared,
             Note = note,
         };
     }
+
+    /// <summary>
+    /// Which of the recording's boundaries this build reaches differently, said in
+    /// words a person can act on.
+    ///
+    /// A boundary the replay did not reach at all is a moved boundary and not an
+    /// absent comparison: the recording says a player can be stood there, and this
+    /// build never gets there. A boundary the recording does not declare is not
+    /// examined, because there is no claim to retire.
+    /// </summary>
+    private static IReadOnlyList<string> MovedBoundaries(
+        ReplayManifest manifest, IReadOnlyList<ReplayBoundary> derived)
+    {
+        var moved = new List<string>();
+        foreach (var declared in manifest.Boundaries)
+        {
+            if (Matching(declared, derived) is not { } match)
+            {
+                moved.Add($"{declared.Describe()} is not reached at all on this build");
+                continue;
+            }
+
+            if (!string.Equals(declared.Digest.Value, match.Digest.Value, StringComparison.Ordinal))
+            {
+                moved.Add(
+                    $"{declared.Describe()} has digest {match.Digest.Value} here and " +
+                    $"{declared.Digest.Value} in the recording");
+            }
+            else if (declared.AfterSeq != match.AfterSeq)
+            {
+                moved.Add(
+                    $"{declared.Describe()} is after action " +
+                    $"{match.AfterSeq.ToString(System.Globalization.CultureInfo.InvariantCulture)} here and " +
+                    $"{declared.AfterSeq.ToString(System.Globalization.CultureInfo.InvariantCulture)} in the " +
+                    "recording");
+            }
+        }
+
+        return moved;
+    }
+
+    /// <summary>The derived boundary that answers the same question as a declared one:
+    /// same kind, same coordinates. Identity, not proximity - a boundary matched by
+    /// anything looser would be a different place reported as the same one.</summary>
+    private static ReplayBoundary? Matching(
+        ReplayBoundary declared, IReadOnlyList<ReplayBoundary> derived) =>
+        derived.FirstOrDefault(boundary =>
+            string.Equals(boundary.Kind, declared.Kind, StringComparison.Ordinal) &&
+            boundary.Fight == declared.Fight &&
+            boundary.Floor == declared.Floor &&
+            boundary.Turn == declared.Turn);
 
     /// <summary>The verdict for a manifest whose environment differs in ways a build change
     /// cannot explain, so nothing was measured and nothing may be concluded.</summary>

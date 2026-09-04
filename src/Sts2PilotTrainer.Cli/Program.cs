@@ -76,6 +76,17 @@ internal static class Program
               may this reconstruction be published as exact? Nothing here accepts a
               cheaper proxy in place of replaying through the real engine.
 
+          gate            <manifest> --rekey <build>
+              A different question about the same recording: does it still reproduce on
+              the build installed now? The one path here that deliberately replays a
+              history against a build it was not recorded on, so it reads past the
+              build's own three fields and past nothing else - anything else differing
+              is Blocked rather than measured. The manifest is never edited; the answer
+              is appended to <manifest-without-.replay>.verdicts.json, keyed by build
+              and content hash. Regenerates the recording's own fights in the same step
+              when it reproduces, and reports the instruments pinned to v0.111.0 as
+              blocked rather than relaxing them.
+
           validate        <manifest> [--show-rejections]
               Check a manifest's structure and its account of where the recording came
               from - including that it starts at the run's start, which nothing
@@ -89,13 +100,17 @@ internal static class Program
               action per mapped verb through a real driver, so that a table entry the
               driver has no case for is caught here rather than mid-replay.
 
-          preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile]
+          preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile] [--out <path>]
               Compare a manifest's environment identity and its player prerequisites
               against this machine's game: build, content hash, unlocks category by
               category, whether the run's acts are unlocked at all, and - reading a
               real profile - whether its ascension is available. Refuses, with
               diagnostics and in-game remediation, rather than replaying into a
-              mismatch. Nothing here writes to a save, a profile or the install.
+              mismatch. Without --progress, the state checked is the one a run from
+              this recording would actually be constructed with. --out writes the
+              reading itself, including the epoch and encounter ids this build ships,
+              which an exact requirement is checked against and the console has no
+              room for. Nothing here writes to a save, a profile or the install.
 
           preflight-live  <manifest> [--progress local-profile]
               Demonstrate the future live gate inside this headless process. It reads
@@ -146,10 +161,12 @@ internal static class Program
               alongside what a video-only consistency check would have concluded.
               --require-all-controls also refuses histories that do not exercise every control.
 
-          enter-fight     <manifest> [--control <name>] [--cache <dir>] [--out <dir>] [--step]
-                                     [--play [--recorded-fight <path>]]
+          enter-fight     <manifest> [--fight <n> | --floor <n>] [--control <name>] [--cache <dir>]
+                                     [--out <dir>] [--step] [--play [--recorded-fight <path>]]
               Construct the recording's run, walk it through the recording's own
-              decisions in order, and prove the fight it lands in is the recorded one -
+              decisions in order, and prove the boundary it lands at is the recorded
+              one. --fight walks to that fight of the run and --floor to the moment it
+              arrived on that floor; without either it is the first fight -
               against what the recording observed at that boundary and against the
               manifest's engine-produced combat-start snapshot digest. Reports the profile before and after,
               because nothing here may write to it. --control damages one decision
@@ -167,11 +184,15 @@ internal static class Program
               comparison, shipped inside the mod; the retail client cannot replay, so
               it is produced here.
 
-          migrate-manifest <manifest> [--out <path>]
+          migrate-manifest <manifest> [--out <path>] [--derive-boundaries]
               Rewrite a manifest on disk in the current format. Reading an older one is
               something every command does in memory; writing it back happens only
               here, so a file changes when a person chose it rather than as a side
-              effect of being read.
+              effect of being read. --derive-boundaries additionally replays the run
+              through the real engine and writes in every boundary the history passes -
+              each fight's start, each floor's arrival and each turn - with the digest
+              that replay produced. It refuses if the history does not reproduce, and
+              refuses to overwrite a boundary this build derives differently.
 
           combat-compare  <manifest> <manifest> [--out <dir>]
               Replay two manifests of the same fight, project each one's completed
@@ -194,10 +215,14 @@ internal static class Program
               their digests agree, and shows the comparison refused rather than
               reported as agreement.
 
-          combat-snapshot <manifest> [--cache <dir>] [--out <dir>]
-              Materialise the verified combat-start snapshot, restore it by
+          combat-snapshot <manifest> [--boundary <kind>:<coordinate>] [--cache <dir>] [--out <dir>]
+              Materialise a verified boundary's snapshot, restore it by
               re-deriving it in a fresh process, and describe exactly the action
-              history the manifest contains. The report says whether combat remains
+              history the manifest contains. --boundary picks which one, written the
+              way a person says it - combat_start:2 for the start of fight 2,
+              floor_entry:5 for arrival on floor 5, turn_start:2.3 for turn 3 of
+              fight 2 - and without it the boundary is the first fight's start. The
+              report says whether combat remains
               active at the end. Nothing here resets state mid-fight or replays an
               alternative line. See docs/comparison-direction.md.
 

@@ -37,12 +37,19 @@ public static class Preflight
     /// project's recorder made is judged by the rule that every mod it read declares
     /// itself non-gameplay. Pass the manifest's own kind wherever there is one.
     /// </param>
+    /// <param name="measuringBuildDrift">
+    /// Whether this is the re-key question - does this recording still reproduce on
+    /// the build installed now - which is the one path allowed to read past a build
+    /// difference. See <see cref="EnvironmentPreflight.Prerequisites"/>, which owns
+    /// what that relaxes and what it refuses to.
+    /// </param>
     public static PreflightResult Evaluate(
         EnvironmentIdentity expected,
-        PlayerProgress progress = PlayerProgress.AllUnlocked,
-        string sourceKind = "vod") =>
+        PlayerProgress? progress = null,
+        string sourceKind = "vod",
+        bool measuringBuildDrift = false) =>
         EnvironmentPreflight.Prerequisites(
-            expected, LocalEnvironment.ReadPrerequisites(expected, progress), sourceKind);
+            expected, LocalEnvironment.ReadPrerequisites(expected, progress), sourceKind, measuringBuildDrift);
 
     /// <summary>
     /// The gate on the run that now exists, read back out of the game.

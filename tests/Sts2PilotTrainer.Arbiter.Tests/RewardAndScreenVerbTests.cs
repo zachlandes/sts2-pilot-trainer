@@ -246,8 +246,18 @@ public class RewardAndScreenVerbTests
             })
             .ToList();
 
+        // Boundaries are dropped the same way checkpoints are, and for the same
+        // reason: a boundary names a place in the history, and a variant that removed
+        // the action it names has no such place. Keeping one would fail every test
+        // here at ingestion for a reason that has nothing to do with the verb under
+        // test.
+        var boundaries = manifest.Boundaries
+            .Where(boundary => boundary.AfterSeq == -1 || position.ContainsKey(boundary.AfterSeq))
+            .ToList();
+
         var path = Path.Combine(TempDir(), "verbs.json");
-        ManifestJson.Save(manifest with { Actions = actions, Checkpoints = checkpoints }, path);
+        ManifestJson.Save(
+            manifest with { Actions = actions, Checkpoints = checkpoints, Boundaries = boundaries }, path);
         return path;
     }
 

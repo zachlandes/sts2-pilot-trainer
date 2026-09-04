@@ -135,7 +135,7 @@ internal static class RecordedFightRun
             Phase = RecordedFightPhase.Watching;
             Log.Info(
                 $"[{RunmobileMod.ModId}] constructed the recording's run; watching " +
-                $"{_entry.Plan.PrefightActions.Count.ToString(CultureInfo.InvariantCulture)} recorded " +
+                $"{_entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)} recorded " +
                 "decision(s) before the fight", 2);
             ShowWhenTheGameHasFinishedMoving(creator, _entry);
         }
@@ -151,7 +151,7 @@ internal static class RecordedFightRun
         try
         {
             await AdvanceOne();
-            if (_entry is { AtCombatStart: false } entry)
+            if (_entry is { AtBoundary: false } entry)
             {
                 ShowWhenTheGameHasFinishedMoving(RecordingIdentity.Creator(entry.Manifest), entry);
                 return;
@@ -171,7 +171,7 @@ internal static class RecordedFightRun
     {
         try
         {
-            while (_entry is { AtCombatStart: false }) await AdvanceOne();
+            while (_entry is { AtBoundary: false }) await AdvanceOne();
             HandOverWhenTheGameHasFinishedMoving();
         }
         catch (Exception ex)
@@ -194,7 +194,7 @@ internal static class RecordedFightRun
             Log.Info(
                 $"[{RunmobileMod.ModId}] made recorded decision " +
                 $"{step.ToString(CultureInfo.InvariantCulture)} of " +
-                $"{entry.Plan.PrefightActions.Count.ToString(CultureInfo.InvariantCulture)}", 2);
+                $"{entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)}", 2);
 
             // The engine's own task for the decision, where it has one. Awaiting the
             // game's task is the one kind of waiting this host can do: the game
@@ -397,7 +397,7 @@ internal static class RecordedFightRun
         // before this, and the game completes it when the room it entered is built, so
         // a run that is not in a fight here is not one that needs another frame - it is
         // one that did not reach the recording's fight, and CombatStartEquality says so.
-        var equality = entry.VerifyCombatStart();
+        var equality = entry.VerifyBoundary();
         if (!equality.Matches)
         {
             Abandon(equality.Refusal ?? "This fight is not the recorded one.");
@@ -434,7 +434,7 @@ internal static class RecordedFightRun
                 ?? throw new InvalidOperationException("The fight ended before its capture began.");
             var screen = FightResultScreen.Of(
                 RecordingIdentity.Creator(entry.Manifest), capture,
-                CombatTrainerModule.Instance.RecordedFights.Projection(entry.Plan.Fight));
+                CombatTrainerModule.Instance.RecordedFights.Projection(entry.Fight));
             _observer?.Dispose();
             _observer = null;
             Phase = RecordedFightPhase.Result;

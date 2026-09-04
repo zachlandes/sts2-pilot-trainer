@@ -14,8 +14,8 @@ public sealed class RecordedFightPlanTests
     {
         var plan = RecordedFightPlan.For(EntryFixtures.Recording());
 
-        Assert.Equal([0, 1], plan.PrefightActions.Select(action => action.Seq));
-        Assert.Equal(1, plan.CombatStartSeq);
+        Assert.Equal([0, 1], plan.PrefixActions.Select(action => action.Seq));
+        Assert.Equal(1, plan.BoundarySeq);
         Assert.Equal("combat-start", plan.Boundary.Id);
     }
 
@@ -107,9 +107,9 @@ public sealed class RecordedFightPlanTests
         var plan = RecordedFightPlan.For(EntryFixtures.WholeRun(), fight);
 
         Assert.Equal(fight, plan.Fight);
-        Assert.Equal(combatStartSeq, plan.CombatStartSeq);
-        Assert.Equal(combatStartSeq + 1, plan.PrefightActions.Count);
-        Assert.Equal(combatStartSeq, plan.PrefightActions[^1].Seq);
+        Assert.Equal(combatStartSeq, plan.BoundarySeq);
+        Assert.Equal(combatStartSeq + 1, plan.PrefixActions.Count);
+        Assert.Equal(combatStartSeq, plan.PrefixActions[^1].Seq);
         Assert.Equal($"combat-start-{fight.ToString(System.Globalization.CultureInfo.InvariantCulture)}", plan.Boundary.Id);
     }
 
@@ -136,14 +136,14 @@ public sealed class RecordedFightPlanTests
     {
         var plan = RecordedFightPlan.For(EntryFixtures.Recording());
 
-        Assert.True(plan.Authorises(0, plan.PrefightActions[0]));
-        Assert.True(plan.Authorises(1, plan.PrefightActions[1]));
+        Assert.True(plan.Authorises(0, plan.PrefixActions[0]));
+        Assert.True(plan.Authorises(1, plan.PrefixActions[1]));
 
         // The recording's own second decision, offered first. Still refused: the
         // order is the run, not a preference.
-        Assert.False(plan.Authorises(0, plan.PrefightActions[1]));
-        Assert.False(plan.Authorises(2, plan.PrefightActions[1]));
-        Assert.False(plan.Authorises(-1, plan.PrefightActions[0]));
+        Assert.False(plan.Authorises(0, plan.PrefixActions[1]));
+        Assert.False(plan.Authorises(2, plan.PrefixActions[1]));
+        Assert.False(plan.Authorises(-1, plan.PrefixActions[0]));
     }
 }
 
@@ -160,7 +160,7 @@ public sealed class FloorEntryPlanTests
         var plan = FloorEntryPlan.For(EntryFixtures.WholeRun(), 2);
 
         Assert.Equal(2, plan.Floor);
-        Assert.Equal(3, plan.FloorEntrySeq);
+        Assert.Equal(3, plan.BoundarySeq);
         Assert.Equal([0, 1, 2, 3], plan.PrefixActions.Select(action => action.Seq));
         Assert.Equal("floor-entry-2", plan.Boundary.Id);
         Assert.Equal(3, plan.SnapshotKey.UpToSeq);

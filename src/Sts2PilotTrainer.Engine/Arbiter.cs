@@ -17,16 +17,20 @@ public static class Arbiter
 
     public static ArbiterOutcome Run(
         ReplayManifest manifest, int? stopAfterSeq = null,
-        PlayerProgress progress = PlayerProgress.AllUnlocked,
-        string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null)
+        PlayerProgress? progress = null,
+        string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null,
+        bool measuringBuildDrift = false)
     {
+        progress ??= PlayerProgress.AllUnlocked;
+
         var validation = ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
         {
             throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
         }
 
-        var preflight = Preflight.Evaluate(manifest.Environment, progress, manifest.Source.Kind);
+        var preflight = Preflight.Evaluate(
+            manifest.Environment, progress, manifest.Source.Kind, measuringBuildDrift);
         if (!preflight.Matches)
         {
             return new ArbiterOutcome(

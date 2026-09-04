@@ -98,22 +98,38 @@ internal static partial class Commands
         Console.WriteLine($"recording       : {fights.RunId}");
         foreach (var fight in fights.Fights)
         {
-            var projection = fights.Projection(fight.Fight);
+            // The projection is a description of one fight and can refuse - a fight
+            // whose enemy roster the trace cannot follow has no honest summary. That
+            // refusal is about that fight and is printed as such: the file above is
+            // what this command produces, it holds every declared fight's own line,
+            // and one fight nobody can summarise does not make the rest unwritten.
+            CombatProjection? projection = null;
+            string? refusal = null;
+            try
+            {
+                projection = fights.Projection(fight.Fight);
+            }
+            catch (ManifestException ex)
+            {
+                refusal = ex.Message;
+            }
+
             Console.WriteLine();
             Console.WriteLine(
                 $"fight {fight.Fight.ToString(CultureInfo.InvariantCulture)}         : " +
-                $"{projection.Boundary.GetValueOrDefault("combat.encounter", "unknown")}");
+                $"{projection?.Boundary.GetValueOrDefault("combat.encounter", "unknown") ?? "unknown"}");
             Console.WriteLine(
                 $"covered         : actions {fight.CombatStartSeq.ToString(CultureInfo.InvariantCulture)} " +
                 $"through {fight.CoveredThroughSeq.ToString(CultureInfo.InvariantCulture)}, " +
                 $"{fight.Trace.Steps.Count.ToString(CultureInfo.InvariantCulture)} sampled step(s)");
             Console.WriteLine($"history hash    : {fight.ActionHistoryHash}");
             Console.WriteLine($"snapshot digest : {fight.CombatStartSnapshotDigest}");
-            Console.WriteLine(
-                $"outcome         : {projection.Summary.Outcome} on turn " +
-                $"{projection.Summary.TotalTurns.ToString(CultureInfo.InvariantCulture)}, " +
-                $"{projection.Summary.StartingHealth.ToString(CultureInfo.InvariantCulture)} -> " +
-                $"{projection.Summary.FinalHealth.ToString(CultureInfo.InvariantCulture)} health");
+            Console.WriteLine(projection is not null
+                ? $"outcome         : {projection.Summary.Outcome} on turn " +
+                  $"{projection.Summary.TotalTurns.ToString(CultureInfo.InvariantCulture)}, " +
+                  $"{projection.Summary.StartingHealth.ToString(CultureInfo.InvariantCulture)} -> " +
+                  $"{projection.Summary.FinalHealth.ToString(CultureInfo.InvariantCulture)} health"
+                : $"outcome         : not summarised. {refusal}");
         }
         Console.WriteLine();
         Console.WriteLine($"recorded fights: {Paths.Display(artifact.Path)}");

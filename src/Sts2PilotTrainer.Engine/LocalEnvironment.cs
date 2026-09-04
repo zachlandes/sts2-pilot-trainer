@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
@@ -57,14 +58,17 @@ public static class LocalEnvironment
     /// </param>
     /// <param name="progress">
     /// Which unlock state to read. <see cref="PlayerProgress.LocalProfile"/> reads
-    /// this process's profile for callers asking about the player. The other two are
-    /// host-supplied states; the in-game trainer uses the complete one it will construct
-    /// the recorded run with, and every supplied state is reported as such rather than
-    /// as a reading of anyone.
+    /// this process's profile for callers asking about the player. The rest are
+    /// host-supplied states - the complete one, the empty one, and the recorded
+    /// player's own where a recording carries it - and every supplied state is
+    /// reported as such rather than as a reading of anyone. Omitted, it is the
+    /// complete state, which is what a replay of somebody's video is generated
+    /// against.
     /// </param>
     public static LocalPrerequisites ReadPrerequisites(
-        EnvironmentIdentity expected, PlayerProgress progress = PlayerProgress.AllUnlocked)
+        EnvironmentIdentity expected, PlayerProgress? progress = null)
     {
+        progress ??= PlayerProgress.AllUnlocked;
         // Which reading answers "what build is this" depends on how the engine got
         // here. Inside the retail client there is no prepared copy and no bootstrap
         // receipt to consult; the running process is the authority on itself.
@@ -171,29 +175,112 @@ public static class LocalEnvironment
     /// available for someone else's run, so a model has to be chosen and named, and
     /// the choice has to be visible in the artifact rather than buried in a default.
     /// </summary>
-    internal static UnlockState ResolveUnlockState(PlayerProgress progress) => progress switch
+    internal static UnlockState ResolveUnlockState(PlayerProgress progress)
     {
-        PlayerProgress.AllUnlocked => UnlockState.all,
-        PlayerProgress.NoneUnlocked => UnlockState.none,
-        PlayerProgress.LocalProfile => LocalProfileUnlockState(),
-        _ => throw new EngineException($"Unknown player-progress model '{progress}'."),
-    };
+        if (progress.Inventory is { } inventory) return ExactUnlockState(inventory);
+        if (progress == PlayerProgress.AllUnlocked) return UnlockState.all;
+        if (progress == PlayerProgress.NoneUnlocked) return UnlockState.none;
+        if (progress == PlayerProgress.LocalProfile) return LocalProfileUnlockState();
+        throw new EngineException($"Unknown player-progress model '{progress}'.");
+    }
+
+    /// <summary>
+    /// The recorded player's own unlock state, built from the three values the game's
+    /// own <c>UnlockState</c> is made of.
+    ///
+    /// Built rather than approximated, and through the game's own constructor: the
+    /// seven categories a preflight reports are derived properties with no setter, so
+    /// there is exactly one way in and this is it. An id this build does not ship is
+    /// refused rather than dropped, because a state missing one epoch generates a
+    /// different run behind an identical map. The run count is passed through and
+    /// compared against nothing: no part of this installation has to match it for the
+    /// state to be constructible.
+    /// </summary>
+    private static UnlockState ExactUnlockState(UnlockStateInventory inventory)
+    {
+        EngineHost.Start();
+
+        var shippedEpochs = EpochIds(UnlockState.all);
+        RefuseUnshipped(inventory.Epochs, shippedEpochs.Contains, "epoch");
+
+        var shippedEncounters = ShippedEncounterIds();
+        RefuseUnshipped(inventory.EncountersSeen, shippedEncounters.ContainsKey, "encounter");
+
+        return new UnlockState(
+            inventory.Epochs,
+            inventory.EncountersSeen.Select(id => shippedEncounters[id]).ToList(),
+            inventory.Runs);
+    }
+
+    /// <summary>
+    /// Refuses a recording naming something this build does not have.
+    ///
+    /// One rule for both id lists, because they fail the same way and for the same
+    /// reason: the state cannot be built, so the run generated here would not be the
+    /// recording's however closely everything else matched. The remediation is the
+    /// game's, as it always is - this build does not ship it, and nothing here will
+    /// pretend otherwise.
+    /// </summary>
+    private static void RefuseUnshipped(
+        IReadOnlyList<string> named, Func<string, bool> ships, string what)
+    {
+        var missing = named.Where(id => !ships(id)).ToList();
+        if (missing.Count == 0) return;
+
+        throw new EngineException(
+            $"This build does not ship {missing.Count.ToString(CultureInfo.InvariantCulture)} of the " +
+            $"{named.Count.ToString(CultureInfo.InvariantCulture)} {what} id(s) the recording was played " +
+            "with, so the unlock state it was generated against cannot be built here and the same seed " +
+            $"produces a different run. Missing: {string.Join(", ", missing.Take(MissingSampleLimit))}.");
+    }
+
+    /// <summary>Every encounter id this build ships, by the string a manifest names it
+    /// with. The game's own ids, so a recording that names one this build spells
+    /// differently is refused rather than silently dropped from the state.</summary>
+    private static IReadOnlyDictionary<string, ModelId> ShippedEncounterIds()
+    {
+        EngineHost.Start();
+        var ids = new Dictionary<string, ModelId>(StringComparer.Ordinal);
+        foreach (var encounter in ModelDb.AllEncounters)
+        {
+            ids[encounter.Id.ToString()] = encounter.Id;
+        }
+
+        return ids;
+    }
 
     /// <summary>Where a progress model came from, in words a report can print, so a
     /// supplied state is never presented as a reading of somebody's save.</summary>
-    public static string OriginOf(PlayerProgress progress) => progress switch
+    public static string OriginOf(PlayerProgress progress)
     {
-        PlayerProgress.AllUnlocked =>
-            "UnlockState.all, supplied by the host in place of the source player's profile",
-        PlayerProgress.NoneUnlocked =>
-            "UnlockState.none, supplied by the host",
-        PlayerProgress.LocalProfile =>
-            "the save progress of whichever profile this process has, via " +
-            "SaveManager.GenerateUnlockStateFromProgress - inside the retail client that is the player's own, " +
-            "and inside this headless host it is the empty sandbox profile, because the player's save is a " +
-            "read-only input the host never opens",
-        _ => throw new EngineException($"Unknown player-progress model '{progress}'."),
-    };
+        if (progress.Inventory is { } inventory)
+        {
+            return
+                "the recorded player's own unlock state, captured by the recorder and supplied to this run - " +
+                $"{inventory.Epochs.Count.ToString(CultureInfo.InvariantCulture)} epoch(s), " +
+                $"{inventory.EncountersSeen.Count.ToString(CultureInfo.InvariantCulture)} encounter(s) seen, " +
+                $"{inventory.Runs.ToString(CultureInfo.InvariantCulture)} run(s) played. Nobody's profile was " +
+                "read to produce it and none is changed by it";
+        }
+
+        if (progress == PlayerProgress.AllUnlocked)
+        {
+            return "UnlockState.all, supplied by the host in place of the source player's profile";
+        }
+
+        if (progress == PlayerProgress.NoneUnlocked) return "UnlockState.none, supplied by the host";
+
+        if (progress == PlayerProgress.LocalProfile)
+        {
+            return
+                "the save progress of whichever profile this process has, via " +
+                "SaveManager.GenerateUnlockStateFromProgress - inside the retail client that is the player's own, " +
+                "and inside this headless host it is the empty sandbox profile, because the player's save is a " +
+                "read-only input the host never opens";
+        }
+
+        throw new EngineException($"Unknown player-progress model '{progress}'.");
+    }
 
     private static UnlockInventory ReadUnlockInventory(PlayerProgress progress)
     {
@@ -236,6 +323,18 @@ public static class LocalEnvironment
             Origin = OriginOf(progress),
             FromPlayerProfile = progress == PlayerProgress.LocalProfile,
             Categories = categories,
+
+            // What this build ships, for the two lists an exact requirement names.
+            //
+            // Read off the build and not off the selected progress model: the question
+            // an exact requirement asks is whether a state made of these ids can be
+            // constructed here at all, which is a fact about the installation rather
+            // than about whichever model this reading was taken under.
+            ShippedIds = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+            {
+                ["epochs"] = EpochIds(UnlockState.all).Order(StringComparer.Ordinal).ToList(),
+                ["encounters_seen"] = ShippedEncounterIds().Keys.Order(StringComparer.Ordinal).ToList(),
+            },
         };
     }
 

@@ -570,28 +570,19 @@ public static partial class ManifestValidator
     /// <see cref="RecordedFights.From"/> cuts only finished fights, so both directions
     /// of the rule are asked of the same set.
     ///
-    /// The rule is only ever asked of a manifest that already carries a verified
-    /// trace. Nothing re-validates what <c>replay --out</c> writes, so it does not
-    /// bite on the publication path today: the shipped recording carries one
-    /// combat_start while its history reaches further. Deriving the remaining
-    /// boundaries through the engine and putting this check on the publication path is
-    /// the next phase's work.
+    /// A generated fixture may declare boundaries and is not required to. The rule
+    /// that it may not was written when a boundary meant a publication claim; it does
+    /// not - what may be published is the gate's question, and the gate refuses a
+    /// synthetic source outright. What a boundary means is where a host can start,
+    /// which is exactly what a fixture with no video behind it is for testing. A
+    /// fixture is not required to carry one because most of them reach no fight worth
+    /// standing anybody in.
     /// </summary>
     private static void ValidateBoundaries(ReplayManifest manifest, List<string> problems)
     {
         var boundaries = manifest.Boundaries;
         var maxSeq = manifest.Actions.Count - 1;
-
-        if (manifest.Source.Kind == "synthetic-engine")
-        {
-            if (boundaries.Count > 0)
-            {
-                problems.Add(
-                    "a synthetic-engine fixture cannot declare boundaries. It makes no publication claim and " +
-                    "there is nobody to stand in it.");
-            }
-            return;
-        }
+        var isFixture = manifest.Source.Kind == "synthetic-engine";
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var boundary in boundaries)
@@ -688,7 +679,7 @@ public static partial class ManifestValidator
             }
         }
 
-        if (!boundaries.Any(boundary => boundary.IsCombatStart))
+        if (!isFixture && !boundaries.Any(boundary => boundary.IsCombatStart))
         {
             problems.Add(
                 "boundaries names no combat_start. A recording must carry the boundary a retail host compares " +

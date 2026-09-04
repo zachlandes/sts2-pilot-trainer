@@ -3111,5 +3111,651 @@
       }
     }
   ],
-  "boundaries": []
+  "boundaries": [
+    {
+      "kind": "combat_start",
+      "after_seq": 1,
+      "fight": 1,
+      "digest": {
+        "Value": "sha256:6581b0e046b9d5161030a001a7ce7fd0b6203b1d84e02af2da79d02ef2ebe90e",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 1,
+      "floor": 2,
+      "digest": {
+        "Value": "sha256:6581b0e046b9d5161030a001a7ce7fd0b6203b1d84e02af2da79d02ef2ebe90e",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 1,
+      "fight": 1,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:6581b0e046b9d5161030a001a7ce7fd0b6203b1d84e02af2da79d02ef2ebe90e",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 5,
+      "fight": 1,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:5c0ed9fddcfb94ce0c38d788ffe0efdef8b6683fd70e25015c2fb79a5c692a03",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 9,
+      "fight": 1,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:984e2df05cebbd8efa7cf025d7d0674b797a39ea65ed5c50869a1987780e7a77",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 12,
+      "fight": 1,
+      "turn": 4,
+      "digest": {
+        "Value": "sha256:3fe80680fb821e74d616af84f40093a26d750bd62e22851cdc7e5d0bdd7ba264",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 17,
+      "floor": 3,
+      "digest": {
+        "Value": "sha256:8cdebdb01210a195d6136100b3ddfe004d9a84384a86e46ed262297b1a661cec",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "combat_start",
+      "after_seq": 23,
+      "fight": 2,
+      "digest": {
+        "Value": "sha256:55cfb7f115107835439743b12964f2bfd1d18d2d70409f4fe425e5c14b94b451",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 23,
+      "floor": 4,
+      "digest": {
+        "Value": "sha256:55cfb7f115107835439743b12964f2bfd1d18d2d70409f4fe425e5c14b94b451",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 23,
+      "fight": 2,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:55cfb7f115107835439743b12964f2bfd1d18d2d70409f4fe425e5c14b94b451",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 27,
+      "fight": 2,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:fc99a084ca8c8c0f476376caf60b75e2e0ad20ba2295a7416c9326ec136ec75a",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 30,
+      "fight": 2,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:595ffb8cb696ae3b2d18e706ba979bbeea6275a4534d22aaadc8f3e6acc0cddb",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 36,
+      "floor": 5,
+      "digest": {
+        "Value": "sha256:73b7d74beb8856e5575ff1a34a5df8d4d81b0bc0acdf64b3c3e7624632274eab",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "combat_start",
+      "after_seq": 38,
+      "fight": 3,
+      "digest": {
+        "Value": "sha256:8531896cd08cb88336e82329c494caa60ed3a32a57ede086f45eb9cd321c13d3",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 38,
+      "floor": 6,
+      "digest": {
+        "Value": "sha256:8531896cd08cb88336e82329c494caa60ed3a32a57ede086f45eb9cd321c13d3",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 38,
+      "fight": 3,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:8531896cd08cb88336e82329c494caa60ed3a32a57ede086f45eb9cd321c13d3",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 42,
+      "fight": 3,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:11e0c3e7986b4c86ec1f2d137052aeba722f3af80f419c443144256bdf3885c3",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 46,
+      "fight": 3,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:1b2f21caf6db61cf375d7ce0eb379cabac34b5a9a0ed2f26b9c3874df6559b8b",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "combat_start",
+      "after_seq": 53,
+      "fight": 4,
+      "digest": {
+        "Value": "sha256:c25ab269609047bc23e0fc399450f3e4ed3ec0b0bb3a2d4cc45db30baa00f90b",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 53,
+      "floor": 7,
+      "digest": {
+        "Value": "sha256:c25ab269609047bc23e0fc399450f3e4ed3ec0b0bb3a2d4cc45db30baa00f90b",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 53,
+      "fight": 4,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:c25ab269609047bc23e0fc399450f3e4ed3ec0b0bb3a2d4cc45db30baa00f90b",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 57,
+      "fight": 4,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:bcd61b3b72b6dc3b0b688b474dce149ef2c79bcf6087e3f9c56aaeba9f652e02",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 60,
+      "fight": 4,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:a34031853927050bbe5400b6e1466d1ba0e78484760fcbfe993fe5f4b28b4c5f",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 63,
+      "fight": 4,
+      "turn": 4,
+      "digest": {
+        "Value": "sha256:b5fa9587d3f012636ddc06ce914802657bf8b3d2296f71899de9e89d25d92299",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 68,
+      "floor": 8,
+      "digest": {
+        "Value": "sha256:9ca27782e8693d6e4b0912466dff98bc36d9c1a9a90dcee7b5bf5b633b3bc0bd",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "combat_start",
+      "after_seq": 71,
+      "fight": 5,
+      "digest": {
+        "Value": "sha256:646691a0b6098e298a849743d5dce26add584e7e699bc2022e05c1f0032af430",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 71,
+      "floor": 9,
+      "digest": {
+        "Value": "sha256:646691a0b6098e298a849743d5dce26add584e7e699bc2022e05c1f0032af430",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 71,
+      "fight": 5,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:646691a0b6098e298a849743d5dce26add584e7e699bc2022e05c1f0032af430",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 81,
+      "fight": 5,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:9651836730aba6caf515617fd3beabe8838bb46b68c79f65b8a74bf798b4c3a6",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 85,
+      "fight": 5,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:5925420af97fa0c4d8872a14c7514c0bfb2912845cfde8b4d9cdc7c80622cac3",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 89,
+      "fight": 5,
+      "turn": 4,
+      "digest": {
+        "Value": "sha256:adf4d5e058e4cdc64d1b3472f485ac73ac8d5ddb602453f9b2ca8dcd03997f5a",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 93,
+      "fight": 5,
+      "turn": 5,
+      "digest": {
+        "Value": "sha256:c6d25eb51868a38d875a96393409337c5fa5043d9d57f8748095f1e4e403fef0",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 100,
+      "floor": 10,
+      "digest": {
+        "Value": "sha256:c322500299efc608246287cef73ecd2eea2366e78cddad1e18f735b9a556f438",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "combat_start",
+      "after_seq": 102,
+      "fight": 6,
+      "digest": {
+        "Value": "sha256:18094e48499bb3b4d6b7e7567cfac55c862b2cee8377ad972bbccf3c9f213143",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 102,
+      "floor": 11,
+      "digest": {
+        "Value": "sha256:18094e48499bb3b4d6b7e7567cfac55c862b2cee8377ad972bbccf3c9f213143",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 102,
+      "fight": 6,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:18094e48499bb3b4d6b7e7567cfac55c862b2cee8377ad972bbccf3c9f213143",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 107,
+      "fight": 6,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:fce55d1e0b858d19c2769ac37356c36ee1b80bc1c1071cea8d4e8fec39e2331f",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 110,
+      "fight": 6,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:50cec289c1b3d147f266b4e9fd836131152e1fa5aac32a1152ec6f35704fffc3",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 116,
+      "floor": 12,
+      "digest": {
+        "Value": "sha256:63c1c6ae933054ab32dbe219ca952909afb67ab16f29bc31bf38e6bcb9627754",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "combat_start",
+      "after_seq": 118,
+      "fight": 7,
+      "digest": {
+        "Value": "sha256:74dfbc421f3bca0b373f370bfeff985935d7d8f949cc82ce79cfdff1f79a5315",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 118,
+      "floor": 13,
+      "digest": {
+        "Value": "sha256:74dfbc421f3bca0b373f370bfeff985935d7d8f949cc82ce79cfdff1f79a5315",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 118,
+      "fight": 7,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:74dfbc421f3bca0b373f370bfeff985935d7d8f949cc82ce79cfdff1f79a5315",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 122,
+      "fight": 7,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:d1cc047ea64e6ce6fb062969a93086780a41e9ea7ce78bbb40a58c6eb9220ba9",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 125,
+      "fight": 7,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:4a8b7fd9e24c51ae044d1e4d944f5fafff32a97461939abb674c3c535dd46e06",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 130,
+      "fight": 7,
+      "turn": 4,
+      "digest": {
+        "Value": "sha256:8903ec971c7380b06b17d12df8d093f2ab112a1e730e0f9714e495c44e68787e",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 135,
+      "fight": 7,
+      "turn": 5,
+      "digest": {
+        "Value": "sha256:edd56bd642360d3d405700a4a5efebd2be493ee3696d042d9051de09ee96f68b",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "combat_start",
+      "after_seq": 141,
+      "fight": 8,
+      "digest": {
+        "Value": "sha256:d628da9d37d723d1587cf12eda44439ac189a340968dc826f64190d4ed244b70",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 141,
+      "floor": 14,
+      "digest": {
+        "Value": "sha256:d628da9d37d723d1587cf12eda44439ac189a340968dc826f64190d4ed244b70",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 141,
+      "fight": 8,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:d628da9d37d723d1587cf12eda44439ac189a340968dc826f64190d4ed244b70",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 145,
+      "fight": 8,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:9321fb0b9c35763dab2f511a76672c752b67333bad2220ecb2eec3696818f322",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 149,
+      "fight": 8,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:8bd976ec9558e80302b684ab398c18e8195d154135c5525e679059bad7b85b96",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 155,
+      "fight": 8,
+      "turn": 4,
+      "digest": {
+        "Value": "sha256:309678ff9c9913173429ec67faf73c896f34350ad63080c95c1913a5b4e7237e",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 158,
+      "fight": 8,
+      "turn": 5,
+      "digest": {
+        "Value": "sha256:68418f46e1056d93f65195313cc965e90e733f3144a0385d26b42d448c76d309",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 164,
+      "fight": 8,
+      "turn": 6,
+      "digest": {
+        "Value": "sha256:15fc6a1491c7198b73362d240e99640ab1d07ad668673690f765c9802f229014",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 169,
+      "floor": 15,
+      "digest": {
+        "Value": "sha256:0d2e7b9d94e0d2eae90e6a6bd1fcc54455ef849668e1539eba0119eed8c1d70d",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 173,
+      "floor": 16,
+      "digest": {
+        "Value": "sha256:8a030d2386fab016924f03a9c509e34e49d40426e762f1abe99506f1feddc2f0",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "combat_start",
+      "after_seq": 175,
+      "fight": 9,
+      "digest": {
+        "Value": "sha256:c34a3a8c33b7c3adc8852a41ec15a656f830ab306e3f200a7a88a95d90c1a90a",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 175,
+      "floor": 17,
+      "digest": {
+        "Value": "sha256:c34a3a8c33b7c3adc8852a41ec15a656f830ab306e3f200a7a88a95d90c1a90a",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 175,
+      "fight": 9,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:c34a3a8c33b7c3adc8852a41ec15a656f830ab306e3f200a7a88a95d90c1a90a",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 185,
+      "fight": 9,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:349fb5764bee8276aeaf27b51e85c79c1a25a80f40f0215c6444c378f8198704",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 190,
+      "fight": 9,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:6a72bd69bcd3d74ec7adf5b4109cae4fcc0b83b011a9d7ef0420c250eb84bf27",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 194,
+      "fight": 9,
+      "turn": 4,
+      "digest": {
+        "Value": "sha256:2f28e4d4cb1809bd0fb765662cb058e3a721855cc3b377bf83559532131227de",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 199,
+      "fight": 9,
+      "turn": 5,
+      "digest": {
+        "Value": "sha256:3da032122ecb6fcde3b85e7902ba92610646b51d942f04f2a542d56cccabbc0f",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 203,
+      "fight": 9,
+      "turn": 6,
+      "digest": {
+        "Value": "sha256:bf8542001caf4e85a5054e3c532d00fe5d3c4972f39c71e88c3d875e9e0ed611",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 207,
+      "fight": 9,
+      "turn": 7,
+      "digest": {
+        "Value": "sha256:e19d7fa0c37736c6bab431cd2cb7fb25fea0bcef2c6eabacea20d36aad96e2e3",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 212,
+      "fight": 9,
+      "turn": 8,
+      "digest": {
+        "Value": "sha256:6d2a47535055f6b308055a83a5e25ab9c1e3ee692b92c6e5420a44ef5c963fe8",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 218,
+      "fight": 9,
+      "turn": 9,
+      "digest": {
+        "Value": "sha256:94c94fb2ec209c977353c61c31fab752295b223c6b6142b502fdce7a2fe05912",
+        "Source": "Engine"
+      }
+    }
+  ]
 }
