@@ -342,11 +342,26 @@ internal sealed class PlaybackTransportStrip
         _identity.Visible = tag;
         _identity.Disabled = !state.Identity.IsLink;
 
+        // Everything that hangs under the tag hangs off this rather than off the tag,
+        // so two of them are never stacked on the same band. Reset before the things
+        // that move it, and read by the things that hang below them.
+        _hangingBottom = top + height;
+
         ApplyControls(state, left, top, width, height, tag);
         ApplyNote(state, left, top, height, width);
         ApplyLedger(state, left, top, height, width);
-        ApplyMenu(state, left, top, height, width);
+        ApplyMenu(state, left, width);
     }
+
+    /// <summary>
+    /// The bottom of the lowest thing hanging under the tag.
+    ///
+    /// The plates are translucent - the game is meant to show through them - so two
+    /// surfaces at the same height are not one covering the other, they are both
+    /// legible at once and neither readable. The retail client drew the speed menu
+    /// straight over the look-back ledger and the ledger's words came through it.
+    /// </summary>
+    private float _hangingBottom;
 
     private void ApplyControls(
         PlaybackTransport state, float left, float top, float width, float height, bool tag)
@@ -457,7 +472,10 @@ internal sealed class PlaybackTransportStrip
         var textWidth = width - (2 * inset);
         var noteHeight = WrappedHeight(state.Note, NoteFontSize, textWidth, fallbackLines: 2) + (16 * _unit);
 
-        Place(_note, left, top + height + (6 * _unit), width, noteHeight);
+        var noteTop = top + height + (6 * _unit);
+        _hangingBottom = noteTop + noteHeight;
+
+        Place(_note, left, noteTop, width, noteHeight);
         Clear(_notePlate);
         Place(_notePlate, 0, 0, width, noteHeight);
         PlatePolygon(_notePlate, width, noteHeight);
@@ -481,6 +499,8 @@ internal sealed class PlaybackTransportStrip
         var rowHeight = 32 * _unit;
         var ledgerHeight = (10 * _unit) + (rowHeight * state.Ledger.Count);
         var ledgerTop = top + height + (6 * _unit);
+        _hangingBottom = ledgerTop + ledgerHeight;
+
         Place(_ledger, left, ledgerTop, width, ledgerHeight);
         PlatePolygon(_ledger, width, ledgerHeight);
 
@@ -531,7 +551,7 @@ internal sealed class PlaybackTransportStrip
 
     /// <summary>The speed menu, or the chip's two directions, hung in the same shape
     /// as the ledger so they read as one family.</summary>
-    private void ApplyMenu(PlaybackTransport state, float left, float top, float height, float width)
+    private void ApplyMenu(PlaybackTransport state, float left, float width)
     {
         Clear(_menu);
         var rows = OpenRows;
@@ -542,7 +562,7 @@ internal sealed class PlaybackTransportStrip
         var menuWidth = (_menuIsChip ? 260 : 96) * _unit;
         var menuHeight = (10 * _unit) + (rowHeight * rows.Count);
         var menuLeft = _menuIsChip ? left + width - menuWidth : left + (192 * _unit);
-        Place(_menu, menuLeft, top + height + (6 * _unit), menuWidth, menuHeight);
+        Place(_menu, menuLeft, _hangingBottom + (6 * _unit), menuWidth, menuHeight);
         PlatePolygon(_menu, menuWidth, menuHeight);
 
         for (var index = 0; index < rows.Count; index++)
@@ -803,10 +823,12 @@ internal sealed class PlaybackTransportStrip
         var height = bodyTop + bodyHeight + (8 * _unit);
 
         // Below the control and pulled back on screen, never over the tag itself:
-        // a tooltip that covers the counter it is explaining is worse than none.
+        // a tooltip that covers the counter it is explaining is worse than none. And
+        // below whatever else is already hanging there, for the same reason.
         var x = Math.Clamp(
             anchor.Position.X + (anchor.Size.X / 2) - (width / 2), 8 * _unit, _viewport.X - width - (8 * _unit));
-        Place(_tip, x, anchor.Position.Y + anchor.Size.Y + (10 * _unit), width, height);
+        var y = Math.Max(anchor.Position.Y + anchor.Size.Y, _hangingBottom) + (10 * _unit);
+        Place(_tip, x, y, width, height);
         Clear(_tipPlate);
         Place(_tipPlate, 0, 0, width, height);
         PlatePolygon(_tipPlate, width, height);

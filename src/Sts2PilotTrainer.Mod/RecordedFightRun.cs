@@ -123,10 +123,13 @@ internal static class RecordedFightRun
     /// </summary>
     private static bool _authorising;
 
-    /// <summary>How long to let the game run before reading the fight it is opening.
+    /// <summary>How long to give the fight to finish opening before giving up on it.
     /// A fight that opens slowly is fine; a boundary read half-open is not, and the
     /// refusal says what it saw either way.</summary>
-    private const double OpeningTheFightSeconds = 2.0;
+    private const double OpeningTheFightSeconds = 20.0;
+
+    /// <summary>How often the wait above looks at the fight it is waiting for.</summary>
+    private const double OpeningTheFightPollSeconds = 0.1;
 
     /// <summary>How long to let the game finish the fight's ending - the last enemy's
     /// death, the loot appearing, the death screen - before the result goes over it.
@@ -902,12 +905,9 @@ internal static class RecordedFightRun
     /// <summary>
     /// Hands the fight over once the game has finished opening it.
     ///
-    /// A deferral that re-defers itself, which is this host's frame loop: the one
-    /// scheduling primitive proved to run in the client, applied once per frame until
-    /// the fight is ready or the budget runs out. Needed rather than tidy - the map
-    /// move's task completes when the combat room is built, and the opening hand is
-    /// dealt over the frames after that, so the boundary asked immediately reads an
-    /// empty hand and refuses a fight that is merely a moment young.
+    /// The map move's task completes when the combat room is built, and the opening
+    /// hand is dealt over the frames after that, so the boundary asked immediately
+    /// reads an empty hand and refuses a fight that is merely a moment young.
     /// </summary>
     private static async void HandOverWhenTheGameHasFinishedMoving()
     {
@@ -917,10 +917,14 @@ internal static class RecordedFightRun
             Log.Info(
                 $"[{RunmobileMod.ModId}] letting the fight open; {entry.DescribeCombatReadiness()}", 2);
 
-            await LetTheGameRun(OpeningTheFightSeconds);
+            var opened = await WaitUntil(
+                () => entry.IsReadyForThePlayer,
+                LetTheGameRun(OpeningTheFightSeconds),
+                () => LetTheGameRun(OpeningTheFightPollSeconds));
 
             Log.Info(
                 $"[{RunmobileMod.ModId}] after letting the game run; " +
+                $"{(opened ? "the fight opened" : "the fight did not open in time")}; " +
                 $"{_entry?.DescribeCombatReadiness() ?? "no run"}", 2);
 
             HandOverTheFight();
@@ -947,6 +951,29 @@ internal static class RecordedFightRun
             ?? throw new InvalidOperationException("This process has no scene tree to wait in.");
 
         await tree.ToSignal(tree.CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
+    }
+
+    /// <summary>
+    /// Waits for something the game is doing to be finished, rather than for a length
+    /// of time. Answers whether it finished.
+    ///
+    /// Written because a flat wait is a race the retail client loses. The fight was
+    /// handed over two seconds after the room opened, and at two seconds the client
+    /// was still playing its Battle Start banner: the boundary read one card of the
+    /// recording's five in hand and ten of its six in the draw pile, and a correct
+    /// entry was refused. The engine already says when the player may act - a wait
+    /// that asks it enters a fight that opens slowly and still refuses one that never
+    /// opens, which is what the deadline is for.
+    /// </summary>
+    internal static async Task<bool> WaitUntil(Func<bool> done, Task deadline, Func<Task> nextPoll)
+    {
+        while (!done())
+        {
+            if (deadline.IsCompleted) return false;
+            await nextPoll();
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -1081,10 +1108,9 @@ internal static class RecordedFightRun
             PlaybackTransportDock.Apply(PlaybackTransport.Refused(
                 _entry is { } refused ? Identity(refused) : new TransportIdentity(creator, null, null, null)));
             PlaybackTransportDock.Detach();
-            PrefightScreen.ShowRefusal(creator, screen, reason);
 
             if (RunManager.Instance is { IsInProgress: true }) RunManager.Instance.CleanUp();
-            NGame.Instance?.ReturnToMainMenu();
+            ExplainOnceTheMenuIsBack(creator, screen, reason);
         }
         catch (Exception ex)
         {
@@ -1095,6 +1121,34 @@ internal static class RecordedFightRun
         finally
         {
             Finish();
+        }
+    }
+
+    /// <summary>
+    /// Returns to the main menu, and only then says why.
+    ///
+    /// The order is the whole point of this method and it is not the obvious one. The
+    /// refusal is a popup in the game's own modal container, and returning to the main
+    /// menu frees what is in that container - so a refusal put up first was added,
+    /// freed with the run it was explaining, and left the client's own deferred focus
+    /// grab throwing on a disposed button. Measured in the retail client: the player
+    /// was dropped at the main menu with no account of what had happened at all. The
+    /// game's own return is awaited because completing it is the signal that the menu
+    /// the popup will hang on is there.
+    /// </summary>
+    private static async void ExplainOnceTheMenuIsBack(string creator, string? screen, string reason)
+    {
+        try
+        {
+            if (NGame.Instance is { } game) await game.ReturnToMainMenu();
+            PrefightScreen.ShowRefusal(creator, screen, reason);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not say why the recorded fight was refused: " +
+                $"{ex.GetType().Name}: {ex.Message}",
+                2);
         }
     }
 

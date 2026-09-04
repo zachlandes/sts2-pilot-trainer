@@ -156,9 +156,12 @@ anything, and each refuses where the manifest is silent.
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
 player's game; `EngineHost.Start` must never run there, and `AdoptRunningGame` is the
-way in. Two traps in that process cost a crash each and are written down there: mod
+way in. Four traps in that process are written down there. Two cost a crash each: mod
 initialization runs before the game has a model database, and Godot does not load the
-game into the default assembly load context. `./scripts/install-mod.sh` is the one
+game into the default assembly load context. Two are about *when* rather than what, and
+were live in a build whose tests were green: waiting a length of time is not waiting for
+the game to finish something, and returning to the main menu frees the popup that
+explains why you returned. `./scripts/install-mod.sh` is the one
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions, and remove the `CombatTrainer` directory the mod was installed under before the rename.
 

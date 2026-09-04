@@ -384,6 +384,33 @@ plausibly and nothing is initialised. Every refusal now names the assembly it re
 and says when more than one is loaded, because "the game says no" is only meaningful
 once it is clear which game was asked.
 
+## Two more the client found, both about when rather than what
+
+Neither of these is visible in a process that never draws a frame, and both were live in
+a build whose tests were green.
+
+**A wait for a length of time is not a wait for a thing to happen.**
+The map move's own engine task completes when the combat room is built, and the opening
+hand is dealt over the frames after that. The hand-over waited a flat two seconds and
+then read the boundary whatever the game was doing with them. On one machine two seconds
+landed inside the Battle Start banner: the boundary read one card of the recording's five
+in hand and ten of its six in the draw pile, and refused a correct entry - twice,
+deterministically. `RecordedFightEntry.IsReadyForThePlayer` already existed for exactly
+this, carried a comment saying exactly this, and nothing called it. The wait now polls
+it, and the old constant is the deadline rather than the answer. The general rule, which
+`PlayerFightObserver` already followed and this did not: wait for the engine's own signal
+and keep the budget for giving up.
+
+**Returning to the main menu frees the popup that explains why.**
+A refusal is the one thing this journey says in a popup, and the popup lives in the
+game's own modal container. `Abandon` put it up and then called `NGame.ReturnToMainMenu`,
+which takes the container's contents with it - so the refusal was created, freed with the
+run it was explaining, and the client's own deferred focus grab threw
+`ObjectDisposedException` on a disposed button. The player was returned to the main menu
+with no account of what had happened at all, and nothing in the mod's own log said the
+popup had failed, because it had not: it was shown and then destroyed. The return is now
+awaited - it is a `Task` - and the refusal goes up on the far side of it.
+
 ## The surfaces, and why they are the game's own
 
 **The mode card is a duplicate of the game's Custom Run card**, renamed and rewired.

@@ -77,7 +77,8 @@ Whatever the transport's controls become has to be drawn, which is precisely why
 
 ## The design, as built
 
-**The hanging tag.** 378 by 56 in the design's reference units, hung from the top bar's torn edge and right-aligned to the deck button, which leaves the build and seed text clear beyond it.
+**The hanging tag.** 378 by 56 in the design's reference units, hung from the top bar's torn edge and right-aligned to the deck button, which puts it under the game's own meta cluster rather than over any gameplay furniture.
+It does not clear the version overlay, whose seed text starts further right than the deck button ends; that overlay is the game's own debug label and a player toggles it off from the menu that put it up.
 Flat charcoal at 94%, an inked gold edge, an inner hairline, two gold pins, a chamfered foot.
 Same palette as the game, different material: the game's own furniture is torn stone and parchment, so a flat plate reads as not-the-game without being loud about it, and it hangs under the game's own meta cluster where controls that act on the recording belong.
 
@@ -101,6 +102,9 @@ There is no watch row and no comparison inside a fight: the captain's ruling is 
 **Refusals read as a player's sentence**, with the engine's exact diagnostic behind a details fold and always in the log.
 The refusal is not softened; only the sentence a player reads changes.
 
+**One measure for everything that hangs below the tag.** The note, the look-back ledger, the speed menu and a tooltip all hang under it, and the plates are translucent because the game is meant to show through them - so two of them on the same band are not one covering the other, they are both legible at once and neither readable.
+Each hangs below whatever is already there. The client drew the speed menu straight over the ledger before this rule existed.
+
 ## What a redesign owns, and what it does not
 
 Change what `PlaybackTransportStrip` draws.
@@ -114,4 +118,4 @@ Leave `PlaybackTransportDock` (where the tag lives and what it is anchored to), 
 - **Screens the journey does not yet walk** - loot, card rewards, shops, rests - have no caption owner. The tag is built to carry them unchanged; the reveal refuses them.
 - **No new hotkeys.** On-screen controls only, so the controls carry no hotkey glyph: one would name a key that does nothing.
 
-`docs/in-game-host.md` records the behaviour and the traps; this file records what the surfaces are.
+`docs/in-game-host.md` records the behaviour and the traps; this file records what the surfaces are; `demo/PLAYBACK-TRANSPORT.md` is what they look like running in the player's client.

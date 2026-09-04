@@ -126,8 +126,15 @@ internal static class PlaybackTransportDock
     /// of the viewport - measuring the node itself put the first tag off the screen
     /// entirely. The right comes from the deck button, which is the right edge of the
     /// game's own meta cluster, so the tag hangs under map, deck and settings where
-    /// controls that act on the recording belong, and stays clear of the build and
-    /// seed text beyond it. Neither is a number that is right on one monitor.
+    /// controls that act on the recording belong. Neither is a number that is right on
+    /// one monitor.
+    ///
+    /// It does not clear everything drawn out there, and the client says so: the build
+    /// and seed text <c>NDebugInfoLabelManager</c> draws starts further right than the
+    /// deck button ends, so the tag covers the first characters of the seed. That is
+    /// the game's own version overlay, which a player toggles off from the menu that
+    /// put it up, and dodging it would trade a measured anchor for a debug artefact.
+    /// The gameplay furniture is what the anchor is for.
     /// </summary>
     private static Vector2 Anchor(NGlobalUi globalUi)
     {

@@ -410,6 +410,40 @@ public sealed class PlaybackTransportStripTests
         }
     }
 
+    /// <summary>
+    /// Nothing that hangs under the tag is hung on top of something else that is
+    /// already hanging there.
+    ///
+    /// The plates are translucent on purpose - the game shows through them - so two
+    /// surfaces on the same band are not one covering the other, they are both legible
+    /// at once and neither readable. The retail client drew the speed menu straight
+    /// over the look-back ledger and the ledger's words came up through it.
+    /// </summary>
+    [Fact]
+    public void WhatHangsUnderTheTagHangsBelowWhateverIsAlreadyThere()
+    {
+        var strip = Build(PlaybackTransport.LookingBackAt(
+            NaveGreed, [Blessing], shown: 1, current: 2, count: 2, next: MapMove));
+        strip.OpenMenu(chip: false, _ => { });
+
+        var ledger = strip.Ledger;
+        Assert.True(ledger.Visible);
+        Assert.True(strip.Menu.Visible);
+        Assert.True(
+            strip.Menu.Position.Y >= ledger.Position.Y + ledger.Size.Y,
+            $"the menu starts at {strip.Menu.Position.Y} and the ledger runs to " +
+            $"{ledger.Position.Y + ledger.Size.Y}");
+
+        // The tooltip hangs off the same measure, so hovering a control while looking
+        // back does not put the sentence over the ledger either.
+        strip.Back.EmitFocus(entered: true);
+        Assert.True(strip.Tooltip.Visible);
+        Assert.True(
+            strip.Tooltip.Position.Y >= ledger.Position.Y + ledger.Size.Y,
+            $"the tooltip starts at {strip.Tooltip.Position.Y} and the ledger runs to " +
+            $"{ledger.Position.Y + ledger.Size.Y}");
+    }
+
     private static PlaybackTransport Revealing(PrefightChoice choice, int number, bool noteShown) =>
         PlaybackTransport.Revealing(NaveGreed, choice, number, count: 2, playing: false, noteShown: noteShown);
 
