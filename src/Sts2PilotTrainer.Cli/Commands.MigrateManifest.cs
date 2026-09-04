@@ -49,7 +49,7 @@ internal static partial class Commands
             return 0;
         }
 
-        File.WriteAllText(outPath, after);
+        EvidenceArtifact.PreparePath(outPath, clearExisting: false).WriteAtomic(after);
         Console.WriteLine();
         Console.WriteLine($"migrated : {Paths.Display(outPath)}");
         return 0;

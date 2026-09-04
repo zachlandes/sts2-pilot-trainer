@@ -48,7 +48,8 @@ internal static class Program
                 _ => UnknownCommand(args[0]),
             };
         }
-        catch (Exception ex) when (ex is EngineException or Replay.ManifestException)
+        catch (Exception ex) when (
+            ex is EngineException or Replay.ManifestException or Sts2PilotTrainer.IO.PathContainmentException)
         {
             // These carry a message written for a person; a stack trace would bury it.
             Console.Error.WriteLine();
