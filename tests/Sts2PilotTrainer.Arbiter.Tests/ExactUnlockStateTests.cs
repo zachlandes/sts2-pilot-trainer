@@ -76,23 +76,70 @@ public sealed class ExactUnlockStateTests
     /// An id this build never heard of cannot go into a state at all, so it is refused
     /// rather than dropped: a state missing one epoch generates a different run behind
     /// an identical map.
+    ///
+    /// Reported, not thrown. The preflight exists to tell somebody why a recording
+    /// cannot be replayed here, so it has to print its FAIL row and its refusal rather
+    /// than abort while reading: a reading that threw would print no rows at all and
+    /// leave the message on stderr, which is what the row assertions distinguish.
     /// </summary>
     [GameFact]
-    public void AnIdThisBuildDoesNotShipIsRefusedRatherThanDropped()
+    public void AnIdThisBuildDoesNotShipIsReportedAsAShortfallRatherThanDropped()
+    {
+        var manifest = WithExactUnlocks(WithAStranger(), runs: 100, name: "unshipped-epoch");
+
+        var result = Arbiter.Run("preflight", manifest);
+
+        Assert.False(result.Verified, result.All);
+        Assert.StartsWith("FAIL", Row(result.Output, "unlocks_epochs"), StringComparison.Ordinal);
+        Assert.Contains("does not ship 1 of the", result.Output, StringComparison.Ordinal);
+        Assert.Contains("EPOCH.THIS.BUILD.NEVER.HEARD.OF", result.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "environment or run does NOT match; refusing to replay", result.Output, StringComparison.Ordinal);
+
+        // And the acts row says it was never asked, rather than reporting a state that
+        // could not be built as one with nothing locked.
+        Assert.StartsWith("FAIL", Row(result.Output, "acts_unlocked"), StringComparison.Ordinal);
+        Assert.Contains("not checked", Row(result.Output, "acts_unlocked"), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// And no run is generated against a state this build cannot build: the replay
+    /// refuses on the same shortfall, in its own words, before it constructs anything.
+    /// </summary>
+    [GameFact]
+    public void ARunIsNeverConstructedAgainstAStateThisBuildCannotBuild()
+    {
+        var manifest = WithExactUnlocks(WithAStranger(), runs: 100, name: "unshipped-epoch-replay");
+
+        var result = Arbiter.Run("replay", manifest);
+
+        Assert.False(result.Verified, result.All);
+        Assert.Contains("status         : REFUSED", result.Output, StringComparison.Ordinal);
+        Assert.Contains("does not ship 1 of the", result.Output, StringComparison.Ordinal);
+        Assert.Contains("action history hash: (none)", result.Output, StringComparison.Ordinal);
+    }
+
+    /// <summary>This build's own id lists, with one epoch it has never heard of.</summary>
+    private static IReadOnlyDictionary<string, IReadOnlyList<string>> WithAStranger()
     {
         var shipped = ShippedIds();
-        var withAStranger = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+        return new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
         {
             ["epochs"] = [.. shipped["epochs"], "EPOCH.THIS.BUILD.NEVER.HEARD.OF"],
             ["encounters_seen"] = shipped["encounters_seen"],
         };
-
-        var result = Arbiter.Run("replay", WithExactUnlocks(withAStranger, runs: 100, name: "unshipped-epoch"));
-
-        Assert.False(result.Verified, result.All);
-        Assert.Contains("does not ship 1 of the", result.All, StringComparison.Ordinal);
-        Assert.Contains("EPOCH.THIS.BUILD.NEVER.HEARD.OF", result.All, StringComparison.Ordinal);
     }
+
+    /// <summary>One preflight row, by the field it reports on, with the pass mark it
+    /// was printed with kept at the front.</summary>
+    private static string Row(string output, string field) =>
+        output.Split('\n')
+            .Select(line => line.Trim())
+            .FirstOrDefault(line =>
+                (line.StartsWith("ok ", StringComparison.Ordinal) ||
+                 line.StartsWith("FAIL", StringComparison.Ordinal)) &&
+                line.Contains(field, StringComparison.Ordinal))
+        ?? throw new InvalidOperationException($"The preflight printed no '{field}' row:\n{output}");
 
     /// <summary>
     /// The reading names what this build ships, which is what an exact requirement is

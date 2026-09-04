@@ -149,10 +149,10 @@ same two questions for a recording made inside the player's own game.
 **Read [docs/headless-fidelity.md](docs/headless-fidelity.md) before changing what
 the host patches or stands in for.** Each patch has a stated reason and the set is
 deliberately small. `TestMode` in particular reaches further than its name suggests.
-Two screens have no engine command at all - the loot a won fight offers, and the card
-screens a reward or an enchantment opens - so the host drives the first and answers
-the second from the manifest. Neither decides anything, and both refuse where the
-manifest is silent.
+Three screens have no engine command at all - the loot a won fight offers, the chest a
+treasure room opens, and the card screens a reward or an enchantment opens - so the
+host drives the first two and answers the third from the manifest. None of them decides
+anything, and each refuses where the manifest is silent.
 
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the

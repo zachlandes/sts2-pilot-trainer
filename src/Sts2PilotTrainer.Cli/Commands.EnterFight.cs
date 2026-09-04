@@ -43,6 +43,15 @@ internal static partial class Commands
         // below is a player-facing sentence about a person, so where there is no
         // person there is no caption - the decisions are printed as themselves.
         var creator = RecordingIdentity.CreatorOrNull(recording);
+        if (Args.Has(args, "--play") && creator is null)
+        {
+            throw new ManifestException(
+                $"--play plays the fight back as {recording.RunId}'s creator, and this recording does not say " +
+                "whose run it is. Every line the result screen prints names them, so there is nobody to " +
+                "attribute the comparison to. Enter the boundary without --play, or use a recording that " +
+                "carries source.video.channel_name.");
+        }
+
         // The state the recording's run is generated against, which is the recorded
         // player's own where the recording carries it, exactly as replay resolves it.
         var progress = ParseProgress(args, RecordedFightEntry.SuppliedProgressFor(recording));

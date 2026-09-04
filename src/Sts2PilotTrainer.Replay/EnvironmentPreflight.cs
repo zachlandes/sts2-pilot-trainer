@@ -331,14 +331,24 @@ public static class EnvironmentPreflight
         EnvironmentIdentity expected, LocalPrerequisites actual)
     {
         var wanted = string.Join(", ", expected.Acts.Value);
-        if (actual.LockedActs.Count == 0)
+        if (actual.LockedActs is not { } locked)
+        {
+            return new PreflightField(
+                "acts_unlocked", wanted, "not checked", false,
+                "The unlock state a run here would be generated against could not be built, so the game was " +
+                "never asked which of these acts it leaves locked. An unchecked requirement reported as met " +
+                "is the answer this project exists to prevent; the requirement this environment cannot meet " +
+                "is reported above.");
+        }
+
+        if (locked.Count == 0)
         {
             return new PreflightField("acts_unlocked", wanted, "all unlocked", true);
         }
 
         return new PreflightField(
-            "acts_unlocked", wanted, $"locked: {string.Join(", ", actual.LockedActs)}", false,
-            $"This environment cannot climb {string.Join(", ", actual.LockedActs)}: the game reports the act " +
+            "acts_unlocked", wanted, $"locked: {string.Join(", ", locked)}", false,
+            $"This environment cannot climb {string.Join(", ", locked)}: the game reports the act " +
             "locked under the unlock state a run here would be generated against. An act that is not unlocked " +
             "is not merely unavailable - the run would take the other variant shipped at the same index, which " +
             $"generates different content from the same seed while producing the same map. {UnlockRemediation}");

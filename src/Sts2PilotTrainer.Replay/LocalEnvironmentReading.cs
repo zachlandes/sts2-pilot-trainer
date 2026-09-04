@@ -44,9 +44,13 @@ public sealed record LocalPrerequisites
     /// only one of them is available to a new player, so an environment missing that
     /// unlock cannot climb the run at all - and would otherwise take the default
     /// variant, which generates different content from the same seed and the same map.
+    ///
+    /// Null where the unlock state a run here would be generated against could not be
+    /// built, so the game was never asked. That is not an empty list: nothing locked
+    /// and nothing checked are different answers, and only one of them is a pass.
     /// </summary>
     [JsonPropertyName("locked_acts")]
-    public required IReadOnlyList<string> LockedActs { get; init; }
+    public required IReadOnlyList<string>? LockedActs { get; init; }
 
     /// <summary>
     /// The highest ascension this process's profile records for the character the

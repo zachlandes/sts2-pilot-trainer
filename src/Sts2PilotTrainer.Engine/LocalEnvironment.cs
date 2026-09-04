@@ -75,7 +75,14 @@ public static class LocalEnvironment
         var identity = EngineHost.Origin == EngineOrigin.RunningGame
             ? GameIdentity.ReadFromRunningGame()
             : GameIdentity.Read();
-        var inventory = ReadUnlockInventory(progress);
+
+        // A reading, so a state this build cannot build is reported rather than
+        // thrown: the screen that exists to say why a recording cannot be replayed
+        // would otherwise crash instead of rendering it. The refusal itself stays at
+        // run construction, where a state that cannot be built would otherwise become
+        // a run nobody asked for.
+        var state = UnbuildableState(progress) is null ? ResolveUnlockState(progress) : null;
+        var inventory = ReadUnlockInventory(progress, state);
 
         return new LocalPrerequisites
         {
@@ -84,7 +91,7 @@ public static class LocalEnvironment
             ContentHash = identity.ContentHash,
             Mods = ReadMods(),
             Unlocks = inventory,
-            LockedActs = LockedActs(expected.Acts.Value, progress),
+            LockedActs = state is null ? null : LockedActs(expected.Acts.Value, state),
             ProfileAscensionCeiling = inventory.FromPlayerProfile
                 ? ReadProfileAscensionCeiling(expected.Character.Value)
                 : null,
@@ -117,10 +124,9 @@ public static class LocalEnvironment
     /// mapping between the two is the game's to know and ours to read.
     /// </summary>
     private static IReadOnlyList<string> LockedActs(
-        IReadOnlyList<string> actModelIds, PlayerProgress progress)
+        IReadOnlyList<string> actModelIds, UnlockState unlockState)
     {
         EngineHost.Start();
-        var unlockState = ResolveUnlockState(progress);
         var locked = new List<string>();
         foreach (var modelId in actModelIds)
         {
@@ -198,14 +204,9 @@ public static class LocalEnvironment
     /// </summary>
     private static UnlockState ExactUnlockState(UnlockStateInventory inventory)
     {
-        EngineHost.Start();
-
-        var shippedEpochs = EpochIds(UnlockState.all);
-        RefuseUnshipped(inventory.Epochs, shippedEpochs.Contains, "epoch");
+        if (UnbuildableState(inventory) is { } refusal) throw new EngineException(refusal);
 
         var shippedEncounters = ShippedEncounterIds();
-        RefuseUnshipped(inventory.EncountersSeen, shippedEncounters.ContainsKey, "encounter");
-
         return new UnlockState(
             inventory.Epochs,
             inventory.EncountersSeen.Select(id => shippedEncounters[id]).ToList(),
@@ -213,7 +214,21 @@ public static class LocalEnvironment
     }
 
     /// <summary>
-    /// Refuses a recording naming something this build does not have.
+    /// Why the state this progress model names cannot be built here, or null where it
+    /// can.
+    ///
+    /// A sentence rather than an exception, because the same fact is a refusal on the
+    /// way into a run and a reportable shortfall on the way into a preflight, and a
+    /// reader that threw would take the report down with it. Only a supplied exact
+    /// state can be unbuildable: the complete, empty and profile states are this
+    /// build's own.
+    /// </summary>
+    private static string? UnbuildableState(PlayerProgress progress) =>
+        progress.Inventory is { } inventory ? UnbuildableState(inventory) : null;
+
+    /// <summary>
+    /// The same answer for an inventory on its own, which is what run construction
+    /// holds when it refuses.
     ///
     /// One rule for both id lists, because they fail the same way and for the same
     /// reason: the state cannot be built, so the run generated here would not be the
@@ -221,17 +236,30 @@ public static class LocalEnvironment
     /// game's, as it always is - this build does not ship it, and nothing here will
     /// pretend otherwise.
     /// </summary>
-    private static void RefuseUnshipped(
+    private static string? UnbuildableState(UnlockStateInventory inventory)
+    {
+        EngineHost.Start();
+
+        var shortfalls = new[]
+        {
+            Unshipped(inventory.Epochs, EpochIds(UnlockState.all).Contains, "epoch"),
+            Unshipped(inventory.EncountersSeen, ShippedEncounterIds().ContainsKey, "encounter"),
+        }.OfType<string>().ToList();
+
+        return shortfalls.Count == 0 ? null : string.Join(" ", shortfalls);
+    }
+
+    private static string? Unshipped(
         IReadOnlyList<string> named, Func<string, bool> ships, string what)
     {
         var missing = named.Where(id => !ships(id)).ToList();
-        if (missing.Count == 0) return;
+        if (missing.Count == 0) return null;
 
-        throw new EngineException(
+        return
             $"This build does not ship {missing.Count.ToString(CultureInfo.InvariantCulture)} of the " +
             $"{named.Count.ToString(CultureInfo.InvariantCulture)} {what} id(s) the recording was played " +
             "with, so the unlock state it was generated against cannot be built here and the same seed " +
-            $"produces a different run. Missing: {string.Join(", ", missing.Take(MissingSampleLimit))}.");
+            $"produces a different run. Missing: {string.Join(", ", missing.Take(MissingSampleLimit))}.";
     }
 
     /// <summary>Every encounter id this build ships, by the string a manifest names it
@@ -282,41 +310,48 @@ public static class LocalEnvironment
         throw new EngineException($"Unknown player-progress model '{progress}'.");
     }
 
-    private static UnlockInventory ReadUnlockInventory(PlayerProgress progress)
+    private static UnlockInventory ReadUnlockInventory(PlayerProgress progress, UnlockState? actual)
     {
         EngineHost.Start();
-        var actual = ResolveUnlockState(progress);
         var complete = UnlockState.all;
 
+        // No state, no counts. A state this build cannot build has no categories to
+        // count, and counting the ids it does ship instead would report a state nobody
+        // asked for as though it were the recording's. What this build ships is
+        // reported below either way, and that is what an exact requirement is judged
+        // against.
         var categories = new List<UnlockCategory>();
-        foreach (var (name, property) in UnlockCategories)
+        if (actual is not null)
         {
-            var required = ModelIds(complete, property);
-            var available = ModelIds(actual, property);
+            foreach (var (name, property) in UnlockCategories)
+            {
+                var required = ModelIds(complete, property);
+                var available = ModelIds(actual, property);
+                categories.Add(new UnlockCategory(
+                    name,
+                    available.Count,
+                    required.Count,
+                    required.Except(available, StringComparer.Ordinal)
+                        .Order(StringComparer.Ordinal)
+                        .Take(MissingSampleLimit)
+                        .ToList()));
+            }
+
+            // Epochs last, and separately, because they are the actionable unit: the
+            // game grants an epoch, and everything above is what an epoch makes
+            // available. A report that named only the categories would tell a player
+            // what they are missing without telling them what to go and unlock.
+            var requiredEpochs = EpochIds(complete);
+            var availableEpochs = EpochIds(actual);
             categories.Add(new UnlockCategory(
-                name,
-                available.Count,
-                required.Count,
-                required.Except(available, StringComparer.Ordinal)
+                "epochs",
+                availableEpochs.Count,
+                requiredEpochs.Count,
+                requiredEpochs.Except(availableEpochs, StringComparer.Ordinal)
                     .Order(StringComparer.Ordinal)
                     .Take(MissingSampleLimit)
                     .ToList()));
         }
-
-        // Epochs last, and separately, because they are the actionable unit: the game
-        // grants an epoch, and everything above is what an epoch makes available. A
-        // report that named only the categories would tell a player what they are
-        // missing without telling them what to go and unlock.
-        var requiredEpochs = EpochIds(complete);
-        var availableEpochs = EpochIds(actual);
-        categories.Add(new UnlockCategory(
-            "epochs",
-            availableEpochs.Count,
-            requiredEpochs.Count,
-            requiredEpochs.Except(availableEpochs, StringComparer.Ordinal)
-                .Order(StringComparer.Ordinal)
-                .Take(MissingSampleLimit)
-                .ToList()));
 
         return new UnlockInventory
         {

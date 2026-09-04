@@ -68,8 +68,9 @@ public sealed record ReproductionVerdicts
         if (!string.Equals(SchemaId, Schema, StringComparison.Ordinal))
         {
             throw new ManifestException(
-                $"The verdicts' schema is '{SchemaId}', and this build reads '{Schema}'. Re-run gate --rekey " +
-                "to produce one this build can read.");
+                $"The verdicts' schema is '{SchemaId}', and this build reads '{Schema}'. A catalogue this " +
+                "build cannot read cannot be repaired by re-keying, because every re-key binds it first: " +
+                "delete this catalogue and run gate --rekey again for each build you want a verdict on.");
         }
 
         if (!string.Equals(RunId, manifest.RunId, StringComparison.Ordinal))
