@@ -55,6 +55,16 @@ public sealed class SharedWriterTests : IDisposable
         Assert.Throws<ProtectedInstallPathException>(() => ProtectedInstallPath.RequireUnprotected(path));
     }
 
+    [Theory]
+    [InlineData("/opt/SteamApps/common/game")]
+    [InlineData("/opt/slay the spire 2/mods")]
+    public void InstallComponentsFollowTheHostFileSystemsCasing(string path)
+    {
+        var protectedOnThisHost = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS();
+
+        Assert.Equal(protectedOnThisHost, ProtectedInstallPath.HasProtectedComponent(path));
+    }
+
     /// <summary>
     /// The component rule is about a whole path component, not a substring: a
     /// directory whose name merely contains "steam" is somebody's ordinary folder.

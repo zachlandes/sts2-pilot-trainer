@@ -9,17 +9,17 @@ is skipped by name in the game's log and the rest of the mod loads without it.
 `CombatTrainerModule` is the only one built. The recorder and the run library are the
 other two.
 
-This is the mod that loads in the shipped Slay the Spire 2 client: S3 of
-[the proof-of-concept path](proof-of-concept-path.md) answers one question — can this
-game play the recorded fight? — S4 adds the button that enters it, and S5 captures the
-fight the player then plays and shows it beside the recording's.
+The retail proof below was gathered on the pre-rename `CombatTrainer` artifact.
+S3 of [the proof-of-concept path](proof-of-concept-path.md) answers one question — can this game play the recorded fight? — S4 adds the button that enters it, and S5 captures the fight the player then plays and shows it beside the recording's.
+That evidence establishes those Combat Trainer behaviors, but it establishes nothing about discovery, initialization or a complete session for the renamed `Runmobile` artifact.
 
 ## What it proves
 
-**The retail game loads the mod through its own mod surface.**
-`Runmobile` under the selected game mod directory contains `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
-The game's recursive scan discovers the manifest, `ModManager` loads the mod, and `ModInitializerAttribute` initializes it.
-The libraries ship together; there is no separately installed framework or runtime dependency, and no resource pack.
+**Retail loading of the renamed artifact is pending and not yet established.**
+The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
+A retail session still has to show `Runmobile` in the game's mod list as the only enabled mod, show that the game's recursive scan discovers its manifest and `ModInitializerAttribute` initializes it, exercise the Combat Trainer through the renamed shell, and finish with a clean protected-files ledger outside `user://Runmobile/`.
+Until that session is recorded, the existing `CombatTrainer` screenshots and ledger are not evidence for the renamed package.
+The libraries are built to ship together; there is no separately installed framework or runtime dependency, and no resource pack.
 
 **The eligibility answer comes from the same owner the arbiter uses.**
 `Preflight.EvaluateLiveHost` reads this process's game and judges it through
@@ -436,8 +436,8 @@ It also removes a `CombatTrainer` directory left there by a build from before th
 An upgrade stages the complete named file set in a temporary sibling there and replaces the old directory rather than overlaying it.
 That is the game's own mod surface — the same location Steam Workshop installs into — and the game offers no user-data alternative, because it derives the path from its executable's location.
 
-[demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) has the mod card and the eligibility
-screen as they appear in the shipped client,
+[demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) has the pre-rename mod card and eligibility
+screen as they appeared in the shipped client,
 [demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has the journey into
 the recorded fight with its real output, and
 [demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has the fight

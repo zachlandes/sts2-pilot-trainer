@@ -63,10 +63,10 @@ internal static class RunmobileStore
 
     private const string UserScheme = "user://";
 
-    private static string? _root;
+    private static Func<string>? _rootForTesting;
 
     /// <summary>
-    /// The store's root for the profile this game is running as, established once.
+    /// The store's root for the profile this game is running as, resolved for each operation.
     ///
     /// <c>ProjectSettings.GlobalizePath</c> is the game's own answer for where
     /// <c>user://</c> is, so this mod never derives the player's data directory
@@ -74,7 +74,8 @@ internal static class RunmobileStore
     /// resolved inside its own installation is one this mod declines to write in at
     /// all.
     /// </summary>
-    internal static string Root => _root ??= ResolveRoot(ProjectSettings.GlobalizePath(ScopedUserPath()));
+    internal static string Root => ResolveRoot(
+        _rootForTesting?.Invoke() ?? ProjectSettings.GlobalizePath(ScopedUserPath()));
 
     /// <summary>
     /// The full path of an entry in the store, refused unless it is inside it.
@@ -200,6 +201,18 @@ internal static class RunmobileStore
     /// in the mod calls it, and the game's own answer is the only root a player's
     /// process ever has.
     /// </summary>
-    internal static void UseRootForTesting(string? root) =>
-        _root = root is null ? null : ResolveRoot(root);
+    internal static void UseRootForTesting(string? root)
+    {
+        if (root is null)
+        {
+            _rootForTesting = null;
+            return;
+        }
+
+        var resolved = ResolveRoot(root);
+        _rootForTesting = () => resolved;
+    }
+
+    internal static void UseRootProviderForTesting(Func<string> rootProvider) =>
+        _rootForTesting = rootProvider ?? throw new ArgumentNullException(nameof(rootProvider));
 }

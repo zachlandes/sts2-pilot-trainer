@@ -16,7 +16,7 @@ namespace Sts2PilotTrainer.IO;
 /// has a platform level named <c>steam</c> in lower case
 /// (<c>SlayTheSpire2/steam/&lt;account&gt;/profile1</c>), which is where the mod's own
 /// store lives and is not an installation. Matching case-insensitively refused the
-/// store's own root. The other two are fixed-case names and stay so.
+/// store's own root. The other two follow the host filesystem's casing semantics.
 ///
 /// It is not the containment rule and does not replace it. Containment answers "is
 /// this inside the one root I own"; this answers "is this somewhere nothing here may
@@ -25,13 +25,21 @@ namespace Sts2PilotTrainer.IO;
 /// </summary>
 public static class ProtectedInstallPath
 {
-    private static readonly string[] ProtectedComponents = ["Steam", "steamapps", "Slay the Spire 2"];
+    private static readonly string[] FileSystemProtectedComponents = ["steamapps", "Slay the Spire 2"];
+
+    private static StringComparison FileSystemComparison =>
+        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
 
     public static bool HasProtectedComponent(string path) =>
         Path.GetFullPath(path)
             .Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
                 StringSplitOptions.RemoveEmptyEntries)
-            .Any(component => ProtectedComponents.Contains(component, StringComparer.Ordinal));
+            .Any(component =>
+                component.Equals("Steam", StringComparison.Ordinal) ||
+                FileSystemProtectedComponents.Any(protectedComponent =>
+                    component.Equals(protectedComponent, FileSystemComparison)));
 
     public static string RequireUnprotected(string path)
     {

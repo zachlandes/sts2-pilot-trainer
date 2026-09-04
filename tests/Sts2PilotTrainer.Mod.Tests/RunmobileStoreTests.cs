@@ -43,6 +43,22 @@ public sealed class RunmobileStoreTests : IDisposable
     }
 
     [Fact]
+    public void AProfileSwitchChangesTheRootUsedByTheNextOperation()
+    {
+        var first = _root;
+        var second = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
+        var current = first;
+        RunmobileStore.UseRootProviderForTesting(() => current);
+
+        RunmobileStore.Write("progress.json", "first");
+        current = second;
+        RunmobileStore.Write("progress.json", "second");
+
+        Assert.Equal("first", File.ReadAllText(Path.Combine(first, "progress.json")));
+        Assert.Equal("second", File.ReadAllText(Path.Combine(second, "progress.json")));
+    }
+
+    [Fact]
     public void AWriteLeavesNoTemporarySiblingBehind()
     {
         RunmobileStore.Write("progress.json", "{\"fights\":[]}");

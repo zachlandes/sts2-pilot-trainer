@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Security.Cryptography;
@@ -78,38 +80,95 @@ public sealed class ModHostBoundaryTests
         Assert.Equal("Runmobile", manifest.GetProperty("name").GetString());
     }
 
-    /// <summary>
-    /// The id in the manifest, the id the mod logs under, the assembly the installer
-    /// ships and the id the mod-environment gate permits are one id. They are read
-    /// by four different things - the game, the log, install-mod.sh and the preflight
-    /// - so a rename that reached three of them would leave a game that loads a mod
-    /// the trainer then refuses to recognise.
-    /// </summary>
-    [Fact]
-    public void TheModIdIsTheSameOneEverywhereItIsWrittenDown()
+    [GameFact]
+    public void TheBuiltModInstallsUnderTheIdLivePreflightAccepts()
     {
-        var manifestPath = Path.Combine(
-            Arbiter.RepoRoot, "src", "Sts2PilotTrainer.Mod", "Runmobile.json");
-        var declared = JsonDocument.Parse(File.ReadAllText(manifestPath))
-            .RootElement.GetProperty("id").GetString();
-        var project = File.ReadAllText(Path.Combine(
-            Arbiter.RepoRoot, "src", "Sts2PilotTrainer.Mod", "Sts2PilotTrainer.Mod.csproj"));
-        var installer = File.ReadAllText(Path.Combine(Arbiter.RepoRoot, "scripts", "install-mod.sh"));
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-install-{Guid.NewGuid():N}");
+        var mods = Path.Combine(sandbox, "mods");
+        var former = Path.Combine(mods, "CombatTrainer");
+        Directory.CreateDirectory(former);
+        File.WriteAllText(Path.Combine(former, "leftover.txt"), "old");
 
-        Assert.Equal("Runmobile", declared);
-        Assert.Equal(RunmobileMod.ModId, declared);
-        Assert.Contains($"<AssemblyName>{declared}</AssemblyName>", project, StringComparison.Ordinal);
-        Assert.Contains($"mod_id=\"{declared}\"", installer, StringComparison.Ordinal);
-        Assert.Contains("former_mod_id=\"CombatTrainer\"", installer, StringComparison.Ordinal);
+        try
+        {
+            var result = RunInstaller(mods);
 
-        // The one gate that has to agree with the game's own mod list. Read off the
-        // constant rather than through a whole preflight fixture, because what is
-        // being pinned here is that the two spellings are one spelling; what the gate
-        // then does with it is LivePreflightTests' subject.
-        var permitted = typeof(EnvironmentPreflight)
-            .GetField("HostModId", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
-            .GetRawConstantValue();
-        Assert.Equal(declared, permitted);
+            Assert.Equal(0, result.ExitCode);
+            Assert.False(Directory.Exists(former));
+            var installed = Path.Combine(mods, "Runmobile");
+            Assert.Equal(
+                [
+                    "Runmobile.dll",
+                    "Runmobile.json",
+                    "Sts2PilotTrainer.Engine.dll",
+                    "Sts2PilotTrainer.IO.dll",
+                    "Sts2PilotTrainer.Replay.dll",
+                    "Sts2PilotTrainer.Trainer.dll",
+                ],
+                Directory.EnumerateFiles(installed).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+
+            var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(installed, "Runmobile.json")))
+                .RootElement;
+            var declared = manifest.GetProperty("id").GetString()!;
+            Assert.Equal("Runmobile", declared);
+            Assert.Equal(declared, AssemblyName.GetAssemblyName(Path.Combine(installed, "Runmobile.dll")).Name);
+            Assert.Equal(declared, RunmobileMod.ModId);
+
+            var expected = CombatTrainerModule.Instance.Recording.Environment;
+            var preflight = EnvironmentPreflight.LiveGame(
+                expected,
+                new LocalPrerequisites
+                {
+                    BuildVersion = expected.BuildVersion.Value,
+                    BuildDateUtc = expected.BuildDateUtc.Value,
+                    ContentHash = expected.ContentHash.Value,
+                    Mods =
+                    [
+                        new LocalMod(
+                            declared,
+                            manifest.GetProperty("name").GetString()!,
+                            manifest.GetProperty("version").GetString()!,
+                            manifest.GetProperty("affects_gameplay").GetBoolean(),
+                            "Loaded"),
+                    ],
+                    Unlocks = new UnlockInventory
+                    {
+                        Origin = "complete test inventory",
+                        FromPlayerProfile = false,
+                        Categories = [],
+                    },
+                    LockedActs = [],
+                },
+                run: null);
+
+            Assert.True(
+                preflight.Prerequisites.Fields.Single(field => field.Field == "loaded_mod_environment").Matches);
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
+    private static Arbiter.Result RunInstaller(string modsDirectory)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "bash",
+            WorkingDirectory = Arbiter.RepoRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        startInfo.ArgumentList.Add(Path.Combine(Arbiter.RepoRoot, "scripts", "install-mod.sh"));
+        startInfo.ArgumentList.Add("--mods-dir");
+        startInfo.ArgumentList.Add(modsDirectory);
+
+        using var process = Process.Start(startInfo)!;
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        return new Arbiter.Result(process.ExitCode, output, error);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]

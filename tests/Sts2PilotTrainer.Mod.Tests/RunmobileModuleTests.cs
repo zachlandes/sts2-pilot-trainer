@@ -1,5 +1,9 @@
-using System.Reflection;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Map;
+using MegaCrit.Sts2.Core.Multiplayer.Game;
+using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Screens.MainMenu;
+using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Trainer;
@@ -24,35 +28,32 @@ public sealed class RunmobileModuleTests
         Assert.Equal("Combat Trainer", module.Name);
     }
 
-    /// <summary>
-    /// Every Harmony-annotated type in this assembly belongs to a module.
-    ///
-    /// The shell installs patches module by module rather than through
-    /// <c>PatchAll</c>, which is the whole point of the seam - a disabled module
-    /// patches nothing. The cost of that is a list, and this is what keeps the list
-    /// honest: a patch class added without an owner would silently never install.
-    /// </summary>
     [GameFact]
-    public void EveryPatchClassInTheAssemblyIsOwnedByAModule()
+    public void InstallingTheCombatTrainerPatchesItsRuntimeBoundaries()
     {
-        // Reading a patch class's attributes resolves the game type it patches, so
-        // the game has to be loaded in this process before the question is asked.
         _ = EngineHost.StartupPhase();
+        var harmony = new Harmony($"sts2-pilot-trainer.combat-trainer-test.{Guid.NewGuid():N}");
+        var boundaries = new[]
+        {
+            AccessTools.Method(typeof(NSingleplayerSubmenu), nameof(NSingleplayerSubmenu._Ready)),
+            AccessTools.Method(typeof(RunManager), nameof(RunManager.CleanUp)),
+            AccessTools.Method(typeof(NGame), nameof(NGame.ReturnToMainMenu)),
+            AccessTools.Method(typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption)),
+            AccessTools.Method(typeof(RunManager), nameof(RunManager.EnterMapCoord)),
+        };
 
-        var annotated = typeof(RunmobileMod).Assembly.GetTypes()
-            .Where(type => type.GetCustomAttributes<HarmonyPatch>(inherit: false).Any() ||
-                           type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic |
-                                           BindingFlags.DeclaredOnly)
-                               .Any(method => method.GetCustomAttributes<HarmonyPatch>(inherit: false).Any()))
-            .OrderBy(type => type.FullName, StringComparer.Ordinal)
-            .ToList();
+        try
+        {
+            CombatTrainerModule.Instance.Install(harmony);
 
-        var owned = RunmobileMod.Modules
-            .SelectMany(OwnedPatchClasses)
-            .OrderBy(type => type.FullName, StringComparer.Ordinal)
-            .ToList();
-
-        Assert.Equal(annotated, owned);
+            Assert.All(boundaries, boundary => Assert.Contains(
+                Harmony.GetPatchInfo(boundary)!.Owners,
+                owner => owner == harmony.Id));
+        }
+        finally
+        {
+            harmony.UnpatchAll(harmony.Id);
+        }
     }
 
     [Fact]
@@ -102,9 +103,6 @@ public sealed class RunmobileModuleTests
         Assert.Equal(["Recording"], installed);
         Assert.True(installer.Installed);
     }
-
-    private static IReadOnlyList<Type> OwnedPatchClasses(IRunmobileModule module) =>
-        module == CombatTrainerModule.Instance ? CombatTrainerModule.PatchClasses : [];
 
     private sealed class RecordingModule : IRunmobileModule
     {
