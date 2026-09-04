@@ -118,6 +118,43 @@ public class BootstrapSafetyTests
     }
 
     [Fact]
+    public void CopyFailureLeavesAnExistingArchiveUnchanged()
+    {
+        var prepared = WritePreparedSet();
+        var archiveDir = ScratchDirectory("archive-copy-failure");
+        var target = Sts2PilotTrainer.Bootstrap.Program.Archive(
+            prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes);
+        var archivedReceipt = File.ReadAllText(Path.Combine(target, "prepared-assembly.json"));
+        File.WriteAllText(Path.Combine(prepared.Directory, "0Harmony.dll"), "changed during archive");
+
+        Assert.Throws<InvalidOperationException>(() =>
+            Sts2PilotTrainer.Bootstrap.Program.Archive(
+                prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes));
+
+        Assert.Equal("prepared harmony", File.ReadAllText(Path.Combine(target, "0Harmony.dll")));
+        Assert.Equal(archivedReceipt, File.ReadAllText(Path.Combine(target, "prepared-assembly.json")));
+    }
+
+    [Fact]
+    public void ChangedPreparedReceiptLeavesAnExistingArchiveUnchanged()
+    {
+        var prepared = WritePreparedSet();
+        var archiveDir = ScratchDirectory("archive-receipt-failure");
+        var target = Sts2PilotTrainer.Bootstrap.Program.Archive(
+            prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes);
+        var archivedReceipt = File.ReadAllText(Path.Combine(target, "prepared-assembly.json"));
+        File.WriteAllText(Path.Combine(prepared.Directory, "prepared-assembly.json"), "{}");
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            Sts2PilotTrainer.Bootstrap.Program.Archive(
+                prepared.Directory, archiveDir, PreparedIdentity, PristineHash, prepared.Hashes));
+
+        Assert.Contains("prepared-assembly.json changed", error.Message, StringComparison.Ordinal);
+        Assert.Equal("prepared harmony", File.ReadAllText(Path.Combine(target, "0Harmony.dll")));
+        Assert.Equal(archivedReceipt, File.ReadAllText(Path.Combine(target, "prepared-assembly.json")));
+    }
+
+    [Fact]
     public void ArchivesACleanPreparedSetIdempotently()
     {
         var prepared = WritePreparedSet();
@@ -225,7 +262,15 @@ public class BootstrapSafetyTests
         };
         File.WriteAllText(Path.Combine(directory, "prepared-assembly.json"), JsonSerializer.Serialize(new
         {
-            build = new { commit = PreparedIdentity.Commit },
+            schema = "sts2-pilot-trainer/prepared-assembly/v2",
+            build = new
+            {
+                version = PreparedIdentity.Version,
+                build_date_utc = PreparedIdentity.BuildDateUtc,
+                commit = PreparedIdentity.Commit,
+                branch = PreparedIdentity.Branch,
+                main_assembly_hash = PreparedIdentity.MainAssemblyHash,
+            },
             pristine_sts2_sha256 = PristineHash,
             prepared_output_sha256 = hashes,
         }));

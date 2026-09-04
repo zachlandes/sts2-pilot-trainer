@@ -62,8 +62,9 @@ corruptions pass every arithmetic check the frames allow.
 
 **A boundary is re-derived, never deserialized.** `./scripts/arbiter
 snapshot-restore-probe` measured the game's own save round trip at a combat-start
-boundary on v0.111.0: `SerializableRun` carries the run exactly and the fight not at
-all, and re-entering the room to recover it generates a different fight. The answer,
+boundary on v0.111.0: `SerializableRun` carries the run's identity and hidden state -
+seed, every RNG stream position, act room set, deck order and relics - but no combat;
+`run.act_floor` also differs until a room is entered, which generates a different fight. The answer,
 its numbers and what it does not refuse are in
 [docs/native-replay-format.md](docs/native-replay-format.md). Do not add a cache that
 stores a serialized run in place of the history that produces it.

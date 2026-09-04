@@ -340,35 +340,113 @@ internal static class Program
                 existingReceipt, identity.Commit, installHash, outputHashes);
         }
 
-        Directory.CreateDirectory(target);
+        // An entry already in the archive may be a symlink, so confinement must
+        // check each resolved destination rather than only the name being copied.
         foreach (var name in outputHashes.Keys.Append(ReceiptName))
         {
-            var source = Path.Combine(outDir, name);
-            if (!File.Exists(source))
-            {
-                throw new InvalidOperationException(
-                    $"Prepared source {name} disappeared before it could be archived. Refusing: " +
-                    "an archive that is not the whole prepared set is worse than no archive.");
-            }
-
-            // An entry already in the archive may be a symlink, so confinement must
-            // check the resolved destination at copy time rather than only its name.
-            var destination = PathContainment.RequireContained(
+            PathContainment.RequireContained(
                 target, WorktreePath.RequireChild(target, name));
-            File.Copy(source, destination, overwrite: true);
-
-            // Verified after landing rather than trusted to have copied. The archive's
-            // whole purpose is to still be the prepared set months later, and a file
-            // that arrived truncated would look like a build that changed.
-            if (outputHashes.TryGetValue(name, out var expected) && HashFile(destination) != expected)
-            {
-                throw new InvalidOperationException(
-                    $"Archived {name} does not hash to what the receipt says it should. Refusing: an archive " +
-                    "that is not the prepared set is worse than no archive.");
-            }
         }
 
-        return target;
+        var staging = PathContainment.RequireContained(
+            archiveDir,
+            WorktreePath.RequireChild(
+                archiveDir, $".{identity.Version}.archive.{Guid.NewGuid():N}"));
+        string? backup = null;
+        try
+        {
+            Directory.CreateDirectory(staging);
+            foreach (var name in outputHashes.Keys.Append(ReceiptName))
+            {
+                var source = Path.Combine(outDir, name);
+                if (!File.Exists(source))
+                {
+                    throw new InvalidOperationException(
+                        $"Prepared source {name} disappeared before it could be archived. Refusing: " +
+                        "an archive that is not the whole prepared set is worse than no archive.");
+                }
+
+                var destination = PathContainment.RequireContained(
+                    staging, WorktreePath.RequireChild(staging, name));
+                File.Copy(source, destination);
+
+                if (outputHashes.TryGetValue(name, out var expected) &&
+                    HashFile(destination) != expected)
+                {
+                    throw new InvalidOperationException(
+                        $"Archived {name} does not hash to what the receipt says it should. Refusing: " +
+                        "an archive that is not the prepared set is worse than no archive.");
+                }
+            }
+
+            ValidatePreparedReceipt(
+                Path.Combine(staging, ReceiptName), identity, installHash, outputHashes);
+
+            // Match install-mod.sh: prepare and verify a complete temporary sibling,
+            // then replace the named directory without ever exposing a partial set.
+            if (Directory.Exists(target))
+            {
+                backup = PathContainment.RequireContained(
+                    archiveDir,
+                    WorktreePath.RequireChild(
+                        archiveDir, $".{identity.Version}.previous.{Guid.NewGuid():N}"));
+                Directory.Move(target, backup);
+            }
+
+            Directory.Move(staging, target);
+            staging = string.Empty;
+            if (backup is not null)
+            {
+                Directory.Delete(backup, recursive: true);
+                backup = null;
+            }
+            return target;
+        }
+        finally
+        {
+            if (!string.IsNullOrEmpty(staging) && Directory.Exists(staging))
+            {
+                Directory.Delete(staging, recursive: true);
+            }
+            if (backup is not null && Directory.Exists(backup))
+            {
+                if (!Directory.Exists(target))
+                {
+                    Directory.Move(backup, target);
+                }
+                else
+                {
+                    Directory.Delete(backup, recursive: true);
+                }
+            }
+        }
+    }
+
+    private static void ValidatePreparedReceipt(
+        string receiptPath, InstalledIdentity identity, string installHash,
+        IReadOnlyDictionary<string, string> outputHashes)
+    {
+        var receipt = JsonNode.Parse(File.ReadAllText(receiptPath))!.AsObject();
+        var build = receipt["build"] as JsonObject;
+        var receiptHashes = receipt["prepared_output_sha256"] as JsonObject;
+        var identityMatches = receipt["schema"]?.GetValue<string>() ==
+                                  "sts2-pilot-trainer/prepared-assembly/v2" &&
+                              build?["version"]?.GetValue<string>() == identity.Version &&
+                              build?["build_date_utc"]?.GetValue<string>() == identity.BuildDateUtc &&
+                              build?["commit"]?.GetValue<string>() == identity.Commit &&
+                              build?["branch"]?.GetValue<string>() == identity.Branch &&
+                              build?["main_assembly_hash"]?.GetValue<long>() == identity.MainAssemblyHash &&
+                              receipt["pristine_sts2_sha256"]?.GetValue<string>() == installHash;
+        var hashesMatch = receiptHashes is not null &&
+                          receiptHashes.Count == outputHashes.Count &&
+                          outputHashes.All(expected =>
+                              receiptHashes[expected.Key]?.GetValue<string>() == expected.Value);
+        if (!identityMatches || !hashesMatch)
+        {
+            throw new InvalidOperationException(
+                $"Prepared source {ReceiptName} changed before it could be archived. Refusing: " +
+                "an archive whose receipt does not describe the whole prepared set is worse than no archive.");
+        }
     }
 
     /// <summary>
