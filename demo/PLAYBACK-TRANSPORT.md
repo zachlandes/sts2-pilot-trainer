@@ -237,18 +237,35 @@ that does not open the way the recording's did is refused, out loud, with the en
 own sentence, and the run goes with it. And the transport gets out of the way for the
 fight it set up.
 
-**Proved about the player's game.** Of the 378 files this proof was told not to touch -
-the other installed mods, the player's whole Steam-tree save store, the shared
-`mod_configs` area and Steam's own cloud staging - 377 are byte identical before and
-after, on a ledger whose ability to see an add, a modify and a delete was proved with a
-canary before any "nothing changed" was trusted. The one that moved is
-`Steam/userdata/.../config/localconfig.vdf`, a Steam **client** preferences file outside
-every game save tree; Steam never tracked any of this session's game processes on any of
-its four logs, and the game never initialized Steamworks at all, so it holds no handle
-that could have written it. I did not snapshot that file's prior contents, so I cannot
-show its diff - only that the process which would have to have written it had no way to.
-The trainer's own write barrier held through a whole abandoned attempt: the isolated
-tree's `progress.save` is byte identical to the copy seeded into it.
+**Measured about the player's game: 377 of 378, and the 378th stated rather than
+rounded away.** The ledger covers the files this proof was told not to touch - the other
+installed mods, the player's whole Steam-tree save store, the shared `mod_configs` area
+and Steam's own cloud staging - and its ability to see an add, a modify and a delete was
+proved with a canary before any "nothing changed" was trusted.
+
+Everything that is a game file is byte identical: every byte of
+`SlayTheSpire2/steam/76561197971725248/` - saves, profile, progress, run history - every
+byte of the other three installed mods, every byte of `mod_configs/`, and every byte of
+Steam's cloud staging for this app.
+
+The one file that moved is `Steam/userdata/.../config/localconfig.vdf`. It is a Steam
+**client** preferences file: it is outside every game save tree, and it is in the ledger
+only because the ledger takes Steam's whole `userdata` directory rather than picking
+paths out of it. **I did not snapshot its prior contents, so I cannot show you its diff
+and I am not claiming the launches did not write it.** What I have is an argument that
+they could not have: Steam tracked no game process at all during this session -
+`gameprocess_log.txt` has no line for any of the five PIDs, and its last entry for this
+app predates the session by a day - `cloud_log.txt` and `connection_log.txt` gained
+nothing but the client's own hourly housekeeping, and the game never initialized
+Steamworks, so it held no handle through which it could write a Steam client file. A
+prior investigation measured the same file moving across a launch with only its global
+`AppInfoChangeNumber` line changing, which is client churn unrelated to this app. That is
+an argument, not a measurement, and the fix for next time is one line of ledger: copy the
+file, do not only hash it.
+
+The trainer's own write barrier held through a whole abandoned attempt - the isolated
+tree's `progress.save` is byte identical to the copy seeded into it - and that one is a
+measurement.
 
 **Not proved here, and deliberately not built.** This is the transport for the decisions
 the current manifest supports - an opening blessing and a map move - and not the whole-run
