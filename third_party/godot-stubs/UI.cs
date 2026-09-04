@@ -242,6 +242,8 @@ public partial class BaseButton : Control
     // the real GodotSharp emits BaseButton.add_Pressed. Declaring it on Button here
     // instead made that call unresolvable at load.
     public event Action? Pressed;
+
+    protected void Press() => Pressed?.Invoke();
 }
 
 public partial class Button : BaseButton

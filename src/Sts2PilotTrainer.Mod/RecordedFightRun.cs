@@ -602,15 +602,24 @@ internal static class RecordedFightRun
     /// </summary>
     private static void OpenTheMenu()
     {
-        if (PlaybackTransportDock.Current is not { } strip) return;
-
-        if (strip.MenuIsOpen)
+        try
         {
-            strip.CloseMenu();
-            return;
-        }
+            if (PlaybackTransportDock.Current is not { } strip) return;
 
-        strip.OpenMenu(strip.Surface.Menu == MenuKind.Chip ? Jump : ChooseSpeed);
+            if (strip.MenuIsOpen)
+            {
+                strip.CloseMenu();
+                return;
+            }
+
+            strip.OpenMenu(strip.Surface.Menu == MenuKind.Chip ? Jump : ChooseSpeed);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not open the transport's menu: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     private static void ChooseSpeed(int index)
@@ -631,27 +640,47 @@ internal static class RecordedFightRun
     /// </summary>
     private static void Jump(int row)
     {
-        var entry = _entry;
-        if (entry is null) return;
-        var creator = RecordingIdentity.Creator(entry.Manifest);
-
-        if (row == 0)
+        try
         {
-            PrefightScreen.Confirm(
-                TrainerCopy.ConfirmJumpToTheBeginningTitle(creator),
-                TrainerCopy.ConfirmJumpToTheBeginningBody,
-                TrainerCopy.ConfirmGoBack,
-                TrainerCopy.ConfirmKeepFighting,
-                StartTheFightAgain);
-            return;
-        }
+            var entry = _entry;
+            if (entry is null) return;
+            var creator = RecordingIdentity.Creator(entry.Manifest);
 
-        PrefightScreen.Confirm(
-            TrainerCopy.ConfirmJumpToTheEndTitle,
-            TrainerCopy.ConfirmJumpToTheEndBody,
-            TrainerCopy.ConfirmFinish,
-            TrainerCopy.ConfirmKeepFighting,
-            FinishHere);
+            // Logged like every other decision this class makes. It is also the line
+            // that says a press reached here at all, which is the thing no screenshot
+            // of a menu can show.
+            Log.Info(
+                $"[{RunmobileMod.ModId}] the chip was asked to " +
+                (row == 0 ? "start the fight again" : "finish the fight here"), 2);
+
+            if (row == 0)
+            {
+                PrefightScreen.Confirm(
+                    TrainerCopy.ConfirmJumpToTheBeginningTitle(creator),
+                    TrainerCopy.ConfirmJumpToTheBeginningBody,
+                    TrainerCopy.ConfirmGoBack,
+                    TrainerCopy.ConfirmKeepFighting,
+                    StartTheFightAgain);
+                return;
+            }
+
+            PrefightScreen.Confirm(
+                TrainerCopy.ConfirmJumpToTheEndTitle,
+                TrainerCopy.ConfirmJumpToTheEndBody,
+                TrainerCopy.ConfirmFinish,
+                TrainerCopy.ConfirmKeepFighting,
+                FinishHere);
+        }
+        catch (Exception ex)
+        {
+            // A control handler that throws into the game's signal dispatch is a
+            // control that appears to do nothing. Every other handler here catches;
+            // these two did not, which is why the first failure on this path was
+            // silent in the client.
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not offer the chip's confirmation: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     /// <summary>
@@ -777,9 +806,12 @@ internal static class RecordedFightRun
             return;
         }
 
-        // Said once, and "once" means once it has been on the strip rather than once
-        // it has been composed.
-        _noteShown |= state.Note.Length > 0;
+        // Said once, and "once" means once it has been on the strip beside a decision
+        // somebody could read. The tag is docked when the journey enters its watching
+        // phase, which is before the first reveal lands, and consuming the note there
+        // spent it on a window nothing was on screen for: measured in the client, it
+        // was drawn and gone inside one deferred call.
+        _noteShown |= state.Note.Length > 0 && _revealed;
 
         if (PlaybackTransportDock.Current is null)
         {

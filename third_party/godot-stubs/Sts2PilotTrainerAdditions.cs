@@ -333,6 +333,23 @@ public partial class Button
 
 public partial class BaseButton
 {
+    /// <summary>
+    /// Raises the pressed signal, so the mod's game-free tests can press what a player
+    /// presses.
+    ///
+    /// A disabled button is not pressed, because Godot does not press one: a test that
+    /// could press a refused control would be asserting about a surface the client
+    /// does not have.
+    /// </summary>
+    public void EmitPressed()
+    {
+        if (Disabled) return;
+        Press();
+    }
+}
+
+public partial class BaseButton
+{
     /// <summary>Godot: a button that is drawn but refuses input. The transport draws
     /// a control it is not offering rather than removing it, so its buttons never
     /// move about under the player's aim.</summary>

@@ -587,6 +587,83 @@ public sealed class PlaybackTransportStripTests
     }
 
     /// <summary>
+    /// Pressing a menu row runs that row's action.
+    ///
+    /// It did not, for either menu, in every build this surface has ever had. The rows
+    /// were built in a `for` loop whose closures were written over the loop variable
+    /// itself, so every row asked for row number `rows.Count` - one past the last -
+    /// and the menu closed having done nothing. Nothing caught it: no exception is
+    /// thrown, the menu still closes, and neither menu had been chosen from in the
+    /// retail client, because the chip could not be pressed at all and a speed that
+    /// did not take looks much like a speed nobody set.
+    /// </summary>
+    [Fact]
+    public void PressingAMenuRowRunsThatRowsAction()
+    {
+        var chosen = new List<int>();
+        var strip = Build(Revealing(MapMove, 2, noteShown: true));
+
+        strip.OpenMenu(chosen.Add);
+
+        Find<Button>(strip.Menu, "MenuRow2").EmitPressed();
+        Assert.Equal([2], chosen);
+        Assert.False(strip.MenuIsOpen);
+
+        // And the same for the other menu, which is the same code and the same rows.
+        strip.Apply(Chip(anythingPlayed: true));
+        strip.OpenMenu(chosen.Add);
+        Find<Button>(strip.Menu, "MenuRow1").EmitPressed();
+
+        Assert.Equal([2, 1], chosen);
+    }
+
+    /// <summary>A refused row cannot be chosen, and pressing it neither runs an action
+    /// nor leaves the menu open.</summary>
+    [Fact]
+    public void ARefusedRowCannotBeChosen()
+    {
+        var chosen = new List<int>();
+        var strip = Build(Chip(anythingPlayed: false));
+
+        strip.OpenMenu(chosen.Add);
+        var refused = Find<Button>(strip.Menu, "MenuRow1");
+
+        Assert.True(refused.Disabled);
+        refused.EmitPressed();
+        Assert.Empty(chosen);
+    }
+
+    /// <summary>
+    /// An open menu moves the measure everything below it hangs from.
+    ///
+    /// The plates are translucent, so a surface drawn on the same band as another is
+    /// not one covering the other - both are legible and neither readable. The menu
+    /// did not move that measure, and the client drew the speed control's own tooltip
+    /// straight over the menu that control had just opened.
+    /// </summary>
+    [Fact]
+    public void AnOpenMenuPushesWhateverHangsNextBelowIt()
+    {
+        var strip = Build(Revealing(Blessing, 1, noteShown: false));
+        strip.OpenMenu(_ => { });
+
+        var note = Find<Control>(strip.Root, "Note");
+        var menu = strip.Menu;
+        Assert.True(note.Visible);
+        Assert.True(menu.Visible);
+        Assert.True(
+            menu.Position.Y >= note.Position.Y + note.Size.Y,
+            $"the menu starts at {menu.Position.Y} and the note runs to {note.Position.Y + note.Size.Y}");
+
+        strip.Speed.EmitFocus(entered: true);
+        Assert.True(strip.Tooltip.Visible);
+        Assert.True(
+            strip.Tooltip.Position.Y >= menu.Position.Y + menu.Size.Y,
+            $"the tooltip starts at {strip.Tooltip.Position.Y} and the menu runs to " +
+            $"{menu.Position.Y + menu.Size.Y}");
+    }
+
+    /// <summary>
     /// A menu belongs to the tag it was opened on. Left open across the collapse to
     /// the chip it would hang under a chip that says nothing until it is pressed, and
     /// the chip's first press would close it instead of opening its own two

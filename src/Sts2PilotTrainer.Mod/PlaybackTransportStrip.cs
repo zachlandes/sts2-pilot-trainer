@@ -641,12 +641,30 @@ internal sealed class PlaybackTransportStrip
         var menuWidth = (chip ? 260 : 96) * _unit;
         var menuHeight = (10 * _unit) + (rowHeight * rows.Count);
         var menuLeft = chip ? left + width - menuWidth : left + (192 * _unit);
-        Place(_menu, menuLeft, _hangingBottom + (6 * _unit), menuWidth, menuHeight);
+        var menuTop = _hangingBottom + (6 * _unit);
+        Place(_menu, menuLeft, menuTop, menuWidth, menuHeight);
         PlatePolygon(_menu, menuWidth, menuHeight);
+
+        // The menu hangs under the tag like the note and the ledger do, so it moves
+        // the measure whatever hangs next sits below. It did not, and the client drew
+        // the speed control's own tooltip straight over the menu that control had just
+        // opened - the same both-legible-neither-readable failure the one-measure rule
+        // exists to prevent.
+        _hangingBottom = menuTop + menuHeight;
 
         for (var index = 0; index < rows.Count; index++)
         {
             var row = rows[index];
+
+            // Copied per row, and that is the whole of it. A `for` loop has one
+            // variable, so a closure written over `index` directly reads whatever it
+            // holds when the closure runs - which is one past the last row, always.
+            // Every menu row on this surface therefore asked for a row that does not
+            // exist, and the menu closed having done nothing. Measured in the retail
+            // client: neither the speed rows nor the chip's two directions had ever
+            // worked, because the chip could not be pressed and a chosen speed looks
+            // much like a speed nobody chose.
+            var chosen = index;
             var rowTop = (6 * _unit) + (index * rowHeight);
             var colour = !row.Enabled ? DisabledGlyph : row.IsCurrent ? Cream : Muted;
 
@@ -657,7 +675,7 @@ internal sealed class PlaybackTransportStrip
                 _menu.AddChild(art);
             }
 
-            var button = Pressable($"MenuRow{index}", _font, () => Choose(index));
+            var button = Pressable($"MenuRow{index}", _font, () => Choose(chosen));
             button.Flat = true;
             button.Disabled = !row.Enabled;
             Place(button, 0, rowTop, menuWidth, rowHeight);
