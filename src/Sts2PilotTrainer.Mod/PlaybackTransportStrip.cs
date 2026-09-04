@@ -751,6 +751,15 @@ internal sealed class PlaybackTransportStrip
     {
         if (_surface.Menu == MenuKind.None) return;
 
+        // The tooltip goes with the press that opened the menu. It was raised by the
+        // focus that press gave the control, which happens before the menu exists, so
+        // it was placed against a measure the menu had not moved yet and was drawn
+        // over the rows it had just produced. It is also redundant there: the menu is
+        // a better answer to "what does this do" than the sentence about it, and a
+        // controller that focuses the control again gets the sentence back, below the
+        // menu, because the measure is right by then.
+        HideTooltip();
+
         _openMenu = Code(_surface.Menu);
         _onChoose = chosen;
         Apply(_state);

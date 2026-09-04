@@ -664,6 +664,28 @@ public sealed class PlaybackTransportStripTests
     }
 
     /// <summary>
+    /// Opening a menu takes down the tooltip that the same press raised.
+    ///
+    /// Pressing a control focuses it, and focus raises its tooltip - which happens
+    /// before the menu that press opens exists, so the sentence was placed against a
+    /// measure the menu had not moved yet and was drawn straight over the rows. In the
+    /// client that made the first two speed rows unreadable.
+    /// </summary>
+    [Fact]
+    public void OpeningAMenuTakesDownTheTooltipThatOpenedIt()
+    {
+        var strip = Build(Revealing(Blessing, 1, noteShown: false));
+
+        strip.Speed.EmitFocus(entered: true);
+        Assert.True(strip.Tooltip.Visible);
+
+        strip.OpenMenu(_ => { });
+
+        Assert.True(strip.Menu.Visible);
+        Assert.False(strip.Tooltip.Visible);
+    }
+
+    /// <summary>
     /// A menu belongs to the tag it was opened on. Left open across the collapse to
     /// the chip it would hang under a chip that says nothing until it is pressed, and
     /// the chip's first press would close it instead of opening its own two
