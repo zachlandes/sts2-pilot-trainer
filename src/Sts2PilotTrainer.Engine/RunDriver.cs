@@ -26,17 +26,18 @@ namespace Sts2PilotTrainer.Engine;
 /// exist - each of these is a defect in the reconstruction, and the whole value of
 /// the arbiter is that it says so instead of finding something plausible to do.
 ///
-/// Two of the engine's surfaces do not take a command at all: the loot screen a won
-/// fight puts up, and the card screens a reward or an enchantment opens. The retail
-/// UI drives the first and answers the second, and there is no UI here. The driver
-/// therefore stands in for both, and does so narrowly: it offers a finished fight's
-/// room-end rewards through the game's own <c>CombatRoom.OfferRoomEndRewards</c>,
-/// and it answers card screens from the manifest through the game's own
-/// <c>ICardSelector</c> seam. Neither stand-in decides anything; the manifest does,
-/// and where the manifest is silent both refuse. See docs/headless-fidelity.md.
+/// Three of the engine's surfaces do not take a command at all: the loot screen a won
+/// fight puts up, the chest a treasure room opens, and the card screens a reward or an
+/// enchantment opens. The retail UI drives the first two and answers the third, and
+/// there is no UI here. The driver therefore stands in for all three, and does so
+/// narrowly: it offers a finished fight's room-end rewards through the game's own
+/// <c>CombatRoom.OfferRoomEndRewards</c>, it opens the chest through the room's own
+/// reward methods, and it answers card screens from the manifest through the game's
+/// own <c>ICardSelector</c> seam. No stand-in decides anything; the manifest does, and
+/// where the manifest is silent each of them refuses. See docs/headless-fidelity.md.
 ///
-/// Inside the retail client neither stand-in is installed and neither is wanted,
-/// because the screens they answer are on a player's screen. The driver is narrowed
+/// Inside the retail client none of them is installed and none is wanted, because the
+/// screens they answer are on a player's screen. The driver is narrowed
 /// there to the recording's decisions before a fight, and it hands the engine's work
 /// back to the host to wait for rather than draining it - a frame loop is what
 /// drains the queue in there, and blocking for it on the frame thread wedges the
@@ -125,9 +126,9 @@ public sealed class RunDriver : IDisposable
         _travelInRunningGame = travelInRunningGame;
         _insideRunningGame = EngineHost.Origin == EngineOrigin.RunningGame;
 
-        // Neither stand-in is installed inside the retail client. Both of them answer
-        // a screen on the player's behalf, and in there the player is the one looking
-        // at it.
+        // None of the three stand-ins below is installed inside the retail client. Each
+        // of them answers a screen on the player's behalf, and in there the player is
+        // the one looking at it.
         if (_insideRunningGame) return;
 
         // The game's own seam for answering a card screen without a scene tree.

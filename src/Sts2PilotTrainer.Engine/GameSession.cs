@@ -385,7 +385,5 @@ public sealed record PlayerProgress
                    "is not among them: it comes from a recording rather than from an option.");
     }
 
-    public bool IsExact => Inventory is not null;
-
     public override string ToString() => Name;
 }
