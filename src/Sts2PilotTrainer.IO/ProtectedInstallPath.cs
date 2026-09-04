@@ -27,19 +27,62 @@ public static class ProtectedInstallPath
 {
     private static readonly string[] FileSystemProtectedComponents = ["steamapps", "Slay the Spire 2"];
 
-    private static StringComparison FileSystemComparison =>
-        OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()
+    public static bool HasProtectedComponent(string path)
+    {
+        var full = Path.GetFullPath(path);
+        var comparison = IsCaseInsensitiveFileSystem(full)
             ? StringComparison.OrdinalIgnoreCase
             : StringComparison.Ordinal;
-
-    public static bool HasProtectedComponent(string path) =>
-        Path.GetFullPath(path)
+        return full
             .Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
                 StringSplitOptions.RemoveEmptyEntries)
             .Any(component =>
                 component.Equals("Steam", StringComparison.Ordinal) ||
                 FileSystemProtectedComponents.Any(protectedComponent =>
-                    component.Equals(protectedComponent, FileSystemComparison)));
+                    component.Equals(protectedComponent, comparison)));
+    }
+
+    private static bool IsCaseInsensitiveFileSystem(string path)
+    {
+        var existing = path;
+        while (!Directory.Exists(existing) && !File.Exists(existing))
+        {
+            var parent = Path.GetDirectoryName(existing);
+            if (parent is null || parent == existing) return true;
+            existing = parent;
+        }
+
+        var directory = Path.GetDirectoryName(existing);
+        var name = Path.GetFileName(existing);
+        if (directory is null || name.Length == 0)
+        {
+            var entry = Directory.EnumerateFileSystemEntries(existing)
+                .FirstOrDefault(candidate => ToggleCase(Path.GetFileName(candidate)) is not null);
+            if (entry is null) return true;
+            directory = Path.GetDirectoryName(entry);
+            name = Path.GetFileName(entry);
+        }
+
+        var alternateName = ToggleCase(name);
+        if (directory is null || alternateName is null) return true;
+        var alternate = Path.Combine(directory, alternateName);
+        return Directory.Exists(alternate) || File.Exists(alternate);
+    }
+
+    private static string? ToggleCase(string value)
+    {
+        var characters = value.ToCharArray();
+        for (var index = 0; index < characters.Length; index++)
+        {
+            if (!char.IsLetter(characters[index])) continue;
+            characters[index] = char.IsUpper(characters[index])
+                ? char.ToLowerInvariant(characters[index])
+                : char.ToUpperInvariant(characters[index]);
+            return new string(characters);
+        }
+
+        return null;
+    }
 
     public static string RequireUnprotected(string path)
     {

@@ -56,13 +56,16 @@ public sealed class SharedWriterTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/opt/SteamApps/common/game")]
-    [InlineData("/opt/slay the spire 2/mods")]
-    public void InstallComponentsFollowTheHostFileSystemsCasing(string path)
+    [InlineData("steamapps", "SteamApps")]
+    [InlineData("Slay the Spire 2", "slay the Spire 2")]
+    public void InstallComponentsFollowTheActualFileSystemsCasing(string canonical, string alternate)
     {
-        var protectedOnThisHost = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS();
+        var canonicalPath = Path.Combine(_directory, canonical);
+        Directory.CreateDirectory(canonicalPath);
+        var alternatePath = Path.Combine(_directory, alternate, "game");
 
-        Assert.Equal(protectedOnThisHost, ProtectedInstallPath.HasProtectedComponent(path));
+        Assert.Equal(Directory.Exists(Path.Combine(_directory, alternate)),
+            ProtectedInstallPath.HasProtectedComponent(alternatePath));
     }
 
     /// <summary>

@@ -112,15 +112,33 @@ hash_file() {
 # as links rather than followed - a link that changed target is a change, and
 # following one would hash a file outside the roots.
 walk() {
-  local namespace="$1" root="$2" path relative
+  local namespace="$1" root="$2" path relative digest target listing
+  listing="$(mktemp)"
+  if ! find "$root" \( -type f -o -type l \) -print | LC_ALL=C sort > "$listing"; then
+    rm -f "$listing"
+    echo "Could not enumerate every file under $root; no ledger was accepted." >&2
+    return 1
+  fi
+
   while IFS= read -r path; do
     relative="${path#"$root"/}"
     if [[ -L "$path" ]]; then
-      printf 'symlink:%s\t%s/%s\n' "$(readlink "$path")" "$namespace" "$relative"
+      if ! target="$(readlink "$path")"; then
+        rm -f "$listing"
+        echo "Could not read symbolic link $path; no ledger was accepted." >&2
+        return 1
+      fi
+      printf 'symlink:%s\t%s/%s\n' "$target" "$namespace" "$relative"
     else
-      printf '%s\t%s/%s\n' "$(hash_file "$path")" "$namespace" "$relative"
+      if ! digest="$(hash_file "$path")"; then
+        rm -f "$listing"
+        echo "Could not hash $path; no ledger was accepted." >&2
+        return 1
+      fi
+      printf '%s\t%s/%s\n' "$digest" "$namespace" "$relative"
     fi
-  done < <(find "$root" \( -type f -o -type l \) -print | LC_ALL=C sort)
+  done < "$listing"
+  rm -f "$listing"
 }
 
 take_snapshot() {
@@ -128,8 +146,8 @@ take_snapshot() {
   printf '# taken\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf '# user\t%s\n' "$user_dir"
   printf '# mods\t%s\n' "$mods_dir"
-  walk user "$user_dir"
-  walk mods "$mods_dir"
+  walk user "$user_dir" || return 1
+  walk mods "$mods_dir" || return 1
 }
 
 # The mod's own store, and the only subtree this mod is allowed to change.
@@ -149,8 +167,12 @@ game_churn_paths=(
 )
 
 if [[ "$command" == snapshot ]]; then
-  take_snapshot > "$ledger.$$.tmp"
-  mv "$ledger.$$.tmp" "$ledger"
+  snapshot_tmp="$ledger.$$.tmp"
+  if ! take_snapshot > "$snapshot_tmp"; then
+    rm -f "$snapshot_tmp"
+    exit 2
+  fi
+  mv "$snapshot_tmp" "$ledger"
   files="$(grep -vc '^#' "$ledger" || true)"
   echo "ledger       : $ledger"
   echo "files        : $files"
@@ -164,17 +186,30 @@ if [[ ! -f "$ledger" ]]; then
   exit 2
 fi
 
+recorded_user="$(awk -F'\t' '$1 == "# user" { print $2 }' "$ledger")"
+recorded_mods="$(awk -F'\t' '$1 == "# mods" { print $2 }' "$ledger")"
+if [[ "$recorded_user" != "$user_dir" || "$recorded_mods" != "$mods_dir" ]]; then
+  echo "Refusing to compare a ledger for different roots." >&2
+  echo "ledger user : ${recorded_user:-missing}" >&2
+  echo "current user: $user_dir" >&2
+  echo "ledger mods : ${recorded_mods:-missing}" >&2
+  echo "current mods: $mods_dir" >&2
+  exit 2
+fi
+
 before="$(mktemp)"
 after="$(mktemp)"
-trap 'rm -f "$before" "$after"' EXIT
-grep -v '^#' "$ledger" > "$before"
-take_snapshot | grep -v '^#' > "$after"
+after_ledger="$(mktemp)"
+trap 'rm -f "$before" "$after" "$after_ledger"' EXIT
+grep -v '^#' "$ledger" > "$before" || true
+if ! take_snapshot > "$after_ledger"; then exit 2; fi
+grep -v '^#' "$after_ledger" > "$after" || true
 
 # added, removed and changed, computed from the two ledgers rather than from a
 # recursive diff, so a file whose content changed and a file that appeared are
 # different findings rather than the same one.
 report="$(mktemp)"
-trap 'rm -f "$before" "$after" "$report"' EXIT
+trap 'rm -f "$before" "$after" "$after_ledger" "$report"' EXIT
 LC_ALL=C join -t"$(printf '\t')" -j 2 -v 1 -o 0 \
   <(LC_ALL=C sort -t"$(printf '\t')" -k2,2 "$before") \
   <(LC_ALL=C sort -t"$(printf '\t')" -k2,2 "$after") \
@@ -189,7 +224,7 @@ LC_ALL=C join -t"$(printf '\t')" -j 2 -o 0,1.1,2.1 \
   | awk -F'\t' '$2 != $3 { print "changed\t" $1 }' >> "$report"
 
 churn_filter="$(mktemp)"
-trap 'rm -f "$before" "$after" "$report" "$churn_filter"' EXIT
+trap 'rm -f "$before" "$after" "$after_ledger" "$report" "$churn_filter"' EXIT
 printf '\t%s\n' "$store_prefix" "${game_churn_paths[@]}" > "$churn_filter"
 
 sorted="$(LC_ALL=C sort "$report")"

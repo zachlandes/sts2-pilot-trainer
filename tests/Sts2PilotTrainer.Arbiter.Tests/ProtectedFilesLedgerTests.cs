@@ -151,6 +151,40 @@ public sealed class ProtectedFilesLedgerTests : IDisposable
         Assert.Contains("protected-files.sh snapshot", compared.All, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ALedgerForDifferentRootsIsRefused()
+    {
+        Snapshot();
+        var otherUser = Path.Combine(_sandbox, "other-user");
+        Directory.CreateDirectory(otherUser);
+
+        var compared = Run("compare", _ledger, otherUser, _modsDir);
+
+        Assert.Equal(2, compared.ExitCode);
+        Assert.Contains("different roots", compared.All, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("find", "enumerate every file")]
+    [InlineData("shasum", "Could not hash")]
+    public void AScanFailureLeavesNoLedger(string command, string diagnostic)
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var tools = Path.Combine(_sandbox, "tools");
+        Directory.CreateDirectory(tools);
+        var executable = Path.Combine(tools, command);
+        File.WriteAllText(executable, "#!/usr/bin/env bash\nexit 23\n");
+        File.SetUnixFileMode(executable,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+        var snapshot = Run("snapshot", _ledger, pathPrefix: tools);
+
+        Assert.Equal(2, snapshot.ExitCode);
+        Assert.Contains(diagnostic, snapshot.All, StringComparison.Ordinal);
+        Assert.False(File.Exists(_ledger));
+    }
+
     private void Write(string relativePath, string content)
     {
         var path = Path.Combine(_sandbox, relativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -162,7 +196,12 @@ public sealed class ProtectedFilesLedgerTests : IDisposable
 
     private Arbiter.Result Compare() => Run("compare", _ledger);
 
-    private Arbiter.Result Run(string command, string ledger)
+    private Arbiter.Result Run(
+        string command,
+        string ledger,
+        string? userDirectory = null,
+        string? modsDirectory = null,
+        string? pathPrefix = null)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -176,9 +215,14 @@ public sealed class ProtectedFilesLedgerTests : IDisposable
         startInfo.ArgumentList.Add(command);
         startInfo.ArgumentList.Add(ledger);
         startInfo.ArgumentList.Add("--user-dir");
-        startInfo.ArgumentList.Add(_userDir);
+        startInfo.ArgumentList.Add(userDirectory ?? _userDir);
         startInfo.ArgumentList.Add("--mods-dir");
-        startInfo.ArgumentList.Add(_modsDir);
+        startInfo.ArgumentList.Add(modsDirectory ?? _modsDir);
+        if (pathPrefix is not null)
+        {
+            startInfo.Environment["PATH"] =
+                pathPrefix + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
+        }
 
         using var process = Process.Start(startInfo)!;
         var output = process.StandardOutput.ReadToEnd();

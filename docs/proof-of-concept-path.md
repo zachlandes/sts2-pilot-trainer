@@ -186,12 +186,10 @@ nothing had ever called it from inside the retail process. `preflight-live`
 demonstrates it in the headless sandbox and refuses by design, because the sandbox
 profile is empty.
 
-This slice is the mod that loads in the shipped game and calls it against the player's
-real profile and run, refusing with the same actionable remediation when the game
-cannot faithfully represent the VOD.
+This slice produced the pre-rename `CombatTrainer` mod that loaded in the shipped game and called it against the player's real profile and run, refusing with the same actionable remediation when the game could not faithfully represent the VOD.
 
-- `Runmobile`, a DLL-only mod the game discovers, loads and initialises through
-  its own mod surface. No framework, no dependency, no resource pack.
+- `CombatTrainer`, a DLL-only mod the game discovered, loaded and initialised through its own mod surface.
+  No framework, no dependency, no resource pack.
 - A fourth mode card beside Standard, Daily and Custom, duplicated from the game's own
   card so the panel, focus, hover and controller navigation are MegaCrit's rather than
   a lookalike. It opens one screen, built from the game's own modal popup.
@@ -208,8 +206,9 @@ cannot faithfully represent the VOD.
   every sentence has a test on a machine that does not own the game.
 
 **Established by this slice:** the captain was told, in game, whether his install and profile could represent this VOD - and if not, exactly what to play to fix it.
-S4 extended that same host with the current fight offer and asks the supplied run model about capabilities the trainer provides in memory.
-[docs/in-game-host.md](in-game-host.md) records the current behavior and its limits; [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) preserves the S3 evidence.
+S4 extended that same pre-rename host with the current fight offer and asked the supplied run model about capabilities the trainer provided in memory.
+The renamed `Runmobile` artifact has not yet been discovered, loaded or initialized in a retail session; that proof remains explicitly pending and the `CombatTrainer` session does not establish it.
+[docs/in-game-host.md](in-game-host.md) records the current code and its limits; [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) preserves the historical S3 `CombatTrainer` evidence.
 
 ### S4 - Start or reset the captured combat, in the live game - done
 
@@ -266,16 +265,11 @@ and the entry is refused.
 [demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has it with its real
 output.
 
-**Runnable now, in the retail client.** `./scripts/install-mod.sh`, then launch Slay
-the Spire 2 with only Runmobile enabled and open Singleplayer. The screen offers
-the fight; pressing it constructs the recording's run, walks it through Neow's blessing
-and the map move on the game's own screens, and stands the player in the recorded
-fight - the Sludge Spinner at 42 of 42, the opening hand the recording shows, turn 1 at
-Ascension 10. The canonical state at that boundary is the same digest the headless host
-derives for the combat-start snapshot, so the agreement covers the run's random streams
-and the draw pile's order and not only what a screenshot shows.
-[demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has it with the
-screenshots.
+**Demonstrated in the retail client with the pre-rename `CombatTrainer` artifact.**
+With only Combat Trainer enabled, the screen offered the fight; pressing it constructed the recording's run, walked it through Neow's blessing and the map move on the game's own screens, and stood the player in the recorded fight - the Sludge Spinner at 42 of 42, the opening hand the recording shows, turn 1 at Ascension 10.
+The canonical state at that boundary was the same digest the headless host derived for the combat-start snapshot, so the agreement covered the run's random streams and the draw pile's order and not only what a screenshot showed.
+The renamed `Runmobile` package still needs the same retail exercise with only Runmobile enabled and a clean protected-files ledger; it is pending and not claimed here.
+[demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has the historical `CombatTrainer` screenshots.
 
 Running it in the client is what found the three screen-owned transitions the manifest
 has no verbs for, and the fact that this mod cannot tick a frame;
