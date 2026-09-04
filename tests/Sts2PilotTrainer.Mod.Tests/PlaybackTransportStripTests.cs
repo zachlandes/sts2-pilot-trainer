@@ -444,6 +444,51 @@ public sealed class PlaybackTransportStripTests
     }
 
     /// <summary>
+    /// Play is refused in that same window, for the same reason: starting the sequence
+    /// there would make the next decision without anybody having been shown it.
+    /// </summary>
+    [Fact]
+    public void PlayIsDrawnAndRefusedWhileNothingIsRevealed()
+    {
+        var strip = Build(For(JourneyPhase.Watching, next: MapMove, stepsTaken: 1, revealed: false));
+
+        Assert.True(strip.Play.Visible);
+        Assert.True(strip.Play.Disabled);
+
+        strip.Apply(For(JourneyPhase.Watching, next: MapMove, stepsTaken: 1, revealed: true));
+        Assert.False(strip.Play.Disabled);
+    }
+
+    /// <summary>
+    /// Pause is not refused there. It stops the run rather than moving it, and a
+    /// sequence that cannot be stopped mid-transition is the reason somebody reaches
+    /// for it.
+    /// </summary>
+    [Fact]
+    public void PauseStaysOnOfferWhileNothingIsRevealed()
+    {
+        var strip = Build(For(
+            JourneyPhase.Watching, next: MapMove, stepsTaken: 1, revealed: false, playing: true));
+
+        Assert.True(strip.Play.Visible);
+        Assert.False(strip.Play.Disabled);
+    }
+
+    /// <summary>
+    /// A refused tag still states the speed the run was being watched at. Every
+    /// control on it is dead, and a label that quietly reverts to 1x is a wrong
+    /// reading rather than a missing one.
+    /// </summary>
+    [Fact]
+    public void ARefusedTagStatesTheSpeedThatWasInForce()
+    {
+        var strip = Build(RefusedTag(PlaybackSpeed.Double));
+
+        Assert.Equal("2×", Label(strip, "SpeedLabel").Text);
+        Assert.True(strip.Speed.Disabled);
+    }
+
+    /// <summary>
     /// While the game is between screens the same line travels instead of draining.
     ///
     /// Those two windows refuse everything that moves the run and say nothing about
@@ -876,7 +921,8 @@ public sealed class PlaybackTransportStripTests
     private static PlaybackTransport Opening(PlaybackSpeed speed) =>
         For(JourneyPhase.Watching, stepsTaken: 2, atCombatStart: true, speed: speed);
 
-    private static PlaybackTransport RefusedTag() => For(JourneyPhase.Refused);
+    private static PlaybackTransport RefusedTag(PlaybackSpeed speed = PlaybackSpeed.Normal) =>
+        For(JourneyPhase.Refused, speed: speed);
 
     private static StyleBoxFlat Stylebox(Control control, string state) =>
         Assert.IsType<StyleBoxFlat>(control.ThemeStylebox(state));

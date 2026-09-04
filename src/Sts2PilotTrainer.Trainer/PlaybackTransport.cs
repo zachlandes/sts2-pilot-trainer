@@ -217,7 +217,10 @@ public enum JourneyPhase
 /// phase, so a fact that changes is a re-derivation and never a state assembled by
 /// hand at the site that changed it. Four defects on this surface were exactly that -
 /// a mode applied once and never re-derived, a speed a hand-built state forgot to pass
-/// on - and none of them is expressible once this is the only way in.
+/// on. Gathering the input set does not by itself make either unstateable: a factory
+/// that ignores a fact it was handed still gets it wrong, which is how the refused tag
+/// went on printing 1x. What this buys is that the fact is always there to be read and
+/// the mistake is visible in one file.
 /// </summary>
 /// <param name="Made">The decisions already made, in order, as they were read at the
 /// time.</param>
@@ -435,7 +438,7 @@ public sealed record PlaybackTransport(
             facts.Revealed, facts.Speed),
         JourneyPhase.InFight or JourneyPhase.Result =>
             DuringYourFight(facts.Identity, facts.AnythingPlayed, facts.Speed),
-        JourneyPhase.Refused => Refused(facts.Identity),
+        JourneyPhase.Refused => Refused(facts.Identity, facts.Speed),
         _ => throw new ManifestException($"A journey cannot be in phase {phase}."),
     };
 
@@ -471,7 +474,7 @@ public sealed record PlaybackTransport(
             Counter: Check(number, count),
             Speed: speed,
             Back: BackControl(number > 1),
-            Play: PlayControl(playing),
+            Play: PlayControl(playing, enabled: playing || revealed),
             Step: StepControl(number, count, Describe(identity.Creator, choice), revealed),
             Ledger: [],
             // Said once, before the first decision anybody watches. A rule about how
@@ -601,12 +604,12 @@ public sealed record PlaybackTransport(
     /// the popup's. Every control is drawn and refused rather than removed, so the
     /// tag does not appear to have lost its controls as well as its run.
     /// </summary>
-    private static PlaybackTransport Refused(TransportIdentity identity) =>
+    private static PlaybackTransport Refused(TransportIdentity identity, PlaybackSpeed speed) =>
         new(
             Mode: TransportMode.Refused,
             Identity: identity,
             Counter: new TransportCounter(0, 0, null),
-            Speed: PlaybackSpeed.Normal,
+            Speed: speed,
             Back: BackControl(false) with { DisabledReason = TrainerCopy.RefusedDisabledReason },
             Play: PlayControl(false) with { Enabled = false, DisabledReason = TrainerCopy.RefusedDisabledReason },
             Step: StepControl(0, 0, string.Empty) with
@@ -621,11 +624,21 @@ public sealed record PlaybackTransport(
         TransportGlyph.Back, enabled, TrainerCopy.BackTooltipTitle, TrainerCopy.BackTooltipBody,
         enabled ? null : TrainerCopy.NothingBehindYet);
 
-    private static TransportControl PlayControl(bool playing) => playing
+    /// <summary>
+    /// Play, or Pause once it is running.
+    ///
+    /// Refused in the same window Step is: a press there would start the sequence on a
+    /// decision nobody has been shown. Pause is never refused - it stops the run
+    /// rather than moving it, and a sequence that cannot be stopped mid-transition is
+    /// the reason somebody reaches for it.
+    /// </summary>
+    private static TransportControl PlayControl(bool playing, bool enabled = true) => playing
         ? new TransportControl(
-            TransportGlyph.Pause, true, TrainerCopy.PauseTooltipTitle, TrainerCopy.PauseTooltipBody)
+            TransportGlyph.Pause, enabled, TrainerCopy.PauseTooltipTitle, TrainerCopy.PauseTooltipBody,
+            enabled ? null : TrainerCopy.BetweenScreensDisabledReason)
         : new TransportControl(
-            TransportGlyph.Play, true, TrainerCopy.PlayTooltipTitle, TrainerCopy.PlayTooltipBody);
+            TransportGlyph.Play, enabled, TrainerCopy.PlayTooltipTitle, TrainerCopy.PlayTooltipBody,
+            enabled ? null : TrainerCopy.BetweenScreensDisabledReason);
 
     /// <summary>
     /// Step's tooltip names the decision it is about to make.

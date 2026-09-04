@@ -355,8 +355,9 @@ internal static class RecordedFightRun
     ///
     /// The timer is the game's, on its own scene tree, so the client goes on drawing
     /// the reveal while it runs. Everything about the moment it wakes up is checked
-    /// again: a hold that was paused, stepped past by Forward, or belongs to a run
-    /// that has since ended commits nothing.
+    /// again: a hold that was paused, stepped past by Forward, belongs to a run that
+    /// has since ended, or wakes before the next decision is revealed commits nothing.
+    /// Reveal re-arms the chain while Play is running, so nothing is lost by waiting.
     /// </summary>
     private static async void HoldThenCommit()
     {
@@ -373,7 +374,7 @@ internal static class RecordedFightRun
             for (var step = 0; step < steps; step++)
             {
                 if (hold != _hold || !_playing || !ReferenceEquals(mine, _entry)) break;
-                if (Phase != JourneyPhase.Watching) break;
+                if (Phase != JourneyPhase.Watching || !_revealed) break;
 
                 PlaybackTransportDock.Current?.ShowHold(1.0 - ((double)step / steps));
                 await LetTheGameRun(seconds / steps);
@@ -382,7 +383,7 @@ internal static class RecordedFightRun
             PlaybackTransportDock.Current?.HideHold();
 
             if (hold != _hold || !_playing || !ReferenceEquals(mine, _entry)) return;
-            if (Phase != JourneyPhase.Watching) return;
+            if (Phase != JourneyPhase.Watching || !_revealed) return;
 
             await CommitOne();
         }
@@ -486,6 +487,11 @@ internal static class RecordedFightRun
         // Nothing left to commit: the last decision is already made and the fight is
         // opening. Reached only by a press that beat the transport's own refusal.
         if (entry.AtBoundary) return;
+
+        // Nothing is on the game's own screen yet, so committing here would make a
+        // decision nobody was shown - the one thing reveal, hold and commit exists to
+        // prevent. Reveal re-arms the chain when Play is running.
+        if (!_revealed) return;
 
         // Any hold still in flight is invalidated: this decision is being made now,
         // and a timer that woke up afterwards would make the next one unrevealed.

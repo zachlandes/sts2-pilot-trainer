@@ -75,10 +75,6 @@ public static class TrainerCopy
     public const string NotSavedNote =
         "This fight is not saved and does not count toward your run history.";
 
-    /// <summary>The state signal, on throughout the recording's own decisions and
-    /// gone the moment the fight is the player's.</summary>
-    public static string WatchingChip(string creator) => $"Watching {creator}";
-
     // ── The playback transport ─────────────────────────────────────────────
     //
     // Icon only. The captain's ruling is that progressive disclosure is the game's
