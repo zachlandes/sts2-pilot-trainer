@@ -18,8 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj" />
     <ProjectReference Include="../../third_party/godot-stubs/GodotStubs.csproj" />
-    <ProjectReference Include="../../tools/Sts2PilotTrainer.Bootstrap/Sts2PilotTrainer.Bootstrap.csproj"
-                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../tools/Sts2PilotTrainer.Bootstrap/Sts2PilotTrainer.Bootstrap.csproj" />
   </ItemGroup>
 
   <ItemGroup>

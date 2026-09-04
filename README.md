@@ -67,9 +67,12 @@ You need the game. It is a read-only input: the bootstrap copies your installed
 assemblies into a gitignored working directory, hashes the installation before and
 after, and fails if anything moved. No game content is in this repository.
 All bootstrap, evidence, state, and snapshot-cache output paths must resolve inside the current worktree, including through symbolic links.
+Pass `--archive <dir>` to the bootstrap to retain the complete receipted prepared set under `<dir>/<build-version>` before an installed-game update replaces it.
+Re-archiving the same prepared set is safe; a conflicting or unreceipted directory for that version is refused rather than overwritten.
 
 ```bash
 ./scripts/build.sh                      # prepare the assembly copy, build everything
+./scripts/bootstrap.sh --archive build/archive  # also retain it under its game version
 ./scripts/arbiter preflight      manifests/navegreed-OJ-6QXhNgdg.replay.json
 ./scripts/arbiter preflight-live manifests/navegreed-OJ-6QXhNgdg.replay.json # reads only the headless sandbox and refuses
 ./scripts/arbiter synthetic-fixture --out build/evidence/synthetic.replay.json
@@ -113,8 +116,8 @@ engine-produced combat-start snapshot digest - with the profile unchanged either
 output.
 
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
-`verify-seed`, `determinism`, `negative-controls`, `combat-snapshot`. `validate` needs
-no game.
+`verify-seed`, `determinism`, `negative-controls`, `combat-snapshot`,
+`snapshot-restore-probe`. `validate` needs no game.
 
 The full walkthrough, with commands and their real output, is in
 [demo/DEMO.md](demo/DEMO.md).

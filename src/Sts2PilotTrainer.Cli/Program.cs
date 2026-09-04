@@ -40,6 +40,7 @@ internal static class Program
                 "determinism" => Commands.Determinism(args[1..]),
                 "negative-controls" => Commands.NegativeControls(args[1..]),
                 "combat-snapshot" => Commands.CombatSnapshot(args[1..]),
+                "snapshot-restore-probe" => Commands.SnapshotRestoreProbe(args[1..]),
                 "enter-fight" => Commands.EnterFight(args[1..]),
                 "combat-compare" => Commands.CombatCompare(args[1..]),
                 "recorded-fight" => Commands.RecordedFightCommand(args[1..]),
@@ -159,6 +160,18 @@ internal static class Program
               ranked. Refuses two fights that did not start from the same boundary,
               and refuses a history whose combat never finishes. See
               docs/comparison-direction.md.
+
+          snapshot-restore-probe <manifest> [--out <dir>] [--control unreadable-room-set]
+              Measure whether the game's own save format can carry a run across a
+              process boundary unchanged: replay to combat start, serialize through
+              RunManager.ToSave, restore in a fresh process through the retail
+              continue-run call sequence, and compare canonical state field by field.
+              Refuses before comparing if either side's act room set is unreadable,
+              because two such states agree on a sentinel rather than on a run. This
+              is evidence for the boundary-cache decision, not a gate condition.
+              --control damages both states into the same unreadable act room set, so
+              their digests agree, and shows the comparison refused rather than
+              reported as agreement.
 
           combat-snapshot <manifest> [--cache <dir>] [--out <dir>]
               Materialise the verified combat-start snapshot, restore it by

@@ -13,7 +13,9 @@ dotnet test sts2-pilot-trainer.sln -c Release
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
-                            # combat-snapshot | combat-compare | enter-fight | recorded-fight
+                            # combat-snapshot | combat-compare | enter-fight | recorded-fight |
+                            # snapshot-restore-probe
+./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
 ```
 
 `dotnet test` works without the game: the integration suite skips with an explanation
@@ -57,6 +59,15 @@ written down and computed. No condition may be satisfied by a cheaper proxy - no
 reader confidence, not arithmetic over the footage, not a screenshot of a mod list.
 Those are filters worth having and they are not evidence: four of the ten history
 corruptions pass every arithmetic check the frames allow.
+
+**A boundary is re-derived, never deserialized.** `./scripts/arbiter
+snapshot-restore-probe` measured the game's own save round trip at a combat-start
+boundary on v0.111.0: `SerializableRun` carries the run's identity and hidden state -
+seed, every RNG stream position, act room set, deck order and relics - but no combat;
+`run.act_floor` also differs until a room is entered, which generates a different fight. The answer,
+its numbers and what it does not refuse are in
+[docs/native-replay-format.md](docs/native-replay-format.md). Do not add a cache that
+stores a serialized run in place of the history that produces it.
 
 **Refuse rather than approximate.** An unknown action verb, a card that is not where
 the manifest says, a mismatched environment: each of these fails loudly. A replay
