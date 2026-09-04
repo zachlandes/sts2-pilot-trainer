@@ -150,7 +150,38 @@ public sealed class ModHostBoundaryTests
         }
     }
 
-    private static Arbiter.Result RunInstaller(string modsDirectory)
+    [GameFact]
+    public void AStagingFailurePreservesTheFormerInstallation()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-install-failure-{Guid.NewGuid():N}");
+        var mods = Path.Combine(sandbox, "mods");
+        var former = Path.Combine(mods, "CombatTrainer");
+        var tools = Path.Combine(sandbox, "tools");
+        Directory.CreateDirectory(former);
+        Directory.CreateDirectory(tools);
+        File.WriteAllText(Path.Combine(former, "working.txt"), "working");
+        var failingMktemp = Path.Combine(tools, "mktemp");
+        File.WriteAllText(failingMktemp, "#!/usr/bin/env bash\nexit 23\n");
+        File.SetUnixFileMode(failingMktemp,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+        try
+        {
+            var result = RunInstaller(mods, tools);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal("working", File.ReadAllText(Path.Combine(former, "working.txt")));
+            Assert.False(Directory.Exists(Path.Combine(mods, "Runmobile")));
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
+    private static Arbiter.Result RunInstaller(string modsDirectory, string? pathPrefix = null)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -163,6 +194,11 @@ public sealed class ModHostBoundaryTests
         startInfo.ArgumentList.Add(Path.Combine(Arbiter.RepoRoot, "scripts", "install-mod.sh"));
         startInfo.ArgumentList.Add("--mods-dir");
         startInfo.ArgumentList.Add(modsDirectory);
+        if (pathPrefix is not null)
+        {
+            startInfo.Environment["PATH"] =
+                pathPrefix + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
+        }
 
         using var process = Process.Start(startInfo)!;
         var output = process.StandardOutput.ReadToEnd();

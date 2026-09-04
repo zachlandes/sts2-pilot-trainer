@@ -108,26 +108,27 @@ for file in "${files[@]}"; do
   fi
 done
 
-# The rename leaves the old directory in the mod list beside the new one, so an
-# install removes it. Done before staging, so a failure here stops the install
-# rather than leaving two copies of this mod installed.
-if [[ -d "$mods_dir/$former_mod_id" ]]; then
-  rm -rf "$mods_dir/$former_mod_id"
-  echo "removed      : $mods_dir/$former_mod_id (renamed to $mod_id)"
-fi
-
 staging="$(mktemp -d "$mods_dir/.${mod_id}.install.XXXXXX")"
 backup=""
+former_backup=""
+replacement_started=0
+committed=0
 cleanup() {
   if [[ -n "$staging" ]]; then
     rm -rf "$staging"
   fi
-  if [[ -n "$backup" && ( -e "$backup" || -L "$backup" ) ]]; then
-    if [[ ! -e "$target" && ! -L "$target" ]]; then
+  if [[ "$committed" == 0 ]]; then
+    if [[ "$replacement_started" == 1 ]]; then rm -rf "$target"; fi
+    if [[ -n "$backup" && ( -e "$backup" || -L "$backup" ) ]]; then
       mv "$backup" "$target"
-    else
-      rm -rf "$backup"
     fi
+    if [[ -n "$former_backup" && ( -e "$former_backup" || -L "$former_backup" ) ]]; then
+      rm -rf "$mods_dir/$former_mod_id"
+      mv "$former_backup" "$mods_dir/$former_mod_id"
+    fi
+  else
+    if [[ -n "$backup" ]]; then rm -rf "$backup"; fi
+    if [[ -n "$former_backup" ]]; then rm -rf "$former_backup"; fi
   fi
 }
 trap cleanup EXIT
@@ -141,11 +142,23 @@ if [[ -e "$target" || -L "$target" ]]; then
   rmdir "$backup"
   mv "$target" "$backup"
 fi
+if [[ -e "$mods_dir/$former_mod_id" || -L "$mods_dir/$former_mod_id" ]]; then
+  former_backup="$(mktemp -d "$mods_dir/.${former_mod_id}.previous.XXXXXX")"
+  rmdir "$former_backup"
+  mv "$mods_dir/$former_mod_id" "$former_backup"
+fi
+replacement_started=1
 mv "$staging" "$target"
 staging=""
+committed=1
 if [[ -n "$backup" ]]; then
   rm -rf "$backup"
   backup=""
+fi
+if [[ -n "$former_backup" ]]; then
+  rm -rf "$former_backup"
+  former_backup=""
+  echo "removed      : $mods_dir/$former_mod_id (renamed to $mod_id)"
 fi
 trap - EXIT
 
