@@ -466,6 +466,19 @@ public static class Corruption
     private static IReadOnlyList<Checkpoint> ShiftCheckpoints(IReadOnlyList<Checkpoint> checkpoints, int removedSeq) =>
         checkpoints
             .Where(c => c.AfterSeq != removedSeq)
-            .Select(c => c.AfterSeq > removedSeq ? c with { AfterSeq = c.AfterSeq - 1 } : c)
+            .Select(c => c.AfterSeq > removedSeq ? MoveCheckpointToSequence(c, c.AfterSeq - 1) : c)
             .ToList();
+
+    // A captured field's action_ordinal is a coordinate into the history, so it moves
+    // with the checkpoint. A video timestamp is not, and stays where it was.
+    private static Checkpoint MoveCheckpointToSequence(Checkpoint checkpoint, int sequence) => checkpoint with
+    {
+        AfterSeq = sequence,
+        Expect = checkpoint.Expect.ToDictionary(
+            entry => entry.Key,
+            entry => entry.Value is { Source: FactSource.Captured, Evidence: { } evidence }
+                ? entry.Value with { Evidence = evidence with { ActionOrdinal = sequence } }
+                : entry.Value,
+            StringComparer.Ordinal),
+    };
 }

@@ -554,9 +554,20 @@ public static partial class ManifestValidator
     /// no video shows draw order or a random stream's position, which is the whole
     /// reason a boundary carries a digest at all.
     ///
-    /// Where a manifest carries a verified whole-run trace, every fight in that trace
-    /// must have a boundary: a run whose third fight has nowhere to be entered from
-    /// is a recording that silently offers less than it holds.
+    /// Where a manifest carries a verified whole-run trace, every fight the trace
+    /// holds and finishes must have a boundary: a run whose third fight has nowhere to
+    /// be entered from is a recording that silently offers less than it holds. A fight
+    /// the recording stops in the middle of is not a place a player can be stood -
+    /// there is no completed recorded line to compare against, and
+    /// <see cref="RecordedFights.From"/> cuts only finished fights - so the rule skips
+    /// it rather than demanding a boundary nobody could use.
+    ///
+    /// The rule is only ever asked of a manifest that already carries a verified
+    /// trace. Nothing re-validates what <c>replay --out</c> writes, so it does not
+    /// bite on the publication path today: the shipped recording carries one
+    /// combat_start while its history reaches further. Deriving the remaining
+    /// boundaries through the engine and putting this check on the publication path is
+    /// the next phase's work.
     /// </summary>
     private static void ValidateBoundaries(ReplayManifest manifest, List<string> problems)
     {
@@ -699,7 +710,7 @@ public static partial class ManifestValidator
             }
         }
 
-        foreach (var fight in coveredFights)
+        foreach (var fight in coveredFights.Where(fight => fight.Finished))
         {
             if (manifest.BoundaryAt(ReplayBoundary.CombatStartKind, fight: fight.Fight) is null)
             {

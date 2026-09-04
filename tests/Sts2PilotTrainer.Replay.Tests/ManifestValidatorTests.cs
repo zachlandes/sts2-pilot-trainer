@@ -357,26 +357,68 @@ public class ManifestValidatorTests
         Assert.True(result.IsValid, result.Describe());
     }
 
-    /// <summary>A verified result whose trace entered combat, won, and entered a
-    /// second. Only the outcome samples matter to the rule under test, so the steps
-    /// carry nothing else.</summary>
-    private static ReplayManifest WithVerifiedTwoFightTrace(ReplayManifest manifest) => manifest with
+    /// <summary>
+    /// A recording that stops two turns into a fight offers nowhere to be stood in it:
+    /// there is no completed recorded line to compare a player against, and
+    /// recorded-fight cuts only finished fights. Demanding a boundary for it would
+    /// make a rule nobody could satisfy.
+    /// </summary>
+    [Fact]
+    public void DoesNotDemandABoundaryForAFightTheRecordingStopsInTheMiddleOf()
+    {
+        var manifest = WithVerifiedTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries = [ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest))],
+        },
+            TraceStep(-1, "none", "none"),
+            TraceStep(0, "none", "in_progress"),
+            TraceStep(1, "in_progress", "victory"),
+            TraceStep(1, "victory", "in_progress"));
+
+        var result = ManifestValidator.Validate(manifest);
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    /// <summary>
+    /// The coverage rule is only ever asked of a manifest that already carries a
+    /// verified trace, and nothing re-validates what `replay --out` writes, so a
+    /// manifest as published is not subject to it. That gap is deliberate for now:
+    /// deriving the remaining boundaries and putting this check on the publication
+    /// path is the next phase's work.
+    /// </summary>
+    [Fact]
+    public void DoesNotAskForBoundaryCoverageOfAManifestWithNoVerification()
+    {
+        var underCovered = Fixtures.ValidManifest() with
+        {
+            Boundaries = [ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest))],
+        };
+        Assert.False(ManifestValidator.Validate(WithVerifiedTwoFightTrace(underCovered)).IsValid);
+
+        var result = ManifestValidator.Validate(underCovered with { Verification = null });
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    /// <summary>A verified result whose trace entered combat, won, entered a second
+    /// and won that too. Only the outcome samples matter to the rule under test, so
+    /// the steps carry nothing else.</summary>
+    private static ReplayManifest WithVerifiedTwoFightTrace(ReplayManifest manifest) =>
+        WithVerifiedTrace(manifest,
+            TraceStep(-1, "none", "none"),
+            TraceStep(0, "none", "in_progress"),
+            TraceStep(1, "in_progress", "victory"),
+            TraceStep(1, "victory", "in_progress"),
+            TraceStep(1, "in_progress", "victory"));
+
+    private static ReplayManifest WithVerifiedTrace(
+        ReplayManifest manifest, params ReplayStep[] steps) => manifest with
     {
         Verification = new VerificationReport
         {
             Status = VerificationStatus.Verified,
             ArbiterVersion = "test",
             Preflight = new PreflightResult(true, []),
-            Trace = new ReplayTrace
-            {
-                Steps =
-                [
-                    TraceStep(-1, "none", "none"),
-                    TraceStep(0, "none", "in_progress"),
-                    TraceStep(1, "in_progress", "victory"),
-                    TraceStep(1, "victory", "in_progress"),
-                ],
-            },
+            Trace = new ReplayTrace { Steps = steps },
         },
     };
 

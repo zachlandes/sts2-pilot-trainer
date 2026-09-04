@@ -585,7 +585,10 @@ public class EnvironmentPreflightTests
     }
 
     /// <summary>A reader that could not enumerate what the build ships says so rather
-    /// than reporting a pass it did not establish.</summary>
+    /// than reporting a pass it did not establish. This is every real reading today -
+    /// nothing populates ShippedIds until the engine reader enumerates the build's
+    /// epoch and encounter ids, which lands with the recorder - so the refusal is the
+    /// documented dependency rather than the desired end state.</summary>
     [Fact]
     public void AnExactRequirementRefusesAReadingThatEnumeratedNothing()
     {

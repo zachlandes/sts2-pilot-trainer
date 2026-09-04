@@ -61,8 +61,40 @@ public class CorruptionTests
             }).ToList();
         }
 
-        return manifest with { Actions = actions };
+        return manifest with { Actions = actions, Checkpoints = Checkpoints(native) };
     }
+
+    /// <summary>
+    /// One checkpoint before the nominated play and one after it. The second is what
+    /// makes the omission control's renumbering visible: a checkpoint that sits ahead
+    /// of the removed action is shifted back, and a native one carries a coordinate
+    /// into the history that has to move with it.
+    /// </summary>
+    private static IReadOnlyList<Checkpoint> Checkpoints(bool native) =>
+    [
+        new Checkpoint
+        {
+            Id = "combat-start",
+            AfterSeq = 1,
+            Kind = "combat_start",
+            Expect = Expect(native, 1, "3"),
+        },
+        new Checkpoint
+        {
+            Id = "turn-end",
+            AfterSeq = 5,
+            Kind = "turn_start",
+            Expect = Expect(native, 5, "0"),
+        },
+    ];
+
+    private static IReadOnlyDictionary<string, Fact<string>> Expect(bool native, int afterSeq, string energy) =>
+        new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+        {
+            ["combat.energy"] = native
+                ? Fact<string>.Captured(energy, FactEvidence.AtActionOrdinal(afterSeq))
+                : Fact<string>.Observed(energy, FactEvidence.AtVideoTime(PlayableTimes[afterSeq], "energy orb")),
+        };
 
     private static IReadOnlyList<ReplayManifest> PlayableRecordings() => [Playable(), Playable(native: true)];
 

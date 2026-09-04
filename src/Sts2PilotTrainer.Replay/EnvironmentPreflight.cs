@@ -214,6 +214,14 @@ public static class EnvironmentPreflight
     /// is reported and not compared: nothing about this installation has to match it
     /// for the state to be constructible. The two id lists do have to be known here,
     /// because an id this build never heard of cannot go into a state at all.
+    ///
+    /// Nothing populates <see cref="UnlockInventory.ShippedIds"/> yet -
+    /// <c>LocalEnvironment.ReadPrerequisites</c> reads origin, profile and category
+    /// counts only - so on a real installation every exact requirement refuses here as
+    /// unchecked. That is the honest answer rather than a silent pass, and it is inert
+    /// until the recorder produces the first native manifest. The engine reader
+    /// enumerating the shipped epoch and encounter ids is what closes it, and it lands
+    /// with the recorder.
     /// </summary>
     private static IEnumerable<PreflightField> EvaluateExactUnlocks(
         UnlockRequirement requirement, LocalPrerequisites actual)
