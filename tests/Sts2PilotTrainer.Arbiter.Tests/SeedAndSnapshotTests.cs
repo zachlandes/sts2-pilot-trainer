@@ -242,7 +242,7 @@ public class CombatSnapshotTests
 
         // The boundary is a fact about what the engine did, so it is located rather
         // than declared: combat starts after the action that entered the room.
-        Assert.True(report.GetProperty("combat_start_seq").GetInt32() >= 0);
+        Assert.True(report.GetProperty("boundary_seq").GetInt32() >= 0);
 
         // Description only. No score, no ranking, no verdict - and no alternative line,
         // because the supported boundary is combat start.

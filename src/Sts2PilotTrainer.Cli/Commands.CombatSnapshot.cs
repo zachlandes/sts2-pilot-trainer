@@ -6,13 +6,20 @@ namespace Sts2PilotTrainer.Cli;
 internal static partial class Commands
 {
     /// <summary>
-    /// Materialises and verifies the combat-start snapshot, then describes exactly
+    /// Materialises and verifies a boundary's snapshot, then describes exactly
     /// the action history the manifest contains.
     ///
-    /// Combat start is the supported boundary, and the whole fight is the intended unit. That
+    /// Combat start is where a host stands a player, and the whole fight is the intended unit. That
     /// is a product decision with a technical consequence worth stating: resuming
     /// mid-combat would need state to be reset at a turn boundary, and nothing here
     /// does that or is designed around it. See docs/comparison-direction.md.
+    ///
+    /// Snapshotting any boundary is a different question and is answered here.
+    /// --boundary re-derives whichever of them the replay reached, by the same route:
+    /// a fresh process replays the history to that action and the digest of the state
+    /// it produced is compared with what the cache and the manifest hold. Nothing is
+    /// entered and nothing is resumed - what is proved is that this build reaches the
+    /// recorded state there, which is what a later rewind needs.
     ///
     /// "Restore" means re-derive and verify, not deserialise. The snapshot's content
     /// is the canonical state at the boundary together with the key that determines
@@ -51,12 +58,14 @@ internal static partial class Commands
         var trace = report.Trace
             ?? throw new ManifestException("The replay wrote no trace, so combat start cannot be located.");
 
-        var combatStart = CombatStartSeq(trace)
-            ?? throw new ManifestException(
-                "This history never enters combat, so it has no combat-start boundary. The supported " +
-                "boundary is the start of a fight; a history that reaches none has nothing to snapshot.");
+        var selector = Args.Value(args, "--boundary") is { } asked
+            ? BoundarySelector.Parse(asked)
+            : BoundarySelector.FirstFight;
 
-        var key = SnapshotCacheKey.For(manifest, combatStart);
+        var boundary = LocateBoundary(selector, report);
+        var boundarySeq = boundary.AfterSeq;
+
+        var key = SnapshotCacheKey.For(manifest, boundarySeq);
         var snapshotDir = key.ResolveCacheDirectory(cacheDir);
         var snapshotPath = SnapshotCacheKey.ResolveCacheArtifact(snapshotDir, "state.canonical");
         var keyPath = SnapshotCacheKey.ResolveCacheArtifact(snapshotDir, "key.json");
@@ -68,7 +77,7 @@ internal static partial class Commands
             Directory.CreateDirectory(snapshotDir);
             File.WriteAllText(
                 snapshotPath,
-                ReplayPrefix(manifestPath, combatStart, Path.Combine(outDir, "combat-snapshot.materialise.state")));
+                ReplayPrefix(manifestPath, boundarySeq, Path.Combine(outDir, "combat-snapshot.materialise.state")));
             File.WriteAllText(keyPath, JsonSerializer.Serialize(key, Json.Indented) + "\n");
         }
 
@@ -76,22 +85,22 @@ internal static partial class Commands
 
         // ── Restore, in a fresh process, and refuse a drifted cache ─────────
         var restored = ReplayPrefix(
-            manifestPath, combatStart, Path.Combine(outDir, "combat-snapshot.restore.state"));
+            manifestPath, boundarySeq, Path.Combine(outDir, "combat-snapshot.restore.state"));
         if (!string.Equals(restored, snapshot, StringComparison.Ordinal))
         {
             Console.Error.WriteLine(
-                "Restoring the combat-start snapshot produced different state than the cache holds. The cache " +
+                $"Restoring the snapshot at {selector} produced different state than the cache holds. The cache " +
                 "is stale, or the key is not capturing something it should. Refusing to replay a combat from a " +
                 "state that is not the snapshot.");
             return 1;
         }
 
         var snapshotDigest = DigestOf(snapshot);
-        if (manifest.CombatStartDigest() is { } declaredSnapshot &&
+        if (selector.In(manifest.Boundaries)?.Digest.Value is { } declaredSnapshot &&
             !string.Equals(declaredSnapshot, snapshotDigest, StringComparison.Ordinal))
         {
             Console.Error.WriteLine(
-                $"The manifest declares combat-start snapshot {declaredSnapshot}, but replaying its " +
+                $"The manifest declares {declaredSnapshot} at {selector}, but replaying its " +
                 $"recorded prefix produced {snapshotDigest}. Refusing a drifted publication boundary.");
             return 1;
         }
@@ -104,14 +113,17 @@ internal static partial class Commands
         // a report that could not tell them apart would be describing three different
         // things with one word.
         var combatOutcome = coveredFields.GetValueOrDefault("combat.outcome", "unknown");
-        var turns = TurnBoundaries(trace, combatStart);
+        // Described whole, and not from the boundary asked for: this section describes
+        // the history, which does not change with where somebody chose to take a
+        // snapshot of it.
+        var turns = TurnBoundaries(trace);
         var lastSeq = manifest.Actions[^1].Seq;
         var combatState = combatActive
             ? "combat remains active"
             : $"combat finished ({combatOutcome})";
 
         Console.WriteLine($"manifest        : {manifest.RunId}");
-        Console.WriteLine($"combat starts   : after action {combatStart}");
+        Console.WriteLine($"boundary        : {selector} - {boundary.Describe()}, after action {boundarySeq}");
         Console.WriteLine($"snapshot key    : {key.ToCacheDirectoryName()}");
         Console.WriteLine($"snapshot source : {(cached ? "cache hit" : "materialised now")}");
         Console.WriteLine($"snapshot digest : {snapshotDigest}");
@@ -124,16 +136,17 @@ internal static partial class Commands
         foreach (var turn in turns)
         {
             Console.WriteLine(
-                $"  turn {turn.Turn}  actions {turn.FirstSeq}..{turn.LastSeq}  " +
+                $"  fight {turn.Fight} turn {turn.Turn}  actions {turn.FirstSeq}..{turn.LastSeq}  " +
                 $"player hp {turn.PlayerHpBefore} -> {turn.PlayerHpAfter}");
         }
 
         reportArtifact.WriteAtomic(
             JsonSerializer.Serialize(new
             {
-                schema = "sts2-pilot-trainer/combat-snapshot/v2",
+                schema = "sts2-pilot-trainer/combat-snapshot/v3",
                 manifest = Path.GetFileName(manifestPath),
-                combat_start_seq = combatStart,
+                boundary = selector.ToString(),
+                boundary_seq = boundarySeq,
                 snapshot_key = key,
                 snapshot_digest = snapshotDigest,
                 snapshot_source = cached ? "cache hit" : "materialised now",
@@ -156,6 +169,34 @@ internal static partial class Commands
     }
 
     /// <summary>
+    /// The boundary somebody asked for, read out of what the replay just derived
+    /// rather than out of the manifest.
+    ///
+    /// The same rule the rest of this command follows: a boundary is a fact about
+    /// what the engine did, and asking the manifest would let the two disagree
+    /// silently. The manifest's own digest is compared against the state this
+    /// produces, further down, which is the disagreement worth reporting.
+    /// </summary>
+    private static ReplayBoundary LocateBoundary(BoundarySelector selector, VerificationReport report) =>
+        selector.In(report.Boundaries)
+        ?? throw new ManifestException(
+            $"Replaying this history reaches no {selector}. It passes " +
+            (report.Boundaries.Count == 0
+                ? "no boundary at all - a history that reaches none has nothing to snapshot."
+                : $"{report.Boundaries.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)} " +
+                  $"boundaries: {string.Join(", ", report.Boundaries.Select(Selector))}."));
+
+    /// <summary>How a derived boundary is written as the option that would ask for it,
+    /// so a refusal lists things somebody can paste back.</summary>
+    private static string Selector(ReplayBoundary boundary) => new BoundarySelector
+    {
+        Kind = boundary.Kind,
+        Fight = boundary.Fight,
+        Floor = boundary.Floor,
+        Turn = boundary.Turn,
+    }.ToString();
+
+    /// <summary>
     /// Where the fight begins, read out of the trace rather than declared in the
     /// manifest: the boundary is a fact about what the engine did, and asking the
     /// manifest would let the two disagree.
@@ -168,28 +209,36 @@ internal static partial class Commands
         CombatProjection.CoverageOf(trace).CombatStartSeq;
 
     /// <summary>
-    /// The combat's turns, in order, with the actions that fall in each and what the
-    /// turn cost. Ordered description only - enough for a walkthrough to step through
-    /// the fight later without re-solving anything, and nothing that ranks a choice.
+    /// Every turn of every fight the history covers, in order, with the actions that
+    /// fall in each and what the turn cost. Ordered description only - enough for a
+    /// walkthrough to step through a fight later without re-solving anything, and
+    /// nothing that ranks a choice.
+    ///
+    /// Keyed by the fight as well as the turn. A whole-run history has a turn 1 in
+    /// every fight it contains, and a span keyed by the number alone would run from
+    /// the first fight's opening turn to the last one's - a single line describing
+    /// nine different turns, which is worse than describing none.
     /// </summary>
-    private static IReadOnlyList<TurnSpan> TurnBoundaries(ReplayTrace trace, int combatStart)
+    private static IReadOnlyList<TurnSpan> TurnBoundaries(ReplayTrace trace)
     {
+        var fights = RunCoverage.Of(trace).Fights;
         var spans = new List<TurnSpan>();
-        foreach (var step in trace.Steps.Where(s => s.Seq > combatStart &&
-                                                    s.Before.GetValueOrDefault("combat.in_progress") == "true"))
+        foreach (var step in trace.Steps.Where(
+                     s => s.Before.GetValueOrDefault("combat.in_progress") == "true"))
         {
             if (!TryInt(step.Before, "combat.turn", out var turn)) continue;
             TryInt(step.Before, "combat.player_hp", out var hpBefore);
             TryInt(step.After, "combat.player_hp", out var hpAfter);
 
-            var index = spans.FindIndex(span => span.Turn == turn);
+            var fight = fights.LastOrDefault(candidate => candidate.CombatStartSeq < step.Seq)?.Fight ?? 1;
+            var index = spans.FindIndex(span => span.Fight == fight && span.Turn == turn);
             if (index >= 0)
             {
                 spans[index] = spans[index] with { LastSeq = step.Seq, PlayerHpAfter = hpAfter };
             }
             else
             {
-                spans.Add(new TurnSpan(turn, step.Seq, step.Seq, hpBefore, hpAfter));
+                spans.Add(new TurnSpan(fight, turn, step.Seq, step.Seq, hpBefore, hpAfter));
             }
         }
 
@@ -202,7 +251,7 @@ internal static partial class Commands
             System.Globalization.CultureInfo.InvariantCulture, out value);
 
     internal sealed record TurnSpan(
-        int Turn, int FirstSeq, int LastSeq, int PlayerHpBefore, int PlayerHpAfter);
+        int Fight, int Turn, int FirstSeq, int LastSeq, int PlayerHpBefore, int PlayerHpAfter);
 
     /// <summary>Replays a manifest up to a sequence number and returns its canonical state.</summary>
     private static string ReplayPrefix(string manifestPath, int upToSeq, string statePath)

@@ -57,7 +57,7 @@ internal static class PrefightScreen
             creator,
             entry.DescribeNextStep(),
             entry.StepsTaken + 1,
-            entry.Plan.PrefightActions.Count);
+            entry.Plan.PrefixActions.Count);
         var step = journey.Steps[0];
 
         // The chip is the popup's title and appears once. It is the state signal for

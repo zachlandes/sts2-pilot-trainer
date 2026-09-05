@@ -1,0 +1,515 @@
+using System.Globalization;
+using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Map;
+using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.Runs;
+using Sts2PilotTrainer.Replay;
+
+namespace Sts2PilotTrainer.Engine;
+
+/// <summary>
+/// The journey that walks an act from Neow to the far side of its boss.
+///
+/// Everything in the decision alphabet past a fight is only reachable from a history
+/// that has been somewhere - a shop has to be walked into, a chest has to be opened,
+/// an act transition needs a beaten boss. A recording of a real run has all of that
+/// and cannot be used to test the machinery that reads recordings, because then the
+/// expected values would come from the thing under test. This is the same shape of
+/// history with no video and no player behind it.
+///
+/// Every choice it makes is a fixed rule over what the engine reports: the route is
+/// planned by cost before a step is taken, the fight plays its first playable attack,
+/// the loot is taken and whatever is left is declined, a rest site forges when the run
+/// is healthy and heals when it is not, and the shop is emptied cheapest first. Each
+/// of those rules is here because without it the journey does not finish an act, and
+/// not one of them is a claim about how to play. The fixture must not be read as one.
+/// </summary>
+public static partial class SyntheticFixtureGenerator
+{
+    /// <summary>
+    /// The one node type this route will not enter.
+    ///
+    /// A question mark resolves to whatever the run's own stream says when it is
+    /// entered, and what it resolves to can open a room this journey has no rules for.
+    /// A history that walked into one and then refused would be a fixture that fails
+    /// for a reason nobody is testing.
+    /// </summary>
+    private const MapPointType NotRouted = MapPointType.Unknown;
+
+    /// <summary>The room types the journey has to visit for the verbs that only exist
+    /// there to be exercised at all.</summary>
+    private static readonly MapPointType[] RequiredTypes =
+        [MapPointType.Shop, MapPointType.RestSite, MapPointType.Treasure, MapPointType.Elite];
+
+    private static readonly int RequiredCoverage = (1 << RequiredTypes.Length) - 1;
+
+    private static ReplayManifest GenerateWholeAct()
+    {
+        var identity = RequireSupportedBuild();
+        string[] acts = ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"];
+        var session = new GameSession();
+        session.StartRun(WholeActSeed, "CHARACTER.IRONCLAD", 0, "standard", acts);
+        using var driver = new RunDriver(session);
+        driver.ImproviseUnrecordedCardSelections();
+        driver.EnterFirstRoom();
+
+        var actions = new List<ActionRecord>();
+        var checkpoints = new List<Checkpoint>();
+
+        Apply(driver, actions, ActionVerb.ChooseNeowBlessing, ("option_index", "0"));
+
+        var route = PlanRoute(session);
+        if (route.Count > MapMoveLimit)
+        {
+            throw new EngineException(
+                $"The planned act route is {route.Count.ToString(CultureInfo.InvariantCulture)} moves long, " +
+                $"past the {MapMoveLimit.ToString(CultureInfo.InvariantCulture)} this journey allows. An act " +
+                "is sixteen rows and its boss; anything longer is a routing defect rather than a long act.");
+        }
+
+        foreach (var next in route)
+        {
+            Apply(driver, actions, ActionVerb.MapMove,
+                ("act", session.RunState.CurrentActIndex.ToString(CultureInfo.InvariantCulture)),
+                ("row", next.coord.row.ToString(CultureInfo.InvariantCulture)),
+                ("column", next.coord.col.ToString(CultureInfo.InvariantCulture)));
+
+            checkpoints.Add(Capture(
+                $"floor-{Field(session, "run.total_floor")}-entry", actions[^1].Seq, session,
+                "run.total_floor", "run.map_coord", "player.hp", "player.gold"));
+
+            HandleRoom(driver, session, actions, checkpoints, next.PointType);
+        }
+
+        Apply(driver, actions, ActionVerb.ProceedToNextAct);
+        checkpoints.Add(Capture("act-two-entry", actions[^1].Seq, session,
+            "run.act_index", "run.total_floor", "player.hp", "player.deck_count", "player.relics"));
+
+        return new ReplayManifest
+        {
+            RunId = "synthetic-v0111-whole-act",
+            Environment = new EnvironmentIdentity
+            {
+                BuildVersion = Fact<string>.Declared(identity.BuildVersion),
+                BuildDateUtc = Fact<string>.Declared(identity.BuildDateUtc),
+                GameMode = Fact<string>.Declared("standard"),
+                Seed = Fact<string>.Declared(WholeActSeed),
+                ContentHash = Fact<string>.Declared(identity.ContentHash),
+                Ascension = Fact<int>.Declared(0),
+                Unlocks = Fact<UnlockRequirement>.Declared(UnlockRequirement.Complete(
+                    "Generated by this arbiter against UnlockState.all, so the requirement is a property of " +
+                    "how the fixture was produced rather than a claim about any player.")),
+                Character = Fact<string>.Declared("CHARACTER.IRONCLAD"),
+                Acts = Fact<IReadOnlyList<string>>.Declared(acts),
+                Mods = Fact<ModEnvironment>.Declared(new ModEnvironment
+                {
+                    Name = "vanilla-headless-v0.111.0",
+                    ReportedCount = 0,
+                    Mods = [],
+                }),
+            },
+            Source = new SourceProvenance
+            {
+                Kind = "synthetic-engine",
+                Synthetic = new SyntheticSource
+                {
+                    FixtureId = "v0111-whole-act",
+                    FixtureVersion = FixtureVersion,
+                    Generator = "sts2-pilot-trainer",
+                    GeneratedBuild = identity.BuildVersion,
+                },
+                ExtractionMethod = "engine-generated",
+                Coverage =
+                    "Mechanically generated first act: every fight on one planned route played to its end " +
+                    "and its loot taken, a shop emptied, a treasure chest opened, rest sites rested and " +
+                    "forged at, an elite, and the act's boss, through the act transition into the next act.",
+            },
+            Actions = actions,
+            Checkpoints = checkpoints,
+        };
+    }
+
+    // ── The route ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The whole route through the act, chosen before a step is taken.
+    ///
+    /// Planned rather than walked greedily, because greedy does not work: taking the
+    /// most interesting node in front of you leads into rows whose only continuation
+    /// is an elite fought on a quarter of the run's health, and no local rule sees that
+    /// coming. The map is a layered graph, so the cheapest route that visits every
+    /// required room type is a small search rather than an estimate.
+    ///
+    /// The cost is a fixed weighting over node types, not an opinion about the act:
+    /// fights cost, an elite costs more, a rest site pays for itself, and everything
+    /// else is free. Ties break towards the leftmost node, so the route is a function
+    /// of the map and nothing else.
+    /// </summary>
+    private static IReadOnlyList<MapPoint> PlanRoute(GameSession session)
+    {
+        var map = session.RunState.Map
+            ?? throw new EngineException("The current act has no generated map.");
+        var coord = session.RunState.CurrentMapCoord
+            ?? throw new EngineException("The run has no current map node.");
+        var start = map.GetPoint(coord.col, coord.row)
+            ?? throw new EngineException($"The current map node {coord} does not exist in this act.");
+
+        var memo = new Dictionary<(MapPoint Node, int Covered), RoutePlan?>();
+        return (BestRoute(start, 0, memo)
+            ?? throw new EngineException(
+                "No route through this act reaches the boss while visiting a shop, a rest site, a treasure " +
+                "room and an elite without passing through a question mark. This seed's act was chosen " +
+                $"because one does; either the map generation changed or {NotRouted} nodes now block it."))
+            .Path;
+    }
+
+    /// <summary>The cheapest route on from this node, or null when none from here
+    /// reaches the boss having covered every required type.</summary>
+    private static RoutePlan? BestRoute(
+        MapPoint node, int covered, Dictionary<(MapPoint, int), RoutePlan?> memo)
+    {
+        if (memo.TryGetValue((node, covered), out var known)) return known;
+
+        // Entered before the children are searched, so a cycle - which a well-formed
+        // act map does not have and a malformed one would - resolves to "no route from
+        // here" rather than to a stack overflow.
+        memo[(node, covered)] = null;
+
+        RoutePlan? best = null;
+        if (node.PointType == MapPointType.Boss)
+        {
+            best = covered == RequiredCoverage ? new RoutePlan(0, []) : null;
+        }
+        else
+        {
+            foreach (var child in node.Children
+                         .Where(child => child.PointType != MapPointType.Unassigned)
+                         .Where(child => child.PointType != NotRouted)
+                         .OrderBy(child => child.coord.col))
+            {
+                var onward = BestRoute(child, covered | Coverage(child.PointType), memo);
+                if (onward is null) continue;
+
+                var cost = Cost(child.PointType) + onward.Cost;
+                if (best is not null && cost >= best.Cost) continue;
+                best = new RoutePlan(cost, [child, .. onward.Path]);
+            }
+        }
+
+        memo[(node, covered)] = best;
+        return best;
+    }
+
+    private static int Coverage(MapPointType type)
+    {
+        var index = Array.IndexOf(RequiredTypes, type);
+        return index < 0 ? 0 : 1 << index;
+    }
+
+    /// <summary>
+    /// What passing through a node costs the route.
+    ///
+    /// A weighting, deliberately crude: a fight costs health, an elite costs a lot more
+    /// of it, and a rest site gives some back. It exists to keep the route survivable,
+    /// not to model the act.
+    /// </summary>
+    private static int Cost(MapPointType type) => type switch
+    {
+        MapPointType.Monster => 3,
+        MapPointType.Elite => 12,
+        MapPointType.RestSite => -6,
+        _ => 0,
+    };
+
+    private sealed record RoutePlan(int Cost, IReadOnlyList<MapPoint> Path);
+
+    /// <summary>Whether the run has lost more than half of what it can take.</summary>
+    private static bool Hurt(GameSession session)
+    {
+        var player = session.RunState.Players[0];
+        return player.Creature.CurrentHp * 2 < player.Creature.MaxHp;
+    }
+
+    // ── The rooms ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Makes the decisions the room the run has just entered asks for.
+    ///
+    /// Every branch is one of the engine's own room types, and every one of them leaves
+    /// the room holding no undecided offer - which is what lets the next map move
+    /// happen at all, because the driver refuses to walk away from one.
+    /// </summary>
+    private static void HandleRoom(
+        RunDriver driver, GameSession session, List<ActionRecord> actions, List<Checkpoint> checkpoints,
+        MapPointType entered)
+    {
+        switch (session.RunState.CurrentRoom?.RoomType)
+        {
+            case RoomType.Monster or RoomType.Elite or RoomType.Boss:
+                FightAndTakeTheLoot(driver, session, actions, checkpoints, entered);
+                break;
+
+            case RoomType.RestSite:
+                Rest(driver, session, actions);
+                break;
+
+            case RoomType.Treasure:
+                OpenTheChest(driver, session, actions);
+                break;
+
+            case RoomType.Shop:
+                BuyEverythingAffordable(driver, session, actions, checkpoints);
+                break;
+
+            default:
+                throw new EngineException(
+                    "The act journey entered a " +
+                    $"{session.RunState.CurrentRoom?.RoomType.ToString() ?? "missing"} room from a " +
+                    $"{entered} node, which it has no decisions for.");
+        }
+    }
+
+    private static void FightAndTakeTheLoot(
+        RunDriver driver, GameSession session, List<ActionRecord> actions, List<Checkpoint> checkpoints,
+        MapPointType entered)
+    {
+        var name = entered.ToString().ToLowerInvariant();
+        checkpoints.Add(Capture(
+            $"{name}-{actions[^1].Seq.ToString(CultureInfo.InvariantCulture)}-combat-start",
+            actions[^1].Seq, session,
+            "combat.turn", "combat.energy", "combat.player_hp", "combat.hand", "combat.encounter",
+            "combat.enemy_count"));
+
+        DrinkPotions(driver, session, actions, entered);
+        PlayToTheEndOfTheFight(driver, session, actions, SurvivingIndex);
+
+        checkpoints.Add(Capture(
+            $"{name}-{actions[^1].Seq.ToString(CultureInfo.InvariantCulture)}-combat-end",
+            actions[^1].Seq, session,
+            "combat.outcome", "combat.in_progress", "player.hp", "run.act_floor"));
+
+        TakeTheLoot(driver, session, actions);
+    }
+
+    /// <summary>
+    /// Drinks what is on the belt when the fight opening is one this journey does not
+    /// expect to survive otherwise: an elite, the act's boss, or any fight the run
+    /// arrives at already hurt.
+    ///
+    /// The only place a generated history uses a potion at all, which matters: a verb
+    /// nothing exercises is a verb whose refusals are the only thing anybody has seen
+    /// work. It is also what gets the run through its act's boss.
+    /// </summary>
+    private static void DrinkPotions(
+        RunDriver driver, GameSession session, List<ActionRecord> actions, MapPointType entered)
+    {
+        var everything = entered is MapPointType.Elite or MapPointType.Boss;
+        if (!everything && !Hurt(session)) return;
+
+        while (true)
+        {
+            var belt = session.RunState.Players[0].PotionSlots;
+            var slot = Enumerable.Range(0, belt.Count).FirstOrDefault(index => belt[index] is not null, -1);
+            if (slot < 0) return;
+
+            var potion = belt[slot]!;
+            var alive = CombatManager.Instance.DebugOnlyGetState()?.Enemies
+                .Count(enemy => enemy is { IsAlive: true }) ?? 0;
+
+            Apply(driver, actions, ActionVerb.UsePotion,
+            [
+                ("potion_id", potion.Id.ToString()),
+                ("slot_index", slot.ToString(CultureInfo.InvariantCulture)),
+                .. potion.TargetType == TargetType.AnyEnemy && alive > 1
+                    ? new[] { ("target_index", "0") }
+                    : [],
+            ]);
+
+            if (!everything) return;
+        }
+    }
+
+    /// <summary>
+    /// Takes what a won fight put on offer, and declines the rest explicitly.
+    ///
+    /// The gold, the first card, and a potion when the belt has room. First rather than
+    /// best: which card is offered is the run's own business and taking it by position
+    /// is a rule rather than an opinion. The deck does have to grow - measured, a
+    /// journey that declined every card reward ran out of health on the fifth floor,
+    /// because eleven starter cards do not finish an act.
+    ///
+    /// Whatever is left is declined with a verb rather than walked away from, which is
+    /// the rule the driver enforces on the way out of the room.
+    /// </summary>
+    private static void TakeTheLoot(RunDriver driver, GameSession session, List<ActionRecord> actions)
+    {
+        if (driver.UnclaimedRewardKinds.Contains("gold", StringComparer.Ordinal))
+        {
+            Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "gold"));
+        }
+
+        if (driver.OfferedCardIds is [var firstCard, ..])
+        {
+            Apply(driver, actions, ActionVerb.TakeCard, ("card_id", firstCard), ("option_index", "0"));
+        }
+
+        if (driver.UnclaimedRewardKinds.Contains("potion", StringComparer.Ordinal) &&
+            session.RunState.Players[0].HasOpenPotionSlots)
+        {
+            Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "potion"));
+        }
+
+        if (driver.UnclaimedRewardKinds.Count > 0)
+        {
+            Apply(driver, actions, ActionVerb.SkipRewards);
+        }
+    }
+
+    /// <summary>
+    /// Takes a rest site's healing when the run is hurt and its forge when it is not.
+    ///
+    /// Two options rather than one because a journey that only ever rests arrives at
+    /// the act's boss with unupgraded starter cards and loses. Which card the forge
+    /// offers is answered from the front of the screen it opens and written down as the
+    /// selection it is, so that choice ends up in the history rather than in this code.
+    /// </summary>
+    private static void Rest(RunDriver driver, GameSession session, List<ActionRecord> actions)
+    {
+        var options = RunManager.Instance.RestSiteSynchronizer.GetLocalOptions().ToList();
+        var wanted = Hurt(session) ? RestSiteHeal : RestSiteSmith;
+        var index = options.FindIndex(option => option.OptionId == wanted);
+        if (index < 0) index = options.FindIndex(option => option.OptionId == RestSiteHeal);
+
+        if (index < 0)
+        {
+            throw new EngineException(
+                $"This rest site offers neither {RestSiteHeal} nor {RestSiteSmith} " +
+                $"({string.Join(", ", options.Select(option => option.OptionId))}), and this journey has no " +
+                "rule for the rest.");
+        }
+
+        Apply(driver, actions, ActionVerb.ChooseRestSiteOption,
+            ("option_id", options[index].OptionId),
+            ("option_index", index.ToString(CultureInfo.InvariantCulture)));
+    }
+
+    private static void OpenTheChest(RunDriver driver, GameSession session, List<ActionRecord> actions)
+    {
+        var relics = RunManager.Instance.TreasureRoomRelicSynchronizer.CurrentRelics;
+        if (relics is not { Count: > 0 })
+        {
+            throw new EngineException(
+                "The act journey entered a treasure room whose chest offers no relic, so there is no " +
+                "decision to record there.");
+        }
+
+        Apply(driver, actions, ActionVerb.TakeChestRelic,
+            ("relic_id", relics[0].Id.ToString()),
+            ("option_index", "0"));
+
+        if (driver.UnclaimedRewardKinds.Count > 0)
+        {
+            Apply(driver, actions, ActionVerb.SkipRewards);
+        }
+    }
+
+    /// <summary>
+    /// Buys everything the run can afford, cheapest first.
+    ///
+    /// Cheapest first rather than best, for the same reason the fight plays attacks
+    /// first: it is a rule over what the shop stocked rather than an opinion about it.
+    /// Spending the purse rather than saving it, because the act has to be survivable
+    /// and a fixture that walks past a merchant exercises its verb once.
+    /// </summary>
+    private static void BuyEverythingAffordable(
+        RunDriver driver, GameSession session, List<ActionRecord> actions, List<Checkpoint> checkpoints)
+    {
+        var room = (MerchantRoom)session.RunState.CurrentRoom!;
+
+        while (BuyOneThing(driver, session, room, actions))
+        {
+            checkpoints.Add(Capture(
+                $"shop-purchase-{actions[^1].Seq.ToString(CultureInfo.InvariantCulture)}", actions[^1].Seq,
+                session, "player.gold", "player.deck_count", "player.potions", "player.relics"));
+        }
+    }
+
+    /// <summary>Buys the cheapest affordable thing on any shelf, or nothing.</summary>
+    private static bool BuyOneThing(
+        RunDriver driver, GameSession session, MerchantRoom room, List<ActionRecord> actions)
+    {
+        var inventory = room.GetLocalInventory();
+        var player = session.RunState.Players[0];
+        var gold = player.Gold;
+
+        var shelves = new (string Kind, IReadOnlyList<MerchantEntry> Entries)[]
+        {
+            (ShopPurchaseKinds.CharacterCard, [.. inventory.CharacterCardEntries]),
+            (ShopPurchaseKinds.ColorlessCard, [.. inventory.ColorlessCardEntries]),
+            (ShopPurchaseKinds.Relic, [.. inventory.RelicEntries]),
+            (ShopPurchaseKinds.Potion, [.. inventory.PotionEntries]),
+        };
+
+        var affordable = shelves
+            .SelectMany(shelf => shelf.Entries.Select((entry, index) => (shelf.Kind, entry, index)))
+            .Where(candidate => candidate.entry.IsStocked && candidate.entry.Cost <= gold)
+            // A potion nobody can carry is bought and immediately lost, which would be
+            // a purchase this history could not explain.
+            .Where(candidate => candidate.Kind != ShopPurchaseKinds.Potion || player.HasOpenPotionSlots)
+            .OrderBy(candidate => candidate.entry.Cost)
+            .ThenBy(candidate => candidate.Kind, StringComparer.Ordinal)
+            .ThenBy(candidate => candidate.index)
+            .ToList();
+
+        if (affordable.Count == 0) return false;
+
+        var (kind, chosen, position) = affordable[0];
+        Apply(driver, actions, ActionVerb.ShopPurchase,
+            ("kind", kind),
+            (ShopPurchaseKinds.IdArgument(kind)!, PurchasedId(chosen)),
+            ("option_index", position.ToString(CultureInfo.InvariantCulture)));
+        return true;
+    }
+
+    private static string PurchasedId(MerchantEntry entry) => entry switch
+    {
+        MerchantCardEntry card => card.CreationResult!.Card.Id.ToString(),
+        MerchantRelicEntry relic => relic.Model!.Id.ToString(),
+        MerchantPotionEntry potion => potion.Model!.Id.ToString(),
+        _ => throw new EngineException($"A {entry.GetType().Name} has no id this journey can record."),
+    };
+
+    // ── The fight ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The hand position an act journey plays next: the first playable attack, and
+    /// otherwise the first playable card at all.
+    ///
+    /// A different mechanical rule from the first-fight journey's, and it is here for
+    /// one reason: hand order alone loses the act. Measured on this seed, playing the
+    /// first playable card every turn takes the run to nothing before the eighth floor,
+    /// and a fixture that dies half way through an act produces none of the boundaries
+    /// this journey exists to produce.
+    ///
+    /// It is still a rule over the hand the engine dealt rather than a judgement, and
+    /// it must not be read as one: it is not how to play, it is the cheapest rule that
+    /// finishes an act.
+    /// </summary>
+    private static int SurvivingIndex(GameSession session)
+    {
+        var hand = session.RunState.Players[0].PlayerCombatState?.Hand.Cards;
+        if (hand is null) return -1;
+
+        var playable = Enumerable.Range(0, hand.Count)
+            .Where(index => hand[index].CanPlay(out _, out _))
+            .ToList();
+
+        var attack = playable.FirstOrDefault(index => hand[index].Type == CardType.Attack, -1);
+        return attack >= 0 ? attack : playable.Count > 0 ? playable[0] : -1;
+    }
+
+    private static string Field(GameSession session, string field) =>
+        CanonicalStateProjection.Project(session.RunState).Fields[field];
+}

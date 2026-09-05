@@ -39,7 +39,7 @@ public static class Preflight
     /// </param>
     public static PreflightResult Evaluate(
         EnvironmentIdentity expected,
-        PlayerProgress progress = PlayerProgress.AllUnlocked,
+        PlayerProgress? progress = null,
         string sourceKind = "vod") =>
         EnvironmentPreflight.Prerequisites(
             expected, LocalEnvironment.ReadPrerequisites(expected, progress), sourceKind);

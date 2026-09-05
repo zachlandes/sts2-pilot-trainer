@@ -17,7 +17,7 @@ public static class Arbiter
 
     public static ArbiterOutcome Run(
         ReplayManifest manifest, int? stopAfterSeq = null,
-        PlayerProgress progress = PlayerProgress.AllUnlocked,
+        PlayerProgress? progress = null,
         string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null)
     {
         var validation = ManifestValidator.Validate(manifest);
@@ -25,6 +25,13 @@ public static class Arbiter
         {
             throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
         }
+
+        // The recording's own supplied state rather than everything-unlocked, because a
+        // run generated against the wrong unlocks is a different run from the same seed.
+        // derive-boundaries writes the digests this replay produces into the manifest and
+        // stamps them Engine, so getting it wrong here is corrupted provenance on disk
+        // rather than one wrong answer on a console.
+        progress ??= RecordedFightEntry.SuppliedProgressFor(manifest);
 
         var preflight = Preflight.Evaluate(manifest.Environment, progress, manifest.Source.Kind);
         if (!preflight.Matches)
@@ -98,6 +105,13 @@ public static class Arbiter
         var diagnostics = new List<string>();
         var steps = new List<ReplayStep>();
 
+        // The whole canonical state's digest after every action, kept beside the trace
+        // rather than in it. A trace samples the fields a comparison reads; a boundary
+        // digest covers the draw order and every random stream's position, which is
+        // most of what it is for. Which of these seqs turn out to be boundaries is
+        // decided once the history has run, by reading the trace.
+        var digests = new Dictionary<int, string>();
+
         // Checkpoints bound to -1 are evaluated before any action runs.
         results.AddRange(Evaluate(checkpointsBySeq[-1], session));
 
@@ -109,6 +123,7 @@ public static class Arbiter
             Before = Sample(state),
             After = Sample(state),
         });
+        digests[-1] = state.Digest();
 
         var ordered = manifest.Actions.OrderBy(a => a.Seq).ToList();
         for (var index = 0; index < ordered.Count; index++)
@@ -119,13 +134,7 @@ public static class Arbiter
             var before = Sample(CanonicalStateProjection.Project(session.RunState));
             try
             {
-                // The rest of the replayed history is passed with each action because
-                // a card screen is answered inside the call that opens it; see RunDriver.
-                var upcoming = ordered
-                    .Skip(index + 1)
-                    .TakeWhile(next => stopAfterSeq is not { } limit || next.Seq <= limit)
-                    .ToList();
-                driver.Apply(action, upcoming);
+                driver.Apply(action, Upcoming(ordered, index, stopAfterSeq));
             }
             catch (EngineException ex)
             {
@@ -158,14 +167,16 @@ public static class Arbiter
                     FinalState: refusedState);
             }
 
+            var after = CanonicalStateProjection.Project(session.RunState);
             steps.Add(new ReplayStep
             {
                 Seq = action.Seq,
                 Verb = action.Verb.ToString(),
                 Args = action.Args,
                 Before = before,
-                After = Sample(CanonicalStateProjection.Project(session.RunState)),
+                After = Sample(after),
             });
+            digests[action.Seq] = after.Digest();
 
             results.AddRange(Evaluate(checkpointsBySeq[action.Seq], session));
         }
@@ -202,6 +213,7 @@ public static class Arbiter
                 Preflight = preflight,
                 Checkpoints = results,
                 Trace = new ReplayTrace { Steps = steps },
+                Boundaries = isPartial ? [] : DeriveBoundaries(steps, digests),
                 FinalStateDigest = finalState.Digest(),
                 ActionHistoryHash = SnapshotCacheKey.HashActions(replayedActions),
                 Caveats = Caveats(),
@@ -209,6 +221,50 @@ public static class Arbiter
             },
             finalState);
     }
+
+    /// <summary>
+    /// The rest of the history an action is allowed to read, which is where a card
+    /// screen it opens is answered from.
+    ///
+    /// Truncated at the stop point, because a prefix replay may not reach past its own
+    /// end for a later action's decisions - that would make a partial replay quietly
+    /// depend on actions it never replayed. The one exception is the action standing at
+    /// the stop point: the selections immediately after it are that action's own answer,
+    /// so a boundary taken there is materialised from the manifest rather than refused
+    /// for an omission the truncation caused. Where the manifest supplies fewer than the
+    /// screen asks for, the driver still refuses in words.
+    /// </summary>
+    private static IReadOnlyList<ActionRecord> Upcoming(
+        IReadOnlyList<ActionRecord> ordered, int index, int? stopAfterSeq)
+    {
+        var rest = ordered.Skip(index + 1);
+        if (stopAfterSeq is not { } limit) return rest.ToList();
+
+        return ordered[index].Seq == limit
+            ? CardScreenAnswers.After(ordered, limit)
+            : rest.TakeWhile(next => next.Seq <= limit).ToList();
+    }
+
+    /// <summary>
+    /// Every boundary this history passed, with the digest the engine produced there.
+    ///
+    /// Two owners, deliberately. Where the boundaries are is a rule over the trace and
+    /// belongs to <see cref="RunCoverage"/>, which has tests that need no game. What
+    /// the state was at each is the engine's, and is only available from the process
+    /// that just replayed it.
+    ///
+    /// A boundary whose digest is missing is dropped rather than filled in: the only
+    /// way that happens is a seq the replay never reached, and a boundary with an
+    /// invented digest is exactly the confident wrong answer this arbiter exists to
+    /// prevent.
+    /// </summary>
+    private static IReadOnlyList<ReplayBoundary> DeriveBoundaries(
+        IReadOnlyList<ReplayStep> steps, IReadOnlyDictionary<int, string> digests) =>
+        RunCoverage.Of(new ReplayTrace { Steps = steps })
+            .Boundaries()
+            .Where(boundary => digests.ContainsKey(boundary.AfterSeq))
+            .Select(boundary => boundary.With(Fact<string>.Engine(digests[boundary.AfterSeq])))
+            .ToList();
 
     /// <summary>
     /// Every field a checkpoint disagreed on, in the order the checkpoints ran.

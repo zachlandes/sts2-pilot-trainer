@@ -345,6 +345,58 @@ the recording stood in for the player.
 [demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has it with its
 real output, and the retail client's own result over a fight a person played.
 
+### S6 - The whole run, replayed headlessly - done
+
+S1 through S5 close the loop over one fight.
+Everything after that fight - a rest site, a shop, a treasure room, the act boss, the
+act transition - was outside the alphabet the driver could replay, so a history that
+contained any of them refused.
+Phase 4, standing a player in any fight or floor, needs the run replayed past the
+first fight before it can offer a later one.
+
+- The rest of the decision alphabet, each verb mapped onto the game's own command for
+  it: rest sites, shops, potions used and discarded, treasure rooms and act
+  transitions. Nothing was invented; where this build has nothing to map a verb onto,
+  the verb stays unimplemented and says why.
+- `EngineCommands` in `Sts2PilotTrainer.Engine`: which member of the game each
+  recorded decision reaches, in one table rather than spread across the driver's
+  handlers. The driver's refusal for an unimplemented verb is derived from it, and the
+  recorder reads the same table from the other end - a decision the driver issues is a
+  decision a running game announces. `./scripts/arbiter engine-commands` prints it,
+  including the three verbs that map onto nothing here and the reason beside each.
+- A digest at every boundary the history passes, not only at its first fight.
+  `RunCoverage` derives *where* the boundaries are, as a rule over the history with no
+  engine; what each one holds needs a replay, so `migrate-manifest --derive-boundaries`
+  writes the digest that replay produced and refuses if the history does not reproduce.
+  The validator holds `boundaries[]` to the closed set of kinds a host dispatches on.
+- Entry at any boundary. `BoundarySelector` is the one reader of a boundary
+  coordinate and the one place a coordinate becomes a plan, however it was spelled:
+  `combat-snapshot --boundary combat_start:2` or `floor_entry:5`, and `enter-fight
+  --fight <n>` or `--floor <n>`. A floor arrival is proved by where the run stands, so
+  entering one needs a checkpoint there naming `run.total_floor` and `run.map_coord`.
+- Two committed engine-generated fixtures to exercise it against, because no
+  transcribed video reaches any of this. The whole-act history is 225 actions through
+  a whole Act 1 to `ProceedToNextAct`, with 67 boundaries - nine fights, sixteen floor
+  arrivals and forty-two turns - each carrying the digest a replay produced. The
+  screen-at-boundary history walks the same act and stops at the first turn whose own
+  action opens a card screen, which is the one case no other history here reaches.
+- The `exact` unlock arm, which is how a recording made inside a player's own game
+  says which state its content was generated against, rather than requiring a complete
+  one. It is present and deliberately unfinished: the preflight checks that this build
+  ships every epoch and encounter id the recording names and reports the run count, and
+  nothing produces an `exact` recording yet, so the arm is inert until the recorder
+  does. [Environment identity](environment-identity.md) owns what such a state is made
+  of and what "exact" can mean.
+
+**Runnable now:** `./scripts/arbiter replay
+src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-whole-act.replay.json` reproduces
+a whole act through the real engine, and `./scripts/arbiter enter-fight
+src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-whole-act.replay.json --floor 5`
+stands the run at that floor's arrival with the digest that boundary records.
+The shipped video reconstruction records no map coordinate anywhere, so its floor
+boundaries are declared but not enterable and `--floor` refuses on it; `--fight` works
+on both.
+
 ## Known limits that no slice above removes
 
 **The source game mode is not identified.** Standard and custom-with-no-modifiers agree
@@ -383,5 +435,4 @@ No turn-level reset or branching. No solver. No generalized VOD ingestion and no
 multi-VOD support. No presentation designed around rare permanent card removal. No
 candidate search: S2.5 built the prefix one would need and deliberately stopped there.
 
-And nothing in the decision alphabet beyond what this one path uses.
-Rest sites, shops, potion use, treasure rooms and act transitions are still named by the format and still refused by the driver, because implementing a verb no reconstruction exercises is how a verb that quietly does the wrong thing gets shipped.
+Three verbs the format names are still not mapped, because this build has nothing to map them onto - `SelectHandCards`, `CloseShop` and `ProceedToMap` - each with its reason written beside the table in `EngineCommands` and printed by `./scripts/arbiter engine-commands`.

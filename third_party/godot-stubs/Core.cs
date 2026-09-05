@@ -10,6 +10,16 @@ public class GodotObject
     public virtual bool IsQueuedForDeletion() => false;
     public Variant CallDeferred(StringName method, params Variant[] args) => default;
 
+    // Connect - on GodotObject and with the flags argument, to match real Godot.
+    //
+    // The signature is what a Harmony patch resolves against, not what a stub finds
+    // convenient: the game's own screens call the three-argument overload, and a stub
+    // that offered only two made patching one of them fail to resolve the method
+    // rather than fail to find the type - a defect that only appears when a patch is
+    // installed and says nothing about which argument is missing.
+    public Error Connect(StringName signal, Callable callable, uint flags = 0) => Error.Ok;
+    public void Disconnect(StringName signal, Callable callable) { }
+
     // ToSignal - must be on GodotObject (not Node) to match real Godot
     public SignalAwaiter ToSignal(GodotObject source, StringName signal)
     {

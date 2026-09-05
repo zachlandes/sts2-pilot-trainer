@@ -23,6 +23,7 @@ internal static class Program
             {
                 "gate" => Commands.Gate(args[1..]),
                 "validate" => Commands.Validate(args[1..]),
+                "engine-commands" => Commands.EngineCommandsCommand(args[1..]),
                 "migrate-manifest" => Commands.MigrateManifest(args[1..]),
                 "preflight" => Commands.Preflight(args[1..]),
                 "preflight-live" => Commands.PreflightLive(args[1..]),
@@ -80,13 +81,25 @@ internal static class Program
               from - including that it starts at the run's start, which nothing
               downstream can check. No game needed.
 
+          engine-commands
+              Print which of the game's own members each recorded decision maps onto,
+              and check that the mapping still describes this build: every named
+              member still exists, and every verb in the format is either mapped or
+              carries a written reason it is not.
+
           preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile]
+                                     [--shipped-ids]
               Compare a manifest's environment identity and its player prerequisites
               against this machine's game: build, content hash, unlocks category by
               category, whether the run's acts are unlocked at all, and - reading a
               real profile - whether its ascension is available. Refuses, with
               diagnostics and in-game remediation, rather than replaying into a
-              mismatch. Nothing here writes to a save, a profile or the install.
+              mismatch. Without --progress, the state checked is the one a run from
+              this recording would actually be constructed with. --shipped-ids prints
+              this build's epoch and encounter ids instead of the report, because an
+              exact unlock requirement is checked against those two lists and the
+              rows have no room to name them. Nothing here writes to a save, a
+              profile or the install.
 
           preflight-live  <manifest> [--progress local-profile]
               Demonstrate the future live gate inside this headless process. It reads
@@ -114,10 +127,28 @@ internal static class Program
               Compare the verified prefix under the real build's standard, custom and
               daily run construction, with a behavior-changing modifier control.
 
-          synthetic-fixture / generate-synthetic-fixture --out <path> [--line reference|alternate]
-              Emit the mechanically generated engine fixture. Both lines play the
-              first combat to its end; they differ only in which end of the hand they
-              play from, and neither is a claim about how to play.
+          synthetic-fixture / generate-synthetic-fixture --out <path>
+                                     [--journey first-fight|whole-act|screen-at-boundary]
+                                     [--line reference|alternate]
+              Emit the mechanically generated engine fixture. The first-fight journey
+              plays the first combat to its end, and its two lines differ only in which
+              end of the hand they play from; the whole-act journey walks one act from
+              Neow through a shop, a rest site, a chest and an elite to the act's boss
+              and into the next act; the screen-at-boundary journey walks the same act
+              and stops at the first fight in which a turn began with a card screen,
+              which is the one place a boundary's own action opens one. None of them is
+              a claim about how to play.
+              Regenerating a committed fixture takes two steps, in order, and its own
+              journey - synthetic-v0111-pilot-trainer is --journey first-fight --line
+              reference, synthetic-v0111-whole-act is --journey whole-act, and
+              synthetic-v0111-screen-at-boundary is --journey screen-at-boundary.
+              Generate it here with that journey named, then run `migrate-manifest
+              <fixture> --derive-boundaries` over the written file. --journey defaults
+              to first-fight, so leaving it off writes the wrong history at the right
+              path; and generation cannot know a boundary - only a replay through the
+              engine produces one - so skipping the second step writes a fixture with
+              no `boundaries`. Either mistake produces a well-formed file and breaks
+              the game-free tests that read it.
 
           replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
                                      [--progress <model>] [--show-trace]
@@ -134,12 +165,17 @@ internal static class Program
               alongside what a video-only consistency check would have concluded.
               --require-all-controls also refuses histories that do not exercise every control.
 
-          enter-fight     <manifest> [--control <name>] [--cache <dir>] [--out <dir>] [--step]
-                                     [--play [--recorded-fight <path>]]
+          enter-fight     <manifest> [--fight <n> | --floor <n>] [--control <name>] [--cache <dir>]
+                                     [--out <dir>] [--step] [--play [--recorded-fight <path>]]
               Construct the recording's run, walk it through the recording's own
-              decisions in order, and prove the fight it lands in is the recorded one -
+              decisions in order, and prove the boundary it lands at is the recorded
+              one. --fight walks to that fight of the run and --floor to the moment it
+              arrived on that floor; without either it is the first fight -
               against what the recording observed at that boundary and against the
-              manifest's engine-produced combat-start snapshot digest. Reports the profile before and after,
+              manifest's engine-produced combat-start snapshot digest. --floor needs a
+              checkpoint at that arrival naming run.total_floor and run.map_coord, which
+              a recording read off footage of fights may not have; it refuses without
+              them. Reports the profile before and after,
               because nothing here may write to it. --control damages one decision
               before the fight and shows the entry refused; --step stops after one.
               --play then plays the recording's own fight to its end through the same
@@ -155,11 +191,15 @@ internal static class Program
               comparison, shipped inside the mod; the retail client cannot replay, so
               it is produced here.
 
-          migrate-manifest <manifest> [--out <path>]
+          migrate-manifest <manifest> [--out <path>] [--derive-boundaries]
               Rewrite a manifest on disk in the current format. Reading an older one is
               something every command does in memory; writing it back happens only
               here, so a file changes when a person chose it rather than as a side
-              effect of being read.
+              effect of being read. --derive-boundaries additionally replays the run
+              through the real engine and writes in every boundary the history passes -
+              each fight's start, each floor's arrival and each turn - with the digest
+              that replay produced. It refuses if the history does not reproduce, and
+              refuses to overwrite a boundary this build derives differently.
 
           combat-compare  <manifest> <manifest> [--out <dir>]
               Replay two manifests of the same fight, project each one's completed
@@ -182,10 +222,14 @@ internal static class Program
               their digests agree, and shows the comparison refused rather than
               reported as agreement.
 
-          combat-snapshot <manifest> [--cache <dir>] [--out <dir>]
-              Materialise the verified combat-start snapshot, restore it by
+          combat-snapshot <manifest> [--boundary <kind>:<coordinate>] [--cache <dir>] [--out <dir>]
+              Materialise a verified boundary's snapshot, restore it by
               re-deriving it in a fresh process, and describe exactly the action
-              history the manifest contains. The report says whether combat remains
+              history the manifest contains. --boundary picks which one, written the
+              way a person says it - combat_start:2 for the start of fight 2,
+              floor_entry:5 for arrival on floor 5, turn_start:2.3 for turn 3 of
+              fight 2 - and without it the boundary is the first fight's start. The
+              report says whether combat remains
               active at the end. Nothing here resets state mid-fight or replays an
               alternative line. See docs/comparison-direction.md.
 

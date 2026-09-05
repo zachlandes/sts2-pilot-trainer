@@ -12,6 +12,7 @@ This document still owns the direction; those types own the computation, and whe
 
 The supported reset and replay boundary is **the start of a combat**, and the unit of
 work is the complete fight.
+A floor arrival is a place a run can be stood - the recording's own decisions replayed up to it - and never a thing compared, because a floor is not a fight.
 A future solution must be computed and verified by replaying the whole combat from that boundary, which is what keeps the engine's state aligned with the run that produced it.
 The generated engine fixture now plays its first combat to the end, in both of its lines, so a completed fight is something this repository produces rather than something it describes.
 The shipped VOD reconstruction now covers its whole first combat, read off the video with the same provenance as its opening turn, so the recording is a completed side rather than a history the comparison has to refuse.
@@ -21,7 +22,8 @@ That history now runs past that first fight - through a second one it also plays
 One projection reads one fight and requires it to have finished; `RunCoverage` reads the whole trace into the fights and floors it holds, as an index for a catalogue entry's count and a run view's strip, and computes nothing else.
 Two fights in one history are not a comparison and are not treated as one: a comparison has two runs, and reading a run against itself would be inventing a second line nobody played.
 Where a later fight matters is as a *destination*: once its boundary is derived it is declared in `boundaries[]` as a place a player can be stood, gets its own line in the recording's `recorded-fights.json`, and is compared only against the fight a player then plays there - never against another fight of the same run.
-The shipped reconstruction declares the first fight's boundary and no other yet, so the floor-5 combat start it reaches is still only checkpointed.
+The shipped reconstruction now declares every boundary its history passes - the start of each of its two completed fights, each floor arrival and each turn - and ships a recorded line for each of those two fights.
+The floor-5 combat start it reaches is not among them and is still only checkpointed: the history stops in the middle of that fight, so there is no completed line to set a player's against.
 
 That is a product decision with teeth, so here is what it rules out. No turn-level
 state reset. No pre-turn branching into an alternative line. No turn-level solver.
@@ -34,7 +36,7 @@ want to walk through a solution turn by turn, and that walkthrough is **read-onl
 presentation of the already-computed whole-combat solution** - it re-solves nothing
 and resets nothing. So the ordered actions, the turn boundaries, and the resulting
 state either side of each step are all kept.
-`combat-snapshot` materialises the combat-start snapshot, re-derives it to read it, and describes only the manifest's covered history turn by turn without ranking anything.
+`combat-snapshot` materialises a declared boundary's snapshot - `--boundary <kind>:<coordinate>`, and the first fight's start when nobody says which - re-derives it to read it, and describes only the manifest's covered history turn by turn without ranking anything.
 Its report states whether combat remains active at the end of that history, and how the fight ended when it is over.
 `CombatComparison` requires the digest of that complete canonical snapshot to match on both sides before comparing them.
 The smaller sampled boundary in each trace remains descriptive; it is not treated as identity because it omits hidden state such as draw-pile order and RNG positions.
@@ -42,7 +44,9 @@ The smaller sampled boundary in each trace remains descriptive; it is not treate
 Entering a fight is held to the same boundary from the other direction.
 `RecordedFightEntry` walks a constructed run through the recording's decisions and stops there, and `BoundaryEquality` refuses to hand the fight over unless the live state is the recorded boundary on both readings - every value the recording observed, and the complete canonical snapshot's digest.
 That is the same reason the digest is required of a comparison: a boundary that agreed on everything a video shows and differed in a random stream's position is a fight that diverges at the next shuffle.
-There is no entry at any other point, and a fight that has already started is never resumed mid-way.
+Where somebody can be stood is any boundary the recording declares of a kind a host enters: a combat start, or a floor arrival.
+A turn boundary is carried by the format so a later rewind has somewhere to land, and nothing in these phases stands anybody in one - `BoundarySelector.PlanFor` refuses it, because a turn's state is reached by playing the fight from its start.
+A fight that has already started is never resumed mid-way.
 
 ## The two projections, kept apart
 

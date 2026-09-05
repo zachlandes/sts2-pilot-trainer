@@ -121,7 +121,7 @@ never opens.
 
 ```output
 manifest : navegreed-OJ-6QXhNgdg
-progress : AllUnlocked
+progress : AllUnlocked - UnlockState.all, supplied by the host in place of the source player's profile
 
   ok   build_version          manifest=v0.111.0                       local=v0.111.0
   ok   build_date_utc         manifest=2026.08.14                     local=2026.08.14
@@ -129,7 +129,7 @@ progress : AllUnlocked
   ok   seed_alphabet          manifest=legal                          local=legal
   ok   game_mode_supported    manifest=standard                       local=standard
   ok   mod_environment        manifest=navegreed-2026-08 (3 mod(s))   local=audited source tooling
-  ok   loaded_mod_environment manifest=no active local mods except this loaded non-gameplay Combat Trainer host local=none discovered
+  ok   loaded_mod_environment manifest=no active local mods except this loaded non-gameplay Runmobile host local=none discovered
   ok   unlocks_requirement    manifest=complete                       local=UnlockState.all, supplied by the host in place of the source player's profile
   ok   unlocks_characters     manifest=5                              local=5
   ok   unlocks_cards          manifest=596                            local=596
@@ -357,6 +357,7 @@ Its publication result depends on the history-bound BaseLib reachability evidenc
 ```output
 manifest       : synthetic-v0111-pilot-trainer
 actions        : 17
+progress       : AllUnlocked - UnlockState.all, supplied by the host in place of the source player's profile
 status         : VERIFIED
 
   ok   checkpoint combat-start (after action 1)
@@ -676,7 +677,7 @@ rm -rf build/snapshots && ./scripts/arbiter combat-snapshot build/evidence/synth
 
 ```output
 manifest        : synthetic-v0111-pilot-trainer
-combat starts   : after action 1
+boundary        : combat_start:1 - the start of fight 1, after action 1
 snapshot key    : v0.111.0_standard_CHARACTER.IRONCLAD_a0_P1L0TTRA1NER_1568834832_seq1_fa6c25365719e14b153879446a45e4044c4ca1b3b3be1594bd9a54126ba5b330
 snapshot source : materialised now
 snapshot digest : sha256:75fbfd0b0cd434805cafce50b5f0054cb03a288ea44c8db2cb6244bda7a6678b
@@ -684,11 +685,11 @@ restore         : re-derived in a fresh process, digest matches
 covered history : VERIFIED through action 16 (17 actions), combat finished (victory), end state sha256:99eb1168a227d3723b99c6ece01f1193e9dac9fcb78397a6c1daffb373f04864
 
 covered combat history, turn by turn (description, not a verdict):
-  turn 1  actions 2..4  player hp 80 -> 80
-  turn 2  actions 5..8  player hp 80 -> 80
-  turn 3  actions 9..11  player hp 80 -> 69
-  turn 4  actions 12..14  player hp 69 -> 58
-  turn 5  actions 15..16  player hp 58 -> 64
+  fight 1 turn 1  actions 2..4  player hp 80 -> 80
+  fight 1 turn 2  actions 5..8  player hp 80 -> 80
+  fight 1 turn 3  actions 9..11  player hp 80 -> 69
+  fight 1 turn 4  actions 12..14  player hp 69 -> 58
+  fight 1 turn 5  actions 15..16  player hp 58 -> 64
 
 report: build/evidence/combat-snapshot.json
 ```
@@ -726,7 +727,7 @@ to be inferred.
 ```
 
 ```output
-generated synthetic fixture: build/evidence/synthetic-engine-alternate.replay.json (alternate line)
+generated synthetic fixture: build/evidence/synthetic-engine-alternate.replay.json (first-fight, alternate line)
 ```
 
 ```bash
@@ -770,7 +771,7 @@ turn detail:
   note: This states differences. It does not score either line, rank them, or say which was better.
   note: Enemy health lost and player health lost count only health that actually came off. Damage either side's block absorbed is not included in those measurements.
   note: The summary's net health change is final health minus starting health: positive is a net gain and negative is a net loss. It includes anything that resolves as combat ends. Turn detail reports gross player health lost during each turn, so the measurements do not have to add up.
-  note: Both lines were replayed through the real engine from the same combat-start boundary. Nothing here is evidence about a fight played by a person in the retail client: the mod host states eligibility and enters no fight, so no live capture has ever been compared.
+  note: Both lines were sampled by the real engine either side of every action, from the same combat-start boundary: a recording replayed headlessly, a fight a person played in the retail client with the Combat Trainer capturing it, or one of each. Which is which is stated by each side's source id, not judged here.
 
 report: build/evidence/combat-comparison.json
 ```
@@ -839,7 +840,7 @@ turn detail:
   note: This states differences. It does not score either line, rank them, or say which was better.
   note: Enemy health lost and player health lost count only health that actually came off. Damage either side's block absorbed is not included in those measurements.
   note: The summary's net health change is final health minus starting health: positive is a net gain and negative is a net loss. It includes anything that resolves as combat ends. Turn detail reports gross player health lost during each turn, so the measurements do not have to add up.
-  note: Both lines were replayed through the real engine from the same combat-start boundary. Nothing here is evidence about a fight played by a person in the retail client: the mod host states eligibility and enters no fight, so no live capture has ever been compared.
+  note: Both lines were sampled by the real engine either side of every action, from the same combat-start boundary: a recording replayed headlessly, a fight a person played in the retail client with the Combat Trainer capturing it, or one of each. Which is which is stated by each side's source id, not judged here.
 
 report: build/evidence/combat-comparison.json
 ```
@@ -859,6 +860,7 @@ end_of_turn_one = next(a["seq"] for a in m["actions"] if a["verb"] == "EndTurn")
 m["run_id"] += "+opening-turn-only"
 m["actions"] = [a for a in m["actions"] if a["seq"] <= end_of_turn_one]
 m["checkpoints"] = [c for c in m["checkpoints"] if c["after_seq"] <= end_of_turn_one]
+m["boundaries"] = [b for b in m["boundaries"] if b["after_seq"] <= end_of_turn_one]
 print(json.dumps(m, indent=2))
 CUT
 ./scripts/arbiter combat-compare build/evidence/opening-turn-only.replay.json manifests/navegreed-OJ-6QXhNgdg.replay.json --out build/evidence 2>&1 | grep -vE '^\[INFO\]|^SentryGodotInitializer|^\[WARN\] Asset not cached|Failed to save progress|^ +at ' | sed '/./,$!d'
@@ -922,7 +924,7 @@ enchant-a-different-card
   first divergence: checkpoint 'floor4-combat-start' (after action 18): combat.hand observed 'CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY', engine produced 'CARD.STRIKE_IRONCLAD|CARD.POMMEL_STRIKE|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD'
 choose-a-different-event-option
   arbiter      : REJECTED
-  first divergence: action 15 (ChooseEventOption): Action 15 (ChooseEventOption) queued 1 card selection(s) that no screen asked for. A recorded selection the engine never consumed means the manifest describes a screen this run does not open.
+  first divergence: action 15 (ChooseEventOption): Action 15 (ChooseEventOption) queued card selection(s) that no screen asked for: action 17 (CARD.DEFEND_IRONCLAD). A recorded selection the engine never consumed means the manifest describes a screen this run does not open.
 target-the-other-enemy
   arbiter      : REJECTED
   first divergence: checkpoint 'floor4-turn2-start' (after action 22): combat.enemy.0.hp observed '14', engine produced '23'
@@ -1090,10 +1092,10 @@ dotnet test sts2-pilot-trainer.sln -c Release --nologo -v quiet 2>&1 | grep -E "
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:   239, Skipped:     0, Total:   239 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42 - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:    14, Skipped:     0, Total:    14 - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
-Passed!  - Failed:     0, Passed:   109, Skipped:     0, Total:   109 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   463, Skipped:     0, Total:   463 - Sts2PilotTrainer.Replay.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    60, Skipped:     0, Total:    60 - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    65, Skipped:     0, Total:    65 - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:   172, Skipped:     0, Total:   172 - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## BaseLib `PowerCmd.Apply` target probe
@@ -1209,6 +1211,7 @@ manifest : navegreed-OJ-6QXhNgdg
   pass  evidence-binding Mode and BaseLib evidence bind to one build and reconstructed history.
   pass  reproduction     The reconstructed history replays through the real engine and matches every observed value.
   pass  covered-fight    The reproduced history covers a whole fight, from its combat start to the end of that fight.
+  pass  combat-boundary  The manifest's combat-start snapshot digest matches a fresh real-engine derivation.
   pass  determinism      Fresh processes produce byte-identical canonical state.
   pass  rejection        Every required corruption applies, and corrupted and incomplete histories are refused.
 

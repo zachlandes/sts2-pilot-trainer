@@ -139,7 +139,9 @@ public class RewardAndScreenVerbTests
     {
         // A card selection has to follow the action that opens its screen. One that
         // does not is an action recorded against a screen this run never opened, and
-        // it has to fail rather than sit in the history doing nothing.
+        // it has to fail rather than sit in the history doing nothing. It is refused
+        // by the action it was queued against, which is the one that could have opened
+        // a screen and did not.
         var result = Replay(Actions(manifest =>
         {
             var actions = manifest.Actions.Take(11).ToList();
@@ -147,7 +149,7 @@ public class RewardAndScreenVerbTests
             return actions;
         }));
 
-        Assert.Contains("no screen consumed it", result.All, StringComparison.Ordinal);
+        Assert.Contains("no screen asked for", result.All, StringComparison.Ordinal);
     }
 
     [GameFact]
@@ -168,7 +170,6 @@ public class RewardAndScreenVerbTests
     }
 
     [GameTheory]
-    [InlineData(15, 0)]
     [InlineData(16, 1)]
     public void APartialReplayCannotConsumeSelectionsOutsideItsHistory(
         int stopAfter, int suppliedSelections)
@@ -179,6 +180,25 @@ public class RewardAndScreenVerbTests
         Assert.Contains("asked for 2 card(s)", result.All, StringComparison.Ordinal);
         Assert.Contains(
             $"the manifest supplies {suppliedSelections}", result.All, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void TheActionAtTheStopPointStillGetsTheSelectionsTheManifestSuppliesForIt()
+    {
+        // Action 15 is the Waterlogged Scriptorium event, which enchants two cards off
+        // a screen answered by actions 16 and 17. Stopping there is how a boundary
+        // whose after_seq opens a screen is snapshotted, and those two selections are
+        // that action's own answer rather than history it never replayed - so it
+        // materialises instead of being refused for an omission the truncation caused.
+        var statePath = Path.Combine(TempDir(), "stop-point.state");
+
+        var result = Arbiter.Run(
+            "replay", Arbiter.Manifest, "--stop-after", "15", "--state-out", statePath);
+
+        Assert.True(result.Verified, result.All);
+        Assert.DoesNotContain("asked for 2 card(s)", result.All, StringComparison.Ordinal);
+        Assert.Contains(
+            "CARD.BASH@ENCHANTMENT.STEADY", File.ReadAllText(statePath), StringComparison.Ordinal);
     }
 
     [GameFact]
@@ -244,8 +264,18 @@ public class RewardAndScreenVerbTests
             })
             .ToList();
 
+        // Boundaries are dropped the same way checkpoints are, and for the same
+        // reason: a boundary names a place in the history, and a variant that removed
+        // the action it names has no such place. Keeping one would fail every test
+        // here at ingestion for a reason that has nothing to do with the verb under
+        // test.
+        var boundaries = manifest.Boundaries
+            .Where(boundary => boundary.AfterSeq == -1 || position.ContainsKey(boundary.AfterSeq))
+            .ToList();
+
         var path = Path.Combine(TempDir(), "verbs.json");
-        ManifestJson.Save(manifest with { Actions = actions, Checkpoints = checkpoints }, path);
+        ManifestJson.Save(
+            manifest with { Actions = actions, Checkpoints = checkpoints, Boundaries = boundaries }, path);
         return path;
     }
 

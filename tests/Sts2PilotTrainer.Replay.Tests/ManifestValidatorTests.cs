@@ -512,8 +512,14 @@ public class ManifestValidatorTests
         After = new Dictionary<string, string>(StringComparer.Ordinal) { ["combat.outcome"] = after },
     };
 
+    /// <summary>
+    /// A generated fixture may declare boundaries. What may be published is the gate's
+    /// question and it refuses a synthetic source outright; what a boundary means is
+    /// where a host can start, which is exactly what a fixture with no video behind it
+    /// is for testing.
+    /// </summary>
     [Fact]
-    public void RejectsASyntheticFixtureThatDeclaresABoundary()
+    public void AcceptsASyntheticFixtureThatDeclaresABoundary()
     {
         var manifest = Fixtures.SyntheticManifest() with
         {
@@ -522,9 +528,17 @@ public class ManifestValidatorTests
 
         var result = ManifestValidator.Validate(manifest);
 
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Problems, problem =>
-            problem.Contains("cannot declare boundaries", StringComparison.Ordinal));
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    /// <summary>And is not required to: most fixtures reach no fight worth standing
+    /// anybody in, and a recording is what has to carry one.</summary>
+    [Fact]
+    public void AcceptsASyntheticFixtureThatDeclaresNoBoundaryAtAll()
+    {
+        var result = ManifestValidator.Validate(Fixtures.SyntheticManifest());
+
+        Assert.True(result.IsValid, result.Describe());
     }
 
     [Fact]
@@ -1260,8 +1274,10 @@ public class ManifestValidatorTests
     {
         // The alphabet is deliberately larger than what is implemented. A named verb
         // that quietly did nothing would be the worst of both worlds, so the ones with
-        // no mapping have to fail at ingestion rather than at replay.
-        var manifest = WithActions(Fixtures.Action(0, ActionVerb.UsePotion, ("slot_index", "0")));
+        // no mapping have to fail at ingestion rather than at replay. Closing a shop is
+        // one of the two: the merchant is a room the run leaves by moving on the map,
+        // so there is nothing behind the verb to run.
+        var manifest = WithActions(Fixtures.Action(0, ActionVerb.CloseShop));
 
         var result = ManifestValidator.Validate(manifest);
 

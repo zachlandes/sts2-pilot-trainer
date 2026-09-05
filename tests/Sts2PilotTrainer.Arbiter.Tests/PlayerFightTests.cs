@@ -38,7 +38,13 @@ public class PlayerFightTests
         var outDir = TempDir();
         var outPath = Path.Combine(outDir, "regenerated.recorded-fights.json");
         var result = Arbiter.Run("recorded-fight", Arbiter.Manifest, "--out", outPath);
-        Assert.True(result.Verified, result.All);
+
+        // The file is written and is the replay's own, and the command still refuses:
+        // this recording declares a combat-start for a fight whose enemy roster the
+        // trace cannot follow, and a fight nobody can summarise is one the retail
+        // client would refuse after the player had fought the whole thing.
+        Assert.False(result.Verified, result.All);
+        Assert.Contains("cannot be summarised", result.All, StringComparison.Ordinal);
 
         var regenerated = RecordedFights.Load(outPath);
         var shipped = RecordedFights.Load(RecordedFightPath);

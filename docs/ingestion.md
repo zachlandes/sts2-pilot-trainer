@@ -95,11 +95,6 @@ list is shorter than its reported count, and refuses an entry with no replay-ris
 Those are load-bearing today and they block a second video recording, because the mods are not
 readable from a video. Relaxing them is a separate decision.
 
-**Re-keying must regenerate the recorded fights.** `manifests/<id>.recorded-fights.json` is bound
-to the manifest's run id and, per fight, to that fight's history hash and combat-start boundary, so
-anything that re-keys a recording to a new build has to regenerate it in the same step or leave the
-two disagreeing.
-
 ## Running it
 
 ```bash

@@ -30,6 +30,63 @@ public class SnapshotCacheKeyTests
         Assert.NotEqual(SnapshotCacheKey.For(manifest, 1), SnapshotCacheKey.For(moved, 1));
     }
 
+    /// <summary>
+    /// A boundary whose own action opens a card screen is answered from the selections
+    /// recorded after it, so those selections determine the state at the boundary and
+    /// have to be in the key. Two recordings that agree up to the end of the turn and
+    /// disagree about which card the screen took are two different states, and serving
+    /// one from the other's cache directory is exactly what the key exists to prevent.
+    /// </summary>
+    [Fact]
+    public void ChangesWhenTheSelectionAnsweringTheBoundarysOwnScreenChanges()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Actions =
+            [
+                Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2")),
+                Fixtures.Action(1, ActionVerb.EndTurn),
+                Fixtures.Action(2, ActionVerb.SelectCardFromScreen,
+                    ("card_id", "CARD.BASH"), ("option_index", "0")),
+            ],
+        };
+        var otherPick = manifest with
+        {
+            Actions =
+            [
+                manifest.Actions[0],
+                manifest.Actions[1],
+                Fixtures.Action(2, ActionVerb.SelectCardFromScreen,
+                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("option_index", "1")),
+            ],
+        };
+
+        Assert.NotEqual(SnapshotCacheKey.For(manifest, 1), SnapshotCacheKey.For(otherPick, 1));
+    }
+
+    /// <summary>
+    /// The action-history hash is not a cache detail: it is written into every
+    /// recorded-fights file as <c>action_history_hash</c> and read back by
+    /// <see cref="RecordedFight.Bind"/>, so its value is a serialized contract. Pinned
+    /// to a literal here so that an edit made for the cache's benefit cannot move run
+    /// identity without somebody deciding to.
+    /// </summary>
+    [Fact]
+    public void HashesAKnownHistoryToItsPublishedValue()
+    {
+        var history = new[]
+        {
+            Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2")),
+            Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3")),
+            Fixtures.Action(2, ActionVerb.SelectCardFromScreen,
+                ("card_id", "CARD.BASH"), ("option_index", "0")),
+        };
+
+        Assert.Equal(
+            "sha256:579a215792fa30eaea5a4fd8bbb673e6f7200d61b69a6788a4c2432494ead75b",
+            SnapshotCacheKey.HashActions(history));
+    }
+
     [Fact]
     public void ChangesWhenTwoActionsAreReordered()
     {

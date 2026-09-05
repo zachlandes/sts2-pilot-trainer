@@ -31,12 +31,41 @@ internal sealed class ManifestCardSelector : ICardSelector
 
     private readonly Queue<Pick> _pending = new();
 
+    /// <summary>
+    /// Whether a screen the manifest is silent about is answered from the front of
+    /// what it offered instead of refused.
+    ///
+    /// Off everywhere but the fixture generator, and it must stay that way: for a
+    /// reconstruction, a screen nobody wrote down is a decision nobody made, and
+    /// answering it would be inventing one. The generator is the one caller with no
+    /// manifest to be silent - it is writing the manifest, and a card screen only
+    /// exists inside the call that opens it, so what it answered is read back out of
+    /// <see cref="TakeImprovised"/> and recorded as the actions that opened it.
+    /// </summary>
+    internal bool AnswersFromTheFrontWhenSilent { get; set; }
+
+    private readonly List<Pick> _improvised = [];
+
+    /// <summary>What this selector answered without being told, since the last time it
+    /// was asked. Empty unless <see cref="AnswersFromTheFrontWhenSilent"/> is on.</summary>
+    internal IReadOnlyList<Pick> TakeImprovised()
+    {
+        var taken = _improvised.ToList();
+        _improvised.Clear();
+        return taken;
+    }
+
     /// <summary>Why the last selection could not be answered, if it could not be.</summary>
     internal string? Refusal { get; private set; }
 
     internal void Enqueue(Pick pick) => _pending.Enqueue(pick);
 
     internal int PendingCount => _pending.Count;
+
+    /// <summary>The queued picks nothing consumed, by the action that recorded each,
+    /// so a refusal names the stray decisions rather than counting them.</summary>
+    internal string DescribePending() =>
+        string.Join(", ", _pending.Select(pick => $"action {pick.Seq} ({pick.CardId})"));
 
     /// <summary>
     /// Raises a refusal, keeping the first one. The first is the one that describes
@@ -104,6 +133,21 @@ internal sealed class ManifestCardSelector : ICardSelector
         IEnumerable<CardModel> options, int minSelect, int maxSelect)
     {
         var offered = options.ToList();
+
+        if (_pending.Count < maxSelect && AnswersFromTheFrontWhenSilent)
+        {
+            var front = offered.Take(maxSelect).ToList();
+            if (front.Count < maxSelect)
+            {
+                Refuse(
+                    $"A card-selection screen asked for {maxSelect} card(s) and offered {offered.Count}.");
+                return Task.FromResult<IEnumerable<CardModel>>([]);
+            }
+
+            _pending.Clear();
+            _improvised.AddRange(front.Select((card, index) => new Pick(-1, card.Id.ToString(), index)));
+            return Task.FromResult<IEnumerable<CardModel>>(front);
+        }
 
         if (_pending.Count < maxSelect)
         {

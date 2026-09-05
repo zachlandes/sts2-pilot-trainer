@@ -16,7 +16,7 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
                             # combat-snapshot | combat-compare | enter-fight | recorded-fight |
-                            # snapshot-restore-probe | migrate-manifest
+                            # snapshot-restore-probe | migrate-manifest | engine-commands
 ./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
 ./scripts/assert-expected-skips.sh          # what CI skips is still what we recorded (--update to re-record)
 ```
@@ -74,7 +74,12 @@ host dispatches on them. Every boundary's digest is engine-produced or captured 
 a live game - no video shows draw order or a random stream's position. Reading an
 older manifest is `ManifestJson`'s job and happens in memory; rewriting one on disk
 happens only in `./scripts/arbiter migrate-manifest`, so reading somebody's evidence
-never edits it.
+never edits it. Which boundary a command means is written the kind's own way -
+`combat_start:2`, `floor_entry:5`, `turn_start:2.3` for the commands that take
+`--boundary`, `--fight n` or `--floor n` for `enter-fight` - and `BoundarySelector` is
+the one reader of a coordinate and the one place a boundary becomes a plan, whichever
+spelling asked for it; an ordinal counted across the list would mean a different thing
+per kind.
 
 **Real-engine reproduction is the publication standard.** `gate` is where it is
 written down and computed. No condition may be satisfied by a cheaper proxy - not
@@ -143,10 +148,10 @@ same two questions for a recording made inside the player's own game.
 **Read [docs/headless-fidelity.md](docs/headless-fidelity.md) before changing what
 the host patches or stands in for.** Each patch has a stated reason and the set is
 deliberately small. `TestMode` in particular reaches further than its name suggests.
-Two screens have no engine command at all - the loot a won fight offers, and the card
-screens a reward or an enchantment opens - so the host drives the first and answers
-the second from the manifest. Neither decides anything, and both refuse where the
-manifest is silent.
+Three screens have no engine command at all - the loot a won fight offers, the chest a
+treasure room opens, and the card screens a reward or an enchantment opens - so the
+host drives the first two and answers the third from the manifest. None of them decides
+anything, and each refuses where the manifest is silent.
 
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the

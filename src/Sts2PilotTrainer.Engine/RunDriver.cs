@@ -2,10 +2,15 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Entities.Potions;
+using MegaCrit.Sts2.Core.Entities.TreasureRelicPicking;
+using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
@@ -21,17 +26,18 @@ namespace Sts2PilotTrainer.Engine;
 /// exist - each of these is a defect in the reconstruction, and the whole value of
 /// the arbiter is that it says so instead of finding something plausible to do.
 ///
-/// Two of the engine's surfaces do not take a command at all: the loot screen a won
-/// fight puts up, and the card screens a reward or an enchantment opens. The retail
-/// UI drives the first and answers the second, and there is no UI here. The driver
-/// therefore stands in for both, and does so narrowly: it offers a finished fight's
-/// room-end rewards through the game's own <c>CombatRoom.OfferRoomEndRewards</c>,
-/// and it answers card screens from the manifest through the game's own
-/// <c>ICardSelector</c> seam. Neither stand-in decides anything; the manifest does,
-/// and where the manifest is silent both refuse. See docs/headless-fidelity.md.
+/// Three of the engine's surfaces do not take a command at all: the loot screen a won
+/// fight puts up, the chest a treasure room opens, and the card screens a reward or an
+/// enchantment opens. The retail UI drives the first two and answers the third, and
+/// there is no UI here. The driver therefore stands in for all three, and does so
+/// narrowly: it offers a finished fight's room-end rewards through the game's own
+/// <c>CombatRoom.OfferRoomEndRewards</c>, it opens the chest through the room's own
+/// reward methods, and it answers card screens from the manifest through the game's
+/// own <c>ICardSelector</c> seam. No stand-in decides anything; the manifest does, and
+/// where the manifest is silent each of them refuses. See docs/headless-fidelity.md.
 ///
-/// Inside the retail client neither stand-in is installed and neither is wanted,
-/// because the screens they answer are on a player's screen. The driver is narrowed
+/// Inside the retail client none of them is installed and none is wanted, because the
+/// screens they answer are on a player's screen. The driver is narrowed
 /// there to the recording's decisions before a fight, and it hands the engine's work
 /// back to the host to wait for rather than draining it - a frame loop is what
 /// drains the queue in there, and blocking for it on the frame thread wedges the
@@ -90,6 +96,14 @@ public sealed class RunDriver : IDisposable
     /// the queue again after a later action cannot offer them twice.</summary>
     private AbstractRoom? _rewardsOfferedForRoom;
 
+    /// <summary>The treasure room whose chest has already been opened, for the same
+    /// reason: opening it twice would roll its gold twice.</summary>
+    private AbstractRoom? _chestOpenedForRoom;
+
+    /// <summary>The treasure room whose relic the manifest has decided about, so that
+    /// leaving one undecided can be refused.</summary>
+    private AbstractRoom? _chestRelicDecidedForRoom;
+
     /// <summary>Sequence numbers of card selections a screen has already consumed,
     /// so the action that records each one can insist it was used.</summary>
     private readonly HashSet<int> _consumedSelections = [];
@@ -112,9 +126,9 @@ public sealed class RunDriver : IDisposable
         _travelInRunningGame = travelInRunningGame;
         _insideRunningGame = EngineHost.Origin == EngineOrigin.RunningGame;
 
-        // Neither stand-in is installed inside the retail client. Both of them answer
-        // a screen on the player's behalf, and in there the player is the one looking
-        // at it.
+        // None of the three stand-ins below is installed inside the retail client. Each
+        // of them answers a screen on the player's behalf, and in there the player is
+        // the one looking at it.
         if (_insideRunningGame) return;
 
         // The game's own seam for answering a card screen without a scene tree.
@@ -138,10 +152,45 @@ public sealed class RunDriver : IDisposable
             _openRewards = set;
             return Task.CompletedTask;
         };
+
+        // A chest's relic is awarded by the relic screen, not by the synchronizer that
+        // decides who gets it. The synchronizer announces the outcome and the screen
+        // hands the relic over; with no screen the run would pick a relic and never
+        // receive one. Subscribed here for the run's lifetime because the synchronizer
+        // outlives any one room.
+        RunManager.Instance.TreasureRoomRelicSynchronizer.RelicsAwarded += AwardChestRelics;
+        _chestRelicsSubscribed = true;
+    }
+
+    /// <summary>Whether this driver subscribed to the chest's award announcement, so
+    /// that disposing one that did not cannot unsubscribe another's handler.</summary>
+    private bool _chestRelicsSubscribed;
+
+    /// <summary>
+    /// Hands over the relics the chest's own synchronizer just awarded, exactly as
+    /// <c>NTreasureRoomRelicCollection</c> does when it animates them onto the belt.
+    ///
+    /// It decides nothing: which relic went to whom is in the results, and a result
+    /// the synchronizer marked skipped is not obtained here either.
+    /// </summary>
+    private static void AwardChestRelics(List<RelicPickingResult> results)
+    {
+        foreach (var result in results
+                     .Where(result => result.type != RelicPickingResultType.Skipped)
+                     .Where(result => result.player is not null))
+        {
+            RelicCmd.Obtain(result.relic.ToMutable(), result.player!).GetAwaiter().GetResult();
+        }
     }
 
     public void Dispose()
     {
+        if (_chestRelicsSubscribed)
+        {
+            RunManager.Instance.TreasureRoomRelicSynchronizer.RelicsAwarded -= AwardChestRelics;
+            _chestRelicsSubscribed = false;
+        }
+
         if (_selectorScope is null) return;
         RewardsSet.testSelector = _previousRewardsSelector;
         _selectorScope.Dispose();
@@ -234,6 +283,7 @@ public sealed class RunDriver : IDisposable
         switch (action.Verb)
         {
             case ActionVerb.ChooseNeowBlessing:
+                QueueFollowingCardSelections(action, upcoming);
                 ChooseEventOption(Arg.Int(action, "option_index"));
                 break;
 
@@ -247,11 +297,11 @@ public sealed class RunDriver : IDisposable
                 break;
 
             case ActionVerb.PlayCard:
-                PlayCard(action);
+                PlayCard(action, upcoming);
                 break;
 
             case ActionVerb.EndTurn:
-                EndTurn();
+                EndTurn(action, upcoming);
                 break;
 
             case ActionVerb.ClaimReward:
@@ -270,11 +320,36 @@ public sealed class RunDriver : IDisposable
                 ConfirmCardSelectionWasConsumed(action);
                 break;
 
+            case ActionVerb.ChooseRestSiteOption:
+                ChooseRestSiteOption(action, upcoming);
+                break;
+
+            case ActionVerb.TakeChestRelic:
+                TakeChestRelic(action);
+                break;
+
+            case ActionVerb.SkipChestRelic:
+                SkipChestRelic(action);
+                break;
+
+            case ActionVerb.ProceedToNextAct:
+                ProceedToNextAct();
+                break;
+
+            case ActionVerb.ShopPurchase:
+                ShopPurchase(action, upcoming);
+                break;
+
+            case ActionVerb.UsePotion:
+                UsePotion(action, upcoming);
+                break;
+
+            case ActionVerb.DiscardPotion:
+                DiscardPotion(action);
+                break;
+
             default:
-                throw new EngineException(
-                    $"Action {action.Seq} uses verb '{action.Verb}', which the format names but this " +
-                    "milestone does not implement. Refusing: a verb that silently does nothing would " +
-                    "produce a replay that looks complete and is not.");
+                throw Unhandled(action);
         }
 
         // A card screen answers inside the engine call the action above made, and the
@@ -288,11 +363,32 @@ public sealed class RunDriver : IDisposable
         if (_selector.PendingCount > 0)
         {
             throw new EngineException(
-                $"Action {action.Seq} ({action.Verb}) queued {_selector.PendingCount} card selection(s) that " +
-                "no screen asked for. A recorded selection the engine never consumed means the manifest " +
-                "describes a screen this run does not open.");
+                $"Action {action.Seq} ({action.Verb}) queued card selection(s) that no screen asked for: " +
+                $"{_selector.DescribePending()}. A recorded selection the engine never consumed means the " +
+                "manifest describes a screen this run does not open.");
         }
     }
+
+    /// <summary>
+    /// The refusal for a verb no case above handles.
+    ///
+    /// Which refusal depends on <see cref="EngineCommands"/>, because the two ways of
+    /// arriving here are different defects. A verb the table does not map is one this
+    /// build has not implemented, and the reason it has not is written down there. A
+    /// verb the table does map and the switch does not handle is drift between the
+    /// two, which is a defect in this file rather than a limit of this build, and
+    /// saying so is what makes the table's coverage checkable at all.
+    /// </summary>
+    private static EngineException Unhandled(ActionRecord action) =>
+        EngineCommands.For(action.Verb) is { } mapped
+            ? new EngineException(
+                $"Action {action.Seq} uses verb '{action.Verb}', which EngineCommands maps onto " +
+                $"{mapped.Describe()} and this driver has no case for. The table and " +
+                "the switch have drifted; one of the two is wrong.")
+            : new EngineException(
+                $"Action {action.Seq} uses verb '{action.Verb}', which the format names but this build " +
+                "does not implement. Refusing: a verb that silently does nothing would produce a replay " +
+                $"that looks complete and is not. {EngineCommands.UnmappedReason(action.Verb)}");
 
     /// <summary>
     /// Puts up the loot a finished fight earned, exactly where the retail client does.
@@ -321,6 +417,49 @@ public sealed class RunDriver : IDisposable
         room.OfferRoomEndRewards().GetAwaiter().GetResult();
         Pump.Drain();
     }
+
+    /// <summary>
+    /// Answers a card screen the manifest is silent about from the front of what it
+    /// offered, and remembers what it answered.
+    ///
+    /// The fixture generator's, and nothing else's: see
+    /// <see cref="ManifestCardSelector.AnswersFromTheFrontWhenSilent"/>. A driver
+    /// standing in for a recording refuses instead, because a screen nobody wrote
+    /// down is a decision nobody made.
+    /// </summary>
+    internal void ImproviseUnrecordedCardSelections() =>
+        _selector.AnswersFromTheFrontWhenSilent = true;
+
+    /// <summary>The screen answers the last action improvised, as the arguments a
+    /// <see cref="ActionVerb.SelectCardFromScreen"/> records, in order.</summary>
+    internal IReadOnlyList<(string CardId, int OptionIndex)> TakeImprovisedCardSelections() =>
+        _selector.TakeImprovised().Select(pick => (pick.CardId, pick.OptionIndex)).ToList();
+
+    /// <summary>
+    /// The kinds still unclaimed on the loot screen, or empty when none is open.
+    ///
+    /// For the fixture generator, which has to decide what a mechanically generated
+    /// history claims and cannot ask the engine directly: the set is parked here by
+    /// the stand-in above rather than held anywhere the run state can see.
+    /// </summary>
+    internal IReadOnlyList<string> UnclaimedRewardKinds =>
+        _openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set)
+            ? set.Rewards.Where(reward => !reward.SuccessfullySelected).Select(KindOf).ToList()
+            : [];
+
+    /// <summary>
+    /// The cards the loot screen's unclaimed card reward is offering, or empty when it
+    /// has none.
+    ///
+    /// For the fixture generator, and for the same reason as above: a card reward is
+    /// answered from inside the call that opens it, so a generated history has to be
+    /// able to name the card it took before making that call.
+    /// </summary>
+    internal IReadOnlyList<string> OfferedCardIds =>
+        _openRewards is { } set && !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(set)
+            ? set.Rewards.OfType<CardReward>().FirstOrDefault(reward => !reward.SuccessfullySelected)
+                ?.Cards.Select(card => card.Id.ToString()).ToList() ?? []
+            : [];
 
     /// <summary>The rewards set currently on offer, or a refusal naming the verb that
     /// needed one.</summary>
@@ -362,7 +501,7 @@ public sealed class RunDriver : IDisposable
                 $"{_session.RunState.CurrentRoom?.RoomType.ToString() ?? "no"} room, not an event.");
         }
 
-        var localEvent = RunManager.Instance.EventSynchronizer?.GetLocalEvent()
+        var localEvent = LocalEvent()
             ?? throw new EngineException(
                 $"Action {action.Seq} chooses an event option, but no event is in progress.");
 
@@ -377,12 +516,40 @@ public sealed class RunDriver : IDisposable
         ChooseEventOption(Arg.Int(action, "option_index"));
     }
 
+    /// <summary>
+    /// The event this player is in, or null when there is none.
+    ///
+    /// The engine's own reader indexes a per-player list and throws out of range when
+    /// the room has no event for this player, which is what a run that diverged
+    /// before this floor looks like from here. Turned into the refusal it is: the
+    /// alternative is an index exception escaping a replay, which says nothing about
+    /// the recording and reads as a defect in this tool rather than a divergence in
+    /// the run.
+    /// </summary>
+    private static EventModel? LocalEvent()
+    {
+        var synchronizer = RunManager.Instance.EventSynchronizer;
+        if (synchronizer is null) return null;
+
+        try
+        {
+            return synchronizer.GetLocalEvent();
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            throw new EngineException(
+                "This room has no event for this player, so there is no option list to choose from. The run " +
+                "generated here is not the one the recording describes; a divergence before this floor is " +
+                "what reaches this point.");
+        }
+    }
+
     private void ChooseEventOption(int optionIndex)
     {
         var synchronizer = RunManager.Instance.EventSynchronizer
             ?? throw new EngineException("No event synchronizer: the run is not in an event room.");
 
-        var localEvent = synchronizer.GetLocalEvent()
+        var localEvent = LocalEvent()
             ?? throw new EngineException("No event is in progress, so no option can be chosen.");
 
         var options = localEvent.CurrentOptions;
@@ -482,6 +649,470 @@ public sealed class RunDriver : IDisposable
     }
 
     /// <summary>
+    /// Drinks one potion off the belt.
+    ///
+    /// The slot is what the video shows and the potion id is what makes a belt that
+    /// has drifted fail here rather than drink whatever is in that slot. Targeting is
+    /// the same question a played card asks and is answered the same way.
+    ///
+    /// A potion can open a screen over the deck or the hand, so the manifest's
+    /// following selections are queued before the engine is asked to drink it.
+    /// </summary>
+    private void UsePotion(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
+    {
+        var potion = PotionInSlot(action);
+        // Only an enemy is ever named. Everything else the potion aims at is the
+        // engine's own default - EnqueueManualUse fills in the drinker where that is
+        // a target the potion accepts - and second-guessing it here would refuse
+        // potions the retail client drinks without asking anybody anything.
+        var target = ResolveTarget(action, potion.TargetType, potion.Id.ToString());
+
+        QueueFollowingCardSelections(action, upcoming);
+
+        potion.EnqueueManualUse(target);
+        Pump.Drain();
+
+        if (Player.PotionSlots[Arg.Int(action, "slot_index")] == potion)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} drank {potion.Id} and it is still on the belt afterwards, so the " +
+                "potion was not used.");
+        }
+
+        OfferRoomEndRewardsIfCombatEnded();
+    }
+
+    /// <summary>
+    /// Throws one potion away.
+    ///
+    /// A decision, and a real one: the belt has three slots and a fourth potion is
+    /// only reachable by giving one up. Issued the way the potion popup's discard
+    /// button issues it, as an action on the run's own queue.
+    /// </summary>
+    private void DiscardPotion(ActionRecord action)
+    {
+        var potion = PotionInSlot(action);
+        var slot = Arg.Int(action, "slot_index");
+
+        RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(
+            new DiscardPotionGameAction(Player, (uint)slot, CombatManager.Instance?.IsInProgress ?? false));
+        Pump.Drain();
+
+        if (Player.PotionSlots[slot] == potion)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} discarded {potion.Id} from slot " +
+                $"{slot.ToString(System.Globalization.CultureInfo.InvariantCulture)} and it is still there " +
+                "afterwards, so the discard did not take effect.");
+        }
+    }
+
+    /// <summary>The potion the manifest names, in the slot the manifest names.</summary>
+    private PotionModel PotionInSlot(ActionRecord action)
+    {
+        var slot = Arg.Int(action, "slot_index");
+        var expectedId = Arg.String(action, "potion_id");
+        var belt = Player.PotionSlots;
+
+        if (slot < 0 || slot >= belt.Count)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} ({action.Verb}) names potion slot {slot}, but the belt has " +
+                $"{belt.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)} slot(s): " +
+                $"{DescribeBelt(belt)}.");
+        }
+
+        var potion = belt[slot]
+            ?? throw new EngineException(
+                $"Action {action.Seq} ({action.Verb}) names potion slot {slot}, which is empty. The belt " +
+                $"is {DescribeBelt(belt)}.");
+
+        return potion.Id.ToString() == expectedId
+            ? potion
+            : throw new EngineException(
+                $"Action {action.Seq} ({action.Verb}) expects {expectedId} in potion slot {slot}, but the " +
+                $"belt holds {potion.Id}. The belt is {DescribeBelt(belt)}. The replay has diverged from " +
+                "the recorded history before this point.");
+    }
+
+    private static string DescribeBelt(IReadOnlyList<PotionModel?> belt) =>
+        string.Join(", ", belt.Select((potion, index) => $"{index}:{potion?.Id.ToString() ?? "empty"}"));
+
+    /// <summary>
+    /// Buys one thing from the merchant.
+    ///
+    /// The kind names which shelf it came off, and the index is the position on that
+    /// shelf. Not one flat position across the whole shop: the merchant's inventory is
+    /// four separate lists plus a card removal, and flattening them would invent an
+    /// ordering the engine does not have. The identity is checked as well, for the
+    /// reason a played card's is - a shop that stocked differently means the run has
+    /// already diverged, and buying whatever sits in that slot would hide it.
+    ///
+    /// A card removal buys a service rather than a thing, and opens a screen over the
+    /// deck; the card that came off it is a separate recorded selection, answered
+    /// through the same selector as every other card screen.
+    /// </summary>
+    private void ShopPurchase(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
+    {
+        if (_session.RunState.CurrentRoom is not MerchantRoom shop)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} buys from the merchant, but this floor is a " +
+                $"{_session.RunState.CurrentRoom?.RoomType.ToString() ?? "no"} room, not a shop.");
+        }
+
+        var inventory = shop.GetLocalInventory();
+        var kind = Arg.String(action, "kind");
+        var entry = kind == ShopPurchaseKinds.CardRemoval
+            ? CardRemovalEntry(action, inventory)
+            : StockedEntry(action, inventory, kind);
+
+        if (!entry.EnoughGold)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} buys a '{kind}' costing " +
+                $"{entry.Cost.ToString(System.Globalization.CultureInfo.InvariantCulture)} and the run has " +
+                $"{Player.Gold.ToString(System.Globalization.CultureInfo.InvariantCulture)} gold. The " +
+                "replay has diverged from the recorded history before this point.");
+        }
+
+        QueueFollowingCardSelections(action, upcoming);
+
+        var bought = entry.OnTryPurchaseWrapper(inventory).GetAwaiter().GetResult();
+        Pump.Drain();
+
+        // A refusal the selector already recorded names the card that disagreed, and
+        // Apply raises it; reporting the purchase failure over the top would bury it.
+        if (!bought && _selector.Refusal is null)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} bought a '{kind}' from the merchant and the engine refused the " +
+                "purchase.");
+        }
+    }
+
+    /// <summary>The card removal on offer, or a refusal saying it is not.</summary>
+    private static MerchantEntry CardRemovalEntry(ActionRecord action, MerchantInventory inventory)
+    {
+        var removal = inventory.CardRemovalEntry
+            ?? throw new EngineException(
+                $"Action {action.Seq} buys a card removal, and this merchant is not offering one.");
+
+        return removal.IsStocked
+            ? removal
+            : throw new EngineException(
+                $"Action {action.Seq} buys a card removal that this merchant has already sold. A shop " +
+                "removes one card per visit.");
+    }
+
+    /// <summary>
+    /// The stocked item at a shelf position, checked against the id the manifest
+    /// names.
+    /// </summary>
+    private static MerchantEntry StockedEntry(
+        ActionRecord action, MerchantInventory inventory, string kind)
+    {
+        var shelf = Shelf(action, inventory, kind);
+        var index = Arg.Int(action, "option_index");
+        var expectedId = Arg.String(action, ShopPurchaseKinds.IdArgument(kind)!);
+
+        if (index < 0 || index >= shelf.Count)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} buys '{kind}' {index}, but this merchant stocks {shelf.Count}: " +
+                $"{DescribeShelf(shelf)}.");
+        }
+
+        var entry = shelf[index];
+        if (!entry.IsStocked)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} buys '{kind}' {index}, which this merchant has already sold. The " +
+                $"shelf is {DescribeShelf(shelf)}.");
+        }
+
+        if (IdOf(entry) != expectedId)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} expects {expectedId} at '{kind}' {index}, but the merchant stocks " +
+                $"{IdOf(entry)}. The shelf is {DescribeShelf(shelf)}. The replay has diverged from the " +
+                "recorded history before this point.");
+        }
+
+        return entry;
+    }
+
+    private static IReadOnlyList<MerchantEntry> Shelf(
+        ActionRecord action, MerchantInventory inventory, string kind) => kind switch
+    {
+        ShopPurchaseKinds.CharacterCard => [.. inventory.CharacterCardEntries],
+        ShopPurchaseKinds.ColorlessCard => [.. inventory.ColorlessCardEntries],
+        ShopPurchaseKinds.Relic => [.. inventory.RelicEntries],
+        ShopPurchaseKinds.Potion => [.. inventory.PotionEntries],
+        _ => throw new EngineException(
+            $"Action {action.Seq} buys a '{kind}', which is not something a merchant sells. Known kinds: " +
+            $"{string.Join(", ", ShopPurchaseKinds.All)}."),
+    };
+
+    /// <summary>What a stocked shelf entry is, as the model id the video shows.</summary>
+    private static string IdOf(MerchantEntry entry) => entry switch
+    {
+        MerchantCardEntry card => card.CreationResult?.Card.Id.ToString() ?? "(sold)",
+        MerchantRelicEntry relic => relic.Model?.Id.ToString() ?? "(sold)",
+        MerchantPotionEntry potion => potion.Model?.Id.ToString() ?? "(sold)",
+        _ => entry.GetType().Name,
+    };
+
+    private static string DescribeShelf(IReadOnlyList<MerchantEntry> shelf) =>
+        shelf.Count == 0
+            ? "empty"
+            : string.Join(", ", shelf.Select((entry, index) =>
+                $"{index}:{IdOf(entry)}{(entry.IsStocked ? "" : " (sold)")}"));
+
+    /// <summary>
+    /// Refuses to leave a room that is still holding a decision the manifest has not
+    /// made.
+    ///
+    /// The engine discards both of these on the way out and says nothing - the rest of
+    /// a loot screen in <c>RewardsSetSynchronizer.BeforeLeavingRoom</c>, an untaken
+    /// chest relic when the treasure room exits. A history that simply omitted the
+    /// decision would therefore replay into exactly the state of one that declined it,
+    /// which is the difference between a reconstruction and a plausible story. Both
+    /// declines have a verb.
+    /// </summary>
+    private void RefuseToLeaveAnUndecidedRoom(string leaving)
+    {
+        if (_openRewards is { } open &&
+            !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(open))
+        {
+            throw new EngineException(
+                $"{leaving} leaves the room while its loot screen is still open ({DescribeRewards(open)}). " +
+                "Every reward is either taken or explicitly skipped; leaving would discard the rest with no " +
+                "record that anybody decided to.");
+        }
+
+        if (_session.RunState.CurrentRoom is TreasureRoom chest &&
+            !ReferenceEquals(_chestRelicDecidedForRoom, chest) &&
+            RunManager.Instance.TreasureRoomRelicSynchronizer.CurrentRelics is { Count: > 0 } offered)
+        {
+            throw new EngineException(
+                $"{leaving} leaves a treasure room whose chest is still offering {DescribeRelics(offered)}. " +
+                "The relic is either taken or explicitly left behind; leaving would discard it with no " +
+                "record that anybody decided to.");
+        }
+    }
+
+    /// <summary>
+    /// Says the run is finished with this act and moves it on to the next.
+    ///
+    /// The engine's own path, which is a vote rather than a call: the client marks the
+    /// local player ready and the synchronizer enters the next act once everybody is.
+    /// In a single-player run that is the same frame, and going straight to
+    /// <c>EnterNextAct</c> instead would skip the act floor the vote advances.
+    ///
+    /// It is a decision because the run stays on the boss's floor until somebody makes
+    /// it, and because everything still on offer there is discarded by it.
+    /// </summary>
+    private void ProceedToNextAct()
+    {
+        RefuseToLeaveAnUndecidedRoom("Proceeding to the next act");
+
+        var from = _session.RunState.CurrentActIndex;
+        var acts = _session.RunState.Acts.Count;
+        if (from + 1 >= acts)
+        {
+            throw new EngineException(
+                $"Proceeding to the next act, but this run's last act is " +
+                $"{(acts - 1).ToString(System.Globalization.CultureInfo.InvariantCulture)} and it is " +
+                "already in it. There is no next act to enter.");
+        }
+
+        RunManager.Instance.ActChangeSynchronizer.SetLocalPlayerReady();
+        Pump.Drain();
+
+        if (_session.RunState.CurrentActIndex == from)
+        {
+            throw new EngineException(
+                $"The run said it was ready to leave act " +
+                $"{from.ToString(System.Globalization.CultureInfo.InvariantCulture)} and the engine did not " +
+                "move it on. An act transition is only offered once the act's boss is beaten.");
+        }
+    }
+
+    /// <summary>
+    /// Opens the chest a treasure room puts in front of the player, exactly where the
+    /// retail client does.
+    ///
+    /// The third screen with no engine command behind it. <c>NTreasureRoom.OpenChest</c>
+    /// is what calls <c>TreasureRoom.DoNormalRewards</c> and
+    /// <c>TreasureRoom.DoExtraRewardsIfNeeded</c>, and nothing else does, so a headless
+    /// replay that walked into a treasure room would find an unopened chest and refuse
+    /// every decision about it. This calls the same two methods at the same point and
+    /// generates nothing itself.
+    ///
+    /// Opening is not a decision and so is not an action; the relic and any rewards set
+    /// it puts up are, and both are refused where the manifest is silent. The relics
+    /// themselves were already rolled when the room was entered, by the engine's own
+    /// <c>BeginRelicPicking</c>. See docs/headless-fidelity.md.
+    /// </summary>
+    private void OpenTreasureChestIfEntered()
+    {
+        if (_session.RunState.CurrentRoom is not TreasureRoom room) return;
+        if (ReferenceEquals(_chestOpenedForRoom, room)) return;
+
+        _chestOpenedForRoom = room;
+        room.DoNormalRewards().GetAwaiter().GetResult();
+        Pump.Drain();
+        room.DoExtraRewardsIfNeeded().GetAwaiter().GetResult();
+        Pump.Drain();
+    }
+
+    /// <summary>The relics a treasure chest is offering, or a refusal naming the verb
+    /// that needed one.</summary>
+    private IReadOnlyList<RelicModel> OpenChestRelics(ActionRecord action)
+    {
+        if (_session.RunState.CurrentRoom is TreasureRoom room &&
+            !ReferenceEquals(_chestRelicDecidedForRoom, room) &&
+            RunManager.Instance.TreasureRoomRelicSynchronizer.CurrentRelics is { Count: > 0 } relics)
+        {
+            return relics;
+        }
+
+        throw new EngineException(
+            $"Action {action.Seq} ({action.Verb}) decides about a treasure chest's relic, and no chest is " +
+            "offering one. A chest offers its relic from the moment the room is entered until the run " +
+            "takes it or leaves it behind, and only once.");
+    }
+
+    /// <summary>
+    /// Takes the relic a chest offered.
+    ///
+    /// Named as well as indexed, for the reason a played card is: the relic a chest
+    /// rolls is a consequence of the whole run before it, and taking whatever sits at
+    /// that position would hide a run that had already diverged.
+    /// </summary>
+    private void TakeChestRelic(ActionRecord action)
+    {
+        var relics = OpenChestRelics(action);
+        var index = Arg.Int(action, "option_index");
+        var expectedId = Arg.String(action, "relic_id");
+
+        if (index < 0 || index >= relics.Count)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} takes chest relic {index}, but this chest offers {relics.Count}: " +
+                $"{DescribeRelics(relics)}.");
+        }
+
+        if (relics[index].Id.ToString() != expectedId)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} expects {expectedId} at chest position {index}, but the engine " +
+                $"offers {relics[index].Id}. The chest is {DescribeRelics(relics)}. The replay has " +
+                "diverged from the recorded history before this point.");
+        }
+
+        _chestRelicDecidedForRoom = _session.RunState.CurrentRoom;
+        RunManager.Instance.TreasureRoomRelicSynchronizer.PickRelicLocally(index);
+        Pump.Drain();
+
+        if (!Player.Relics.Any(relic => relic.Id.ToString() == expectedId))
+        {
+            throw new EngineException(
+                $"Action {action.Seq} took {expectedId} from the chest and the run does not have it " +
+                "afterwards, so the pick did not take effect.");
+        }
+    }
+
+    /// <summary>
+    /// Leaves a chest's relic behind.
+    ///
+    /// A decision, not an absence, for exactly the reason <see cref="SkipRewards"/>
+    /// is: the engine discards an undecided relic when the room is left and says
+    /// nothing, so a history that simply omitted the decision would replay into the
+    /// same state as one that declined it.
+    /// </summary>
+    private void SkipChestRelic(ActionRecord action)
+    {
+        OpenChestRelics(action);
+        _chestRelicDecidedForRoom = _session.RunState.CurrentRoom;
+        RunManager.Instance.TreasureRoomRelicSynchronizer.SkipRelicLocally();
+        Pump.Drain();
+    }
+
+    private static string DescribeRelics(IReadOnlyList<RelicModel> relics) =>
+        relics.Count == 0
+            ? "empty"
+            : string.Join(", ", relics.Select((relic, index) => $"{index}:{relic.Id}"));
+
+    /// <summary>
+    /// Takes one of the rest site's options.
+    ///
+    /// Named as well as indexed, for the reason <see cref="PlayCard"/> is: the index
+    /// is what the video shows somebody click, and the option id is what makes a rest
+    /// site whose options came out differently fail here rather than take whatever is
+    /// in that position. Which options a rest site offers depends on the run that
+    /// reached it - relics add them and a hook can remove them - so position alone
+    /// says nothing.
+    ///
+    /// Some options open a screen over the deck; upgrading a card is the ordinary one.
+    /// Those are answered from the manifest through the same selector every other card
+    /// screen goes through, which is why the following selections are queued first.
+    /// </summary>
+    private void ChooseRestSiteOption(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
+    {
+        if (_session.RunState.CurrentRoom is not RestSiteRoom)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} takes a rest site option, but this floor is a " +
+                $"{_session.RunState.CurrentRoom?.RoomType.ToString() ?? "no"} room, not a rest site.");
+        }
+
+        var synchronizer = RunManager.Instance.RestSiteSynchronizer
+            ?? throw new EngineException(
+                $"Action {action.Seq} takes a rest site option, but no rest site is in progress.");
+
+        var options = synchronizer.GetLocalOptions();
+        var index = Arg.Int(action, "option_index");
+        var expectedId = Arg.String(action, "option_id");
+
+        if (index < 0 || index >= options.Count)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} takes rest site option {index}, but this rest site offers " +
+                $"{options.Count}: {DescribeRestSiteOptions(options)}.");
+        }
+
+        if (options[index].OptionId != expectedId)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} expects rest site option {expectedId} at position {index}, but the " +
+                $"engine offers {options[index].OptionId}. The rest site is " +
+                $"{DescribeRestSiteOptions(options)}. The replay has diverged from the recorded history " +
+                "before this point.");
+        }
+
+        QueueFollowingCardSelections(action, upcoming);
+
+        var taken = synchronizer.ChooseLocalOption(index).GetAwaiter().GetResult();
+        Pump.Drain();
+
+        // A refusal the selector already recorded names the card that disagreed, and
+        // Apply raises it; reporting "the engine refused it" over the top would bury
+        // the useful message.
+        if (!taken && _selector.Refusal is null)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} took rest site option {expectedId} and the engine refused it.");
+        }
+    }
+
+    private static string DescribeRestSiteOptions(IReadOnlyList<RestSiteOption> options) =>
+        options.Count == 0
+            ? "empty"
+            : string.Join(", ", options.Select((option, index) => $"{index}:{option.OptionId}"));
+
+    /// <summary>
     /// Confirms a card the manifest picked off a screen was the card the engine asked
     /// for.
     ///
@@ -551,18 +1182,7 @@ public sealed class RunDriver : IDisposable
 
     private void MoveToMapNode(int act, int row, int column)
     {
-        if (_openRewards is { } open &&
-            !RunManager.Instance.RewardsSetSynchronizer.IsRewardsSetCompleted(open))
-        {
-            // The engine would skip the rest of the set on the way out and say nothing.
-            // A history that walked away from unclaimed loot would then replay exactly
-            // like one that declined it on purpose, which is the difference between a
-            // reconstruction and a plausible story.
-            throw new EngineException(
-                $"A map move leaves the room while its loot screen is still open ({DescribeRewards(open)}). " +
-                "Every reward is either taken or explicitly skipped; leaving would discard the rest with no " +
-                "record that anybody decided to.");
-        }
+        RefuseToLeaveAnUndecidedRoom("A map move");
 
         if (act != _session.RunState.CurrentActIndex)
         {
@@ -597,6 +1217,7 @@ public sealed class RunDriver : IDisposable
         if (!_insideRunningGame)
         {
             Settle(RunManager.Instance.EnterMapCoord(coord));
+            OpenTreasureChestIfEntered();
             return;
         }
 
@@ -613,7 +1234,7 @@ public sealed class RunDriver : IDisposable
         Settle(travel(coord));
     }
 
-    private void PlayCard(ActionRecord action)
+    private void PlayCard(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
     {
         var combat = Player.PlayerCombatState
             ?? throw new EngineException($"Action {action.Seq} plays a card, but the run is not in combat.");
@@ -648,6 +1269,10 @@ public sealed class RunDriver : IDisposable
             throw new EngineException($"Action {action.Seq} cannot play {card.Id}: {reason}.");
         }
 
+        // A card that prompts over the hand or the deck pulls its answer from inside
+        // this call, exactly as an event option's enchantment screen does.
+        QueueFollowingCardSelections(action, upcoming);
+
         RunManager.Instance.ActionQueueSet.EnqueueWithoutSynchronizing(new PlayCardAction(card, target));
         Pump.Drain();
 
@@ -663,21 +1288,37 @@ public sealed class RunDriver : IDisposable
         OfferRoomEndRewardsIfCombatEnded();
     }
 
-    private Creature? ResolveTarget(ActionRecord action, CardModel card)
+    private Creature? ResolveTarget(ActionRecord action, CardModel card) =>
+        ResolveTarget(action, card.TargetType, card.Id.ToString());
+
+    /// <summary>
+    /// Which enemy this decision was aimed at, or null when it aims at nothing the
+    /// player chose.
+    ///
+    /// Asked of the model's own target type rather than of the verb, because a card
+    /// and a potion ask the same question and the engine answers it the same way.
+    /// </summary>
+    private Creature? ResolveTarget(ActionRecord action, TargetType targetType, string modelId)
     {
-        if (card.TargetType != TargetType.AnyEnemy)
+        if (targetType != TargetType.AnyEnemy)
         {
             if (action.Args.ContainsKey("target_index"))
             {
                 throw new EngineException(
-                    $"Action {action.Seq} supplies target_index for {card.Id}, but that card does not target an enemy.");
+                    $"Action {action.Seq} supplies target_index for {modelId}, but that does not target an enemy.");
             }
             return null;
         }
 
-        var enemies = CombatManager.Instance.DebugOnlyGetState()?.Enemies
+        var combat = CombatManager.Instance?.DebugOnlyGetState()
+            ?? throw new EngineException(
+                $"Action {action.Seq} aims {modelId} at an enemy and no fight is in progress here, so there " +
+                "is nobody to aim it at. The run this build generated is not the one the recording " +
+                "describes.");
+
+        var enemies = combat.Enemies
             .Where(e => e is { IsAlive: true })
-            .ToList() ?? [];
+            .ToList();
 
         if (action.Args.TryGetValue("target_index", out var raw))
         {
@@ -691,14 +1332,15 @@ public sealed class RunDriver : IDisposable
         return enemies.Count switch
         {
             1 => enemies[0],
-            0 => throw new EngineException($"Action {action.Seq} plays a targeted card with no living enemy."),
+            0 => throw new EngineException(
+                $"Action {action.Seq} aims {modelId} at an enemy and none is alive."),
             _ => throw new EngineException(
-                $"Action {action.Seq} plays {card.Id}, which targets one enemy, and {enemies.Count} are alive. " +
+                $"Action {action.Seq} uses {modelId}, which targets one enemy, and {enemies.Count} are alive. " +
                 "'target_index' is required - choosing one here would be inventing a decision the player made."),
         };
     }
 
-    private void EndTurn()
+    private void EndTurn(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
     {
         var combat = Player.PlayerCombatState
             ?? throw new EngineException("End turn requested, but the run is not in combat.");
@@ -713,6 +1355,10 @@ public sealed class RunDriver : IDisposable
                     "Only the Play phase accepts player decisions.");
             }
         }
+
+        // An end of turn can prompt too - a power that discards down to a hand size
+        // asks which cards go - and the prompt is answered from inside this call.
+        QueueFollowingCardSelections(action, upcoming);
 
         // The enemy turn is a long chain of awaits. With no frame loop, the ones the
         // engine posts back to the scheduler need to complete inline or the chain

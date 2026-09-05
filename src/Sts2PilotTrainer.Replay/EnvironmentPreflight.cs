@@ -215,13 +215,9 @@ public static class EnvironmentPreflight
     /// for the state to be constructible. The two id lists do have to be known here,
     /// because an id this build never heard of cannot go into a state at all.
     ///
-    /// Nothing populates <see cref="UnlockInventory.ShippedIds"/> yet -
-    /// <c>LocalEnvironment.ReadPrerequisites</c> reads origin, profile and category
-    /// counts only - so on a real installation every exact requirement refuses here as
-    /// unchecked. That is the honest answer rather than a silent pass, and it is inert
-    /// until the recorder produces the first native manifest. The engine reader
-    /// enumerating the shipped epoch and encounter ids is what closes it, and it lands
-    /// with the recorder.
+    /// A reading that could not enumerate what the build ships leaves
+    /// <see cref="UnlockInventory.ShippedIds"/> absent, and every id list then refuses
+    /// here as unchecked. That is the honest answer rather than a silent pass.
     /// </summary>
     private static IEnumerable<PreflightField> EvaluateExactUnlocks(
         UnlockRequirement requirement, LocalPrerequisites actual)
@@ -290,14 +286,24 @@ public static class EnvironmentPreflight
         EnvironmentIdentity expected, LocalPrerequisites actual)
     {
         var wanted = string.Join(", ", expected.Acts.Value);
-        if (actual.LockedActs.Count == 0)
+        if (actual.LockedActs is not { } locked)
+        {
+            return new PreflightField(
+                "acts_unlocked", wanted, "not checked", false,
+                "The unlock state a run here would be generated against could not be built, so the game was " +
+                "never asked which of these acts it leaves locked. An unchecked requirement reported as met " +
+                "is the answer this project exists to prevent; the requirement this environment cannot meet " +
+                "is reported above.");
+        }
+
+        if (locked.Count == 0)
         {
             return new PreflightField("acts_unlocked", wanted, "all unlocked", true);
         }
 
         return new PreflightField(
-            "acts_unlocked", wanted, $"locked: {string.Join(", ", actual.LockedActs)}", false,
-            $"This environment cannot climb {string.Join(", ", actual.LockedActs)}: the game reports the act " +
+            "acts_unlocked", wanted, $"locked: {string.Join(", ", locked)}", false,
+            $"This environment cannot climb {string.Join(", ", locked)}: the game reports the act " +
             "locked under the unlock state a run here would be generated against. An act that is not unlocked " +
             "is not merely unavailable - the run would take the other variant shipped at the same index, which " +
             $"generates different content from the same seed while producing the same map. {UnlockRemediation}");

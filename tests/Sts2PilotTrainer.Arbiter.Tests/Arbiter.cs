@@ -43,6 +43,27 @@ internal static class Arbiter
     internal static string Manifest =>
         Path.Combine(RepoRoot, "manifests", "navegreed-OJ-6QXhNgdg.replay.json");
 
+    /// <summary>
+    /// The engine-generated whole-act history, on disk: nine fights, seventeen floor
+    /// arrivals and the turns within them. The one committed history with more than
+    /// one boundary of every kind, which is what a selector needs to be exercised on.
+    /// </summary>
+    internal static string WholeAct =>
+        Path.Combine(
+            RepoRoot, "src", "Sts2PilotTrainer.Replay", "Fixtures",
+            "synthetic-v0111-whole-act.replay.json");
+
+    /// <summary>
+    /// The engine-generated history that stops at the first turn a decision begins: its
+    /// turn-two boundary of the last fight is named after an end of turn whose own card
+    /// screen the next two actions answer. The one committed history where a boundary's
+    /// own action opens a screen.
+    /// </summary>
+    internal static string ScreenAtBoundary =>
+        Path.Combine(
+            RepoRoot, "src", "Sts2PilotTrainer.Replay", "Fixtures",
+            "synthetic-v0111-screen-at-boundary.replay.json");
+
     internal static string MapObservation =>
         Path.Combine(RepoRoot, "manifests", "navegreed-OJ-6QXhNgdg.map-observation.json");
 

@@ -193,7 +193,7 @@ public sealed record EligibilityScreen(
         claimed.Add(ActsField);
         foreach (var act in expected.Acts.Value)
         {
-            var locked = reading.LockedActs.Contains(act, StringComparer.Ordinal);
+            var locked = reading.LockedActs?.Contains(act, StringComparer.Ordinal) ?? true;
             rows.Add(new EligibilityRow(
                 $"Act: {ModelIdNames.Display(act)} unlocked",
                 locked ? RequirementState.NotMet : RequirementState.Met,

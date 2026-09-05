@@ -51,9 +51,9 @@ mechanism rather than an unsupported hook.
 | `SaveManager.SaveRun`, `SaveProgressFile`, `SavePrefsFile`, `SaveProfileFile` | **The player's save directory is a read-only input.** The run is created with `shouldSave: false`, but the engine still reaches for the save subsystem on room entry. |
 | `LocManager.GetTable`, `LocString.GetFormattedText/GetRawText`, `LocTable.*` | Localization is stubbed with no data at all — see below. |
 
-### Two screens the host has to stand in for
+### Three screens the host has to stand in for
 
-The engine does not take a command for everything a player does. Two of its surfaces
+The engine does not take a command for everything a player does. Three of its surfaces
 are driven by the UI, and there is no UI here.
 
 **The loot screen a won fight puts up.** `NCombatUi.ShowRewards` waits out the death
@@ -91,11 +91,24 @@ them - are handed to the selector before the call is made. Only a contiguous run
 `SelectCardFromScreen` immediately after the opening action is ever read, and a
 selection no screen consumed is refused.
 
-**Neither stand-in is installed inside the retail client.** The same `RunDriver` runs
-there, walking a constructed run through the recording's decisions before its fight,
-and in there both of these screens are on a player's screen: answering one would take
-a decision away from somebody who was looking at it. So the driver installs no
-selector and no rewards delegate when the engine's origin is a running game, and
+**The chest a treasure room puts in front of the player.** `NTreasureRoom.OpenChest`
+is what calls `TreasureRoom.DoNormalRewards` and `TreasureRoom.DoExtraRewardsIfNeeded`,
+and nothing else does, so a headless replay that walked into a treasure room would
+find an unopened chest and refuse every decision about it.
+The driver calls the same two methods at the same point - immediately after the map
+move that entered the room - and generates nothing itself: the relics were rolled by
+the engine's own `BeginRelicPicking` when the room was entered, and the gold and any
+extra rewards are the engine's too.
+
+Opening is not a decision. Taking the relic is `TakeChestRelic` and leaving it is
+`SkipChestRelic`, for exactly the reason `SkipRewards` exists: the engine discards an
+undecided relic when the room is left and says nothing, so a history that omitted the
+decision would replay into the state of one that declined it. A map move or an act
+transition that would leave either decision unmade is refused.
+
+**None of these three stand-ins is installed inside the retail client.**
+The same `RunDriver` runs there, walking a constructed run through the recording's decisions before its fight, and in there each of these is on a player's screen: answering one would take a decision away from somebody who was looking at it, and the client opens its own chest through `NTreasureRoom.OpenChest`.
+So the driver installs no selector, no rewards delegate and no chest opening when the engine's origin is a running game, and
 narrows itself to the three verbs that reach a decision before a fight - the opening
 blessing, an event option and a map move. Every other verb refuses there, including
 the combat ones, because the fight is the player's. See
@@ -185,6 +198,26 @@ A separate history-bound probe therefore records every `PowerCmd.Apply` call in 
 
 **The replay machinery has independent synthetic evidence** — a mechanically generated fixture uses a seed and action sequence absent from the VOD artifacts and pins its engine-produced checkpoints.
 Fresh-process determinism, corruption rejection, and snapshot restore are exercised against that fixture, so those checks do not borrow their expected values from the ineligible VOD trace.
+
+Regenerating a committed fixture is two commands, in order, and each committed fixture has its own journey.
+Every pair below is complete on its own: run one pair to regenerate one fixture, or paste the whole block to regenerate all three.
+
+```bash
+D=src/Sts2PilotTrainer.Replay/Fixtures
+
+./scripts/arbiter generate-synthetic-fixture --out $D/synthetic-v0111-pilot-trainer.replay.json --journey first-fight --line reference
+./scripts/arbiter migrate-manifest $D/synthetic-v0111-pilot-trainer.replay.json --derive-boundaries
+
+./scripts/arbiter generate-synthetic-fixture --out $D/synthetic-v0111-whole-act.replay.json --journey whole-act
+./scripts/arbiter migrate-manifest $D/synthetic-v0111-whole-act.replay.json --derive-boundaries
+
+./scripts/arbiter generate-synthetic-fixture --out $D/synthetic-v0111-screen-at-boundary.replay.json --journey screen-at-boundary
+./scripts/arbiter migrate-manifest $D/synthetic-v0111-screen-at-boundary.replay.json --derive-boundaries
+```
+
+Two ways to get this wrong, and neither one announces itself.
+`--journey` defaults to `first-fight`, so omitting it on either of the other two writes a first-fight history at the whole-act or screen-at-boundary path, and the tests that expect nine fights or a card screen at a boundary then fail against a file that is perfectly well formed.
+And generation cannot know a boundary - only a replay through the real engine produces one - so a fixture written without the `migrate-manifest --derive-boundaries` step carries no `boundaries` at all, the validator does not catch it, and every game-free test that selects one out of it fails with no hint of why.
 
 ## What is still not established
 

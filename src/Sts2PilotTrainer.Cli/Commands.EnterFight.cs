@@ -36,14 +36,37 @@ internal static partial class Commands
         var recording = ManifestJson.Load(manifestPath);
         if (Args.Value(args, "--control") is { } controlName)
         {
-            recording = ApplyEntryControl(recording, controlName);
+            recording = ApplyEntryControl(recording, controlName, PlanFor(recording, args));
         }
 
-        var creator = RecordingIdentity.Creator(recording);
-        var progress = ParseProgress(args);
+        // Nullable, because a generated fixture has nobody behind it. Every caption
+        // below is a player-facing sentence about a person, so where there is no
+        // person there is no caption - the decisions are printed as themselves.
+        var creator = RecordingIdentity.CreatorOrNull(recording);
+        if (Args.Has(args, "--play") && creator is null)
+        {
+            throw new ManifestException(
+                $"--play plays the fight back as {recording.RunId}'s creator, and this recording does not say " +
+                "whose run it is. Every line the result screen prints names them, so there is nobody to " +
+                "attribute the comparison to. Enter the boundary without --play, or use a recording that " +
+                "carries source.video.channel_name.");
+        }
+
+        if (Args.Has(args, "--play") && Args.Value(args, "--floor") is not null)
+        {
+            throw new ManifestException(
+                "--play plays a recorded fight back and the unit it compares is a whole fight, which a floor " +
+                "arrival is not the boundary of. Ask for the fight with --fight n, or enter the floor " +
+                "without --play.");
+        }
+
+        // The state the recording's run is generated against, which is the recorded
+        // player's own where the recording carries it, exactly as replay resolves it.
+        var progress = ParseProgress(args, RecordedFightEntry.SuppliedProgressFor(recording));
 
         Console.WriteLine($"recording       : {recording.RunId}");
-        Console.WriteLine($"creator         : {creator}");
+        Console.WriteLine(
+            $"creator         : {creator ?? "none - a generated fixture, with nobody to attribute it to"}");
         Console.WriteLine($"progress        : {progress} - {LocalEnvironment.OriginOf(progress)}");
 
         var profileBefore = ProfileReading(recording.Environment);
@@ -51,7 +74,7 @@ internal static partial class Commands
         Console.WriteLine($"profile before  : {profileBefore}");
         Console.WriteLine();
 
-        using var entry = RecordedFightEntry.StartHeadless(recording, progress);
+        using var entry = RecordedFightEntry.StartHeadless(recording, PlanFor(recording, args), progress);
         var plan = entry.Plan;
 
         // Every caption the mod shows, produced by the mod's own wording owner from
@@ -61,21 +84,31 @@ internal static partial class Commands
         var steps = new List<object>();
 
         Console.WriteLine(
-            $"{creator}'s decisions before the fight: " +
-            $"{plan.PrefightActions.Count.ToString(CultureInfo.InvariantCulture)}, " +
-            $"combat starts after action {plan.CombatStartSeq.ToString(CultureInfo.InvariantCulture)}");
-        Console.WriteLine($"  {TrainerCopy.ChoicesShownAsRecorded(creator)}");
+            $"decisions before {plan.Describe()}: " +
+            $"{plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)}, " +
+            $"reached after action {plan.BoundarySeq.ToString(CultureInfo.InvariantCulture)}");
+        if (creator is not null) Console.WriteLine($"  {TrainerCopy.ChoicesShownAsRecorded(creator)}");
         Console.WriteLine();
 
-        while (!entry.AtCombatStart)
+        while (!entry.AtBoundary)
         {
             var action = entry.NextStep!;
-            var choice = entry.DescribeNextStep();
-            choices.Add(choice);
-            var journey = PrefightJourney.For(creator, choices, plan.PrefightActions.Count);
-            var step = journey.Steps[^1];
 
-            Console.WriteLine($"  [{journey.Chip}]  {step.Counter}   {step.Caption}");
+            // Only some decisions have words. A journey to a later fight walks through
+            // that fight's predecessors - cards played, turns ended, loot taken - and
+            // those are executed and printed as themselves rather than captioned.
+            var choice = creator is null ? null : entry.DescribeNextStepOrNull();
+            if (choice is not null) choices.Add(choice);
+            var journey = choice is null
+                ? null
+                : PrefightJourney.For(creator!, choices, plan.PrefixActions.Count);
+
+            var step = journey?.Steps[^1];
+            if (journey is not null && step is not null)
+            {
+                Console.WriteLine($"  [{journey.Chip}]  {step.Counter}   {step.Caption}");
+            }
+
             Console.WriteLine(
                 $"      action {action.Seq.ToString(CultureInfo.InvariantCulture)} {action.Verb} " +
                 $"{string.Join(" ", action.Args.Select(arg => $"{arg.Key}={arg.Value}"))}");
@@ -83,9 +116,9 @@ internal static partial class Commands
             entry.AdvanceOneStep();
             steps.Add(new
             {
-                number = step.Number,
-                counter = step.Counter,
-                caption = step.Caption,
+                number = step?.Number,
+                counter = step?.Counter,
+                caption = step?.Caption,
                 seq = action.Seq,
                 verb = action.Verb.ToString(),
                 args = action.Args,
@@ -102,7 +135,7 @@ internal static partial class Commands
                 "where the recording's did is refused rather than answered:");
             try
             {
-                entry.VerifyCombatStart();
+                entry.VerifyBoundary();
             }
             catch (EngineException refusal)
             {
@@ -112,19 +145,19 @@ internal static partial class Commands
             return 1;
         }
 
-        var equality = entry.VerifyCombatStart();
+        var equality = entry.VerifyBoundary();
         var cachedDigest = CachedSnapshotDigest(plan, cacheDir, out var snapshotSource);
         if (cachedDigest is not null &&
             !string.Equals(cachedDigest, equality.ExpectedDigest, StringComparison.Ordinal))
         {
             throw new ManifestException(
-                $"The cached combat-start snapshot is {cachedDigest}, but the recording declares " +
-                $"{equality.ExpectedDigest}. Re-run combat-snapshot before entering the fight.");
+                $"The cached snapshot for {plan.Describe()} is {cachedDigest}, but the recording declares " +
+                $"{equality.ExpectedDigest}. Re-run combat-snapshot before entering this boundary.");
         }
 
         Console.WriteLine();
         Console.WriteLine(
-            $"combat start    : checkpoint '{plan.Boundary.Id}', " +
+            $"boundary        : checkpoint '{plan.Boundary.Id}', " +
             $"{equality.Comparisons.Count.ToString(CultureInfo.InvariantCulture)} observed value(s)");
         foreach (var comparison in equality.Comparisons)
         {
@@ -148,13 +181,16 @@ internal static partial class Commands
 
         Console.WriteLine();
         Console.WriteLine(equality.Matches
-            ? $"ENTERED - this game is standing in {creator}'s fight, at the recorded combat start."
+            ? $"ENTERED - this game is standing at {plan.Describe()}" +
+              $"{(creator is null ? "" : $" of {creator}'s run")}, exactly as the recording records it."
             : "REFUSED - " + equality.Refusal);
 
         object? played = null;
         if (Args.Has(args, "--play") && equality.Matches)
         {
-            played = PlayAndCompare(entry, equality, creator, manifestPath, Args.Value(args, "--recorded-fight"));
+            played = PlayAndCompare(
+                entry, equality, RecordingIdentity.Creator(recording), manifestPath,
+                Args.Value(args, "--recorded-fight"));
         }
 
         artifact.WriteAtomic(
@@ -167,10 +203,11 @@ internal static partial class Commands
                 control = Args.Value(args, "--control"),
                 progress = progress.ToString(),
                 progress_origin = entry.ProgressOrigin,
-                combat_start_seq = plan.CombatStartSeq,
+                boundary = plan.Describe(),
+                boundary_seq = plan.BoundarySeq,
                 boundary_checkpoint = plan.Boundary.Id,
                 steps,
-                combat_start_matches = equality.Matches,
+                boundary_matches = equality.Matches,
                 comparisons = equality.Comparisons,
                 recorded_snapshot_digest = equality.ExpectedDigest,
                 this_game_digest = equality.ActualDigest,
@@ -190,6 +227,45 @@ internal static partial class Commands
         Console.WriteLine($"report: {Paths.Display(artifact.Path)}");
         return equality.Matches && profileUnchanged ? 0 : 1;
     }
+
+    /// <summary>
+    /// Which boundary of the recording to walk to.
+    ///
+    /// The recording's first fight unless asked otherwise, because that is what this
+    /// command was for when there was one boundary. A fight and a floor are different
+    /// destinations rather than two ways of saying one, so asking for both is refused.
+    /// </summary>
+    private static IBoundaryPlan PlanFor(ReplayManifest recording, string[] args)
+    {
+        var fight = Args.Value(args, "--fight");
+        var floor = Args.Value(args, "--floor");
+
+        if (fight is not null && floor is not null)
+        {
+            throw new ManifestException(
+                "enter-fight takes --fight or --floor, not both. They are different places to be stood.");
+        }
+
+        var selector = floor is not null
+            ? new BoundarySelector
+            {
+                Kind = ReplayBoundary.FloorEntryKind,
+                Floor = Ordinal(floor, "--floor"),
+            }
+            : fight is null
+                ? BoundarySelector.FirstFight
+                : new BoundarySelector
+                {
+                    Kind = ReplayBoundary.CombatStartKind,
+                    Fight = Ordinal(fight, "--fight"),
+                };
+
+        return selector.PlanFor(recording);
+    }
+
+    private static int Ordinal(string value, string option) =>
+        BoundarySelector.PositiveOrdinal(value)
+            ?? throw new ManifestException($"{option} takes a whole number from 1, not '{value}'.");
 
     /// <summary>
     /// Plays the recording's own fight through the player-side capture and compares
@@ -212,7 +288,7 @@ internal static partial class Commands
         RecordedFightEntry entry, BoundaryEquality equality, string creator, string manifestPath,
         string? recordedFightPath)
     {
-        recordedFightPath ??= manifestPath.Replace(".replay.json", ".recorded-fights.json", StringComparison.Ordinal);
+        recordedFightPath ??= RecordedFightPathFor(manifestPath);
         var recorded = RecordedFights.Load(recordedFightPath);
         recorded.Bind(entry.Manifest);
 
@@ -232,7 +308,7 @@ internal static partial class Commands
             "stops what a won fight would write");
 
         var yours = capture.Project();
-        var comparison = CombatComparison.Between(yours, recorded.Projection(entry.Plan.Fight));
+        var comparison = CombatComparison.Between(yours, recorded.Projection(entry.Fight));
         var screen = FightResultScreen.For(creator, comparison);
 
         Panel(screen);
@@ -255,7 +331,8 @@ internal static partial class Commands
     /// damaged a card play would leave the entry boundary untouched and prove nothing
     /// about it.
     /// </summary>
-    private static ReplayManifest ApplyEntryControl(ReplayManifest manifest, string name)
+    private static ReplayManifest ApplyEntryControl(
+        ReplayManifest manifest, string name, IBoundaryPlan plan)
     {
         var control = Corruption.All.FirstOrDefault(candidate => candidate.Name == name)
             ?? throw new ManifestException(
@@ -274,7 +351,7 @@ internal static partial class Commands
         // boundary untouched, and an entry that then succeeded would look like
         // evidence that drift is caught when nothing had drifted. So the control has
         // to reach the prefix, and one that does not is refused rather than run.
-        var prefix = RecordedFightPlan.For(manifest).PrefightActions;
+        var prefix = plan.PrefixActions;
         var damagedPrefix = damaged.Actions
             .OrderBy(action => action.Seq)
             .Take(prefix.Count)
@@ -286,8 +363,8 @@ internal static partial class Commands
         if (!reachesPrefix)
         {
             throw new ManifestException(
-                $"Control '{control.Name}' changes nothing the recording decides before its fight, so entering " +
-                "the damaged history would prove nothing about the combat-start boundary. Use a control that " +
+                $"Control '{control.Name}' changes nothing the recording decides before {plan.Describe()}, so " +
+                "entering the damaged history would prove nothing about that boundary. Use a control that " +
                 "damages one of the first " +
                 $"{prefix.Count.ToString(CultureInfo.InvariantCulture)} action(s).");
         }
@@ -307,7 +384,7 @@ internal static partial class Commands
     /// <summary>The digest the combat-start snapshot cache holds for this exact
     /// history, when this machine has materialised it.</summary>
     private static string? CachedSnapshotDigest(
-        RecordedFightPlan plan, string cacheDir, out string source)
+        IBoundaryPlan plan, string cacheDir, out string source)
     {
         var directory = plan.SnapshotKey.ResolveCacheDirectory(cacheDir);
         var path = SnapshotCacheKey.ResolveCacheArtifact(directory, "state.canonical");

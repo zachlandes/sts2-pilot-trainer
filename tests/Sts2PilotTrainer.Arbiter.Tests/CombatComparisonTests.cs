@@ -188,6 +188,14 @@ public class CombatComparisonTests
                 Checkpoints = manifest.Checkpoints
                     .Where(checkpoint => checkpoint.AfterSeq <= throughFirstTurn[^1].Seq)
                     .ToList(),
+
+                // Boundaries after the cut are dropped with the actions they name. A
+                // boundary is a place in the history, and a history that stops before
+                // it has no such place - keeping one would refuse this manifest at
+                // ingestion, which is not the refusal this test is about.
+                Boundaries = manifest.Boundaries
+                    .Where(boundary => boundary.AfterSeq <= throughFirstTurn[^1].Seq)
+                    .ToList(),
             },
             path);
         return path;

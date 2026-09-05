@@ -23,10 +23,10 @@ public static partial class ManifestValidator
     /// <summary>
     /// The generated engine fixture's current shape. Pinned rather than accepted as
     /// any version, so a fixture emitted by an older generator cannot pass as one this
-    /// build's claims are made about. Version 2 plays its combat to the end; version 1
-    /// stopped after the opening turn.
+    /// build's claims are made about. Version 3 can walk a whole act; version 2 played
+    /// its combat to the end; version 1 stopped after the opening turn.
     /// </summary>
-    public const int SyntheticFixtureVersion = 2;
+    public const int SyntheticFixtureVersion = 3;
 
     private static readonly string[] KnownGameModes = ["standard", "custom", "daily"];
 
@@ -570,28 +570,19 @@ public static partial class ManifestValidator
     /// <see cref="RecordedFights.From"/> cuts only finished fights, so both directions
     /// of the rule are asked of the same set.
     ///
-    /// The rule is only ever asked of a manifest that already carries a verified
-    /// trace. Nothing re-validates what <c>replay --out</c> writes, so it does not
-    /// bite on the publication path today: the shipped recording carries one
-    /// combat_start while its history reaches further. Deriving the remaining
-    /// boundaries through the engine and putting this check on the publication path is
-    /// the next phase's work.
+    /// A generated fixture may declare boundaries and is not required to. The rule
+    /// that it may not was written when a boundary meant a publication claim; it does
+    /// not - what may be published is the gate's question, and the gate refuses a
+    /// synthetic source outright. What a boundary means is where a host can start,
+    /// which is exactly what a fixture with no video behind it is for testing. A
+    /// fixture is not required to carry one because most of them reach no fight worth
+    /// standing anybody in.
     /// </summary>
     private static void ValidateBoundaries(ReplayManifest manifest, List<string> problems)
     {
         var boundaries = manifest.Boundaries;
         var maxSeq = manifest.Actions.Count - 1;
-
-        if (manifest.Source.Kind == "synthetic-engine")
-        {
-            if (boundaries.Count > 0)
-            {
-                problems.Add(
-                    "a synthetic-engine fixture cannot declare boundaries. It makes no publication claim and " +
-                    "there is nobody to stand in it.");
-            }
-            return;
-        }
+        var isFixture = manifest.Source.Kind == "synthetic-engine";
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var boundary in boundaries)
@@ -688,7 +679,7 @@ public static partial class ManifestValidator
             }
         }
 
-        if (!boundaries.Any(boundary => boundary.IsCombatStart))
+        if (!isFixture && !boundaries.Any(boundary => boundary.IsCombatStart))
         {
             problems.Add(
                 "boundaries names no combat_start. A recording must carry the boundary a retail host compares " +
@@ -948,6 +939,47 @@ public static partial class ManifestValidator
         }
     }
 
+    /// <summary>
+    /// What a shop purchase has to name, which depends on what it bought.
+    ///
+    /// Four of the merchant's five kinds buy a thing that sits at a position on a
+    /// shelf, and both the position and the thing's id are recorded - the position is
+    /// what the video shows somebody click and the id is what makes a differently
+    /// stocked shop fail loudly. The fifth buys a card removal, which has no shelf and
+    /// no id; the card it removes is a separate selection off the screen it opens.
+    /// </summary>
+    private static void ValidateShopPurchase(ActionRecord action, List<string> problems)
+    {
+        if (!action.Args.TryGetValue("kind", out var kind)) return;
+
+        if (!ShopPurchaseKinds.All.Contains(kind, StringComparer.Ordinal))
+        {
+            problems.Add(
+                $"actions[{action.Seq}] ({action.Verb}) argument 'kind' is '{kind}'. Known kinds: " +
+                $"{string.Join(", ", ShopPurchaseKinds.All)}.");
+            return;
+        }
+
+        var idArgument = ShopPurchaseKinds.IdArgument(kind);
+        var expected = idArgument is null ? Array.Empty<string>() : [idArgument, "option_index"];
+
+        foreach (var name in expected.Where(name => !action.Args.ContainsKey(name)))
+        {
+            problems.Add(
+                $"actions[{action.Seq}] ({action.Verb}) buys a '{kind}' and is missing required argument " +
+                $"'{name}'.");
+        }
+
+        foreach (var name in new[] { "card_id", "relic_id", "potion_id", "option_index" }
+                     .Where(name => !expected.Contains(name, StringComparer.Ordinal))
+                     .Where(action.Args.ContainsKey))
+        {
+            problems.Add(
+                $"actions[{action.Seq}] ({action.Verb}) buys a '{kind}' and carries '{name}', which that " +
+                "kind of purchase does not have.");
+        }
+    }
+
     private static void ValidateActionArguments(ActionRecord action, List<string> problems)
     {
         if (action.Args is null)
@@ -1017,6 +1049,47 @@ public static partial class ManifestValidator
                 allowed = [.. required, Corruption.AlternativeOptionIndex];
                 nonNegativeIntegers = ["option_index", Corruption.AlternativeOptionIndex];
                 break;
+            case ActionVerb.UsePotion:
+                required = ["potion_id", "slot_index"];
+                allowed = [.. required, "target_index"];
+                nonNegativeIntegers = ["slot_index", "target_index"];
+                break;
+            case ActionVerb.DiscardPotion:
+                required = ["potion_id", "slot_index"];
+                allowed = required;
+                nonNegativeIntegers = ["slot_index"];
+                break;
+            case ActionVerb.ShopPurchase:
+                // The id and the index are required for four of the five kinds and
+                // refused for the fifth, which is checked below where the kind is
+                // known: a card removal buys a service and has nothing to name.
+                required = ["kind"];
+                allowed = ["kind", "option_index", "card_id", "relic_id", "potion_id"];
+                nonNegativeIntegers = ["option_index"];
+                break;
+            case ActionVerb.ProceedToNextAct:
+                required = [];
+                allowed = [];
+                nonNegativeIntegers = [];
+                break;
+            case ActionVerb.TakeChestRelic:
+                required = ["relic_id", "option_index"];
+                allowed = required;
+                nonNegativeIntegers = ["option_index"];
+                break;
+            case ActionVerb.SkipChestRelic:
+                required = [];
+                allowed = [];
+                nonNegativeIntegers = [];
+                break;
+            case ActionVerb.ChooseRestSiteOption:
+                // Named as well as positioned, for the reason a played card is: which
+                // options a rest site offers is a consequence of the run that reached
+                // it, so an index alone names nothing that can be checked.
+                required = ["option_id", "option_index"];
+                allowed = required;
+                nonNegativeIntegers = ["option_index"];
+                break;
             default:
                 problems.Add(
                     $"actions[{action.Seq}] uses verb '{action.Verb}', which this manifest version does not implement.");
@@ -1061,6 +1134,21 @@ public static partial class ManifestValidator
             problems.Add($"actions[{action.Seq}] ({action.Verb}) argument 'event_id' is empty.");
         }
 
+        if (action.Args.TryGetValue("option_id", out var optionId) && string.IsNullOrWhiteSpace(optionId))
+        {
+            problems.Add($"actions[{action.Seq}] ({action.Verb}) argument 'option_id' is empty.");
+        }
+
+        if (action.Args.TryGetValue("relic_id", out var relicId) && string.IsNullOrWhiteSpace(relicId))
+        {
+            problems.Add($"actions[{action.Seq}] ({action.Verb}) argument 'relic_id' is empty.");
+        }
+
+        if (action.Args.TryGetValue("potion_id", out var potionId) && string.IsNullOrWhiteSpace(potionId))
+        {
+            problems.Add($"actions[{action.Seq}] ({action.Verb}) argument 'potion_id' is empty.");
+        }
+
         // A reward kind the driver cannot name is refused at ingestion rather than at
         // replay, because a manifest that says 'coins' would otherwise look valid right
         // up until an engine is spent on it.
@@ -1072,6 +1160,8 @@ public static partial class ManifestValidator
                 $"kinds: {string.Join(", ", ClaimableRewardTypes)}. A card reward opens a second screen and " +
                 "is taken with TakeCard, which records which card came back.");
         }
+
+        if (action.Verb == ActionVerb.ShopPurchase) ValidateShopPurchase(action, problems);
 
         // An alternative a control is meant to take has to differ from what was taken,
         // or the control corrupts nothing and an arbiter that accepted it would be

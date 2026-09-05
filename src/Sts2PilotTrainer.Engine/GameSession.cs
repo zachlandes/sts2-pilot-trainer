@@ -317,17 +317,73 @@ public sealed class GameSession
 /// <summary>
 /// Which player-progress model a run is generated against. Named rather than
 /// assumed, because the game's content generation reads it and a video never shows it.
+///
+/// A value rather than an enum, because one of the models is a state rather than a
+/// choice between states: <see cref="Exact"/> is the progress a recorder read out of
+/// the game the run was played in, and it has to travel with the model that names it.
+/// Splitting it into a flag plus a nullable inventory would make "exact, with nothing
+/// to be exact about" representable, and that is precisely the combination nothing
+/// could satisfy.
+///
+/// The three constants are the models that need no data. They keep the names and the
+/// spelling they had as enum members, because they are printed into evidence
+/// artifacts and typed at <c>--progress</c>.
 /// </summary>
-public enum PlayerProgress
+public sealed record PlayerProgress
 {
     /// <summary>Everything unlocked and every encounter already seen. The right model
     /// for an experienced player, and the only one that is portable between machines.</summary>
-    AllUnlocked,
+    public static readonly PlayerProgress AllUnlocked = new("AllUnlocked");
 
     /// <summary>A brand-new player. Included because the difference between this and
     /// AllUnlocked is exactly the evidence that progress state matters.</summary>
-    NoneUnlocked,
+    public static readonly PlayerProgress NoneUnlocked = new("NoneUnlocked");
 
     /// <summary>This machine's own save progress. Diagnostic only; not portable.</summary>
-    LocalProfile,
+    public static readonly PlayerProgress LocalProfile = new("LocalProfile");
+
+    /// <summary>The models a person can ask for by name. <see cref="Exact"/> is not
+    /// among them: it is a state a recording carries, not a thing to type.</summary>
+    public static readonly PlayerProgress[] Named = [AllUnlocked, NoneUnlocked, LocalProfile];
+
+    private PlayerProgress(string name, UnlockStateInventory? inventory = null)
+    {
+        Name = name;
+        Inventory = inventory;
+    }
+
+    /// <summary>The model's name, as it is printed and as it is typed.</summary>
+    public string Name { get; }
+
+    /// <summary>The state itself, for <see cref="Exact"/>; null for the rest.</summary>
+    public UnlockStateInventory? Inventory { get; }
+
+    /// <summary>
+    /// The progress the recorded player actually had, as the recorder read it: the
+    /// epochs they had unlocked, the encounters they had seen and how many runs they
+    /// had played.
+    ///
+    /// Supplied to a run being constructed rather than compared against the person in
+    /// front of the game, and that is what makes it symmetric. A viewer with fewer
+    /// unlocks and a viewer with more both get the recorded player's state, because
+    /// the viewer's own never enters the run: <c>Player.UnlockState</c> is set in the
+    /// constructor and never reassigned. See docs/environment-identity.md.
+    /// </summary>
+    public static PlayerProgress Exact(UnlockStateInventory inventory) =>
+        new("Exact", inventory);
+
+    /// <summary>The model somebody typed, or a refusal naming the ones that can be
+    /// typed. Hyphens are accepted because that is how the options read.</summary>
+    public static PlayerProgress Parse(string text)
+    {
+        var wanted = text.Replace("-", string.Empty, StringComparison.Ordinal);
+        return Named.FirstOrDefault(model =>
+                   string.Equals(model.Name, wanted, StringComparison.OrdinalIgnoreCase))
+               ?? throw new EngineException(
+                   $"'{text}' is not a progress model. The models that can be asked for by name are " +
+                   $"{string.Join(", ", Named.Select(model => model.Name))}. The recorded player's own state " +
+                   "is not among them: it comes from a recording rather than from an option.");
+    }
+
+    public override string ToString() => Name;
 }

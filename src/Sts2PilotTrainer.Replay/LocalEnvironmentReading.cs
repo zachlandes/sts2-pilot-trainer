@@ -44,9 +44,13 @@ public sealed record LocalPrerequisites
     /// only one of them is available to a new player, so an environment missing that
     /// unlock cannot climb the run at all - and would otherwise take the default
     /// variant, which generates different content from the same seed and the same map.
+    ///
+    /// Null where the unlock state a run here would be generated against could not be
+    /// built, so the game was never asked. That is not an empty list: nothing locked
+    /// and nothing checked are different answers, and only one of them is a pass.
     /// </summary>
     [JsonPropertyName("locked_acts")]
-    public required IReadOnlyList<string> LockedActs { get; init; }
+    public required IReadOnlyList<string>? LockedActs { get; init; }
 
     /// <summary>
     /// The highest ascension this process's profile records for the character the
@@ -96,11 +100,12 @@ public sealed record UnlockInventory
     /// which is a refusal rather than a pass: an unchecked requirement reported as met
     /// is the confident wrong answer this project exists to prevent.
     ///
-    /// No reader fills this in yet: <c>LocalEnvironment.ReadPrerequisites</c>
-    /// constructs an inventory with origin, profile and categories only, so every
-    /// exact requirement currently refuses as not enumerated. The engine reader
-    /// enumerating this build's epoch and encounter ids is the work that closes it,
-    /// and it lands with the recorder that first produces a native manifest.
+    /// <c>LocalEnvironment.ReadPrerequisites</c> fills it from the build - every
+    /// epoch <c>UnlockState.all</c> holds and every encounter the model database
+    /// ships. A reader that could not enumerate them leaves it absent, and an exact
+    /// requirement then refuses as unchecked rather than passing: an unchecked
+    /// requirement reported as met is the confident wrong answer this project exists
+    /// to prevent.
     /// </summary>
     [JsonPropertyName("shipped_ids")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

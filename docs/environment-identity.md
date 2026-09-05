@@ -208,6 +208,9 @@ What "the state itself" means is the game's own answer and not ours.
 So `unlocks.inventory` records epochs, encounters seen and the run count, which is what a state can actually be built from; a per-category list of cards and relics would be asking for something no environment could be constructed to satisfy however exactly it matched.
 `Player.UnlockState` is get-only and set in the constructor, so a run keeps the state it was created with.
 The preflight's `exact` arm therefore checks that this build ships every epoch id and every encounter id the recording names, and reports the run count rather than comparing it: the state is supplied to the run being constructed, so nothing about this installation has to match it.
+What the build ships is enumerated by `LocalEnvironment.ReadPrerequisites` - every epoch `UnlockState.all` holds and every encounter the model database ships - and the preflight reports each list as met, missing with samples, or not enumerated.
+A reading that could not enumerate them leaves the lists absent and every exact requirement refuses as unchecked, which is the honest answer rather than a silent pass.
+`./scripts/arbiter preflight <manifest> --shipped-ids` prints those two lists instead of the report, because a row that refuses an unknown id has no room to name what this build does ship.
 
 **For a video recording, what the source player had** is an inference, and stays one. The manifest records
 it as `environment.unlocks` with `source: inferred` and the reasoning next to it: the
@@ -250,7 +253,11 @@ Another loads a duplicate game assembly and proves that state refuses before ado
 A third proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
 The fourth parses the manifest and proves that the shipped host is non-gameplay, DLL-only and packless.
 The host first establishes install eligibility, then S4 constructs and enters the captured combat only after the player deliberately advances.
-`--progress all-unlocked`, the arbiter's ordinary replay default, is the state the headless host constructs the run with, and the report says so rather than calling it a reading of anybody.
+Which state a replay constructs the run with is decided from the recording rather than from a default.
+`RecordedFightEntry.SuppliedProgressFor` gives the recorded player's own state where the recording carries one, and the complete state where it does not - which is every recording read off a video, because no video shows an unlock state.
+`--progress` overrides it and the report always names which state was used and where it came from, rather than calling any of them a reading of anybody.
+The exact arm builds the state through the game's own three-argument `UnlockState` constructor from the captured triple, and refuses an epoch or encounter id this build does not ship rather than dropping it.
+Supplying the recorded state is what makes substitution symmetric in both directions: a viewer with fewer unlocks and a viewer with more both get the recorded player's state, because the viewer's own never enters the constructed run.
 The in-game host constructs the recording's run against the same supplied state, for that run only and in memory: the run being constructed is the recording's, and the recording requires the complete unlock state its content was generated against.
 It reaches the run through `Player.CreateForNewRun` and nothing else, which is the one input `GameSession.PrepareRunInRunningGame` substitutes into the client's own start-run path.
 Nothing is written back - the run is set up with saving off and the mod's profile write barrier stops the writes that flag does not cover - so a player's unlocks, ascension ceiling and progress are exactly what they were before the fight.

@@ -1,6 +1,57 @@
 namespace Sts2PilotTrainer.Replay;
 
 /// <summary>
+/// What a host has to do, in order, to stand somebody at one boundary of a recording.
+///
+/// Two plans implement it and they stay two types: a fight's boundary and a floor's
+/// are different moments, proved by different fields, found by different rules. What
+/// they share is the shape a host consumes - a prefix of the recording's own
+/// decisions, the boundary they end at, and the authority to say which decision comes
+/// next - and that is what this names, so <c>RecordedFightEntry</c> can walk either
+/// without knowing which it has.
+///
+/// It adds no rule of its own. Every refusal is still the plan's.
+/// </summary>
+public interface IBoundaryPlan
+{
+    /// <summary>Which kind of boundary this plan ends at, from
+    /// <see cref="ReplayBoundary.Kinds"/>.</summary>
+    string Kind { get; }
+
+    /// <summary>The recording's decisions before the boundary, in order. Every one of
+    /// them is executed; none is optional, and none is the host's.</summary>
+    IReadOnlyList<ActionRecord> PrefixActions { get; }
+
+    /// <summary>The sequence number the boundary is immediately after.</summary>
+    int BoundarySeq { get; }
+
+    /// <summary>What the recording observed there.</summary>
+    Checkpoint Boundary { get; }
+
+    /// <summary>Identity of the snapshot this plan reproduces.</summary>
+    SnapshotCacheKey SnapshotKey { get; }
+
+    /// <summary>Which fight of the run this is, for the combat kinds; null
+    /// otherwise.</summary>
+    int? Fight { get; }
+
+    /// <summary>Which floor this arrives on, for a floor entry; null otherwise.</summary>
+    int? Floor { get; }
+
+    /// <summary>
+    /// Whether an action is one this plan authorises at this point in the journey.
+    ///
+    /// The plan is the whole authority on what may happen before the boundary, which
+    /// is what lets a host refuse a decision that came from anywhere else without
+    /// having to know what a screen looks like.
+    /// </summary>
+    bool Authorises(int stepIndex, ActionRecord action);
+
+    /// <summary>How a diagnostic names this plan's destination to a person.</summary>
+    string Describe();
+}
+
+/// <summary>
 /// What a host has to do, in order, to stand a player in one of the recording's
 /// fights: the decisions the recording made before that fight, and the boundary the
 /// fight starts at.
@@ -25,8 +76,18 @@ namespace Sts2PilotTrainer.Replay;
 /// could be proved correct against, and entering it anyway is exactly the confident
 /// wrong answer this project exists to prevent.
 /// </summary>
-public sealed record RecordedFightPlan
+public sealed record RecordedFightPlan : IBoundaryPlan
 {
+    /// <inheritdoc/>
+    public string Kind => ReplayBoundary.CombatStartKind;
+
+    /// <inheritdoc/>
+    public int? Floor => null;
+
+    /// <inheritdoc/>
+    public string Describe() =>
+        $"the start of fight {FightOrdinal.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+
     /// <summary>The verbs that can only be issued inside a fight. The first of them
     /// in the history is what makes the action before it the one that entered the
     /// fight.</summary>
@@ -39,16 +100,18 @@ public sealed record RecordedFightPlan
         ["combat.turn", "combat.hand", "combat.encounter", "combat.enemy_count"];
 
     /// <summary>Which fight of the run this plan reaches, counting from 1.</summary>
-    public required int Fight { get; init; }
+    public required int FightOrdinal { get; init; }
 
-    /// <summary>The recording's decisions before the fight, in order. Every one of
-    /// them is executed; none is optional, and none is ours.</summary>
-    public required IReadOnlyList<ActionRecord> PrefightActions { get; init; }
+    /// <inheritdoc/>
+    public int? Fight => FightOrdinal;
+
+    /// <inheritdoc cref="IBoundaryPlan.PrefixActions"/>
+    public required IReadOnlyList<ActionRecord> PrefixActions { get; init; }
 
     /// <summary>The sequence number the fight is live after. The last pre-fight
     /// action's own sequence number: the action that enters the room is the action
     /// that starts the fight.</summary>
-    public required int CombatStartSeq { get; init; }
+    public required int BoundarySeq { get; init; }
 
     /// <summary>What the recording observed at that boundary. This is the thing a
     /// live entry is proved equal to before a player is given the controls.</summary>
@@ -92,9 +155,9 @@ public sealed record RecordedFightPlan
 
         return new RecordedFightPlan
         {
-            Fight = fight,
-            PrefightActions = prefix,
-            CombatStartSeq = combatStartSeq,
+            FightOrdinal = fight,
+            PrefixActions = prefix,
+            BoundarySeq = combatStartSeq,
             Boundary = boundary,
             SnapshotKey = SnapshotCacheKey.For(manifest, combatStartSeq),
         };
@@ -152,17 +215,11 @@ public sealed record RecordedFightPlan
         return ordered[firstCombatAction - 1].Seq;
     }
 
-    /// <summary>
-    /// Whether an action is one this plan authorises at this point in the journey.
-    ///
-    /// The plan is the whole authority on what may happen before the fight, which is
-    /// what lets a host refuse a decision that came from anywhere else without
-    /// having to know what a screen looks like.
-    /// </summary>
+    /// <inheritdoc/>
     public bool Authorises(int stepIndex, ActionRecord action) =>
         stepIndex >= 0 &&
-        stepIndex < PrefightActions.Count &&
-        PrefightActions[stepIndex].Seq == action.Seq;
+        stepIndex < PrefixActions.Count &&
+        PrefixActions[stepIndex].Seq == action.Seq;
 }
 
 /// <summary>
@@ -180,22 +237,35 @@ public sealed record RecordedFightPlan
 /// by replaying the run; reading it off the shape of the history would be inventing
 /// a moment nobody measured.
 /// </summary>
-public sealed record FloorEntryPlan
+public sealed record FloorEntryPlan : IBoundaryPlan
 {
+    /// <inheritdoc/>
+    public string Kind => ReplayBoundary.FloorEntryKind;
+
+    /// <inheritdoc/>
+    public int? Fight => null;
+
+    /// <inheritdoc/>
+    public string Describe() =>
+        $"arrival on floor {FloorNumber.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+
     /// <summary>Canonical fields that place a run on the map. A floor-entry boundary
     /// checkpoint has to name both, or it is not an observation of arriving
     /// anywhere.</summary>
     public static readonly string[] RequiredBoundaryFields = ["run.total_floor", "run.map_coord"];
 
     /// <summary>Which floor of the run this plan reaches.</summary>
-    public required int Floor { get; init; }
+    public required int FloorNumber { get; init; }
 
-    /// <summary>The recording's decisions before arriving, in order.</summary>
+    /// <inheritdoc/>
+    public int? Floor => FloorNumber;
+
+    /// <inheritdoc cref="IBoundaryPlan.PrefixActions"/>
     public required IReadOnlyList<ActionRecord> PrefixActions { get; init; }
 
     /// <summary>The sequence number the run stands on this floor after: the map move
     /// that entered it.</summary>
-    public required int FloorEntrySeq { get; init; }
+    public required int BoundarySeq { get; init; }
 
     /// <summary>What the recording observed on arrival.</summary>
     public required Checkpoint Boundary { get; init; }
@@ -250,15 +320,15 @@ public sealed record FloorEntryPlan
 
         return new FloorEntryPlan
         {
-            Floor = floor,
+            FloorNumber = floor,
             PrefixActions = ordered.TakeWhile(action => action.Seq <= declared.AfterSeq).ToList(),
-            FloorEntrySeq = declared.AfterSeq,
+            BoundarySeq = declared.AfterSeq,
             Boundary = boundary,
             SnapshotKey = SnapshotCacheKey.For(manifest, declared.AfterSeq),
         };
     }
 
-    /// <inheritdoc cref="RecordedFightPlan.Authorises"/>
+    /// <inheritdoc/>
     public bool Authorises(int stepIndex, ActionRecord action) =>
         stepIndex >= 0 &&
         stepIndex < PrefixActions.Count &&

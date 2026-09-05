@@ -26,28 +26,39 @@ namespace Sts2PilotTrainer.Engine;
 ///
 /// The progress the run is generated against is supplied, not read. That is not a
 /// shortcut around the player's profile: the run being constructed is the
-/// recording's, and the recording requires the complete unlock state its content
-/// came from. Nothing here writes to a profile, and the run is set up with saving
-/// off; see <c>GameSession.PrepareRunInRunningGame</c> and docs/environment-identity.md.
+/// recording's, and it has to be generated against the state its content came from.
+/// Where the recording carries that state, it is what is supplied, which is what
+/// makes this symmetric - a viewer with fewer unlocks and a viewer with more both get
+/// the recorded player's state, because neither one's own ever enters the run.
+/// Nothing here writes to a profile, and the run is set up with saving off; see
+/// <c>GameSession.PrepareRunInRunningGame</c> and docs/environment-identity.md.
 /// </summary>
 public sealed class RecordedFightEntry : IDisposable
 {
     /// <summary>
-    /// The progress model the recording's run is generated against, named once.
+    /// The progress model this recording's run is generated against, decided once.
     ///
     /// A host has to construct the run against the state the recording's content came
     /// from, and it has to ask its own eligibility question against the same one -
-    /// otherwise a screen reports a requirement that nothing consults. One constant so
-    /// the two can never be asked different questions.
+    /// otherwise a screen reports a requirement that nothing consults. One rule so the
+    /// two can never be asked different questions.
+    ///
+    /// A recording that carries the state itself gets that state. A recording that
+    /// does not - which is every recording read off a video, because no video shows an
+    /// unlock state - asks for completeness instead, and the complete state is what is
+    /// supplied. Neither is a reading of the person in front of the game.
     /// </summary>
-    public const PlayerProgress SuppliedProgress = PlayerProgress.AllUnlocked;
+    public static PlayerProgress SuppliedProgressFor(ReplayManifest recording) =>
+        recording.Environment.Unlocks.Value.Inventory is { } inventory
+            ? PlayerProgress.Exact(inventory)
+            : PlayerProgress.AllUnlocked;
 
     private readonly GameSession _session;
     private readonly RunDriver _driver;
     private readonly PlayerProgress _progress;
 
     private RecordedFightEntry(
-        ReplayManifest manifest, RecordedFightPlan plan, GameSession session, PlayerProgress progress,
+        ReplayManifest manifest, IBoundaryPlan plan, GameSession session, PlayerProgress progress,
         Func<MapCoord, Task>? travelInRunningGame)
     {
         Manifest = manifest;
@@ -59,8 +70,14 @@ public sealed class RecordedFightEntry : IDisposable
 
     public ReplayManifest Manifest { get; }
 
-    /// <summary>The recording's decisions before its fight, and the boundary.</summary>
-    public RecordedFightPlan Plan { get; }
+    /// <summary>The recording's decisions before the boundary, and the boundary.</summary>
+    public IBoundaryPlan Plan { get; }
+
+    /// <summary>Which fight of the recording this entry stands in, or a refusal when
+    /// its boundary is not a fight's.</summary>
+    public int Fight => Plan.Fight ?? throw new EngineException(
+        $"{Plan.Describe()} is not the start of a fight, so there is no fight of the recording to compare " +
+        "a played line against.");
 
     /// <summary>How many of the plan's steps have been executed.</summary>
     public int StepsTaken { get; private set; }
@@ -68,12 +85,12 @@ public sealed class RecordedFightEntry : IDisposable
     /// <summary>The decision the recording made next, or null once they are all
     /// made.</summary>
     public ActionRecord? NextStep =>
-        StepsTaken < Plan.PrefightActions.Count ? Plan.PrefightActions[StepsTaken] : null;
+        StepsTaken < Plan.PrefixActions.Count ? Plan.PrefixActions[StepsTaken] : null;
 
-    /// <summary>Whether every recorded decision has been made and the fight should
-    /// now be live. Whether it actually is, is <see cref="VerifyCombatStart"/>'s
-    /// question.</summary>
-    public bool AtCombatStart => StepsTaken == Plan.PrefightActions.Count;
+    /// <summary>Whether every recorded decision has been made and the run should now
+    /// be standing at the boundary. Whether it actually is, is
+    /// <see cref="VerifyBoundary"/>'s question.</summary>
+    public bool AtBoundary => StepsTaken == Plan.PrefixActions.Count;
 
     /// <summary>The run this entry constructed, for a host that has to finish
     /// launching it through the game's own continuation.</summary>
@@ -94,9 +111,10 @@ public sealed class RecordedFightEntry : IDisposable
     /// </summary>
     public static bool CanConstruct(
         ReplayManifest recording, out PreflightResult gate,
-        PlayerProgress progress = SuppliedProgress)
+        PlayerProgress? progress = null)
     {
-        gate = Preflight.Evaluate(recording.Environment, progress, recording.Source.Kind);
+        gate = Preflight.Evaluate(
+            recording.Environment, progress ?? SuppliedProgressFor(recording), recording.Source.Kind);
         return gate.Matches && LocalEnvironment.ReadStartedRun() is null;
     }
 
@@ -105,9 +123,17 @@ public sealed class RecordedFightEntry : IDisposable
     /// room, ready for the first recorded decision.
     /// </summary>
     public static RecordedFightEntry StartHeadless(
-        ReplayManifest manifest, PlayerProgress progress = SuppliedProgress)
+        ReplayManifest manifest, PlayerProgress? progress = null) =>
+        StartHeadless(manifest, RecordedFightPlan.For(manifest), progress);
+
+    /// <inheritdoc cref="StartHeadless(ReplayManifest, PlayerProgress)"/>
+    /// <param name="plan">Which boundary of the recording to walk to. A fight's or a
+    /// floor's; the journey is the same and only the proof at the end differs.</param>
+    public static RecordedFightEntry StartHeadless(
+        ReplayManifest manifest, IBoundaryPlan plan, PlayerProgress? supplied = null)
     {
-        var entry = Prepare(manifest, progress, travelInRunningGame: null, session => session.StartRun(
+        var progress = supplied ?? SuppliedProgressFor(manifest);
+        var entry = Prepare(manifest, plan, progress, travelInRunningGame: null, session => session.StartRun(
             manifest.Environment.Seed.Value,
             manifest.Environment.Character.Value,
             manifest.Environment.Ascension.Value,
@@ -134,8 +160,22 @@ public sealed class RecordedFightEntry : IDisposable
     /// </param>
     public static RecordedFightEntry PrepareInRunningGame(
         ReplayManifest manifest, Func<MapCoord, Task> travelInRunningGame,
-        PlayerProgress progress = SuppliedProgress) =>
-        Prepare(manifest, progress, travelInRunningGame, session => session.PrepareRunInRunningGame(
+        PlayerProgress? progress = null) =>
+        PrepareInRunningGame(manifest, RecordedFightPlan.For(manifest), travelInRunningGame, progress);
+
+    /// <inheritdoc cref="PrepareInRunningGame(ReplayManifest, Func{MapCoord, Task}, PlayerProgress)"/>
+    public static RecordedFightEntry PrepareInRunningGame(
+        ReplayManifest manifest, IBoundaryPlan plan, Func<MapCoord, Task> travelInRunningGame,
+        PlayerProgress? supplied = null) =>
+        PrepareAgainst(manifest, plan, travelInRunningGame, supplied ?? SuppliedProgressFor(manifest));
+
+    /// <summary>The same, with the progress model already decided, so that the model
+    /// the run is built against and the model handed to the session are the one
+    /// value.</summary>
+    private static RecordedFightEntry PrepareAgainst(
+        ReplayManifest manifest, IBoundaryPlan plan, Func<MapCoord, Task> travelInRunningGame,
+        PlayerProgress progress) =>
+        Prepare(manifest, plan, progress, travelInRunningGame, session => session.PrepareRunInRunningGame(
             manifest.Environment.Seed.Value,
             manifest.Environment.Character.Value,
             manifest.Environment.Ascension.Value,
@@ -144,16 +184,14 @@ public sealed class RecordedFightEntry : IDisposable
             progress));
 
     private static RecordedFightEntry Prepare(
-        ReplayManifest manifest, PlayerProgress progress, Func<MapCoord, Task>? travelInRunningGame,
-        Action<GameSession> construct)
+        ReplayManifest manifest, IBoundaryPlan plan, PlayerProgress progress,
+        Func<MapCoord, Task>? travelInRunningGame, Action<GameSession> construct)
     {
         var validation = ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
         {
             throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
         }
-
-        var plan = RecordedFightPlan.For(manifest);
 
         // The prerequisites, asked of the progress model this run will actually be
         // generated against. The same question the arbiter asks before it constructs
@@ -193,26 +231,65 @@ public sealed class RecordedFightEntry : IDisposable
     public void AdvanceOneStep()
     {
         var action = NextStep ?? throw new EngineException(
-            "Every decision the recording made before its fight has already been made. There is nothing " +
-            "further to execute before the fight starts.");
+            $"Every decision the recording made before {Plan.Describe()} has already been made. There is " +
+            "nothing further to execute.");
 
-        var wasInCombat = InCombat();
-        if (wasInCombat)
+        if (!Plan.Authorises(StepsTaken, action))
         {
+            // Unreachable through NextStep, and checked anyway: the plan is the whole
+            // authority on what happens before the boundary, and a host that stopped
+            // asking it would be a host that had learned one recording by heart.
             throw new EngineException(
-                $"The run is already in a fight with {Plan.PrefightActions.Count - StepsTaken} recorded " +
-                "decision(s) still unmade, so this is not the recording's fight. Refusing to keep going.");
+                $"Action {action.Seq} ({action.Verb}) is not the decision this recording made at step " +
+                $"{StepsTaken.ToString(CultureInfo.InvariantCulture)} on the way to {Plan.Describe()}.");
         }
 
-        _driver.Apply(action, []);
+        if (InCombat() && !AllowedWhileFighting.Contains(action.Verb))
+        {
+            throw new EngineException(
+                $"The run is in a fight and the recording's next decision is a '{action.Verb}', which is " +
+                "not one a fight accepts. The run entered a fight the recording did not, so this journey is " +
+                "not the recording's. Refusing to keep going.");
+        }
+
+        _driver.Apply(action, RemainingPrefix());
         StepsTaken++;
     }
 
+    /// <summary>
+    /// The recording's decisions after the next one, which the driver needs because a
+    /// card screen is answered from inside the call that opens it.
+    ///
+    /// The plan stops at the boundary's own action, so the last step would otherwise be
+    /// handed nothing at all; the screen it opens is answered from the recording's own
+    /// selections immediately after it, exactly as a whole replay answers it.
+    ///
+    /// No history on v0.111.0 reaches that last case, and the reason is worth writing
+    /// down because it is a fact about the game rather than about these fixtures.
+    /// <see cref="BoundarySelector.PlanFor"/> refuses a turn boundary, so a plan only
+    /// ever ends at a combat start or a floor arrival. A floor arrival's action is
+    /// always a map move, and a map move is not one of the seven verbs
+    /// <c>RunDriver.Apply</c> hands the upcoming actions to - an opening blessing, an
+    /// event option, a potion, a shop purchase, a rest site option, a card played and
+    /// an end of turn - so nothing can follow it. A combat start's
+    /// action is that same map move unless an event option began the fight - and of the
+    /// five events that call <c>EventModel.EnterCombatWithoutExitingEvent</c> on this
+    /// build (Punch Off, Fake Merchant, Battleworn Dummy, Dense Vegetation, The Lantern
+    /// Key), not one opens a card-selection screen. The two sets do not intersect. An
+    /// event that both opens a screen and starts its room's fight would disprove this
+    /// and would be the history to generate; the branch is here because the rule is the
+    /// arbiter's, not because this build happens to exercise it.
+    /// </summary>
+    private IReadOnlyList<ActionRecord> RemainingPrefix() =>
+        StepsTaken + 1 < Plan.PrefixActions.Count
+            ? Plan.PrefixActions.Skip(StepsTaken + 1).ToList()
+            : CardScreenAnswers.After(Manifest.Actions, Plan.PrefixActions[StepsTaken].Seq);
+
     /// <summary>Makes every remaining recorded decision, in order. The same steps,
     /// without stopping between them.</summary>
-    public void AdvanceToCombatStart()
+    public void AdvanceToBoundary()
     {
-        while (!AtCombatStart) AdvanceOneStep();
+        while (!AtBoundary) AdvanceOneStep();
     }
 
     /// <summary>
@@ -223,19 +300,33 @@ public sealed class RecordedFightEntry : IDisposable
     /// node a move enters is the generated map's. A host that wrote either down would
     /// be a host that had learned one recording by heart.
     /// </summary>
-    public PrefightChoice DescribeNextStep()
+    public PrefightChoice DescribeNextStep() =>
+        DescribeNextStepOrNull()
+        ?? throw new EngineException(
+            $"Action {NextStep!.Seq} is a '{NextStep.Verb}', which this trainer cannot show the recording " +
+            "making. Only an opening blessing and a map move are supported before a fight.");
+
+    /// <summary>
+    /// The same, and null rather than a refusal when the decision is not one this
+    /// trainer has words for.
+    ///
+    /// Both exist because the two callers want different things from the same
+    /// question. A screen that is showing the recording make its decisions has to fail
+    /// loudly on one it cannot show. A host walking to a later fight passes through
+    /// that fight's predecessors - cards played, turns ended, loot taken - and an
+    /// uncaptioned step there is an ordinary thing rather than a defect.
+    /// </summary>
+    public PrefightChoice? DescribeNextStepOrNull()
     {
         var action = NextStep ?? throw new EngineException(
-            "Every decision the recording made before its fight has already been made; there is no next one " +
-            "to describe.");
+            $"Every decision the recording made before {Plan.Describe()} has already been made; there is no " +
+            "next one to describe.");
 
         return action.Verb switch
         {
             ActionVerb.ChooseNeowBlessing => new PrefightChoice.Blessing(action.Seq, BlessingRelic(action)),
             ActionVerb.MapMove => DescribeMapMove(action),
-            _ => throw new EngineException(
-                $"Action {action.Seq} is a '{action.Verb}', which this trainer cannot show the recording " +
-                "making. Only an opening blessing and a map move are supported before a fight."),
+            _ => null,
         };
     }
 
@@ -332,39 +423,57 @@ public sealed class RecordedFightEntry : IDisposable
     /// fight at all, or it is in one that does not match what the recording observed
     /// and the engine-produced snapshot digest. Both are drift, and neither is entered.
     /// </summary>
-    public BoundaryEquality VerifyCombatStart()
+    public BoundaryEquality VerifyBoundary()
     {
-        if (!AtCombatStart)
+        if (!AtBoundary)
         {
             throw new EngineException(
-                $"{Plan.PrefightActions.Count - StepsTaken} of the recording's decisions before the fight " +
-                "have not been made yet, so there is no combat start to compare against.");
+                $"{Plan.PrefixActions.Count - StepsTaken} of the recording's decisions before " +
+                $"{Plan.Describe()} have not been made yet, so there is nothing to compare against.");
         }
 
-        var expectedDigest = Manifest.CombatStartDigest(Plan.Fight)
+        var expectedDigest = Manifest.BoundaryAt(Plan.Kind, fight: Plan.Fight, floor: Plan.Floor)?.Digest.Value
             ?? throw new ManifestException(
-                $"The recording declares no combat-start boundary for fight " +
-                $"{Plan.Fight.ToString(System.Globalization.CultureInfo.InvariantCulture)}, so there is no " +
-                "digest to compare the live state against.");
+                $"The recording declares no boundary for {Plan.Describe()}, so there is no digest to compare " +
+                "the live state against.");
         var state = LiveState();
-        if (!InCombat())
+
+        if (Liveness() is { } refusal)
         {
             return new BoundaryEquality
             {
-                Kind = ReplayBoundary.CombatStartKind,
+                Kind = Plan.Kind,
                 Matches = false,
                 Comparisons = [],
                 ExpectedDigest = expectedDigest,
                 ActualDigest = state.Digest(),
-                Refusal =
-                    "Every decision the recording made before its fight has been made and this run is not in a " +
-                    "fight. The recording enters one at this point, so the run this game generated is not the " +
-                    "recording's, and there is nothing here to hand over.",
+                Refusal = refusal,
             };
         }
 
-        return CombatStartEquality.Compare(Plan.Boundary, state.Fields, state.Digest(), expectedDigest);
+        return BoundaryEquality.Compare(Plan.Kind, Plan.Boundary, state.Fields, state.Digest(), expectedDigest);
     }
+
+    /// <summary>
+    /// Why the run is not standing where this plan's boundary is, or null when it is.
+    ///
+    /// Only a fight's boundary has one. A combat start with no combat in progress is a
+    /// run that did not enter the fight the recording entered, and every field a
+    /// combat checkpoint names would read as absent rather than as wrong - a refusal
+    /// worth writing in words.
+    ///
+    /// A floor arrival deliberately has none. Arriving on a floor is entering its
+    /// room, and this engine deals the room's fight in the same call, so "arrived and
+    /// nothing decided yet" is not a state that exists. What proves a floor arrival is
+    /// where the run stands and the digest of everything else, which is what the
+    /// comparison below already asks.
+    /// </summary>
+    private string? Liveness() =>
+        Plan.Kind == ReplayBoundary.CombatStartKind && !InCombat()
+            ? "Every decision the recording made before its fight has been made and this run is not in a " +
+              "fight. The recording enters one at this point, so the run this game generated is not the " +
+              "recording's, and there is nothing here to hand over."
+            : null;
 
     /// <summary>
     /// The source id the player's own line carries into a comparison. One constant,
@@ -387,6 +496,13 @@ public sealed class RecordedFightEntry : IDisposable
     /// capture already exists.</exception>
     public FightCapture BeginCapture(BoundaryEquality boundary)
     {
+        if (Plan.Kind != ReplayBoundary.CombatStartKind)
+        {
+            throw new EngineException(
+                $"A capture is a fight's, and this entry stands at {Plan.Describe()}. The supported unit of " +
+                "comparison is a whole fight; see docs/comparison-direction.md.");
+        }
+
         if (!boundary.Matches)
         {
             throw new EngineException(
@@ -424,7 +540,7 @@ public sealed class RecordedFightEntry : IDisposable
             ?? throw new EngineException("No capture has begun, so there is nothing to play the fight into.");
 
         var actions = Manifest.Actions
-            .Where(action => action.Seq > Plan.CombatStartSeq)
+            .Where(action => action.Seq > Plan.BoundarySeq)
             .OrderBy(action => action.Seq)
             .ToList();
 
@@ -449,6 +565,25 @@ public sealed class RecordedFightEntry : IDisposable
     /// <summary>Which progress model this run was generated against, named so a
     /// report can say it rather than imply a reading of somebody's profile.</summary>
     public string ProgressOrigin => LocalEnvironment.OriginOf(_progress);
+
+    /// <summary>
+    /// The decisions a player can make while a fight is live.
+    ///
+    /// The guard this serves is what catches a run that entered a fight the recording
+    /// did not. It used to be "in a fight at all", which was right while the only
+    /// boundary was the first fight's; a journey to a later one walks through earlier
+    /// fights on purpose, so the question is whether the decision in front of the run
+    /// is one a live fight accepts.
+    /// </summary>
+    private static readonly ActionVerb[] AllowedWhileFighting =
+    [
+        ActionVerb.PlayCard,
+        ActionVerb.EndTurn,
+        ActionVerb.UsePotion,
+        ActionVerb.DiscardPotion,
+        ActionVerb.SelectCardFromScreen,
+        ActionVerb.SelectHandCards,
+    ];
 
     private bool InCombat() =>
         LiveState().Fields.GetValueOrDefault("combat.in_progress") == "true";

@@ -24,6 +24,7 @@ internal static partial class Commands
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var outDir = Args.Value(args, "--out") ?? "build/evidence";
+
         var gateArtifact = EvidenceArtifact.Prepare(outDir, "publication-gate.json");
         var manifest = ManifestJson.Load(manifestPath);
         var mapObservationPath = Args.Value(args, "--map-observation") ??

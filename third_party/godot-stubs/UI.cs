@@ -57,8 +57,6 @@ public partial class Control : CanvasItem
 
     public virtual void _GuiInput(InputEvent @event) { }
 
-    public void Connect(StringName signal, Callable callable) { }
-    public void Disconnect(StringName signal, Callable callable) { }
     public void EmitSignal(StringName signal, params Variant[] args) { }
 }
 

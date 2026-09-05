@@ -62,7 +62,7 @@ progress        : AllUnlocked - UnlockState.all, supplied by the host in place o
 
 profile before  : ascension ceiling 0 for CHARACTER.IRONCLAD; characters 1/5, cards 232/596, card_pools 8/12, character_card_pools 1/5, relics 254/299, potions 45/66, shared_ancients 0/1, epochs 0/57
 
-NaveGreed's decisions before the fight: 2, combat starts after action 1
+decisions before the start of fight 1: 2, reached after action 1
   NaveGreed's choices are shown as recorded. This shows what was chosen, not why.
 
   [Watching NaveGreed]  1 of 2   NaveGreed took Leafy Poultice
@@ -70,7 +70,7 @@ NaveGreed's decisions before the fight: 2, combat starts after action 1
   [Watching NaveGreed]  2 of 2   NaveGreed moved to the Monster node, centre column
       action 1 MapMove act=0 row=1 column=3
 
-combat start    : checkpoint 'floor2-combat-start', 13 observed value(s)
+boundary        : checkpoint 'floor2-combat-start', 13 observed value(s)
   ok   combat.block               recording=0                                                        game=0
   ok   combat.discard_pile_count  recording=0                                                        game=0
   ok   combat.draw_pile_count     recording=6                                                        game=6
@@ -92,7 +92,7 @@ snapshot        : cache hit, v0.111.0_standard_CHARACTER.IRONCLAD_a10_SFXT47K77R
 profile after   : ascension ceiling 0 for CHARACTER.IRONCLAD; characters 1/5, cards 232/596, card_pools 8/12, character_card_pools 1/5, relics 254/299, potions 45/66, shared_ancients 0/1, epochs 0/57
 profile writes  : none - the reading and every byte of the profile store are unchanged
 
-ENTERED - this game is standing in NaveGreed's fight, at the recorded combat start.
+ENTERED - this game is standing at the start of fight 1 of NaveGreed's run, exactly as the recording records it.
 
 report: build/evidence/enter-fight.json
 ```
@@ -122,7 +122,7 @@ progress        : AllUnlocked - UnlockState.all, supplied by the host in place o
 
 profile before  : ascension ceiling 0 for CHARACTER.IRONCLAD; characters 1/5, cards 232/596, card_pools 8/12, character_card_pools 1/5, relics 254/299, potions 45/66, shared_ancients 0/1, epochs 0/57
 
-NaveGreed's decisions before the fight: 2, combat starts after action 1
+decisions before the start of fight 1: 2, reached after action 1
   NaveGreed's choices are shown as recorded. This shows what was chosen, not why.
 
   [Watching NaveGreed]  1 of 2   NaveGreed took Arcane Scroll
@@ -130,7 +130,7 @@ NaveGreed's decisions before the fight: 2, combat starts after action 1
   [Watching NaveGreed]  2 of 2   NaveGreed moved to the Monster node, centre column
       action 1 MapMove act=0 row=1 column=3
 
-combat start    : checkpoint 'floor2-combat-start', 13 observed value(s)
+boundary        : checkpoint 'floor2-combat-start', 13 observed value(s)
   FAIL combat.draw_pile_count     recording=6                                                        game=7
   FAIL combat.hand                recording=CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD game=CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DOMINATE|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD
   FAIL player.max_hp              recording=68                                                       game=80
@@ -158,14 +158,14 @@ set -o pipefail; ./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.r
 ```
 
 ```output
-NaveGreed's decisions before the fight: 2, combat starts after action 1
+decisions before the start of fight 1: 2, reached after action 1
   NaveGreed's choices are shown as recorded. This shows what was chosen, not why.
 
   [Watching NaveGreed]  1 of 2   NaveGreed took Leafy Poultice
       action 0 ChooseNeowBlessing option_index=2
 
 --step stops after one decision. The fight is not entered, and asking whether it started where the recording's did is refused rather than answered:
-  1 of the recording's decisions before the fight have not been made yet, so there is no combat start to compare against.
+  1 of the recording's decisions before the start of fight 1 have not been made yet, so there is nothing to compare against.
 ```
 
 ## The wording, and where every word of it comes from
@@ -186,7 +186,7 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrain
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    60, Skipped:     0, Total:    60, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
 ```
 
 ## The regression coverage around the entry
@@ -236,7 +236,7 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Mod.Tests/Sts2PilotTrainer.M
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:     4, Skipped:     0, Total:     4, Duration: <duration> - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     8, Skipped:     0, Total:     8, Duration: <duration> - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
 ```
 
 ## In the retail client

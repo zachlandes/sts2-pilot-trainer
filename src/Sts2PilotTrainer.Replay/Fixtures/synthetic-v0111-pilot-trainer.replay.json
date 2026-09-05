@@ -58,7 +58,7 @@
     "kind": "synthetic-engine",
     "synthetic": {
       "fixture_id": "v0111-pilot-trainer",
-      "fixture_version": 2,
+      "fixture_version": 3,
       "generator": "sts2-pilot-trainer",
       "generated_build": "v0.111.0"
     },
@@ -351,5 +351,74 @@
       }
     }
   ],
-  "boundaries": []
+  "boundaries": [
+    {
+      "kind": "combat_start",
+      "after_seq": 1,
+      "fight": 1,
+      "digest": {
+        "Value": "sha256:75fbfd0b0cd434805cafce50b5f0054cb03a288ea44c8db2cb6244bda7a6678b",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 1,
+      "floor": 2,
+      "digest": {
+        "Value": "sha256:75fbfd0b0cd434805cafce50b5f0054cb03a288ea44c8db2cb6244bda7a6678b",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 1,
+      "fight": 1,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:75fbfd0b0cd434805cafce50b5f0054cb03a288ea44c8db2cb6244bda7a6678b",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 4,
+      "fight": 1,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:3ff15e03be2d1e102f7ad7f1325495f23c7bf7d5bf0897f487f19c4e3ab36059",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 8,
+      "fight": 1,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:fdaaa813ffc94eca5e825bfb15f4512bd2af9d3cd8b3fccf248492698f5a3cc9",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 11,
+      "fight": 1,
+      "turn": 4,
+      "digest": {
+        "Value": "sha256:19b2b66d8a9e0b09b386ac5dfea4792285a5988c997f36f3b5425909497e3317",
+        "Source": "Engine"
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 14,
+      "fight": 1,
+      "turn": 5,
+      "digest": {
+        "Value": "sha256:ebfb16e1b6ac3961776698d6b3d80e597e74047b2b7bc2c2c07741579781b145",
+        "Source": "Engine"
+      }
+    }
+  ]
 }

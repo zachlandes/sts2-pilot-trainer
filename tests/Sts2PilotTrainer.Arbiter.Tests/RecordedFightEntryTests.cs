@@ -26,9 +26,9 @@ public sealed class RecordedFightEntryTests
         var report = EnterFight(out var result);
 
         Assert.True(result.Verified, result.All);
-        Assert.True(report.GetProperty("combat_start_matches").GetBoolean());
+        Assert.True(report.GetProperty("boundary_matches").GetBoolean());
         Assert.Equal("floor2-combat-start", report.GetProperty("boundary_checkpoint").GetString());
-        Assert.Equal(1, report.GetProperty("combat_start_seq").GetInt32());
+        Assert.Equal(1, report.GetProperty("boundary_seq").GetInt32());
         Assert.Equal("NaveGreed", report.GetProperty("creator").GetString());
         Assert.All(
             report.GetProperty("comparisons").EnumerateArray(),
@@ -115,7 +115,7 @@ public sealed class RecordedFightEntryTests
         var report = EnterFight(out var result, "--control", "wrong-opening-choice");
 
         Assert.False(result.Verified);
-        Assert.False(report.GetProperty("combat_start_matches").GetBoolean());
+        Assert.False(report.GetProperty("boundary_matches").GetBoolean());
         Assert.Contains(
             "did not open the way the recording's did",
             report.GetProperty("refusal").GetString()!,
@@ -138,7 +138,9 @@ public sealed class RecordedFightEntryTests
 
         Assert.False(result.Verified);
         Assert.Contains(
-            "changes nothing the recording decides before its fight", result.All, StringComparison.Ordinal);
+            "changes nothing the recording decides before the start of fight 1",
+            result.All,
+            StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -154,7 +156,7 @@ public sealed class RecordedFightEntryTests
         Assert.False(result.Verified);
         Assert.Contains("1 of 2", result.All, StringComparison.Ordinal);
         Assert.Contains(
-            "have not been made yet, so there is no combat start to compare against",
+            "before the start of fight 1 have not been made yet, so there is nothing to compare against",
             result.All,
             StringComparison.Ordinal);
     }

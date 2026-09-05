@@ -29,9 +29,13 @@ internal static partial class Commands
     {
         var manifestPath = Args.Positional(args, 0, "manifest path");
         var outPath = Args.Value(args, "--out")
-            ?? Path.Combine("build", "evidence", Path.GetFileName(manifestPath)
-                .Replace(".replay.json", ".recorded-fights.json", StringComparison.Ordinal));
-        var artifact = EvidenceArtifact.PreparePath(outPath);
+            ?? Path.Combine("build", "evidence", Path.GetFileName(RecordedFightPathFor(manifestPath)));
+        // Never cleared first. The destination holds somebody's evidence - it is
+        // manifests/<id>.recorded-fights.json, the file the mod ships - and the replay
+        // between here and the write refuses in four named ways, so clearing would
+        // leave nothing where the old measurement was. The atomic write replaces the
+        // file it read beside.
+        var artifact = EvidenceArtifact.PreparePath(outPath, clearExisting: false);
         var scratch = Path.Combine(
             Path.GetDirectoryName(artifact.Path)!,
             $".{Path.GetFileName(artifact.Path)}.{Guid.NewGuid():N}.scratch");
@@ -96,27 +100,86 @@ internal static partial class Commands
         artifact.WriteAtomic(fights.Serialize() + "\n");
 
         Console.WriteLine($"recording       : {fights.RunId}");
+        var unsummarised = new SortedDictionary<int, string>();
         foreach (var fight in fights.Fights)
         {
-            var projection = fights.Projection(fight.Fight);
+            // The projection is a description of one fight and can refuse - a fight
+            // whose enemy roster the trace cannot follow has no honest summary. The
+            // file is still written, because what it holds is the declared fights'
+            // traces and those are the replay's own; the refusal is collected and
+            // answered at the end, because a file one consumer cannot read is not a
+            // clean result and the retail client would otherwise meet it after the
+            // player had fought the whole fight.
+            CombatProjection? projection = null;
+            string? refusal = null;
+            try
+            {
+                projection = fights.Projection(fight.Fight);
+            }
+            catch (ManifestException ex)
+            {
+                refusal = ex.Message;
+                unsummarised[fight.Fight] = ex.Message;
+            }
+
             Console.WriteLine();
             Console.WriteLine(
                 $"fight {fight.Fight.ToString(CultureInfo.InvariantCulture)}         : " +
-                $"{projection.Boundary.GetValueOrDefault("combat.encounter", "unknown")}");
+                $"{projection?.Boundary.GetValueOrDefault("combat.encounter", "unknown") ?? "unknown"}");
             Console.WriteLine(
                 $"covered         : actions {fight.CombatStartSeq.ToString(CultureInfo.InvariantCulture)} " +
                 $"through {fight.CoveredThroughSeq.ToString(CultureInfo.InvariantCulture)}, " +
                 $"{fight.Trace.Steps.Count.ToString(CultureInfo.InvariantCulture)} sampled step(s)");
             Console.WriteLine($"history hash    : {fight.ActionHistoryHash}");
             Console.WriteLine($"snapshot digest : {fight.CombatStartSnapshotDigest}");
-            Console.WriteLine(
-                $"outcome         : {projection.Summary.Outcome} on turn " +
-                $"{projection.Summary.TotalTurns.ToString(CultureInfo.InvariantCulture)}, " +
-                $"{projection.Summary.StartingHealth.ToString(CultureInfo.InvariantCulture)} -> " +
-                $"{projection.Summary.FinalHealth.ToString(CultureInfo.InvariantCulture)} health");
+            Console.WriteLine(projection is not null
+                ? $"outcome         : {projection.Summary.Outcome} on turn " +
+                  $"{projection.Summary.TotalTurns.ToString(CultureInfo.InvariantCulture)}, " +
+                  $"{projection.Summary.StartingHealth.ToString(CultureInfo.InvariantCulture)} -> " +
+                  $"{projection.Summary.FinalHealth.ToString(CultureInfo.InvariantCulture)} health"
+                : $"outcome         : not summarised. {refusal}");
         }
         Console.WriteLine();
         Console.WriteLine($"recorded fights: {Paths.Display(artifact.Path)}");
+
+        if (unsummarised.Count > 0)
+        {
+            Console.Error.WriteLine();
+            Console.Error.WriteLine(
+                $"{Path.GetFileName(artifact.Path)} was written and holds every declared fight's trace, and " +
+                $"{unsummarised.Count.ToString(CultureInfo.InvariantCulture)} of them cannot be summarised, so " +
+                "this recording is not one a player can be stood in yet:");
+            foreach (var (fight, refusal) in unsummarised)
+            {
+                Console.Error.WriteLine(
+                    $"  fight {fight.ToString(CultureInfo.InvariantCulture)}: {refusal}");
+            }
+
+            return 1;
+        }
+
         return 0;
+    }
+
+    /// <summary>
+    /// Where a recording's own fights live: beside the recording, under its own name.
+    ///
+    /// The one place that spelling is worked out, because the file the mod ships and
+    /// the file <c>--play</c> reads have to be the same file this command writes. A
+    /// recording not named that way is refused rather than guessed at, since the
+    /// guess would be a path this command then writes to.
+    /// </summary>
+    internal static string RecordedFightPathFor(string manifestPath)
+    {
+        const string suffix = ".replay.json";
+        if (!manifestPath.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            throw new ManifestException(
+                $"{Path.GetFileName(manifestPath)} is not named <id>{suffix}, so where its own fights live " +
+                "cannot be worked out from it. Name the recording that way, or name the recorded-fights file " +
+                "explicitly.");
+        }
+
+        return manifestPath[..^suffix.Length] + ".recorded-fights.json";
     }
 }
