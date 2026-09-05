@@ -1273,8 +1273,10 @@ internal static class RecordedFightRun
             // call stack, so no frame is ever drawn with it: what a player sees is the
             // tag going, and then the popup's sentence. The transition stays because
             // it is what keeps the derivation total - every phase has an answer, and a
-            // journey that ends is in one of them. Whether the refused tag should be
-            // held on screen across the return to the menu instead is open.
+            // journey that ends is in one of them. Not drawing it is settled rather
+            // than pending: holding the tag on screen instead would mean keeping it
+            // alive across a return to the main menu that NRun.GlobalUi, its parent,
+            // does not survive.
             Transition(JourneyPhase.Refused);
             PlaybackTransportDock.Detach();
 

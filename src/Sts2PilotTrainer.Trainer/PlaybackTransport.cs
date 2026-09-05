@@ -633,7 +633,10 @@ public sealed record PlaybackTransport(
     /// phase a journey can be in has to have an answer, and it is written the way a
     /// drawn one would be - every control refused rather than removed - so that
     /// holding the tag on screen across the return to the menu stays a change of
-    /// timing rather than of model. Whether to do that is open.
+    /// timing rather than of model. That it is not drawn is settled rather than
+    /// pending, decided by the project's coordinating owner: the popup is the refusal
+    /// a player reads, and drawing this one would mean keeping the tag alive across a
+    /// return to the main menu that its parent interface does not survive.
     /// </summary>
     private static PlaybackTransport Refused(TransportIdentity identity, PlaybackSpeed speed) =>
         new(

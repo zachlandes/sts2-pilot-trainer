@@ -157,7 +157,14 @@ public static class TrainerCopy
 
     public const string JumpToTheEnd = "Jump to the end";
 
-    /// <summary>Why jumping to the end is refused before a turn has been played.</summary>
+    /// <summary>
+    /// Why jumping to the end is refused before a turn has been played.
+    ///
+    /// Nothing draws this today, and that is deliberate rather than an oversight: a
+    /// refused menu row says nothing, so the row this belonged to has nowhere to put
+    /// it. Held rather than deleted for a surface that may later have somewhere honest
+    /// to show it. Do not remove it as dead code; the compiler will not stop you.
+    /// </summary>
     public const string NothingPlayedYet = "You have not played a turn yet.";
 
     /// <summary>The confirmation before the one destructive thing the transport

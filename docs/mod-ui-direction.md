@@ -98,7 +98,8 @@ It stays exactly as it is for the couple of seconds between the fight ending and
 Refused: the mark becomes the warning glyph and every control is drawn and refused, the speed control included - in the model.
 It is not on screen today: the teardown applies the refused state and detaches the tag inside one call stack, so no frame is ever drawn with it.
 The state stays because it is what keeps the derivation total - every phase a journey can be in has an answer - and the sentence a player actually reads on a refusal is the popup's.
-Whether to make the refused tag visible, by holding it on screen across the return to the menu, is open rather than settled either way.
+That it is never drawn is settled, not pending: decided by the project's coordinating owner under the captain's explicit delegation.
+The refusal a player reads is the game's own popup, and making the tag visible there would mean keeping it alive across a return to the main menu that its parent interface does not survive.
 
 **The chip offers two directions and no third.** Jump to the beginning rebuilds the run to the proven combat start; jump to the end finishes the attempt where it is.
 Both leave the attempt, so both ask through the game's own confirmation popup first, and both are refused once the fight has ended.
