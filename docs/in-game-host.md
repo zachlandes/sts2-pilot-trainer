@@ -115,12 +115,13 @@ still drive; the command is the thing that would actually change the run.
 Every rule is the one S3 shipped and every row label is the one it approved; what
 changed is which reading they are asked about. The screen asks
 `Preflight.EvaluateLiveHost` for the progress model the run is actually generated
-against - `RecordedFightEntry.SuppliedProgress`, the same constant the construction
-uses - so each row states a requirement of the fight being offered rather than of a
-run nobody starts by hand. The unlocks, the acts and the ascension are supplied for
-that run, so they pass; the build, the build date, the content hash and the mod
-environment are read from this installation, because those are the ones no host can
-supply, and they still refuse.
+against - `RecordedFightEntry.SuppliedProgressFor`, the same rule the construction
+uses, which is the recorded player's own state where the recording carries one and
+the complete state where it does not - so each row states a requirement of the fight
+being offered rather than of a run nobody starts by hand. The unlocks, the acts and
+the ascension are supplied for that run, so they pass; the build, the build date, the
+content hash and the mod environment are read from this installation, because those
+are the ones no host can supply, and they still refuse.
 
 The row this matters for is the ascension. A profile whose ceiling is below the
 recording's does not stop the trainer constructing the run at the recording's
