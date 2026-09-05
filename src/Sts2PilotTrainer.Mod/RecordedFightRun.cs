@@ -587,11 +587,20 @@ internal static class RecordedFightRun
     /// the run reaches the screen is refused by a control that cannot yet take focus.
     /// A screen that cannot be driven at all is not retried - that refusal is passed
     /// straight out, and so is this one once the budget is spent.
+    ///
+    /// Each pass lights a control in the game's own screen, so the loop belongs to the
+    /// journey that started it: five seconds is long enough for the player to have
+    /// abandoned the run, and a retry landing after that would select a node in a run
+    /// the trainer does not own. It gives up silently there - the run it was revealing
+    /// for is gone, so there is nothing to refuse and nothing to say.
     /// </summary>
     private static async Task<string> RevealWhenTheScreenIsReady(PrefightTarget target)
     {
+        var mine = _entry;
         for (var attempt = 1; ; attempt++)
         {
+            if (!StillOurs(mine)) return string.Empty;
+
             try
             {
                 return RecordedFightReveal.Reveal(target);
@@ -1260,8 +1269,13 @@ internal static class RecordedFightRun
                 (screen.HasComparison ? $"comparison, {screen.Rows.Count} row(s)" : screen.Notice), 2);
 
             await LetTheGameRun(EndingTheFightSeconds);
-            if (!StillOurs(entry)) return;
 
+            // No stale-journey guard here, and that is the point of computing the
+            // screen first: on a loss the game's own flow has torn the run down during
+            // this wait, so a continuation that stopped because the entry had gone
+            // would drop the comparison the fight was played for. Detaching is about
+            // the transport rather than the journey and is idempotent, so it is safe
+            // whether or not the strip is still there.
             PlaybackTransportDock.Detach();
             PrefightScreen.ShowResult(screen, LeaveTheFight);
         }
