@@ -621,7 +621,10 @@ internal sealed class RunRecorder : IDisposable
         if (_capture.Fight is not null && _observer is null)
         {
             if (LiveRun.State is not { Players.Count: > 0 } run) return;
-            _observer = PlayerFightObserver.Start(run.Players[0], LiveRun.Sample, FightSink(), () => { });
+            // The recorder draws nothing, so it has nothing to re-derive when a sample
+            // is taken; the transport's callback is the Combat Trainer's.
+            _observer = PlayerFightObserver.Start(
+                run.Players[0], LiveRun.Sample, FightSink(), () => { }, () => { });
             return;
         }
 
