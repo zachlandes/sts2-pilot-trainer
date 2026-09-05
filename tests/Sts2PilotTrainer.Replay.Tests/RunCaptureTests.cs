@@ -250,6 +250,68 @@ public sealed class RunCaptureTests
         Assert.False(resumed.ToManifest().Source.Native!.WitnessedRunStart.Value);
     }
 
+    /// <summary>
+    /// A break one session decided on is still a break two sessions later.
+    ///
+    /// The losing sequence without it: session one resumes at a rolled-back save and is
+    /// marked broken, carries on recording, and is quit to the main menu; session two
+    /// finds a journal whose last digest is exactly the live one, sees nothing wrong,
+    /// and publishes <c>continuity = continuous</c> over a history with a hole in it.
+    /// Continuity is the one fact nothing downstream can re-derive, so that recording
+    /// would carry a false claim nobody could check.
+    /// </summary>
+    [Fact]
+    public void ASessionResumedAfterAnEarlierOneWasBrokenIsStillBroken()
+    {
+        var first = RunCapture.Resume(Played().Journal, Digest(1));
+        Assert.Equal(NativeSource.BrokenContinuity, first.Continuity);
+        first.Record(ActionVerb.SkipRewards, Args(), Floor(2), Digest(5));
+
+        var second = RunCapture.Resume(RunJournal.Parse(first.Journal.Render()), Digest(5));
+
+        Assert.Equal(NativeSource.BrokenContinuity, second.Continuity);
+        Assert.Equal(RunCaptureState.Broken, second.State);
+        Assert.Contains("resumed this run at decision 1", second.Refusal!, StringComparison.Ordinal);
+        Assert.Equal(6, second.NextSeq);
+    }
+
+    /// <summary>
+    /// And so is a refusal raised in the middle of a session - a card screen answered
+    /// with a card it did not offer, a settle that ran out of time - when the player
+    /// quits and continues.
+    /// </summary>
+    [Fact]
+    public void ARefusalRaisedMidSessionSurvivesAQuitAndContinue()
+    {
+        var first = Played();
+        first.MarkBroken("a card screen came back with a card it never offered");
+
+        var second = RunCapture.Resume(RunJournal.Parse(first.Journal.Render()), Digest(4));
+
+        Assert.Equal(NativeSource.BrokenContinuity, second.Continuity);
+        Assert.Equal(RunCaptureState.Broken, second.State);
+        Assert.Contains("never offered", second.Refusal!, StringComparison.Ordinal);
+
+        second.Finish("abandoned");
+        Assert.Equal(
+            NativeSource.BrokenContinuity, second.ToManifest().Source.Native!.Continuity);
+    }
+
+    /// <summary>The line a refusal is written as, which is what the recorder appends the
+    /// moment it raises one rather than at the end of a run nobody may reach.</summary>
+    [Fact]
+    public void ARefusalIsAJournalLineOfItsOwnAndTheDecisionsAroundItAreUntouched()
+    {
+        var capture = Played();
+        var line = capture.MarkBroken("the engine never settled");
+
+        var read = RunJournal.Parse(capture.Journal.Render());
+
+        Assert.Equal("the engine never settled", Assert.Single(read.Refusals));
+        Assert.Equal(6, read.Entries.Count);
+        Assert.Equal(RunJournal.RenderRefusal("the engine never settled"), line);
+    }
+
     [Fact]
     public void AJournalRoundTripsThroughItsOwnFileFormat()
     {

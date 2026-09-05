@@ -52,6 +52,18 @@ public sealed record RunJournal
     /// then one per decision.</summary>
     public required IReadOnlyList<RunJournalEntry> Entries { get; init; }
 
+    /// <summary>
+    /// Every refusal the sessions that wrote this journal raised, in the order they
+    /// raised them.
+    ///
+    /// On the file rather than derived, because a broken watch is the one fact about a
+    /// recording nothing downstream can establish. A session that resumed at a
+    /// rolled-back save, or that could not read a decision it saw, knows the history
+    /// has a hole in it; the session after it would read a journal whose last digest
+    /// matches the live one and publish that hole as a continuous account of the run.
+    /// </summary>
+    public IReadOnlyList<string> Refusals { get; init; } = [];
+
     /// <summary>The reading taken before any decision.</summary>
     public RunJournalEntry Opening => Entries[0];
 
@@ -75,10 +87,18 @@ public sealed record RunJournal
     public static string RenderEntry(RunJournalEntry entry) =>
         JsonSerializer.Serialize(entry, Compact) + "\n";
 
+    /// <summary>One refusal, as the line appended for it. Appended the moment it is
+    /// raised, for the same reason a decision is: a refusal only a running session
+    /// knows about is one the session after it cannot be told.</summary>
+    public static string RenderRefusal(string reason) =>
+        JsonSerializer.Serialize(new JournalRefusal { Reason = reason }, Compact) + "\n";
+
     /// <summary>The whole journal as it would be on disk. For a caller writing one in
     /// a single pass; a recorder appends instead.</summary>
     public string Render() =>
-        RenderHeader() + string.Concat(Entries.Select(RenderEntry));
+        RenderHeader() +
+        string.Concat(Entries.Select(RenderEntry)) +
+        string.Concat(Refusals.Select(RenderRefusal));
 
     /// <summary>
     /// Reads a journal back, refusing one this build cannot faithfully interpret.
@@ -113,14 +133,21 @@ public sealed record RunJournal
         }
 
         var entries = new List<RunJournalEntry>();
+        var refusals = new List<string>();
         for (var index = 1; index < lines.Count; index++)
         {
-            RunJournalEntry entry;
             try
             {
-                entry = JsonSerializer.Deserialize<RunJournalEntry>(lines[index], Compact)
+                if (JsonSerializer.Deserialize<JournalRefusal>(lines[index], Compact) is { Reason: not null } refusal)
+                {
+                    refusals.Add(refusal.Reason);
+                    continue;
+                }
+
+                var entry = JsonSerializer.Deserialize<RunJournalEntry>(lines[index], Compact)
                     ?? throw new ManifestException("A run journal entry deserialized to null.");
                 ManifestJson.ValidateRequiredMembers(entry, "Run journal entry");
+                entries.Add(entry);
             }
             catch (Exception exception) when (
                 index == lines.Count - 1 &&
@@ -130,8 +157,6 @@ public sealed record RunJournal
                 // finished being written and is a real recording of what happened.
                 break;
             }
-
-            entries.Add(entry);
         }
 
         var journal = new RunJournal
@@ -142,6 +167,7 @@ public sealed record RunJournal
             Identity = header.Identity,
             WitnessedRunStart = header.WitnessedRunStart,
             Entries = entries,
+            Refusals = refusals,
         };
         journal.RequireReadable();
         return journal;
@@ -215,6 +241,15 @@ public sealed record RunJournal
 
         [JsonPropertyName("witnessed_run_start")]
         public required bool WitnessedRunStart { get; init; }
+    }
+
+    /// <summary>A refusal line. Told apart from a decision line by carrying this one
+    /// property and none of a decision's, so the two shapes cannot be read as each
+    /// other.</summary>
+    private sealed record JournalRefusal
+    {
+        [JsonPropertyName("refusal")]
+        public string? Reason { get; init; }
     }
 }
 

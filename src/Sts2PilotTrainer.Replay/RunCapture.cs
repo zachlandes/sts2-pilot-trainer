@@ -68,6 +68,7 @@ public sealed class RunCapture
     private readonly List<RunJournalEntry> _entries = [];
     private readonly Dictionary<int, string> _digests = [];
     private readonly Dictionary<int, int?> _clocks = [];
+    private readonly List<string> _refusals = [];
 
     private FightCapture? _fight;
 
@@ -112,7 +113,12 @@ public sealed class RunCapture
 
     /// <summary>Why this recording is not a continuous account of the run, or null
     /// while it is.</summary>
-    public string? Refusal { get; private set; }
+    public string? Refusal => _refusals.Count == 0 ? null : string.Join(" ", _refusals);
+
+    /// <summary>Every refusal raised against this recording, in the order they were
+    /// raised. One per line of the journal, so a later session is told about each of
+    /// them rather than about one sentence they were joined into.</summary>
+    public IReadOnlyList<string> Refusals => _refusals;
 
     /// <summary>How the run ended, once it has. One of
     /// <see cref="NativeSource.Outcomes"/>.</summary>
@@ -149,8 +155,8 @@ public sealed class RunCapture
     /// still being fought.</summary>
     public IReadOnlyList<FightCapture> Fights => _fights;
 
-    /// <summary>The journal as it stands: the header, the opening reading, and one
-    /// entry per decision. What a crash leaves behind.</summary>
+    /// <summary>The journal as it stands: the header, the opening reading, one entry
+    /// per decision and one line per refusal. What a crash leaves behind.</summary>
     public RunJournal Journal => new()
     {
         SchemaId = RunJournal.Schema,
@@ -159,6 +165,7 @@ public sealed class RunCapture
         Identity = Identity,
         WitnessedRunStart = WitnessedRunStart,
         Entries = [Opening, .. _entries],
+        Refusals = _refusals.ToList(),
     };
 
     /// <summary>
@@ -248,6 +255,13 @@ public sealed class RunCapture
         var capture = new RunCapture(
             start, journal.WitnessedRunStart, NativeSource.ContinuousContinuity, journal.Opening);
         foreach (var entry in journal.Decisions) capture.Replay(entry);
+
+        // A refusal an earlier session raised is still a hole in this recording's
+        // account of the run, and is the reason it is on the file at all: the digest
+        // comparison below can only see what happened since the journal's last entry,
+        // so a session that recorded on past its own break would otherwise resume as
+        // continuous.
+        foreach (var reason in journal.Refusals) capture.Break(reason);
 
         var last = capture._entries.Count > 0 ? capture._entries[^1] : journal.Opening;
         if (!string.Equals(last.Digest, liveDigest, StringComparison.Ordinal))
@@ -353,7 +367,13 @@ public sealed class RunCapture
     /// still what was seen, and it is <see cref="Continuity"/> that says it is not
     /// this run's whole history.
     /// </summary>
-    public void MarkBroken(string reason) => Break(reason);
+    /// <returns>The journal line to append for it, so the refusal survives this
+    /// session the same way a decision does.</returns>
+    public string MarkBroken(string reason)
+    {
+        Break(reason);
+        return RunJournal.RenderRefusal(reason);
+    }
 
     /// <summary>
     /// This recording, as a manifest.
@@ -587,7 +607,7 @@ public sealed class RunCapture
     private void Break(string reason)
     {
         Continuity = NativeSource.BrokenContinuity;
-        Refusal = Refusal is null ? reason : $"{Refusal} {reason}";
+        _refusals.Add(reason);
         if (State == RunCaptureState.Recording) State = RunCaptureState.Broken;
     }
 
