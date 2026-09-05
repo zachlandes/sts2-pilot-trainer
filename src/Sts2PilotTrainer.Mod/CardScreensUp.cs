@@ -26,7 +26,8 @@ namespace Sts2PilotTrainer.Mod;
 ///
 /// What a screen offered and what came back is announced rather than interpreted:
 /// which card came off which list is the recorder's business, and this says only that
-/// an answer happened.
+/// an answer happened. So is what a failure to read one means: a subscriber handles its
+/// own, and <see cref="Announce"/> is only there so that one cannot take another down.
 /// </summary>
 internal static class CardScreensUp
 {
@@ -61,6 +62,17 @@ internal static class CardScreensUp
         }
     }
 
+    /// <summary>
+    /// Tells the subscribers a screen was answered, and keeps one of them from taking
+    /// anything else down with it.
+    ///
+    /// Not error handling on a subscriber's behalf: what a failure means is the
+    /// subscriber's to say, and each of them says it - the recorder by marking the
+    /// recording broken and writing the reason into its own journal. This catch is for
+    /// the two things a subscriber must not be able to do, which are to break the game's
+    /// own card-screen path and to stop another subscriber running. Nothing should reach
+    /// it, and something that does is a subscriber that did not handle its own failure.
+    /// </summary>
     private static void Announce(string what, Action announce)
     {
         try
@@ -69,9 +81,9 @@ internal static class CardScreensUp
         }
         catch (Exception ex)
         {
-            // A subscriber's failure is its own to report. Swallowed here so that one
-            // feature cannot take the screen down with it.
-            Log.Error($"[{RunmobileMod.ModId}] {what}: {ex.GetType().Name}: {ex.Message}", 2);
+            Log.Error(
+                $"[{RunmobileMod.ModId}] {what} threw out of its own handler, which should have dealt with " +
+                $"it: {ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 
@@ -90,7 +102,7 @@ internal static class CardScreensUp
             NCardGridSelectionScreen screen, Task<IEnumerable<CardModel>> inner)
         {
             var chosen = await WhileOneIsUp(inner);
-            Announce("a card screen's answer could not be read", () => GridAnswered?.Invoke(screen, chosen));
+            Announce("a card screen's answer", () => GridAnswered?.Invoke(screen, chosen));
             return chosen;
         }
     }
@@ -106,7 +118,7 @@ internal static class CardScreensUp
         internal static async Task<int?> Observe(Task<int?> inner)
         {
             var option = await WhileOneIsUp(inner);
-            Announce("a card reward's answer could not be read", () => RewardAnswered?.Invoke(option));
+            Announce("a card reward's answer", () => RewardAnswered?.Invoke(option));
             return option;
         }
     }

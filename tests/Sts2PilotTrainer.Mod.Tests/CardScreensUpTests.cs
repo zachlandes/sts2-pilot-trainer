@@ -38,7 +38,7 @@ public sealed class CardScreensUpTests
     /// Driven through that wrapper rather than asserted about it, because what has to
     /// hold is the count at the end and not the shape of the code that keeps it.
     /// </summary>
-    [Fact]
+    [GameFact]
     public async Task ACardScreenGivesBackTheCountItTookHoweverItEnds()
     {
         var before = CardScreensUp.Count;
@@ -83,7 +83,7 @@ public sealed class CardScreensUpTests
     /// once left it at -1, and a negative count silently satisfies the wait that keeps a
     /// reading off a half-made decision.
     /// </summary>
-    [Fact]
+    [GameFact]
     public async Task TheScreenCountNeverGoesBelowWhereItStarted()
     {
         var before = CardScreensUp.Count;
@@ -105,5 +105,43 @@ public sealed class CardScreensUpTests
 
         Assert.Equal(before, floor);
         Assert.Equal(before, CardScreensUp.Count);
+    }
+
+    /// <summary>
+    /// A subscriber that throws does not break the game's card screen or the count.
+    ///
+    /// That is the whole of what the shell's guard is for. What a failure to read an
+    /// answer <em>means</em> is the subscriber's - the recorder marks its recording
+    /// broken and writes the reason into its journal - and a guard that quietly logged
+    /// on its behalf would leave a recording carrying on with a decision missing and
+    /// nothing saying so.
+    /// </summary>
+    [GameFact]
+    public async Task ASubscriberThatThrowsKeepsNeitherTheScreenNorTheCount()
+    {
+        var before = CardScreensUp.Count;
+        var reached = false;
+
+        CardScreensUp.RewardAnswered = _ =>
+        {
+            reached = true;
+            throw new InvalidOperationException("a subscriber that did not handle its own failure");
+        };
+
+        try
+        {
+            var answered = new TaskCompletionSource<int?>();
+            var watching = CardScreensUp.Reward.Observe(answered.Task);
+            answered.SetResult(2);
+
+            // The game gets its own answer back, unchanged.
+            Assert.Equal(2, await watching);
+            Assert.True(reached);
+            Assert.Equal(before, CardScreensUp.Count);
+        }
+        finally
+        {
+            CardScreensUp.RewardAnswered = null;
+        }
     }
 }
