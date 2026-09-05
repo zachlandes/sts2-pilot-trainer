@@ -183,6 +183,19 @@ public sealed class RunCaptureTests
     }
 
     [Fact]
+    public void TheLastDigestIsWhereTheRecordingStandsRightNow()
+    {
+        // What a host asks to tell a decision the engine turned down from one it made:
+        // a digest covers the draw order and every random stream's position, so two
+        // decisions apart it is the sharpest answer to whether anything happened.
+        var capture = RunCapture.Begin(Start());
+        Assert.Equal(Digest(-1), capture.LastDigest);
+
+        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
+        Assert.Equal(Digest(0), capture.LastDigest);
+    }
+
+    [Fact]
     public void ASessionThatResumesWhereItLeftOffCarriesOnRecording()
     {
         var journal = Played().Journal;
