@@ -251,6 +251,35 @@ public sealed class RunCaptureTests
         Assert.Equal(NativeSource.BrokenContinuity, manifest.Source.Native!.Continuity);
     }
 
+    /// <summary>
+    /// A session that stopped inside a fight resumes with that fight still live.
+    ///
+    /// The game saves when a room is entered, so quitting straight after walking onto a
+    /// combat node leaves a journal whose last decision put the run in a fight. What
+    /// picks that back up is <see cref="RunCapture.Resume"/> replaying the entries, and
+    /// the fight it rebuilds is what the recorder has to start watching again - a fight
+    /// held open with nothing watching it drops every card play and ended turn left in
+    /// it while the recording still reports a continuous watch.
+    /// </summary>
+    [Fact]
+    public void ASessionThatStoppedInsideAFightResumesWithThatFightStillLive()
+    {
+        var capture = RunCapture.Begin(Start());
+        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            InFight(2, turn: 1), Digest(1));
+        Assert.NotNull(capture.Fight);
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(1));
+
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.NotNull(resumed.Fight);
+        Assert.Equal(FightCaptureState.Live, resumed.Fight!.State);
+        Assert.False(resumed.Fight.HasOpenStep);
+        Assert.Equal(Digest(1), resumed.Fight.CombatStartSnapshotDigest);
+    }
+
     [Fact]
     public void ASessionThatResumesSomewhereTheRecorderNeverSawIsBrokenToo()
     {
