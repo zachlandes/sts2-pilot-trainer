@@ -1281,7 +1281,12 @@ internal static class RecordedFightRun
         }
         catch (Exception ex)
         {
+            // On a loss the run is already gone by the time the result is shown, so a
+            // failure here has no run to abandon and would otherwise vanish silently.
             if (StillOurs(entry)) Abandon(ex);
+            else Log.Error(
+                $"[{RunmobileMod.ModId}] the fight's result could not be shown after the run ended: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 
