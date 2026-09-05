@@ -172,7 +172,10 @@ internal static class Program
               one. --fight walks to that fight of the run and --floor to the moment it
               arrived on that floor; without either it is the first fight -
               against what the recording observed at that boundary and against the
-              manifest's engine-produced combat-start snapshot digest. Reports the profile before and after,
+              manifest's engine-produced combat-start snapshot digest. --floor needs a
+              checkpoint at that arrival naming run.total_floor and run.map_coord, which
+              a recording read off footage of fights may not have; it refuses without
+              them. Reports the profile before and after,
               because nothing here may write to it. --control damages one decision
               before the fight and shows the entry refused; --step stops after one.
               --play then plays the recording's own fight to its end through the same

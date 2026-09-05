@@ -116,6 +116,18 @@ against everything the recording observed there and against the manifest's
 engine-produced combat-start snapshot digest - with the profile unchanged either side.
 `--fight <n>` walks to that fight of the run instead, and `--floor <n>` to the moment
 it arrived on that floor; without either it is the first fight.
+A floor arrival is proved by where the run stands, so `--floor` needs a checkpoint at
+that arrival naming `run.total_floor` and `run.map_coord`.
+The shipped video reconstruction above records no map coordinate anywhere - it was read
+off footage of fights - so its floor boundaries are declared but not enterable, and
+`--floor` refuses on it.
+The committed engine-generated whole-act history does carry them, and is what `--floor`
+is demonstrated on:
+
+```bash
+./scripts/arbiter enter-fight src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-whole-act.replay.json --floor 5
+```
+
 [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md) has it with its real
 output.
 
