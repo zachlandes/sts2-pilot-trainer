@@ -20,9 +20,12 @@ Steam account, writes into the isolated `default/1/modded/profile1` save tree ra
 than the player's, and never initialises Steamworks at all. Only this mod was enabled;
 the log below shows the other three skipped.
 
-Every image in this document was taken against one head. Earlier runs this session found
-defects and were taken against the code before their fixes; none of those shots survive
-here. The one exception is deliberate and labelled where it appears: the refusal is
+Images in this document come from two client sessions, and each section says which.
+Everything up to "Re-proved on the head that ships" was taken on 2026-09-04, against the
+head that carried the model; everything from there down was taken on 2026-09-05 against
+`401db7f`, the head this branch ships. That last section explains why a second session was
+needed, and it is not a detail. Within each session, earlier runs found defects and were
+taken against the code before their fixes; none of those shots survive here. The one exception is deliberate and labelled where it appears: the refusal is
 forced with a fault-injected build, because a correct one does not produce a refusal,
 and that build was reverted immediately after the shot.
 
@@ -391,6 +394,185 @@ Passed!  - Failed:     0, Passed:    86, Skipped:     0, Total:    86
 Passed!  - Failed:     0, Passed:    40, Skipped:     0, Total:    40
 ```
 
+## Re-proved on the head that ships
+
+Everything above was taken on 2026-09-04, against the head that carried the model. It is
+not the head that ships, and the gap between them is the point of this section.
+
+After those images were taken, the pipeline's tenth review round re-placed the look-back
+tooltip and, in doing so, gave the strip a field of type
+`private (Control Anchor, Func<ElementSurface> Element)? _tipSource`. That head is
+`60083f3`. It passed eleven review rounds, a test gate, a document gate and CI, and it
+could not load in the retail client at all: the game answered
+`--- RUNNING MODDED! --- Loaded 0 mods (4 total)` with a `ReflectionTypeLoadException`
+naming `Sts2PilotTrainer.Trainer`. The game calls `Module.GetTypes()` on the mod assembly
+to find its initializer; that computes field layouts; that resolves a sibling assembly one
+phase before `SiblingAssemblies` exists. A nullable value tuple built over a sibling's
+type is enough to do it. A plain reference to one is not, which is why the trap keeps
+being missed.
+
+So an earlier green covered an artifact that could not run. The check history on this
+branch is not a straight line, and a reader should not take the first green as covering
+what ships.
+
+`401db7f` replaces that field with a `Control` reference and two `Func<string>` providers,
+adds `ModAssemblyLoadOrderTests` - which loads `Runmobile.dll` in an `AssemblyLoadContext`
+that throws for every sibling rather than falling back, exactly as the game's own load
+order does - and rewrites the trap in `docs/in-game-host.md` as a checkable rule rather
+than an anecdote. The rule is narrower than the obvious one and had to be: a field's type
+*may be* a sibling type, because a plain reference is a pointer; it may not be a generic
+type built over one, in a nullable, a tuple, a delegate's type argument or a collection's
+element.
+
+The images from here down were taken on 2026-09-05 against `401db7f`, the head this branch
+ships. Same client, same `--force-steam=off` launch, same isolated save tree.
+
+### The mod is the one loaded, said by the game rather than by us
+
+*Newly proved.* Every earlier version of this document asserted that only this mod was
+enabled and showed no picture of it. This is the game's own mod line on the main menu,
+with the pointer resting on it so the game names what it loaded.
+
+The log from the same launch says the same thing in more detail, and is quoted rather
+than executed because it is a transcript of that session and not a command anyone else
+can re-run:
+
+    [INFO] Skipping loading mod BaseLib, it is set to disabled in settings
+    [INFO] Skipping loading mod Hindsight, it is set to disabled in settings
+    [INFO] Skipping loading mod STS2_MCP, it is set to disabled in settings
+    [INFO] Loading assembly DLL .../mods/Runmobile/Runmobile.dll
+    [INFO] Calling initializer method of type Sts2PilotTrainer.Mod.RunmobileMod for Runmobile
+    [INFO] Finished mod initialization for 'Runmobile' (Runmobile).
+    [INFO]  --- RUNNING MODDED! --- Loaded 1 mods (4 total)
+
+BaseLib and Hindsight stayed disabled deliberately: both rewrite their defaults into a
+shared mod-configs area that the isolated save tree does not cover.
+
+```bash {image}
+![The Slay the Spire 2 main menu with the pointer over the modded line at the bottom right. A tooltip reads "Mods loaded: Runmobile" above the standing line "Running Modded. Loaded 1 mod."](transport-mod-list-row.png)
+```
+
+![The Slay the Spire 2 main menu with the pointer over the modded line at the bottom right. A tooltip reads "Mods loaded: Runmobile" above the standing line "Running Modded. Loaded 1 mod."](2625b43b-2026-09-05.png)
+
+### The tag, re-shot on the shipping head
+
+*Re-proved.* Three drawing defects were found in the first client session and fixed:
+control glyphs and the tag's mark were centred against a size read before it was set, so
+they drew outside their plates; the once-only note and the look-back tooltip were sized
+from their raw text rather than their wrapped text, so the note stopped mid-word and the
+tooltip lost its last word. Those fixes are older than this section - what is new is that
+they are now photographed on the head that ships rather than on the head they were made
+on.
+
+The tooltip half of that was one class with three instances, not three separate bugs. The
+same measure-then-wrap error produced the truncated note, the truncated look-back tooltip
+and the clipped speed rows; fixing the sizing once fixed all three, which is why there is
+one fix in the history and three symptoms in the earlier sections.
+
+```bash {image}
+![Neow event screen in the retail client on head 401db7f. The hanging tag under the top bar reads "NaveGreed" beside a gold target mark, "1 of 2" over one filled teal dot and one hollow one, and four icon-only plates: "1x", a dim hollow look-back glyph, a filled play triangle and a filled step glyph, each centred in its plate. Beneath it the once-only note reads "NaveGreed's choices are shown as recorded. This shows what was chosen, not why." complete over two lines. The Leafy Poultice blessing row carries the game's own cyan selection ring. Health reads 64/80.](transport-tag-reproved.png)
+```
+
+![Neow event screen in the retail client on head 401db7f. The hanging tag under the top bar reads "NaveGreed" beside a gold target mark, "1 of 2" over one filled teal dot and one hollow one, and four icon-only plates: "1x", a dim hollow look-back glyph, a filled play triangle and a filled step glyph, each centred in its plate. Beneath it the once-only note reads "NaveGreed's choices are shown as recorded. This shows what was chosen, not why." complete over two lines. The Leafy Poultice blessing row carries the game's own cyan selection ring. Health reads 64/80.](c5c47753-2026-09-05.png)
+
+### The chip's two answers, both from one fight
+
+*Re-proved, and this time as a pair from a single run.* The chip is what the transport
+collapses to once the fight is the player's, and what it offers has to keep up with the
+fight rather than be decided once. At turn one with nothing played there is no attempt to
+jump to the end of, so that row is refused; after one card there is, so it is offered.
+Both images below are the same fight, seconds apart, with one Strike played between them.
+
+A refused row says nothing when hovered. That is deliberate and was made so in review: a
+row the player cannot take should not also grow an explanation they did not ask for.
+
+```bash {image}
+![The collapsed chip in the top right of the recorded fight, pressed and carrying a gold rim, with a two-row menu hanging beneath it. "Jump to the beginning" is bright against a circular-arrow glyph; "Jump to the end" is dim and refused against a double-triangle glyph. Turn one, nothing played.](transport-chip-refused-reproved.png)
+```
+
+![The collapsed chip in the top right of the recorded fight, pressed and carrying a gold rim, with a two-row menu hanging beneath it. "Jump to the beginning" is bright against a circular-arrow glyph; "Jump to the end" is dim and refused against a double-triangle glyph. Turn one, nothing played.](e0edcb30-2026-09-05.png)
+
+```bash {image}
+![The same chip menu in the same fight after one Strike has been played. Both rows are bright: "Jump to the beginning" and "Jump to the end", neither refused.](transport-chip-offered-reproved.png)
+```
+
+![The same chip menu in the same fight after one Strike has been played. Both rows are bright: "Jump to the beginning" and "Jump to the end", neither refused.](fe8bb530-2026-09-05.png)
+
+### A fight played to the end, and the comparison it earns
+
+*Newly proved.* Every earlier version of this document showed the result panel only on the
+paths where there is nothing to compare - a fight left early, a fight restarted. This is
+the panel a completed fight produces: the player'"'"'s line beside NaveGreed'"'"'s, turn by turn,
+with the projection'"'"'s own disclaimer that it states differences and does not say which
+fight was better.
+
+The fight below was won in four turns, the same number the recording took, from the same
+starting position. The player ended on 42 of 64 and NaveGreed on 57. The chart is the
+comparison'"'"'s output, not a score.
+
+```bash {image}
+![The Combat Trainer result window over the fight, headed "Your fight and NaveGreed's" with the line "Both fights started from the same position." A table compares You and NaveGreed: outcome Won and Won, turns 4 and 4, health at the start 64 and 64, health at the end 42 and 57, net health change -22 and -7, potions used none and none, cards removed none and none. Under it: "This states differences. It does not say which fight was better." and "Health lost counts only health that came off. Damage absorbed by block is not counted." To the right, a turn-by-turn column shows the cards each side played on turns 1 to 4 with the health each lost, and two line charts plot enemy health lost and health lost per turn for both lines. A Done button sits at the bottom right.](transport-result-won.png)
+```
+
+![The Combat Trainer result window over the fight, headed "Your fight and NaveGreed's" with the line "Both fights started from the same position." A table compares You and NaveGreed: outcome Won and Won, turns 4 and 4, health at the start 64 and 64, health at the end 42 and 57, net health change -22 and -7, potions used none and none, cards removed none and none. Under it: "This states differences. It does not say which fight was better." and "Health lost counts only health that came off. Damage absorbed by block is not counted." To the right, a turn-by-turn column shows the cards each side played on turns 1 to 4 with the health each lost, and two line charts plot enemy health lost and health lost per turn for both lines. A Done button sits at the bottom right.](76e5cb9d-2026-09-05.png)
+
+### Losing on purpose, because that path had no evidence at all
+
+*Newly proved, and it could not have been proved any other way.* When the player dies the
+game runs its own death flow, and the question is whether the trainer'"'"'s answer survives it
+or is swallowed by it. That path is a private static async void reaching the pre-fight
+screen, the run manager and the dock; there is no seam a unit test can hold, which is why
+until now it was argued in a comment and shown nowhere.
+
+So the fight below was lost deliberately: reach the recorded combat, then end seven turns
+without playing anything against a Sludge Spinner hitting for nine and ten a turn, from 64
+health. The game'"'"'s own defeat screen came up - the "Conquered" banner, "Your fight is
+over...", a Continue button - and the trainer'"'"'s panel came up over it rather than under it
+or not at all. Pressing Done returned to the main menu with the run gone.
+
+The panel refuses rather than inventing: there is no completed line to compare, so it says
+so and offers no chart.
+
+```bash {image}
+![The game's own defeat screen, dimmed, with the "Conquered" banner, the line "Your fight is over..." and a Continue button, and the player at 0/68. Over it sits a Combat Trainer panel reading "You did not win this fight, so there is no completed line to compare with NaveGreed's." with a single Done button.](transport-result-lost.png)
+```
+
+![The game's own defeat screen, dimmed, with the "Conquered" banner, the line "Your fight is over..." and a Continue button, and the player at 0/68. Over it sits a Combat Trainer panel reading "You did not win this fight, so there is no completed line to compare with NaveGreed's." with a single Done button.](3420a712-2026-09-05.png)
+
+### What the session wrote, with the caveat it has to keep
+
+360 files are covered by `./scripts/protected-files.sh` across two roots: the game'"'"'s user
+data directory, where saves, profiles, run history, settings and mod configs live, and the
+mods directory, where this mod and everybody else'"'"'s are installed.
+
+**The player'"'"'s own Steam save tree - 141 files - was not touched at all.** Nothing under
+it has a modification time inside this session'"'"'s window. That is what `--force-steam=off`
+buys: the launch writes into `default/1` instead, a tree the flag creates and nothing else
+reads.
+
+Ten files under the user root changed across the session, and every one of them is inside
+that isolated tree or is the game'"'"'s own log: `logs/godot.log` and this launch'"'"'s dated log,
+`default/1/settings.save` and its backup, `default/1/modded/profile.save` and its backup,
+and `default/1/modded/profile1/saves/prefs.save` and `progress.save` with theirs. The
+progress file changing is the game writing its own unlock progress in the disposable tree,
+not the mod: `ProfileWriteBarrier` suppresses writes during a trainer run, and these
+happened at the menu and on quit.
+
+Six files changed in the mods root, all six of them this mod'"'"'s own assemblies under
+`Runmobile/`, timestamped by the install that ran a minute before the launch rather than by
+anything the session did. `BaseLib`, `Hindsight` and `STS2_MCP` carry their old timestamps
+untouched.
+
+**The caveat, kept rather than rounded away.** No ledger was taken before this launch,
+because this worker inherited a client that was already running. The whole-session claim
+above therefore rests on modification times, not on hashes. A ledger was taken mid-session
+and compared after the quit; across that narrower window - which contains the riskiest
+moment, the save-on-quit - the only protected file that changed was
+`default/1/settings.save.backup`, in the isolated tree, and nothing under `user://Runmobile/`
+changed at all. For the same reason, the client preferences file was not copied before the
+session as the design asks; that step needs to happen at launch and there was no launch to
+attach it to.
+
 ## What this proves, and what it does not
 
 **Proved in the retail client.** One node carries the whole watched journey and is
@@ -448,3 +630,12 @@ reason in words by decision, and the travelling line is what replaces the senten
 is brief - a few hundred milliseconds - and this document says so rather than implying
 a comfortable animation. Whether that reads as movement or as a flicker to a player at
 normal speed is a judgement about the design, not a fact this proof establishes.
+
+**Two sentences added on 2026-09-05, so this section is not read as covering both
+sessions.** The file counts above - five changed assemblies, 226 of 226 in Steam's
+userdata, the copied `localconfig.vdf` - are the 2026-09-04 session's measurement and
+stay as its record. The 2026-09-05 session on `401db7f` was measured separately and its
+figures, including the one it could not take, are in "What the session wrote, with the
+caveat it has to keep". Two things listed above as unproved are no longer: the game's own
+mod line is photographed, and the death path is shown carrying the trainer's answer over
+the game's defeat screen rather than being swallowed by it.
