@@ -34,7 +34,7 @@ jobs:
       - name: Test
         run: dotnet test sts2-pilot-trainer.domain.slnf -c Release --no-build --nologo --verbosity normal
 
-      # The step above reports success while skipping 97 of Arbiter.Tests' 145 tests,
+      # The step above reports success while skipping 115 of Arbiter.Tests' 163 tests,
       # because this runner has no game. This one asserts that the skipped set is the
       # one recorded in scripts/expected-hosted-skips.txt, so a test moved behind
       # [GameFact], deleted or swapped cannot change what CI covers while leaving it
