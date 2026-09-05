@@ -614,11 +614,13 @@ public sealed record PlaybackTransport(
             Back: BackControl(false) with { DisabledReason = TrainerCopy.BetweenScreensDisabledReason },
             Play: PlayControl(playing: false) with
             {
-                Enabled = false, DisabledReason = TrainerCopy.BetweenScreensDisabledReason,
+                Enabled = false,
+                DisabledReason = TrainerCopy.BetweenScreensDisabledReason,
             },
             Step: StepControl(0, 0, string.Empty) with
             {
-                Enabled = false, DisabledReason = TrainerCopy.BetweenScreensDisabledReason,
+                Enabled = false,
+                DisabledReason = TrainerCopy.BetweenScreensDisabledReason,
             },
             Ledger: [],
             Note: string.Empty,
@@ -648,7 +650,8 @@ public sealed record PlaybackTransport(
             Play: PlayControl(false) with { Enabled = false, DisabledReason = TrainerCopy.RefusedDisabledReason },
             Step: StepControl(0, 0, string.Empty) with
             {
-                Enabled = false, DisabledReason = TrainerCopy.RefusedDisabledReason,
+                Enabled = false,
+                DisabledReason = TrainerCopy.RefusedDisabledReason,
             },
             Ledger: [],
             Note: string.Empty,
