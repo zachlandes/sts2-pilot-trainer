@@ -153,6 +153,15 @@ treasure room opens, and the card screens a reward or an enchantment opens - so 
 host drives the first two and answers the third from the manifest. None of them decides
 anything, and each refuses where the manifest is silent.
 
+**No type in `Runmobile` may need a sibling assembly to load.** The game finds a mod's
+initializer by enumerating that assembly's types, and it does that before
+`SiblingAssemblies` has told the runtime where `Sts2PilotTrainer.Replay` and the rest
+are - so a type there that inherits from, implements, or holds a value of one of theirs
+fails to load and the client reports `Loaded 0 mods` with nothing else wrong. Method
+bodies, method signatures, static fields and reference-typed fields are lazy and are
+fine. `ModAssemblyLoadabilityTests` is the rule, and `DelegatingFightSampleSink` is how
+the mod reaches an interface it may not implement.
+
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
 player's game; `EngineHost.Start` must never run there, and `AdoptRunningGame` is the

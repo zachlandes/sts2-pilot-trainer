@@ -376,11 +376,12 @@ public static class LocalEnvironment
             // an exact requirement asks is whether a state made of these ids can be
             // constructed here at all, which is a fact about the installation rather
             // than about whichever model this reading was taken under.
-            ShippedIds = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
-            {
-                ["epochs"] = EpochIds(UnlockState.all).Order(StringComparer.Ordinal).ToList(),
-                ["encounters_seen"] = ShippedEncounterIds().Keys.Order(StringComparer.Ordinal).ToList(),
-            },
+            //
+            // Read through the same reader the recorder uses, so "the ids a state is
+            // made of" has one answer. A second enumeration here would be a second
+            // answer, and the one nobody exercises is the one that drifts.
+            ShippedIds = ReadShippedUnlockInventory().IdLists()
+                .ToDictionary(list => list.Name, list => list.Ids, StringComparer.Ordinal),
         };
     }
 
@@ -411,6 +412,20 @@ public static class LocalEnvironment
         }
 
         return ids;
+    }
+
+    /// <summary>
+    /// Everything this build ships, as the three values a state is constructed from.
+    ///
+    /// The complete state read the way the recorder reads a run's own, which is what
+    /// makes the reader checkable without somebody playing: hand this back through
+    /// <see cref="PlayerProgress.Exact"/> and a run generated against it is the run
+    /// the complete state produces, or the reader dropped something.
+    /// </summary>
+    public static UnlockStateInventory ReadShippedUnlockInventory()
+    {
+        EngineHost.Start();
+        return ReadUnlockStateInventory(UnlockState.all);
     }
 
     /// <summary>
