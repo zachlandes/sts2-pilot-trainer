@@ -27,6 +27,10 @@ totals and the suite still reports green.
 Building first is what makes it run everything: nothing in the solution references
 `Sts2PilotTrainer.Cli`, so `dotnet test` never builds the arbiter the integration
 tests drive, and bootstrapping alone leaves 119 of them skipped.
+Every test run is bounded by `TestSessionTimeout` in `.runsettings`, wired in from
+`Directory.Build.props` so it applies however `dotnet test` was started. A run that
+exceeds it aborts with a non-zero exit rather than hanging: a deadlocked test used to
+wait for as long as anybody let it. Raise the bound rather than removing it.
 `scripts/arbiter` goes through `dotnet <dll>` rather
 than the generated apphost, which needs `DOTNET_ROOT` that a Homebrew install does
 not set.

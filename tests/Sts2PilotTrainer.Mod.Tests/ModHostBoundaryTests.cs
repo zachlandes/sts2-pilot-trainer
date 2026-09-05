@@ -181,6 +181,16 @@ public sealed class ModHostBoundaryTests
         }
     }
 
+    /// <summary>
+    /// How long the installer gets before this test calls it a hang. A cold worktree has to
+    /// restore and build the mod and everything under it, which is seconds rather than
+    /// minutes; anything past this is not a slow build.
+    /// </summary>
+    private static readonly TimeSpan InstallerTimeout = TimeSpan.FromMinutes(5);
+
+    /// <summary>How long the last of the installer's output gets to arrive after it has exited.</summary>
+    private static readonly TimeSpan OutputDrainGrace = TimeSpan.FromSeconds(30);
+
     private static Arbiter.Result RunInstaller(string modsDirectory, string? pathPrefix = null)
     {
         var startInfo = new ProcessStartInfo
@@ -200,11 +210,37 @@ public sealed class ModHostBoundaryTests
                 pathPrefix + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
         }
 
+        // The installer builds the mod, and MSBuild leaves its worker nodes running for the
+        // next build to reuse. Those nodes inherit the pipes read below and outlive the script
+        // that started them, so end of stream never arrives and this test used to hang for as
+        // long as anybody let it. Reuse is off for this child only; the player's own builds are
+        // not this test's business.
+        startInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
+
         using var process = Process.Start(startInfo)!;
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        return new Arbiter.Result(process.ExitCode, output, error);
+
+        // Both streams are drained at once. Reading one to the end and then the other deadlocks
+        // as soon as the child fills the pipe nobody is reading.
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+
+        // Waits on the process rather than on end of stream, and refuses rather than waiting
+        // forever: a test that never finishes reports nothing to anybody.
+        if (!process.WaitForExit((int)InstallerTimeout.TotalMilliseconds))
+        {
+            process.Kill(entireProcessTree: true);
+            throw new TimeoutException(
+                $"scripts/install-mod.sh did not exit within {InstallerTimeout.TotalMinutes:0} minutes.");
+        }
+
+        if (!Task.WhenAll(output, error).Wait(OutputDrainGrace))
+        {
+            throw new TimeoutException(
+                $"scripts/install-mod.sh exited with {process.ExitCode}, but {OutputDrainGrace.TotalSeconds:0} " +
+                "seconds later something it started is still holding its output open.");
+        }
+
+        return new Arbiter.Result(process.ExitCode, output.Result, error.Result);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
