@@ -18,6 +18,7 @@ counting on a build that feature declines to watch, which is the build the other
 meant to carry on through. What a screen answered is a feature's own business, and a
 module subscribes rather than patching the screens a second time.
 That promise is about a module which declares itself disabled: a module whose `Install` throws propagates out of the loop, aborts `Start` before the shell is marked started, and may leave its partial patches applied, which is a broken-build condition rather than a runtime one, and the failure-isolation lifecycle that would contain it is still not built.
+Shell ownership is paid for at the other end: `InstallShellPatches` treats a patch class Harmony cannot resolve as a broken build and lets it throw out of `Start`, so a game update that renames `NCardGridSelectionScreen.CardsSelected` or `NCardRewardSelectionScreen.OptionSelected` takes the whole mod down, where the same rename behind a module's own patches would disable only that module.
 `CombatTrainerModule` and `RecorderModule` are built. The run library is the third.
 
 The retail proof below, up to and including S5, was gathered on the pre-rename `CombatTrainer` artifact.
