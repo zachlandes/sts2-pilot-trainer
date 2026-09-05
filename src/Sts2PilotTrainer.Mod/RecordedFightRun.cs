@@ -291,9 +291,18 @@ internal static class RecordedFightRun
     {
         if (_entry is not { } entry || entry.StepsTaken == 0) return;
 
-        Pause();
-        _lookingBackAt = _lookingBackAt is { } step ? Math.Max(1, step - 1) : entry.StepsTaken;
-        ShowTransport();
+        try
+        {
+            Pause();
+            _lookingBackAt = _lookingBackAt is { } step ? Math.Max(1, step - 1) : entry.StepsTaken;
+            ShowTransport();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not look back a step: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     /// <summary>
@@ -307,18 +316,27 @@ internal static class RecordedFightRun
     {
         if (_entry is null) return;
 
-        if (_playing)
+        try
         {
-            Pause();
-            ShowTransport();
-            return;
-        }
+            if (_playing)
+            {
+                Pause();
+                ShowTransport();
+                return;
+            }
 
-        _playing = true;
-        _lookingBackAt = null;
-        Relight();
-        ShowTransport();
-        HoldThenCommit();
+            _playing = true;
+            _lookingBackAt = null;
+            Relight();
+            ShowTransport();
+            HoldThenCommit();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not start or stop playing: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     /// <summary>
@@ -652,8 +670,17 @@ internal static class RecordedFightRun
 
     private static void ChooseSpeed(int index)
     {
-        _speedIndex = index;
-        ShowTransport();
+        try
+        {
+            _speedIndex = index;
+            ShowTransport();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not take the chosen speed: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     /// <summary>
