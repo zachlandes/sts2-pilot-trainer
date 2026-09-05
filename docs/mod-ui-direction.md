@@ -93,6 +93,9 @@ One rule carries meaning rather than decoration: **a filled shape moves the run,
 **States.** Holding, with the target lit by the game's own selected state. Playing, with the hold drawn as a line draining along the tag's foot.
 Looking back, with a ledger of the decisions already made hung beneath - it exists because those screens are gone, and the run must never be rewound to answer for them.
 Opening, between the last recorded choice and the fight it leads to: the tag stays exactly where it was and everything that would move the run is refused, because a run with nothing left to commit must not still be offering to commit it. The speed control is not refused there - it does not move the run.
+Between screens, the window between committing one decision and revealing the next: look back, play and step are all refused, on the same rule and for the same reason - a press there acts on a state nobody has been shown, and the reveal that follows discards it a frame later.
+The speed control is offered, as it is in Opening.
+The two ways look back can be refused stay distinguishable in the model, because nothing behind yet and not yet are different answers to somebody who pressed.
 The chip during the player's own fight: the mark and the name, silent until pressed.
 It stays exactly as it is for the couple of seconds between the fight ending and the result panel arriving, drawn and pressable, with both of its rows refused - both act on a fight that no longer exists.
 Refused: the mark becomes the warning glyph and every control is drawn and refused, the speed control included - in the model.
@@ -141,5 +144,7 @@ A redesign that needs an element to appear, disappear or refuse somewhere new ch
 - **The video title** is `source.video.title` in the manifest, filled at ingestion. Until a recording carries one the identity block shows the creator alone.
 - **Screens the journey does not yet walk** - loot, card rewards, shops, rests - have no caption owner. The tag is built to carry them unchanged; the reveal refuses them.
 - **No new hotkeys.** On-screen controls only, so the controls carry no hotkey glyph: one would name a key that does nothing.
+- **The tag's anchor is measured once**, in `PlaybackTransportDock.Attach`, and nothing remeasures it, so a relic row that grows past the measured band or a window resized mid-journey leaves the tag where it was.
+  A remeasure method existed and was removed unwired rather than shipped down a path that had never run in the retail client; the gap it described is still real.
 
 `docs/in-game-host.md` records the behaviour and the traps; this file records what the surfaces are; `demo/PLAYBACK-TRANSPORT.md` is what they look like running in the player's client.
