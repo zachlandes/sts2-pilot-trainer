@@ -184,15 +184,112 @@ public sealed class RunRecorderTests
         await watching;
         Assert.Equal(before, RunRecorder.ScreensOpen);
 
-        // And a screen whose task faults - the run torn down under it, say - is still a
-        // screen that has come down.
-        var abandoned = new TaskCompletionSource<int?>();
-        var stranded = RunRecorder.CardRewardAnswer.Observe(abandoned.Task);
+        // A screen whose task faults is still a screen that has come down. This is the
+        // reward screen's own tear-down: NCardRewardSelectionScreen._ExitTree faults its
+        // completion source when the run goes away under it.
+        var faulted = new TaskCompletionSource<int?>();
+        var stranded = RunRecorder.CardRewardAnswer.Observe(faulted.Task);
         Assert.Equal(before + 1, RunRecorder.ScreensOpen);
 
-        abandoned.SetException(new InvalidOperationException("the run went away under the screen"));
+        faulted.SetException(new InvalidOperationException("the run went away under the screen"));
         await Assert.ThrowsAsync<InvalidOperationException>(() => stranded);
         Assert.Equal(before, RunRecorder.ScreensOpen);
+
+        // And so is one that is cancelled, which is what the grid screen's own
+        // _ExitTree does. Between them these are every way a screen ends, which is what
+        // says the count cannot go stale and why nothing resets it.
+        var cancelled = new TaskCompletionSource<int?>();
+        var dropped = RunRecorder.WhileOnScreen(cancelled.Task);
+        Assert.Equal(before + 1, RunRecorder.ScreensOpen);
+
+        cancelled.SetCanceled();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => dropped);
+        Assert.Equal(before, RunRecorder.ScreensOpen);
+    }
+
+    /// <summary>
+    /// The count never dips below where it started, however the screens interleave.
+    ///
+    /// It cannot: <c>WhileOnScreen</c> is the only thing that touches the counter and it
+    /// takes and gives back in one try/finally, so there is no bare decrement for a
+    /// caller to reach. That is the point of the shape - a reset and a stray decrement
+    /// once left it at -1, and a negative count silently satisfies the wait that keeps a
+    /// reading off a half-made decision.
+    /// </summary>
+    [GameFact]
+    public async Task TheScreenCountNeverGoesBelowWhereItStarted()
+    {
+        var before = RunRecorder.ScreensOpen;
+        var floor = before;
+
+        var first = new TaskCompletionSource<int?>();
+        var second = new TaskCompletionSource<int?>();
+        var outer = RunRecorder.WhileOnScreen(first.Task);
+        var inner = RunRecorder.WhileOnScreen(second.Task);
+        floor = Math.Min(floor, RunRecorder.ScreensOpen);
+
+        second.SetResult(0);
+        await inner;
+        floor = Math.Min(floor, RunRecorder.ScreensOpen);
+
+        first.SetResult(1);
+        await outer;
+        floor = Math.Min(floor, RunRecorder.ScreensOpen);
+
+        Assert.Equal(before, floor);
+        Assert.Equal(before, RunRecorder.ScreensOpen);
+    }
+
+    /// <summary>
+    /// A wait on a screen ends when there is no recording left to wait for.
+    ///
+    /// It has no budget by design - a screen is up for as long as somebody is looking at
+    /// it, and a clock there costs a player who stepped away their recording - so the
+    /// recorder's own lifetime is the only exit. Without it, a run left to the main menu
+    /// with a screen up spins a scene-tree timer every poll for the rest of the session,
+    /// outliving the recording it was waiting for.
+    /// </summary>
+    [GameFact]
+    public async Task AScreenWaitEndsWhenTheRecordingDoes()
+    {
+        var polls = 0;
+        var recording = true;
+
+        var refusal = await RunRecorder.WaitForScreens(
+            () => 1,
+            () => !recording,
+            () =>
+            {
+                recording = false;
+                return ++polls > 1
+                    ? throw new InvalidOperationException(
+                        "The wait polled again after the recording had ended, so it would never stop.")
+                    : Task.CompletedTask;
+            });
+
+        Assert.NotNull(refusal);
+        Assert.Contains("1 card screen(s) still open", refusal, StringComparison.Ordinal);
+
+        // It waited while there was a recording to wait for, and stopped once there
+        // was not.
+        Assert.Equal(1, polls);
+    }
+
+    /// <summary>And a screen that comes down lets the settle carry on.</summary>
+    [GameFact]
+    public async Task AScreenThatComesDownLetsTheWaitFinish()
+    {
+        var open = 2;
+
+        Assert.Null(await RunRecorder.WaitForScreens(
+            () => open,
+            () => false,
+            () =>
+            {
+                open--;
+                return Task.CompletedTask;
+            }));
+        Assert.Equal(0, open);
     }
 
     [GameFact]

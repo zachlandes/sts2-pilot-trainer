@@ -85,6 +85,29 @@ internal sealed class RunRecorder : IDisposable
     /// card screen suspends inside the call that opened it and the engine's queue goes
     /// idle while it waits, so "the queue is empty" is true of a run that has not
     /// finished making its decision.
+    ///
+    /// Four things hold together here, and each of the first three has been broken once
+    /// by a change that only had the others in mind:
+    ///
+    /// It counts screens up in this process, not screens a recorder happened to be
+    /// watching. <see cref="WhileOnScreen{T}"/> is the only thing that touches it and it
+    /// takes and gives back in one try/finally, so every increment has its decrement and
+    /// there is no bare decrement for a caller to reach. That is what makes it balanced,
+    /// and what makes going below zero impossible rather than clamped.
+    ///
+    /// Being balanced, it cannot go stale, so nothing resets it. Both of the game's card
+    /// screens complete their own completion source in <c>_ExitTree</c> - the grid
+    /// cancels, the reward screen faults - so a screen torn down with its run still ends
+    /// the task this waits on, and the finally still runs. A reset would be the only way
+    /// left to lose a screen that is genuinely up.
+    ///
+    /// Waiting on it costs no budget. A screen is up for as long as somebody is looking
+    /// at it; the engine's settle budget bounds the engine, which should always settle,
+    /// and a person is not the engine.
+    ///
+    /// The wait ends when the recorder does. Without that, a run left to the main menu
+    /// spins a scene-tree timer every poll for the rest of the session, outliving the
+    /// recording it was waiting for.
     /// </summary>
     private static int _screensOpen;
 
@@ -211,16 +234,9 @@ internal sealed class RunRecorder : IDisposable
                 await poll;
             }
 
-            // Before the settle below rather than after it: that settle waits on this
-            // counter, so a screen left counted by a previous run - one torn down with
-            // the run while it was still up - would have this one wait for a screen
-            // nobody is looking at. No genuine screen is lost by clearing it here,
-            // because every patch that counts one returns early while Active is null.
-            Interlocked.Exchange(ref _screensOpen, 0);
-
             // And then the engine's own work, so the reading is of a settled run rather
             // than one still building the room it just entered.
-            if (await Settle(null) is { } unsettled)
+            if (await Settle(null, () => Active is not null || ProfileWriteBarrier.IsActive) is { } unsettled)
             {
                 Log.Warn($"[{RunmobileMod.ModId}] not recording this run: {unsettled}", 2);
                 return;
@@ -411,21 +427,59 @@ internal sealed class RunRecorder : IDisposable
     }
 
     /// <summary>
-    /// A card screen has gone up in front of the player, and has come back down.
+    /// Counts one card screen for as long as the game's own task for it is outstanding.
     ///
-    /// Taken and given back by one try/finally around the screen's own task rather than
-    /// by a prefix and a postfix that could each decide differently: a screen counted
-    /// on the way up and not on the way down leaves the count above zero for the rest of
-    /// the session, and the next run's settle waits on a screen nobody is looking at.
-    /// Counted whether or not a recorder is watching, because what is being counted is
-    /// screens on screen.
+    /// The only thing that touches <see cref="_screensOpen"/>, and it takes and gives
+    /// back in one try/finally. A prefix and a postfix that each decided separately drifted
+    /// exactly once - a run torn down between them left the count above zero for the rest
+    /// of the session - and a pair of take/give methods would let the next caller do it
+    /// again. There is nothing here to call twice or to call alone.
     /// </summary>
-    private static void ScreenOpened() => Interlocked.Increment(ref _screensOpen);
-
-    private static void ScreenClosed() => Interlocked.Decrement(ref _screensOpen);
+    internal static async Task<T> WhileOnScreen<T>(Task<T> screen)
+    {
+        Interlocked.Increment(ref _screensOpen);
+        try
+        {
+            return await screen;
+        }
+        finally
+        {
+            Interlocked.Decrement(ref _screensOpen);
+        }
+    }
 
     /// <summary>How many card screens are open, for a test that drives one.</summary>
     internal static int ScreensOpen => Volatile.Read(ref _screensOpen);
+
+    /// <summary>
+    /// Waits for the screens in front of the player to come down, or for there to be no
+    /// recording left to wait for.
+    ///
+    /// The count, the stop and the poll arrive as arguments for the same reason
+    /// <see cref="PlayerFightObserver.WaitUntilSettled"/>'s do: waiting is a rule about
+    /// those three things, and handed them it can be exercised on a machine with no
+    /// game. <paramref name="stopped"/> is what keeps a wait on a person from outliving
+    /// the run it was waiting for.
+    /// </summary>
+    /// <returns>Null once no screen is open, or the sentence saying why it stopped
+    /// waiting.</returns>
+    internal static async Task<string?> WaitForScreens(
+        Func<int> open, Func<bool> stopped, Func<Task> nextPoll)
+    {
+        while (open() > 0)
+        {
+            if (stopped())
+            {
+                return
+                    $"The recording ended with {open().ToString(CultureInfo.InvariantCulture)} card screen(s) " +
+                    "still open, so this decision was never read.";
+            }
+
+            await nextPoll();
+        }
+
+        return null;
+    }
 
     /// <summary>A card reward screen answered, by the position it reports.</summary>
     internal static void CardRewardAnswered(IReadOnlyList<CardModel> offered, int? option)
@@ -487,10 +541,13 @@ internal sealed class RunRecorder : IDisposable
             var taken = false;
             try
             {
-                var unsettled = await Settle(next.EngineWork);
+                var unsettled = await Settle(next.EngineWork, () => _disposed || _finished);
                 lock (Gate)
                 {
-                    if (_disposed)
+                    // A wait that ended because there is no recording left has nothing
+                    // to refuse: the run is over, and Finish has already said how many
+                    // decisions it never read.
+                    if (_disposed || _finished)
                     {
                         _pumping = false;
                         return;
@@ -564,22 +621,22 @@ internal sealed class RunRecorder : IDisposable
     /// is a queue that drains - and a reading taken between them would be of a run
     /// halfway through a decision.
     /// </summary>
+    /// <param name="stopped">Whether there is still a recording to settle for. A person
+    /// at a card screen is given no budget, so this is the only thing that ends that
+    /// wait short of the screen coming down; <see cref="_screensOpen"/> says why.</param>
     /// <returns>Null once the engine has settled, or the sentence saying what it was
     /// still waiting for.</returns>
-    private static async Task<string?> Settle(Task? engineWork)
+    private static async Task<string?> Settle(Task? engineWork, Func<bool> stopped)
     {
         // A person deciding is not an engine failing to settle, so the budget below does
-        // not start until every screen in front of them has been answered, and this wait
-        // has no budget of its own: a screen is up for as long as somebody is looking at
-        // it, and a clock here would cost a player who stepped away their recording.
-        // What it needs instead is a count that cannot drift - ScreenOpened and
-        // ScreenClosed are the same try/finally, so a screen that is up is counted once
-        // and given back however its task ends - and the reset at attach, which clears
-        // anything counted before this recorder existed. A screen whose task genuinely
-        // never completes is a game that has stopped, and the decisions queued behind it
-        // are still pending at run end, where Finish refuses the recording and says how
-        // many it never read.
-        while (Volatile.Read(ref _screensOpen) > 0) await RecordedFightRun.LetTheGameRun(SettlePollSeconds);
+        // not start until every screen in front of them has been answered.
+        if (await WaitForScreens(
+                () => Volatile.Read(ref _screensOpen),
+                stopped,
+                () => RecordedFightRun.LetTheGameRun(SettlePollSeconds)) is { } waiting)
+        {
+            return waiting;
+        }
 
         var deadline = RecordedFightRun.LetTheGameRun(SettleBudgetSeconds);
         var unsettled =
@@ -1440,16 +1497,7 @@ internal sealed class RunRecorder : IDisposable
         internal static async Task<IEnumerable<CardModel>> Observe(
             NCardGridSelectionScreen screen, Task<IEnumerable<CardModel>> inner)
         {
-            IEnumerable<CardModel> chosen;
-            ScreenOpened();
-            try
-            {
-                chosen = await inner;
-            }
-            finally
-            {
-                ScreenClosed();
-            }
+            var chosen = await WhileOnScreen(inner);
 
             try
             {
@@ -1512,16 +1560,7 @@ internal sealed class RunRecorder : IDisposable
 
         internal static async Task<int?> Observe(Task<int?> inner)
         {
-            int? option;
-            ScreenOpened();
-            try
-            {
-                option = await inner;
-            }
-            finally
-            {
-                ScreenClosed();
-            }
+            var option = await WhileOnScreen(inner);
 
             try
             {
