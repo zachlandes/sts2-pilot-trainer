@@ -295,6 +295,33 @@ public sealed class TransportSurfaceTests
     }
 
     /// <summary>
+    /// Pause is the one control that stays live between screens.
+    ///
+    /// Play is refused there because starting the sequence would make a decision
+    /// nobody has been shown. Once it is already running the same control means stop,
+    /// which does not move the run - and a sequence that cannot be stopped mid
+    /// transition is the reason somebody reaches for it. `docs/mod-ui-direction.md`
+    /// names this as the exception to the between-screens row.
+    /// </summary>
+    [Fact]
+    public void PauseIsNotRefusedBetweenCommittingOneChoiceAndRevealingTheNext()
+    {
+        var committing = PlaybackTransport.For(
+            JourneyPhase.Watching, Facts(next: MapMove, stepsTaken: 1, revealed: false))!;
+        var playing = PlaybackTransport.For(
+            JourneyPhase.Watching, Facts(next: MapMove, stepsTaken: 1, revealed: false, playing: true))!;
+
+        Assert.False(committing.Surface.Play.Pressable);
+        Assert.True(playing.Surface.Play.Pressable);
+        Assert.Equal(TransportGlyph.Pause, playing.Play.Glyph);
+
+        // The other two are refused in that window whether or not the sequence is
+        // running: both would move the run.
+        Assert.False(playing.Surface.Step.Pressable);
+        Assert.False(playing.Surface.Back.Pressable);
+    }
+
+    /// <summary>
     /// Back is refused in that same window, and it was not.
     ///
     /// The client would take the press: the ledger opened, and the reveal that

@@ -696,6 +696,32 @@ public sealed class PlaybackTransportStripTests
         Assert.Equal([2, 1], chosen);
     }
 
+    /// <summary>
+    /// A row that was chosen runs even when the redraw closing the menu fails.
+    ///
+    /// `Choose` closes the menu before invoking the row, and closing is a full redraw
+    /// over freed and re-added children. An exception there escaped into the game's own
+    /// signal dispatch, so the row silently did nothing and nothing was logged - the
+    /// same failure the closure-over-`index` bug produced. Here the ledger's artwork
+    /// throws on the next draw, which is how a freed node behaves in the client.
+    /// </summary>
+    [Fact]
+    public void AChosenRowStillRunsWhenTheRedrawThatClosesTheMenuFails()
+    {
+        var chosen = new List<int>();
+        var strip = Build(LookingBack());
+
+        strip.OpenMenu(chosen.Add);
+        Assert.True(strip.MenuIsOpen);
+
+        strip.DrawArtWith(_ => throw new InvalidOperationException("the node was freed"));
+
+        Find<Button>(strip.Menu, "MenuRow0").EmitPressed();
+
+        Assert.Equal([0], chosen);
+        Assert.False(strip.MenuIsOpen);
+    }
+
     /// <summary>A refused row cannot be chosen, and pressing it neither runs an action
     /// nor leaves the menu open.</summary>
     [Fact]

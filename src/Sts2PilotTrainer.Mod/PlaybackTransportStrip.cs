@@ -798,6 +798,16 @@ internal sealed class PlaybackTransportStrip
 
     internal bool MenuIsOpen => _openMenu != None && OpenRows.Count > 0;
 
+    /// <summary>
+    /// Run the row that was pressed, having closed the menu it was pressed in.
+    ///
+    /// Closing is a full redraw over freed and re-added children, so it can throw the
+    /// way any draw can. This is a Godot press handler: an exception escaping into the
+    /// game's own signal dispatch is a row that silently does nothing, which is the
+    /// failure the closure-over-<c>index</c> bug produced. So the close is guarded and
+    /// the chosen action stays outside the guard - a menu that failed to shut is a
+    /// surface problem, and it must not swallow the choice the player made.
+    /// </summary>
     private void Choose(int index)
     {
         var chosen = _onChoose;
