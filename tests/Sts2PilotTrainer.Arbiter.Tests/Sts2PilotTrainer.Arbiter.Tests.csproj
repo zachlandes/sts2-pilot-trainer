@@ -22,6 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The recorder-produced fixture, shared with the pure suite that owns it: the
+         gate's native arm has to be asked about the same manifest a recorder writes,
+         and a second copy here would be a second answer. -->
+    <Compile Include="../Sts2PilotTrainer.Replay.Tests/RecordedRun.cs" Link="RecordedRun.cs" />
     <Using Include="Xunit" />
   </ItemGroup>
 

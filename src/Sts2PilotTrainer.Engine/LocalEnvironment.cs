@@ -98,7 +98,8 @@ public static class LocalEnvironment
         };
     }
 
-    private static IReadOnlyList<LocalMod> ReadMods()
+    /// <summary>Every mod this game reported, identified by its own manifest.</summary>
+    public static IReadOnlyList<LocalMod> ReadMods()
     {
         EngineHost.Start();
         return ModManager.Mods
@@ -142,6 +143,26 @@ public static class LocalEnvironment
     }
 
     /// <summary>
+    /// The run the game is holding right now, or null when there is none.
+    ///
+    /// <c>RunManager.State</c> is not public on this build, so it is read reflectively
+    /// rather than reconstructed. Reading the run the game actually holds is the whole
+    /// point; a second copy assembled from what we passed in would agree with itself
+    /// no matter what the engine did with it. One owner of that read, because a second
+    /// accessor is a second thing to fix when a build moves it.
+    /// </summary>
+    public static RunState? StartedRunState()
+    {
+        var manager = RunManager.Instance;
+        if (manager is null || !manager.IsInProgress) return null;
+
+        var accessor = typeof(RunManager).GetProperty(
+            "State", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            ?? throw new EngineException("RunManager.State is absent from this build.");
+        return accessor.GetValue(manager) as RunState;
+    }
+
+    /// <summary>
     /// The run in progress, or null when there is none.
     ///
     /// Null is an answer, not a failure: a freshly launched game has no run, and the
@@ -149,17 +170,7 @@ public static class LocalEnvironment
     /// </summary>
     public static LocalRunReading? ReadStartedRun()
     {
-        var manager = RunManager.Instance;
-        if (manager is null || !manager.IsInProgress) return null;
-
-        // RunManager.State is not public on this build, so it is read reflectively
-        // rather than reconstructed. Reading the run the game actually holds is the
-        // whole point; a second copy assembled from what we passed in would agree
-        // with itself no matter what the engine did with it.
-        var accessor = typeof(RunManager).GetProperty(
-            "State", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            ?? throw new EngineException("RunManager.State is absent from this build.");
-        if (accessor.GetValue(manager) is not RunState state) return null;
+        if (StartedRunState() is not { } state) return null;
 
         var character = state.Players.Count > 0 ? state.Players[0].Character : null;
 
@@ -365,10 +376,17 @@ public static class LocalEnvironment
             // an exact requirement asks is whether a state made of these ids can be
             // constructed here at all, which is a fact about the installation rather
             // than about whichever model this reading was taken under.
+            //
+            // The same two readers run construction refuses against, so a shortfall this
+            // reports and a state ExactUnlockState declines to build are the same fact.
+            // A second enumeration over a different structure would answer the same
+            // question twice, and the answer nobody exercises is the one that drifts:
+            // an encounter this build ships and the complete state has not seen would
+            // then be reported missing from a recording that constructs perfectly.
             ShippedIds = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
             {
-                ["epochs"] = EpochIds(UnlockState.all).Order(StringComparer.Ordinal).ToList(),
-                ["encounters_seen"] = ShippedEncounterIds().Keys.Order(StringComparer.Ordinal).ToList(),
+                ["epochs"] = [.. EpochIds(UnlockState.all).Order(StringComparer.Ordinal)],
+                ["encounters_seen"] = [.. ShippedEncounterIds().Keys.Order(StringComparer.Ordinal)],
             },
         };
     }
@@ -400,6 +418,40 @@ public static class LocalEnvironment
         }
 
         return ids;
+    }
+
+    /// <summary>
+    /// One unlock state as the three values it was constructed from: the epochs
+    /// unlocked, the encounters seen and the runs played.
+    ///
+    /// The read-back counterpart of <see cref="ExactUnlockState"/>, and here rather
+    /// than in the recorder that wants it because where v0.111.0 keeps these is this
+    /// class's to know. Read off the state the run was generated against, which is the
+    /// exact source: a profile read a moment later would be a reading of a different
+    /// moment wearing the same name.
+    /// </summary>
+    public static UnlockStateInventory ReadUnlockStateInventory(UnlockState state)
+    {
+        var encounters = typeof(UnlockState).GetField("_encountersSeen", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new EngineException("UnlockState has no seen-encounter set on this build.");
+
+        var seen = encounters.GetValue(state) as System.Collections.IEnumerable
+            ?? throw new EngineException("UnlockState's seen-encounter set did not enumerate on this build.");
+
+        var runs = typeof(UnlockState).GetProperty("NumberOfRuns", BindingFlags.Instance | BindingFlags.Public)
+            ?? throw new EngineException("UnlockState has no NumberOfRuns on this build.");
+
+        return new UnlockStateInventory
+        {
+            Epochs = EpochIds(state).Order(StringComparer.Ordinal).ToList(),
+            EncountersSeen = seen.Cast<object>()
+                .Select(id => id.ToString() ?? string.Empty)
+                .Where(id => id.Length > 0)
+                .Order(StringComparer.Ordinal)
+                .ToList(),
+            Runs = (int)(runs.GetValue(state)
+                ?? throw new EngineException("UnlockState.NumberOfRuns read as null on this build.")),
+        };
     }
 
     private static IReadOnlyCollection<string> EpochIds(UnlockState state)

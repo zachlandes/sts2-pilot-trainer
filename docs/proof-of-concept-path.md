@@ -444,6 +444,50 @@ fight, collapsed to a chip.
 [demo/PLAYBACK-TRANSPORT.md](../demo/PLAYBACK-TRANSPORT.md) has it with the
 screenshots.
 
+### S8 - The recorder, in the player's own game - built, not yet proved by play
+
+S1 through S7 close the loop over somebody else's recording, transcribed from a video
+by hand. This is the other direction: the player's own runs become recordings of the
+same kind, without a video and without a transcriber.
+
+- `RunCapture` in `Sts2PilotTrainer.Replay`: the whole-run counterpart of
+  `FightCapture`, delegating the inside of each fight to one so there is a single
+  capture path. It records the run's identity as captured facts, one captured action
+  per decision, and a captured checkpoint and digest at every boundary `RunCoverage`
+  finds. It refuses a run whose start it did not witness, marks `continuity = broken`
+  when a resumed session's live state is not the state its journal last recorded, and
+  never truncates.
+- `RunJournal`: a header and a line per decision, appended as the run is played, so
+  finishing a write means finishing a line. A crash leaves a real recording of the
+  part of the run that happened. `RunCapture.Resume` rebuilds the capture from it, so
+  a continued session publishes exactly what an uninterrupted one would have.
+- `RunRecorder` and `RecorderModule` in the mod: the hooks, the settle rule, and the
+  translation from what the game announces into what the format records. Inside a
+  fight it hands over to the same `PlayerFightObserver` the Combat Trainer uses,
+  through `IFightSampleSink`. It never raises the write barrier - the player's own run
+  saves normally - and it declines to attach while a trainer run is live.
+- `LiveRun` in the engine: the canonical state, its digest, the run's clock and start
+  time, and the run's identity including the exact unlock state it was generated
+  against, read out of the run itself rather than out of a profile that can change
+  while it is being played. That is what makes S6's `exact` arm live.
+- `gate` gains a native arm. The four conditions that read a public video are absent
+  for a recording made inside the player's own game rather than reported as met, and
+  the artifact records why. Every condition that replays the history through the real
+  engine applies to both kinds.
+
+**Runnable now:** the whole pure half. `dotnet test` exercises the capture, the
+journal, the continuity rule and the validator's acceptance of what the recorder
+produces without the game, and the game-dependent tests pin every member each reading
+goes through and every method the recorder patches.
+
+**Not yet proved:** a recording produced by play. The client loads the mod and reports
+`Recorder installed`, and nothing beyond that has been shown - no run has been recorded
+by a person, so no recording has been through `gate`, and the settle rule, the argument
+readings and the boundary digests have not been checked against a replay of a real
+one. The completion bar is unchanged and unmet: a recording produced by play, not by an
+agent, `PUBLISHABLE` on the machine that made it. [The in-game
+host](in-game-host.md#producing-a-recording-and-checking-it) has the steps.
+
 ## Known limits that no slice above removes
 
 **The source game mode is not identified.** Standard and custom-with-no-modifiers agree

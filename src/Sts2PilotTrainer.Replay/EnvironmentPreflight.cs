@@ -395,9 +395,7 @@ public static class EnvironmentPreflight
 
     private static PreflightField EvaluateLocalMods(IReadOnlyList<LocalMod> mods, bool requireHost)
     {
-        var active = mods
-            .Where(mod => mod.State is not ("Disabled" or "DisabledDuplicate"))
-            .ToList();
+        var active = mods.Where(mod => mod.Loaded).ToList();
         var hostIsTheOnlyActiveMod = active.Count == 1 &&
                                      active[0] is
                                      {

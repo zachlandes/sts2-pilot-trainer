@@ -36,6 +36,53 @@ public sealed record ModEnvironment
     [JsonPropertyName("headless_parity_waiver")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public HeadlessParityWaiver? HeadlessParityWaiver { get; init; }
+
+    /// <summary>The name a recorder writes for the environment it read. Every native
+    /// recording carries the same one, because "whatever this player had loaded" is
+    /// not a named environment somebody audited and calling it one would be a claim
+    /// nobody made.</summary>
+    public const string RecordedName = "read from the game the run was played in";
+
+    /// <summary>
+    /// The mod set a recorder read out of the game it is running in.
+    ///
+    /// The mods the game loaded, and not every mod it discovered: a mod sitting
+    /// disabled in the mods directory did not touch the run, and recording it would
+    /// have the preflight refuse the recording for something that never ran.
+    /// <see cref="LocalMod.Loaded"/> is the one place that decides which is which, so
+    /// this and the rule about the installation being replayed on cannot come to
+    /// different answers about the same mod.
+    ///
+    /// The risk line is the mod's own declaration rather than an assessment, and says
+    /// so: nothing running inside a player's game is in a position to audit the mods
+    /// beside it. That is exactly why <c>EnvironmentPreflight</c> judges a native
+    /// recording by a rule over those declarations instead of against a fixed list of
+    /// audited names - and why the count is recorded beside the list rather than read
+    /// off it, so "we identified three of three" stays distinguishable from "we
+    /// identified three".
+    /// </summary>
+    public static ModEnvironment AsRecorded(IReadOnlyList<LocalMod> discovered)
+    {
+        var loaded = discovered.Where(mod => mod.Loaded).ToList();
+        return new ModEnvironment
+        {
+            Name = RecordedName,
+            ReportedCount = loaded.Count,
+            Mods =
+            [
+                .. loaded.Select(mod => new InstalledMod(
+                    mod.Name,
+                    $"{mod.Id} {mod.Version}, which this game reported as {mod.State}.",
+                    mod.AffectsGameplay
+                        ? "This mod's own manifest declares that it affects gameplay. Read rather than judged: " +
+                          "a recorder reads each mod's declaration and assesses none of them, and the preflight " +
+                          "refuses a recording made with one."
+                        : "This mod's own manifest declares that it does not affect gameplay. Read rather than " +
+                          "judged: a recorder reads each mod's declaration and assesses none of them.",
+                    mod.AffectsGameplay)),
+            ],
+        };
+    }
 }
 
 public sealed record HeadlessParityWaiver

@@ -18,8 +18,8 @@ namespace Sts2PilotTrainer.Mod;
 /// installs the patches for its feature.
 ///
 /// It is a shell: what is true of the mod however it is configured lives here, and
-/// each feature lives behind <see cref="IRunmobileModule"/>. Today there is one
-/// module, the Combat Trainer.
+/// each feature lives behind <see cref="IRunmobileModule"/>. Today there are two
+/// modules, the Combat Trainer and the recorder.
 ///
 /// Mod initialization deliberately reads nothing about the game. It runs inside the
 /// game's "very early" startup phase, one phase before the game builds its model
@@ -38,7 +38,8 @@ public static class RunmobileMod
 
     private const string HarmonyId = "sts2-pilot-trainer.runmobile";
 
-    internal static IReadOnlyList<Type> ShellPatchClasses { get; } = [typeof(ModeCard)];
+    internal static IReadOnlyList<Type> ShellPatchClasses { get; } =
+        [typeof(ModeCard), .. CardScreensUp.PatchClasses];
 
     private static readonly Lock AdoptionGate = new();
 
@@ -53,10 +54,11 @@ public static class RunmobileMod
     /// <summary>
     /// Every feature this build carries, in the order they are installed.
     ///
-    /// The recorder and the run library are the other two and are not built yet;
-    /// when they are, they are added here and nothing else about the shell changes.
+    /// The run library is the third and is not built yet; when it is, it is added here
+    /// and nothing else about the shell changes.
     /// </summary>
-    internal static IReadOnlyList<IRunmobileModule> Modules { get; } = [CombatTrainerModule.Instance];
+    internal static IReadOnlyList<IRunmobileModule> Modules { get; } =
+        [CombatTrainerModule.Instance, RecorderModule.Instance];
 
     /// <summary>The modules that could establish what they need in this process.</summary>
     internal static IEnumerable<IRunmobileModule> EnabledModules => Modules.Where(module => module.Enabled);
@@ -128,7 +130,7 @@ public static class RunmobileMod
     /// aborts <see cref="Start"/> before <see cref="Started"/> is set, and may leave
     /// the patches it had already applied in place. That is a broken build rather than
     /// a runtime condition, and the failure-isolation lifecycle that would contain it
-    /// arrives with the second module, where it can be built against a concrete one.
+    /// is still not built.
     /// </summary>
     internal static IReadOnlyList<string> InstallModules(
         Harmony harmony, IReadOnlyList<IRunmobileModule> modules)

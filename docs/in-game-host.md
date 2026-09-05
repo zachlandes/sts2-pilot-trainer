@@ -9,9 +9,17 @@ is skipped by name in the game's log and the rest of the mod loads without it.
 Drawing the singleplayer-menu cards is the shell's: a module contributes `MenuCard`
 entries and `ModeCard` is a shell patch class, so a module that refuses cannot take
 another enabled module's card down with it.
-That promise is about a module which declares itself disabled: a module whose `Install` throws propagates out of the loop, aborts `Start` before the shell is marked started, and may leave its partial patches applied, which is a broken-build condition rather than a runtime one, and the failure-isolation lifecycle that would contain it arrives with the second module.
-`CombatTrainerModule` is the only one built. The recorder and the run library are the
-other two.
+So is `CardScreensUp`, whose two patch classes count the card screens up in front of
+the player: a screen being up is a fact about the game rather than about either
+feature, and both settles read it - the recorder's, to keep a reading off a decision
+somebody has not finished making, and the Combat Trainer's, so a prompt a played card
+opens does not spend the engine's budget. Behind one feature's patches it would stop
+counting on a build that feature declines to watch, which is the build the other is
+meant to carry on through. What a screen answered is a feature's own business, and a
+module subscribes rather than patching the screens a second time.
+That promise is about a module which declares itself disabled: a module whose `Install` throws propagates out of the loop, aborts `Start` before the shell is marked started, and may leave its partial patches applied, which is a broken-build condition rather than a runtime one, and the failure-isolation lifecycle that would contain it is still not built.
+Shell ownership is paid for at the other end: `InstallShellPatches` treats a patch class Harmony cannot resolve as a broken build and lets it throw out of `Start`, so a game update that renames `NCardGridSelectionScreen.CardsSelected` or `NCardRewardSelectionScreen.OptionSelected` takes the whole mod down, where the same rename behind a module's own patches would disable only that module.
+`CombatTrainerModule` and `RecorderModule` are built. The run library is the third.
 
 The retail proof below, up to and including S5, was gathered on the pre-rename `CombatTrainer` artifact.
 S3 of [the proof-of-concept path](proof-of-concept-path.md) answers one question — can this game play the recorded fight? — S4 adds the button that enters it, and S5 captures the fight the player then plays and shows it beside the recording's.
@@ -162,7 +170,9 @@ after the card's own action reports finished, and an ended turn hands the whole 
 turn to the combat manager with the player's next turn beginning frames later.
 So the after-sample waits for the moment the headless driver's drain reaches: the queue empty and the executor idle.
 For an ended turn, it waits for the player's next `TurnStarted`.
-The entire settlement wait is bounded to the headless driver's 30-second budget; if either the queue or executor does not settle in time, the capture becomes incomplete without taking an after-sample.
+The entire settlement wait is bounded to the headless driver's 30-second budget, and that budget measures only the engine's own time: while a card screen the action opened is up in front of the player the budget is discarded, and the engine gets the whole of it again from the moment the last screen closes, however many one action puts up.
+If either the queue or executor does not settle in time, the capture becomes incomplete without taking an after-sample.
+The wait is `RunRecorder.WaitForTheEngine`, asked here through `PlayerFightObserver.WaitUntilSettled`, so the fight and the run settle by one rule; the screen count it reads is the shell's `CardScreensUp`.
 If the combat manager already regards the fight as over or ending, the sample is left to `CombatEnded`, which closes the open action with the final state.
 That is how a capture completes at all: the killing blow, or the enemy turn the
 player did not survive, is the action the fight ended inside.
@@ -247,6 +257,58 @@ A lost fight, a fight left through the game's own menu, a capture that could not
 completed and a comparison that refused each show one sentence and a Done button.
 Done discards the run the way a refused entry does, and `RunManager.CleanUp` is what
 lowers the write barrier on every one of those paths.
+
+## Recording the player's own run
+
+**The recorder is that observer widened to a whole run, and it shares its parts.**
+`RunRecorder` in `Sts2PilotTrainer.Mod` attaches when a run starts, watches every decision the player makes, and writes a v5 native manifest under `user://Runmobile/recordings/` when the run ends.
+Inside a fight it hands the run to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink` in `Sts2PilotTrainer.Replay`: the trainer's sink is a `FightCapture` and the recorder's is an adapter onto the `RunCapture` that keeps the whole run.
+There is one observer, one settle rule and one set of rules about what a sample means, whichever feature is watching.
+
+**What it watches is `EngineCommands` read from the other end.**
+The driver calls those members to make a recorded decision; a player clicking makes the game call the same members.
+`RunRecorder.RecordedVerbs` has to equal the table's mapped set, and `RunRecorderTests` asserts it - a verb one side has and the other does not is either a recording nothing can replay or a replay of a decision nothing can record, and both are silent until somebody tries.
+
+**Every patch reads and returns.**
+Nothing here issues a command, changes an argument, or changes what the game decides.
+Arguments are read in a prefix, while the shelf still holds the thing that was bought and the hand still holds the card that was played; the state is read at the other end of a settle.
+The one exception to "postfix and return" is the two card screens, whose returned task is handed back unchanged having been looked at on the way past: the engine pulls a card screen's answer through a seam the player's client fills, so there is no command anything else could observe.
+Those two patches are the shell's `CardScreensUp` rather than the recorder's, because the count they keep is read by both settles; the recorder subscribes to what a screen answered, which is its own business and nobody else's.
+`NCardGridSelectionScreen.CardsSelected` covers every screen over a deck, a pile or the hand, because they share that base and it holds both halves of the answer - the list offered and the cards that came back.
+`NCardRewardSelectionScreen.OptionSelected` covers the card reward, whose screen answers with a position into the list `ShowScreen` was given.
+A subscriber owns what its own failure means: an answer the recorder cannot read marks the recording broken and writes the reason into the journal, and the shell's own catch around a subscriber is there only so one of them cannot break the game's card-screen path or stop another running.
+
+**The recorder never raises the write barrier.**
+The player's own run saves normally; suppressing that would take the run away from them in order to describe it.
+The barrier is the other direction: while a trainer run is live it is raised, and the recorder declines to attach at all - a trainer run is this mod's own construction, not the player's, and recording it would publish somebody else's recording back as the player's own.
+`RunRecorderTests` checks that by doing it rather than by asserting a comment.
+
+**A run is identified by its seed and the moment it began, and both survive a reload.**
+`LiveRun.RunStartedUtc` reads the game's own run start time, so a session continued tomorrow resolves to the journal it was being written into.
+That is also why there is one attach path for a new run and for a continued one: which it is is not the recorder's question, and the answer is whether a journal for that run is already on disk.
+Nothing in a recording's name says whose game it was.
+
+**The journal is what survives a crash.**
+`RunJournal` is a header and one line per decision, appended as the run is played, so finishing a write means finishing a line.
+A crash leaves a prefix that is a real recording of the part of the run that happened rather than half of a document describing all of it, and `RunJournal.Parse` drops a truncated final line and refuses anything else.
+On resume, `RunCapture.Resume` rebuilds the capture from the journal and compares the state the game came back in against the state the journal last recorded.
+Equal means nothing happened in between that the recorder missed.
+Anything else marks the recording `continuity = broken` and it is refused for publication - nothing is truncated, because a history missing decisions replays into a different run while every value in it is individually true.
+Every refusal is appended to the journal as a line of its own, the moment it is raised, and `Resume` applies each one back.
+Without that the break lives only in the session that decided on it: quit and continue once more and the next session finds a journal whose last digest is exactly the live one, sees nothing wrong, and publishes `continuity = continuous` over a hole - which is the one claim nothing downstream could check.
+
+**Where the recorder stops, it says so.**
+A reward kind the format has no verb for, a card reward answered with one of its alternatives, a screen whose offered list this build no longer exposes, an engine that did not settle: each marks the recording broken with a sentence rather than writing a value it guessed.
+The recording is still written, because it is what happened; what it is not is publishable, and the validator and `./scripts/arbiter gate` are what say so.
+
+**An integrity claim is a reading, and three of them were assumptions before review caught them.**
+`AGENTS.md`'s recorder invariant states the rule; these are what it is made of, because a rule with no instances is one nobody can check themselves against.
+
+- **A verdict about controls that were never applied.** `gate`'s `rejection` condition runs `negative-controls --require-all-controls`, and three of the ten controls damage a decision only where the history nominates the alternative they take. The recorder wrote none of them, so no native recording could ever pass - and two of the three that did apply were satisfied by the driver refusing on argument shape rather than on the run diverging, which is a control counted as rejected having demonstrated nothing. The recorder derives all four nominations now, from what the decision itself offered, and omits one where the decision genuinely had no alternative.
+- **A mod list wider than the rule that reads it.** `EnvironmentPreflight` refuses a native recording if any mod in it declares itself gameplay-affecting, while the sibling rule about the same installation drops the disabled ones first. The recorder wrote every mod the game had discovered, so a recording could be refused for a mod that never loaded and never touched the run. `LocalMod.Loaded` is the one place that decides now, and both rules ask it.
+- **A continuous watch of a fight nobody was watching.** A session continued while the last recorded decision left a fight live came back with that fight still open in the capture and no observer attached, so every card play and ended turn left in it went unrecorded while the recording still reported `continuity = continuous`. The recorder asks whether a fight needs watching the moment it attaches, and refuses the recording where it holds one open and cannot watch it.
+
+Each was a component reporting a state it had not established, and in each the recording read as trustworthy precisely because every individual value in it was true.
 
 ## What it does not prove
 
@@ -515,6 +577,23 @@ floor identity a "play this fight" action would need - alongside its private
 ./scripts/arbiter recorded-fight <manifest> --out manifests/<id>.recorded-fights.json
                                          # regenerate the recording's shipped lines after the manifest changes
 ```
+
+### Producing a recording, and checking it
+
+The recorder needs no setting up: it is on unless `settings.json` in the store says otherwise, and it attaches to every run the player starts or continues.
+
+1. `./scripts/protected-files.sh snapshot before.ledger`, so what the session changed can be measured rather than asserted.
+2. `./scripts/install-mod.sh`, then launch the game **through Steam** - `open "steam://rungameid/2868840"` or the library - because launched on its own the client cannot initialise Steam and stops on an error popup.
+3. Check the game's log says the mod is there: `[Runmobile] Recorder installed` and `--- RUNNING MODDED! --- Loaded 1 mods`. The log is `~/Library/Application Support/SlayTheSpire2/logs/godot.log`.
+4. Play a run. `[Runmobile] recording this run as native-<seed>-<date>-<time>` says it attached.
+   The gate's rejection condition requires every one of the ten negative controls to find the decision it damages, so a run meant as evidence has to have made each of them: the opening blessing, an event or rest-site option that opens a card screen holding a second copy of the card that gets picked, which an upgrade on an early deck satisfies because the starting deck holds several Strikes and Defends, a map move from a node with more than one child, at least two card plays, one of them aimed at an enemy while another was alive and one made from a hand holding another card of the same energy cost that aims the same way - both attacks, or neither, a claimed gold or potion reward, and a card reward that offered more than one card.
+   The recorder writes the alternative each of the last three offered, and omits it where the decision genuinely had none - a run that never met one of them records honestly and is not publishable.
+5. End it - won, dead, or given up from the pause menu. `[Runmobile] recorded <id>: <outcome>, N decision(s), M boundary/boundaries, continuity continuous, written to recordings/<id>.replay.json` says it finished, and a line after it says so if the recording does not validate.
+6. The recording is under the store: `~/Library/Application Support/SlayTheSpire2/Runmobile/<the game's own profile scope>/recordings/`. The scope mirrors what the game resolved for its own saves, so two accounts and two profiles do not share a library.
+7. `./scripts/arbiter gate <that file>` is the verdict, and `./scripts/arbiter enter-fight <that file> --fight 2` stands the arbiter in its second fight.
+8. `./scripts/protected-files.sh compare before.ledger` reports what the session changed. The game's own saves, profile and run history are expected to change - the player really played a run - and everything of this mod's is under `user://Runmobile/`.
+
+To exercise continuity, quit to the main menu part way through a run and continue it from the game's own Continue. `[Runmobile] continuing the recording of <id> at decision N; continuity continuous` is the pass; a `continuity broken` line names what the recorder saw instead, and the recording is then refused for publication rather than repaired.
 
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory, either `mods` or the game's Steam test-branch variant `mods_STEAMTEST`.

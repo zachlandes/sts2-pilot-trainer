@@ -68,7 +68,21 @@ public sealed record LocalMod(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("version")] string Version,
     [property: JsonPropertyName("affects_gameplay")] bool AffectsGameplay,
-    [property: JsonPropertyName("state")] string State);
+    [property: JsonPropertyName("state")] string State)
+{
+    /// <summary>
+    /// Whether the game loaded this mod, and so whether it could have touched the run.
+    ///
+    /// One answer for both readers of a discovered mod list. A recording says which
+    /// mods a run was played under and a preflight says whether this installation is
+    /// one a recording can be replayed on; a mod sitting disabled in the mods directory
+    /// is present for neither question, and the two rules disagreeing about it refuses
+    /// a recording for a mod that did nothing. Discovery is still reported whole - what
+    /// this decides is which of the discovered mods a rule is about.
+    /// </summary>
+    [JsonIgnore]
+    public bool Loaded => State is not ("Disabled" or "DisabledDuplicate");
+}
 
 /// <summary>
 /// The unlock state a run here would actually be generated against, category by

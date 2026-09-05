@@ -65,8 +65,9 @@ public static class Corruption
             "video-only pipeline did not do.",
             SubstituteSameCost)
         {
-            Requires = "a card play",
-            AppliesTo = manifest => manifest.Actions.Any(a => a.Verb == ActionVerb.PlayCard),
+            Requires = "a card play nominating a card the same hand held at the same cost and targeting",
+            AppliesTo = manifest => manifest.Actions.Any(
+                a => a.Verb == ActionVerb.PlayCard && a.Args.ContainsKey(SubstituteCardId)),
         },
 
         new("omit-play",
@@ -213,9 +214,13 @@ public static class Corruption
         var actions = manifest.Actions.ToList();
         var target = NominatedPlay(actions, "substitute-same-cost");
 
-        var substituteCard = target.Args.GetValueOrDefault(
-            "negative_control_substitute_card_id", "CARD.STRIKE_IRONCLAD");
-        var substituteIndex = target.Args.GetValueOrDefault("negative_control_substitute_hand_index", "0");
+        if (!target.Args.TryGetValue(SubstituteCardId, out var substituteCard) ||
+            !target.Args.TryGetValue(SubstituteHandIndex, out var substituteIndex))
+        {
+            throw new ManifestException(
+                "substitute-same-cost needs a card play nominating a different card the same hand held at the " +
+                $"same cost and targeting, through '{SubstituteCardId}' and '{SubstituteHandIndex}'.");
+        }
 
         // A substitution that puts back the card that was already there damages
         // nothing, and an arbiter that accepted it would be reported as having failed
@@ -227,7 +232,7 @@ public static class Corruption
             throw new ManifestException(
                 $"substitute-same-cost would replace action {target.Seq} with the card it already plays, so " +
                 "it would corrupt nothing. The manifest must mark a play with " +
-                "'negative_control_substitute_card_id' naming a genuinely different card of the same cost.");
+                $"'{SubstituteCardId}' naming a genuinely different card of the same cost.");
         }
 
         var args = target.Args
@@ -405,6 +410,123 @@ public static class Corruption
         return manifest with { RunId = manifest.RunId + "+move-to-a-different-node", Actions = actions };
     }
 
+    /// <summary>
+    /// Which of the map nodes reachable from here a control should walk to instead, or
+    /// null where the node the player left offered nowhere else to go.
+    ///
+    /// The reachable columns are the caller's to read - from a game, from a video, from
+    /// a fixture - and choosing among them is the rule, so the rule lives here beside
+    /// the control that consumes it rather than inside whichever reader happened to
+    /// need it first. Nothing is invented: a nomination is another node the same
+    /// decision genuinely had, and where there was none the argument is omitted and the
+    /// control has nothing to do.
+    /// </summary>
+    public static int? NominateColumn(int takenColumn, IEnumerable<int> reachableColumns) =>
+        reachableColumns
+            .Where(column => column != takenColumn)
+            .Order()
+            .Cast<int?>()
+            .FirstOrDefault();
+
+    /// <summary>
+    /// Which other card a reward offered, as the id and position a control takes it by,
+    /// or null where the reward offered no other card.
+    ///
+    /// The id has to differ as well as the position: two copies of one card are two
+    /// positions naming the same card, and a nomination whose id equals the one taken
+    /// is refused by the validator because the control would then corrupt nothing.
+    /// </summary>
+    public static (string CardId, int OptionIndex)? NominateCard(
+        IReadOnlyList<string> offeredCardIds, int takenIndex)
+    {
+        if (takenIndex < 0 || takenIndex >= offeredCardIds.Count) return null;
+
+        var taken = offeredCardIds[takenIndex];
+        for (var index = 0; index < offeredCardIds.Count; index++)
+        {
+            if (index == takenIndex) continue;
+            if (string.Equals(offeredCardIds[index], taken, StringComparison.Ordinal)) continue;
+            return (offeredCardIds[index], index);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Which other copy of the picked card the same screen offered, or null where it
+    /// offered no second copy.
+    ///
+    /// The same card and not merely another position, because
+    /// <see cref="EnchantADifferentCard"/> moves <c>option_index</c> and leaves
+    /// <c>card_id</c> where it is: a nomination pointing at a different card makes
+    /// <c>ManifestCardSelector</c> refuse on card identity - two fields of the manifest
+    /// disagreeing, before the engine is consulted at all - so the control would be
+    /// counted as rejected without any divergence having been demonstrated. It is also
+    /// what makes this the corruption no frame of the event screen shows: two copies of
+    /// one card are indistinguishable, and two different cards are not.
+    ///
+    /// Unpicked as well, because the screen's answers are replayed together: nominating
+    /// a position another pick already claimed would have the replay choose one card
+    /// twice, which the same selector refuses.
+    /// </summary>
+    public static int? NominateScreenOption(
+        IReadOnlyList<string> offeredCardIds, int takenIndex, IEnumerable<int> chosenIndexes)
+    {
+        if (takenIndex < 0 || takenIndex >= offeredCardIds.Count) return null;
+
+        var chosen = chosenIndexes.ToHashSet();
+        var taken = offeredCardIds[takenIndex];
+        for (var index = 0; index < offeredCardIds.Count; index++)
+        {
+            if (index == takenIndex || chosen.Contains(index)) continue;
+            if (!string.Equals(offeredCardIds[index], taken, StringComparison.Ordinal)) continue;
+            return index;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Which other card in the hand a control should play in place of the one that was
+    /// played, as the id and position it takes it by, or null where the hand held no
+    /// alternative it could be swapped for.
+    ///
+    /// The same cost, because that is the whole of what
+    /// <see cref="SubstituteSameCost"/> claims: energy conservation and hand accounting
+    /// both balance, so nothing arithmetic on the footage can tell the two lines apart
+    /// and only the engine can. A substitute of another cost would be caught by
+    /// counting energy, and one this hand did not hold would be refused on card
+    /// identity - either way the control is counted as rejected for a reason that is
+    /// not the one it is named for.
+    ///
+    /// And the same targeting, because <see cref="SubstituteSameCost"/> keeps every
+    /// other argument of the play it rewrites, <c>target_index</c> included. A
+    /// substitute that disagrees produces a play the driver refuses on argument shape -
+    /// a target index on a card that aims at nothing, or a card that needs one and has
+    /// none - before the engine has replayed anything at all.
+    ///
+    /// A different card and not another copy at another position: the same card played
+    /// from elsewhere in the hand is a hand-index corruption, which is what a nomination
+    /// nobody made already produces.
+    /// </summary>
+    public static (string CardId, int HandIndex)? NominateSubstitute(
+        IReadOnlyList<(string CardId, int EnergyCost, bool TargetsAnEnemy)> hand, int playedIndex)
+    {
+        if (playedIndex < 0 || playedIndex >= hand.Count) return null;
+
+        var played = hand[playedIndex];
+        for (var index = 0; index < hand.Count; index++)
+        {
+            if (index == playedIndex) continue;
+            if (hand[index].EnergyCost != played.EnergyCost) continue;
+            if (hand[index].TargetsAnEnemy != played.TargetsAnEnemy) continue;
+            if (string.Equals(hand[index].CardId, played.CardId, StringComparison.Ordinal)) continue;
+            return (hand[index].CardId, index);
+        }
+
+        return null;
+    }
+
     /// <summary>Argument names a manifest uses to nominate the alternative a control
     /// should take. Kept here because the controls are the only readers.</summary>
     public const string AlternativeCardId = "negative_control_alternative_card_id";
@@ -412,6 +534,10 @@ public static class Corruption
     public const string AlternativeOptionIndex = "negative_control_alternative_option_index";
 
     public const string AlternativeColumn = "negative_control_alternative_column";
+
+    public const string SubstituteCardId = "negative_control_substitute_card_id";
+
+    public const string SubstituteHandIndex = "negative_control_substitute_hand_index";
 
     private static IReadOnlyDictionary<string, string> WithoutControls(
         IReadOnlyDictionary<string, string> args) =>
@@ -433,7 +559,7 @@ public static class Corruption
     public static ActionRecord NominatedPlay(IReadOnlyList<ActionRecord> actions, string control = "this control")
     {
         var plays = actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
-        return plays.LastOrDefault(action => action.Args.ContainsKey("negative_control_substitute_card_id"))
+        return plays.LastOrDefault(action => action.Args.ContainsKey(SubstituteCardId))
             ?? plays.LastOrDefault()
             ?? throw new ManifestException($"{control} needs a card play.");
     }
