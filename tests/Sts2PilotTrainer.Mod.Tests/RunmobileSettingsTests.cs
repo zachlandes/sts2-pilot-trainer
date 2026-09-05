@@ -1,3 +1,4 @@
+using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -17,6 +18,12 @@ public sealed class RunmobileSettingsTests : IDisposable
 
     public RunmobileSettingsTests()
     {
+        // Reading a setting logs through the game's own logger, so the game assembly has
+        // to be resolvable. This project does not copy it, and it reaches the default
+        // context only once something has started the host - left to whichever test ran
+        // first, these fail about a third of the time on a cold ordering.
+        _ = EngineHost.StartupPhase();
+
         Directory.CreateDirectory(_root);
         RunmobileStore.UseRootForTesting(_root);
     }

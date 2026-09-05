@@ -49,7 +49,7 @@ internal sealed class RunRecorder : IDisposable
     /// The same budget the headless drain and the fight observer give.</summary>
     internal const double SettleBudgetSeconds = 30.0;
 
-    private const double SettlePollSeconds = 0.05;
+    internal const double SettlePollSeconds = 0.05;
 
     /// <summary>How long to wait for a run to exist after the game said one was
     /// starting. Generous, because continuing a saved run loads a scene.</summary>
@@ -484,10 +484,11 @@ internal sealed class RunRecorder : IDisposable
         Func<bool> idle,
         Func<Task> newBudget,
         Func<Task> nextPoll,
-        string unsettled)
+        Func<string, string> unsettled)
     {
         Task? budget = null;
         var idleTicks = 0;
+        var waitedForAScreen = false;
 
         while (true)
         {
@@ -501,12 +502,13 @@ internal sealed class RunRecorder : IDisposable
                 // gets its whole budget back either way.
                 budget = null;
                 idleTicks = 0;
+                waitedForAScreen = true;
                 await nextPoll();
                 continue;
             }
 
             budget ??= newBudget();
-            if (budget.IsCompleted) return unsettled;
+            if (budget.IsCompleted) return unsettled(Spent(waitedForAScreen));
 
             await nextPoll();
 
@@ -516,6 +518,19 @@ internal sealed class RunRecorder : IDisposable
             if (idleTicks >= 2) return null;
         }
     }
+
+    /// <summary>
+    /// What the budget that ran out was measuring, in words.
+    ///
+    /// The card screen is named only where this wait actually stood down for one. Most
+    /// decisions open none, and a refusal that told a reader the clock started from a
+    /// screen closing would be describing something nobody watched - and it is not a log
+    /// line: it goes through <see cref="Refuse"/> into the journal and out as the reason
+    /// the manifest gives for a broken recording.
+    /// </summary>
+    private static string Spent(bool waitedForAScreen) =>
+        $"within {SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds" +
+        (waitedForAScreen ? " of the last card screen closing" : string.Empty);
 
     /// <summary>A card reward screen answered, by the position it reports.</summary>
     internal static void CardRewardAnswered(IReadOnlyList<CardModel> offered, int? option)
@@ -676,9 +691,8 @@ internal sealed class RunRecorder : IDisposable
                   manager.ActionQueueSet.IsEmpty,
             () => RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
             () => RecordedFightRun.LetTheGameRun(SettlePollSeconds),
-            $"The engine did not settle within " +
-            $"{SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds of the last card screen " +
-            "closing, so the recorder cannot say what state this decision left.");
+            spent => $"The engine did not settle {spent}, so the recorder cannot say what state this " +
+                     "decision left.");
 
     /// <summary>Why a settle should stop because the run itself went away, or null while
     /// it is still being played.</summary>

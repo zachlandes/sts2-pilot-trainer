@@ -286,7 +286,7 @@ public sealed class RunRecorderTests
 
                 return Task.CompletedTask;
             },
-            "the engine did not settle");
+            spent => $"the engine did not settle {spent}");
 
         Assert.Null(settled);
 
@@ -324,7 +324,7 @@ public sealed class RunRecorderTests
                         "The wait polled again after the recording had ended, so it would never stop.")
                     : Task.CompletedTask;
             },
-            "the engine did not settle");
+            spent => $"the engine did not settle {spent}");
 
         Assert.Equal("the run went to the main menu.", stopped);
 
@@ -336,6 +336,11 @@ public sealed class RunRecorderTests
     /// <summary>
     /// And the engine is given its budget once the screens are down - spent, that is a
     /// decision the recorder could not read.
+    ///
+    /// The sentence names the card screen only where the wait actually stood down for
+    /// one. It is not a log line: it goes into the journal and out as the reason the
+    /// manifest gives for a broken recording, so a decision that opened no screen must
+    /// not be explained by one closing.
     /// </summary>
     [GameFact]
     public async Task AnEngineThatNeverSettlesSpendsItsBudgetAndSaysSo()
@@ -352,10 +357,25 @@ public sealed class RunRecorderTests
                 if (open > 0) open--;
                 return Task.CompletedTask;
             },
-            "the engine did not settle");
+            spent => $"the engine did not settle {spent}");
 
-        Assert.Equal("the engine did not settle", unsettled);
+        Assert.Equal("the engine did not settle within 30 seconds of the last card screen closing", unsettled);
         Assert.Equal(0, open);
+    }
+
+    /// <summary>And a decision that opened no card screen is not told one closed.</summary>
+    [GameFact]
+    public async Task ASpentBudgetOnADecisionWithNoScreenNamesNoScreen()
+    {
+        var unsettled = await RunRecorder.WaitForTheEngine(
+            () => 0,
+            () => null,
+            () => false,
+            () => Task.CompletedTask,
+            () => Task.CompletedTask,
+            spent => $"the engine did not settle {spent}");
+
+        Assert.Equal("the engine did not settle within 30 seconds", unsettled);
     }
 
     [GameFact]

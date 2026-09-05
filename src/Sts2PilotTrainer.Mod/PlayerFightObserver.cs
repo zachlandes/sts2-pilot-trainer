@@ -41,11 +41,13 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal sealed class PlayerFightObserver : IDisposable
 {
-    /// <summary>How long to keep waiting for the engine to settle after an action.
-    /// The headless drain gives the same budget.</summary>
-    private const double SettleBudgetSeconds = 30.0;
+    /// <summary>How long to keep waiting for the engine to settle after an action, and
+    /// how often to ask. <see cref="RunRecorder"/>'s, because the two settles are the
+    /// same wait asked from two places and a second copy of the budget would let them
+    /// come to mean different lengths of time.</summary>
+    private const double SettleBudgetSeconds = RunRecorder.SettleBudgetSeconds;
 
-    private const double SettlePollSeconds = 0.05;
+    private const double SettlePollSeconds = RunRecorder.SettlePollSeconds;
 
     private readonly Func<IReadOnlyDictionary<string, string>> _sample;
     private readonly IFightSampleSink _sink;
@@ -269,8 +271,11 @@ internal sealed class PlayerFightObserver : IDisposable
     /// Takes the after-sample once the engine has finished with the action.
     ///
     /// Settled means the queue is empty and the executor idle, which is what the
-    /// headless drain waits for. The complete wait is bounded; timing out marks the
-    /// capture incomplete rather than sampling unsettled state. If the combat manager
+    /// headless drain waits for. The wait is bounded, and the budget measures only the
+    /// engine's own time: a card screen a played card opened suspends it, because a
+    /// person choosing which card to discard is not the engine failing to settle.
+    /// Timing out marks the capture incomplete rather than sampling unsettled state. If
+    /// the combat manager
     /// already regards the fight as over or ending, the sample is left to
     /// <see cref="CombatEnded"/>, which carries the final state; a sample taken here
     /// would read a fight half-ended.
@@ -284,10 +289,10 @@ internal sealed class PlayerFightObserver : IDisposable
             var queues = RunManager.Instance.ActionQueueSet;
             var settled = await WaitUntilSettled(
                 _sink,
-                queues.BecameEmpty(),
-                RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
+                () => RunRecorder.ScreensOpen,
                 () => !_executor.IsRunning && queues.IsEmpty,
                 () => _ended || _disposed,
+                () => RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
                 () => RecordedFightRun.LetTheGameRun(SettlePollSeconds));
             if (!settled)
             {
@@ -333,41 +338,40 @@ internal sealed class PlayerFightObserver : IDisposable
         }
     }
 
+    /// <summary>
+    /// The fight's half of the settle, which is <see cref="RunRecorder.WaitForTheEngine"/>
+    /// and this class's answer to what a spent budget means.
+    ///
+    /// One wait rather than two, because both settles ask the same question - has the
+    /// engine finished, and is a person deciding right now - and two implementations of
+    /// it drifted: the recorder's stopped charging a player's thinking against the
+    /// engine's budget and this one went on doing it, so a hand or pile prompt a played
+    /// card opened marked the fight incomplete if the player took half a minute over it.
+    /// The count is <see cref="RunRecorder"/>'s, and asking it is what keeps the thirty
+    /// seconds meaning the same thing in both.
+    /// </summary>
     internal static async Task<bool> WaitUntilSettled(
         IFightSampleSink sink,
-        Task becameEmpty,
-        Task deadline,
+        Func<int> screensOpen,
         Func<bool> isSettled,
         Func<bool> stopped,
+        Func<Task> newBudget,
         Func<Task> nextPoll)
     {
-        if (deadline.IsCompleted || await Task.WhenAny(becameEmpty, deadline) != becameEmpty)
-        {
-            return TimedOut();
-        }
-        await becameEmpty;
+        var unsettled = await RunRecorder.WaitForTheEngine(
+            screensOpen,
+            () => stopped() ? "The fight ended before the engine settled." : null,
+            isSettled,
+            newBudget,
+            nextPoll,
+            spent => $"The engine did not settle {spent} after an action.");
 
-        while (true)
-        {
-            if (stopped()) return false;
-            if (deadline.IsCompleted) return TimedOut();
-            if (isSettled()) return true;
+        if (unsettled is null) return true;
 
-            var poll = nextPoll();
-            if (await Task.WhenAny(poll, deadline) != poll) return TimedOut();
-            await poll;
-        }
-
-        bool TimedOut()
-        {
-            if (!stopped())
-            {
-                sink.MarkIncomplete(
-                    $"The engine did not settle within " +
-                    $"{SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds after an action.");
-            }
-            return false;
-        }
+        // Only a spent budget refuses the capture. A wait that ended because the fight
+        // did has nothing to report about the engine.
+        if (!stopped()) sink.MarkIncomplete(unsettled);
+        return false;
     }
 
     /// <summary>
