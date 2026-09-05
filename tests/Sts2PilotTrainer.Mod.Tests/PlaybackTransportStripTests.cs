@@ -604,22 +604,6 @@ public sealed class PlaybackTransportStripTests
         Assert.Equal(tagRight, chip.Max(point => point.X), 1);
     }
 
-    /// <summary>
-    /// The tag hangs from measured furniture, so it moves when the game's own does.
-    /// A constant is right on one monitor and on one relic count.
-    /// </summary>
-    [Fact]
-    public void TheTagHangsFromTheAnchorItIsGiven()
-    {
-        var strip = Build(Revealing(MapMove, 2, noteShown: true));
-
-        strip.Reanchor(Surface, new Vector2(1200, 200));
-
-        var plate = Find<Polygon2D>(strip.Root, "Plate").Polygon;
-        Assert.Equal(1200, plate.Max(point => point.X), 1);
-        Assert.Equal(200, plate.Min(point => point.Y), 1);
-    }
-
     /// <summary>The pips are a picture of the journey, and they stop being drawn when
     /// there are too many to read at a glance.</summary>
     [Fact]

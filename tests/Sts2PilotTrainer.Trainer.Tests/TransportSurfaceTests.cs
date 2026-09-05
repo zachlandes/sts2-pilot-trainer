@@ -295,6 +295,41 @@ public sealed class TransportSurfaceTests
     }
 
     /// <summary>
+    /// Back is refused in that same window, and it was not.
+    ///
+    /// The client would take the press: the ledger opened, and the reveal that
+    /// followed cleared what was being looked at with no input from the player. So the
+    /// control was pressable, appeared to work, and was undone a frame later - the same
+    /// family as a menu row that did nothing. Play and Step were already gated on
+    /// revealed for exactly this reason; Back was gated only on there being something
+    /// behind it.
+    ///
+    /// The two refusals stay distinguishable, because "nothing behind yet" and "not
+    /// yet" are different answers to a player who presses and is told no.
+    /// </summary>
+    [Fact]
+    public void BackIsRefusedBetweenCommittingOneChoiceAndRevealingTheNext()
+    {
+        var revealed = PlaybackTransport.For(
+            JourneyPhase.Watching, Facts(next: MapMove, stepsTaken: 1, revealed: true))!;
+        var committing = PlaybackTransport.For(
+            JourneyPhase.Watching, Facts(next: MapMove, stepsTaken: 1, revealed: false))!;
+        var firstChoice = PlaybackTransport.For(
+            JourneyPhase.Watching, Facts(next: MapMove, stepsTaken: 0, revealed: false))!;
+
+        Assert.True(revealed.Surface.Back.Pressable);
+        Assert.False(committing.Surface.Back.Pressable);
+
+        // Refused, not gone: a control that vanishes for half a second cannot be aimed at.
+        Assert.Equal(Presence.Drawn, committing.Surface.Back.Presence);
+
+        // And it says which no it is. There is something behind here, so the reason is
+        // the window rather than the absence.
+        Assert.Equal(TrainerCopy.BetweenScreensDisabledReason, committing.Back.DisabledReason);
+        Assert.Equal(TrainerCopy.NothingBehindYet, firstChoice.Back.DisabledReason);
+    }
+
+    /// <summary>
     /// The tag's line, the once-only sentence and the ledger.
     ///
     /// The line is on the two surfaces where the transport is waiting on the game - a

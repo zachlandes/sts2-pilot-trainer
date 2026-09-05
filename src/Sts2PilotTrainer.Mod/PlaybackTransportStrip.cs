@@ -883,19 +883,6 @@ internal sealed class PlaybackTransportStrip
         _holdFill.Visible = false;
     }
 
-    /// <summary>Redraws the tag against a viewport and an anchor measured again. The
-    /// anchor is measured once, in <c>PlaybackTransportDock.Attach</c>, and nothing in
-    /// the mod remeasures it, so a relic row that grows past the measured band or a
-    /// window resized mid-journey leaves the tag where it was.</summary>
-    internal void Reanchor(Vector2 viewport, Vector2 anchor)
-    {
-        _viewport = viewport;
-        _anchor = anchor;
-        _unit = viewport.Y / ReferenceHeight;
-        _root.Size = viewport;
-        Apply(_state);
-    }
-
     // ── The plate ──────────────────────────────────────────────────────────
 
     /// <summary>

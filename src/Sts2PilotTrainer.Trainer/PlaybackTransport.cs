@@ -495,7 +495,7 @@ public sealed record PlaybackTransport(
             Identity: identity,
             Counter: Check(number, count),
             Speed: speed,
-            Back: BackControl(number > 1),
+            Back: BackControl(number > 1, revealed),
             Play: PlayControl(playing, enabled: playing || revealed),
             Step: StepControl(number, count, Describe(identity.Creator, choice), revealed),
             Ledger: [],
@@ -657,9 +657,26 @@ public sealed record PlaybackTransport(
             Note: string.Empty,
             ChipMenu: []);
 
-    private static TransportControl BackControl(bool enabled) => new(
-        TransportGlyph.Back, enabled, TrainerCopy.BackTooltipTitle, TrainerCopy.BackTooltipBody,
-        enabled ? null : TrainerCopy.NothingBehindYet);
+    /// <summary>
+    /// Look back at a decision the recording already made.
+    ///
+    /// Refused in the same window Play and Step are, and for the same reason: a press
+    /// between committing one decision and revealing the next acts on a state nobody
+    /// has been shown, and the reveal that follows clears it with no input from the
+    /// player - so the control appeared to work and was undone a frame later.
+    ///
+    /// The two refusals are different and say so. Nothing behind yet is not the same
+    /// as not yet, and when both hold the first is the one worth saying.
+    /// </summary>
+    private static TransportControl BackControl(bool enabled, bool revealed = true)
+    {
+        var offered = enabled && revealed;
+        var reason = offered ? null
+            : enabled ? TrainerCopy.BetweenScreensDisabledReason
+            : TrainerCopy.NothingBehindYet;
+        return new TransportControl(
+            TransportGlyph.Back, offered, TrainerCopy.BackTooltipTitle, TrainerCopy.BackTooltipBody, reason);
+    }
 
     /// <summary>
     /// Play, or Pause once it is running.
