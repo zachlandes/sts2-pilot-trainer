@@ -157,6 +157,37 @@ public sealed class PlaybackTransportTests
         Assert.DoesNotContain("NaveGreed", transport.Ledger[0].Label, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Step does not promise a commit it will not make.
+    ///
+    /// While looking back, pressing Step walks the view forward through decisions the
+    /// recording already made; it commits nothing. The tooltip said "Makes this choice,
+    /// then shows the next" there anyway, which is a control naming an action it does
+    /// not perform - the same family as a menu row that did nothing.
+    ///
+    /// The false sentence is removed rather than replaced. Deleting a statement that
+    /// has become untrue is a correction; writing a new true one would be a wording
+    /// decision, and the counter and the caption already say which decision is on
+    /// screen. Watching keeps the sentence, because there it is true.
+    /// </summary>
+    [Fact]
+    public void StepPromisesACommitOnlyWhereItMakesOne()
+    {
+        var lookingBack = For(
+            JourneyPhase.Watching, made: [Blessing], next: MapMove, stepsTaken: 1, lookingBackAt: 1);
+        var watching = For(
+            JourneyPhase.Watching, made: [Blessing], next: MapMove, stepsTaken: 1);
+
+        Assert.DoesNotContain(
+            TrainerCopy.StepTooltipBody, lookingBack.Step.TooltipBody, StringComparison.Ordinal);
+        Assert.Contains(
+            TrainerCopy.StepTooltipBody, watching.Step.TooltipBody, StringComparison.Ordinal);
+
+        // What is left still says which decision is being looked at, so removing the
+        // sentence took nothing the player needed.
+        Assert.Contains("Monster node", lookingBack.Step.TooltipBody, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void RefusesToLookBackAtADecisionThatWasNeverMade()
     {

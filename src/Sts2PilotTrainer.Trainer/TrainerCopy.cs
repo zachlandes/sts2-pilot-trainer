@@ -160,6 +160,15 @@ public static class TrainerCopy
     /// <summary>
     /// Why jumping to the end is refused before a turn has been played.
     ///
+    /// <para><b>An unreferenced string here is not dead code, and the difference is
+    /// worth stating as a rule rather than a note about this one constant.</b> Code
+    /// nobody calls can be deleted freely, because writing it again costs only the
+    /// writing. Approved player-facing wording cannot: it costs the approval, and the
+    /// person who gave it is not always reachable when a reviewer notices the missing
+    /// reference. So an approved sentence with no reader is kept, and says here why it
+    /// has none. A reviewer arriving at this file with no other context should read
+    /// this and stop, which is the whole point of its being written down.</para>
+    ///
     /// Nothing draws this today, and that is deliberate rather than an oversight: a
     /// refused menu row says nothing, so the row this belonged to has nowhere to put
     /// it. Held rather than deleted for a surface that may later have somewhere honest

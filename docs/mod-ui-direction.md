@@ -92,6 +92,8 @@ One rule carries meaning rather than decoration: **a filled shape moves the run,
 
 **States.** Holding, with the target lit by the game's own selected state. Playing, with the hold drawn as a line draining along the tag's foot.
 Looking back, with a ledger of the decisions already made hung beneath - it exists because those screens are gone, and the run must never be rewound to answer for them.
+Step is offered there and walks the view forward through the ledger rather than committing, so its tooltip drops the sentence promising a commit; the counter and the caption still say which decision is on screen.
+A control's tooltip is part of what it is: one that names an action it does not perform is the same defect as one that cannot be pressed.
 Opening, between the last recorded choice and the fight it leads to: the tag stays exactly where it was and everything that would move the run is refused, because a run with nothing left to commit must not still be offering to commit it. The speed control is not refused there - it does not move the run.
 Between screens, the window between committing one decision and revealing the next: look back, play and step are all refused, on the same rule and for the same reason - a press there acts on a state nobody has been shown, and the reveal that follows discards it a frame later.
 The speed control is offered, as it is in Opening.

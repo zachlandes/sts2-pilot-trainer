@@ -533,7 +533,7 @@ public sealed record PlaybackTransport(
             Speed: speed,
             Back: BackControl(shown > 1),
             Play: PlayControl(playing: false),
-            Step: StepControl(current, count, Describe(identity.Creator, next)),
+            Step: StepControl(current, count, Describe(identity.Creator, next), commits: false),
             Ledger:
             [
                 .. made.Select((choice, index) => new LedgerRow(
@@ -701,12 +701,25 @@ public sealed record PlaybackTransport(
     /// tooltips-only ruling: the picture is the lit target on the game's own screen,
     /// and the words are one hover away.
     /// </summary>
-    private static TransportControl StepControl(int number, int count, string caption, bool enabled = true) => new(
-        TransportGlyph.Step, enabled, TrainerCopy.StepTooltipTitle,
-        count == 0
-            ? TrainerCopy.StepTooltipBody
-            : $"{TrainerCopy.StepTooltipBody}\n{TrainerCopy.StepCounter(number, count)} · {caption}",
-        enabled ? null : TrainerCopy.BetweenScreensDisabledReason);
+    /// <param name="commits">Whether pressing Step here makes the choice it names.
+    /// While looking back it does not - it walks the view forward through decisions
+    /// already made and commits nothing - so the sentence promising a commit is left
+    /// off rather than replaced. Removing a statement that has become false needs no
+    /// approval; writing a new true one would, and the counter and the caption already
+    /// say which decision is being looked at.</param>
+    private static TransportControl StepControl(
+        int number, int count, string caption, bool enabled = true, bool commits = true)
+    {
+        var promise = commits ? TrainerCopy.StepTooltipBody : string.Empty;
+        var body = count == 0
+            ? promise
+            : string.IsNullOrEmpty(promise)
+                ? $"{TrainerCopy.StepCounter(number, count)} · {caption}"
+                : $"{promise}\n{TrainerCopy.StepCounter(number, count)} · {caption}";
+        return new TransportControl(
+            TransportGlyph.Step, enabled, TrainerCopy.StepTooltipTitle, body,
+            enabled ? null : TrainerCopy.BetweenScreensDisabledReason);
+    }
 
     private static TransportCounter Check(int number, int count)
     {

@@ -174,10 +174,23 @@ two: the run is in its watching phase and nothing is revealed. That is the same
 condition that refuses step, so what a player sees moving and what they find inert have
 one cause rather than two that happen to coincide.
 
-Both frames below are that window. Step's glyph is dim inside its focus rim - refused,
-because the decision it would make is not on screen yet - while look back and play stay
-bright, which is exactly what the table says for this state. The teal segment at the
-tag's foot is further along in the second.
+Both frames below are that window, and **they no longer show what the shipping code
+draws.** They were taken when Step alone was refused there, with look back and play left
+bright. Review found afterwards that look back should be refused in that window too, and
+for the same reason: pressing it opened the ledger, and the reveal that followed cleared
+what was being looked at with no input from the player, so the control appeared to work
+and was undone a frame later. `Back` is now gated on the same condition as `Play` and
+`Step`.
+
+So in these two images the look-back glyph is bright and should not be. The shipping tag
+draws it dim, refused, alongside Step. The machine was locked before the pair could be
+re-taken, and a caption explaining why a picture is wrong is not evidence, so the gap is
+stated here instead: **the between-screens pair predates the `Back` gating and is the
+only claim in this document its images no longer support.** Re-shooting it is tracked as
+its own follow-up. What the frames still show truthfully is the travelling mark and the
+counter, which is what this section is otherwise about.
+
+The teal segment at the tag's foot is further along in the second.
 
 **How short this window is, stated rather than implied.** It is a few hundred
 milliseconds, and `screencapture` samples at roughly two hundred. These two frames took
@@ -185,10 +198,10 @@ several attempts to catch. A reader should picture a brief travelling mark, not 
 comfortable animation.
 
 ```bash {image}
-![The tag during the window between one decision and the next, reading "2 of 2". A short teal segment sits at the left of the tag's foot. The step glyph is dim inside a gold focus rim, refused; the look-back and play glyphs are bright.](transport-between-screens-a.png)
+![The tag during the window between one decision and the next, reading "2 of 2". A short teal segment sits at the left of the tag's foot. The step glyph is dim inside a gold focus rim, refused; the look-back and play glyphs are bright, which is the pre-fix behaviour this image predates - the shipping tag refuses look back here too.](transport-between-screens-a.png)
 ```
 
-![The tag during the window between one decision and the next, reading "2 of 2". A short teal segment sits at the left of the tag's foot. The step glyph is dim inside a gold focus rim, refused; the look-back and play glyphs are bright.](7c9a2546-2026-09-04.png)
+![The tag during the window between one decision and the next, reading "2 of 2". A short teal segment sits at the left of the tag's foot. The step glyph is dim inside a gold focus rim, refused; the look-back and play glyphs are bright, which is the pre-fix behaviour this image predates - the shipping tag refuses look back here too.](7c9a2546-2026-09-04.png)
 
 ```bash {image}
 ![The same tag a moment later. The teal segment at the foot has travelled further to the right and is longer. The step glyph is still dim inside its focus rim.](transport-between-screens-b.png)
