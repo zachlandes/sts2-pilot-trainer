@@ -210,6 +210,7 @@ So `unlocks.inventory` records epochs, encounters seen and the run count, which 
 The preflight's `exact` arm therefore checks that this build ships every epoch id and every encounter id the recording names, and reports the run count rather than comparing it: the state is supplied to the run being constructed, so nothing about this installation has to match it.
 What the build ships is enumerated by `LocalEnvironment.ReadPrerequisites` - every epoch `UnlockState.all` holds and every encounter the model database ships - and the preflight reports each list as met, missing with samples, or not enumerated.
 A reading that could not enumerate them leaves the lists absent and every exact requirement refuses as unchecked, which is the honest answer rather than a silent pass.
+`./scripts/arbiter preflight <manifest> --shipped-ids` prints those two lists instead of the report, because a row that refuses an unknown id has no room to name what this build does ship.
 
 **For a video recording, what the source player had** is an inference, and stays one. The manifest records
 it as `environment.unlocks` with `source: inferred` and the reasoning next to it: the

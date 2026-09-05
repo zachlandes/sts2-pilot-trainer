@@ -114,15 +114,21 @@ It constructs the run at the recording's identity, makes the recording's decisio
 before its fight in order, and reports the fight it lands in as the recorded one -
 against everything the recording observed there and against the manifest's
 engine-produced combat-start snapshot digest - with the profile unchanged either side.
+`--fight <n>` walks to that fight of the run instead, and `--floor <n>` to the moment
+it arrived on that floor; without either it is the first fight.
 [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md) has it with its real
 output.
 
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
-`verify-seed`, `determinism`, `negative-controls`, `combat-snapshot`,
-`snapshot-restore-probe`, `migrate-manifest`. `validate` and `migrate-manifest` need
-no game; `migrate-manifest` is the only command that rewrites a manifest on disk, so
+`engine-commands`, `verify-seed`, `determinism`, `negative-controls`,
+`combat-snapshot`, `snapshot-restore-probe`, `migrate-manifest`. `engine-commands`
+prints which of the game's own members each recorded decision maps onto, and says of
+every verb it does not map why there is nothing to map it onto. `validate` and
+`migrate-manifest` need no game, the latter unless it is deriving boundaries;
+`migrate-manifest` is the only command that rewrites a manifest on disk, so
 reading somebody's evidence never edits it.
 It rewrites the manifest in place, or writes to `--out <path>`, which is written even when the input was already in this format, so a script that migrates and then reads its output never meets a missing file.
+`--derive-boundaries` additionally replays the run through the real engine and writes in every boundary the history passes - each fight's start, each floor's arrival and each turn - with the digest that replay produced, refusing if the history does not reproduce.
 Like every command here that writes, it refuses a destination outside this repository.
 
 The full walkthrough, with commands and their real output, is in

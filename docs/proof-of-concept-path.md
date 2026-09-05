@@ -383,5 +383,5 @@ No turn-level reset or branching. No solver. No generalized VOD ingestion and no
 multi-VOD support. No presentation designed around rare permanent card removal. No
 candidate search: S2.5 built the prefix one would need and deliberately stopped there.
 
-And nothing in the decision alphabet beyond what this one path uses.
-Rest sites, shops, potion use, treasure rooms and act transitions are still named by the format and still refused by the driver, because implementing a verb no reconstruction exercises is how a verb that quietly does the wrong thing gets shipped.
+The decision alphabet is no longer held to what this one path uses: rest sites, shops, potion use and discard, treasure rooms and act transitions are mapped onto the engine's own commands and exercised by the whole-act fixture, because replaying a whole run needs every decision a run contains.
+What is still not mapped is three verbs the format names and this build has nothing to map them onto - `SelectHandCards`, `CloseShop` and `ProceedToMap` - each with its reason written beside the table in `EngineCommands` and printed by `./scripts/arbiter engine-commands`.
