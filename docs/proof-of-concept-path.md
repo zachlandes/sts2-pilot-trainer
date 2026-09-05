@@ -207,7 +207,7 @@ This slice produced the pre-rename `CombatTrainer` mod that loaded in the shippe
 
 **Established by this slice:** the captain was told, in game, whether his install and profile could represent this VOD - and if not, exactly what to play to fix it.
 S4 extended that same pre-rename host with the current fight offer and asked the supplied run model about capabilities the trainer provided in memory.
-The `CombatTrainer` session establishes nothing about the renamed `Runmobile` artifact; S6's session is where that was exercised, and [docs/in-game-host.md](in-game-host.md) says what it left unproved.
+The `CombatTrainer` session establishes nothing about the renamed `Runmobile` artifact; S7's session is where that was exercised, and [docs/in-game-host.md](in-game-host.md) says what it left unproved.
 [docs/in-game-host.md](in-game-host.md) records the current code and its limits; [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) preserves the historical S3 `CombatTrainer` evidence.
 
 ### S4 - Start or reset the captured combat, in the live game - done
@@ -268,7 +268,7 @@ output.
 **Demonstrated in the retail client with the pre-rename `CombatTrainer` artifact.**
 With only Combat Trainer enabled, the screen offered the fight; pressing it constructed the recording's run, walked it through Neow's blessing and the map move on the game's own screens, and stood the player in the recorded fight - the Sludge Spinner at 42 of 42, the opening hand the recording shows, turn 1 at Ascension 10.
 The canonical state at that boundary was the same digest the headless host derived for the combat-start snapshot, so the agreement covered the run's random streams and the draw pile's order and not only what a screenshot showed.
-S6's session repeated the entry through the renamed `Runmobile` package with only it enabled and a clean protected-files ledger; nothing here is claimed for that package on this slice's evidence.
+S7's session repeated the entry through the renamed `Runmobile` package with only it enabled and a clean protected-files ledger; nothing here is claimed for that package on this slice's evidence.
 [demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has the historical `CombatTrainer` screenshots.
 
 Running it in the client is what found the three screen-owned transitions the manifest
