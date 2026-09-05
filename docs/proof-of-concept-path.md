@@ -443,6 +443,7 @@ Forward commits it and reveals the map node, and the same strip is still there i
 fight, collapsed to a chip.
 [demo/PLAYBACK-TRANSPORT.md](../demo/PLAYBACK-TRANSPORT.md) has it with the
 screenshots.
+
 ### S8 - The recorder, in the player's own game - built, not yet proved by play
 
 S1 through S7 close the loop over somebody else's recording, transcribed from a video

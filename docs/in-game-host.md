@@ -9,9 +9,16 @@ is skipped by name in the game's log and the rest of the mod loads without it.
 Drawing the singleplayer-menu cards is the shell's: a module contributes `MenuCard`
 entries and `ModeCard` is a shell patch class, so a module that refuses cannot take
 another enabled module's card down with it.
-That promise is about a module which declares itself disabled: a module whose `Install` throws propagates out of the loop, aborts `Start` before the shell is marked started, and may leave its partial patches applied, which is a broken-build condition rather than a runtime one, and the failure-isolation lifecycle that would contain it arrives with the second module.
-`CombatTrainerModule` is the only one built. The recorder and the run library are the
-other two.
+So is `CardScreensUp`, whose two patch classes count the card screens up in front of
+the player: a screen being up is a fact about the game rather than about either
+feature, and both settles read it - the recorder's, to keep a reading off a decision
+somebody has not finished making, and the Combat Trainer's, so a prompt a played card
+opens does not spend the engine's budget. Behind one feature's patches it would stop
+counting on a build that feature declines to watch, which is the build the other is
+meant to carry on through. What a screen answered is a feature's own business, and a
+module subscribes rather than patching the screens a second time.
+That promise is about a module which declares itself disabled: a module whose `Install` throws propagates out of the loop, aborts `Start` before the shell is marked started, and may leave its partial patches applied, which is a broken-build condition rather than a runtime one, and the failure-isolation lifecycle that would contain it is still not built.
+`CombatTrainerModule` and `RecorderModule` are built. The run library is the third.
 
 The retail proof below, up to and including S5, was gathered on the pre-rename `CombatTrainer` artifact.
 S3 of [the proof-of-concept path](proof-of-concept-path.md) answers one question — can this game play the recorded fight? — S4 adds the button that enters it, and S5 captures the fight the player then plays and shows it beside the recording's.
@@ -162,7 +169,9 @@ after the card's own action reports finished, and an ended turn hands the whole 
 turn to the combat manager with the player's next turn beginning frames later.
 So the after-sample waits for the moment the headless driver's drain reaches: the queue empty and the executor idle.
 For an ended turn, it waits for the player's next `TurnStarted`.
-The entire settlement wait is bounded to the headless driver's 30-second budget; if either the queue or executor does not settle in time, the capture becomes incomplete without taking an after-sample.
+The entire settlement wait is bounded to the headless driver's 30-second budget, and that budget measures only the engine's own time: while a card screen the action opened is up in front of the player the budget is discarded, and the engine gets the whole of it again from the moment the last screen closes, however many one action puts up.
+If either the queue or executor does not settle in time, the capture becomes incomplete without taking an after-sample.
+The wait is `RunRecorder.WaitForTheEngine`, asked here through `PlayerFightObserver.WaitUntilSettled`, so the fight and the run settle by one rule; the screen count it reads is the shell's `CardScreensUp`.
 If the combat manager already regards the fight as over or ending, the sample is left to `CombatEnded`, which closes the open action with the final state.
 That is how a capture completes at all: the killing blow, or the enemy turn the
 player did not survive, is the action the fight ended inside.
@@ -263,8 +272,10 @@ The driver calls those members to make a recorded decision; a player clicking ma
 Nothing here issues a command, changes an argument, or changes what the game decides.
 Arguments are read in a prefix, while the shelf still holds the thing that was bought and the hand still holds the card that was played; the state is read at the other end of a settle.
 The one exception to "postfix and return" is the two card screens, whose returned task is handed back unchanged having been looked at on the way past: the engine pulls a card screen's answer through a seam the player's client fills, so there is no command anything else could observe.
+Those two patches are the shell's `CardScreensUp` rather than the recorder's, because the count they keep is read by both settles; the recorder subscribes to what a screen answered, which is its own business and nobody else's.
 `NCardGridSelectionScreen.CardsSelected` covers every screen over a deck, a pile or the hand, because they share that base and it holds both halves of the answer - the list offered and the cards that came back.
 `NCardRewardSelectionScreen.OptionSelected` covers the card reward, whose screen answers with a position into the list `ShowScreen` was given.
+A subscriber owns what its own failure means: an answer the recorder cannot read marks the recording broken and writes the reason into the journal, and the shell's own catch around a subscriber is there only so one of them cannot break the game's card-screen path or stop another running.
 
 **The recorder never raises the write barrier.**
 The player's own run saves normally; suppressing that would take the run away from them in order to describe it.
