@@ -214,6 +214,9 @@ path that writes what the barrier suppresses.
 `RunRecorder` in the mod owns only what a pure class cannot: which game member is which decision, what its arguments are, and when the engine has settled enough to read.
 Inside a fight it hands over to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink`.
 The recorder refuses a run whose start it did not witness, marks `continuity = broken` when a resumed session's live state is not the state its journal last recorded, and never truncates.
+**Every integrity claim it makes is derived from what was observed, never from what a component assumes it observed.**
+Continuity, a witnessed start, the mod set a run was played under, the controls a verdict rests on: each of these is a claim about what happened, and a component that reports one it did not establish produces evidence nobody can check while every value in it is individually true.
+Three such claims were shipped on this branch and caught in review; [docs/in-game-host.md](docs/in-game-host.md) names them, so the rule is checkable rather than an abstraction.
 It writes an append-only `RunJournal` after every decision so a crash keeps the prefix, never raises `ProfileWriteBarrier` - the player's own run saves normally - and never writes a Steam id, a machine path, a profile id or hardware.
 Every write goes through `RunmobileStore`. [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
 
