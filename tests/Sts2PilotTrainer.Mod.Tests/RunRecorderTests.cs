@@ -241,23 +241,81 @@ public sealed class RunRecorderTests
     }
 
     /// <summary>
-    /// A wait on a screen ends when there is no recording left to wait for.
+    /// The engine's budget measures only the engine's own time, however many screens one
+    /// decision puts up.
     ///
-    /// It has no budget by design - a screen is up for as long as somebody is looking at
-    /// it, and a clock there costs a player who stepped away their recording - so the
-    /// recorder's own lifetime is the only exit. Without it, a run left to the main menu
-    /// with a screen up spins a scene-tree timer every poll for the rest of the session,
-    /// outliving the recording it was waiting for.
+    /// A card reward whose hook allows a second card closes its first screen and opens
+    /// another. The budget used to be started once, before the wait for screens, so the
+    /// gap between those two screens started a thirty-second clock that then ran while
+    /// the player was still choosing - and a player who took longer than that over the
+    /// second card had the decision refused and the whole recording marked broken, for a
+    /// decision they made normally.
+    ///
+    /// Driven here as that sequence: a screen, a gap, a second screen, then the engine
+    /// settling. The budget from the gap is expired by hand while the second screen is
+    /// up, which is exactly what a slow decision does to it.
     /// </summary>
     [GameFact]
-    public async Task AScreenWaitEndsWhenTheRecordingDoes()
+    public async Task ASecondScreenGetsTheEngineBudgetBackRatherThanTheRemainderOfTheFirst()
+    {
+        // One screen, then none, then one again, then none for the rest.
+        int[] screens = [1, 1, 0, 1, 1, 1, 0, 0, 0, 0];
+        var polls = 0;
+        var budgets = new List<TaskCompletionSource<bool>>();
+
+        var settled = await RunRecorder.WaitForTheEngine(
+            () => screens[Math.Min(polls, screens.Length - 1)],
+            () => null,
+            () => true,
+            () =>
+            {
+                var budget = new TaskCompletionSource<bool>();
+                budgets.Add(budget);
+                return budget.Task;
+            },
+            () =>
+            {
+                polls++;
+
+                // The budget that started in the gap runs out while the player is back
+                // at a screen. Discarded rather than consulted, it cannot end the wait.
+                if (budgets.Count == 1 && screens[Math.Min(polls, screens.Length - 1)] > 0)
+                {
+                    budgets[0].TrySetResult(true);
+                }
+
+                return Task.CompletedTask;
+            },
+            "the engine did not settle");
+
+        Assert.Null(settled);
+
+        // Two screen-free stretches, so two budgets: the second one is the engine's whole
+        // budget counted from the moment the last screen came down.
+        Assert.Equal(2, budgets.Count);
+    }
+
+    /// <summary>
+    /// A wait ends when there is no recording left to wait for, and says why in the
+    /// caller's own words.
+    ///
+    /// Waiting on a screen has no budget by design - a screen is up for as long as
+    /// somebody is looking at it, and a clock there costs a player who stepped away
+    /// their recording - so the recorder's own lifetime is the only exit. Without it, a
+    /// run left to the main menu with a screen up spins a scene-tree timer every poll
+    /// for the rest of the session, outliving the recording it was waiting for.
+    /// </summary>
+    [GameFact]
+    public async Task AWaitEndsWhenTheRecordingDoes()
     {
         var polls = 0;
         var recording = true;
 
-        var refusal = await RunRecorder.WaitForScreens(
+        var stopped = await RunRecorder.WaitForTheEngine(
             () => 1,
-            () => !recording,
+            () => recording ? null : "the run went to the main menu.",
+            () => true,
+            () => throw new InvalidOperationException("A screen was up, so no budget should have started."),
             () =>
             {
                 recording = false;
@@ -265,30 +323,38 @@ public sealed class RunRecorderTests
                     ? throw new InvalidOperationException(
                         "The wait polled again after the recording had ended, so it would never stop.")
                     : Task.CompletedTask;
-            });
+            },
+            "the engine did not settle");
 
-        Assert.NotNull(refusal);
-        Assert.Contains("1 card screen(s) still open", refusal, StringComparison.Ordinal);
+        Assert.Equal("the run went to the main menu.", stopped);
 
         // It waited while there was a recording to wait for, and stopped once there
         // was not.
         Assert.Equal(1, polls);
     }
 
-    /// <summary>And a screen that comes down lets the settle carry on.</summary>
+    /// <summary>
+    /// And the engine is given its budget once the screens are down - spent, that is a
+    /// decision the recorder could not read.
+    /// </summary>
     [GameFact]
-    public async Task AScreenThatComesDownLetsTheWaitFinish()
+    public async Task AnEngineThatNeverSettlesSpendsItsBudgetAndSaysSo()
     {
         var open = 2;
 
-        Assert.Null(await RunRecorder.WaitForScreens(
+        var unsettled = await RunRecorder.WaitForTheEngine(
             () => open,
+            () => null,
             () => false,
+            () => Task.CompletedTask,
             () =>
             {
-                open--;
+                if (open > 0) open--;
                 return Task.CompletedTask;
-            }));
+            },
+            "the engine did not settle");
+
+        Assert.Equal("the engine did not settle", unsettled);
         Assert.Equal(0, open);
     }
 
