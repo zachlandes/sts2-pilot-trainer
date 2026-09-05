@@ -285,6 +285,42 @@ public class CorruptionTests
         Assert.True(ManifestValidator.Validate(reordered).IsValid);
     }
 
+    /// <summary>
+    /// A history that nominated no substitute is one this control has nothing to do to.
+    ///
+    /// Its three nomination-driven siblings all say so in <c>AppliesTo</c>, so a history
+    /// that never nominated is skipped by name and
+    /// <c>negative-controls --require-all-controls</c> refuses. This one used to fall
+    /// back to a hardcoded Strike at hand index 0 and run anyway: the driver then
+    /// refused on card identity against whatever card actually sat there, the gate
+    /// counted the control as rejected, and nothing about a same-cost substitution had
+    /// been demonstrated. A control that cannot fail for the right reason is worse than
+    /// one that is honestly skipped.
+    /// </summary>
+    [Fact]
+    public void SubstitutingAppliesOnlyToAHistoryThatNominatedASubstitute()
+    {
+        var control = Corruption.All.Single(c => c.Name == "substitute-same-cost");
+        var manifest = Playable();
+        var unnominated = manifest with
+        {
+            Actions = [.. manifest.Actions.Select(action => action with
+            {
+                Args = action.Args
+                    .Where(pair => pair.Key != Corruption.SubstituteCardId &&
+                                   pair.Key != Corruption.SubstituteHandIndex)
+                    .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
+            })],
+        };
+
+        Assert.True(control.AppliesTo(manifest));
+        Assert.False(control.AppliesTo(unnominated));
+
+        // And reaching it anyway is a refusal rather than a guess.
+        var refusal = Assert.Throws<ManifestException>(() => control.Apply(unnominated));
+        Assert.Contains(Corruption.SubstituteCardId, refusal.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ReorderingKeepsBothPlaysLegalAtTheirOriginalHandPositions()
     {

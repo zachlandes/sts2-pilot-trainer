@@ -65,8 +65,9 @@ public static class Corruption
             "video-only pipeline did not do.",
             SubstituteSameCost)
         {
-            Requires = "a card play",
-            AppliesTo = manifest => manifest.Actions.Any(a => a.Verb == ActionVerb.PlayCard),
+            Requires = "a card play nominating a card the same hand held at the same cost and targeting",
+            AppliesTo = manifest => manifest.Actions.Any(
+                a => a.Verb == ActionVerb.PlayCard && a.Args.ContainsKey(SubstituteCardId)),
         },
 
         new("omit-play",
@@ -213,8 +214,13 @@ public static class Corruption
         var actions = manifest.Actions.ToList();
         var target = NominatedPlay(actions, "substitute-same-cost");
 
-        var substituteCard = target.Args.GetValueOrDefault(SubstituteCardId, "CARD.STRIKE_IRONCLAD");
-        var substituteIndex = target.Args.GetValueOrDefault(SubstituteHandIndex, "0");
+        if (!target.Args.TryGetValue(SubstituteCardId, out var substituteCard) ||
+            !target.Args.TryGetValue(SubstituteHandIndex, out var substituteIndex))
+        {
+            throw new ManifestException(
+                "substitute-same-cost needs a card play nominating a different card the same hand held at the " +
+                $"same cost and targeting, through '{SubstituteCardId}' and '{SubstituteHandIndex}'.");
+        }
 
         // A substitution that puts back the card that was already there damages
         // nothing, and an arbiter that accepted it would be reported as having failed
@@ -483,7 +489,7 @@ public static class Corruption
     /// <summary>
     /// Which other card in the hand a control should play in place of the one that was
     /// played, as the id and position it takes it by, or null where the hand held no
-    /// alternative of the same cost.
+    /// alternative it could be swapped for.
     ///
     /// The same cost, because that is the whole of what
     /// <see cref="SubstituteSameCost"/> claims: energy conservation and hand accounting
@@ -493,12 +499,18 @@ public static class Corruption
     /// identity - either way the control is counted as rejected for a reason that is
     /// not the one it is named for.
     ///
+    /// And the same targeting, because <see cref="SubstituteSameCost"/> keeps every
+    /// other argument of the play it rewrites, <c>target_index</c> included. A
+    /// substitute that disagrees produces a play the driver refuses on argument shape -
+    /// a target index on a card that aims at nothing, or a card that needs one and has
+    /// none - before the engine has replayed anything at all.
+    ///
     /// A different card and not another copy at another position: the same card played
     /// from elsewhere in the hand is a hand-index corruption, which is what a nomination
     /// nobody made already produces.
     /// </summary>
     public static (string CardId, int HandIndex)? NominateSubstitute(
-        IReadOnlyList<(string CardId, int EnergyCost)> hand, int playedIndex)
+        IReadOnlyList<(string CardId, int EnergyCost, bool TargetsAnEnemy)> hand, int playedIndex)
     {
         if (playedIndex < 0 || playedIndex >= hand.Count) return null;
 
@@ -507,6 +519,7 @@ public static class Corruption
         {
             if (index == playedIndex) continue;
             if (hand[index].EnergyCost != played.EnergyCost) continue;
+            if (hand[index].TargetsAnEnemy != played.TargetsAnEnemy) continue;
             if (string.Equals(hand[index].CardId, played.CardId, StringComparison.Ordinal)) continue;
             return (hand[index].CardId, index);
         }

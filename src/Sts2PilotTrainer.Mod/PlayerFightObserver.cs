@@ -416,17 +416,21 @@ internal sealed class PlayerFightObserver : IDisposable
 
     /// <summary>
     /// The hand as it stands, each card with what the engine would charge to play it
-    /// right now.
+    /// right now and whether it aims at an enemy.
     ///
     /// <c>GetAmountToSpend</c> is the game's own question - it is what the engine calls
     /// when it takes the energy - so a cost read here is the cost the player paid rather
     /// than a base cost this mod worked out for itself and that a modifier could have
-    /// moved. Read while the played card is still in hand, for the same reason its own
-    /// index is.
+    /// moved. The target type is the same property the driver dispatches on when it
+    /// resolves a recorded target. Read while the played card is still in hand, for the
+    /// same reason its own index is.
     /// </summary>
-    private IReadOnlyList<(string CardId, int EnergyCost)> Hand() =>
+    private IReadOnlyList<(string CardId, int EnergyCost, bool TargetsAnEnemy)> Hand() =>
         _player.PlayerCombatState?.Hand.Cards
-            .Select(card => (card.Id.ToString(), card.EnergyCost.GetAmountToSpend()))
+            .Select(card => (
+                card.Id.ToString(),
+                card.EnergyCost.GetAmountToSpend(),
+                card.TargetType == TargetType.AnyEnemy))
             .ToList() ?? [];
 
     /// <summary>
