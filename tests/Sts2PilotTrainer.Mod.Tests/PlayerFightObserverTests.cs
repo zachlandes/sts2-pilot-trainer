@@ -114,11 +114,21 @@ public sealed class PlayerFightObserverTests
         Func<int> screensOpen,
         Func<bool> isSettled,
         Func<Task> newBudget,
-        Func<Task> nextPoll) =>
+        Func<Task> nextPoll,
+        Task? becameEmpty = null) =>
         Assert.IsAssignableFrom<Task<bool>>(
             ModAssembly().GetType("Sts2PilotTrainer.Mod.PlayerFightObserver")!
                 .GetMethod("WaitUntilSettled", BindingFlags.Static | BindingFlags.NonPublic)!
-                .Invoke(null, [sink, screensOpen, isSettled, (Func<bool>)(() => false), newBudget, nextPoll]));
+                .Invoke(null,
+                [
+                    sink,
+                    screensOpen,
+                    becameEmpty ?? Task.CompletedTask,
+                    isSettled,
+                    (Func<bool>)(() => false),
+                    newBudget,
+                    nextPoll,
+                ]));
 
     [ObserverFact]
     public void TheActionExecutorStillAnnouncesEveryActionEitherSide()

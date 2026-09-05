@@ -77,40 +77,6 @@ internal sealed class RunRecorder : IDisposable
     private bool _disposed;
     private bool _finished;
 
-    /// <summary>
-    /// How many card screens are open in front of the player right now.
-    ///
-    /// Static because the screens are: there is one game and one person looking at it.
-    /// It is what keeps a settle from finishing while somebody is still choosing - a
-    /// card screen suspends inside the call that opened it and the engine's queue goes
-    /// idle while it waits, so "the queue is empty" is true of a run that has not
-    /// finished making its decision.
-    ///
-    /// Four things hold together here, and each of the first three has been broken once
-    /// by a change that only had the others in mind:
-    ///
-    /// It counts screens up in this process, not screens a recorder happened to be
-    /// watching. <see cref="WhileOnScreen{T}"/> is the only thing that touches it and it
-    /// takes and gives back in one try/finally, so every increment has its decrement and
-    /// there is no bare decrement for a caller to reach. That is what makes it balanced,
-    /// and what makes going below zero impossible rather than clamped.
-    ///
-    /// Being balanced, it cannot go stale, so nothing resets it. Both of the game's card
-    /// screens complete their own completion source in <c>_ExitTree</c> - the grid
-    /// cancels, the reward screen faults - so a screen torn down with its run still ends
-    /// the task this waits on, and the finally still runs. A reset would be the only way
-    /// left to lose a screen that is genuinely up.
-    ///
-    /// Waiting on it costs no budget. A screen is up for as long as somebody is looking
-    /// at it; the engine's settle budget bounds the engine, which should always settle,
-    /// and a person is not the engine.
-    ///
-    /// The wait ends when the recorder does. Without that, a run left to the main menu
-    /// spins a scene-tree timer every poll for the rest of the session, outliving the
-    /// recording it was waiting for.
-    /// </summary>
-    private static int _screensOpen;
-
     private RunRecorder(RunCapture capture, string journalPath)
     {
         _capture = capture;
@@ -431,31 +397,6 @@ internal sealed class RunRecorder : IDisposable
     }
 
     /// <summary>
-    /// Counts one card screen for as long as the game's own task for it is outstanding.
-    ///
-    /// The only thing that touches <see cref="_screensOpen"/>, and it takes and gives
-    /// back in one try/finally. A prefix and a postfix that each decided separately drifted
-    /// exactly once - a run torn down between them left the count above zero for the rest
-    /// of the session - and a pair of take/give methods would let the next caller do it
-    /// again. There is nothing here to call twice or to call alone.
-    /// </summary>
-    internal static async Task<T> WhileOnScreen<T>(Task<T> screen)
-    {
-        Interlocked.Increment(ref _screensOpen);
-        try
-        {
-            return await screen;
-        }
-        finally
-        {
-            Interlocked.Decrement(ref _screensOpen);
-        }
-    }
-
-    /// <summary>How many card screens are open, for a test that drives one.</summary>
-    internal static int ScreensOpen => Volatile.Read(ref _screensOpen);
-
-    /// <summary>
     /// Waits for the engine to finish, giving it no credit for time a person spent at a
     /// card screen.
     ///
@@ -481,6 +422,7 @@ internal sealed class RunRecorder : IDisposable
     internal static async Task<string?> WaitForTheEngine(
         Func<int> open,
         Func<string?> stopped,
+        Task? engineWork,
         Func<bool> idle,
         Func<Task> newBudget,
         Func<Task> nextPoll,
@@ -513,8 +455,13 @@ internal sealed class RunRecorder : IDisposable
             await nextPoll();
 
             // A screen that went up during the poll scores no idle tick; the top of the
-            // loop then throws the budget away.
-            idleTicks = open() == 0 && idle() ? idleTicks + 1 : 0;
+            // loop then throws the budget away. Nor does an engine that has not yet said
+            // its own work is finished: the queue reading empty is not the same claim as
+            // the queue having been seen to drain, and the two ticks are a debounce on
+            // top of that signal rather than a replacement for it.
+            idleTicks = open() == 0 && (engineWork is null || engineWork.IsCompleted) && idle()
+                ? idleTicks + 1
+                : 0;
             if (idleTicks >= 2) return null;
         }
     }
@@ -682,12 +629,12 @@ internal sealed class RunRecorder : IDisposable
     /// still waiting for.</returns>
     private static Task<string?> Settle(Task? engineWork, Func<string?> stopped) =>
         WaitForTheEngine(
-            () => ScreensOpen,
+            () => CardScreensUp.Count,
             stopped,
+            engineWork,
             // The queue is asked twice with a tick between, because a decision that has
             // not enqueued its work yet reads as an engine with nothing to do.
-            () => (engineWork is null || engineWork.IsCompleted) &&
-                  RunManager.Instance is { ActionExecutor.IsRunning: false } manager &&
+            () => RunManager.Instance is { ActionExecutor.IsRunning: false } manager &&
                   manager.ActionQueueSet.IsEmpty,
             () => RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
             () => RecordedFightRun.LetTheGameRun(SettlePollSeconds),
@@ -1134,8 +1081,8 @@ internal sealed class RunRecorder : IDisposable
         typeof(NewRun), typeof(ContinuedRun), typeof(RunOver), typeof(RunTeardown),
         typeof(EventOption), typeof(MapMove), typeof(RewardTaken), typeof(RewardsSkipped),
         typeof(RestSiteOptionTaken), typeof(ChestRelicTaken), typeof(ChestRelicSkipped),
-        typeof(ActAdvanced), typeof(ShopPurchased), typeof(CardScreen), typeof(CardRewardScreen),
-        typeof(CardRewardAnswer), typeof(PotionUsed), typeof(PotionDiscarded),
+        typeof(ActAdvanced), typeof(ShopPurchased), typeof(CardRewardScreen),
+        typeof(PotionUsed), typeof(PotionDiscarded),
     ];
 
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.SetUpNewSingleplayer))]
@@ -1513,51 +1460,36 @@ internal sealed class RunRecorder : IDisposable
     }
 
     /// <summary>
-    /// Every card screen the game opens over a pile, a deck or a hand.
+    /// Reads what a card screen the shell counted was answered with.
     ///
-    /// One patch for all of them, because they share the base that holds both halves
-    /// of the answer: the list the screen offered and the cards that came back. The
-    /// returned task is handed on unchanged, having been looked at.
+    /// The screen itself is <see cref="CardScreensUp"/>'s - a screen being up is a fact
+    /// about the game that both features read - and which card came off which offered
+    /// list is this one's, so the recorder subscribes rather than patching the screen a
+    /// second time.
     /// </summary>
-    [HarmonyPatch(typeof(NCardGridSelectionScreen), nameof(NCardGridSelectionScreen.CardsSelected))]
-    internal static class CardScreen
+    internal static void ReadTheAnswers()
     {
-        [HarmonyPostfix]
-        internal static void After(
-            NCardGridSelectionScreen __instance, ref Task<IEnumerable<CardModel>> __result) =>
-            __result = Observe(__instance, __result);
-
-        internal static async Task<IEnumerable<CardModel>> Observe(
-            NCardGridSelectionScreen screen, Task<IEnumerable<CardModel>> inner)
+        CardScreensUp.GridAnswered = (screen, chosen) =>
         {
-            var chosen = await WhileOnScreen(inner);
-
-            try
+            if (OfferedCards(screen) is { } offered) CardScreenAnswered(offered, chosen);
+            else
             {
-                if (OfferedCards(screen) is { } offered) CardScreenAnswered(offered, chosen);
-                else
-                {
-                    Active?.Refuse(
-                        "A card screen answered and this build does not expose what it offered, so the " +
-                        "recorder cannot say which option was picked.");
-                }
+                Active?.Refuse(
+                    "A card screen answered and this build does not expose what it offered, so the " +
+                    "recorder cannot say which option was picked.");
             }
-            catch (Exception ex)
-            {
-                Active?.Refuse($"A card screen's answer could not be read: {ex.GetType().Name}: {ex.Message}");
-            }
+        };
 
-            return chosen;
-        }
-
-        /// <summary>The list the screen was built with. Read by name and refused loudly
-        /// when a build no longer has it, because a screen whose options nobody can see
-        /// is a decision nobody can record.</summary>
-        internal static IReadOnlyList<CardModel>? OfferedCards(NCardGridSelectionScreen screen) =>
-            typeof(NCardGridSelectionScreen)
-                .GetField("_cards", BindingFlags.Instance | BindingFlags.NonPublic)
-                ?.GetValue(screen) as IReadOnlyList<CardModel>;
+        CardScreensUp.RewardAnswered = option => CardRewardAnswered(CardRewardScreen.Offered, option);
     }
+
+    /// <summary>The list a grid screen was built with. Read by name and refused loudly
+    /// when a build no longer has it, because a screen whose options nobody can see is a
+    /// decision nobody can record.</summary>
+    internal static IReadOnlyList<CardModel>? OfferedCards(NCardGridSelectionScreen screen) =>
+        typeof(NCardGridSelectionScreen)
+            .GetField("_cards", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?.GetValue(screen) as IReadOnlyList<CardModel>;
 
     /// <summary>
     /// The screen a card reward puts up, which answers with a position rather than a
@@ -1583,30 +1515,6 @@ internal sealed class RunRecorder : IDisposable
         }
     }
 
-    /// <summary>The position that screen came back with, which is what the format
-    /// records as the card reward's option index.</summary>
-    [HarmonyPatch(typeof(NCardRewardSelectionScreen), nameof(NCardRewardSelectionScreen.OptionSelected))]
-    internal static class CardRewardAnswer
-    {
-        [HarmonyPostfix]
-        internal static void After(ref Task<int?> __result) => __result = Observe(__result);
-
-        internal static async Task<int?> Observe(Task<int?> inner)
-        {
-            var option = await WhileOnScreen(inner);
-
-            try
-            {
-                CardRewardAnswered(CardRewardScreen.Offered, option);
-            }
-            catch (Exception ex)
-            {
-                Active?.Refuse($"A card reward's answer could not be read: {ex.GetType().Name}: {ex.Message}");
-            }
-
-            return option;
-        }
-    }
 
     /// <summary>
     /// A potion drunk outside a fight.

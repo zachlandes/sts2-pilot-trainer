@@ -289,7 +289,8 @@ internal sealed class PlayerFightObserver : IDisposable
             var queues = RunManager.Instance.ActionQueueSet;
             var settled = await WaitUntilSettled(
                 _sink,
-                () => RunRecorder.ScreensOpen,
+                () => CardScreensUp.Count,
+                queues.BecameEmpty(),
                 () => !_executor.IsRunning && queues.IsEmpty,
                 () => _ended || _disposed,
                 () => RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
@@ -347,12 +348,20 @@ internal sealed class PlayerFightObserver : IDisposable
     /// it drifted: the recorder's stopped charging a player's thinking against the
     /// engine's budget and this one went on doing it, so a hand or pile prompt a played
     /// card opened marked the fight incomplete if the player took half a minute over it.
-    /// The count is <see cref="RunRecorder"/>'s, and asking it is what keeps the thirty
+    /// The count is <see cref="CardScreensUp"/>'s, and asking it is what keeps the thirty
     /// seconds meaning the same thing in both.
+    ///
+    /// <paramref name="becameEmpty"/> is the queue's own word that it drained, and it is
+    /// deliberately kept rather than folded into the idle test: the queue reading empty
+    /// on two polls is not the same claim as the queue having been seen to drain, and an
+    /// after-sample taken during a gap in an action's resolution would record a wrong
+    /// after-state without throwing or refusing anything. Nobody could construct that
+    /// gap in this build, which is the reason to keep the gate rather than to drop it.
     /// </summary>
     internal static async Task<bool> WaitUntilSettled(
         IFightSampleSink sink,
         Func<int> screensOpen,
+        Task becameEmpty,
         Func<bool> isSettled,
         Func<bool> stopped,
         Func<Task> newBudget,
@@ -361,6 +370,7 @@ internal sealed class PlayerFightObserver : IDisposable
         var unsettled = await RunRecorder.WaitForTheEngine(
             screensOpen,
             () => stopped() ? "The fight ended before the engine settled." : null,
+            becameEmpty,
             isSettled,
             newBudget,
             nextPoll,
