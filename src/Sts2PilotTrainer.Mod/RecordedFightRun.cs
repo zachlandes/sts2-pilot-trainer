@@ -1159,14 +1159,14 @@ internal static class RecordedFightRun
             Log.Info(
                 $"[{RunmobileMod.ModId}] letting the fight open; {entry.DescribeCombatReadiness()}", 2);
 
-            var opened = await WaitUntil(
+            var refusal = await RefuseUnlessTheFightOpened(
                 () => entry.IsReadyForThePlayer,
                 LetTheGameRun(OpeningTheFightSeconds),
                 () => LetTheGameRun(OpeningTheFightPollSeconds));
 
             Log.Info(
                 $"[{RunmobileMod.ModId}] after letting the game run; " +
-                $"{(opened ? "the fight opened" : "the fight did not open in time")}; " +
+                $"{(refusal is null ? "the fight opened" : "the fight did not open in time")}; " +
                 $"{_entry?.DescribeCombatReadiness() ?? "no run"}", 2);
 
             // Twenty seconds is long enough that the world changing under this wait is
@@ -1174,6 +1174,12 @@ internal static class RecordedFightRun
             // the game's own pause menu and be in a run of their own by now. Handing
             // over or refusing into that run would take it away from them.
             if (!StillOurs(entry)) return;
+
+            if (refusal is not null)
+            {
+                Abandon(refusal);
+                return;
+            }
 
             HandOverTheFight();
         }
@@ -1224,6 +1230,18 @@ internal static class RecordedFightRun
 
         return true;
     }
+
+    /// <summary>
+    /// Waits for the fight to open and answers what to do about how that went: the
+    /// sentence to refuse with, or null to hand the fight over.
+    ///
+    /// A fight that never opened is refused here rather than at the boundary, and
+    /// which of the two refuses is the difference between a true sentence and a
+    /// misleading one. See docs/in-game-host.md.
+    /// </summary>
+    internal static async Task<string?> RefuseUnlessTheFightOpened(
+        Func<bool> ready, Task deadline, Func<Task> nextPoll) =>
+        await WaitUntil(ready, deadline, nextPoll) ? null : TrainerCopy.FightDidNotOpen;
 
     /// <summary>
     /// Proves the fight is the recorded one, and only then gives it to the player.

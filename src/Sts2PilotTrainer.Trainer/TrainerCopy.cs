@@ -240,6 +240,17 @@ public static class TrainerCopy
 
     public const string RefusalHideDetails = "Hide details";
 
+    /// <summary>
+    /// Why an entry stopped when the fight never finished opening.
+    ///
+    /// A fixed sentence: the reading that tells this apart from a fight that opened
+    /// somewhere else is a diagnostic and belongs in the log, which already carries it
+    /// at the moment the wait gave up. See docs/in-game-host.md.
+    /// </summary>
+    public const string FightDidNotOpen =
+        $"The fight didn't finish opening, so {Name} stopped rather than compare a fight that hadn't " +
+        $"started yet. {RefusalNoHarm}";
+
     /// <summary>The screens this journey walks, as a player names them. A screen with
     /// no name here has no refusal sentence, and the engine's own is shown alone
     /// rather than a wrong noun being invented for it.</summary>
