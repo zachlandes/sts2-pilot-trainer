@@ -18,8 +18,8 @@ namespace Sts2PilotTrainer.Mod;
 /// installs the patches for its feature.
 ///
 /// It is a shell: what is true of the mod however it is configured lives here, and
-/// each feature lives behind <see cref="IRunmobileModule"/>. Today there is one
-/// module, the Combat Trainer.
+/// each feature lives behind <see cref="IRunmobileModule"/>. Today there are two
+/// modules, the Combat Trainer and the recorder.
 ///
 /// Mod initialization deliberately reads nothing about the game. It runs inside the
 /// game's "very early" startup phase, one phase before the game builds its model
@@ -130,7 +130,7 @@ public static class RunmobileMod
     /// aborts <see cref="Start"/> before <see cref="Started"/> is set, and may leave
     /// the patches it had already applied in place. That is a broken build rather than
     /// a runtime condition, and the failure-isolation lifecycle that would contain it
-    /// arrives with the second module, where it can be built against a concrete one.
+    /// is still not built.
     /// </summary>
     internal static IReadOnlyList<string> InstallModules(
         Harmony harmony, IReadOnlyList<IRunmobileModule> modules)
