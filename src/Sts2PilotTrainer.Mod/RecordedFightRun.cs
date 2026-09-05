@@ -1,7 +1,7 @@
+using System.Globalization;
 using System.Reflection;
 using Godot;
 using HarmonyLib;
-using System.Globalization;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Map;
