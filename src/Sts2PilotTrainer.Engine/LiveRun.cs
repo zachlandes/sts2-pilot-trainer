@@ -1,4 +1,5 @@
 using System.Globalization;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
 
@@ -146,6 +147,32 @@ public static class LiveRun
     /// position to make.
     /// </summary>
     public static ModEnvironment LoadedMods() => ModEnvironment.AsRecorded(LocalEnvironment.ReadMods());
+
+    /// <summary>Whether a fight is open at all, however far into opening it is.</summary>
+    public static bool InCombat => CombatManager.Instance is { IsInProgress: true };
+
+    /// <summary>
+    /// Whether the fight has finished opening and is the player's to act in.
+    ///
+    /// The one owner of that question, asked by everything that has to read a state a
+    /// player could actually have acted from. Entering a room is not the same moment
+    /// as the fight being ready: the room is built as soon as the map move's task
+    /// completes, and the opening hand is dealt over the frames after it. A reading
+    /// taken in between has an empty hand and no energy - a real state, and one no
+    /// player ever saw. The engine's own turn phase is the signal, and it is the same
+    /// signal whether a host is standing somebody in a recorded fight or a recorder is
+    /// writing down the fight its player just walked into.
+    ///
+    /// It cost a whole retail evidence run to learn that twice. The playback path
+    /// found it first and fixed it locally; the recorder had the same defect and
+    /// anchored every combat-start boundary it ever wrote to that half-opened instant,
+    /// so no recording it made could reproduce. Hence one predicate rather than two.
+    /// </summary>
+    public static bool ReadyForThePlayer(RunState run) =>
+        InCombat && run.Players[0].PlayerCombatState is { Phase: PlayerTurnPhase.Play };
+
+    /// <summary>The same question about the run this game is in the middle of.</summary>
+    public static bool ReadyForThePlayer() => State is { } run && ReadyForThePlayer(run);
 
     /// <summary>
     /// How a recording made here is named.

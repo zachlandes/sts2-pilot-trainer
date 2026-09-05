@@ -1,3 +1,4 @@
+using System.Reflection;
 using HarmonyLib;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
@@ -82,6 +83,8 @@ public sealed class RunRecorderTests
         var unwatched = RunRecorder.RecordedVerbs
             .Where(verb => !WatchedWithoutAPatch.Contains(verb))
             .Where(verb => !patched.Contains(Member(verb)))
+            .Where(verb => !(WatchedDeeperThanTheDriverCalls.TryGetValue(verb, out var deeper)
+                && patched.Contains(OnTheSameType(verb, deeper))))
             .ToList();
 
         Assert.True(
@@ -108,6 +111,36 @@ public sealed class RunRecorderTests
     /// </summary>
     private static readonly IReadOnlyList<ActionVerb> WatchedWithoutAPatch =
         [ActionVerb.PlayCard, ActionVerb.EndTurn, ActionVerb.SelectCardFromScreen];
+
+    /// <summary>
+    /// The decisions the recorder watches deeper than the member the driver calls, and
+    /// where instead.
+    ///
+    /// One entry, and it is here because "the driver calls it" and "the client goes
+    /// through it" turned out to be different claims.
+    /// <see cref="ActionVerb.SkipRewards"/> is replayed by calling
+    /// <c>SkipLocalRewardsSet</c>, and the retail client never calls that for a
+    /// post-combat loot screen: the screen is terminal, so Skip takes
+    /// <c>NRewardsScreen</c>'s proceed branch and the leftovers are declined by
+    /// <c>BeforeLeavingRoom</c> on the way out. Both reach the private
+    /// <c>SkipRewardsSet</c>, so the recorder watches that and sees the driver's own
+    /// call as well.
+    ///
+    /// Listed rather than left implicit because it is the one place the two halves do
+    /// not meet at the same member, and an unexplained divergence is how the next one
+    /// gets waved through. A recording that missed a skip did not lose a detail: the
+    /// arbiter refuses the following map move, and the run stops reproducing there.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<ActionVerb, string> WatchedDeeperThanTheDriverCalls =
+        new Dictionary<ActionVerb, string>
+        {
+            [ActionVerb.SkipRewards] = RunRecorder.SkipRewardsSetMember,
+        };
+
+    /// <summary>A different member on the same engine type the driver calls into, named
+    /// the way <see cref="Watched"/> names one.</summary>
+    private static string OnTheSameType(ActionVerb verb, string member) =>
+        $"{EngineCommands.All.First(command => command.Verb == verb).Type.FullName}.{member}";
 
     /// <summary>The member <see cref="EngineCommands"/> says this verb goes through.</summary>
     private static string Member(ActionVerb verb)
@@ -344,4 +377,140 @@ public sealed class RunRecorderTests
         Assert.True(settings.RecordMyRuns);
         Assert.Equal(RunmobileSettings.Schema, settings.SchemaId);
     }
+
+    /// <summary>
+    /// A patch on a base method covers every subclass that overrides it, and none that
+    /// shadows it.
+    ///
+    /// C# binds a shadowing method statically, so a subclass that declares its own
+    /// method of the same name - rather than overriding one - takes the call and the
+    /// base's patch never fires. Not hypothetical: <c>MerchantCardRemovalEntry</c>
+    /// declares a three-argument <c>OnTryPurchaseWrapper</c> beside the base's
+    /// non-virtual two-argument one, and until this existed a player could pay gold,
+    /// lose a card, and have the recording say nothing about either. The recording
+    /// stayed structurally valid and simply would not reproduce.
+    ///
+    /// Asked of every patch rather than of that one, because the shape is the defect and
+    /// naming the instance is how the next one is missed. An override is fine and is
+    /// what <see cref="MethodInfo.GetBaseDefinition"/> distinguishes: it reports the
+    /// base's method for an override and the method itself for a new slot.
+    /// </summary>
+    [GameFact]
+    public void APatchOnABaseMethodCoversEverySubclassThatShadowsIt()
+    {
+        // Touched first so the module has installed the game's assembly resolution:
+        // reading a Harmony attribute resolves the engine type it names, and this test
+        // sorts ahead of every other one that would have done it.
+        Assert.Null(RecorderModule.Instance.Refusal);
+
+        var targets = PatchTargets().ToList();
+        var patched = targets
+            .Select(target => AccessTools.Method(target.Type, target.Method, target.Arguments))
+            .Where(method => method is not null)
+            .ToHashSet();
+
+        var unwatched = new List<string>();
+        foreach (var target in targets)
+        {
+            foreach (var subclass in Subclasses(target.Type))
+            {
+                var shadow = subclass.GetMethod(
+                    target.Method,
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic |
+                    BindingFlags.DeclaredOnly);
+
+                if (shadow is null) continue;
+                if (!ReferenceEquals(shadow.GetBaseDefinition(), shadow)) continue;
+                if (patched.Contains(shadow)) continue;
+
+                unwatched.Add($"{subclass.Name}.{target.Method}");
+            }
+        }
+
+        Assert.True(
+            unwatched.Count == 0,
+            "These shadow a patched method and nothing patches them, so the decisions that go through them " +
+            $"are recorded nowhere: {string.Join(", ", unwatched)}.");
+    }
+
+    /// <summary>
+    /// The skip patch watches the funnel every declined reward set reaches.
+    ///
+    /// <see cref="WatchedDeeperThanTheDriverCalls"/> says why it is not the member the
+    /// driver calls. What is checked here is that the funnel and both of its entry
+    /// points still exist on this build, because the whole reason for watching the
+    /// deeper member is that those two entry points are different paths into it.
+    /// </summary>
+    [GameFact]
+    public void TheSkipPatchWatchesTheFunnelEveryDeclinedRewardSetReaches()
+    {
+        Assert.Null(RecorderModule.Instance.Refusal);
+
+        var synchronizer = EngineCommands.All
+            .First(command => command.Verb == ActionVerb.SkipRewards).Type;
+
+        Assert.NotNull(AccessTools.Method(synchronizer, RunRecorder.SkipRewardsSetMember));
+        Assert.NotNull(AccessTools.Method(synchronizer, "SkipLocalRewardsSet"));
+        Assert.NotNull(AccessTools.Method(synchronizer, "BeforeLeavingRoom"));
+
+        Assert.Contains(
+            PatchTargets(),
+            target => target.Type == synchronizer && target.Method == RunRecorder.SkipRewardsSetMember);
+    }
+
+    /// <summary>
+    /// One place decides whether a fight is the player's to act in.
+    ///
+    /// The recorder's settle and the recorded-fight host ask the same question and have
+    /// to get the same answer. A room entry completes before the opening hand is dealt,
+    /// and a reading taken in between describes a state with no hand and no energy that
+    /// no player ever acted from. The host learned that in the client and fixed it
+    /// locally; the recorder had it too and anchored every combat-start boundary it
+    /// wrote to that instant, so nothing it recorded could reproduce. Two copies is what
+    /// allowed that, so there is one.
+    /// </summary>
+    [GameFact]
+    public void OnePlaceDecidesWhetherAFightIsReadyForThePlayer()
+    {
+        var asked = typeof(LiveRun)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Where(method => method.Name == nameof(LiveRun.ReadyForThePlayer))
+            .ToList();
+
+        Assert.Equal(2, asked.Count);
+        Assert.Contains(asked, method => method.GetParameters().Length == 1);
+        Assert.Contains(asked, method => method.GetParameters().Length == 0);
+
+        // No run is in progress in a test process, so the ambient question answers false
+        // rather than throwing - which is what the settle relies on when a fight has
+        // ended under it.
+        Assert.False(LiveRun.InCombat);
+        Assert.False(LiveRun.ReadyForThePlayer());
+    }
+
+    private static IEnumerable<(Type Type, string Method, Type[]? Arguments)> PatchTargets() =>
+        RunRecorder.PatchClasses
+            .SelectMany(patchClass =>
+                patchClass.GetCustomAttributes(typeof(HarmonyPatch), inherit: false).OfType<HarmonyPatch>())
+            .Select(attribute => attribute.info)
+            .Where(info => info.declaringType is not null && info.methodName is not null)
+            .Select(info => (Type: info.declaringType!, Method: info.methodName!,
+                Arguments: (Type[]?)info.argumentTypes));
+
+    /// <summary>Every type in the same assembly that derives from this one.</summary>
+    private static IEnumerable<Type> Subclasses(Type type)
+    {
+        Type[] all;
+        try
+        {
+            all = type.Assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            all = [.. ex.Types.Where(loaded => loaded is not null).Select(loaded => loaded!)];
+        }
+
+        return all.Where(candidate => candidate != type && type.IsAssignableFrom(candidate));
+    }
 }
+

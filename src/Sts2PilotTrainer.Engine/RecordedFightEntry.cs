@@ -413,16 +413,12 @@ public sealed class RecordedFightEntry : IDisposable
     /// Whether the fight has finished opening and is the player's to act in.
     ///
     /// Entering the room is not the same moment as the fight being ready, and the
-    /// retail client is where that stops being a distinction without a difference:
-    /// the room is built as soon as the map move's task completes, and the opening
-    /// hand is dealt over the frames after it. Asked in between, the boundary reads
-    /// an empty hand and no energy - a real state, and not the one the recording
-    /// describes. The engine's own turn phase is the signal that the player may act,
-    /// which is exactly what "before any card is played" means.
+    /// retail client is where that stops being a distinction without a difference.
+    /// <see cref="LiveRun.ReadyForThePlayer(RunState)"/> owns the question and says
+    /// why; this asks it about the run this entry built. Both callers had to learn it
+    /// separately once, which is the reason there is now only one of it.
     /// </summary>
-    public bool IsReadyForThePlayer =>
-        CombatManager.Instance is { IsInProgress: true } &&
-        _session.RunState.Players[0].PlayerCombatState is { Phase: PlayerTurnPhase.Play };
+    public bool IsReadyForThePlayer => LiveRun.ReadyForThePlayer(_session.RunState);
 
     /// <summary>
     /// What the run says about its combat, for a refusal that has to explain itself.

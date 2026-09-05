@@ -514,6 +514,52 @@ with no account of what had happened at all, and nothing in the mod's own log sa
 popup had failed, because it had not: it was shown and then destroyed. The return is now
 awaited - it is a `Task` - and the refusal goes up on the far side of it.
 
+## Three the recorder's own evidence run found, all in what it watched
+
+None of these is visible without playing a run, and all three were live on a branch whose
+suite was green and whose review had run twelve rounds.
+Together they meant no recording the recorder made could reproduce, so `gate` could never
+return `PUBLISHABLE` for one - the phase's own completion criterion.
+
+**The same "wait for a thing, not a length of time" trap, in the other half.**
+The section above records it for `RecordedFightEntry`, which now polls
+`IsReadyForThePlayer`.
+The recorder had it too and nobody carried the lesson across: its settle waited for the
+action queue to drain, and a map move into a combat room drains its queue before the
+opening hand is dealt.
+So the after-state it recorded for a room entry read `combat.in_progress=true`,
+`combat.turn=1`, `combat.energy=0` and an empty `combat.hand` - a real state no player
+ever acted from - and that sample is the digest of the `combat_start` boundary anchored
+to it.
+`gate` printed the consequence plainly: `combat.hand observed ''`, engine produced five
+named cards.
+The predicate now has one owner, `LiveRun.ReadyForThePlayer`, and both callers ask it.
+
+**The member the driver calls is not always the member the client goes through.**
+`EngineCommands` maps `SkipRewards` onto `RewardsSetSynchronizer.SkipLocalRewardsSet`,
+which is correct for the driver and wrong for a recorder.
+A post-combat loot screen is *terminal*, so pressing Skip takes `NRewardsScreen`'s
+`ProceedFromTerminalRewardsScreen` branch and never calls `SkipLocalRewardsSet`; what
+declines the leftovers is `BeforeLeavingRoom` on the way out of the room.
+The recorder watched the driver's member and saw nothing, and a skipped reward is not a
+detail: the arbiter refuses the following map move rather than walk away from an open
+set, so the run stops reproducing there.
+Both paths funnel through the private `SkipRewardsSet`, which is what is watched now.
+`RunRecorderTests` carries that divergence in a named list with its reason, because it is
+the one place the two halves do not meet at the same member.
+
+**A patch on a base method does not fire for a subclass that shadows it.**
+`MerchantCardRemovalEntry` declares its own three-argument `OnTryPurchaseWrapper` beside
+`MerchantEntry`'s non-virtual two-argument one.
+That is a shadow rather than an override, C# binds it statically, and the client calls the
+derived method - so a patch on the base never fired.
+The player paid gold, lost a card, and the recording said nothing about either while
+staying structurally valid.
+The general check is now a test rather than a note:
+`APatchOnABaseMethodCoversEverySubclassThatShadowsIt` walks every patch this module
+declares, finds every subclass that re-declares the patched name in a new slot, and fails
+naming it.
+
 ## The surfaces, and why they are the game's own
 
 **The mode card is a duplicate of the game's Custom Run card**, renamed and rewired.

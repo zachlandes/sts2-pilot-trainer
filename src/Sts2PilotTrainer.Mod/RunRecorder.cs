@@ -634,8 +634,19 @@ internal sealed class RunRecorder : IDisposable
             engineWork,
             // The queue is asked twice with a tick between, because a decision that has
             // not enqueued its work yet reads as an engine with nothing to do.
+            //
+            // An idle queue is not the whole of it when a fight is open. A map move into
+            // a combat room completes its task, and drains its queue, before the opening
+            // hand is dealt: read there and the decision's after-state has no hand and no
+            // energy. That state is real, no player ever acted from it, and it is what
+            // every combat-start boundary this recorder wrote was anchored to until a
+            // retail run proved none of them could reproduce. LiveRun owns the question
+            // and RecordedFightEntry asks the same one; a fight that has ended answers by
+            // not being in combat, so a lethal card settles here rather than waiting for
+            // a turn that never comes.
             () => RunManager.Instance is { ActionExecutor.IsRunning: false } manager &&
-                  manager.ActionQueueSet.IsEmpty,
+                  manager.ActionQueueSet.IsEmpty &&
+                  (!LiveRun.InCombat || LiveRun.ReadyForThePlayer()),
             () => RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
             () => RecordedFightRun.LetTheGameRun(SettlePollSeconds),
             spent => $"The engine did not settle {spent}, so the recorder cannot say what state this " +
@@ -1076,13 +1087,23 @@ internal sealed class RunRecorder : IDisposable
 
     /// <summary>Every patch class this module installs, listed rather than discovered:
     /// <c>PatchAll</c> over the assembly would install the Combat Trainer's too.</summary>
+    /// <summary>
+    /// The private funnel every declined reward set passes through.
+    ///
+    /// Named as a string because it is private. <see cref="RewardsSkipped"/> says why
+    /// the funnel rather than the public call the driver makes, and
+    /// <see cref="RecorderModule"/> refuses to install at all if a build renames it, so
+    /// it cannot go quietly missing.
+    /// </summary>
+    internal const string SkipRewardsSetMember = "SkipRewardsSet";
+
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
         typeof(NewRun), typeof(ContinuedRun), typeof(RunOver), typeof(RunTeardown),
         typeof(EventOption), typeof(MapMove), typeof(RewardTaken), typeof(RewardsSkipped),
         typeof(RestSiteOptionTaken), typeof(ChestRelicTaken), typeof(ChestRelicSkipped),
-        typeof(ActAdvanced), typeof(ShopPurchased), typeof(CardRewardScreen),
-        typeof(PotionUsed), typeof(PotionDiscarded),
+        typeof(ActAdvanced), typeof(ShopPurchased), typeof(ShopCardRemovalPurchased),
+        typeof(CardRewardScreen), typeof(PotionUsed), typeof(PotionDiscarded),
     ];
 
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.SetUpNewSingleplayer))]
@@ -1268,7 +1289,31 @@ internal sealed class RunRecorder : IDisposable
         }
     }
 
-    [HarmonyPatch(typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SkipLocalRewardsSet))]
+    /// <summary>
+    /// A loot screen dismissed with something still on it.
+    ///
+    /// Watched at the private <c>SkipRewardsSet</c>, which every declined set funnels
+    /// through, rather than at the public <c>SkipLocalRewardsSet</c> the headless
+    /// driver calls. In the retail client those are not the same thing, and the
+    /// difference cost a whole evidence run: a post-combat loot screen is
+    /// <em>terminal</em>, so pressing Skip takes <c>NRewardsScreen</c>'s
+    /// <c>ProceedFromTerminalRewardsScreen</c> branch and never calls
+    /// <c>SkipLocalRewardsSet</c> at all. What actually declines the leftovers is
+    /// <c>BeforeLeavingRoom</c> on the way out of the room, and it calls this. The
+    /// funnel catches both, the driver's own call included, because
+    /// <c>SkipLocalRewardsSet</c> reaches it too.
+    ///
+    /// A recording missing this does not lose a detail, it stops reproducing: the
+    /// arbiter refuses the following map move rather than walk away from an open set,
+    /// which is exactly how the gap was found.
+    ///
+    /// It takes no arguments and filters on no player. The set it is handed is typed by
+    /// a class private to the synchronizer, which this assembly cannot name, and a
+    /// recorder that only ever describes the run in front of it has no second player to
+    /// confuse it with. It fires once per set actually declined, which is what the
+    /// format wants: one decision per screen walked away from.
+    /// </summary>
+    [HarmonyPatch(typeof(RewardsSetSynchronizer), SkipRewardsSetMember)]
     internal static class RewardsSkipped
     {
         [HarmonyPrefix]
@@ -1457,6 +1502,38 @@ internal sealed class RunRecorder : IDisposable
             MerchantPotionEntry potion => potion.Model?.Id.ToString(),
             _ => null,
         };
+    }
+
+    /// <summary>
+    /// The merchant's card-removal service, which needs its own patch to be seen at all.
+    ///
+    /// <see cref="ShopPurchased"/> watches <c>MerchantEntry.OnTryPurchaseWrapper</c>,
+    /// and that is not the method a removal goes through.
+    /// <c>MerchantCardRemovalEntry</c> declares its own three-argument
+    /// <c>OnTryPurchaseWrapper</c> which <em>shadows</em> the base's two-argument one
+    /// rather than overriding it, because the base is not virtual; C# binds that
+    /// statically, so a patch on the base never fires for a removal and the client calls
+    /// the derived method directly. The player paid gold and lost a card and the
+    /// recording said nothing about either, which is how a real run was found
+    /// unreproducible.
+    ///
+    /// It reuses <see cref="ShopPurchased"/>'s own reading rather than repeating it, so
+    /// the two cannot come to answer differently about what a purchase is. Exactly one
+    /// of them runs for any given call, because which method executes is decided by the
+    /// caller's static type.
+    /// </summary>
+    [HarmonyPatch(
+        typeof(MerchantCardRemovalEntry),
+        nameof(MerchantCardRemovalEntry.OnTryPurchaseWrapper),
+        [typeof(MerchantInventory), typeof(bool), typeof(bool)])]
+    internal static class ShopCardRemovalPurchased
+    {
+        [HarmonyPrefix]
+        internal static void Before(MerchantCardRemovalEntry __instance, MerchantInventory? inventory) =>
+            ShopPurchased.Before(__instance, inventory);
+
+        [HarmonyPostfix]
+        internal static void After(Task<bool> __result) => ShopPurchased.After(__result);
     }
 
     /// <summary>
