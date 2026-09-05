@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using Sts2PilotTrainer.Engine;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -53,6 +54,13 @@ public sealed class ModAssemblyLoadOrderTests
     [LoadOrderFact]
     public void EveryTypeIsEnumerableBeforeTheSiblingsCanBeResolved()
     {
+        // The game's own assembly has to be resolvable, because in the game it is
+        // already loaded - this is about the siblings and nothing else. It is a
+        // reference this project deliberately does not copy, so it reaches the default
+        // context only once something has started the host; left to whatever ran first,
+        // this test reported sts2 itself as an unreachable sibling.
+        _ = EngineHost.StartupPhase();
+
         var context = new WithoutSiblings();
         var mod = context.LoadFromAssemblyPath(ModAssemblyPath);
 
@@ -94,7 +102,10 @@ public sealed class ModAssemblyLoadOrderTests
     ///
     /// Returning null from Load falls back to the default context, which in a test run
     /// would find the siblings sitting in the same output directory and prove nothing.
-    /// Throwing is what makes this the game's situation rather than ours.
+    /// Throwing is what makes this the game's situation rather than ours. Everything
+    /// else still comes from the default context, and the game's assembly on purpose:
+    /// loading a second copy of it here would leave two in the process, which is not
+    /// the game's situation either.
     /// </summary>
     private sealed class WithoutSiblings() : AssemblyLoadContext(isCollectible: true)
     {

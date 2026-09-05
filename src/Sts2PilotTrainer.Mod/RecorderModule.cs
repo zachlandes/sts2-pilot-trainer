@@ -103,12 +103,12 @@ internal sealed class RecorderModule : IRunmobileModule
             foreach (var patch in patchClass.GetCustomAttributes(typeof(HarmonyPatch), inherit: false)
                          .OfType<HarmonyPatch>()
                          .Select(attribute => attribute.info)
-                         .Where(info => info.declaringType is not null && info.methodName is not null))
+                         .Where(info => info.declaringType is not null))
             {
                 if (Resolves(patch)) continue;
                 yield return
-                    $"{patch.declaringType!.Name}.{patch.methodName} is absent from this build, so the " +
-                    "recorder would not see the decisions that go through it.";
+                    $"{patch.declaringType!.Name}.{patch.methodName ?? "the constructor this recorder watches"} " +
+                    "is absent from this build, so the recorder would not see the decisions that go through it.";
             }
         }
     }
@@ -125,7 +125,13 @@ internal sealed class RecorderModule : IRunmobileModule
     {
         try
         {
-            return AccessTools.Method(patch.declaringType!, patch.methodName!, patch.argumentTypes) is not null;
+            // A constructor is a member this build can drop like any other - the discard
+            // a player makes outside a fight is watched through one - and it names no
+            // method, so asking for one by a null name would answer "absent" for every
+            // build.
+            return patch.methodType == MethodType.Constructor || patch.methodName is null
+                ? AccessTools.Constructor(patch.declaringType!, patch.argumentTypes) is not null
+                : AccessTools.Method(patch.declaringType!, patch.methodName, patch.argumentTypes) is not null;
         }
         catch (Exception)
         {

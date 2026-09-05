@@ -1,9 +1,12 @@
 using System.Globalization;
 using System.Reflection;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.RestSite;
+using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
@@ -186,32 +189,32 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     private static async Task AttachWhenReady()
     {
-        var deadline = RecordedFightRun.LetTheGameRun(AttachBudgetSeconds);
-        while (true)
-        {
-            if (Active is not null || ProfileWriteBarrier.IsActive) return;
-            if (LiveRun.State is not null && Floor(LiveRun.Sample()) >= 1) break;
-
-            if (deadline.IsCompleted)
-            {
-                Log.Warn(
-                    $"[{RunmobileMod.ModId}] no run had begun " +
-                    $"{AttachBudgetSeconds.ToString(CultureInfo.InvariantCulture)}s after the game said one " +
-                    "was starting, so this one is not being recorded.", 2);
-                return;
-            }
-
-            var poll = RecordedFightRun.LetTheGameRun(SettlePollSeconds);
-            if (await Task.WhenAny(poll, deadline) != poll) continue;
-            await poll;
-        }
-
-        // And then the engine's own work, so the reading is of a settled run rather
-        // than one still building the room it just entered.
-        if (!await Settle(null)) return;
-
         try
         {
+            var deadline = RecordedFightRun.LetTheGameRun(AttachBudgetSeconds);
+            while (true)
+            {
+                if (Active is not null || ProfileWriteBarrier.IsActive) return;
+                if (HasEnteredItsFirstRoom()) break;
+
+                if (deadline.IsCompleted)
+                {
+                    Log.Warn(
+                        $"[{RunmobileMod.ModId}] no run had begun " +
+                        $"{AttachBudgetSeconds.ToString(CultureInfo.InvariantCulture)}s after the game said one " +
+                        "was starting, so this one is not being recorded.", 2);
+                    return;
+                }
+
+                var poll = RecordedFightRun.LetTheGameRun(SettlePollSeconds);
+                if (await Task.WhenAny(poll, deadline) != poll) continue;
+                await poll;
+            }
+
+            // And then the engine's own work, so the reading is of a settled run rather
+            // than one still building the room it just entered.
+            if (!await Settle(null)) return;
+
             if (Active is not null || ProfileWriteBarrier.IsActive) return;
             if (LiveRun.State is not { } run) return;
 
@@ -228,7 +231,19 @@ internal sealed class RunRecorder : IDisposable
             RunCapture capture;
             if (RunmobileStore.Read(journalPath) is { } existing)
             {
-                capture = RunCapture.Resume(RunJournal.Parse(existing), digest);
+                var journal = RunJournal.Parse(existing);
+                capture = RunCapture.Resume(journal, digest);
+
+                // A break this resume decided on is a fact only this session knows, and
+                // the session after it would compare its own live digest against a
+                // journal that says nothing about the hole. Appended before the
+                // recorder is live, so a crash between here and the next decision still
+                // leaves the refusal on the file.
+                foreach (var reason in capture.Refusals.Skip(journal.Refusals.Count))
+                {
+                    Append(journalPath, RunJournal.RenderRefusal(reason));
+                }
+
                 Log.Info(
                     $"[{RunmobileMod.ModId}] continuing the recording of {runId} at decision " +
                     $"{capture.NextSeq.ToString(CultureInfo.InvariantCulture)}; continuity {capture.Continuity}", 2);
@@ -261,6 +276,27 @@ internal sealed class RunRecorder : IDisposable
         }
     }
 
+    /// <summary>
+    /// Whether the run exists and has entered its first room yet.
+    ///
+    /// A projection of a run the game is still building throws rather than answering,
+    /// and that is a "not yet" rather than a failure: this is polled from the moment
+    /// the game says a run is starting, which is well before it has one. Anything else
+    /// wrong here is still a not-yet on this poll and is the deadline's to give up on,
+    /// so a run is never half-attached to because one reading came too early.
+    /// </summary>
+    private static bool HasEnteredItsFirstRoom()
+    {
+        try
+        {
+            return LiveRun.State is not null && Floor(LiveRun.Sample()) >= 1;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     /// <summary>Which build of the recorder is writing, so a defect found in one is
     /// traceable to everything it wrote.</summary>
     internal static string RecorderVersion =>
@@ -268,31 +304,20 @@ internal sealed class RunRecorder : IDisposable
 
     // ── Decisions ────────────────────────────────────────────────────────────────
 
+    /// <summary>A decision the game has just been asked to make.</summary>
+    internal static void Announce(
+        ActionVerb verb, IReadOnlyDictionary<string, string> args, Task? engineWork = null) =>
+        AnnounceByName(verb.ToString(), args, engineWork);
+
     /// <summary>
-    /// A decision the game has just been asked to make.
+    /// The same, for a decision already held by name - which the patches that read
+    /// their arguments in a prefix and announce in the postfix beside it hold it as.
     ///
     /// Queued rather than recorded, because what a decision left behind can only be
     /// read once the engine has finished doing it. The arguments are read now, while
     /// the shelf still holds the thing that was bought and the hand still holds the
     /// card that was played; the state is read at the other end of the settle.
     /// </summary>
-    internal static void Announce(
-        ActionVerb verb, IReadOnlyDictionary<string, string> args, Task? engineWork = null)
-    {
-        var recorder = Active;
-        if (recorder is null || recorder._finished) return;
-
-        lock (Gate)
-        {
-            recorder._pending.Enqueue(new PendingDecision(verb.ToString(), args, engineWork));
-            if (recorder._pumping) return;
-            recorder._pumping = true;
-        }
-
-        _ = recorder.Pump();
-    }
-
-    /// <summary>The same, for a decision already held by name.</summary>
     private static void AnnounceByName(
         string verb, IReadOnlyDictionary<string, string> args, Task? engineWork)
     {
@@ -577,7 +602,25 @@ internal sealed class RunRecorder : IDisposable
         }
 
         Write(_capture.Record(verb, args, sample, digest, clock));
+        WritePicks(picks, sample, digest, clock);
 
+        StartOrStopWatchingTheFight();
+    }
+
+    /// <summary>
+    /// Records the card screens a decision pulled out of the player, sharing that
+    /// decision's reading.
+    ///
+    /// They share it because that is what they are: a card screen is answered from
+    /// inside the call that opened it, so the state after the screen's answer and the
+    /// state after the decision are the same state.
+    /// </summary>
+    private void WritePicks(
+        IEnumerable<CardScreenPick> picks,
+        IReadOnlyDictionary<string, string> after,
+        string digest,
+        int? clock)
+    {
         foreach (var pick in picks)
         {
             Write(_capture.Record(
@@ -587,12 +630,10 @@ internal sealed class RunRecorder : IDisposable
                     ["card_id"] = pick.CardId,
                     ["option_index"] = pick.OptionIndex.ToString(CultureInfo.InvariantCulture),
                 },
-                sample,
+                after,
                 digest,
                 clock));
         }
-
-        StartOrStopWatchingTheFight();
     }
 
     /// <summary>
@@ -603,8 +644,10 @@ internal sealed class RunRecorder : IDisposable
     /// recording of the part of the run that happened rather than half of a document
     /// describing all of it.
     /// </summary>
-    private void Write(RunJournalEntry entry) =>
-        File.AppendAllText(RunmobileStore.PrepareForWrite(_journalPath), RunJournal.RenderEntry(entry));
+    private void Write(RunJournalEntry entry) => Append(_journalPath, RunJournal.RenderEntry(entry));
+
+    private static void Append(string journalPath, string line) =>
+        File.AppendAllText(RunmobileStore.PrepareForWrite(journalPath), line);
 
     /// <summary>
     /// Hands a fight that has just started to the observer, and takes it back when it
@@ -666,7 +709,7 @@ internal sealed class RunRecorder : IDisposable
         },
         completeStep: CloseFightStep,
         discardOpenStep: () => _openFightStep = null,
-        finish: CloseFightStep,
+        finish: FinishFight,
         markIncomplete: Refuse);
 
     private void CloseFightStep(IReadOnlyDictionary<string, string> after)
@@ -674,6 +717,31 @@ internal sealed class RunRecorder : IDisposable
         if (_openFightStep is not { } open) return;
         _openFightStep = null;
         CommitFightStep(open.Verb, open.Args, after);
+    }
+
+    /// <summary>
+    /// The fight is over.
+    ///
+    /// A fight that ended with no action open is refused rather than passed over, which
+    /// is the refusal <see cref="FightCapture.Finish"/> raises and which reaching it
+    /// through <see cref="CloseFightStep"/> would swallow. Left unsaid it is worse than
+    /// a gap: the run's capture keeps the fight live, so the next decision the player
+    /// makes out of combat - claiming loot, moving on the map - is recorded as an action
+    /// inside that fight and closes it as one fought to its end.
+    /// </summary>
+    private void FinishFight(IReadOnlyDictionary<string, string> final)
+    {
+        if (_openFightStep is not null)
+        {
+            CloseFightStep(final);
+            return;
+        }
+
+        const string reason =
+            "The fight ended with no action being sampled, so its end belongs to nothing the recording holds. " +
+            "The history is not a continuous account of this run.";
+        _capture.Fight?.MarkIncomplete(reason);
+        Refuse(reason);
     }
 
     /// <summary>
@@ -709,19 +777,7 @@ internal sealed class RunRecorder : IDisposable
             }
 
             Write(_capture.Record(parsed, args, after, digest, clock));
-            foreach (var pick in picks)
-            {
-                Write(_capture.Record(
-                    ActionVerb.SelectCardFromScreen,
-                    new SortedDictionary<string, string>(StringComparer.Ordinal)
-                    {
-                        ["card_id"] = pick.CardId,
-                        ["option_index"] = pick.OptionIndex.ToString(CultureInfo.InvariantCulture),
-                    },
-                    after,
-                    digest,
-                    clock));
-            }
+            WritePicks(picks, after, digest, clock);
 
             StartOrStopWatchingTheFight();
         }
@@ -776,10 +832,29 @@ internal sealed class RunRecorder : IDisposable
         }
     }
 
+    /// <summary>
+    /// This recording cannot account for the run continuously.
+    ///
+    /// Written to the journal as well as held, because a broken watch is the one fact
+    /// about a recording nothing downstream can establish: a session continued after
+    /// this one would find a journal whose last digest matches the live game and
+    /// publish the hole as a continuous account of the run.
+    /// </summary>
     private void Refuse(string reason)
     {
-        _capture.MarkBroken(reason);
+        var line = _capture.MarkBroken(reason);
         Log.Warn($"[{RunmobileMod.ModId}] {reason}", 2);
+
+        try
+        {
+            Append(_journalPath, line);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] the refusal above could not be written to the journal, so a session " +
+                $"continued from it would read this recording as continuous: {ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     public void Dispose()
@@ -869,7 +944,7 @@ internal sealed class RunRecorder : IDisposable
         typeof(EventOption), typeof(MapMove), typeof(RewardTaken), typeof(RewardsSkipped),
         typeof(RestSiteOptionTaken), typeof(ChestRelicTaken), typeof(ChestRelicSkipped),
         typeof(ActAdvanced), typeof(ShopPurchased), typeof(CardScreen), typeof(CardRewardScreen),
-        typeof(CardRewardAnswer),
+        typeof(CardRewardAnswer), typeof(PotionUsed), typeof(PotionDiscarded),
     ];
 
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.SetUpNewSingleplayer))]
@@ -1327,5 +1402,109 @@ internal sealed class RunRecorder : IDisposable
 
             return option;
         }
+    }
+
+    /// <summary>
+    /// A potion drunk outside a fight.
+    ///
+    /// Inside one the same drink arrives at <see cref="PlayerFightObserver"/> through
+    /// the action executor, and this and that would record it twice. Told apart by
+    /// whether the combat manager says a fight is in progress rather than by whether an
+    /// observer happens to be attached: the engine itself decides the same way - the
+    /// discard action is constructed with <c>CombatManager.Instance?.IsInProgress</c> -
+    /// and an attachment is this mod's own bookkeeping, which lags the fight by a
+    /// decision at each end.
+    ///
+    /// No target is read. Out of combat there is no enemy to name, and everything else
+    /// a potion aims at is the engine's own default, which is exactly what the driver
+    /// replays when the argument is absent.
+    /// </summary>
+    [HarmonyPatch(typeof(PotionModel), nameof(PotionModel.EnqueueManualUse))]
+    internal static class PotionUsed
+    {
+        [HarmonyPrefix]
+        internal static void Before(PotionModel __instance)
+        {
+            if (Active is null || InAFight()) return;
+
+            try
+            {
+                if (SlotOf(__instance) is not { } slot)
+                {
+                    Active?.Refuse(
+                        $"A {__instance.Id} was drunk and it is not on the belt this recorder can see, so the " +
+                        "recording cannot say which slot it came off.");
+                    return;
+                }
+
+                Announce(
+                    ActionVerb.UsePotion,
+                    Args(("potion_id", __instance.Id.ToString()), ("slot_index", Number(slot))));
+            }
+            catch (Exception ex)
+            {
+                Active?.Refuse($"A potion use could not be read: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// A potion thrown away outside a fight, which is how room is made for a reward.
+    ///
+    /// The constructor rather than a method, because that is the member
+    /// <see cref="EngineCommands"/> maps and the only one the discard goes through; it
+    /// runs before the action reaches the queue, while the slot still holds the potion.
+    /// Guarded the same way <see cref="PotionUsed"/> is, and for the same reason.
+    /// </summary>
+    [HarmonyPatch(typeof(DiscardPotionGameAction), MethodType.Constructor,
+        typeof(Player), typeof(uint), typeof(bool))]
+    internal static class PotionDiscarded
+    {
+        [HarmonyPrefix]
+        internal static void Before(uint potionSlotIndex)
+        {
+            if (Active is null || InAFight()) return;
+
+            try
+            {
+                var slot = (int)potionSlotIndex;
+                var slots = LiveRun.State is { Players.Count: > 0 } run ? run.Players[0].PotionSlots : null;
+                if (slots is null || slot < 0 || slot >= slots.Count || slots[slot] is not { } potion)
+                {
+                    Active?.Refuse(
+                        $"A potion was discarded from slot {Number(slot)}, which holds nothing this recorder " +
+                        "can see, so the recording cannot say which potion was given up.");
+                    return;
+                }
+
+                Announce(
+                    ActionVerb.DiscardPotion,
+                    Args(("potion_id", potion.Id.ToString()), ("slot_index", Number(slot))));
+            }
+            catch (Exception ex)
+            {
+                Active?.Refuse($"A potion discard could not be read: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>Whether a fight is being fought right now, which is where
+    /// <see cref="PlayerFightObserver"/> rather than a patch here is watching the
+    /// belt.</summary>
+    private static bool InAFight() => CombatManager.Instance?.IsInProgress ?? false;
+
+    /// <summary>Which belt slot a potion is in, or null when the run's own player is
+    /// not holding it.</summary>
+    private static int? SlotOf(PotionModel potion)
+    {
+        if (LiveRun.State is not { Players.Count: > 0 } run) return null;
+
+        var slots = run.Players[0].PotionSlots;
+        for (var slot = 0; slot < slots.Count; slot++)
+        {
+            if (ReferenceEquals(slots[slot], potion)) return slot;
+        }
+
+        return null;
     }
 }

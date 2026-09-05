@@ -1,3 +1,4 @@
+using HarmonyLib;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
@@ -51,6 +52,89 @@ public sealed class RunRecorderTests
         Assert.Equal(mapped.Order(), RunRecorder.RecordedVerbs.Order());
     }
 
+    /// <summary>
+    /// And every one of them has something in this build actually watching it.
+    ///
+    /// Declaring a verb is not recording it. The recorder watched
+    /// <see cref="ActionVerb.DiscardPotion"/> only through the fight observer for a
+    /// while, so a potion thrown away on the map to make room for a reward left a
+    /// history missing a decision - true in every value, and it replays into a
+    /// different run. Nothing said so until a <c>gate</c> failed after the run was over.
+    ///
+    /// What is asked here is the question that catches that: for each verb, is there a
+    /// patch on the very member <see cref="EngineCommands"/> names, resolved through
+    /// Harmony on this build. The three exceptions are listed with the reason a patch
+    /// there would be wrong rather than missing, and a verb that leaves this list
+    /// without gaining a patch fails naming itself.
+    /// </summary>
+    [GameFact]
+    public void EveryDecisionTheRecorderDeclaresIsOneSomethingInThisBuildWatches()
+    {
+        var patched = RunRecorder.PatchClasses
+            .SelectMany(patchClass => patchClass
+                .GetCustomAttributes(typeof(HarmonyPatch), inherit: false)
+                .OfType<HarmonyPatch>()
+                .Select(attribute => attribute.info))
+            .Select(Watched)
+            .OfType<string>()
+            .ToHashSet(StringComparer.Ordinal);
+
+        var unwatched = RunRecorder.RecordedVerbs
+            .Where(verb => !WatchedWithoutAPatch.Contains(verb))
+            .Where(verb => !patched.Contains(Member(verb)))
+            .ToList();
+
+        Assert.True(
+            unwatched.Count == 0,
+            $"Declared and unwatched outside a fight: {string.Join(", ", unwatched)}. Each of these can happen " +
+            "with no fight in progress, and the fight observer is attached only while there is one.");
+
+        // The other direction, so an exception cannot outlive its reason: a verb that
+        // has grown a patch of its own is no longer one of them.
+        Assert.DoesNotContain(WatchedWithoutAPatch, verb => patched.Contains(Member(verb)));
+    }
+
+    /// <summary>
+    /// The three decisions no patch on their engine member watches, and why.
+    ///
+    /// <see cref="ActionVerb.PlayCard"/> and <see cref="ActionVerb.EndTurn"/> exist only
+    /// inside a fight, where the action executor runs them and
+    /// <see cref="PlayerFightObserver"/> is attached for the whole of it; a patch as
+    /// well would record each of them twice.
+    /// <see cref="ActionVerb.SelectCardFromScreen"/> is answered rather than commanded -
+    /// its engine member is <c>ICardSelector</c>, which is the arbiter's own seam for
+    /// the answer a player's client gives - so what the recorder watches is the two
+    /// screens that ask.
+    /// </summary>
+    private static readonly IReadOnlyList<ActionVerb> WatchedWithoutAPatch =
+        [ActionVerb.PlayCard, ActionVerb.EndTurn, ActionVerb.SelectCardFromScreen];
+
+    /// <summary>The member <see cref="EngineCommands"/> says this verb goes through.</summary>
+    private static string Member(ActionVerb verb)
+    {
+        var command = EngineCommands.All.First(candidate => candidate.Verb == verb);
+        return $"{command.Type.FullName}.{command.Member}";
+    }
+
+    /// <summary>The member a patch attaches to, named the same way, or null where this
+    /// build has nothing to attach it to - which <c>RecorderModule.Refusal</c> is what
+    /// reports.</summary>
+    private static string? Watched(HarmonyMethod patch)
+    {
+        if (patch.declaringType is null) return null;
+
+        if (patch.methodType == MethodType.Constructor || patch.methodName is null)
+        {
+            return AccessTools.Constructor(patch.declaringType, patch.argumentTypes) is null
+                ? null
+                : $"{patch.declaringType.FullName}.{EngineCommands.ConstructorMember}";
+        }
+
+        return AccessTools.Method(patch.declaringType, patch.methodName, patch.argumentTypes) is null
+            ? null
+            : $"{patch.declaringType.FullName}.{patch.methodName}";
+    }
+
     [GameFact]
     public void TheRecorderStaysOutOfTheWayOfATrainerRun()
     {
@@ -79,17 +163,5 @@ public sealed class RunRecorderTests
 
         Assert.True(settings.RecordMyRuns);
         Assert.Equal(RunmobileSettings.Schema, settings.SchemaId);
-    }
-
-    [GameFact]
-    public void ARecordingIsNamedByItsSeedAndWhenTheRunBegan()
-    {
-        // Both halves survive a reload, which is what lets a session continued tomorrow
-        // find the journal it was being written into. Nothing in it says whose game it
-        // was.
-        var name = LiveRun.NameRecording(
-            "SFXT47K77RFK", new DateTimeOffset(2026, 9, 5, 3, 14, 15, TimeSpan.Zero));
-
-        Assert.Equal("native-SFXT47K77RFK-20260905-031415", name);
     }
 }

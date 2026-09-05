@@ -282,6 +282,8 @@ A crash leaves a prefix that is a real recording of the part of the run that hap
 On resume, `RunCapture.Resume` rebuilds the capture from the journal and compares the state the game came back in against the state the journal last recorded.
 Equal means nothing happened in between that the recorder missed.
 Anything else marks the recording `continuity = broken` and it is refused for publication - nothing is truncated, because a history missing decisions replays into a different run while every value in it is individually true.
+Every refusal is appended to the journal as a line of its own, the moment it is raised, and `Resume` applies each one back.
+Without that the break lives only in the session that decided on it: quit and continue once more and the next session finds a journal whose last digest is exactly the live one, sees nothing wrong, and publishes `continuity = continuous` over a hole - which is the one claim nothing downstream could check.
 
 **Where the recorder stops, it says so.**
 A reward kind the format has no verb for, a card reward answered with one of its alternatives, a screen whose offered list this build no longer exposes, an engine that did not settle: each marks the recording broken with a sentence rather than writing a value it guessed.
