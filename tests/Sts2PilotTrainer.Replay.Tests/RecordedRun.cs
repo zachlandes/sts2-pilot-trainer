@@ -211,21 +211,21 @@ internal static class RecordedRun
     private static IReadOnlyDictionary<string, string> InFight(
         int floor, int turn = 1, int enemyHp = 42, int hp = 68) => new Dictionary<string, string>(
         StringComparer.Ordinal)
-    {
-        ["combat.in_progress"] = "true",
-        ["combat.outcome"] = "in_progress",
-        ["combat.turn"] = Number(turn),
-        ["combat.encounter"] = "ENCOUNTER.TEST",
-        ["combat.enemy_count"] = "2",
-        ["combat.enemy.0.model"] = "MONSTER.TEST",
-        ["combat.enemy.0.hp"] = Number(enemyHp),
-        ["combat.enemy.1.model"] = "MONSTER.TEST",
-        ["combat.enemy.1.hp"] = Number(enemyHp),
-        ["run.total_floor"] = Number(floor),
-        ["run.act_floor"] = Number(floor),
-        ["player.hp"] = Number(hp),
-        ["player.max_hp"] = "68",
-    };
+        {
+            ["combat.in_progress"] = "true",
+            ["combat.outcome"] = "in_progress",
+            ["combat.turn"] = Number(turn),
+            ["combat.encounter"] = "ENCOUNTER.TEST",
+            ["combat.enemy_count"] = "2",
+            ["combat.enemy.0.model"] = "MONSTER.TEST",
+            ["combat.enemy.0.hp"] = Number(enemyHp),
+            ["combat.enemy.1.model"] = "MONSTER.TEST",
+            ["combat.enemy.1.hp"] = Number(enemyHp),
+            ["run.total_floor"] = Number(floor),
+            ["run.act_floor"] = Number(floor),
+            ["player.hp"] = Number(hp),
+            ["player.max_hp"] = "68",
+        };
 
     private static IReadOnlyDictionary<string, string> Won(int floor, int hp) => new Dictionary<string, string>(
         StringComparer.Ordinal)

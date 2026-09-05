@@ -521,19 +521,19 @@ public sealed class RunCaptureTests
     private static IReadOnlyDictionary<string, string> InFight(
         int floor, int turn = 1, int enemyHp = 42, int hp = 68) => new Dictionary<string, string>(
         StringComparer.Ordinal)
-    {
-        ["combat.in_progress"] = "true",
-        ["combat.outcome"] = "in_progress",
-        ["combat.turn"] = turn.ToString(CultureInfo.InvariantCulture),
-        ["combat.encounter"] = "ENCOUNTER.TEST",
-        ["combat.enemy_count"] = "1",
-        ["combat.enemy.0.model"] = "MONSTER.TEST",
-        ["combat.enemy.0.hp"] = enemyHp.ToString(CultureInfo.InvariantCulture),
-        ["run.total_floor"] = floor.ToString(CultureInfo.InvariantCulture),
-        ["run.act_floor"] = floor.ToString(CultureInfo.InvariantCulture),
-        ["player.hp"] = hp.ToString(CultureInfo.InvariantCulture),
-        ["player.max_hp"] = "68",
-    };
+        {
+            ["combat.in_progress"] = "true",
+            ["combat.outcome"] = "in_progress",
+            ["combat.turn"] = turn.ToString(CultureInfo.InvariantCulture),
+            ["combat.encounter"] = "ENCOUNTER.TEST",
+            ["combat.enemy_count"] = "1",
+            ["combat.enemy.0.model"] = "MONSTER.TEST",
+            ["combat.enemy.0.hp"] = enemyHp.ToString(CultureInfo.InvariantCulture),
+            ["run.total_floor"] = floor.ToString(CultureInfo.InvariantCulture),
+            ["run.act_floor"] = floor.ToString(CultureInfo.InvariantCulture),
+            ["player.hp"] = hp.ToString(CultureInfo.InvariantCulture),
+            ["player.max_hp"] = "68",
+        };
 
     private static IReadOnlyDictionary<string, string> Won(int floor, int hp) => new Dictionary<string, string>(
         StringComparer.Ordinal)
