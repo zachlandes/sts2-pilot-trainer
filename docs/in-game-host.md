@@ -13,16 +13,17 @@ That promise is about a module which declares itself disabled: a module whose `I
 `CombatTrainerModule` is the only one built. The recorder and the run library are the
 other two.
 
-The retail proof below was gathered on the pre-rename `CombatTrainer` artifact.
+The retail proof below, up to and including S5, was gathered on the pre-rename `CombatTrainer` artifact.
 S3 of [the proof-of-concept path](proof-of-concept-path.md) answers one question — can this game play the recorded fight? — S4 adds the button that enters it, and S5 captures the fight the player then plays and shows it beside the recording's.
-That evidence establishes those Combat Trainer behaviors, but it establishes nothing about discovery, initialization or a complete session for the renamed `Runmobile` artifact.
+That evidence establishes those Combat Trainer behaviors, and on its own establishes nothing about discovery, initialization or a complete session for the renamed `Runmobile` artifact.
+S6's session did run the renamed shell, which is what narrowed the row below; [demo/PLAYBACK-TRANSPORT.md](../demo/PLAYBACK-TRANSPORT.md) is that session.
 
 ## What it proves
 
-**Retail loading of the renamed artifact is pending and not yet established.**
+**Retail loading of the renamed artifact is established except for the mod list itself.**
 The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
-A retail session still has to show `Runmobile` in the game's mod list as the only enabled mod, show that the game's recursive scan discovers its manifest and `ModInitializerAttribute` initializes it, exercise the Combat Trainer through the renamed shell, and finish with a clean protected-files ledger outside `user://Runmobile/`.
-Until that session is recorded, the existing `CombatTrainer` screenshots and ledger are not evidence for the renamed package.
+The S6 transport session installed that package with `install-mod.sh`, launched the shipped client with it as the only enabled mod, and ran the whole watched journey through it - so discovery, initialization and a complete session through the renamed shell are shown, and the protected-files ledger of that session is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp.
+What is still not photographed is `Runmobile` as the game draws it in its own mod list; the existing `CombatTrainer` screenshots are not evidence for that row.
 The libraries are built to ship together; there is no separately installed framework or runtime dependency, and no resource pack.
 
 **The eligibility answer comes from the same owner the arbiter uses.**
@@ -311,6 +312,18 @@ thousand times in eight seconds without the game drawing, and starved the fight 
 waiting for. Three things do work: awaiting a task the game itself completes,
 `CallDeferred` once for end-of-frame, and awaiting a `SceneTreeTimer`. `RecordedFightRun`
 uses only those.
+
+**An await here can outlive the journey that started it, and two kinds of continuation
+need opposite treatment.** The player can abandon from the game's own pause menu on any
+frame, and the teardown clears the entry, so a continuation can wake into a different
+journey or into none. One that would act on a run - move it, reveal on it, hand a fight
+over, attach a surface, or refuse - must stop, and stop silently: `RecordedFightRun`'s
+own `StillOurs` is the single predicate for that, because the expression it replaced
+compared references alone and two nulls compare equal, so an ended journey looked
+current. One that only delivers something already computed must not stop; the result of
+the player's fight is computed before its wait for exactly that reason, since on a loss
+the game's own flow tears the run down during the wait and a guard there would drop the
+comparison the fight was played for.
 
 **The deviation lock has to cover a whole step, not a call.**
 A screen's command does most of its work after an await, so an authorisation that ended

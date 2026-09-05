@@ -8,7 +8,8 @@ This does not identify an unobserved source configuration when multiple configur
 If anything disagrees, it says which field, at which moment, and stops.
 
 The pre-rename `CombatTrainer` artifact demonstrated the training proof of concept: once a combat-start position is reconstructed exactly, its Combat Trainer lets a player fight it, captures that fight, and compares it with the VOD solution replayed from the same boundary.
-The renamed `Runmobile` package has not yet been loaded or exercised in a retail session, so its mod-list, initialization and protected-files proof remain explicitly pending.
+The renamed `Runmobile` package has since been installed, loaded and exercised through a whole watched journey in a retail session, with a clean protected-files ledger; the one thing still unphotographed is the row the game draws for it in its own mod list.
+[docs/in-game-host.md](docs/in-game-host.md) owns that distinction.
 [The proof-of-concept path](docs/proof-of-concept-path.md) records how that loop was built, slice by slice.
 
 ## What has been demonstrated
