@@ -1,9 +1,11 @@
 using System.Globalization;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Logging;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
@@ -379,19 +381,23 @@ internal sealed class PlayerFightObserver : IDisposable
     /// </summary>
     private IReadOnlyDictionary<string, string> PlayCardArgs(PlayCardAction play)
     {
+        var card = play.NetCombatCard.ToCardModelOrNull();
         var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["card_id"] = play.CardModelId.ToString(),
         };
 
-        if (HandIndexOf(play) is { } handIndex)
+        if (HandIndexOf(card) is { } handIndex)
         {
             args["hand_index"] = handIndex.ToString(CultureInfo.InvariantCulture);
         }
 
         // The same index the driver resolves a recorded target by: position among the
-        // enemies alive at the moment of the play.
-        if (play.TargetId is { } targetId)
+        // enemies alive at the moment of the play. Written only where the card's own
+        // target type is an enemy, which is the driver's own rule - RunDriver.ResolveTarget
+        // refuses a target_index on anything else, so recording one on a card the engine
+        // aimed itself would write a play that cannot be replayed.
+        if (play.TargetId is { } targetId && card is { TargetType: TargetType.AnyEnemy })
         {
             var alive = _combat.DebugOnlyGetState()?.Enemies.Where(enemy => enemy is { IsAlive: true }).ToList() ?? [];
             var index = alive.FindIndex(enemy => enemy.CombatId == targetId);
@@ -432,9 +438,8 @@ internal sealed class PlayerFightObserver : IDisposable
     /// honest answer and makes the missing argument visible in validation rather than
     /// wrong in a replay.
     /// </summary>
-    private int? HandIndexOf(PlayCardAction play)
+    private int? HandIndexOf(CardModel? card)
     {
-        var card = play.NetCombatCard.ToCardModelOrNull();
         if (card is null) return null;
 
         var hand = _player.PlayerCombatState?.Hand.Cards;

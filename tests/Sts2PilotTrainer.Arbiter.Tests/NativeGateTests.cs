@@ -1,4 +1,5 @@
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Replay.Tests;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -17,9 +18,13 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// through the real engine applies to both kinds, which is what keeps "publishable"
 /// meaning the same thing whoever made the recording.
 ///
-/// The manifest here is a fixture rather than a recording: it says captured because
-/// the gate dispatches on that, and nothing about this machine is expected to match
-/// it. What is under test is which questions the gate asks, not what it answers.
+/// The manifest is one <see cref="RunCapture"/> produced from the decisions of a short
+/// run, which is the thing under test: what the gate asks a native recording only means
+/// something if it is asked of what a recorder actually writes. Nothing about this
+/// machine is expected to match it, and what is under test is which questions the gate
+/// asks rather than what it answers - whether a recording can answer all of them is
+/// <c>RecordedRunControlsTests</c>'s question, which needs no game and so runs
+/// everywhere.
 /// </summary>
 public sealed class NativeGateTests
 {
@@ -83,65 +88,7 @@ public sealed class NativeGateTests
         }
     }
 
-    /// <summary>
-    /// The shipped recording, said the way a recorder would have said it.
-    ///
-    /// A conversion rather than a recording, and it never leaves the scratch directory
-    /// it is written into: what the gate does with a native source is decided by the
-    /// kind, and the kind is all this needs to carry.
-    /// </summary>
-    private static ReplayManifest Native()
-    {
-        var vod = ManifestJson.Load(
-            Path.Combine(Arbiter.RepoRoot, "manifests", "navegreed-OJ-6QXhNgdg.replay.json"));
-        var atStart = FactEvidence.AtActionOrdinal(-1);
-
-        return vod with
-        {
-            RunId = "native-gate-fixture",
-            Environment = new EnvironmentIdentity
-            {
-                BuildVersion = Fact<string>.Captured(vod.Environment.BuildVersion.Value, atStart),
-                BuildDateUtc = Fact<string>.Captured(vod.Environment.BuildDateUtc.Value, atStart),
-                GameMode = Fact<string>.Captured(vod.Environment.GameMode.Value, atStart),
-                Seed = Fact<string>.Captured(vod.Environment.Seed.Value, atStart),
-                ContentHash = Fact<string>.Captured(vod.Environment.ContentHash.Value, atStart),
-                Ascension = Fact<int>.Captured(vod.Environment.Ascension.Value, atStart),
-                Character = Fact<string>.Captured(vod.Environment.Character.Value, atStart),
-                Acts = Fact<IReadOnlyList<string>>.Captured(vod.Environment.Acts.Value, atStart),
-                Unlocks = Fact<UnlockRequirement>.Captured(
-                    UnlockRequirement.Exact(
-                        "a fixture, so this names the state nobody read",
-                        new UnlockStateInventory { Epochs = [], EncountersSeen = [], Runs = 0 }),
-                    atStart),
-                Mods = Fact<ModEnvironment>.Captured(ModEnvironment.AsRecorded([]), atStart),
-            },
-            Source = new SourceProvenance
-            {
-                Kind = "native",
-                ExtractionMethod = "captured",
-                Coverage = vod.Source.Coverage,
-                Native = new NativeSource
-                {
-                    RecorderVersion = "runmobile-recorder/fixture",
-                    WitnessedRunStart = Fact<bool>.Captured(true, atStart),
-                    Continuity = NativeSource.ContinuousContinuity,
-                    Outcome = "abandoned",
-                },
-            },
-            Actions = [.. vod.Actions.Select(action => action with
-            {
-                Source = FactSource.Captured,
-                Evidence = FactEvidence.AtActionOrdinal(action.Seq),
-            })],
-            Checkpoints = [.. vod.Checkpoints.Select(checkpoint => checkpoint with
-            {
-                Expect = checkpoint.Expect.ToDictionary(
-                    entry => entry.Key,
-                    entry => Fact<string>.Captured(
-                        entry.Value.Value, FactEvidence.AtActionOrdinal(checkpoint.AfterSeq)),
-                    StringComparer.Ordinal),
-            })],
-        };
-    }
+    /// <summary>A recording, built the way the recorder builds one and written only
+    /// into the scratch directory the gate is pointed at.</summary>
+    private static ReplayManifest Native() => RecordedRun.Manifest();
 }
