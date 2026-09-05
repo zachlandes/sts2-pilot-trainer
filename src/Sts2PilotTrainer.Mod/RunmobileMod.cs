@@ -53,10 +53,11 @@ public static class RunmobileMod
     /// <summary>
     /// Every feature this build carries, in the order they are installed.
     ///
-    /// The recorder and the run library are the other two and are not built yet;
-    /// when they are, they are added here and nothing else about the shell changes.
+    /// The run library is the third and is not built yet; when it is, it is added here
+    /// and nothing else about the shell changes.
     /// </summary>
-    internal static IReadOnlyList<IRunmobileModule> Modules { get; } = [CombatTrainerModule.Instance];
+    internal static IReadOnlyList<IRunmobileModule> Modules { get; } =
+        [CombatTrainerModule.Instance, RecorderModule.Instance];
 
     /// <summary>The modules that could establish what they need in this process.</summary>
     internal static IEnumerable<IRunmobileModule> EnabledModules => Modules.Where(module => module.Enabled);

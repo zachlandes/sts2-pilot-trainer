@@ -43,7 +43,7 @@ public enum FightCaptureState
 /// to <see cref="ReplayTrace.SampledFields"/>, which is what keeps every rule in this
 /// class testable on a machine that does not own the game.
 /// </summary>
-public sealed class FightCapture
+public sealed class FightCapture : IFightSampleSink
 {
     /// <summary>The verb of the step that marks where the capture began. It is the
     /// same moment the headless trace's combat start is: the sample after the action
