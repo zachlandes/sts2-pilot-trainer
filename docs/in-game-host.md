@@ -248,6 +248,45 @@ completed and a comparison that refused each show one sentence and a Done button
 Done discards the run the way a refused entry does, and `RunManager.CleanUp` is what
 lowers the write barrier on every one of those paths.
 
+## Recording the player's own run
+
+**The recorder is that observer widened to a whole run, and it shares its parts.**
+`RunRecorder` in `Sts2PilotTrainer.Mod` attaches when a run starts, watches every decision the player makes, and writes a v5 native manifest under `user://Runmobile/recordings/` when the run ends.
+Inside a fight it hands the run to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink` in `Sts2PilotTrainer.Replay`: the trainer's sink is a `FightCapture` and the recorder's is an adapter onto the `RunCapture` that keeps the whole run.
+There is one observer, one settle rule and one set of rules about what a sample means, whichever feature is watching.
+
+**What it watches is `EngineCommands` read from the other end.**
+The driver calls those members to make a recorded decision; a player clicking makes the game call the same members.
+`RunRecorder.RecordedVerbs` has to equal the table's mapped set, and `RunRecorderTests` asserts it - a verb one side has and the other does not is either a recording nothing can replay or a replay of a decision nothing can record, and both are silent until somebody tries.
+
+**Every patch reads and returns.**
+Nothing here issues a command, changes an argument, or changes what the game decides.
+Arguments are read in a prefix, while the shelf still holds the thing that was bought and the hand still holds the card that was played; the state is read at the other end of a settle.
+The one exception to "postfix and return" is the two card screens, whose returned task is handed back unchanged having been looked at on the way past: the engine pulls a card screen's answer through a seam the player's client fills, so there is no command anything else could observe.
+`NCardGridSelectionScreen.CardsSelected` covers every screen over a deck, a pile or the hand, because they share that base and it holds both halves of the answer - the list offered and the cards that came back.
+`NCardRewardSelectionScreen.OptionSelected` covers the card reward, whose screen answers with a position into the list `ShowScreen` was given.
+
+**The recorder never raises the write barrier.**
+The player's own run saves normally; suppressing that would take the run away from them in order to describe it.
+The barrier is the other direction: while a trainer run is live it is raised, and the recorder declines to attach at all - a trainer run is this mod's own construction, not the player's, and recording it would publish somebody else's recording back as the player's own.
+`RunRecorderTests` checks that by doing it rather than by asserting a comment.
+
+**A run is identified by its seed and the moment it began, and both survive a reload.**
+`LiveRun.RunStartedUtc` reads the game's own run start time, so a session continued tomorrow resolves to the journal it was being written into.
+That is also why there is one attach path for a new run and for a continued one: which it is is not the recorder's question, and the answer is whether a journal for that run is already on disk.
+Nothing in a recording's name says whose game it was.
+
+**The journal is what survives a crash.**
+`RunJournal` is a header and one line per decision, appended as the run is played, so finishing a write means finishing a line.
+A crash leaves a prefix that is a real recording of the part of the run that happened rather than half of a document describing all of it, and `RunJournal.Parse` drops a truncated final line and refuses anything else.
+On resume, `RunCapture.Resume` rebuilds the capture from the journal and compares the state the game came back in against the state the journal last recorded.
+Equal means nothing happened in between that the recorder missed.
+Anything else marks the recording `continuity = broken` and it is refused for publication - nothing is truncated, because a history missing decisions replays into a different run while every value in it is individually true.
+
+**Where the recorder stops, it says so.**
+A reward kind the format has no verb for, a card reward answered with one of its alternatives, a screen whose offered list this build no longer exposes, an engine that did not settle: each marks the recording broken with a sentence rather than writing a value it guessed.
+The recording is still written, because it is what happened; what it is not is publishable, and the validator and `./scripts/arbiter gate` are what say so.
+
 ## What it does not prove
 
 **A captured line is not a replayed one.**

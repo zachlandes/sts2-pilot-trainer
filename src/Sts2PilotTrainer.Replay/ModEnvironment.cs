@@ -36,6 +36,41 @@ public sealed record ModEnvironment
     [JsonPropertyName("headless_parity_waiver")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public HeadlessParityWaiver? HeadlessParityWaiver { get; init; }
+
+    /// <summary>The name a recorder writes for the environment it read. Every native
+    /// recording carries the same one, because "whatever this player had loaded" is
+    /// not a named environment somebody audited and calling it one would be a claim
+    /// nobody made.</summary>
+    public const string RecordedName = "read from the game the run was played in";
+
+    /// <summary>
+    /// The mod set a recorder read out of the game it is running in.
+    ///
+    /// The risk line is the mod's own declaration rather than an assessment, and says
+    /// so: nothing running inside a player's game is in a position to audit the mods
+    /// beside it. That is exactly why <c>EnvironmentPreflight</c> judges a native
+    /// recording by a rule over those declarations instead of against a fixed list of
+    /// audited names - and why the reported count is the game's own, so "we identified
+    /// three of three" stays distinguishable from "we identified three".
+    /// </summary>
+    public static ModEnvironment AsRecorded(IReadOnlyList<LocalMod> loaded) => new()
+    {
+        Name = RecordedName,
+        ReportedCount = loaded.Count,
+        Mods =
+        [
+            .. loaded.Select(mod => new InstalledMod(
+                mod.Name,
+                $"{mod.Id} {mod.Version}, which this game reported as {mod.State}.",
+                mod.AffectsGameplay
+                    ? "This mod's own manifest declares that it affects gameplay. Read rather than judged: a " +
+                      "recorder reads each mod's declaration and assesses none of them, and the preflight " +
+                      "refuses a recording made with one."
+                    : "This mod's own manifest declares that it does not affect gameplay. Read rather than " +
+                      "judged: a recorder reads each mod's declaration and assesses none of them.",
+                mod.AffectsGameplay)),
+        ],
+    };
 }
 
 public sealed record HeadlessParityWaiver

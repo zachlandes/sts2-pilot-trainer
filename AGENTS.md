@@ -201,6 +201,14 @@ The run is generated against a supplied complete unlock state and can persist no
 start and inert unless a trainer run is live. Do not weaken either, and do not add a
 path that writes what the barrier suppresses.
 
+**A run a person plays is recorded by one owner, and refused rather than repaired.**
+`RunCapture` in `Sts2PilotTrainer.Replay` is the whole-run counterpart of `FightCapture` and delegates the inside of each fight to one, so there is one capture path.
+`RunRecorder` in the mod owns only what a pure class cannot: which game member is which decision, what its arguments are, and when the engine has settled enough to read.
+Inside a fight it hands over to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink`.
+The recorder refuses a run whose start it did not witness, marks `continuity = broken` when a resumed session's live state is not the state its journal last recorded, and never truncates.
+It writes an append-only `RunJournal` after every decision so a crash keeps the prefix, never raises `ProfileWriteBarrier` - the player's own run saves normally - and never writes a Steam id, a machine path, a profile id or hardware.
+Every write goes through `RunmobileStore`. [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
+
 **A fight a person plays is captured, never re-read.**
 `FightCapture` in `Sts2PilotTrainer.Replay` is the one owner of turning what the game's own action executor announces into the same `ReplayTrace` the headless arbiter produces; `PlayerFightObserver` in the mod only decides when a sample is taken.
 A projection is handed over only once the fight ended inside a sampled action, and a gap between two samples is refused rather than bridged.

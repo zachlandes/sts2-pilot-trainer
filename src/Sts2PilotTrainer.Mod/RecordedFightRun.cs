@@ -1264,7 +1264,8 @@ internal static class RecordedFightRun
         // The capture begins at the boundary just proved, and from nowhere else: it
         // carries the digest the comparison will require to be the recording's.
         var capture = entry.BeginCapture(equality);
-        _observer = PlayerFightObserver.Start(entry, capture, TheFightEnded, ShowTransport);
+        _observer = PlayerFightObserver.Start(
+            entry.PreparedRun.Players[0], entry.SampleLiveState, capture, TheFightEnded, ShowTransport);
     }
 
     /// <summary>

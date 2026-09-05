@@ -45,8 +45,8 @@ internal sealed class PlayerFightObserver : IDisposable
 
     private const double SettlePollSeconds = 0.05;
 
-    private readonly RecordedFightEntry _entry;
-    private readonly FightCapture _capture;
+    private readonly Func<IReadOnlyDictionary<string, string>> _sample;
+    private readonly IFightSampleSink _sink;
     private readonly Player _player;
     private readonly CombatManager _combat;
     private readonly ActionExecutor _executor;
@@ -66,13 +66,17 @@ internal sealed class PlayerFightObserver : IDisposable
     private bool _disposed;
 
     private PlayerFightObserver(
-        RecordedFightEntry entry, FightCapture capture, Action fightEnded, Action sampled)
+        Player player,
+        Func<IReadOnlyDictionary<string, string>> sample,
+        IFightSampleSink sink,
+        Action fightEnded,
+        Action sampled)
     {
-        _entry = entry;
-        _capture = capture;
+        _sample = sample;
+        _sink = sink;
         _fightEnded = fightEnded;
         _sampled = sampled;
-        _player = entry.PreparedRun.Players[0];
+        _player = player;
         _combat = CombatManager.Instance
             ?? throw new InvalidOperationException("This build exposes no CombatManager to observe the fight through.");
         _executor = RunManager.Instance.ActionExecutor
@@ -80,23 +84,37 @@ internal sealed class PlayerFightObserver : IDisposable
     }
 
     /// <summary>
-    /// Starts observing the fight the entry has just handed over.
+    /// Starts observing a fight this player is about to play.
     /// </summary>
+    /// <param name="player">Whose actions count. The executor announces the game's own
+    /// bookkeeping actions through the same events, and this is what tells them
+    /// apart.</param>
+    /// <param name="sample">How to read the canonical state right now. Supplied rather
+    /// than done here, because reading the game belongs to the engine and this class's
+    /// one job is deciding <em>when</em> a reading is taken.</param>
+    /// <param name="sink">Where the samples go: the Combat Trainer hands over the
+    /// fight's own capture, and the recorder hands over the run it is keeping. One
+    /// observer either way, so a fight is watched the same whoever is watching.</param>
     /// <param name="fightEnded">Called once, on the game's own combat-ended event,
     /// after the capture has been closed one way or the other.</param>
     /// <param name="sampled">Called whenever a step opens or closes. The transport is a
     /// function of the run's facts, and whether the player has played anything is one
     /// of them - it becomes true when a step closes, so a re-derivation only where one
-    /// opens leaves the chip a whole action behind.</param>
+    /// opens leaves the chip a whole action behind. The recorder draws nothing and
+    /// passes a callback that does nothing.</param>
     internal static PlayerFightObserver Start(
-        RecordedFightEntry entry, FightCapture capture, Action fightEnded, Action sampled)
+        Player player,
+        Func<IReadOnlyDictionary<string, string>> sample,
+        IFightSampleSink sink,
+        Action fightEnded,
+        Action sampled)
     {
-        var observer = new PlayerFightObserver(entry, capture, fightEnded, sampled);
+        var observer = new PlayerFightObserver(player, sample, sink, fightEnded, sampled);
         observer._executor.BeforeActionExecuted += observer.BeforeAction;
         observer._executor.AfterActionExecuted += observer.AfterAction;
         observer._combat.TurnStarted += observer.TurnStarted;
         observer._combat.CombatEnded += observer.CombatEnded;
-        Log.Info($"[{RunmobileMod.ModId}] capturing the player's fight from the recorded combat start", 2);
+        Log.Info($"[{RunmobileMod.ModId}] capturing the player's fight from its combat start", 2);
         return observer;
     }
 
@@ -140,7 +158,7 @@ internal sealed class PlayerFightObserver : IDisposable
                     // Nothing happened, so nothing is recorded; the state it returns to
                     // is checked by the next action's before-sample like any other.
                     _awaitingPlayerTurn = false;
-                    _capture.DiscardOpenStep();
+                    _sink.DiscardOpenStep();
                     break;
             }
         }
@@ -174,7 +192,7 @@ internal sealed class PlayerFightObserver : IDisposable
     /// </summary>
     private bool Begin(string verb, IReadOnlyDictionary<string, string> args, bool previousFinished)
     {
-        _capture.BeginStep(verb, args, _entry.SampleLiveState(), previousFinished);
+        _sink.BeginStep(verb, args, _sample(), previousFinished);
         _openedSteps++;
         _openStepFinished = false;
         return true;
@@ -221,10 +239,8 @@ internal sealed class PlayerFightObserver : IDisposable
 
         try
         {
-            _capture.Finish(_entry.SampleLiveState());
-            Log.Info(
-                $"[{RunmobileMod.ModId}] the player's fight ended; capture {_capture.State}, " +
-                $"{(_capture.Trace.Steps.Count - 1).ToString(CultureInfo.InvariantCulture)} action(s) sampled", 2);
+            _sink.Finish(_sample());
+            Log.Info($"[{RunmobileMod.ModId}] the player's fight ended and its capture has been closed", 2);
         }
         catch (Exception ex)
         {
@@ -265,7 +281,7 @@ internal sealed class PlayerFightObserver : IDisposable
         {
             var queues = RunManager.Instance.ActionQueueSet;
             var settled = await WaitUntilSettled(
-                _capture,
+                _sink,
                 queues.BecameEmpty(),
                 RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
                 () => !_executor.IsRunning && queues.IsEmpty,
@@ -286,14 +302,14 @@ internal sealed class PlayerFightObserver : IDisposable
             // one beginning. Closing again would put this action's after-sample on the
             // action after it.
             if (_ended || _disposed || _combat.IsOverOrEnding || _openedSteps != waitingFor) return;
-            _capture.CompleteStep(_entry.SampleLiveState());
+            _sink.CompleteStep(_sample());
             closed = true;
         }
         catch (Exception ex)
         {
             if (!_ended && !_disposed)
             {
-                _capture.MarkIncomplete(
+                _sink.MarkIncomplete(
                     $"The engine could not settle after an action: {ex.GetType().Name}: {ex.Message}");
             }
             Log.Error($"[{RunmobileMod.ModId}] could not sample after an action: {ex.GetType().Name}: {ex.Message}", 2);
@@ -316,7 +332,7 @@ internal sealed class PlayerFightObserver : IDisposable
     }
 
     internal static async Task<bool> WaitUntilSettled(
-        FightCapture capture,
+        IFightSampleSink sink,
         Task becameEmpty,
         Task deadline,
         Func<bool> isSettled,
@@ -344,7 +360,7 @@ internal sealed class PlayerFightObserver : IDisposable
         {
             if (!stopped())
             {
-                capture.MarkIncomplete(
+                sink.MarkIncomplete(
                     $"The engine did not settle within " +
                     $"{SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds after an action.");
             }
@@ -352,12 +368,26 @@ internal sealed class PlayerFightObserver : IDisposable
         }
     }
 
+    /// <summary>
+    /// What a played card is, in the names a manifest records it under: the card,
+    /// where in the hand it was, and which enemy it was aimed at.
+    ///
+    /// The hand index is here because a replay needs it - <c>RunDriver.PlayCard</c>
+    /// plays the card at that position and refuses when its id disagrees, which is the
+    /// sharpest refusal in the whole driver. It is read while the action is only
+    /// enqueued, which is the last moment the card is still in hand.
+    /// </summary>
     private IReadOnlyDictionary<string, string> PlayCardArgs(PlayCardAction play)
     {
         var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["card_id"] = play.CardModelId.ToString(),
         };
+
+        if (HandIndexOf(play) is { } handIndex)
+        {
+            args["hand_index"] = handIndex.ToString(CultureInfo.InvariantCulture);
+        }
 
         // The same index the driver resolves a recorded target by: position among the
         // enemies alive at the moment of the play.
@@ -371,11 +401,18 @@ internal sealed class PlayerFightObserver : IDisposable
         return args;
     }
 
+    /// <summary>
+    /// Which potion, and which belt slot it came off, in the names a manifest uses.
+    ///
+    /// Read while the potion is still on the belt, for the same reason the hand index
+    /// is read while the card is still in hand: afterwards the slot is empty and the
+    /// only honest answer would be the position of nothing.
+    /// </summary>
     private IReadOnlyDictionary<string, string> PotionArgs(uint slot)
     {
         var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["potion_index"] = slot.ToString(CultureInfo.InvariantCulture),
+            ["slot_index"] = slot.ToString(CultureInfo.InvariantCulture),
         };
         if (slot < _player.PotionSlots.Count && _player.PotionSlots[(int)slot] is { } potion)
         {
@@ -383,6 +420,32 @@ internal sealed class PlayerFightObserver : IDisposable
         }
 
         return args;
+    }
+
+    /// <summary>
+    /// Where in the hand the card being played is, or null when the hand no longer
+    /// holds it.
+    ///
+    /// By reference rather than by id: a hand with two copies of one card has two
+    /// positions that name it, and only one of them is the object the engine is about
+    /// to play. Null rather than a guess where the card has already gone, which is the
+    /// honest answer and makes the missing argument visible in validation rather than
+    /// wrong in a replay.
+    /// </summary>
+    private int? HandIndexOf(PlayCardAction play)
+    {
+        var card = play.NetCombatCard.ToCardModelOrNull();
+        if (card is null) return null;
+
+        var hand = _player.PlayerCombatState?.Hand.Cards;
+        if (hand is null) return null;
+
+        for (var index = 0; index < hand.Count; index++)
+        {
+            if (ReferenceEquals(hand[index], card)) return index;
+        }
+
+        return null;
     }
 
     /// <summary>The discard action keeps its slot private; it is read by name and
