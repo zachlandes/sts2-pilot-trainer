@@ -118,6 +118,7 @@ There is no watch row and no comparison inside a fight: the captain's ruling is 
 
 **Refusals read as a player's sentence**, with the engine's exact diagnostic behind a details fold and always in the log.
 The refusal is not softened; only the sentence a player reads changes.
+A refusal the mod raises with no engine diagnostic to fold - the fight that never finished opening - is the player's sentence alone, and the state it saw is logged rather than folded; `docs/in-game-host.md` owns that case.
 
 **One measure for everything that hangs below the tag.** The note, the look-back ledger, the speed menu and a tooltip all hang under it, and the plates are translucent because the game is meant to show through them - so two of them on the same band are not one covering the other, they are both legible at once and neither readable.
 Each hangs below whatever is already there. The client drew the speed menu straight over the ledger before this rule existed.
