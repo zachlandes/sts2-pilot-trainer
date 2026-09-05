@@ -448,20 +448,34 @@ public static class Corruption
     }
 
     /// <summary>
-    /// Which other position a card screen offered that nobody picked off it, or null
-    /// where every position it offered was taken.
+    /// Which other copy of the picked card the same screen offered, or null where it
+    /// offered no second copy.
     ///
-    /// Unpicked rather than merely different, because the screen's answers are replayed
-    /// together: nominating a position another pick already claimed would have the
-    /// replay choose one card twice, which <c>ManifestCardSelector</c> refuses - so the
-    /// control would fail on its own illegality rather than on the corruption.
+    /// The same card and not merely another position, because
+    /// <see cref="EnchantADifferentCard"/> moves <c>option_index</c> and leaves
+    /// <c>card_id</c> where it is: a nomination pointing at a different card makes
+    /// <c>ManifestCardSelector</c> refuse on card identity - two fields of the manifest
+    /// disagreeing, before the engine is consulted at all - so the control would be
+    /// counted as rejected without any divergence having been demonstrated. It is also
+    /// what makes this the corruption no frame of the event screen shows: two copies of
+    /// one card are indistinguishable, and two different cards are not.
+    ///
+    /// Unpicked as well, because the screen's answers are replayed together: nominating
+    /// a position another pick already claimed would have the replay choose one card
+    /// twice, which the same selector refuses.
     /// </summary>
-    public static int? NominateScreenOption(int offeredCount, IEnumerable<int> chosenIndexes)
+    public static int? NominateScreenOption(
+        IReadOnlyList<string> offeredCardIds, int takenIndex, IEnumerable<int> chosenIndexes)
     {
+        if (takenIndex < 0 || takenIndex >= offeredCardIds.Count) return null;
+
         var chosen = chosenIndexes.ToHashSet();
-        for (var index = 0; index < offeredCount; index++)
+        var taken = offeredCardIds[takenIndex];
+        for (var index = 0; index < offeredCardIds.Count; index++)
         {
-            if (!chosen.Contains(index)) return index;
+            if (index == takenIndex || chosen.Contains(index)) continue;
+            if (!string.Equals(offeredCardIds[index], taken, StringComparison.Ordinal)) continue;
+            return index;
         }
 
         return null;

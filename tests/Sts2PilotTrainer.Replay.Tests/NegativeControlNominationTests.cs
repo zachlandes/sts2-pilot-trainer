@@ -71,14 +71,44 @@ public sealed class NegativeControlNominationTests
         Assert.Null(Corruption.NominateCard(["CARD.BASH"], takenIndex: 0));
     }
 
+    /// <summary>
+    /// A card screen nominates another copy of the card that was picked.
+    ///
+    /// Asserted by the card sitting at the nominated position rather than by the
+    /// position differing, because <c>enchant-a-different-card</c> moves
+    /// <c>option_index</c> and leaves <c>card_id</c> alone: an index-only rule nominates
+    /// a position holding some other card, and the replay then refuses because two
+    /// fields of the manifest disagree rather than because the run diverged. That is a
+    /// control counted as rejected without anything having been demonstrated.
+    /// </summary>
     [Fact]
-    public void ACardScreenNominatesAPositionNobodyPickedOffIt()
+    public void ACardScreenNominatesAnotherCopyOfTheCardThatWasPicked()
     {
-        Assert.Equal(1, Corruption.NominateScreenOption(offeredCount: 4, chosenIndexes: [0, 2]));
+        IReadOnlyList<string> deck =
+            ["CARD.STRIKE_IRONCLAD", "CARD.DEFEND_IRONCLAD", "CARD.BASH", "CARD.DEFEND_IRONCLAD"];
+
+        var nominated = Corruption.NominateScreenOption(deck, takenIndex: 1, chosenIndexes: [1]);
+
+        Assert.Equal(3, nominated);
+        Assert.Equal(deck[1], deck[nominated!.Value]);
     }
 
     /// <summary>
-    /// And never one another answer to the same screen already took.
+    /// A screen holding no second copy nominates nothing, however many other cards it
+    /// offered.
+    ///
+    /// The honest outcome, and the gate says so: an enchantment nobody could have put
+    /// on an indistinguishable card is not a decision this control can damage.
+    /// </summary>
+    [Fact]
+    public void ACardScreenOfferingOnlyDistinctCardsNominatesNothing()
+    {
+        Assert.Null(Corruption.NominateScreenOption(
+            ["CARD.STRIKE_IRONCLAD", "CARD.DEFEND_IRONCLAD", "CARD.BASH"], takenIndex: 1, chosenIndexes: [1]));
+    }
+
+    /// <summary>
+    /// And never a copy another answer to the same screen already took.
     ///
     /// The screen's answers are replayed together, so a nomination pointing at a
     /// position another pick claimed would have the replay choose one card twice -
@@ -86,10 +116,12 @@ public sealed class NegativeControlNominationTests
     /// illegality rather than on the corruption.
     /// </summary>
     [Fact]
-    public void ACardScreenWhoseEveryPositionWasTakenNominatesNothing()
+    public void ACardScreenWhoseOtherCopiesWereAllTakenNominatesNothing()
     {
-        Assert.Equal(2, Corruption.NominateScreenOption(offeredCount: 3, chosenIndexes: [0, 1]));
-        Assert.Null(Corruption.NominateScreenOption(offeredCount: 2, chosenIndexes: [0, 1]));
-        Assert.Null(Corruption.NominateScreenOption(offeredCount: 1, chosenIndexes: [0]));
+        IReadOnlyList<string> deck =
+            ["CARD.DEFEND_IRONCLAD", "CARD.DEFEND_IRONCLAD", "CARD.DEFEND_IRONCLAD"];
+
+        Assert.Equal(2, Corruption.NominateScreenOption(deck, takenIndex: 0, chosenIndexes: [0, 1]));
+        Assert.Null(Corruption.NominateScreenOption(deck, takenIndex: 0, chosenIndexes: [0, 1, 2]));
     }
 }

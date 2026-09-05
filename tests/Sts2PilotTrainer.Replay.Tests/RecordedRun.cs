@@ -15,7 +15,8 @@ namespace Sts2PilotTrainer.Replay.Tests;
 /// The decisions are the shortest set that gives every one of
 /// <see cref="Corruption.All"/> something to damage, and that list is a requirement on
 /// the evidence run somebody plays as well as on this fixture: an opening blessing, an
-/// event whose option opens a card screen offering more than it takes, a map move from
+/// event whose option opens a card screen holding a second copy of the card that gets
+/// picked, a map move from
 /// a node with a reachable sibling, at least two card plays with one of them aimed at
 /// an enemy, a claimed reward, and a card reward that offered more than one card.
 /// </summary>
@@ -51,11 +52,14 @@ internal static class RecordedRun
             Floor(1),
             Digest(1));
 
-        // The screen that event opened offered four cards and the player enchanted one,
-        // so three positions are still free for a control to point at.
+        // The screen that event opened put the deck up, and the deck a run opens with
+        // holds several copies of each starter - so the Defend the player enchanted has
+        // another copy on the same screen for a control to move the enchantment to.
         capture.Record(
             ActionVerb.SelectCardFromScreen,
-            ScreenPick("CARD.DEFEND_IRONCLAD", chosen: 1, offeredCount: 4),
+            ScreenPick(
+                ["CARD.STRIKE_IRONCLAD", "CARD.DEFEND_IRONCLAD", "CARD.BASH", "CARD.DEFEND_IRONCLAD"],
+                chosen: 1),
             Floor(1),
             Digest(2));
 
@@ -118,15 +122,16 @@ internal static class RecordedRun
         return args;
     }
 
-    /// <summary>One answer to a card screen, with a position nobody took off it.</summary>
-    private static IReadOnlyDictionary<string, string> ScreenPick(string cardId, int chosen, int offeredCount)
+    /// <summary>One answer to a card screen, with another copy of the picked card that
+    /// the same screen offered.</summary>
+    private static IReadOnlyDictionary<string, string> ScreenPick(IReadOnlyList<string> offered, int chosen)
     {
         var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["card_id"] = cardId,
+            ["card_id"] = offered[chosen],
             ["option_index"] = Number(chosen),
         };
-        if (Corruption.NominateScreenOption(offeredCount, [chosen]) is { } alternative)
+        if (Corruption.NominateScreenOption(offered, chosen, [chosen]) is { } alternative)
         {
             args[Corruption.AlternativeOptionIndex] = Number(alternative);
         }

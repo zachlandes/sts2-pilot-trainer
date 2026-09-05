@@ -373,14 +373,18 @@ internal sealed class RunRecorder : IDisposable
         }
 
         // Every answer from one screen is resolved before any of them is nominated
-        // against, because the alternative has to be a position none of them took.
-        var alternative = Corruption.NominateScreenOption(offered.Count, taken.Select(pick => pick.Index));
+        // against, because the alternative has to be a position none of them took. It
+        // is per answer rather than one for the screen: what each nominates is another
+        // copy of its own card.
+        var offeredIds = offered.Select(card => card.Id.ToString()).ToList();
+        var positions = taken.Select(pick => pick.Index).ToList();
 
         lock (Gate)
         {
             foreach (var (cardId, index) in taken)
             {
-                recorder._screenPicks.Add(new CardScreenPick(cardId, index, alternative));
+                recorder._screenPicks.Add(new CardScreenPick(
+                    cardId, index, Corruption.NominateScreenOption(offeredIds, index, positions)));
             }
         }
     }
