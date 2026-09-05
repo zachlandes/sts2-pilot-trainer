@@ -427,7 +427,7 @@ it, and the old constant is the deadline rather than the answer. The general rul
 and keep the budget for giving up.
 A deadline that is reached refuses on its own rather than reading the boundary anyway, and which of the two refuses decides whether the sentence is true.
 The boundary compares card by card, so a half-open fight is refused with the recording's five-card hand against the one card dealt so far - true about the comparison, and it reads to a player as a broken recording.
-The timeout's own refusal carries `DescribeCombatReadiness`'s reading instead: the room, the combat manager, the player's combat state and the turn, which is the value that separates a fight that never opened from a fight that opened somewhere else.
+The timeout's own refusal says the fight did not finish opening and nothing more; `DescribeCombatReadiness`'s reading - the room, the combat manager, the player's combat state and the turn - is logged at the moment the wait gave up, because that reading is for whoever is diagnosing it and not for the player.
 
 **Returning to the main menu frees the popup that explains why.**
 A refusal is the one thing this journey says in a popup, and the popup lives in the

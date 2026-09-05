@@ -241,19 +241,15 @@ public static class TrainerCopy
     public const string RefusalHideDetails = "Hide details";
 
     /// <summary>
-    /// Why an entry stopped when the fight never finished opening, with what the run
-    /// looked like at the moment it gave up.
+    /// Why an entry stopped when the fight never finished opening.
     ///
-    /// A template rather than a fixed sentence because the state is the whole of its
-    /// value. A fight read half-open refuses with a card-by-card mismatch - the
-    /// recording's five-card hand against the one card dealt so far - which reads as a
-    /// broken recording and is not what happened. This says the true thing and carries
-    /// the reading that distinguishes the two, so the next person to hit it is not
-    /// re-deriving what the log already knew.
+    /// A fixed sentence: the reading that tells this apart from a fight that opened
+    /// somewhere else is a diagnostic and belongs in the log, which already carries it
+    /// at the moment the wait gave up. See docs/in-game-host.md.
     /// </summary>
-    public static string FightDidNotOpen(string state) =>
+    public const string FightDidNotOpen =
         $"The fight didn't finish opening, so {Name} stopped rather than compare a fight that hadn't " +
-        $"started yet. {RefusalNoHarm}\n\n{state}";
+        $"started yet. {RefusalNoHarm}";
 
     /// <summary>The screens this journey walks, as a player names them. A screen with
     /// no name here has no refusal sentence, and the engine's own is shown alone

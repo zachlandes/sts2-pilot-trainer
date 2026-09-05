@@ -1177,14 +1177,10 @@ internal static class RecordedFightRun
 
             // A fight that never opened is refused here rather than at the boundary,
             // and which of the two refuses is the difference between a true sentence
-            // and a misleading one. The boundary compares a half-open fight card by
-            // card and reports the recording's five-card hand against the one card
-            // dealt so far, which reads as a broken recording; what happened is that
-            // the client never finished opening the fight. The reading that separates
-            // them goes in the refusal, not only in the log.
+            // and a misleading one. See docs/in-game-host.md.
             if (!opened)
             {
-                Abandon(TrainerCopy.FightDidNotOpen(entry.DescribeCombatReadiness()));
+                Abandon(TrainerCopy.FightDidNotOpen);
                 return;
             }
 
