@@ -18,8 +18,8 @@ namespace Sts2PilotTrainer.Replay.Tests;
 /// event whose option opens a card screen holding a second copy of the card that gets
 /// picked, a map move from
 /// a node with a reachable sibling, at least two card plays with one of them aimed at
-/// an enemy and one made from a hand holding another card of the same cost, a claimed
-/// reward, and a card reward that offered more than one card.
+/// an enemy and one made from a hand holding another card of the same cost and
+/// targeting, a claimed reward, and a card reward that offered more than one card.
 /// </summary>
 internal static class RecordedRun
 {
@@ -66,22 +66,28 @@ internal static class RecordedRun
 
         capture.Record(ActionVerb.MapMove, Move(act: 0, row: 1, column: 3, reachable: [1, 3]), InFight(2), Digest(3));
 
-        // A hand of one-cost cards, so the Bash the player threw has a same-cost card
-        // beside it for a control to swap in. Two of them are Strikes, which is what a
-        // starting hand looks like and what makes the substitute a different card
-        // rather than another copy.
-        (string, int)[] hand =
-            [("CARD.BASH", 1), ("CARD.STRIKE_IRONCLAD", 1), ("CARD.STRIKE_IRONCLAD", 1), ("CARD.IMPERVIOUS", 2)];
+        // A hand where the attack the player threw has another one-cost attack beside
+        // it. The Defend costs the same and aims at nothing, so it is not a substitute
+        // for a card played at an enemy: the corrupted play keeps the target index, and
+        // a card that aims at nothing carrying one is refused on argument shape rather
+        // than on anything the run did.
+        (string, int, bool)[] hand =
+        [
+            ("CARD.STRIKE_IRONCLAD", 1, true),
+            ("CARD.DEFEND_IRONCLAD", 1, false),
+            ("CARD.CLEAVE", 1, true),
+            ("CARD.IMPERVIOUS", 2, false),
+        ];
 
         capture.Record(
             ActionVerb.PlayCard,
-            Play(hand, played: 0, targetIndex: 0),
-            InFight(2, enemyHp: 30),
+            Play(hand, played: 1),
+            InFight(2, enemyHp: 42),
             Digest(4));
-        capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(5));
+        capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 42, hp: 58), Digest(5));
         capture.Record(
             ActionVerb.PlayCard,
-            Play(hand, played: 1),
+            Play(hand, played: 0, targetIndex: 0),
             Won(2, hp: 58),
             Digest(6));
 
@@ -95,9 +101,12 @@ internal static class RecordedRun
         return capture;
     }
 
-    /// <summary>A card play, with the same-cost card the hand also held.</summary>
+    /// <summary>A card play, with the card the same hand held at the same cost and
+    /// targeting.</summary>
     private static IReadOnlyDictionary<string, string> Play(
-        IReadOnlyList<(string CardId, int EnergyCost)> hand, int played, int? targetIndex = null)
+        IReadOnlyList<(string CardId, int EnergyCost, bool TargetsAnEnemy)> hand,
+        int played,
+        int? targetIndex = null)
     {
         var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {

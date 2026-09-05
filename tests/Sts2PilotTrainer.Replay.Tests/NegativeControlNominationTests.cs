@@ -139,14 +139,57 @@ public sealed class NegativeControlNominationTests
     [Fact]
     public void ACardPlayNominatesAnotherCardTheHandHeldAtTheSameCost()
     {
-        IReadOnlyList<(string CardId, int EnergyCost)> hand =
-            [("CARD.BASH", 2), ("CARD.DEFEND_IRONCLAD", 1), ("CARD.IMPERVIOUS", 2)];
+        IReadOnlyList<(string CardId, int EnergyCost, bool TargetsAnEnemy)> hand =
+            [("CARD.BASH", 2, true), ("CARD.DEFEND_IRONCLAD", 1, false), ("CARD.WHIRLWIND", 2, true)];
 
         var nominated = Corruption.NominateSubstitute(hand, playedIndex: 0);
 
-        Assert.Equal(("CARD.IMPERVIOUS", 2), nominated);
+        Assert.Equal(("CARD.WHIRLWIND", 2), nominated);
         Assert.Equal(hand[0].EnergyCost, hand[nominated!.Value.HandIndex].EnergyCost);
         Assert.NotEqual(hand[0].CardId, nominated.Value.CardId);
+    }
+
+    /// <summary>
+    /// And one that aims where the played card aimed.
+    ///
+    /// <c>substitute-same-cost</c> keeps every other argument of the play it rewrites,
+    /// <c>target_index</c> included, so a substitute that aims at nothing gets that
+    /// index handed to it and <c>RunDriver.ResolveTarget</c> refuses on argument shape -
+    /// "supplies target_index for X, but that does not target an enemy" - before the
+    /// engine replays a thing. Asserted by the targeting agreeing rather than by the
+    /// cost alone, because cost alone is what let this through.
+    /// </summary>
+    [Fact]
+    public void ACardPlayAimedAtAnEnemyNominatesOnlyACardThatAlsoAimsAtOne()
+    {
+        IReadOnlyList<(string CardId, int EnergyCost, bool TargetsAnEnemy)> hand =
+            [("CARD.STRIKE_IRONCLAD", 1, true), ("CARD.DEFEND_IRONCLAD", 1, false), ("CARD.CLEAVE", 1, true)];
+
+        var nominated = Corruption.NominateSubstitute(hand, playedIndex: 0);
+
+        Assert.Equal(("CARD.CLEAVE", 2), nominated);
+        Assert.True(hand[nominated!.Value.HandIndex].TargetsAnEnemy);
+    }
+
+    /// <summary>And the mirror: a play that aims at nothing never nominates an attack,
+    /// which would reach the replay needing a target index it has not got.</summary>
+    [Fact]
+    public void ACardPlayThatAimsAtNothingNominatesOnlyACardThatAimsAtNothing()
+    {
+        IReadOnlyList<(string CardId, int EnergyCost, bool TargetsAnEnemy)> hand =
+            [("CARD.DEFEND_IRONCLAD", 1, false), ("CARD.STRIKE_IRONCLAD", 1, true), ("CARD.FLEX", 1, false)];
+
+        var nominated = Corruption.NominateSubstitute(hand, playedIndex: 0);
+
+        Assert.Equal(("CARD.FLEX", 2), nominated);
+        Assert.False(hand[nominated!.Value.HandIndex].TargetsAnEnemy);
+    }
+
+    [Fact]
+    public void AHandHoldingNothingElseOfThatTargetingNominatesNothing()
+    {
+        Assert.Null(Corruption.NominateSubstitute(
+            [("CARD.STRIKE_IRONCLAD", 1, true), ("CARD.DEFEND_IRONCLAD", 1, false)], playedIndex: 0));
     }
 
     /// <summary>
@@ -159,19 +202,20 @@ public sealed class NegativeControlNominationTests
     [Fact]
     public void AHandHoldingOnlyMoreCopiesOfThePlayedCardLooksPastThem()
     {
-        IReadOnlyList<(string CardId, int EnergyCost)> hand =
-            [("CARD.STRIKE_IRONCLAD", 1), ("CARD.STRIKE_IRONCLAD", 1), ("CARD.DEFEND_IRONCLAD", 1)];
+        IReadOnlyList<(string CardId, int EnergyCost, bool TargetsAnEnemy)> hand =
+            [("CARD.STRIKE_IRONCLAD", 1, true), ("CARD.STRIKE_IRONCLAD", 1, true), ("CARD.CLEAVE", 1, true)];
 
         var nominated = Corruption.NominateSubstitute(hand, playedIndex: 0);
 
-        Assert.Equal(("CARD.DEFEND_IRONCLAD", 2), nominated);
+        Assert.Equal(("CARD.CLEAVE", 2), nominated);
     }
 
     [Fact]
     public void AHandHoldingNothingElseOfThatCostNominatesNothing()
     {
         Assert.Null(Corruption.NominateSubstitute(
-            [("CARD.BASH", 2), ("CARD.STRIKE_IRONCLAD", 1), ("CARD.DEFEND_IRONCLAD", 1)], playedIndex: 0));
-        Assert.Null(Corruption.NominateSubstitute([("CARD.BASH", 2)], playedIndex: 0));
+            [("CARD.BASH", 2, true), ("CARD.STRIKE_IRONCLAD", 1, true), ("CARD.CLEAVE", 1, true)],
+            playedIndex: 0));
+        Assert.Null(Corruption.NominateSubstitute([("CARD.BASH", 2, true)], playedIndex: 0));
     }
 }
