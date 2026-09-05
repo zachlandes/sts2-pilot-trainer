@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Applies to every `dotnet test` in this repository, wired in by Directory.Build.props.
+
+  TestSessionTimeout is here because a deadlocked test used to hang the suite
+  indefinitely rather than fail it: nothing in dotnet test, the CI job or the local
+  gate bounds a test run, so a stuck reader waits for as long as anybody lets it.
+  Fifteen minutes is three times the whole solution suite on a machine with the game
+  prepared, measured at 4m57s, and the game-free CI job is under a second of that.
+  A run past this bound is not a slow machine, it is a hang, and a hang
+  that fails is worth more than one nobody can interrupt.
+-->
+<RunSettings>
+  <RunConfiguration>
+    <TestSessionTimeout>900000</TestSessionTimeout>
+  </RunConfiguration>
+</RunSettings>
