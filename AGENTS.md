@@ -27,7 +27,7 @@ Run it on its own only when that is what you want, because the skip is silent in
 totals and the suite still reports green.
 Building first is what makes it run everything: nothing in the solution references
 `Sts2PilotTrainer.Cli`, so `dotnet test` never builds the arbiter the integration
-tests drive, and bootstrapping alone leaves 119 of them skipped.
+tests drive, and bootstrapping alone leaves 137 of them skipped.
 Every test run is bounded by `TestSessionTimeout` in `.runsettings`, wired in from
 `Directory.Build.props` so it applies however `dotnet test` was started. A run that
 exceeds it aborts with a non-zero exit rather than hanging: a deadlocked test used to

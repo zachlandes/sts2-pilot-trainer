@@ -396,6 +396,7 @@ stands the run at that floor's arrival with the digest that boundary records.
 The shipped video reconstruction records no map coordinate anywhere, so its floor
 boundaries are declared but not enterable and `--floor` refuses on it; `--fight` works
 on both.
+
 ### S7 - One playback transport, in the retail client - done
 
 Replace the per-step popup with one long-lived transport that carries the watched
@@ -437,7 +438,7 @@ light on the game's own screen, and refuses a target it cannot name before anyth
 committed.
 
 **Runnable now, in the retail client.** `./scripts/install-mod.sh`, then launch with
-only Combat Trainer enabled: the strip appears over Neow with the blessing ringed,
+only `Runmobile` enabled: the strip appears over Neow with the blessing ringed,
 Forward commits it and reveals the map node, and the same strip is still there in the
 fight, collapsed to a chip.
 [demo/PLAYBACK-TRANSPORT.md](../demo/PLAYBACK-TRANSPORT.md) has it with the
