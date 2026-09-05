@@ -63,6 +63,11 @@ internal sealed class RecorderModule : IRunmobileModule
         {
             harmony.CreateClassProcessor(patchClass).Patch();
         }
+
+        // The screens themselves are the shell's, because a screen being up is a fact
+        // about the game that the Combat Trainer's settle reads too. What was answered
+        // is this feature's, so it subscribes rather than patching them a second time.
+        RunRecorder.ReadTheAnswers();
     }
 
     /// <summary>

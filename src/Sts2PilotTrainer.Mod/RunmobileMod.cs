@@ -38,7 +38,8 @@ public static class RunmobileMod
 
     private const string HarmonyId = "sts2-pilot-trainer.runmobile";
 
-    internal static IReadOnlyList<Type> ShellPatchClasses { get; } = [typeof(ModeCard)];
+    internal static IReadOnlyList<Type> ShellPatchClasses { get; } =
+        [typeof(ModeCard), .. CardScreensUp.PatchClasses];
 
     private static readonly Lock AdoptionGate = new();
 

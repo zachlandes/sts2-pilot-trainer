@@ -98,8 +98,6 @@ public sealed class RunmobileModuleTests
             GameMethod("MegaCrit.Sts2.Core.Runs.RunManager", "OnEnded"),
             GameMethod("MegaCrit.Sts2.Core.Multiplayer.Game.RewardsSetSynchronizer", "SelectLocalReward"),
             GameMethod("MegaCrit.Sts2.Core.Entities.Merchant.MerchantEntry", "OnTryPurchaseWrapper"),
-            GameMethod(
-                "MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardGridSelectionScreen", "CardsSelected"),
         };
 
         try
@@ -116,19 +114,37 @@ public sealed class RunmobileModuleTests
         }
     }
 
+    /// <summary>
+    /// The shell patches the module card renderer and both card screens.
+    ///
+    /// The screens are the shell's rather than the recorder's because a card screen
+    /// being up is a fact about the game that the Combat Trainer's settle reads too.
+    /// Behind the recorder's patches it stopped being counted on a build the recorder
+    /// declines to watch, which is exactly the build the trainer is meant to carry on
+    /// through - and the trainer would go back to charging a player's thinking against
+    /// the engine's budget with nothing to say so.
+    /// </summary>
     [GameFact]
-    public void InstallingTheShellPatchesTheModuleCardRenderer()
+    public void InstallingTheShellPatchesTheModuleCardRendererAndTheCardScreens()
     {
         _ = EngineHost.StartupPhase();
         var harmony = new Harmony($"sts2-pilot-trainer.shell-test.{Guid.NewGuid():N}");
-        var boundary = GameMethod(
-            "MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSingleplayerSubmenu", "_Ready");
+        var boundaries = new[]
+        {
+            GameMethod("MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSingleplayerSubmenu", "_Ready"),
+            GameMethod(
+                "MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardGridSelectionScreen", "CardsSelected"),
+            GameMethod(
+                "MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardRewardSelectionScreen", "OptionSelected"),
+        };
 
         try
         {
             RunmobileMod.InstallShellPatches(harmony);
 
-            Assert.Contains(Harmony.GetPatchInfo(boundary)!.Owners, owner => owner == harmony.Id);
+            Assert.All(boundaries, boundary => Assert.Contains(
+                Harmony.GetPatchInfo(boundary)!.Owners,
+                owner => owner == harmony.Id));
         }
         finally
         {

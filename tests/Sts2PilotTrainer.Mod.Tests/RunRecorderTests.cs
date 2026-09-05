@@ -157,90 +157,6 @@ public sealed class RunRecorderTests
     }
 
     /// <summary>
-    /// A card screen gives back the count it took, however its own task ends.
-    ///
-    /// The count is what keeps a settle from reading a run in the middle of a decision,
-    /// and it is static because the screens are: one game, one person looking at it. So
-    /// a screen counted on the way up and not on the way down leaves it above zero for
-    /// the rest of the session, and the next run's settle waits for a screen nobody is
-    /// looking at. It used to be taken in a Harmony prefix guarded on a recorder being
-    /// active and given back in a postfix guarded the same way, which drifts exactly
-    /// when a run is torn down between them; it is one try/finally around the screen's
-    /// own task now, so the two cannot decide differently.
-    ///
-    /// Driven through that wrapper rather than asserted about it, because what has to
-    /// hold is the count at the end and not the shape of the code that keeps it.
-    /// </summary>
-    [GameFact]
-    public async Task ACardScreenGivesBackTheCountItTookHoweverItEnds()
-    {
-        var before = RunRecorder.ScreensOpen;
-
-        var answered = new TaskCompletionSource<int?>();
-        var watching = RunRecorder.CardRewardAnswer.Observe(answered.Task);
-        Assert.Equal(before + 1, RunRecorder.ScreensOpen);
-
-        answered.SetResult(1);
-        await watching;
-        Assert.Equal(before, RunRecorder.ScreensOpen);
-
-        // A screen whose task faults is still a screen that has come down. This is the
-        // reward screen's own tear-down: NCardRewardSelectionScreen._ExitTree faults its
-        // completion source when the run goes away under it.
-        var faulted = new TaskCompletionSource<int?>();
-        var stranded = RunRecorder.CardRewardAnswer.Observe(faulted.Task);
-        Assert.Equal(before + 1, RunRecorder.ScreensOpen);
-
-        faulted.SetException(new InvalidOperationException("the run went away under the screen"));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => stranded);
-        Assert.Equal(before, RunRecorder.ScreensOpen);
-
-        // And so is one that is cancelled, which is what the grid screen's own
-        // _ExitTree does. Between them these are every way a screen ends, which is what
-        // says the count cannot go stale and why nothing resets it.
-        var cancelled = new TaskCompletionSource<int?>();
-        var dropped = RunRecorder.WhileOnScreen(cancelled.Task);
-        Assert.Equal(before + 1, RunRecorder.ScreensOpen);
-
-        cancelled.SetCanceled();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => dropped);
-        Assert.Equal(before, RunRecorder.ScreensOpen);
-    }
-
-    /// <summary>
-    /// The count never dips below where it started, however the screens interleave.
-    ///
-    /// It cannot: <c>WhileOnScreen</c> is the only thing that touches the counter and it
-    /// takes and gives back in one try/finally, so there is no bare decrement for a
-    /// caller to reach. That is the point of the shape - a reset and a stray decrement
-    /// once left it at -1, and a negative count silently satisfies the wait that keeps a
-    /// reading off a half-made decision.
-    /// </summary>
-    [GameFact]
-    public async Task TheScreenCountNeverGoesBelowWhereItStarted()
-    {
-        var before = RunRecorder.ScreensOpen;
-        var floor = before;
-
-        var first = new TaskCompletionSource<int?>();
-        var second = new TaskCompletionSource<int?>();
-        var outer = RunRecorder.WhileOnScreen(first.Task);
-        var inner = RunRecorder.WhileOnScreen(second.Task);
-        floor = Math.Min(floor, RunRecorder.ScreensOpen);
-
-        second.SetResult(0);
-        await inner;
-        floor = Math.Min(floor, RunRecorder.ScreensOpen);
-
-        first.SetResult(1);
-        await outer;
-        floor = Math.Min(floor, RunRecorder.ScreensOpen);
-
-        Assert.Equal(before, floor);
-        Assert.Equal(before, RunRecorder.ScreensOpen);
-    }
-
-    /// <summary>
     /// The engine's budget measures only the engine's own time, however many screens one
     /// decision puts up.
     ///
@@ -266,6 +182,7 @@ public sealed class RunRecorderTests
         var settled = await RunRecorder.WaitForTheEngine(
             () => screens[Math.Min(polls, screens.Length - 1)],
             () => null,
+            engineWork: null,
             () => true,
             () =>
             {
@@ -314,6 +231,7 @@ public sealed class RunRecorderTests
         var stopped = await RunRecorder.WaitForTheEngine(
             () => 1,
             () => recording ? null : "the run went to the main menu.",
+            engineWork: null,
             () => true,
             () => throw new InvalidOperationException("A screen was up, so no budget should have started."),
             () =>
@@ -350,6 +268,7 @@ public sealed class RunRecorderTests
         var unsettled = await RunRecorder.WaitForTheEngine(
             () => open,
             () => null,
+            engineWork: null,
             () => false,
             () => Task.CompletedTask,
             () =>
@@ -363,6 +282,44 @@ public sealed class RunRecorderTests
         Assert.Equal(0, open);
     }
 
+    /// <summary>
+    /// An engine that has not said its own work is finished is not idle, however empty
+    /// its queue reads.
+    ///
+    /// The gate is the engine's own signal - the task a decision handed back, or the
+    /// queue's word that it drained - and the two idle ticks are a debounce on top of
+    /// it rather than a replacement for it. Without it, an after-sample taken during a
+    /// gap in an action's resolution records a wrong after-state and throws nothing.
+    /// </summary>
+    [GameFact]
+    public async Task AnEngineThatHasNotFinishedIsNotIdleHoweverEmptyItLooks()
+    {
+        var work = new TaskCompletionSource<bool>();
+        var polls = 0;
+
+        var settled = await RunRecorder.WaitForTheEngine(
+            () => 0,
+            () => null,
+            work.Task,
+            // Idle from the first poll, which is the shape the gate exists for.
+            () => true,
+            () => new TaskCompletionSource<bool>().Task,
+            () =>
+            {
+                // Long past the two ticks a settle needs, so a wait that ignored the
+                // gate would have returned by now.
+                if (++polls == 8) work.SetResult(true);
+                return Task.CompletedTask;
+            },
+            spent => $"the engine did not settle {spent}");
+
+        Assert.Null(settled);
+
+        // The engine spoke during the eighth poll, and it took one more to score the
+        // second tick - none of the seven before it counted.
+        Assert.Equal(9, polls);
+    }
+
     /// <summary>And a decision that opened no card screen is not told one closed.</summary>
     [GameFact]
     public async Task ASpentBudgetOnADecisionWithNoScreenNamesNoScreen()
@@ -370,6 +327,7 @@ public sealed class RunRecorderTests
         var unsettled = await RunRecorder.WaitForTheEngine(
             () => 0,
             () => null,
+            engineWork: null,
             () => false,
             () => Task.CompletedTask,
             () => Task.CompletedTask,
