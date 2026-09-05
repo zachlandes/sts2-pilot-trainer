@@ -164,6 +164,12 @@ public static class TrainerCopy
     /// refused menu row says nothing, so the row this belonged to has nowhere to put
     /// it. Held rather than deleted for a surface that may later have somewhere honest
     /// to show it. Do not remove it as dead code; the compiler will not stop you.
+    ///
+    /// Its wording predates the decision that the gate is one action rather than a
+    /// completed turn, so it says "a turn" where the code means an action and one card
+    /// is enough. The discrepancy is known and left standing: this is approved
+    /// player-facing wording, and rewriting it needs the same approval that wrote it.
+    /// Whichever surface eventually shows it has to carry that approval with it.
     /// </summary>
     public const string NothingPlayedYet = "You have not played a turn yet.";
 

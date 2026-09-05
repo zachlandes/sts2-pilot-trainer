@@ -189,26 +189,32 @@ internal static class RecordedFightRun
         ProfileWriteBarrier.Raise();
         Transition(JourneyPhase.Starting);
 
+        RecordedFightEntry? entry = null;
         try
         {
             var creator = RecordingIdentity.Creator(recording);
-            _entry = RecordedFightEntry.PrepareInRunningGame(recording, TravelOnTheGamesMapScreen);
+            entry = RecordedFightEntry.PrepareInRunningGame(recording, TravelOnTheGamesMapScreen);
+            _entry = entry;
 
             // Awaiting the game's own start-run task is what puts the run on screen and
             // in its first room; the task completes when it has.
-            await LaunchThroughTheGame(_entry.PreparedRun);
+            await LaunchThroughTheGame(entry.PreparedRun);
+
+            if (!StillOurs(entry)) return;
 
             Transition(JourneyPhase.Watching);
             SweepWhileTheGameIsBetweenScreens();
             Log.Info(
                 $"[{RunmobileMod.ModId}] constructed {creator}'s run; watching " +
-                $"{_entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)} recorded " +
+                $"{entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)} recorded " +
                 "decision(s) before the fight", 2);
             RevealWhenTheGameHasFinishedMoving();
         }
         catch (Exception ex)
         {
-            Abandon(ex);
+            // The entry is still null where preparation itself failed, and that
+            // refusal is this journey's own to report.
+            if (entry is null || StillOurs(entry)) Abandon(ex);
         }
     }
 
@@ -254,10 +260,10 @@ internal static class RecordedFightRun
     /// </summary>
     private static async void Forward()
     {
+        if (_entry is not { } entry) return;
+
         try
         {
-            if (_entry is not { } entry) return;
-
             if (_lookingBackAt is { } step)
             {
                 _lookingBackAt = step < entry.StepsTaken ? step + 1 : null;
@@ -270,7 +276,7 @@ internal static class RecordedFightRun
         }
         catch (Exception ex)
         {
-            Abandon(ex);
+            if (StillOurs(entry)) Abandon(ex);
         }
     }
 
@@ -361,10 +367,10 @@ internal static class RecordedFightRun
     /// </summary>
     private static async void HoldThenCommit()
     {
+        var mine = _entry;
         try
         {
             var hold = ++_hold;
-            var mine = _entry;
             var seconds = HoldFor(mine);
 
             // Drawn while it runs, not merely waited out. Without the line the tag
@@ -389,7 +395,7 @@ internal static class RecordedFightRun
         }
         catch (Exception ex)
         {
-            Abandon(ex);
+            if (StillOurs(mine)) Abandon(ex);
         }
     }
 
@@ -520,6 +526,8 @@ internal static class RecordedFightRun
             _committing = false;
         }
 
+        if (!StillOurs(entry)) return;
+
         if (_entry is { AtBoundary: false })
         {
             RevealWhenTheGameHasFinishedMoving();
@@ -551,7 +559,7 @@ internal static class RecordedFightRun
 
         // The retry above runs for up to five seconds, which is long enough for the
         // journey underneath it to have ended and another to have started.
-        if (!ReferenceEquals(entry, _entry)) return;
+        if (!StillOurs(entry)) return;
 
         _revealed = true;
         Log.Info(
@@ -924,6 +932,20 @@ internal static class RecordedFightRun
     private static bool AnythingPlayed(RecordedFightEntry entry) =>
         entry.Capture is { AnythingPlayed: true };
 
+    /// <summary>
+    /// Whether a continuation still belongs to the journey that started it.
+    ///
+    /// Every await in this class can outlive its own run: the player can abandon from
+    /// the game's own pause menu at any frame, and the teardown clears the entry. A
+    /// continuation that wakes into a different journey, or into none, does nothing at
+    /// all - and "nothing" includes refusing, because abandoning tears down a run that
+    /// is no longer the trainer's. Held to one predicate rather than an expression
+    /// repeated per site, because the repeated one read <c>ReferenceEquals</c> alone
+    /// and two nulls compare equal, so a journey that had ended looked current.
+    /// </summary>
+    private static bool StillOurs(RecordedFightEntry? mine) =>
+        mine is not null && ReferenceEquals(mine, _entry);
+
     private static async Task AdvanceOne()
     {
         var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
@@ -949,6 +971,8 @@ internal static class RecordedFightRun
         {
             _authorising = false;
         }
+
+        if (!StillOurs(entry)) return;
 
         CarryOnPastAnyScreenWaitingToProceed();
     }
@@ -1069,7 +1093,7 @@ internal static class RecordedFightRun
             // The frame this waits for is a frame the player can act in, and abandoning
             // a run is one of the things they can do in it. A continuation that wakes
             // into a different journey, or none, does nothing at all.
-            if (!ReferenceEquals(mine, _entry)) return;
+            if (!StillOurs(mine)) return;
 
             try
             {
@@ -1077,7 +1101,7 @@ internal static class RecordedFightRun
             }
             catch (Exception ex)
             {
-                if (ReferenceEquals(mine, _entry)) Abandon(ex);
+                if (StillOurs(mine)) Abandon(ex);
             }
         }).CallDeferred();
     }
@@ -1113,13 +1137,13 @@ internal static class RecordedFightRun
             // the ordinary case, not the exception: the player can abandon the run from
             // the game's own pause menu and be in a run of their own by now. Handing
             // over or refusing into that run would take it away from them.
-            if (!ReferenceEquals(entry, _entry)) return;
+            if (!StillOurs(entry)) return;
 
             HandOverTheFight();
         }
         catch (Exception ex)
         {
-            if (!ReferenceEquals(entry, _entry)) return;
+            if (!StillOurs(entry)) return;
             Abandon(ex);
         }
     }
@@ -1218,9 +1242,11 @@ internal static class RecordedFightRun
     /// </summary>
     private static async void TheFightEnded()
     {
+        var entry = _entry;
         try
         {
-            var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
+            if (entry is null) throw new InvalidOperationException("There is no recorded fight under way.");
+
             var capture = entry.Capture
                 ?? throw new InvalidOperationException("The fight ended before its capture began.");
             var screen = FightResultScreen.Of(
@@ -1234,12 +1260,14 @@ internal static class RecordedFightRun
                 (screen.HasComparison ? $"comparison, {screen.Rows.Count} row(s)" : screen.Notice), 2);
 
             await LetTheGameRun(EndingTheFightSeconds);
+            if (!StillOurs(entry)) return;
+
             PlaybackTransportDock.Detach();
             PrefightScreen.ShowResult(screen, LeaveTheFight);
         }
         catch (Exception ex)
         {
-            Abandon(ex);
+            if (StillOurs(entry)) Abandon(ex);
         }
     }
 
