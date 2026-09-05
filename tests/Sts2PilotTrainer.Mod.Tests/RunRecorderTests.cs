@@ -156,6 +156,57 @@ public sealed class RunRecorderTests
         }
     }
 
+    /// <summary>
+    /// A card screen count that never returns to zero is given up on rather than waited
+    /// on for ever.
+    ///
+    /// The losing sequence: a player opens a card screen and leaves the run to the main
+    /// menu with it still up. The task that screen handed back is never completed, so
+    /// the count it took is never given back - it is static, and outlives the run by
+    /// design. The next run's attach then parks in this wait before its own deadline
+    /// exists, `Active` is never assigned, and the whole run goes unrecorded with
+    /// nothing in the log to say why.
+    /// </summary>
+    [GameFact]
+    public async Task AScreenCountThatNeverClearsIsGivenUpOnRatherThanWaitedOnForEver()
+    {
+        var budget = new TaskCompletionSource<bool>();
+        var polls = 0;
+
+        var refusal = await RunRecorder.WaitForScreens(
+            budget.Task,
+            () => 1,
+            () =>
+            {
+                polls++;
+                budget.SetResult(true);
+                return Task.CompletedTask;
+            });
+
+        Assert.NotNull(refusal);
+        Assert.Contains("1 card screen(s) were still open", refusal, StringComparison.Ordinal);
+
+        // It waited, and then it gave up rather than polling on for ever.
+        Assert.Equal(1, polls);
+    }
+
+    /// <summary>And a screen that is answered lets the settle carry on.</summary>
+    [GameFact]
+    public async Task AScreenThatIsAnsweredLetsTheWaitFinish()
+    {
+        var open = 2;
+
+        Assert.Null(await RunRecorder.WaitForScreens(
+            new TaskCompletionSource<bool>().Task,
+            () => open,
+            () =>
+            {
+                open--;
+                return Task.CompletedTask;
+            }));
+        Assert.Equal(0, open);
+    }
+
     [GameFact]
     public void RecordingIsOnUntilSomebodySaysOtherwise()
     {

@@ -51,6 +51,12 @@ internal sealed class RunRecorder : IDisposable
 
     private const double SettlePollSeconds = 0.05;
 
+    /// <summary>How long to wait for the screens in front of the player to be answered.
+    /// Minutes rather than seconds, because a person reading their deck is not the
+    /// engine failing - but a count that never returns to zero is a defect in this
+    /// mod's own bookkeeping and has to say so rather than wait for ever.</summary>
+    private const double ScreenBudgetSeconds = 600.0;
+
     /// <summary>How long to wait for a run to exist after the game said one was
     /// starting. Generous, because continuing a saved run loads a scene.</summary>
     private const double AttachBudgetSeconds = 60.0;
@@ -211,16 +217,23 @@ internal sealed class RunRecorder : IDisposable
                 await poll;
             }
 
+            // Before the settle below rather than after it: that settle waits on this
+            // counter, so a screen left counted by a previous run - one torn down with
+            // the run while it was still up - would have this one wait for a screen
+            // nobody is looking at. No genuine screen is lost by clearing it here,
+            // because every patch that counts one returns early while Active is null.
+            Interlocked.Exchange(ref _screensOpen, 0);
+
             // And then the engine's own work, so the reading is of a settled run rather
             // than one still building the room it just entered.
-            if (!await Settle(null)) return;
+            if (await Settle(null) is { } unsettled)
+            {
+                Log.Warn($"[{RunmobileMod.ModId}] not recording this run: {unsettled}", 2);
+                return;
+            }
 
             if (Active is not null || ProfileWriteBarrier.IsActive) return;
             if (LiveRun.State is not { } run) return;
-
-            // A screen counter left over from a previous run would make every settle in
-            // this one wait for a screen nobody is looking at.
-            Interlocked.Exchange(ref _screensOpen, 0);
 
             var startedUtc = LiveRun.RunStartedUtc();
             var runId = LiveRun.NameRecording(run.Rng.StringSeed, startedUtc);
@@ -264,7 +277,15 @@ internal sealed class RunRecorder : IDisposable
                 Log.Info($"[{RunmobileMod.ModId}] recording this run as {runId}", 2);
             }
 
-            Active = new RunRecorder(capture, journalPath);
+            var recorder = new RunRecorder(capture, journalPath);
+            Active = recorder;
+
+            // A journal whose last decision left a fight live resumes with that fight
+            // still live, and nothing else here would ever ask: the question is asked
+            // after each decision, and a resumed session has not made one yet. Left
+            // unasked, every card play and ended turn of the rest of that fight goes
+            // unrecorded while the recording still reports a continuous watch.
+            recorder.StartOrStopWatchingTheFight();
         }
         catch (Exception ex)
         {
@@ -455,7 +476,7 @@ internal sealed class RunRecorder : IDisposable
             var taken = false;
             try
             {
-                var settled = await Settle(next.EngineWork);
+                var unsettled = await Settle(next.EngineWork);
                 lock (Gate)
                 {
                     if (_disposed)
@@ -468,12 +489,9 @@ internal sealed class RunRecorder : IDisposable
                     taken = true;
                 }
 
-                if (!settled)
+                if (unsettled is not null)
                 {
-                    Refuse(
-                        $"The engine did not settle within " +
-                        $"{SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds after a " +
-                        $"{next.Verb}, so the recorder cannot say what state it left.");
+                    Refuse($"A {next.Verb} could not be read: {unsettled}");
                     continue;
                 }
 
@@ -535,19 +553,66 @@ internal sealed class RunRecorder : IDisposable
     /// is a queue that drains - and a reading taken between them would be of a run
     /// halfway through a decision.
     /// </summary>
-    private static async Task<bool> Settle(Task? engineWork)
+    /// <summary>
+    /// Waits for the screens in front of the player to be answered, and says so if they
+    /// never are.
+    ///
+    /// A person deciding is not an engine failing to settle, which is why this runs
+    /// before the settle budget rather than inside it. Bounded all the same: a screen
+    /// nobody ever answers is a game that has stopped, and a count that never returns to
+    /// zero is this mod having lost track of one - a screen torn down with its run
+    /// leaves its own count behind, and the next run would wait on it for ever with
+    /// nothing said and nothing recorded.
+    ///
+    /// The budget, the count and the poll arrive as arguments for the same reason
+    /// <see cref="PlayerFightObserver.WaitUntilSettled"/>'s do: waiting is a rule about
+    /// three things, and handed them it can be exercised on a machine with no game.
+    /// </summary>
+    /// <returns>Null once no screen is open, or the sentence saying what it gave up
+    /// waiting for.</returns>
+    internal static async Task<string?> WaitForScreens(Task budget, Func<int> open, Func<Task> nextPoll)
     {
-        // A person deciding is not an engine failing to settle, so the budget does not
-        // start until every screen in front of them has been answered. A screen nobody
-        // ever answers is a game that has stopped, which is a bigger problem than a
-        // recording.
-        while (_screensOpen > 0) await RecordedFightRun.LetTheGameRun(SettlePollSeconds);
+        while (open() > 0)
+        {
+            if (budget.IsCompleted)
+            {
+                return
+                    $"{open().ToString(CultureInfo.InvariantCulture)} card screen(s) were still open " +
+                    $"{ScreenBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds after the recorder " +
+                    "began waiting for them, so it never got to read the state this decision left.";
+            }
+
+            var poll = nextPoll();
+            if (await Task.WhenAny(poll, budget) != poll) continue;
+            await poll;
+        }
+
+        return null;
+    }
+
+    /// <returns>Null once the engine has settled, or the sentence saying what it was
+    /// still waiting for. The two waits time out for different reasons and a caller
+    /// that reported either as the other would send somebody looking in the wrong
+    /// place.</returns>
+    private static async Task<string?> Settle(Task? engineWork)
+    {
+        if (await WaitForScreens(
+                RecordedFightRun.LetTheGameRun(ScreenBudgetSeconds),
+                () => Volatile.Read(ref _screensOpen),
+                () => RecordedFightRun.LetTheGameRun(SettlePollSeconds)) is { } waiting)
+        {
+            return waiting;
+        }
 
         var deadline = RecordedFightRun.LetTheGameRun(SettleBudgetSeconds);
+        var unsettled =
+            $"The engine did not settle within " +
+            $"{SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds, so the recorder cannot say " +
+            "what state this decision left.";
 
         if (engineWork is not null && !engineWork.IsCompleted)
         {
-            if (await Task.WhenAny(engineWork, deadline) != engineWork) return false;
+            if (await Task.WhenAny(engineWork, deadline) != engineWork) return unsettled;
         }
 
         // The queue is asked twice with a tick between, because a decision that has not
@@ -555,18 +620,18 @@ internal sealed class RunRecorder : IDisposable
         var idleTicks = 0;
         while (idleTicks < 2)
         {
-            if (deadline.IsCompleted) return false;
+            if (deadline.IsCompleted) return unsettled;
 
             var poll = RecordedFightRun.LetTheGameRun(SettlePollSeconds);
-            if (await Task.WhenAny(poll, deadline) != poll) return false;
+            if (await Task.WhenAny(poll, deadline) != poll) return unsettled;
             await poll;
 
             var manager = RunManager.Instance;
-            if (manager is null || !manager.IsInProgress) return false;
+            if (manager is null || !manager.IsInProgress) return "The run ended while the recorder was reading it.";
             idleTicks = !manager.ActionExecutor.IsRunning && manager.ActionQueueSet.IsEmpty ? idleTicks + 1 : 0;
         }
 
-        return true;
+        return null;
     }
 
     /// <summary>
@@ -694,7 +759,22 @@ internal sealed class RunRecorder : IDisposable
     {
         if (_capture.Fight is not null && _observer is null)
         {
-            if (LiveRun.State is not { Players.Count: > 0 } run) return;
+            // Refused rather than returned from: a fight the recording holds open and
+            // nothing is watching is the silent gap this whole path exists to close.
+            // In a fight is what the observer needs to attach at all, and after a
+            // decision it is true by construction - the sample that opened the fight
+            // said so - so the disagreement is reachable only on a resumed session
+            // whose game came back somewhere the journal does not describe.
+            if (!InAFight() || LiveRun.State is not { Players.Count: > 0 } run)
+            {
+                Refuse(
+                    "The recording holds a fight open and this game is not in one the recorder can watch, so " +
+                    "every decision left in that fight would go unrecorded.");
+                _capture.Fight?.MarkIncomplete(
+                    "The recorder picked this run back up somewhere it could not watch the fight from.");
+                return;
+            }
+
             // The recorder draws nothing, so it has nothing to re-derive when a sample
             // is taken; the transport's callback is the Combat Trainer's.
             _observer = PlayerFightObserver.Start(
