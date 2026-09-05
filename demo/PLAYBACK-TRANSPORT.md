@@ -247,7 +247,10 @@ the chip's press target is *present, silent and pressable* - the whole plate, ta
 input while drawing nothing but the hover and focus rim.
 
 At turn one with nothing played there is no attempt to finish, so the second row is
-refused and says why.
+refused - and, as the picture shows, silent about it. Decided by the project's
+coordinating owner: this is the only refused row that exists, it clears through the
+very action the player is already there to take, and a permanent explanation for a
+state that resolves itself in seconds costs more attention than it saves.
 
 ```bash {image}
 ![The chip pressed, carrying a gold rim, with a two-row menu hanging beneath it: "Jump to the beginning" bright and offered against a circular-arrow glyph, and "Jump to the end" dim and refused against a double-triangle glyph.](transport-chip-menu.png)

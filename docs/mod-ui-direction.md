@@ -94,13 +94,19 @@ One rule carries meaning rather than decoration: **a filled shape moves the run,
 Looking back, with a ledger of the decisions already made hung beneath - it exists because those screens are gone, and the run must never be rewound to answer for them.
 Opening, between the last recorded choice and the fight it leads to: the tag stays exactly where it was and everything that would move the run is refused, because a run with nothing left to commit must not still be offering to commit it. The speed control is not refused there - it does not move the run.
 The chip during the player's own fight: the mark and the name, silent until pressed.
+It stays exactly as it is for the couple of seconds between the fight ending and the result panel arriving, drawn and pressable, with both of its rows refused - both act on a fight that no longer exists.
 Refused: the mark becomes the warning glyph and every control is drawn and refused, the speed control included - in the model.
 It is not on screen today: the teardown applies the refused state and detaches the tag inside one call stack, so no frame is ever drawn with it.
 The state stays because it is what keeps the derivation total - every phase a journey can be in has an answer - and the sentence a player actually reads on a refusal is the popup's.
 Whether to make the refused tag visible, by holding it on screen across the return to the menu, is open rather than settled either way.
 
 **The chip offers two directions and no third.** Jump to the beginning rebuilds the run to the proven combat start; jump to the end finishes the attempt where it is.
-Both leave the attempt, so both ask through the game's own confirmation popup first.
+Both leave the attempt, so both ask through the game's own confirmation popup first, and both are refused once the fight has ended.
+**A refused menu row says nothing** - no reason text, no tooltip.
+Decided by the project's coordinating owner: the only refused row that exists is jump to the end at turn one, refused because there is no result until the player has played, and that clears through the very action the player is already there to take.
+A permanent explanation for a state that resolves itself in seconds costs more attention than it saves, and drawing one would mean inventing a layout for reason text in a menu row that nobody has approved.
+A tooltip was weighed as a middle path and rejected: a tooltip answers a player who already suspects something is broken, and nothing here is broken.
+A refused *control* is the other case and keeps its tooltip, which says why where a reason has been written for it.
 There is no watch row and no comparison inside a fight: the captain's ruling is that a player diverges from the recorded line almost at once, so the comparison points are the whole recorded fight watched and the finished fight's result.
 
 **Refusals read as a player's sentence**, with the engine's exact diagnostic behind a details fold and always in the log.

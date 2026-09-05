@@ -129,6 +129,31 @@ public sealed class TransportSurfaceTests
                 .Surface.Title.Presence);
     }
 
+    /// <summary>
+    /// A recording with no video carries no tooltip on its identity block.
+    ///
+    /// A disabled Godot button still raises its tooltip on hover, so a block left
+    /// holding the linked wording would promise to open a video the manifest does not
+    /// have - which a recording made inside the player's own game never does.
+    /// </summary>
+    [Fact]
+    public void AnIdentityWithNoVideoSaysNothingOnHover()
+    {
+        var noVideo = new TransportIdentity("NaveGreed", null, null, null);
+        var identity = PlaybackTransport.For(JourneyPhase.Watching, Facts(identity: noVideo, next: Blessing))!
+            .Surface.Identity;
+
+        Assert.Equal(Presence.Drawn, identity.Presence);
+        Assert.False(identity.Pressable);
+        Assert.Equal(string.Empty, identity.TooltipTitle);
+        Assert.Equal(string.Empty, identity.TooltipBody);
+
+        // A recording that does have one still says what pressing it does.
+        var linked = PlaybackTransport.For(JourneyPhase.Watching, Facts(next: Blessing))!.Surface.Identity;
+        Assert.True(linked.Pressable);
+        Assert.NotEqual(string.Empty, linked.TooltipBody);
+    }
+
     /// <summary>Where in the recording's decisions this is. Gone once the decisions
     /// are behind the run and the fight is the player's.</summary>
     [Theory]

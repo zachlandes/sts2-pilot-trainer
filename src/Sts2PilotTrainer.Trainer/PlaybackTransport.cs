@@ -69,7 +69,9 @@ public enum TransportGlyph
 /// Icon only, by the captain's ruling that progressive disclosure is the game's own
 /// principle: the words live in the tooltip, which is why one is required here and a
 /// label is not offered. A control that is not on offer is still drawn - buttons that
-/// move about between decisions cannot be aimed at - and says why it is refused.
+/// move about between decisions cannot be aimed at - and says why it is refused where
+/// a reason has been written. The two between-screens windows deliberately have none,
+/// so there the tooltip goes on saying what the control does.
 /// </summary>
 public sealed record TransportControl(
     TransportGlyph Glyph, bool Enabled, string TooltipTitle, string TooltipBody, string? DisabledReason = null);
@@ -86,7 +88,8 @@ public sealed record TransportIdentity(
     string Creator, string? VideoTitle, string? VideoUrl, string? OpensAt)
 {
     /// <summary>Whether pressing the block opens anything. False on a recording whose
-    /// manifest carries no timestamp for this decision.</summary>
+    /// manifest carries no video at all, which a recording made inside the player's
+    /// own game does not.</summary>
     public bool IsLink => VideoUrl is not null;
 
     public string TooltipTitle => VideoTitle is null ? Creator : $"{Creator} · {VideoTitle}";
@@ -129,10 +132,21 @@ public sealed record TransportCounter(int Current, int Count, int? LookingAt)
 /// </summary>
 public sealed record LedgerRow(int Number, string ArtModelId, string Label, bool IsCurrent, bool IsLookedAt);
 
-/// <summary>One row of a menu hung under the tag or the chip.</summary>
+/// <summary>
+/// One row of a menu hung under the tag or the chip.
+///
+/// A refused row says nothing, which is why there is nowhere here to put a reason.
+/// Decided by the project's coordinating owner: the only refused row that exists is
+/// jump to the end at turn one, refused because there is no result until the player
+/// has played, and that clears through the very action the player is already there to
+/// take. A permanent explanation for a state that resolves itself in seconds costs
+/// more attention than it saves, and drawing one would mean inventing a layout for
+/// reason text in a menu row that nobody has approved. A tooltip was weighed as a
+/// middle path and rejected: a tooltip answers a player who already suspects
+/// something is broken, and nothing here is broken.
+/// </summary>
 public sealed record MenuRow(
-    TransportGlyph? Glyph, string Label, bool Enabled = true, string? DisabledReason = null,
-    bool IsCurrent = false);
+    TransportGlyph? Glyph, string Label, bool Enabled = true, bool IsCurrent = false);
 
 /// <summary>
 /// How fast Play runs.
@@ -391,9 +405,15 @@ public sealed record PlaybackTransport(
         _ => throw new ManifestException($"The transport has no surface for {Mode}."),
     };
 
-    private ElementSurface IdentityElement(bool pressable) => new(
-        Presence.Drawn, pressable, Press.OpenVideo, Glyph: null,
-        Identity.TooltipTitle, Identity.TooltipBody);
+    // A block with nothing to open carries no tooltip rather than a sentence promising
+    // a video the manifest does not have. A disabled Godot button still raises its
+    // tooltip on hover, so the words have to be withheld here rather than left to
+    // pressability.
+    private ElementSurface IdentityElement(bool pressable) => Identity.IsLink
+        ? new ElementSurface(
+            Presence.Drawn, pressable, Press.OpenVideo, Glyph: null,
+            Identity.TooltipTitle, Identity.TooltipBody)
+        : new ElementSurface(Presence.Drawn, false, Press.None);
 
     private ElementSurface SpeedElement(bool pressable) => new(
         Presence.Drawn, pressable, Press.OpenSpeedMenu, Glyph: null,
@@ -570,9 +590,7 @@ public sealed record PlaybackTransport(
             ChipMenu:
             [
                 new MenuRow(TransportGlyph.Again, TrainerCopy.JumpToTheBeginning, !fightOver),
-                new MenuRow(
-                    TransportGlyph.Jump, TrainerCopy.JumpToTheEnd, anythingPlayed && !fightOver,
-                    !fightOver && !anythingPlayed ? TrainerCopy.NothingPlayedYet : null),
+                new MenuRow(TransportGlyph.Jump, TrainerCopy.JumpToTheEnd, anythingPlayed && !fightOver),
             ]);
 
     /// <summary>

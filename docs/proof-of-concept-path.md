@@ -427,7 +427,9 @@ things a wider playback design depends on.
   a decision already made without rewinding anything.
   During the player's own fight the strip collapses to a chip that says nothing until
   it is pressed, and offers two directions when it is: back to the proven combat
-  start, or to the end of the attempt. Both leave the attempt and both confirm first.
+  start, or to the end of the attempt. Both leave the attempt and both confirm first,
+  and both are refused - silently - once the fight has ended and its result is waiting
+  to be shown.
 
 **Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json`
 prints, for each recorded decision, exactly what the transport says and what it would

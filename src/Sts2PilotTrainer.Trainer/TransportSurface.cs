@@ -56,7 +56,8 @@ public enum MenuKind
 /// Present, drawn, pressable - in that order, because each only means anything given
 /// the one before it. "Present but not drawn" is the chip's press target; "present,
 /// drawn, not pressable" is a refused control, which the design says stays where it
-/// is and says why; "absent" is the only state that hides the node.
+/// is and, where a reason has been written for it, says why; "absent" is the only
+/// state that hides the node.
 /// </summary>
 /// <param name="Pressable">Whether input reaches it. Meaningless while
 /// <paramref name="Presence"/> is <see cref="Presence.Absent"/>, and always false

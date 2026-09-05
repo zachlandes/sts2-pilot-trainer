@@ -233,14 +233,13 @@ public sealed class PlaybackTransportTests
     }
 
     /// <summary>At turn one with nothing played there is no attempt to finish, so the
-    /// end is refused and says why rather than producing an empty result.</summary>
+    /// end is refused, silently, rather than producing an empty result.</summary>
     [Fact]
     public void JumpingToTheEndIsRefusedBeforeATurnHasBeenPlayed()
     {
         var menu = For(JourneyPhase.InFight, anythingPlayed: false).ChipMenu;
 
         Assert.False(menu[1].Enabled);
-        Assert.Equal("You have not played a turn yet.", menu[1].DisabledReason);
         Assert.True(menu[0].Enabled);
     }
 

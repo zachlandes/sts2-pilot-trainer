@@ -1010,7 +1010,9 @@ internal sealed class PlaybackTransportStrip
     /// The words live here because the controls are icon only: the captain's ruling
     /// is that progressive disclosure is the game's own principle, so the glyph
     /// carries the meaning and the sentence is one hover away. A refused control still
-    /// has one, and it says why it is refused rather than repeating what it would do.
+    /// has one, and where a reason has been written it says why it is refused rather
+    /// than repeating what it would do; the between-screens windows have none by
+    /// design, and an element with nothing to say carries no tooltip at all.
     /// </summary>
     private void Wire(Button button, Func<ElementSurface> element)
     {
