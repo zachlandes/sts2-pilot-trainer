@@ -1466,21 +1466,46 @@ internal sealed class RunRecorder : IDisposable
     /// about the game that both features read - and which card came off which offered
     /// list is this one's, so the recorder subscribes rather than patching the screen a
     /// second time.
+    ///
+    /// Which is also why each handler carries its own try/catch: what a failure to read
+    /// an answer means is this feature's to say, and it says it by marking the recording
+    /// broken and writing the sentence into the journal. Left to the shell's guard it
+    /// would be a log line, and the recording would carry on missing a decision while
+    /// still reporting a continuous watch - a claim nobody established.
     /// </summary>
     internal static void ReadTheAnswers()
     {
         CardScreensUp.GridAnswered = (screen, chosen) =>
         {
-            if (OfferedCards(screen) is { } offered) CardScreenAnswered(offered, chosen);
-            else
+            try
             {
-                Active?.Refuse(
-                    "A card screen answered and this build does not expose what it offered, so the " +
-                    "recorder cannot say which option was picked.");
+                if (OfferedCards(screen) is { } offered) CardScreenAnswered(offered, chosen);
+                else
+                {
+                    Refuse(
+                        "A card screen answered and this build does not expose what it offered, so the " +
+                        "recorder cannot say which option was picked.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Refuse($"A card screen's answer could not be read: {ex.GetType().Name}: {ex.Message}");
             }
         };
 
-        CardScreensUp.RewardAnswered = option => CardRewardAnswered(CardRewardScreen.Offered, option);
+        CardScreensUp.RewardAnswered = option =>
+        {
+            try
+            {
+                CardRewardAnswered(CardRewardScreen.Offered, option);
+            }
+            catch (Exception ex)
+            {
+                Refuse($"A card reward's answer could not be read: {ex.GetType().Name}: {ex.Message}");
+            }
+        };
+
+        static void Refuse(string reason) => Active?.Refuse(reason);
     }
 
     /// <summary>The list a grid screen was built with. Read by name and refused loudly
