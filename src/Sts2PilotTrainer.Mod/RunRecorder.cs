@@ -48,6 +48,10 @@ internal sealed class RunRecorder : IDisposable
 
     private const double SettlePollSeconds = 0.05;
 
+    /// <summary>How long to wait for a run to exist after the game said one was
+    /// starting. Generous, because continuing a saved run loads a scene.</summary>
+    private const double AttachBudgetSeconds = 60.0;
+
     /// <summary>Where a recording lives in the store, under the profile scope.</summary>
     internal const string RecordingsDirectory = "recordings";
 
@@ -169,17 +173,51 @@ internal sealed class RunRecorder : IDisposable
         recorder.Dispose();
     }
 
+    /// <summary>
+    /// Waits for the run to be a run, then attaches to it.
+    ///
+    /// Two things have to have happened before the opening reading is worth taking.
+    /// The run has to exist: continuing a saved run is asynchronous, so the method that
+    /// starts it returns long before the game has one. And the run has to have entered
+    /// its first room, because that is where the headless replay's own opening reading
+    /// is taken - <c>RunDriver.EnterFirstRoom</c> before the first action - and a
+    /// reading taken on the near side of it would describe a floor the recording then
+    /// claims to arrive on.
+    /// </summary>
     private static async Task AttachWhenReady()
     {
-        // One tick, so the run the game has just set up is finished being set up. The
-        // reading taken here is the run's opening state, and a reading taken during
-        // construction would describe a run that did not exist yet.
-        await RecordedFightRun.LetTheGameRun(SettlePollSeconds);
+        var deadline = RecordedFightRun.LetTheGameRun(AttachBudgetSeconds);
+        while (true)
+        {
+            if (Active is not null || ProfileWriteBarrier.IsActive) return;
+            if (LiveRun.State is not null && Floor(LiveRun.Sample()) >= 1) break;
+
+            if (deadline.IsCompleted)
+            {
+                Log.Warn(
+                    $"[{RunmobileMod.ModId}] no run had begun " +
+                    $"{AttachBudgetSeconds.ToString(CultureInfo.InvariantCulture)}s after the game said one " +
+                    "was starting, so this one is not being recorded.", 2);
+                return;
+            }
+
+            var poll = RecordedFightRun.LetTheGameRun(SettlePollSeconds);
+            if (await Task.WhenAny(poll, deadline) != poll) continue;
+            await poll;
+        }
+
+        // And then the engine's own work, so the reading is of a settled run rather
+        // than one still building the room it just entered.
+        if (!await Settle(null)) return;
 
         try
         {
             if (Active is not null || ProfileWriteBarrier.IsActive) return;
             if (LiveRun.State is not { } run) return;
+
+            // A screen counter left over from a previous run would make every settle in
+            // this one wait for a screen nobody is looking at.
+            Interlocked.Exchange(ref _screensOpen, 0);
 
             var startedUtc = LiveRun.RunStartedUtc();
             var runId = LiveRun.NameRecording(run.Rng.StringSeed, startedUtc);
@@ -371,6 +409,7 @@ internal sealed class RunRecorder : IDisposable
                 next = _pending.Peek();
             }
 
+            var taken = false;
             try
             {
                 var settled = await Settle(next.EngineWork);
@@ -383,6 +422,7 @@ internal sealed class RunRecorder : IDisposable
                     }
 
                     _pending.Dequeue();
+                    taken = true;
                 }
 
                 if (!settled)
@@ -398,9 +438,15 @@ internal sealed class RunRecorder : IDisposable
             }
             catch (Exception ex)
             {
-                lock (Gate)
+                // Only this decision is dropped. Taking another off the queue here
+                // would lose one nobody has looked at yet, which is how a history ends
+                // up missing a decision it never even refused.
+                if (!taken)
                 {
-                    if (_pending.Count > 0) _pending.Dequeue();
+                    lock (Gate)
+                    {
+                        if (_pending.Count > 0) _pending.Dequeue();
+                    }
                 }
 
                 Refuse($"A {next.Verb} could not be recorded: {ex.GetType().Name}: {ex.Message}");
@@ -735,6 +781,13 @@ internal sealed class RunRecorder : IDisposable
             args.ToDictionary(arg => arg.Name, arg => arg.Value, StringComparer.Ordinal), StringComparer.Ordinal);
 
     private static string Number(int value) => value.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Which floor a sampled reading is of, or -1 where it does not say.</summary>
+    private static int Floor(IReadOnlyDictionary<string, string> sample) =>
+        sample.TryGetValue("run.total_floor", out var value) &&
+        int.TryParse(value, System.Globalization.NumberStyles.Integer, CultureInfo.InvariantCulture, out var floor)
+            ? floor
+            : -1;
 
     // ── The patches ──────────────────────────────────────────────────────────────
     //
