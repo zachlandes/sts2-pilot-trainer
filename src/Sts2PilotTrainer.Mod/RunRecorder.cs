@@ -236,7 +236,11 @@ internal sealed class RunRecorder : IDisposable
 
             // And then the engine's own work, so the reading is of a settled run rather
             // than one still building the room it just entered.
-            if (await Settle(null, () => Active is not null || ProfileWriteBarrier.IsActive) is { } unsettled)
+            if (await Settle(
+                    null,
+                    () => Active is not null || ProfileWriteBarrier.IsActive
+                        ? "another recording or a trainer run took this game first."
+                        : RunWentAway()) is { } unsettled)
             {
                 Log.Warn($"[{RunmobileMod.ModId}] not recording this run: {unsettled}", 2);
                 return;
@@ -452,33 +456,65 @@ internal sealed class RunRecorder : IDisposable
     internal static int ScreensOpen => Volatile.Read(ref _screensOpen);
 
     /// <summary>
-    /// Waits for the screens in front of the player to come down, or for there to be no
-    /// recording left to wait for.
+    /// Waits for the engine to finish, giving it no credit for time a person spent at a
+    /// card screen.
     ///
-    /// The count, the stop and the poll arrive as arguments for the same reason
-    /// <see cref="PlayerFightObserver.WaitUntilSettled"/>'s do: waiting is a rule about
-    /// those three things, and handed them it can be exercised on a machine with no
-    /// game. <paramref name="stopped"/> is what keeps a wait on a person from outliving
-    /// the run it was waiting for.
+    /// <em>The engine's budget measures only the engine's own time.</em> That is the one
+    /// rule here, and it is why the screen count and the budget are read by the same
+    /// loop rather than one before the other. A screen that is up suspends the budget;
+    /// when it comes down the engine gets the whole of it, counted from that moment. It
+    /// has to hold however many screens one decision puts up - a card reward whose hook
+    /// allows a second card closes its screen and opens another, and a budget started
+    /// before the first would be charging the player for the second.
+    ///
+    /// A person deciding is given no budget at all, so <paramref name="stopped"/> is
+    /// what keeps a wait on one from outliving the run it was waiting for. It returns
+    /// the reason rather than a flag, because the two callers stop for different reasons
+    /// and a sentence written for one of them would be false in the other.
+    ///
+    /// The count, the stop, the poll and the budget arrive as arguments for the same
+    /// reason <see cref="PlayerFightObserver.WaitUntilSettled"/>'s do: waiting is a rule
+    /// about those things, and handed them it can be exercised on a machine with no game.
     /// </summary>
-    /// <returns>Null once no screen is open, or the sentence saying why it stopped
-    /// waiting.</returns>
-    internal static async Task<string?> WaitForScreens(
-        Func<int> open, Func<bool> stopped, Func<Task> nextPoll)
+    /// <returns>Null once the engine has settled, or the sentence saying why the wait
+    /// ended without it.</returns>
+    internal static async Task<string?> WaitForTheEngine(
+        Func<int> open,
+        Func<string?> stopped,
+        Func<bool> idle,
+        Func<Task> newBudget,
+        Func<Task> nextPoll,
+        string unsettled)
     {
-        while (open() > 0)
+        Task? budget = null;
+        var idleTicks = 0;
+
+        while (true)
         {
-            if (stopped())
+            if (stopped() is { } why) return why;
+
+            if (open() > 0)
             {
-                return
-                    $"The recording ended with {open().ToString(CultureInfo.InvariantCulture)} card screen(s) " +
-                    "still open, so this decision was never read.";
+                // The budget is discarded rather than paused, so the next one starts
+                // from the moment the last screen comes down. A screen that goes up a
+                // second time is a second stretch of somebody thinking, and the engine
+                // gets its whole budget back either way.
+                budget = null;
+                idleTicks = 0;
+                await nextPoll();
+                continue;
             }
 
-            await nextPoll();
-        }
+            budget ??= newBudget();
+            if (budget.IsCompleted) return unsettled;
 
-        return null;
+            await nextPoll();
+
+            // A screen that went up during the poll scores no idle tick; the top of the
+            // loop then throws the budget away.
+            idleTicks = open() == 0 && idle() ? idleTicks + 1 : 0;
+            if (idleTicks >= 2) return null;
+        }
     }
 
     /// <summary>A card reward screen answered, by the position it reports.</summary>
@@ -541,7 +577,11 @@ internal sealed class RunRecorder : IDisposable
             var taken = false;
             try
             {
-                var unsettled = await Settle(next.EngineWork, () => _disposed || _finished);
+                var unsettled = await Settle(
+                    next.EngineWork,
+                    () => _disposed || _finished
+                        ? "The recording ended before this decision could be read."
+                        : RunWentAway());
                 lock (Gate)
                 {
                     // A wait that ended because there is no recording left has nothing
@@ -621,52 +661,31 @@ internal sealed class RunRecorder : IDisposable
     /// is a queue that drains - and a reading taken between them would be of a run
     /// halfway through a decision.
     /// </summary>
-    /// <param name="stopped">Whether there is still a recording to settle for. A person
-    /// at a card screen is given no budget, so this is the only thing that ends that
-    /// wait short of the screen coming down; <see cref="_screensOpen"/> says why.</param>
+    /// <param name="stopped">Why there is no longer a recording to settle for, or null
+    /// while there still is. <see cref="WaitForTheEngine"/> says why it is a sentence.</param>
     /// <returns>Null once the engine has settled, or the sentence saying what it was
     /// still waiting for.</returns>
-    private static async Task<string?> Settle(Task? engineWork, Func<bool> stopped)
-    {
-        // A person deciding is not an engine failing to settle, so the budget below does
-        // not start until every screen in front of them has been answered.
-        if (await WaitForScreens(
-                () => Volatile.Read(ref _screensOpen),
-                stopped,
-                () => RecordedFightRun.LetTheGameRun(SettlePollSeconds)) is { } waiting)
-        {
-            return waiting;
-        }
-
-        var deadline = RecordedFightRun.LetTheGameRun(SettleBudgetSeconds);
-        var unsettled =
+    private static Task<string?> Settle(Task? engineWork, Func<string?> stopped) =>
+        WaitForTheEngine(
+            () => ScreensOpen,
+            stopped,
+            // The queue is asked twice with a tick between, because a decision that has
+            // not enqueued its work yet reads as an engine with nothing to do.
+            () => (engineWork is null || engineWork.IsCompleted) &&
+                  RunManager.Instance is { ActionExecutor.IsRunning: false } manager &&
+                  manager.ActionQueueSet.IsEmpty,
+            () => RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
+            () => RecordedFightRun.LetTheGameRun(SettlePollSeconds),
             $"The engine did not settle within " +
-            $"{SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds, so the recorder cannot say " +
-            "what state this decision left.";
+            $"{SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds of the last card screen " +
+            "closing, so the recorder cannot say what state this decision left.");
 
-        if (engineWork is not null && !engineWork.IsCompleted)
-        {
-            if (await Task.WhenAny(engineWork, deadline) != engineWork) return unsettled;
-        }
-
-        // The queue is asked twice with a tick between, because a decision that has not
-        // enqueued its work yet reads as an engine with nothing to do.
-        var idleTicks = 0;
-        while (idleTicks < 2)
-        {
-            if (deadline.IsCompleted) return unsettled;
-
-            var poll = RecordedFightRun.LetTheGameRun(SettlePollSeconds);
-            if (await Task.WhenAny(poll, deadline) != poll) return unsettled;
-            await poll;
-
-            var manager = RunManager.Instance;
-            if (manager is null || !manager.IsInProgress) return "The run ended while the recorder was reading it.";
-            idleTicks = !manager.ActionExecutor.IsRunning && manager.ActionQueueSet.IsEmpty ? idleTicks + 1 : 0;
-        }
-
-        return null;
-    }
+    /// <summary>Why a settle should stop because the run itself went away, or null while
+    /// it is still being played.</summary>
+    private static string? RunWentAway() =>
+        RunManager.Instance is { IsInProgress: true }
+            ? null
+            : "The run ended while the recorder was reading it.";
 
     /// <summary>
     /// Writes one decision, and the card-screen picks it pulled out of the player,
