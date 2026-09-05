@@ -1,10 +1,36 @@
 # no-mistakes pre-push gate. commands.{test,lint,format} run on the daemon via
 # `sh -c` and are read ONLY from the default branch (anti-RCE) - land changes to
 # them on main. Leave a command empty to let the gate's agent auto-detect it.
+#
+# Every command prepares the tree first, because a run gets a fresh worktree
+# where build/ does not exist and no command may rely on another having run
+# before it. There is no per-run setup hook to hang a single preparation on, and
+# the one run that ever got past this did so because an earlier step happened to
+# leave build/lib behind. Each command asks for the least it needs:
+#
+#   test   ./scripts/build.sh, then ./scripts/fetch-baselib-parity.sh.
+#          Bootstrapping alone is not enough. It clears both csproj guards and
+#          the run goes green, but `dotnet test` never builds the arbiter CLI -
+#          nothing in the solution references it - and Arbiter.GameAvailable
+#          wants that CLI as well as build/lib, so every integration test skips.
+#          On a cold tree that is 119 tests reporting green without running.
+#          The parity fixture is the same failure in miniature: without it the
+#          two publication-gate tests skip and the run still reports green.
+#   lint   ./scripts/bootstrap.sh. It only needs build/lib to exist; its own
+#          `dotnet build` covers the rest, including the CLI.
+#   format ./scripts/bootstrap.sh. It does not fail without build/lib, it
+#          quietly loads Engine, Mod and Cli with unresolvable references and
+#          analyses a broken compilation.
+#
+# scripts/bootstrap.sh reads the local game install, needs no network and no
+# credentials, is idempotent, and takes about two seconds either way.
+# scripts/fetch-baselib-parity.sh is the one part that reaches the network, and
+# only when its digest-pinned copy is missing or wrong; a gate that cannot reach
+# GitHub could not push either way.
 commands:
-  test: "dotnet test sts2-pilot-trainer.sln -c Release --nologo"
-  lint: "dotnet build sts2-pilot-trainer.sln -c Release --nologo -warnaserror"
-  format: "dotnet format sts2-pilot-trainer.sln --verify-no-changes"
+  test: "./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && dotnet test sts2-pilot-trainer.sln -c Release --nologo"
+  lint: "./scripts/bootstrap.sh && dotnet build sts2-pilot-trainer.sln -c Release --nologo -warnaserror"
+  format: "./scripts/bootstrap.sh && dotnet format sts2-pilot-trainer.sln --verify-no-changes"
 
 ignore_patterns:
   - "*.lock"

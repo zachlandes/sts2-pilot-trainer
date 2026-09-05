@@ -60,26 +60,26 @@ internal static partial class Commands
             var restorePath = EvidenceArtifact.Prepare(
                 workspace, "snapshot-restore-probe.restore.json").Path;
 
-        var capture = RunPhase<SnapshotRestoreCapture>(
-            capturePath,
-            "snapshot-restore-probe", manifestPath, "--phase", "capture",
-            "--stop-after", combatStart.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            "--save", savePath, "--out", capturePath);
-        if (capture is null) return 1;
+            var capture = RunPhase<SnapshotRestoreCapture>(
+                capturePath,
+                "snapshot-restore-probe", manifestPath, "--phase", "capture",
+                "--stop-after", combatStart.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                "--save", savePath, "--out", capturePath);
+            if (capture is null) return 1;
 
-        var restoration = RunPhase<SnapshotRestoreRestoration>(
-            restorePath,
-            "snapshot-restore-probe", manifestPath, "--phase", "restore",
-            "--save", savePath, "--out", restorePath);
-        if (restoration is null) return 1;
+            var restoration = RunPhase<SnapshotRestoreRestoration>(
+                restorePath,
+                "snapshot-restore-probe", manifestPath, "--phase", "restore",
+                "--save", savePath, "--out", restorePath);
+            if (restoration is null) return 1;
 
-        if (control is not null)
-        {
-            (capture, restoration) = Engine.SnapshotRestoreProbe.ApplyControl(control, capture, restoration);
-            Console.WriteLine(
-                $"control         : {control} - both states damaged into the same unreadable-room-set " +
-                "reading, so their digests agree and mean nothing");
-        }
+            if (control is not null)
+            {
+                (capture, restoration) = Engine.SnapshotRestoreProbe.ApplyControl(control, capture, restoration);
+                Console.WriteLine(
+                    $"control         : {control} - both states damaged into the same unreadable-room-set " +
+                    "reading, so their digests agree and mean nothing");
+            }
 
             var report = Engine.SnapshotRestoreProbe.Compare(
                 Path.GetFileName(manifestPath), capture, restoration);
@@ -101,55 +101,55 @@ internal static partial class Commands
                 reportArtifact.WriteAtomic(JsonSerializer.Serialize(report, Json.Indented) + "\n");
             }
 
-        Console.WriteLine($"manifest        : {report.RunId}");
-        Console.WriteLine($"combat starts   : after action {report.CombatStartSeq}");
-        Console.WriteLine(
-            $"run save        : schema v{report.SaveSchemaVersion}, {report.SaveByteCount} bytes, " +
-            $"{report.SaveSha256}");
-        Console.WriteLine($"replayed state  : {report.ReplayedDigest}");
-        Console.WriteLine($"                  {report.ReplayedFieldCount} fields, act room set " +
-                          $"{report.ReplayedActRoomSet.Reading}");
+            Console.WriteLine($"manifest        : {report.RunId}");
+            Console.WriteLine($"combat starts   : after action {report.CombatStartSeq}");
+            Console.WriteLine(
+                $"run save        : schema v{report.SaveSchemaVersion}, {report.SaveByteCount} bytes, " +
+                $"{report.SaveSha256}");
+            Console.WriteLine($"replayed state  : {report.ReplayedDigest}");
+            Console.WriteLine($"                  {report.ReplayedFieldCount} fields, act room set " +
+                              $"{report.ReplayedActRoomSet.Reading}");
 
-        foreach (var stage in report.Stages)
-        {
-            Console.WriteLine();
-            Console.WriteLine($"restored ({stage.Stage}): {stage.RestoredDigest}");
-            Console.WriteLine($"                  {stage.RestoredFieldCount} fields, act room set " +
-                              $"{stage.RestoredActRoomSet.Reading}");
-            Console.WriteLine($"                  {stage.AgreeingFieldCount} field(s) agree, " +
-                              $"{stage.DifferingFields.Count} differ");
-            foreach (var difference in stage.DifferingFields)
+            foreach (var stage in report.Stages)
             {
-                Console.WriteLine($"                    {difference.Field}: {Abbreviate(difference.Replayed)} " +
-                                  $"-> {Abbreviate(difference.Restored)}");
+                Console.WriteLine();
+                Console.WriteLine($"restored ({stage.Stage}): {stage.RestoredDigest}");
+                Console.WriteLine($"                  {stage.RestoredFieldCount} fields, act room set " +
+                                  $"{stage.RestoredActRoomSet.Reading}");
+                Console.WriteLine($"                  {stage.AgreeingFieldCount} field(s) agree, " +
+                                  $"{stage.DifferingFields.Count} differ");
+                foreach (var difference in stage.DifferingFields)
+                {
+                    Console.WriteLine($"                    {difference.Field}: {Abbreviate(difference.Replayed)} " +
+                                      $"-> {Abbreviate(difference.Restored)}");
+                }
             }
-        }
 
-        foreach (var refusal in report.Refusals)
-        {
-            Console.Error.WriteLine();
-            Console.Error.WriteLine(refusal);
-        }
+            foreach (var refusal in report.Refusals)
+            {
+                Console.Error.WriteLine();
+                Console.Error.WriteLine(refusal);
+            }
 
-        Console.WriteLine();
-        Console.WriteLine(report.Answer);
-        Console.WriteLine();
-        Console.WriteLine($"report: {Paths.Display(reportArtifact.Path)}");
+            Console.WriteLine();
+            Console.WriteLine(report.Answer);
+            Console.WriteLine();
+            Console.WriteLine($"report: {Paths.Display(reportArtifact.Path)}");
 
-        // A refused comparison is a failure; a measured disagreement is a result. The
-        // probe exists to find out which of the two answers is true, so answering
-        // "not restorable" is a successful run of it.
-        //
-        // Under a control the expectation is inverted: the control exists to be
-        // refused, and a control that produced an answer is the failure.
-        if (control is null) return report.Refusals.Count > 0 ? 1 : 0;
-        if (report.Refusals.Count > 0) return 0;
+            // A refused comparison is a failure; a measured disagreement is a result. The
+            // probe exists to find out which of the two answers is true, so answering
+            // "not restorable" is a successful run of it.
+            //
+            // Under a control the expectation is inverted: the control exists to be
+            // refused, and a control that produced an answer is the failure.
+            if (control is null) return report.Refusals.Count > 0 ? 1 : 0;
+            if (report.Refusals.Count > 0) return 0;
 
-        Console.Error.WriteLine(
-            $"Control '{control}' was not refused. Two states that carry no act content agreed on their " +
-            "digests and the probe called it agreement, which is the one reading this probe must never " +
-            "produce.");
-        return 1;
+            Console.Error.WriteLine(
+                $"Control '{control}' was not refused. Two states that carry no act content agreed on their " +
+                "digests and the probe called it agreement, which is the one reading this probe must never " +
+                "produce.");
+            return 1;
         }
         finally
         {
@@ -196,24 +196,24 @@ internal static partial class Commands
         switch (phase)
         {
             case "capture":
-            {
-                var stopAfter = Args.Value(args, "--stop-after")
-                    ?? throw new ManifestException("snapshot-restore-probe --phase capture needs --stop-after <seq>.");
-                var capture = Engine.SnapshotRestoreProbe.Capture(
-                    ManifestJson.Load(manifestPath),
-                    int.Parse(stopAfter, System.Globalization.CultureInfo.InvariantCulture),
-                    Sts2PilotTrainer.IO.WorktreePath.Require(savePath));
-                artifact.WriteAtomic(JsonSerializer.Serialize(capture, Json.Indented) + "\n");
-                return 0;
-            }
+                {
+                    var stopAfter = Args.Value(args, "--stop-after")
+                        ?? throw new ManifestException("snapshot-restore-probe --phase capture needs --stop-after <seq>.");
+                    var capture = Engine.SnapshotRestoreProbe.Capture(
+                        ManifestJson.Load(manifestPath),
+                        int.Parse(stopAfter, System.Globalization.CultureInfo.InvariantCulture),
+                        Sts2PilotTrainer.IO.WorktreePath.Require(savePath));
+                    artifact.WriteAtomic(JsonSerializer.Serialize(capture, Json.Indented) + "\n");
+                    return 0;
+                }
 
             case "restore":
-            {
-                var restoration = Engine.SnapshotRestoreProbe.Restore(
-                    Sts2PilotTrainer.IO.WorktreePath.Require(savePath));
-                artifact.WriteAtomic(JsonSerializer.Serialize(restoration, Json.Indented) + "\n");
-                return 0;
-            }
+                {
+                    var restoration = Engine.SnapshotRestoreProbe.Restore(
+                        Sts2PilotTrainer.IO.WorktreePath.Require(savePath));
+                    artifact.WriteAtomic(JsonSerializer.Serialize(restoration, Json.Indented) + "\n");
+                    return 0;
+                }
 
             default:
                 throw new ManifestException(
