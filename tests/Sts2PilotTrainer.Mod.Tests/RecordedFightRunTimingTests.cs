@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -67,6 +68,40 @@ public sealed class RecordedFightRunTimingTests
     }
 
     /// <summary>
+    /// What the timeout does, which is the half of the client defect the wait alone
+    /// does not fix: a wait that ran out used to fall through to the boundary, which
+    /// compares card by card and reported the recording's five-card hand against the
+    /// one card dealt so far. True about the comparison, wrong about what happened.
+    /// </summary>
+    [TimingFact]
+    public async Task AFightThatNeverOpensIsRefusedForNotOpeningRatherThanHandedOver()
+    {
+        var deadline = new TaskCompletionSource<bool>();
+        deadline.SetResult(true);
+
+        var refusal = await Decide(
+            (Func<bool>)(() => false),
+            deadline.Task,
+            (Func<Task>)(() => throw new InvalidOperationException("The deadline had already passed.")));
+
+        Assert.Equal(TrainerCopy.FightDidNotOpen, refusal);
+    }
+
+    [TimingFact]
+    public async Task AFightThatOpensWhileWaitedForIsHandedOverRatherThanRefused()
+    {
+        var opened = false;
+        var never = new TaskCompletionSource<bool>();
+
+        var refusal = await Decide(
+            (Func<bool>)(() => opened),
+            never.Task,
+            (Func<Task>)(() => { opened = true; return Task.CompletedTask; }));
+
+        Assert.Null(refusal);
+    }
+
+    /// <summary>
     /// The other ordering the retail client proved wrong, and the one that left a
     /// player at the main menu with no account of what had happened at all.
     ///
@@ -105,6 +140,10 @@ public sealed class RecordedFightRunTimingTests
                 .Invoke(null, [returned, explain]));
 
     private const BindingFlags Static = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+
+    private static async Task<string?> Decide(Func<bool> ready, Task deadline, Func<Task> nextPoll) =>
+        await Assert.IsAssignableFrom<Task<string?>>(
+            Run().GetMethod("RefuseUnlessTheFightOpened", Static)!.Invoke(null, [ready, deadline, nextPoll]));
 
     private static async Task<bool> Invoke(Func<bool> done, Task deadline, Func<Task> nextPoll) =>
         await Assert.IsAssignableFrom<Task<bool>>(
