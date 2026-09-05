@@ -397,7 +397,6 @@ The shipped video reconstruction records no map coordinate anywhere, so its floo
 boundaries are declared but not enterable and `--floor` refuses on it; `--fight` works
 on both.
 
-<<<<<<< HEAD
 ### S7 - One playback transport, in the retail client - done
 
 Replace the per-step popup with one long-lived transport that carries the watched
@@ -444,10 +443,9 @@ Forward commits it and reveals the map node, and the same strip is still there i
 fight, collapsed to a chip.
 [demo/PLAYBACK-TRANSPORT.md](../demo/PLAYBACK-TRANSPORT.md) has it with the
 screenshots.
-=======
-### S7 - The recorder, in the player's own game - built, not yet proved by play
+### S8 - The recorder, in the player's own game - built, not yet proved by play
 
-S1 through S6 close the loop over somebody else's recording, transcribed from a video
+S1 through S7 close the loop over somebody else's recording, transcribed from a video
 by hand. This is the other direction: the player's own runs become recordings of the
 same kind, without a video and without a transcriber.
 
@@ -488,7 +486,6 @@ readings and the boundary digests have not been checked against a replay of a re
 one. The completion bar is unchanged and unmet: a recording produced by play, not by an
 agent, `PUBLISHABLE` on the machine that made it. [The in-game
 host](in-game-host.md#producing-a-recording-and-checking-it) has the steps.
->>>>>>> 197508f (docs: name what the recorder is proved to do and what it is not)
 
 ## Known limits that no slice above removes
 

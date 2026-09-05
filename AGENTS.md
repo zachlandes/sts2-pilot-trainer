@@ -153,15 +153,6 @@ treasure room opens, and the card screens a reward or an enchantment opens - so 
 host drives the first two and answers the third from the manifest. None of them decides
 anything, and each refuses where the manifest is silent.
 
-**No type in `Runmobile` may need a sibling assembly to load.** The game finds a mod's
-initializer by enumerating that assembly's types, and it does that before
-`SiblingAssemblies` has told the runtime where `Sts2PilotTrainer.Replay` and the rest
-are - so a type there that inherits from, implements, or holds a value of one of theirs
-fails to load and the client reports `Loaded 0 mods` with nothing else wrong. Method
-bodies, method signatures, static fields and reference-typed fields are lazy and are
-fine. `ModAssemblyLoadabilityTests` is the rule, and `DelegatingFightSampleSink` is how
-the mod reaches an interface it may not implement.
-
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
 player's game; `EngineHost.Start` must never run there, and `AdoptRunningGame` is the
@@ -171,10 +162,18 @@ game into the default assembly load context. Two are about *when* rather than wh
 were live in a build whose tests were green: waiting a length of time is not waiting for
 the game to finish something, and returning to the main menu frees the popup that
 explains why you returned. The fifth stops the mod loading at all, before a line of its
-code runs: a field's type may *be* a sibling assembly's type and may not be a *generic
-type built over* one, in a nullable, a tuple, a delegate's type argument or a
-collection's element. It has fired three times, most recently through a green CI run, so
-run `ModAssemblyLoadOrderTests` on a new field rather than judging its shape.
+code runs: nothing about a type in `Runmobile` may require a sibling assembly in order
+to *load* it. The game enumerates this assembly's types to find the mod initializer, one
+phase before `SiblingAssemblies` has said where the siblings are, and loading a type
+resolves its base class, the interfaces it implements and enough of its instance fields
+to lay it out. Method bodies, method signatures, static fields and reference-typed
+fields are resolved later and are fine. The shapes are not the rule and naming them is
+how the rule was too narrow three times running - a generic built over a sibling type
+has done it, and so has a type implementing a sibling interface. Run
+`ModAssemblyLoadOrderTests` against a new type rather than judging its shape; it is the
+only thing here that reproduces the game's own condition. It has fired four times, twice
+through a green CI run. `DelegatingFightSampleSink` is how the mod reaches an interface
+it may not implement.
 `./scripts/install-mod.sh` is the one
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions, and remove the `CombatTrainer` directory the mod was installed under before the rename.

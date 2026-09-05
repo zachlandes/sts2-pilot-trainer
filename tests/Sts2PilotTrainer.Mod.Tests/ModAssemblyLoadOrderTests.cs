@@ -8,18 +8,27 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// and the one failure no other test here can see.
 ///
 /// MegaCrit's `ModManager.TryLoadMod` calls `Module.GetTypes()` on the mod assembly
-/// before it calls the mod's initializer. Enumerating types computes their field
-/// layouts, and a field whose type reaches into a sibling assembly makes the runtime
-/// resolve that sibling right there - one phase before `SiblingAssemblies` has taught
-/// it where the siblings live. The whole mod then fails to load with a
-/// `ReflectionTypeLoadException`, and the game reports "Loaded 0 mods".
+/// before it calls the mod's initializer. Loading a type resolves its base class, the
+/// interfaces it implements and enough of its instance fields to lay it out, so any of
+/// those reaching into a sibling assembly makes the runtime resolve that sibling right
+/// there - one phase before `SiblingAssemblies` has taught it where the siblings live.
+/// The whole mod then fails to load with a `ReflectionTypeLoadException`, and the game
+/// reports "Loaded 0 mods".
 ///
-/// It has happened three times. `IReadOnlyList&lt;MenuRow&gt;` as a field was the
+/// It has happened four times, in four shapes, and each time the rule written after it
+/// was narrower than the next one. `IReadOnlyList&lt;MenuRow&gt;` as a field was the
 /// first and cost a startup to learn; a `PlaybackSpeed` field was the second, which is
-/// why `_speedIndex` is an int; and a `(Control, Func&lt;ElementSurface&gt;)?` field
-/// was the third, which reached a green pull request and a passing CI run before a
-/// retail launch found it. Every other suite here misses it because they load this
-/// assembly where its siblings are already resolvable, which is exactly the condition
+/// why `_speedIndex` is an int; a `(Control, Func&lt;ElementSurface&gt;)?` field was
+/// the third, which reached a green pull request and a passing CI run before a retail
+/// launch found it; and a type <em>implementing</em> `IFightSampleSink` was the fourth,
+/// which no rule about fields covered at all.
+///
+/// So this test is the arbiter and the prose is not. It reproduces the condition rather
+/// than any description of it: enumerate every type in the built mod with the siblings
+/// deliberately unreachable, and fail with the offending type named. A new type is
+/// checked by running this, never by deciding whether it resembles one of the four.
+/// Every other suite here misses the whole class of failure, because they load this
+/// assembly where its siblings are already resolvable - which is exactly the condition
 /// the game does not provide.
 ///
 /// So this test reproduces the condition rather than the symptom: enumerate every type
@@ -68,10 +77,13 @@ public sealed class ModAssemblyLoadOrderTests
 
             Assert.Fail(
                 "The game enumerates this assembly's types before the mod's own assembly resolver exists, " +
-                "so no field's type may reach into a sibling assembly - not as the field's own type, and " +
-                "not as a generic argument or a tuple element inside it. Hold such state as a plain " +
-                "reference or as an int and read the real thing back on use, the way _speedIndex and " +
-                "_phase already do.\n" +
+                "so nothing a type needs in order to load may reach into a sibling assembly: not its base " +
+                "class, not an interface it implements, and not the type of an instance field - the field's " +
+                "own type, a generic argument, or a tuple element inside it. Method bodies, method " +
+                "signatures, static fields and reference-typed fields are resolved later and are fine. " +
+                "Hold such state as a plain reference or as an int and read the real thing back on use, the " +
+                "way _speedIndex and _phase already do; reach an interface through a delegating " +
+                "implementation that lives in the sibling, the way DelegatingFightSampleSink is reached.\n" +
                 $"Loader said: {string.Join("; ", reasons)}\n" +
                 $"Types that did load: {blamed.Length} of {failure.Types.Length}.");
         }
