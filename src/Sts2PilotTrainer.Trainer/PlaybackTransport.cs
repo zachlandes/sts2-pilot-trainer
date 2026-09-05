@@ -137,9 +137,9 @@ public sealed record LedgerRow(int Number, string ArtModelId, string Label, bool
 ///
 /// A refused row says nothing, which is why there is nowhere here to put a reason.
 /// Decided by the project's coordinating owner: the only refused row that exists is
-/// jump to the end at turn one, refused because there is no result until the player
-/// has played, and that clears through the very action the player is already there to
-/// take. A permanent explanation for a state that resolves itself in seconds costs
+/// jump to the end before anything has been played, refused because there is no result
+/// until the player has taken an action, and that clears through the very action the
+/// player is already there to take. A permanent explanation for a state that resolves itself in seconds costs
 /// more attention than it saves, and drawing one would mean inventing a layout for
 /// reason text in a menu row that nobody has approved. A tooltip was weighed as a
 /// middle path and rejected: a tooltip answers a player who already suspects
@@ -244,8 +244,8 @@ public enum JourneyPhase
 /// <param name="Revealed">Whether the decision about to be made is on the game's own
 /// screen yet. Between committing one and revealing the next it is not, and a step
 /// taken there would commit a decision nobody was shown.</param>
-/// <param name="AnythingPlayed">Whether the player has taken a turn in their own
-/// fight.</param>
+/// <param name="AnythingPlayed">Whether the player has taken an action of their own in
+/// their own fight. One card is enough; it is not a completed turn.</param>
 public sealed record TransportFacts(
     TransportIdentity Identity,
     IReadOnlyList<PrefightChoice> Made,
@@ -562,8 +562,8 @@ public sealed record PlaybackTransport(
     /// Pressed, it offers two directions and no third. Both leave the attempt, so
     /// both go through the game's own confirmation first.
     /// </summary>
-    /// <param name="anythingPlayed">Whether the player has taken a turn yet. At turn
-    /// one with nothing played there is no end to jump to.</param>
+    /// <param name="anythingPlayed">Whether the player has taken an action of their own
+    /// yet. With nothing played there is no end to jump to; one card is enough.</param>
     /// <param name="speed">The speed in force, carried through rather than reset. The
     /// chip does not show it, but the tag it collapsed from did and the tag it becomes
     /// again will, and a state that quietly answered Normal made a chosen speed appear

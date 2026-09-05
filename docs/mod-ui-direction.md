@@ -104,7 +104,7 @@ The refusal a player reads is the game's own popup, and making the tag visible t
 **The chip offers two directions and no third.** Jump to the beginning rebuilds the run to the proven combat start; jump to the end finishes the attempt where it is.
 Both leave the attempt, so both ask through the game's own confirmation popup first, and both are refused once the fight has ended.
 **A refused menu row says nothing** - no reason text, no tooltip.
-Decided by the project's coordinating owner: the only refused row that exists is jump to the end at turn one, refused because there is no result until the player has played, and that clears through the very action the player is already there to take.
+Decided by the project's coordinating owner: the only refused row that exists is jump to the end before anything has been played, refused because there is no result until the player has taken an action of their own - one card is enough, it is not a completed turn - and that clears through the very action the player is already there to take.
 A permanent explanation for a state that resolves itself in seconds costs more attention than it saves, and drawing one would mean inventing a layout for reason text in a menu row that nobody has approved.
 A tooltip was weighed as a middle path and rejected: a tooltip answers a player who already suspects something is broken, and nothing here is broken.
 A refused *control* is the other case and keeps its tooltip, which says why where a reason has been written for it.

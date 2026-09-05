@@ -232,10 +232,11 @@ public sealed class PlaybackTransportTests
             "Makes the rest of the choices, pausing on each one.", transport.Surface.Play.TooltipBody);
     }
 
-    /// <summary>At turn one with nothing played there is no attempt to finish, so the
-    /// end is refused, silently, rather than producing an empty result.</summary>
+    /// <summary>With nothing played there is no attempt to finish, so the end is
+    /// refused, silently, rather than producing an empty result. One action clears
+    /// it.</summary>
     [Fact]
-    public void JumpingToTheEndIsRefusedBeforeATurnHasBeenPlayed()
+    public void JumpingToTheEndIsRefusedBeforeAnythingHasBeenPlayed()
     {
         var menu = For(JourneyPhase.InFight, anythingPlayed: false).ChipMenu;
 

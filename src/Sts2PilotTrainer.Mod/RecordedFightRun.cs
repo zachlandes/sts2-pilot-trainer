@@ -548,6 +548,11 @@ internal static class RecordedFightRun
 
         _lookingBackAt = null;
         var what = await RevealWhenTheScreenIsReady(entry.DescribeNextTarget());
+
+        // The retry above runs for up to five seconds, which is long enough for the
+        // journey underneath it to have ended and another to have started.
+        if (!ReferenceEquals(entry, _entry)) return;
+
         _revealed = true;
         Log.Info(
             $"[{RunmobileMod.ModId}] revealed decision " +
@@ -909,11 +914,12 @@ internal static class RecordedFightRun
     }
 
     /// <summary>
-    /// Whether the player has taken a turn in their own fight yet.
+    /// Whether the player has taken an action of their own in their own fight yet.
     ///
-    /// It decides only whether jumping to the end is offered: at turn one with nothing
-    /// played there is no attempt to finish, and a control that would produce an empty
-    /// result is refused rather than drawn as if it would work.
+    /// It decides only whether jumping to the end is offered: with nothing played there
+    /// is no attempt to finish, and a control that would produce an empty result is
+    /// refused rather than drawn as if it would work. One card is enough - the gate is
+    /// an action, not a completed turn.
     /// </summary>
     private static bool AnythingPlayed(RecordedFightEntry entry) =>
         entry.Capture is { AnythingPlayed: true };
@@ -1055,18 +1061,26 @@ internal static class RecordedFightRun
     /// proved to run here - the popup's own focus grab already relies on it - and
     /// end-of-frame is after the transition the decision started.
     /// </summary>
-    private static void RevealWhenTheGameHasFinishedMoving() =>
+    private static void RevealWhenTheGameHasFinishedMoving()
+    {
+        var mine = _entry;
         Callable.From(async void () =>
         {
+            // The frame this waits for is a frame the player can act in, and abandoning
+            // a run is one of the things they can do in it. A continuation that wakes
+            // into a different journey, or none, does nothing at all.
+            if (!ReferenceEquals(mine, _entry)) return;
+
             try
             {
                 await RevealNext();
             }
             catch (Exception ex)
             {
-                Abandon(ex);
+                if (ReferenceEquals(mine, _entry)) Abandon(ex);
             }
         }).CallDeferred();
+    }
 
     /// <summary>
     /// Hands the fight over once the game has finished opening it.
@@ -1077,9 +1091,11 @@ internal static class RecordedFightRun
     /// </summary>
     private static async void HandOverWhenTheGameHasFinishedMoving()
     {
+        var entry = _entry;
         try
         {
-            var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
+            if (entry is null) throw new InvalidOperationException("There is no recorded fight under way.");
+
             Log.Info(
                 $"[{RunmobileMod.ModId}] letting the fight open; {entry.DescribeCombatReadiness()}", 2);
 
@@ -1093,10 +1109,17 @@ internal static class RecordedFightRun
                 $"{(opened ? "the fight opened" : "the fight did not open in time")}; " +
                 $"{_entry?.DescribeCombatReadiness() ?? "no run"}", 2);
 
+            // Twenty seconds is long enough that the world changing under this wait is
+            // the ordinary case, not the exception: the player can abandon the run from
+            // the game's own pause menu and be in a run of their own by now. Handing
+            // over or refusing into that run would take it away from them.
+            if (!ReferenceEquals(entry, _entry)) return;
+
             HandOverTheFight();
         }
         catch (Exception ex)
         {
+            if (!ReferenceEquals(entry, _entry)) return;
             Abandon(ex);
         }
     }
