@@ -130,10 +130,19 @@ public sealed record BoundarySelector
         "A boundary is written <kind>:<coordinate> - combat_start:2 for the start of fight 2, floor_entry:5 " +
         "for arrival on floor 5, turn_start:2.3 for turn 3 of fight 2.";
 
-    private static int Ordinal(string value, string text) =>
+    /// <summary>
+    /// The positive whole number this text spells, or null when it spells anything
+    /// else. Every coordinate here and every boundary option elsewhere counts from 1,
+    /// and each caller names what was being counted in its own refusal.
+    /// </summary>
+    public static int? PositiveOrdinal(string value) =>
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) && parsed > 0
             ? parsed
-            : throw new ManifestException(
+            : null;
+
+    private static int Ordinal(string value, string text) =>
+        PositiveOrdinal(value)
+            ?? throw new ManifestException(
                 $"'{text}' numbers a boundary '{value}'. Boundaries are counted from 1. " + Grammar);
 
     private static string Number(int? value) =>

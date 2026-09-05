@@ -264,9 +264,8 @@ internal static partial class Commands
     }
 
     private static int Ordinal(string value, string option) =>
-        int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) && parsed > 0
-            ? parsed
-            : throw new ManifestException($"{option} takes a whole number from 1, not '{value}'.");
+        BoundarySelector.PositiveOrdinal(value)
+            ?? throw new ManifestException($"{option} takes a whole number from 1, not '{value}'.");
 
     /// <summary>
     /// Plays the recording's own fight through the player-side capture and compares
