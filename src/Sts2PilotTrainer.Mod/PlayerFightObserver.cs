@@ -51,6 +51,7 @@ internal sealed class PlayerFightObserver : IDisposable
     private readonly CombatManager _combat;
     private readonly ActionExecutor _executor;
     private readonly Action _fightEnded;
+    private readonly Action _sampled;
 
     private bool _awaitingPlayerTurn;
 
@@ -64,11 +65,13 @@ internal sealed class PlayerFightObserver : IDisposable
     private bool _ended;
     private bool _disposed;
 
-    private PlayerFightObserver(RecordedFightEntry entry, FightCapture capture, Action fightEnded)
+    private PlayerFightObserver(
+        RecordedFightEntry entry, FightCapture capture, Action fightEnded, Action sampled)
     {
         _entry = entry;
         _capture = capture;
         _fightEnded = fightEnded;
+        _sampled = sampled;
         _player = entry.PreparedRun.Players[0];
         _combat = CombatManager.Instance
             ?? throw new InvalidOperationException("This build exposes no CombatManager to observe the fight through.");
@@ -81,9 +84,14 @@ internal sealed class PlayerFightObserver : IDisposable
     /// </summary>
     /// <param name="fightEnded">Called once, on the game's own combat-ended event,
     /// after the capture has been closed one way or the other.</param>
-    internal static PlayerFightObserver Start(RecordedFightEntry entry, FightCapture capture, Action fightEnded)
+    /// <param name="sampled">Called whenever a step opens or closes. The transport is a
+    /// function of the run's facts, and whether the player has played anything is one
+    /// of them - it becomes true when a step closes, so a re-derivation only where one
+    /// opens leaves the chip a whole action behind.</param>
+    internal static PlayerFightObserver Start(
+        RecordedFightEntry entry, FightCapture capture, Action fightEnded, Action sampled)
     {
-        var observer = new PlayerFightObserver(entry, capture, fightEnded);
+        var observer = new PlayerFightObserver(entry, capture, fightEnded, sampled);
         observer._executor.BeforeActionExecuted += observer.BeforeAction;
         observer._executor.AfterActionExecuted += observer.AfterAction;
         observer._combat.TurnStarted += observer.TurnStarted;
@@ -109,22 +117,23 @@ internal sealed class PlayerFightObserver : IDisposable
         // exactly that. The executor runs its actions in order, so a finished previous
         // action means this action's before-sample is that one's after-sample.
         var previousFinished = _openStepFinished;
+        var opened = false;
 
         try
         {
             switch (action)
             {
                 case PlayCardAction play:
-                    Begin(nameof(ActionVerb.PlayCard), PlayCardArgs(play), previousFinished);
+                    opened = Begin(nameof(ActionVerb.PlayCard), PlayCardArgs(play), previousFinished);
                     break;
                 case UsePotionAction potion:
-                    Begin(nameof(ActionVerb.UsePotion), PotionArgs(potion.PotionIndex), previousFinished);
+                    opened = Begin(nameof(ActionVerb.UsePotion), PotionArgs(potion.PotionIndex), previousFinished);
                     break;
                 case DiscardPotionGameAction discard:
-                    Begin(nameof(ActionVerb.DiscardPotion), PotionArgs(SlotOf(discard)), previousFinished);
+                    opened = Begin(nameof(ActionVerb.DiscardPotion), PotionArgs(SlotOf(discard)), previousFinished);
                     break;
                 case EndPlayerTurnAction:
-                    Begin(nameof(ActionVerb.EndTurn), Empty, previousFinished);
+                    opened = Begin(nameof(ActionVerb.EndTurn), Empty, previousFinished);
                     break;
                 case UndoEndPlayerTurnAction:
                     // The game took the ended turn back before the enemy turn began.
@@ -139,6 +148,21 @@ internal sealed class PlayerFightObserver : IDisposable
         {
             Log.Error($"[{RunmobileMod.ModId}] could not sample before {action}: {ex.GetType().Name}: {ex.Message}", 2);
         }
+
+        // Outside the capture's own catch: the step is open by the time we get here, so
+        // a re-derivation that throws is a surface problem and is reported as one.
+        if (!opened) return;
+
+        try
+        {
+            _sampled();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not re-derive the transport before {action}: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     /// <summary>
@@ -148,11 +172,12 @@ internal sealed class PlayerFightObserver : IDisposable
     /// action that began while another was open closes that one here, and the wait
     /// still running for it must not then close this one with a state that is not its.
     /// </summary>
-    private void Begin(string verb, IReadOnlyDictionary<string, string> args, bool previousFinished)
+    private bool Begin(string verb, IReadOnlyDictionary<string, string> args, bool previousFinished)
     {
         _capture.BeginStep(verb, args, _entry.SampleLiveState(), previousFinished);
         _openedSteps++;
         _openStepFinished = false;
+        return true;
     }
 
     private void AfterAction(GameAction action)
@@ -206,6 +231,19 @@ internal sealed class PlayerFightObserver : IDisposable
             Log.Error($"[{RunmobileMod.ModId}] could not sample the end of the fight: {ex.GetType().Name}: {ex.Message}", 2);
         }
 
+        // Outside the capture's own catch: the capture is closed by the line above, so
+        // a re-derivation that throws is a surface problem and is reported as one.
+        try
+        {
+            _sampled();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not re-derive the transport at the end of the fight: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+
         _fightEnded();
     }
 
@@ -222,6 +260,7 @@ internal sealed class PlayerFightObserver : IDisposable
     private async Task CompleteWhenSettled()
     {
         var waitingFor = _openedSteps;
+        var closed = false;
         try
         {
             var queues = RunManager.Instance.ActionQueueSet;
@@ -248,6 +287,7 @@ internal sealed class PlayerFightObserver : IDisposable
             // action after it.
             if (_ended || _disposed || _combat.IsOverOrEnding || _openedSteps != waitingFor) return;
             _capture.CompleteStep(_entry.SampleLiveState());
+            closed = true;
         }
         catch (Exception ex)
         {
@@ -257,6 +297,21 @@ internal sealed class PlayerFightObserver : IDisposable
                     $"The engine could not settle after an action: {ex.GetType().Name}: {ex.Message}");
             }
             Log.Error($"[{RunmobileMod.ModId}] could not sample after an action: {ex.GetType().Name}: {ex.Message}", 2);
+        }
+
+        // Outside the wait's own catch: a re-derivation that throws is a surface
+        // problem and must not mark the capture incomplete.
+        if (!closed) return;
+
+        try
+        {
+            _sampled();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not re-derive the transport after an action: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 

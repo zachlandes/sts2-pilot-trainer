@@ -13,16 +13,17 @@ That promise is about a module which declares itself disabled: a module whose `I
 `CombatTrainerModule` is the only one built. The recorder and the run library are the
 other two.
 
-The retail proof below was gathered on the pre-rename `CombatTrainer` artifact.
+The retail proof below, up to and including S5, was gathered on the pre-rename `CombatTrainer` artifact.
 S3 of [the proof-of-concept path](proof-of-concept-path.md) answers one question — can this game play the recorded fight? — S4 adds the button that enters it, and S5 captures the fight the player then plays and shows it beside the recording's.
-That evidence establishes those Combat Trainer behaviors, but it establishes nothing about discovery, initialization or a complete session for the renamed `Runmobile` artifact.
+That evidence establishes those Combat Trainer behaviors, and on its own establishes nothing about discovery, initialization or a complete session for the renamed `Runmobile` artifact.
+S7's session did run the renamed shell, which is what establishes the row below; [demo/PLAYBACK-TRANSPORT.md](../demo/PLAYBACK-TRANSPORT.md) is that session.
 
 ## What it proves
 
-**Retail loading of the renamed artifact is pending and not yet established.**
+**Retail loading of the renamed artifact is established, mod list included.**
 The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
-A retail session still has to show `Runmobile` in the game's mod list as the only enabled mod, show that the game's recursive scan discovers its manifest and `ModInitializerAttribute` initializes it, exercise the Combat Trainer through the renamed shell, and finish with a clean protected-files ledger outside `user://Runmobile/`.
-Until that session is recorded, the existing `CombatTrainer` screenshots and ledger are not evidence for the renamed package.
+The S7 transport session installed that package with `install-mod.sh`, launched the shipped client with it as the only enabled mod, and ran the whole watched journey through it - so discovery, initialization and a complete session through the renamed shell are shown, and the protected-files ledger of that session is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp.
+The game's own mod line naming `Runmobile` is photographed in that session's record, so the row no longer rests on the pre-rename `CombatTrainer` screenshots.
 The libraries are built to ship together; there is no separately installed framework or runtime dependency, and no resource pack.
 
 **The eligibility answer comes from the same owner the arbiter uses.**
@@ -312,18 +313,62 @@ waiting for. Three things do work: awaiting a task the game itself completes,
 `CallDeferred` once for end-of-frame, and awaiting a `SceneTreeTimer`. `RecordedFightRun`
 uses only those.
 
+**An await here can outlive the journey that started it, and two kinds of continuation
+need opposite treatment.** The player can abandon from the game's own pause menu on any
+frame, and the teardown clears the entry, so a continuation can wake into a different
+journey or into none. One that would act on a run - move it, reveal on it, hand a fight
+over, attach a surface, or refuse - must stop, and stop silently: `RecordedFightRun`'s
+own `StillOurs` is the single predicate for that, because the expression it replaced
+compared references alone and two nulls compare equal, so an ended journey looked
+current. One that only delivers something already computed must not stop; the result of
+the player's fight is computed before its wait for exactly that reason, since on a loss
+the game's own flow tears the run down during the wait and a guard there would drop the
+comparison the fight was played for.
+
 **The deviation lock has to cover a whole step, not a call.**
 A screen's command does most of its work after an await, so an authorisation that ended
 when the starting call returned had already lapsed - and the lock refused the
 recording's own map move. It is held across the step now.
 
-**The watching screens are the game's popup, not the mockup's bar.**
-The approved journey shows a chip and a control bar over the game's own screens. What
-is built is the game's own popup with no backstop, so the screen underneath stays
-lit, carrying the same three things and the same two controls. It uses only the
-approved wording and the furniture this mod has already been seen to draw correctly;
-the difference in layout is a deviation from the mockup and is recorded here rather
-than presented as the design.
+**The watching journey is one long-lived tag, not a popup per step.**
+The popup this started with was created and torn down around every decision, so it could not carry a position across the map-to-combat transition and it covered the screens the player is there to look at.
+`PlaybackTransportStrip` replaces the whole set with one node, `PlaybackTransportDock` parents it to `NRun.GlobalUi` - the run's own persistent interface, which the room is swapped underneath - and `PlaybackTransport` in `Sts2PilotTrainer.Trainer` owns every word it says.
+It hangs from an anchor measured off the game's own furniture: the bottom of the top bar's HP and gold widgets, and the right edge of the deck button.
+Both halves are load-bearing. `NTopBar` is a full-screen control whose rect ends at the bottom of the viewport, so measuring the node itself puts the tag off the screen; and the band's left carries the run's relic inventory, which grows, so a centred or left-hung surface covers relics by about the ninth one.
+`PrefightScreen` keeps only the two things a popup is actually for: a refusal, and the result of the player's fight.
+
+**Reveal, hold, commit, and Back is none of them.**
+`RecordedFightReveal` applies the game's own selected state to what the recording is about to choose and never its click path: `GrabFocus` is what a control's own `OnFocus` runs off, and on the map `NSelectionReticle.OnSelect` lights the ring directly so it survives the player moving focus to the transport.
+The hold is the strip waiting - for the player under Forward, for a `SceneTreeTimer` under Play, shorter on the map because the game supplies a second of its own before the fade.
+The commit is `RecordedFightEntry.AdvanceOneStep`, unchanged.
+Back re-shows a decision already made from what the host wrote down at the moment it was revealed; there is no path that uncommits one, and the run is never rewound to answer.
+A target the host cannot resolve - no screen, a coordinate this act does not draw, an option row granting a different relic - ends the attempt with the reason rather than committing a decision unseen.
+
+What these surfaces look like is [mod-ui-direction.md](mod-ui-direction.md); this file records only how they behave.
+
+**A field can stop the whole mod loading, one phase before any of its code runs.**
+The game finds the initializer by enumerating this assembly's types, which happens before `SiblingAssemblies` has taught the runtime that `Sts2PilotTrainer.*` sit beside the mod rather than beside the game.
+Enumerating a type resolves the types its fields are *built from*, so a field built from a sibling resolves that sibling, fails, and the mod loads not at all with a `ReflectionTypeLoadException` naming it.
+
+**The rule, stated so a new field can be checked against it rather than compared to a previous casualty.**
+A field's type may *be* a sibling type - a plain reference is a pointer and several have always existed.
+A field's type may not be a *generic type built over* a sibling: not inside a nullable, not inside a tuple, not as a delegate's type argument, not as a collection's element.
+Hold that state as a plain reference, or as an `int` you cast back on use, and read the real thing where you need it.
+`_speedIndex`, `RecordedFightRun._phase`, `PlaybackTransportStrip._openMenu` and the tag's tooltip fields are all that shape, and each says so where it is declared.
+A module initializer does not rescue this, measured: type enumeration does not trigger one.
+
+**`ModAssemblyLoadOrderTests` is the arbiter, not this paragraph.**
+It loads the built mod in a context that refuses to resolve the siblings and calls `Module.GetTypes()`, which is exactly what the game does at that moment, and it names the loader's own complaint when it fails.
+Run it rather than reasoning about a field's shape; it takes a second and it fails the way the game fails.
+It exists because this trap has fired three times - `IReadOnlyList<MenuRow>` cost a startup, a `PlaybackSpeed` field is why `_speedIndex` is an `int`, and a `(Control, Func<ElementSurface>)?` field reached a green pull request with passing CI and a mod that loaded not at all.
+The comment warning about the trap was fifteen lines from that third field. An accurate comment that has to be recognised is not a check.
+
+**The strip has to be reachable and has to be out of the way.**
+Its root and everything on it except the buttons ignore the mouse, so the map, the event and the player's own fight keep every click that is not on a control.
+Its buttons take focus, so a controller can reach them.
+During the player's own fight it collapses to a chip carrying the mark and the creator's name, silent until it is pressed and offering two directions when it is.
+Silent and pressable at once is a distinction the strip has to be able to make: a Godot control that is not visible receives no input, so a chip drawn by hiding the tag's controls has nothing left that can be pressed.
+`Presence.Silent` is what says it - present, taking input over the whole plate, drawing nothing but the hover and focus rim.
 
 **A green content-hash row is not environment parity.**
 The row carries the engine's own sentence saying so, whether it is green or red.
@@ -363,6 +408,33 @@ again — a second copy, with the right path and an empty world. Everything read
 plausibly and nothing is initialised. Every refusal now names the assembly it read
 and says when more than one is loaded, because "the game says no" is only meaningful
 once it is clear which game was asked.
+
+## Two more the client found, both about when rather than what
+
+Neither of these is visible in a process that never draws a frame, and both were live in
+a build whose tests were green.
+
+**A wait for a length of time is not a wait for a thing to happen.**
+The map move's own engine task completes when the combat room is built, and the opening
+hand is dealt over the frames after that. The hand-over waited a flat two seconds and
+then read the boundary whatever the game was doing with them. On one machine two seconds
+landed inside the Battle Start banner: the boundary read one card of the recording's five
+in hand and ten of its six in the draw pile, and refused a correct entry - twice,
+deterministically. `RecordedFightEntry.IsReadyForThePlayer` already existed for exactly
+this, carried a comment saying exactly this, and nothing called it. The wait now polls
+it, and the old constant is the deadline rather than the answer. The general rule, which
+`PlayerFightObserver` already followed and this did not: wait for the engine's own signal
+and keep the budget for giving up.
+
+**Returning to the main menu frees the popup that explains why.**
+A refusal is the one thing this journey says in a popup, and the popup lives in the
+game's own modal container. `Abandon` put it up and then called `NGame.ReturnToMainMenu`,
+which takes the container's contents with it - so the refusal was created, freed with the
+run it was explaining, and the client's own deferred focus grab threw
+`ObjectDisposedException` on a disposed button. The player was returned to the main menu
+with no account of what had happened at all, and nothing in the mod's own log said the
+popup had failed, because it had not: it was shown and then destroyed. The return is now
+awaited - it is a `Task` - and the refusal goes up on the far side of it.
 
 ## The surfaces, and why they are the game's own
 

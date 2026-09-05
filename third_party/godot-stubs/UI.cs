@@ -57,7 +57,6 @@ public partial class Control : CanvasItem
 
     public virtual void _GuiInput(InputEvent @event) { }
 
-    public void EmitSignal(StringName signal, params Variant[] args) { }
 }
 
 // Node2D
@@ -231,7 +230,7 @@ public class RichTextLabel : Control
     public void AddText(string text) { Text += text; }
 }
 
-public class BaseButton : Control
+public partial class BaseButton : Control
 {
     public new class SignalName : Control.SignalName
     {
@@ -242,9 +241,11 @@ public class BaseButton : Control
     // the real GodotSharp emits BaseButton.add_Pressed. Declaring it on Button here
     // instead made that call unresolvable at load.
     public event Action? Pressed;
+
+    protected void Press() => Pressed?.Invoke();
 }
 
-public class Button : BaseButton
+public partial class Button : BaseButton
 {
     public new class SignalName : BaseButton.SignalName
     {

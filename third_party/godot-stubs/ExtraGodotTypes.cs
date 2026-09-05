@@ -59,7 +59,7 @@ public static class TextServer
 
 public enum InlineAlignment { Top, Center, Baseline, Bottom }
 
-public class Font : Resource
+public partial class Font : Resource
 {
     public float GetStringSize(string text, int alignment = 0, float width = -1, int fontSize = 16) => text.Length * fontSize * 0.6f;
 

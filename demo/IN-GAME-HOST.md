@@ -168,7 +168,7 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrain
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    42, Skipped:     0, Total:    42, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    74, Skipped:     0, Total:    74, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
 ```
 
 ## What this proves, and what it does not

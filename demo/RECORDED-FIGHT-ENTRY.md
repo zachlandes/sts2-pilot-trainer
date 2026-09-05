@@ -65,10 +65,14 @@ profile before  : ascension ceiling 0 for CHARACTER.IRONCLAD; characters 1/5, ca
 decisions before the start of fight 1: 2, reached after action 1
   NaveGreed's choices are shown as recorded. This shows what was chosen, not why.
 
-  [Watching NaveGreed]  1 of 2   NaveGreed took Leafy Poultice
+  [NaveGreed]  1 of 2
+      reveals event option 2 granting RELIC.LEAFY_POULTICE
       action 0 ChooseNeowBlessing option_index=2
-  [Watching NaveGreed]  2 of 2   NaveGreed moved to the Monster node, centre column
+      controls (Look back) [Play] [Step]
+  [NaveGreed]  2 of 2
+      reveals map node (row 1, column 3)
       action 1 MapMove act=0 row=1 column=3
+      controls [Look back] [Play] [Step]
 
 boundary        : checkpoint 'floor2-combat-start', 13 observed value(s)
   ok   combat.block               recording=0                                                        game=0
@@ -125,10 +129,14 @@ profile before  : ascension ceiling 0 for CHARACTER.IRONCLAD; characters 1/5, ca
 decisions before the start of fight 1: 2, reached after action 1
   NaveGreed's choices are shown as recorded. This shows what was chosen, not why.
 
-  [Watching NaveGreed]  1 of 2   NaveGreed took Arcane Scroll
+  [NaveGreed]  1 of 2
+      reveals event option 0 granting RELIC.ARCANE_SCROLL
       action 0 ChooseNeowBlessing option_index=0
-  [Watching NaveGreed]  2 of 2   NaveGreed moved to the Monster node, centre column
+      controls (Look back) [Play] [Step]
+  [NaveGreed]  2 of 2
+      reveals map node (row 1, column 3)
       action 1 MapMove act=0 row=1 column=3
+      controls [Look back] [Play] [Step]
 
 boundary        : checkpoint 'floor2-combat-start', 13 observed value(s)
   FAIL combat.draw_pile_count     recording=6                                                        game=7
@@ -158,11 +166,11 @@ set -o pipefail; ./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.r
 ```
 
 ```output
-decisions before the start of fight 1: 2, reached after action 1
-  NaveGreed's choices are shown as recorded. This shows what was chosen, not why.
 
-  [Watching NaveGreed]  1 of 2   NaveGreed took Leafy Poultice
+  [NaveGreed]  1 of 2
+      reveals event option 2 granting RELIC.LEAFY_POULTICE
       action 0 ChooseNeowBlessing option_index=2
+      controls (Look back) [Play] [Step]
 
 --step stops after one decision. The fight is not entered, and asking whether it started where the recording's did is refused rather than answered:
   1 of the recording's decisions before the start of fight 1 have not been made yet, so there is nothing to compare against.
@@ -186,7 +194,7 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrain
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:    60, Skipped:     0, Total:    60, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:    74, Skipped:     0, Total:    74, Duration: <duration> - Sts2PilotTrainer.Trainer.Tests.dll (net9.0)
 ```
 
 ## The regression coverage around the entry
@@ -204,7 +212,7 @@ set -o pipefail; dotnet test tests/Sts2PilotTrainer.Arbiter.Tests/Sts2PilotTrain
 ```
 
 ```output
-Passed!  - Failed:     0, Passed:     7, Skipped:     0, Total:     7, Duration: <duration> - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     9, Skipped:     0, Total:     9, Duration: <duration> - Sts2PilotTrainer.Arbiter.Tests.dll (net9.0)
 ```
 
 ## Nothing this run does can be persisted
@@ -275,9 +283,11 @@ profile note, because no profile was read.
 
 Pressing "Enter the fight" constructs the recording's run inside the retail client and
 stops on the first decision the recording made. Everything in this shot is the game's
-own: Neow's screen with all three blessings still legible behind the panel, the top bar
-at 64 of 80 health with 99 gold, and the version overlay reading v0.111.0, seed
-SFXT47K77RFK, MODDED (1). The panel over it is the game's own popup with no backstop.
+own: Neow's screen with all three blessings still legible, the top bar at 64 of 80 health
+with 99 gold, and the ring on the recorded row, which is the event screen's own selected
+state rather than anything this mod draws. What the mod adds is the tag hanging under the
+game's meta cluster, and it stays for the whole journey -
+[demo/PLAYBACK-TRANSPORT.md](PLAYBACK-TRANSPORT.md) is that surface's own proof.
 
 The caption is derived, not written down. "NaveGreed" comes from the manifest's
 `source.video.channel_name` and "Leafy Poultice" is read off the event option the
@@ -285,10 +295,10 @@ recording's action is about to take - which is why the same code says "Arcane Sc
 when the negative control takes a different one, as the refusal section above shows.
 
 ```bash {image}
-![Neow's event screen in the retail client with a panel over it titled "Watching NaveGreed". The body reads "1 of 2   NaveGreed took Leafy Poultice" and "NaveGreed's choices are shown as recorded. This shows what was chosen, not why." Two buttons: "Skip to the fight" and "Next". The top bar shows 64/80 health, 99 gold and an Ascension 10 badge; the overlay reads v0.111.0, SFXT47K77RFK, MODDED (1).](in-game-watching-neow.png)
+![Neow's event screen in the retail client with the Combat Trainer tag hanging under the top bar's meta cluster. The tag reads "NaveGreed" beside a target mark, "1 of 2" over two step dots, and four icon-only controls; a note hangs below it reading "NaveGreed's choices are shown as recorded. This shows what was chosen, not why." The recorded row, Leafy Poultice, carries the game's own selection ring. The top bar shows 64/80 health, 99 gold and an Ascension 10 badge.](in-game-watching-neow.png)
 ```
 
-![Neow's event screen in the retail client with a panel over it titled "Watching NaveGreed". The body reads "1 of 2   NaveGreed took Leafy Poultice" and "NaveGreed's choices are shown as recorded. This shows what was chosen, not why." Two buttons: "Skip to the fight" and "Next". The top bar shows 64/80 health, 99 gold and an Ascension 10 badge; the overlay reads v0.111.0, SFXT47K77RFK, MODDED (1).](aa5241eb-2026-09-03.png)
+![Neow's event screen in the retail client with the Combat Trainer tag hanging under the top bar's meta cluster. The tag reads "NaveGreed" beside a target mark, "1 of 2" over two step dots, and four icon-only controls; a note hangs below it reading "NaveGreed's choices are shown as recorded. This shows what was chosen, not why." The recorded row, Leafy Poultice, carries the game's own selection ring. The top bar shows 64/80 health, 99 gold and an Ascension 10 badge.](aa5241eb-2026-09-03.png)
 
 ## What this proves, and what it does not
 
@@ -333,10 +343,12 @@ byte identical. Two files differ and neither is progress - `settings.save`, whic
 the mod enable toggles set through the game's own screen, and the game's own combat
 replay scratch file.
 
-**Not measured here.** Whether the popup that carries the recording's decisions is
-reachable from a controller. It is the same popup the eligibility screen uses, which
-was compared against the game's own confirmation popup under synthetic input; that is
-the most this can claim, and it is not a claim that either responds to a controller.
+**Measured since, and elsewhere.** The popup that used to carry the recording's
+decisions is gone, replaced by one long-lived transport, and whether a controller can
+reach its controls is no longer an open question:
+[demo/PLAYBACK-TRANSPORT.md](PLAYBACK-TRANSPORT.md) shows the focus rim held with the
+pointer nowhere near it, along with the map-to-combat transition, the accepted clicks
+and the refusal.
 
 [docs/in-game-host.md](../docs/in-game-host.md) records the boundary between what runs
 here and what runs in the client, and
@@ -345,14 +357,14 @@ of the loop it closes a step of.
 
 The map, reached. The recorded blessing has been taken, the game's own event screen has
 been dismissed through the button the game itself would have had the player press, and
-the map is behind the panel with the run standing on its starting node. The step is
-numbered where it falls.
+the run is standing on its starting node. The same tag is still there, carrying the next
+step rather than being put up again for it.
 
 ```bash {image}
-![The Act 1 map in the retail client with a panel over it titled "Watching NaveGreed", reading "2 of 2   NaveGreed moved to the Monster node, centre column", with "Skip to the fight" and "Next" buttons. The top bar reads 64/68 health after the recorded blessing.](in-game-watching-map.png)
+![The Act 1 map in the retail client with the same Combat Trainer tag, now reading "2 of 2" with the first step dot spent and look back offered. The recorded node - the Monster node in the centre column - carries the map screen's own reticle and arrow. The relic row has gained Leafy Poultice and the top bar reads 64/68 health after the recorded blessing.](in-game-watching-map.png)
 ```
 
-![The Act 1 map in the retail client with a panel over it titled "Watching NaveGreed", reading "2 of 2   NaveGreed moved to the Monster node, centre column", with "Skip to the fight" and "Next" buttons. The top bar reads 64/68 health after the recorded blessing.](140b3d23-2026-09-03.png)
+![The Act 1 map in the retail client with the same Combat Trainer tag, now reading "2 of 2" with the first step dot spent and look back offered. The recorded node - the Monster node in the centre column - carries the map screen's own reticle and arrow. The relic row has gained Leafy Poultice and the top bar reads 64/68 health after the recorded blessing.](140b3d23-2026-09-03.png)
 
 And the fight, entered. The player is standing in it: Sludge Spinner at 42 of 42 with a
 9-damage attack intent, the opening hand of Strike, Hellraiser, Strike, Bash and Defend,
@@ -367,7 +379,7 @@ host derives and re-derives in a fresh process. The random streams and the draw 
 order agree, not just the faces on the cards.
 
 ```bash {image}
-![The recorded fight in the retail client. The Ironclad at 64/68 faces a Sludge Spinner at 42/42 with a 9-damage attack intent. The hand is Strike, Hellraiser, Strike, Bash, Defend; energy reads 3/3, the draw pile 6 and the discard 0; the button reads "End Turn 1". The overlay reads v0.111.0, SFXT47K77RFK, MODDED (1) and the badge reads Ascension 10.](in-game-recorded-fight.png)
+![The recorded fight in the retail client, with the transport collapsed to a silent chip carrying only its mark and the name NaveGreed. The Ironclad at 64/68 faces a Sludge Spinner at 42/42 with a 9-damage attack intent. The hand is Strike, Hellraiser, Strike, Bash, Defend; energy reads 3/3, the draw pile 6 and the discard 0; the button reads "End Turn 1".](in-game-recorded-fight.png)
 ```
 
-![The recorded fight in the retail client. The Ironclad at 64/68 faces a Sludge Spinner at 42/42 with a 9-damage attack intent. The hand is Strike, Hellraiser, Strike, Bash, Defend; energy reads 3/3, the draw pile 6 and the discard 0; the button reads "End Turn 1". The overlay reads v0.111.0, SFXT47K77RFK, MODDED (1) and the badge reads Ascension 10.](3cadd4e8-2026-09-03.png)
+![The recorded fight in the retail client, with the transport collapsed to a silent chip carrying only its mark and the name NaveGreed. The Ironclad at 64/68 faces a Sludge Spinner at 42/42 with a 9-damage attack intent. The hand is Strike, Hellraiser, Strike, Bash, Defend; energy reads 3/3, the draw pile 6 and the discard 0; the button reads "End Turn 1".](3cadd4e8-2026-09-03.png)

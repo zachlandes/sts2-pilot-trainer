@@ -8,7 +8,8 @@ This does not identify an unobserved source configuration when multiple configur
 If anything disagrees, it says which field, at which moment, and stops.
 
 The pre-rename `CombatTrainer` artifact demonstrated the training proof of concept: once a combat-start position is reconstructed exactly, its Combat Trainer lets a player fight it, captures that fight, and compares it with the VOD solution replayed from the same boundary.
-The renamed `Runmobile` package has not yet been loaded or exercised in a retail session, so its mod-list, initialization and protected-files proof remain explicitly pending.
+The renamed `Runmobile` package has since been installed, loaded and exercised through a whole watched journey in a retail session, with the game's own mod line naming it and a clean protected-files ledger.
+[docs/in-game-host.md](docs/in-game-host.md) owns that distinction.
 [The proof-of-concept path](docs/proof-of-concept-path.md) records how that loop was built, slice by slice.
 
 ## What has been demonstrated
@@ -94,8 +95,8 @@ The corresponding retail flow was demonstrated with the pre-rename Combat Traine
 Winning the fight showed the mod's visual result panel with the player's fight beside the recording's: compact summary figures, card and potion art by turn, and a chart of enemy and player health lost each turn.
 The two lines stayed distinct by colour and marker shape, and the panel stated differences without scoring either line or giving a verdict.
 The trainer supplied the recording's unlocks, acts, and Ascension 10 in memory, then visibly made the recording's pre-fight decisions and handed over only after the live combat-start state matched the manifest's observed fields and snapshot digest.
-That behavior must still be repeated with the renamed `Runmobile` artifact before it is claimed for that package.
-See [docs/in-game-host.md](docs/in-game-host.md), [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md), and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md).
+Under the renamed `Runmobile` artifact a later session repeated the fight itself - the recording's decisions, the handover, the fight played to a win and to a deliberate loss, and the panel each earns - but not the mode card and the offer that precede them, which are still claimed only for the pre-rename artifact.
+See [docs/in-game-host.md](docs/in-game-host.md), [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md), and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md); [demo/PLAYBACK-TRANSPORT.md](demo/PLAYBACK-TRANSPORT.md) is the `Runmobile` session, and [docs/mod-ui-direction.md](docs/mod-ui-direction.md) owns what those surfaces are.
 
 ```bash
 ./scripts/arbiter generate-synthetic-fixture --out build/evidence/alternate.replay.json --line alternate

@@ -79,6 +79,47 @@ public sealed class RecordedFightEntryTests
     }
 
     /// <summary>
+    /// Each decision also has a target: which object on the game's own screen the
+    /// transport lights before committing it.
+    ///
+    /// Read from the same live run as the caption, which is why it is asserted from
+    /// the same report. The client resolves these against the screen's own nodes and
+    /// refuses when it cannot find them; what is pinned here is that the engine names
+    /// the right one, because a reveal pointing somewhere else would light one row and
+    /// commit another.
+    /// </summary>
+    [GameFact]
+    public void EachDecisionNamesWhereItLandsOnTheGamesOwnScreen()
+    {
+        var report = EnterFight(out _);
+        var steps = report.GetProperty("steps").EnumerateArray().ToList();
+
+        Assert.Equal(
+            "event option 2 granting RELIC.LEAFY_POULTICE", steps[0].GetProperty("reveals").GetString());
+        Assert.Equal("map node (row 1, column 3)", steps[1].GetProperty("reveals").GetString());
+    }
+
+    /// <summary>
+    /// The transport's own controls, as the journey offers them. Looking back is
+    /// refused on the first decision because there is nothing behind it.
+    ///
+    /// A terminal cannot draw the glyphs the client does, so what is printed is the
+    /// tooltip's title. That is the honest stand-in: naming the control rather than
+    /// inventing a label the client does not have.
+    /// </summary>
+    [GameFact]
+    public void TheTransportOffersLookingBackOnlyOnceThereIsSomethingBehind()
+    {
+        var report = EnterFight(out _);
+        var steps = report.GetProperty("steps").EnumerateArray().ToList();
+
+        Assert.Equal("(Look back)", steps[0].GetProperty("controls").GetProperty("back").GetString());
+        Assert.Equal("[Play]", steps[0].GetProperty("controls").GetProperty("play").GetString());
+        Assert.Equal("[Step]", steps[0].GetProperty("controls").GetProperty("step").GetString());
+        Assert.Equal("[Look back]", steps[1].GetProperty("controls").GetProperty("back").GetString());
+    }
+
+    /// <summary>
     /// The unlock state the run is generated against is supplied for that run and
     /// written nowhere. Measured rather than asserted: the profile reading and every
     /// byte of the profile store are compared either side of the entry.

@@ -12,7 +12,9 @@ namespace Sts2PilotTrainer.Trainer;
 /// already produces and is shown verbatim.
 ///
 /// These strings are approved wording. Changing one is a product decision, not a
-/// refactor.
+/// refactor. The transport's provisional labels are gone: the accepted design is
+/// icon only, so what were button labels are tooltips now, and docs/mod-ui-direction.md
+/// is the design they answer to.
 /// </summary>
 public static class TrainerCopy
 {
@@ -73,19 +75,131 @@ public static class TrainerCopy
     public const string NotSavedNote =
         "This fight is not saved and does not count toward your run history.";
 
-    /// <summary>The state signal, on throughout the recording's own decisions and
-    /// gone the moment the fight is the player's.</summary>
-    public static string WatchingChip(string creator) => $"Watching {creator}";
+    // ── The playback transport ─────────────────────────────────────────────
+    //
+    // Icon only. The captain's ruling is that progressive disclosure is the game's
+    // own principle, so the controls carry drawn glyphs and the words live in their
+    // tooltips; there is no always-visible caption line. What each tooltip says is
+    // what the control does, in a player's terms rather than the format's.
 
-    /// <summary>Makes the recording's next decision.</summary>
-    public const string NextButton = "Next";
+    /// <summary>Look back: the hollow glyph, and the promise that goes with it.</summary>
+    public const string BackTooltipTitle = "Look back";
 
-    /// <summary>Makes every remaining recorded decision at once.</summary>
-    public const string SkipButton = "Skip to the fight";
+    public const string BackTooltipBody = "Shows an earlier choice again. Nothing is undone.";
+
+    /// <summary>Why look back is refused on the first decision.</summary>
+    public const string NothingBehindYet = "This is the first choice.";
+
+    public const string PlayTooltipTitle = "Play";
+
+    public const string PlayTooltipBody = "Makes the rest of the choices, pausing on each one.";
+
+    public const string PauseTooltipTitle = "Pause";
+
+    public const string PauseTooltipBody = "Stops here, on this choice.";
+
+    public const string StepTooltipTitle = "Step";
+
+    /// <summary>Step's tooltip names the decision it is about to make; the counter
+    /// and the caption are appended to this line.</summary>
+    public const string StepTooltipBody = "Makes this choice, then shows the next.";
+
+    /// <summary>The playback speed, which the captain asked for the way a video
+    /// player has it.</summary>
+    public const string SpeedTooltipTitle = "Speed";
+
+    public const string SpeedTooltipBody = "How long each choice is held before the next one.";
+
+    /// <summary>Why every control is refused while a refusal popup is up.</summary>
+    public const string RefusedDisabledReason = "Combat Trainer stopped; dismiss the message first.";
+
+    /// <summary>
+    /// Why the controls that move the run are refused while the game is between
+    /// screens - opening the fight after the last recorded choice, and the moment
+    /// between committing one choice and revealing the next.
+    ///
+    /// Deliberately unwritten. Every sentence a player reads on this surface is the
+    /// captain's, and this one has not been approved; until it is, a control refused
+    /// in those two windows falls back to saying what it does, which is what a refused
+    /// control with no reason has always said. It is one string away from being said
+    /// in both windows at once, which is why there is one constant and not two.
+    /// </summary>
+    public const string? BetweenScreensDisabledReason = null;
 
     /// <summary>Where in the recording's decisions this is.</summary>
     public static string StepCounter(int step, int count) =>
         $"{step.ToString(CultureInfo.InvariantCulture)} of {count.ToString(CultureInfo.InvariantCulture)}";
+
+    // The ledger's rows. The tag hanging above them names the creator once, so the
+    // rows do not: five rows each opening with the same name is the repetition the
+    // caption line was replaced to avoid.
+
+    public static string BlessingLedgerRow(string relicModelId) => ModelIdNames.Display(relicModelId);
+
+    public static string MapMoveLedgerRow(string nodeType, string columnPosition) =>
+        $"{ModelIdNames.Display(nodeType)} node, {columnPosition} column";
+
+    // The identity block: whose recording, which video, and a way through to the
+    // moment being shown.
+
+    public static string IdentityOpensAt(string timestamp) =>
+        $"Opens the video at {timestamp}, where this move is made.";
+
+    /// <summary>Shown when the recording has no timestamp for this decision, so
+    /// there is nowhere in the video to open at.</summary>
+    public const string IdentityNoTimestamp = "Opens the video.";
+
+    // The chip's two directions during the player's own fight. Both leave the
+    // attempt, so both are confirmed first; there is no third row, because comparing
+    // inside a fight is the second-order thing the captain ruled out.
+
+    public const string JumpToTheBeginning = "Jump to the beginning";
+
+    public const string JumpToTheEnd = "Jump to the end";
+
+    /// <summary>
+    /// Why jumping to the end is refused before a turn has been played.
+    ///
+    /// <para><b>An unreferenced string here is not dead code, and the difference is
+    /// worth stating as a rule rather than a note about this one constant.</b> Code
+    /// nobody calls can be deleted freely, because writing it again costs only the
+    /// writing. Approved player-facing wording cannot: it costs the approval, and the
+    /// person who gave it is not always reachable when a reviewer notices the missing
+    /// reference. So an approved sentence with no reader is kept, and says here why it
+    /// has none. A reviewer arriving at this file with no other context should read
+    /// this and stop, which is the whole point of its being written down.</para>
+    ///
+    /// Nothing draws this today, and that is deliberate rather than an oversight: a
+    /// refused menu row says nothing, so the row this belonged to has nowhere to put
+    /// it. Held rather than deleted for a surface that may later have somewhere honest
+    /// to show it. Do not remove it as dead code; the compiler will not stop you.
+    ///
+    /// Its wording predates the decision that the gate is one action rather than a
+    /// completed turn, so it says "a turn" where the code means an action and one card
+    /// is enough. The discrepancy is known and left standing: this is approved
+    /// player-facing wording, and rewriting it needs the same approval that wrote it.
+    /// Whichever surface eventually shows it has to carry that approval with it.
+    /// </summary>
+    public const string NothingPlayedYet = "You have not played a turn yet.";
+
+    /// <summary>The confirmation before the one destructive thing the transport
+    /// offers. Named plainly: what is lost, and that the same fight comes back.</summary>
+    public static string ConfirmJumpToTheBeginningTitle(string creator) => $"Start {creator}'s fight again?";
+
+    public const string ConfirmJumpToTheBeginningBody =
+        "This attempt is discarded and the fight starts again from exactly where it started before.";
+
+    public const string ConfirmJumpToTheEndTitle = "Finish here?";
+
+    public const string ConfirmJumpToTheEndBody =
+        "This attempt ends where it is and the result is shown.";
+
+    public const string ConfirmKeepFighting = "Keep fighting";
+
+    public const string ConfirmGoBack = "Go back";
+
+    public const string ConfirmFinish = "Finish";
+
 
     /// <summary>What the recording did at its opening event.</summary>
     public static string BlessingCaption(string creator, string relicModelId) =>
@@ -100,6 +214,38 @@ public static class TrainerCopy
     /// not.</summary>
     public static string ChoicesShownAsRecorded(string creator) =>
         $"{creator}'s choices are shown as recorded. This shows what was chosen, not why.";
+
+    // ── A refusal, in a player's words ─────────────────────────────────────
+    //
+    // The captain read the first refusal and said it looked like debugging
+    // information. It was: the engine's diagnostic, shown verbatim, talking about
+    // rows and columns to somebody who has never seen either. So the popup now says
+    // what happened in a player's terms and the engine's own sentence is kept behind
+    // a fold and in the log. The refusal is not softened - it still stops, still says
+    // the game was untouched, and still carries the exact reason for anyone who wants
+    // it. Only the sentence a player reads changes.
+
+    /// <summary>Which screen did not match, named the way a player sees it.</summary>
+    public static string RefusalHeadline(string creator, string screen) =>
+        $"This {screen} doesn't match {creator}'s recording, so Combat Trainer stopped rather than guess.";
+
+    /// <summary>The reassurance that is load-bearing rather than soothing: a refused
+    /// entry leaves nothing behind, and a player who thought otherwise would go
+    /// looking for a run that was never saved.</summary>
+    public const string RefusalNoHarm = "Your game wasn't changed.";
+
+    /// <summary>Opens the engine's own sentence. It is never the first thing shown
+    /// and it is never absent.</summary>
+    public const string RefusalShowDetails = "Show details";
+
+    public const string RefusalHideDetails = "Hide details";
+
+    /// <summary>The screens this journey walks, as a player names them. A screen with
+    /// no name here has no refusal sentence, and the engine's own is shown alone
+    /// rather than a wrong noun being invented for it.</summary>
+    public const string MapScreenName = "map";
+
+    public const string EventScreenName = "choice";
 
     public const string PassHeadline = "Your game can play this fight as recorded.";
 

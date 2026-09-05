@@ -244,7 +244,7 @@ Inside the retail client that is the player's own, and inside the headless arbit
 Its default path therefore reads the empty sandbox profile, finds no active run, and refuses by design; it cannot report on a retail player's state.
 The explicit `--demo-start-run` path constructs a synthetic run and permits synthetic progress models only for tests and demonstrations.
 The pre-rename Combat Trainer mod invoked `Preflight.EvaluateLiveHost` inside the retail process before stating whether the selected recording was eligible.
-The renamed Runmobile artifact is wired to the same API, but its retail loading and session proof remain pending and are not established by that earlier session.
+The renamed Runmobile artifact is wired to the same API, and what its own retail session does and does not establish is [in-game-host.md](in-game-host.md)'s to say.
 The host reads the installed build and the mods the game discovered, but asks about the complete progress model it will supply to the trainer run rather than reading the player's profile.
 The report identifies that state as host-supplied so it cannot masquerade as runtime player state.
 It adopts the client through `EngineHost.AdoptRunningGame`; `EngineHost.Start` remains the headless entry point that enables test mode and applies headless patches.

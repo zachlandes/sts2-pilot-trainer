@@ -207,7 +207,7 @@ This slice produced the pre-rename `CombatTrainer` mod that loaded in the shippe
 
 **Established by this slice:** the captain was told, in game, whether his install and profile could represent this VOD - and if not, exactly what to play to fix it.
 S4 extended that same pre-rename host with the current fight offer and asked the supplied run model about capabilities the trainer provided in memory.
-The renamed `Runmobile` artifact has not yet been discovered, loaded or initialized in a retail session; that proof remains explicitly pending and the `CombatTrainer` session does not establish it.
+The `CombatTrainer` session establishes nothing about the renamed `Runmobile` artifact; S7's session is where that was exercised, and [docs/in-game-host.md](in-game-host.md) says what it left unproved.
 [docs/in-game-host.md](in-game-host.md) records the current code and its limits; [demo/IN-GAME-HOST.md](../demo/IN-GAME-HOST.md) preserves the historical S3 `CombatTrainer` evidence.
 
 ### S4 - Start or reset the captured combat, in the live game - done
@@ -268,7 +268,7 @@ output.
 **Demonstrated in the retail client with the pre-rename `CombatTrainer` artifact.**
 With only Combat Trainer enabled, the screen offered the fight; pressing it constructed the recording's run, walked it through Neow's blessing and the map move on the game's own screens, and stood the player in the recorded fight - the Sludge Spinner at 42 of 42, the opening hand the recording shows, turn 1 at Ascension 10.
 The canonical state at that boundary was the same digest the headless host derived for the combat-start snapshot, so the agreement covered the run's random streams and the draw pile's order and not only what a screenshot showed.
-The renamed `Runmobile` package still needs the same retail exercise with only Runmobile enabled and a clean protected-files ledger; it is pending and not claimed here.
+S7's session repeated the entry through the renamed `Runmobile` package with only it enabled and a clean protected-files ledger; nothing here is claimed for that package on this slice's evidence.
 [demo/RECORDED-FIGHT-ENTRY.md](../demo/RECORDED-FIGHT-ENTRY.md) has the historical `CombatTrainer` screenshots.
 
 Running it in the client is what found the three screen-owned transitions the manifest
@@ -397,6 +397,53 @@ The shipped video reconstruction records no map coordinate anywhere, so its floo
 boundaries are declared but not enterable and `--floor` refuses on it; `--fight` works
 on both.
 
+### S7 - One playback transport, in the retail client - done
+
+Replace the per-step popup with one long-lived transport that carries the watched
+journey through the map-to-combat transition, and prove in the client the three
+things a wider playback design depends on.
+
+- `PlaybackTransport` in `Sts2PilotTrainer.Trainer`: the one owner of what the
+  transport says at each moment - the chip, the counter, the caption, the once-only
+  sentence, and the three controls with whether each is offered.
+  `PlaybackTransport.For(phase, facts)` is the only way to get one, and it is total:
+  every phase a journey can be in has an answer, null included for the two that put
+  nothing on screen. `Surface` is the per-element table the strip draws.
+  Pure, so every state has a test on a machine with no game.
+- `PlaybackTransportStrip` in the mod draws it from stock Godot nodes, so it is
+  asserted on node by node in a process with no game too, and `PlaybackTransportDock`
+  parents it to `NRun.GlobalUi` - the run's own persistent interface, which the game
+  swaps rooms underneath - and docks it in the band under the top bar, measured off
+  the top bar rather than written down.
+- `PrefightTarget` in `Sts2PilotTrainer.Engine` says where the recording's next
+  decision lands on the game's own screen, beside `PrefightChoice` which says what it
+  was; the coordinate is the game's own type, which is why the two are separate.
+- `RecordedFightReveal` applies the game's own selected state to that target and
+  never its click path.
+  It refuses a screen it cannot drive, a coordinate this act's map does not draw and
+  an option row granting a different relic from the recorded one, rather than
+  committing a decision unseen.
+- Forward commits one recorded action, Play runs the sequence with a hold on each -
+  shorter on the map, where the game supplies a second of its own - and Back re-shows
+  a decision already made without rewinding anything.
+  During the player's own fight the strip collapses to a chip that says nothing until
+  it is pressed, and offers two directions when it is: back to the proven combat
+  start, or to the end of the attempt. Both leave the attempt and both confirm first,
+  and both are refused - silently - once the fight has ended and its result is waiting
+  to be shown.
+
+**Runnable now:** `./scripts/arbiter enter-fight manifests/navegreed-OJ-6QXhNgdg.replay.json`
+prints, for each recorded decision, exactly what the transport says and what it would
+light on the game's own screen, and refuses a target it cannot name before anything is
+committed.
+
+**Runnable now, in the retail client.** `./scripts/install-mod.sh`, then launch with
+only `Runmobile` enabled: the strip appears over Neow with the blessing ringed,
+Forward commits it and reveals the map node, and the same strip is still there in the
+fight, collapsed to a chip.
+[demo/PLAYBACK-TRANSPORT.md](../demo/PLAYBACK-TRANSPORT.md) has it with the
+screenshots.
+
 ## Known limits that no slice above removes
 
 **The source game mode is not identified.** Standard and custom-with-no-modifiers agree
@@ -422,6 +469,12 @@ the recording's replay - and that is what the headless test pins.
 abandoned fight has no completed line to set beside it; the panel says so and shows
 nothing else. Comparing two losses is not a thing the comparison refuses, it is a
 thing no recording here has.
+
+**The transport carries only the two decision kinds this path uses.** An opening
+blessing and a map move are what the transcribed prefix contains, and they are what
+the reveal can point at. Every other screen between fights - loot, card rewards,
+rests, shops, treasure, act transitions - is refused by the reveal for the same
+reason the driver refuses its verb, and the transport says so rather than skipping it.
 
 **Only a prefix of the recording is transcribed.** Run start through the opening of
 the floor-5 fight's third turn, which is two whole fights, the loot each of them

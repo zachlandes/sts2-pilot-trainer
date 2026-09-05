@@ -215,6 +215,37 @@ public partial class Label
     public bool ClipText { get; set; }
 }
 
+public partial class Font
+{
+    /// <summary>
+    /// Godot: how large a string is once it has been wrapped to <paramref name="width"/>.
+    ///
+    /// The transport measures every sentence it hangs under its tag with this, so a
+    /// panel is as tall as its wrapped text rather than as tall as one line. It is
+    /// here so that code loads without a game; a test has no font to measure with and
+    /// never reaches it, but the runtime resolves the call before the transport's own
+    /// null check runs.
+    ///
+    /// The estimate mirrors the sibling <see cref="GetStringSize(string, int, float, int)"/>
+    /// above rather than Godot's real shaping, which needs a font.
+    /// </summary>
+    public Vector2 GetMultilineStringSize(
+        string text,
+        HorizontalAlignment alignment,
+        float width,
+        int fontSize,
+        int maxLines,
+        TextServer.LineBreakFlag brkFlags,
+        TextServer.JustificationFlag justificationFlags,
+        TextServer.Direction direction,
+        TextServer.Orientation orientation)
+    {
+        var run = text.Length * fontSize * 0.6f;
+        var lines = width <= 0 ? 1 : Math.Max(1, (int)Math.Ceiling(run / width));
+        return new Vector2(Math.Min(run, width <= 0 ? run : width), lines * fontSize * 1.35f);
+    }
+}
+
 public partial class TextureRect
 {
     public enum ExpandModeEnum { KeepSize, IgnoreSize, FitWidth, FitWidthProportional, FitHeight, FitHeightProportional }
@@ -237,13 +268,102 @@ public class StyleBoxFlat : StyleBox
 {
     public Color BgColor { get; set; }
     public Color BorderColor { get; set; }
-    public void SetBorderWidthAll(int width) { }
+
+    /// <summary>Godot sets the four edges at once. Recorded rather than discarded, so
+    /// a test can tell a control that carries a face from one that carries none.</summary>
+    public int BorderWidth { get; private set; }
+
+    public void SetBorderWidthAll(int width) => BorderWidth = width;
+
     public void SetCornerRadiusAll(int radius) { }
 }
 
 public partial class Control
 {
+    /// <summary>Godot's hover and focus signals. The transport shows a tooltip on
+    /// hover and the game's own reticle on focus, and both are wired here.</summary>
+    public event Action? MouseEntered;
+
+    public event Action? MouseExited;
+
+    public event Action? FocusEntered;
+
+    public event Action? FocusExited;
+
+    /// <summary>Raises the hover and focus signals, so the mod's game-free tests can
+    /// drive what the client's pointer and controller drive.</summary>
+    public void EmitHover(bool entered)
+    {
+        if (entered) MouseEntered?.Invoke();
+        else MouseExited?.Invoke();
+    }
+
+    public void EmitFocus(bool entered)
+    {
+        if (entered) FocusEntered?.Invoke();
+        else FocusExited?.Invoke();
+    }
+
     public void AddThemeFontOverride(StringName name, Font font) { }
     public void AddThemeColorOverride(StringName name, Color color) { }
-    public void AddThemeStyleboxOverride(StringName name, StyleBox stylebox) { }
+
+    private readonly Dictionary<string, StyleBox> _styleboxes = [];
+
+    public void AddThemeStyleboxOverride(StringName name, StyleBox stylebox) =>
+        _styleboxes[name.ToString()] = stylebox;
+
+    /// <summary>
+    /// What a control's stylebox for one of its states was set to.
+    ///
+    /// The client reads these through its theme when it draws; this is how the mod's
+    /// game-free tests read the same answer. It is what lets a silent press target -
+    /// present, taking input, drawing nothing - be told apart from a drawn one, which
+    /// is a distinction that cost the chip its only control when it could not be made.
+    /// </summary>
+    public StyleBox? ThemeStylebox(string name) =>
+        _styleboxes.TryGetValue(name, out var stylebox) ? stylebox : null;
+}
+
+public partial class Button
+{
+    /// <summary>Godot: a button drawn without its own panel. The transport's identity
+    /// block and its menu rows are hit areas over text the tag already draws.</summary>
+    public bool Flat { get; set; }
+}
+
+public partial class BaseButton
+{
+    /// <summary>
+    /// Raises the pressed signal, so the mod's game-free tests can press what a player
+    /// presses.
+    ///
+    /// A disabled button is not pressed, because Godot does not press one: a test that
+    /// could press a refused control would be asserting about a surface the client
+    /// does not have.
+    /// </summary>
+    public void EmitPressed()
+    {
+        if (Disabled) return;
+        Press();
+    }
+}
+
+public partial class BaseButton
+{
+    /// <summary>Godot: a button that is drawn but refuses input. The transport draws
+    /// a control it is not offering rather than removing it, so its buttons never
+    /// move about under the player's aim.</summary>
+    public bool Disabled { get; set; }
+}
+
+/// <summary>
+/// Godot's filled polygon. The transport's glyph family is drawn rather than taken
+/// from the game's art - the game ships no playback iconography - and a filled
+/// triangle is what tells a control that moves the run from one that only looks.
+/// </summary>
+public class Polygon2D : Node2D
+{
+    public Vector2[] Polygon { get; set; } = Array.Empty<Vector2>();
+
+    public Color Color { get; set; } = Color.White;
 }

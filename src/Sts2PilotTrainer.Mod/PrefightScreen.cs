@@ -3,28 +3,23 @@ using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Multiplayer;
-using Sts2PilotTrainer.Engine;
-using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
 /// <summary>
-/// What sits over the game's own screens while the recording makes its decisions.
+/// The two things the trainer still says in a panel rather than on the transport: a
+/// refusal, and the result of the player's fight.
 ///
-/// The screens underneath are the game's - Neow's event, then the map with the run
-/// standing on it - and they are the whole point: the options the recording did not
-/// take carry the strategic information, which is why a player watches the screens
-/// rather than reading a summary of them. So this draws no screen of its own. It
-/// puts the game's own popup over the one already there, with no backstop so the
-/// screen behind stays lit, and it carries three things: whose recording this is,
-/// which decision of theirs this is, and what they did.
+/// It used to carry the recording's decisions too, one popup per step. That is gone:
+/// <see cref="PlaybackTransportStrip"/> is the one owner of the watched journey now,
+/// because a popup is created and torn down around each decision and so cannot carry
+/// a position across the map-to-combat transition, and because it covers the screens
+/// the player is here to look at. What is left here is what a popup is actually for -
+/// something that has to be acknowledged before anything else happens.
 ///
-/// Two controls, and they are the game's popup buttons: one makes the next recorded
-/// decision, one makes all of them. There is no third, because there is no other
-/// decision available here - the recording owns every one of them, and
-/// <see cref="RecordedFightRun.DeviationLock"/> is what makes that true of the
-/// commands underneath rather than only of these buttons.
+/// Both survivors draw over the game's own modal container, which is what dims the
+/// screen behind them and takes them away on every path that already clears a popup.
 /// </summary>
 internal static class PrefightScreen
 {
@@ -45,42 +40,55 @@ internal static class PrefightScreen
     private static Control? _openResult;
 
     /// <summary>
-    /// Shows the decision the recording makes next.
+    /// Says why the fight was not entered, in a player's words, without losing the
+    /// engine's.
     ///
-    /// The caption is read from the run the decision is about to act on, through
-    /// <see cref="RecordedFightEntry.DescribeNextStep"/>, and worded by the trainer's
-    /// own copy. Nothing about this recording is written down here.
+    /// The first version of this showed the engine's diagnostic verbatim, and the
+    /// captain's reading of it was that it looked like debugging information - which
+    /// it was: a sentence about rows and columns shown to somebody who has never seen
+    /// either. So the popup now says which screen stopped, that the trainer stopped
+    /// rather than guess, and that the game was not changed. The exact reason is one
+    /// press away and always in the log. The refusal is not softened: it still stops,
+    /// and it still carries the diagnostic for whoever wants it.
     /// </summary>
-    internal static void Show(string creator, RecordedFightEntry entry, Action next, Action skip)
+    /// <param name="screen">The screen in the player's own word, or null on a refusal
+    /// that is not about one - in which case the engine's own sentence is all there
+    /// is, and it is shown rather than a noun being invented for it.</param>
+    internal static void ShowRefusal(string creator, string? screen, string reason) =>
+        ShowRefusal(creator, screen, reason, details: false);
+
+    private static void ShowRefusal(string creator, string? screen, string reason, bool details)
     {
-        var journey = PrefightJourney.ForStep(
-            creator,
-            entry.DescribeNextStep(),
-            entry.StepsTaken + 1,
-            entry.Plan.PrefixActions.Count);
-        var step = journey.Steps[0];
+        if (screen is null)
+        {
+            Open(TrainerCopy.Name, reason, TrainerCopy.BackButton, Close, null, null, backstop: false);
+            return;
+        }
 
-        // The chip is the popup's title and appears once. It is the state signal for
-        // the whole journey, so repeating it in the body under itself was the same
-        // sentence twice on one panel.
-        var lines = new List<string> { $"{step.Counter}   {step.Caption}" };
+        var body = $"{TrainerCopy.RefusalHeadline(creator, screen)}\n\n{TrainerCopy.RefusalNoHarm}";
+        if (details) body += $"\n\n{reason}";
 
-        // Shown once, with the first step. A sentence about how to read these screens
-        // is worth saying before the first of them and tiresome above every one.
-        if (step.Number == 1) lines.Add(journey.ChoicesShownAsRecorded);
-
-        Open(journey.Chip, string.Join("\n\n", lines), journey.NextButton, next, journey.SkipButton, skip);
+        Open(
+            TrainerCopy.Name,
+            body,
+            TrainerCopy.BackButton,
+            Close,
+            details ? TrainerCopy.RefusalHideDetails : TrainerCopy.RefusalShowDetails,
+            () => ShowRefusal(creator, screen, reason, !details),
+            backstop: false);
     }
 
     /// <summary>
-    /// Says why the fight was not entered.
+    /// Asks before the transport does the one destructive thing it offers.
     ///
-    /// The sentence is the engine's or the comparison's, shown word for word: a
-    /// drifted boundary already has an owner that explains itself, and rewriting it
-    /// here would put a second account of the same failure on screen.
+    /// The game's own popup, with its own two ribbons, because this is exactly what a
+    /// modal is for: the player is about to discard an attempt, and a surface that
+    /// does not have to be acknowledged would be the wrong shape for it. The
+    /// affirmative sits on the right where the game puts it.
     /// </summary>
-    internal static void ShowRefusal(string reason) =>
-        Open(TrainerCopy.Name, reason, TrainerCopy.BackButton, Close, null, null);
+    internal static void Confirm(
+        string title, string body, string confirmLabel, string cancelLabel, Action confirmed) =>
+        Open(title, body, confirmLabel, () => { Close(); confirmed(); }, cancelLabel, Close, backstop: true);
 
     /// <summary>
     /// Shows the player's fight beside the recording's, or the one sentence that
@@ -139,7 +147,7 @@ internal static class PrefightScreen
         catch (Exception ex)
         {
             Log.Error(
-                $"[{RunmobileMod.ModId}] could not close the watching popup: " +
+                $"[{RunmobileMod.ModId}] could not close the trainer popup: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
         finally
@@ -150,7 +158,8 @@ internal static class PrefightScreen
     }
 
     private static void Open(
-        string title, string body, string confirmLabel, Action onConfirm, string? cancelLabel, Action? onCancel)
+        string title, string body, string confirmLabel, Action onConfirm, string? cancelLabel, Action? onCancel,
+        bool backstop)
     {
         Close();
 
@@ -163,9 +172,11 @@ internal static class PrefightScreen
             var container = NModalContainer.Instance
                 ?? throw new InvalidOperationException("This process has no modal container.");
 
-            // No backstop. The screen underneath is the recording's own decision being
-            // shown, and dimming it would hide the thing the player is here to see.
-            container.Add(popup, showBackstop: false);
+            // A refusal names the run it is refusing and the screen it was refused on
+            // is the evidence for the sentence, so that one keeps the screen lit. A
+            // confirmation is about to discard an attempt and dims it, because the
+            // question is the only thing on screen that matters at that moment.
+            container.Add(popup, showBackstop: backstop);
             added = true;
 
             var content = popup.GetNode<NVerticalPopup>(VerticalPopupPath);
@@ -200,13 +211,13 @@ internal static class PrefightScreen
             catch (Exception cleanup)
             {
                 Log.Error(
-                    $"[{RunmobileMod.ModId}] could not clear a failed watching popup: " +
+                    $"[{RunmobileMod.ModId}] could not clear a failed trainer popup: " +
                     $"{cleanup.GetType().Name}: {cleanup.Message}", 2);
             }
 
             _open = null;
             throw new InvalidOperationException(
-                $"The watching popup could not be shown: {ex.GetType().Name}: {ex.Message}", ex);
+                $"The trainer popup could not be shown: {ex.GetType().Name}: {ex.Message}", ex);
         }
     }
 }

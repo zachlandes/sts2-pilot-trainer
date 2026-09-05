@@ -27,7 +27,7 @@ Run it on its own only when that is what you want, because the skip is silent in
 totals and the suite still reports green.
 Building first is what makes it run everything: nothing in the solution references
 `Sts2PilotTrainer.Cli`, so `dotnet test` never builds the arbiter the integration
-tests drive, and bootstrapping alone leaves 119 of them skipped.
+tests drive, and bootstrapping alone leaves 137 of them skipped.
 Every test run is bounded by `TestSessionTimeout` in `.runsettings`, wired in from
 `Directory.Build.props` so it applies however `dotnet test` was started. A run that
 exceeds it aborts with a non-zero exit rather than hanging: a deadlocked test used to
@@ -101,8 +101,8 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, 97 of
-`Sts2PilotTrainer.Arbiter.Tests`' 145 tests skip and the job still reports success.
+**What CI cannot run is recorded by name.** On a runner without the game, 115 of
+`Sts2PilotTrainer.Arbiter.Tests`' 163 tests skip and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts that skipped set against
 `scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
 one, or deleting one fails CI until the list is regenerated with `--update` in the
@@ -156,9 +156,17 @@ anything, and each refuses where the manifest is silent.
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
 player's game; `EngineHost.Start` must never run there, and `AdoptRunningGame` is the
-way in. Two traps in that process cost a crash each and are written down there: mod
+way in. Five traps in that process are written down there. Two cost a crash each: mod
 initialization runs before the game has a model database, and Godot does not load the
-game into the default assembly load context. `./scripts/install-mod.sh` is the one
+game into the default assembly load context. Two are about *when* rather than what, and
+were live in a build whose tests were green: waiting a length of time is not waiting for
+the game to finish something, and returning to the main menu frees the popup that
+explains why you returned. The fifth stops the mod loading at all, before a line of its
+code runs: a field's type may *be* a sibling assembly's type and may not be a *generic
+type built over* one, in a nullable, a tuple, a delegate's type argument or a
+collection's element. It has fired three times, most recently through a green CI run, so
+run `ModAssemblyLoadOrderTests` on a new field rather than judging its shape.
+`./scripts/install-mod.sh` is the one
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions, and remove the `CombatTrainer` directory the mod was installed under before the rename.
 
@@ -180,6 +188,13 @@ test. That document also names three limits this path does not remove.
 
 **Standing somebody in a recorded fight has one owner.**
 `RecordedFightEntry` constructs the run, makes the recording's decisions in order and refuses a boundary that is not the recorded one; the mod owns retail timing, presentation, deviation locks and write isolation.
+The watched journey is one long-lived transport and not a popup per step: `PlaybackTransport` in `Sts2PilotTrainer.Trainer` owns what it says, `PlaybackTransportStrip` draws it, `PlaybackTransportDock` parents it to the run's own persistent interface so it survives the map-to-combat transition, and `RecordedFightReveal` lights the game's own selected state without clicking.
+Do not add a second playback path beside it; `docs/in-game-host.md` owns why.
+**What the transport *is* at any moment is derived in one place and never built by hand.**
+`PlaybackTransport.For(phase, facts)` is total and pure - every phase has an answer, null included for the two that draw nothing - and the five shapes behind it are private, so there is no way round it; `TransportSurface` answers present, drawn and pressable separately for every element and the strip projects that table without reading the mode; `RecordedFightRun.Transition` is the only thing that changes the phase and it re-derives, as does every fact that can change under it.
+Four defects came from the one boolean this replaced. `docs/mod-ui-direction.md` owns the table and the rule.
+What those surfaces look like is settled and is `docs/mod-ui-direction.md`: a hanging tag under the game's own meta cluster, icon-only controls with tooltips, the mod's own drawn glyph family where a filled shape moves the run and a hollow one only looks.
+A redesign changes what `PlaybackTransportStrip` draws and nothing else.
 Keeping construction in the engine owner lets `./scripts/arbiter enter-fight` exercise the journey without a scene tree.
 The run is generated against a supplied complete unlock state and can persist nothing:
 `shouldSave: false` plus the mod's `ProfileWriteBarrier`, which is installed at mod
