@@ -552,6 +552,21 @@ floor identity a "play this fight" action would need - alongside its private
                                          # regenerate the recording's shipped lines after the manifest changes
 ```
 
+### Producing a recording, and checking it
+
+The recorder needs no setting up: it is on unless `settings.json` in the store says otherwise, and it attaches to every run the player starts or continues.
+
+1. `./scripts/protected-files.sh snapshot before.ledger`, so what the session changed can be measured rather than asserted.
+2. `./scripts/install-mod.sh`, then launch the game **through Steam** - `open "steam://rungameid/2868840"` or the library - because launched on its own the client cannot initialise Steam and stops on an error popup.
+3. Check the game's log says the mod is there: `[Runmobile] Recorder installed` and `--- RUNNING MODDED! --- Loaded 1 mods`. The log is `~/Library/Application Support/SlayTheSpire2/logs/godot.log`.
+4. Play a run. `[Runmobile] recording this run as native-<seed>-<date>-<time>` says it attached.
+5. End it - won, dead, or given up from the pause menu. `[Runmobile] recorded <id>: <outcome>, N decision(s), M boundary/boundaries, continuity continuous, written to recordings/<id>.replay.json` says it finished, and a line after it says so if the recording does not validate.
+6. The recording is under the store: `~/Library/Application Support/SlayTheSpire2/Runmobile/<the game's own profile scope>/recordings/`. The scope mirrors what the game resolved for its own saves, so two accounts and two profiles do not share a library.
+7. `./scripts/arbiter gate <that file>` is the verdict, and `./scripts/arbiter enter-fight <that file> --fight 2` stands the arbiter in its second fight.
+8. `./scripts/protected-files.sh compare before.ledger` reports what the session changed. The game's own saves, profile and run history are expected to change - the player really played a run - and everything of this mod's is under `user://Runmobile/`.
+
+To exercise continuity, quit to the main menu part way through a run and continue it from the game's own Continue. `[Runmobile] continuing the recording of <id> at decision N; continuity continuous` is the pass; a `continuity broken` line names what the recorder saw instead, and the recording is then refused for publication rather than repaired.
+
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory, either `mods` or the game's Steam test-branch variant `mods_STEAMTEST`.
 It also removes a `CombatTrainer` directory left there by a build from before the rename, on install and on `--uninstall`, because two directories declaring this mod would be reported to the player as a duplicate.
