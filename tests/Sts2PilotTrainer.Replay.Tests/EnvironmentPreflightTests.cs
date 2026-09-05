@@ -693,6 +693,46 @@ public class EnvironmentPreflightTests
         Assert.Contains("An unidentified mod", Diagnostic(result, "mod_environment"), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A mod sitting disabled in the mods directory is not a mod the run was played
+    /// under, and the two rules about it agree.
+    ///
+    /// The losing sequence: a player has three other mods installed and disabled, one
+    /// of which declares itself gameplay-affecting. Their run is generated and played
+    /// with only Runmobile loaded. If the recorder writes every discovered mod,
+    /// <c>loaded_mod_environment</c> passes - it drops the disabled ones - while
+    /// <c>mod_environment</c> refuses the recording for a mod that never ran, and the
+    /// gate fails on a statement that is not true of the run.
+    /// </summary>
+    [Fact]
+    public void AModTheGameNeverLoadedIsNotOneTheRunWasPlayedUnder()
+    {
+        IReadOnlyList<LocalMod> discovered =
+        [
+            new("Runmobile", "Runmobile", "0.1.0", AffectsGameplay: false, "Loaded"),
+            new("Rebalance", "Rebalance", "2.0", AffectsGameplay: true, "Disabled"),
+            new("Rebalance", "Rebalance", "2.0", AffectsGameplay: true, "DisabledDuplicate"),
+        ];
+
+        var result = EnvironmentPreflight.Prerequisites(
+            Environment() with
+            {
+                Mods = Fact<ModEnvironment>.Captured(
+                    ModEnvironment.AsRecorded(discovered), FactEvidence.AtActionOrdinal(0)),
+            },
+            Local() with { Mods = discovered },
+            sourceKind: "native");
+
+        Assert.True(Field(result, "mod_environment").Matches, Describe(result));
+        Assert.True(Field(result, "loaded_mod_environment").Matches, Describe(result));
+
+        // And the count stays a count of what was loaded, so "we identified one of one"
+        // is still distinguishable from "we identified one".
+        var recorded = ModEnvironment.AsRecorded(discovered);
+        Assert.Equal(1, recorded.ReportedCount);
+        Assert.Equal(["Runmobile"], recorded.Mods.Select(mod => mod.Name));
+    }
+
     private static PreflightResult NativeMods(ModEnvironment mods) =>
         EnvironmentPreflight.Prerequisites(
             Environment() with { Mods = Fact<ModEnvironment>.Captured(mods, FactEvidence.AtActionOrdinal(0)) },

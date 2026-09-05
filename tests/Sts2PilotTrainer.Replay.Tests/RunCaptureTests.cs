@@ -90,7 +90,7 @@ public sealed class RunCaptureTests
     [Fact]
     public void EveryBoundaryTheRunReachedCarriesTheDigestReadThere()
     {
-        var manifest = Played().ToManifest();
+        var manifest = Ended().ToManifest();
 
         Assert.Equal(
             [
@@ -113,7 +113,7 @@ public sealed class RunCaptureTests
     [Fact]
     public void EveryBoundaryIsAlsoACheckpointOfWhatWasReadThere()
     {
-        var manifest = Played().ToManifest();
+        var manifest = Ended().ToManifest();
 
         var combatStart = Assert.Single(manifest.Checkpoints, c => c.Id == "fight-1-start");
         Assert.Equal(ReplayBoundary.CombatStartKind, combatStart.Kind);
@@ -142,6 +142,28 @@ public sealed class RunCaptureTests
         Assert.Equal("run-end", checkpoint.Id);
         Assert.Equal(RunCapture.RunEndCheckpointKind, checkpoint.Kind);
         Assert.Equal(0, checkpoint.AfterSeq);
+    }
+
+    /// <summary>
+    /// A run still being played has no manifest, because a manifest says how the run
+    /// ended.
+    ///
+    /// A defaulted outcome would have a crashed session's prefix read as a give-up,
+    /// indistinguishable from a player who gave up - and how a run ended is exactly the
+    /// kind of value this project refuses to guess. The journal is the crash-surviving
+    /// form and needs no outcome to be read.
+    /// </summary>
+    [Fact]
+    public void ARunStillBeingPlayedHasNoManifest()
+    {
+        var capture = Played();
+
+        var refusal = Assert.Throws<ManifestException>(capture.ToManifest);
+
+        Assert.Contains("has not ended", refusal.Message, StringComparison.Ordinal);
+
+        capture.Finish("lost");
+        Assert.Equal("lost", capture.ToManifest().Source.Native!.Outcome);
     }
 
     [Fact]
@@ -247,6 +269,7 @@ public sealed class RunCaptureTests
 
         Assert.False(resumed.WitnessedRunStart);
         Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
+        resumed.Finish("abandoned");
         Assert.False(resumed.ToManifest().Source.Native!.WitnessedRunStart.Value);
     }
 
@@ -389,6 +412,18 @@ public sealed class RunCaptureTests
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, problem =>
             problem.Contains("continuity is 'broken'", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A recording of a run that is over, which is the only kind
+    /// <see cref="RunCapture.ToManifest"/> answers for: how a run ended is not a value
+    /// it may guess.
+    /// </summary>
+    private static RunCapture Ended()
+    {
+        var capture = Played();
+        capture.Finish("abandoned");
+        return capture;
     }
 
     /// <summary>

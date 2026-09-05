@@ -378,14 +378,27 @@ public sealed class RunCapture
     /// <summary>
     /// This recording, as a manifest.
     ///
-    /// Available before the run ends as well as after, because the journal exists so
-    /// that a crash keeps the prefix and a prefix is only useful if something can read
-    /// it. What it is <em>not</em> is publishable on its own: the validator decides
-    /// that, and it refuses a recording whose start nobody witnessed or whose watch
-    /// has a hole in it.
+    /// Only once the run has ended, because a manifest says how it ended and that is
+    /// not a value anything here may guess: a defaulted outcome would have a crashed
+    /// session's prefix claim the player gave the run up, indistinguishable from one
+    /// who did. A caller that wants a manifest of a run still being played calls
+    /// <see cref="Finish"/> with the outcome it means. What the journal holds is the
+    /// crash-surviving form, and it needs no outcome to be read.
+    ///
+    /// What this is <em>not</em> is publishable on its own: the validator decides that,
+    /// and it refuses a recording whose start nobody witnessed or whose watch has a
+    /// hole in it.
     /// </summary>
+    /// <exception cref="ManifestException">When the run has not ended.</exception>
     public ReplayManifest ToManifest()
     {
+        if (Outcome is null)
+        {
+            throw new ManifestException(
+                "This run has not ended, so nothing can say how it ended. A manifest records won, lost or " +
+                "abandoned, and the recorder that reads the run's end is the only thing that knows which.");
+        }
+
         var coverage = RunCoverage.Of(Trace);
         var locations = coverage.Boundaries();
 
@@ -404,7 +417,7 @@ public sealed class RunCapture
                     WitnessedRunStart = Fact<bool>.Captured(
                         WitnessedRunStart, FactEvidence.AtActionOrdinal(-1, Opening.RunClockMs)),
                     Continuity = Continuity,
-                    Outcome = Outcome ?? NativeSource.Outcomes[2],
+                    Outcome = Outcome,
                 },
             },
             Actions = _actions.ToList(),
