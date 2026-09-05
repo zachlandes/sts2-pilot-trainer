@@ -161,8 +161,21 @@ internal sealed class PlaybackTransportStrip
     /// whatever was hanging a moment ago. Look back is the case that shows it: the
     /// tooltip went up, then the ledger appeared underneath it, and the sentence sat
     /// on top of the rows it had been placed above.
+    ///
+    /// Three plain fields rather than one nullable tuple, by the rule in
+    /// docs/in-game-host.md: a field's type may be a sibling type, and may not be a
+    /// generic type built over one - not in a nullable, a tuple, a delegate's type
+    /// argument or a collection's element. <c>(Control, Func&lt;ElementSurface&gt;)?</c>
+    /// was all three at once and the mod loaded not at all. These are a
+    /// <c>Control</c> reference and two providers generic over <c>string</c> alone,
+    /// so nothing here resolves a sibling. <c>ModAssemblyLoadOrderTests</c> is what
+    /// checks it; do not reason about a new field's shape, run that.
     /// </summary>
-    private (Control Anchor, Func<ElementSurface> Element)? _tipSource;
+    private Control? _tipAnchorControl;
+
+    private Func<string>? _tipTitleSource;
+
+    private Func<string>? _tipBodySource;
 
     private PlaybackTransportStrip(Nodes nodes, Vector2 viewport, Vector2 anchor, Font? font)
     {
@@ -405,9 +418,10 @@ internal sealed class PlaybackTransportStrip
         // Last, once everything that hangs has been laid out and the measure is final.
         // A tooltip that is already up was placed against the measure of a moment ago,
         // and this is the only point at which the right answer is known.
-        if (_tip.Visible && _tipSource is { } tip)
+        if (_tip.Visible && _tipAnchorControl is { } anchor &&
+            _tipTitleSource is { } title && _tipBodySource is { } body)
         {
-            ShowTooltip(tip.Anchor, tip.Element);
+            ShowTooltip(anchor, title, body);
         }
     }
 
@@ -722,20 +736,10 @@ internal sealed class PlaybackTransportStrip
     /// Which menu is open, if any - as a number rather than the enum, and deliberately
     /// not the rows themselves.
     ///
-    /// An <c>int</c> for the same reason <c>RecordedFightRun._speedIndex</c> is one: a
-    /// <c>MenuKind?</c> field is a generic instantiation over a sibling assembly's
-    /// value type, so computing this class's layout would resolve that sibling one
-    /// phase before the runtime has been taught where the siblings are.
-    ///
-    /// The indirection is not style, and it cost a startup to learn. The game
-    /// enumerates this assembly's types before it calls the mod initializer, and a
-    /// field whose type is a generic instantiation over a sibling assembly's type -
-    /// <c>IReadOnlyList&lt;MenuRow&gt;</c> was the one - makes the runtime resolve
-    /// that sibling to build the instantiation, one phase before
-    /// <see cref="SiblingAssemblies"/> has taught it where the siblings are. The whole
-    /// mod then fails to load. A plain reference-typed field is fine, because its
-    /// layout is a pointer; the rows are read off the state instead.
-    /// See docs/in-game-host.md.
+    /// An <c>int</c> by the rule in docs/in-game-host.md: a field's type may not be a
+    /// generic type built over a sibling assembly's type, and <c>MenuKind?</c> is one.
+    /// The rows are read off the state instead. <c>ModAssemblyLoadOrderTests</c> is
+    /// the check; run it rather than judging a new field by resemblance to this one.
     /// </summary>
     private int _openMenu;
 
@@ -1031,9 +1035,20 @@ internal sealed class PlaybackTransportStrip
     /// </summary>
     private void ShowTooltip(Control anchor, Func<ElementSurface> element)
     {
-        var surface = element();
-        var title = surface.TooltipTitle;
-        var body = surface.TooltipBody;
+        // Narrowed to two string providers before anything is stored. What the tag
+        // remembers has to stay clear of the sibling assembly, so the element is read
+        // here and only its words are kept.
+        ShowTooltip(anchor, () => element().TooltipTitle, () => element().TooltipBody);
+    }
+
+    private void ShowTooltip(Control anchor, Func<string> titleOf, Func<string> bodyOf)
+    {
+        _tipAnchorControl = anchor;
+        _tipTitleSource = titleOf;
+        _tipBodySource = bodyOf;
+
+        var title = titleOf();
+        var body = bodyOf();
         if (title.Length == 0 && body.Length == 0)
         {
             HideTooltip();
@@ -1043,7 +1058,6 @@ internal sealed class PlaybackTransportStrip
         _tipTitle.Text = title;
         _tipBody.Text = body;
         _tip.Visible = true;
-        _tipSource = (anchor, element);
 
         // Sized to the body once it has wrapped, not to the newlines in it: at this
         // width "Shows an earlier choice again. Nothing is undone." is two lines and
@@ -1071,7 +1085,9 @@ internal sealed class PlaybackTransportStrip
     private void HideTooltip()
     {
         _tip.Visible = false;
-        _tipSource = null;
+        _tipAnchorControl = null;
+        _tipTitleSource = null;
+        _tipBodySource = null;
     }
 
     // ── Node plumbing ──────────────────────────────────────────────────────

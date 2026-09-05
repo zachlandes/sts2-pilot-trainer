@@ -348,10 +348,20 @@ What these surfaces look like is [mod-ui-direction.md](mod-ui-direction.md); thi
 
 **A field can stop the whole mod loading, one phase before any of its code runs.**
 The game finds the initializer by enumerating this assembly's types, which happens before `SiblingAssemblies` has taught the runtime that `Sts2PilotTrainer.*` sit beside the mod rather than beside the game.
-Enumerating a type resolves the types its fields are *built from*, so a field whose type is a generic instantiation over a sibling - `IReadOnlyList<MenuRow>` was the one that did it - resolves that sibling, fails, and the mod loads not at all with a `ReflectionTypeLoadException` naming it.
-A plain reference-typed field of a sibling type is fine and several have always existed: its layout is a pointer.
-Hold state in the mod's own types, or read it off a reference-typed field, and keep sibling types out of field *shapes*.
+Enumerating a type resolves the types its fields are *built from*, so a field built from a sibling resolves that sibling, fails, and the mod loads not at all with a `ReflectionTypeLoadException` naming it.
+
+**The rule, stated so a new field can be checked against it rather than compared to a previous casualty.**
+A field's type may *be* a sibling type - a plain reference is a pointer and several have always existed.
+A field's type may not be a *generic type built over* a sibling: not inside a nullable, not inside a tuple, not as a delegate's type argument, not as a collection's element.
+Hold that state as a plain reference, or as an `int` you cast back on use, and read the real thing where you need it.
+`_speedIndex`, `RecordedFightRun._phase`, `PlaybackTransportStrip._openMenu` and the tag's tooltip fields are all that shape, and each says so where it is declared.
 A module initializer does not rescue this, measured: type enumeration does not trigger one.
+
+**`ModAssemblyLoadOrderTests` is the arbiter, not this paragraph.**
+It loads the built mod in a context that refuses to resolve the siblings and calls `Module.GetTypes()`, which is exactly what the game does at that moment, and it names the loader's own complaint when it fails.
+Run it rather than reasoning about a field's shape; it takes a second and it fails the way the game fails.
+It exists because this trap has fired three times - `IReadOnlyList<MenuRow>` cost a startup, a `PlaybackSpeed` field is why `_speedIndex` is an `int`, and a `(Control, Func<ElementSurface>)?` field reached a green pull request with passing CI and a mod that loaded not at all.
+The comment warning about the trap was fifteen lines from that third field. An accurate comment that has to be recognised is not a check.
 
 **The strip has to be reachable and has to be out of the way.**
 Its root and everything on it except the buttons ignore the mouse, so the map, the event and the player's own fight keep every click that is not on a control.
