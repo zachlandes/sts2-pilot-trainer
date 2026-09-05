@@ -124,6 +124,18 @@ public sealed class RunCapture
     /// <summary>The state before any decision, as the journal recorded it.</summary>
     public RunJournalEntry Opening { get; }
 
+    /// <summary>
+    /// The complete state digest after the most recent decision, or the opening
+    /// reading's when none has been made.
+    ///
+    /// What a host asks when it needs to know whether anything happened. A digest
+    /// covers the draw order and every random stream's position, so two decisions
+    /// apart it is the sharpest available answer to "did the engine do anything" -
+    /// which is not the same question as "did the player decide something", and the
+    /// caller is the one that knows which it is asking.
+    /// </summary>
+    public string LastDigest => _entries.Count > 0 ? _entries[^1].Digest : Opening.Digest;
+
     /// <summary>Everything recorded so far, in order.</summary>
     public ReplayTrace Trace => new() { Steps = _steps.ToList() };
 

@@ -434,6 +434,20 @@ internal sealed class RunRecorder : IDisposable
                     continue;
                 }
 
+                if (NothingHappened(next))
+                {
+                    // The player opened a screen and backed out of it, or the engine
+                    // turned the decision down. Recording it would put an action in the
+                    // history that a replay would make differently, and the two
+                    // together are what say it: the engine said no, and the run's
+                    // complete state - draw order and every random stream included - is
+                    // where it was before.
+                    Log.Info(
+                        $"[{RunmobileMod.ModId}] a {next.Verb} was not taken and the run is unchanged, so it " +
+                        "is not recorded", 2);
+                    continue;
+                }
+
                 Commit(next.Verb, next.Args);
             }
             catch (Exception ex)
@@ -453,6 +467,21 @@ internal sealed class RunRecorder : IDisposable
             }
         }
     }
+
+    /// <summary>
+    /// Whether the engine turned this decision down and left the run exactly as it was.
+    ///
+    /// Both halves, because neither is enough on its own. A task that came back false
+    /// does not always mean nothing happened - the engine reports a reward taken
+    /// through the reward as well as through the call - and an unchanged run does not
+    /// always mean nothing was decided: skipping a loot screen and leaving a chest's
+    /// relic behind are both decisions the format records precisely <em>because</em>
+    /// the engine discards them silently and the run looks the same either way. Those
+    /// two hand back nothing to be false about, so they are never reached here.
+    /// </summary>
+    private bool NothingHappened(PendingDecision decision) =>
+        decision.EngineWork is Task<bool> { IsCompletedSuccessfully: true, Result: false } &&
+        string.Equals(_capture.LastDigest, LiveRun.Project().Digest(), StringComparison.Ordinal);
 
     /// <summary>
     /// Waits for the engine to finish what a decision started.
