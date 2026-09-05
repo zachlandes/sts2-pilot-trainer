@@ -51,12 +51,6 @@ internal sealed class RunRecorder : IDisposable
 
     private const double SettlePollSeconds = 0.05;
 
-    /// <summary>How long to wait for the screens in front of the player to be answered.
-    /// Minutes rather than seconds, because a person reading their deck is not the
-    /// engine failing - but a count that never returns to zero is a defect in this
-    /// mod's own bookkeeping and has to say so rather than wait for ever.</summary>
-    private const double ScreenBudgetSeconds = 600.0;
-
     /// <summary>How long to wait for a run to exist after the game said one was
     /// starting. Generous, because continuing a saved run loads a scene.</summary>
     private const double AttachBudgetSeconds = 60.0;
@@ -278,14 +272,20 @@ internal sealed class RunRecorder : IDisposable
             }
 
             var recorder = new RunRecorder(capture, journalPath);
-            Active = recorder;
 
             // A journal whose last decision left a fight live resumes with that fight
             // still live, and nothing else here would ever ask: the question is asked
             // after each decision, and a resumed session has not made one yet. Left
             // unasked, every card play and ended turn of the rest of that fight goes
             // unrecorded while the recording still reports a continuous watch.
+            //
+            // Before Active is published rather than after, so that a throw from here
+            // lands in the catch below with nothing recording: a log line saying the run
+            // is not being recorded while it is would tell the player the opposite of
+            // what happened.
             recorder.StartOrStopWatchingTheFight();
+
+            Active = recorder;
         }
         catch (Exception ex)
         {
@@ -410,11 +410,22 @@ internal sealed class RunRecorder : IDisposable
         }
     }
 
-    /// <summary>A card screen has gone up in front of the player.</summary>
-    internal static void ScreenOpened() => Interlocked.Increment(ref _screensOpen);
+    /// <summary>
+    /// A card screen has gone up in front of the player, and has come back down.
+    ///
+    /// Taken and given back by one try/finally around the screen's own task rather than
+    /// by a prefix and a postfix that could each decide differently: a screen counted
+    /// on the way up and not on the way down leaves the count above zero for the rest of
+    /// the session, and the next run's settle waits on a screen nobody is looking at.
+    /// Counted whether or not a recorder is watching, because what is being counted is
+    /// screens on screen.
+    /// </summary>
+    private static void ScreenOpened() => Interlocked.Increment(ref _screensOpen);
 
-    /// <summary>That screen has been answered.</summary>
-    internal static void ScreenClosed() => Interlocked.Decrement(ref _screensOpen);
+    private static void ScreenClosed() => Interlocked.Decrement(ref _screensOpen);
+
+    /// <summary>How many card screens are open, for a test that drives one.</summary>
+    internal static int ScreensOpen => Volatile.Read(ref _screensOpen);
 
     /// <summary>A card reward screen answered, by the position it reports.</summary>
     internal static void CardRewardAnswered(IReadOnlyList<CardModel> offered, int? option)
@@ -553,56 +564,22 @@ internal sealed class RunRecorder : IDisposable
     /// is a queue that drains - and a reading taken between them would be of a run
     /// halfway through a decision.
     /// </summary>
-    /// <summary>
-    /// Waits for the screens in front of the player to be answered, and says so if they
-    /// never are.
-    ///
-    /// A person deciding is not an engine failing to settle, which is why this runs
-    /// before the settle budget rather than inside it. Bounded all the same: a screen
-    /// nobody ever answers is a game that has stopped, and a count that never returns to
-    /// zero is this mod having lost track of one - a screen torn down with its run
-    /// leaves its own count behind, and the next run would wait on it for ever with
-    /// nothing said and nothing recorded.
-    ///
-    /// The budget, the count and the poll arrive as arguments for the same reason
-    /// <see cref="PlayerFightObserver.WaitUntilSettled"/>'s do: waiting is a rule about
-    /// three things, and handed them it can be exercised on a machine with no game.
-    /// </summary>
-    /// <returns>Null once no screen is open, or the sentence saying what it gave up
-    /// waiting for.</returns>
-    internal static async Task<string?> WaitForScreens(Task budget, Func<int> open, Func<Task> nextPoll)
-    {
-        while (open() > 0)
-        {
-            if (budget.IsCompleted)
-            {
-                return
-                    $"{open().ToString(CultureInfo.InvariantCulture)} card screen(s) were still open " +
-                    $"{ScreenBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds after the recorder " +
-                    "began waiting for them, so it never got to read the state this decision left.";
-            }
-
-            var poll = nextPoll();
-            if (await Task.WhenAny(poll, budget) != poll) continue;
-            await poll;
-        }
-
-        return null;
-    }
-
     /// <returns>Null once the engine has settled, or the sentence saying what it was
-    /// still waiting for. The two waits time out for different reasons and a caller
-    /// that reported either as the other would send somebody looking in the wrong
-    /// place.</returns>
+    /// still waiting for.</returns>
     private static async Task<string?> Settle(Task? engineWork)
     {
-        if (await WaitForScreens(
-                RecordedFightRun.LetTheGameRun(ScreenBudgetSeconds),
-                () => Volatile.Read(ref _screensOpen),
-                () => RecordedFightRun.LetTheGameRun(SettlePollSeconds)) is { } waiting)
-        {
-            return waiting;
-        }
+        // A person deciding is not an engine failing to settle, so the budget below does
+        // not start until every screen in front of them has been answered, and this wait
+        // has no budget of its own: a screen is up for as long as somebody is looking at
+        // it, and a clock here would cost a player who stepped away their recording.
+        // What it needs instead is a count that cannot drift - ScreenOpened and
+        // ScreenClosed are the same try/finally, so a screen that is up is counted once
+        // and given back however its task ends - and the reset at attach, which clears
+        // anything counted before this recorder existed. A screen whose task genuinely
+        // never completes is a game that has stopped, and the decisions queued behind it
+        // are still pending at run end, where Finish refuses the recording and says how
+        // many it never read.
+        while (Volatile.Read(ref _screensOpen) > 0) await RecordedFightRun.LetTheGameRun(SettlePollSeconds);
 
         var deadline = RecordedFightRun.LetTheGameRun(SettleBudgetSeconds);
         var unsettled =
@@ -1455,25 +1432,16 @@ internal sealed class RunRecorder : IDisposable
     [HarmonyPatch(typeof(NCardGridSelectionScreen), nameof(NCardGridSelectionScreen.CardsSelected))]
     internal static class CardScreen
     {
-        [HarmonyPrefix]
-        internal static void Before()
-        {
-            if (Active is null) return;
-            ScreenOpened();
-        }
-
         [HarmonyPostfix]
         internal static void After(
-            NCardGridSelectionScreen __instance, ref Task<IEnumerable<CardModel>> __result)
-        {
-            if (Active is null) return;
+            NCardGridSelectionScreen __instance, ref Task<IEnumerable<CardModel>> __result) =>
             __result = Observe(__instance, __result);
-        }
 
-        private static async Task<IEnumerable<CardModel>> Observe(
+        internal static async Task<IEnumerable<CardModel>> Observe(
             NCardGridSelectionScreen screen, Task<IEnumerable<CardModel>> inner)
         {
             IEnumerable<CardModel> chosen;
+            ScreenOpened();
             try
             {
                 chosen = await inner;
@@ -1539,23 +1507,13 @@ internal sealed class RunRecorder : IDisposable
     [HarmonyPatch(typeof(NCardRewardSelectionScreen), nameof(NCardRewardSelectionScreen.OptionSelected))]
     internal static class CardRewardAnswer
     {
-        [HarmonyPrefix]
-        internal static void Before()
-        {
-            if (Active is null) return;
-            ScreenOpened();
-        }
-
         [HarmonyPostfix]
-        internal static void After(ref Task<int?> __result)
-        {
-            if (Active is null) return;
-            __result = Observe(__result);
-        }
+        internal static void After(ref Task<int?> __result) => __result = Observe(__result);
 
-        private static async Task<int?> Observe(Task<int?> inner)
+        internal static async Task<int?> Observe(Task<int?> inner)
         {
             int? option;
+            ScreenOpened();
             try
             {
                 option = await inner;

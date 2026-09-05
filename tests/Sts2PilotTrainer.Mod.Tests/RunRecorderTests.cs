@@ -157,54 +157,42 @@ public sealed class RunRecorderTests
     }
 
     /// <summary>
-    /// A card screen count that never returns to zero is given up on rather than waited
-    /// on for ever.
+    /// A card screen gives back the count it took, however its own task ends.
     ///
-    /// The losing sequence: a player opens a card screen and leaves the run to the main
-    /// menu with it still up. The task that screen handed back is never completed, so
-    /// the count it took is never given back - it is static, and outlives the run by
-    /// design. The next run's attach then parks in this wait before its own deadline
-    /// exists, `Active` is never assigned, and the whole run goes unrecorded with
-    /// nothing in the log to say why.
+    /// The count is what keeps a settle from reading a run in the middle of a decision,
+    /// and it is static because the screens are: one game, one person looking at it. So
+    /// a screen counted on the way up and not on the way down leaves it above zero for
+    /// the rest of the session, and the next run's settle waits for a screen nobody is
+    /// looking at. It used to be taken in a Harmony prefix guarded on a recorder being
+    /// active and given back in a postfix guarded the same way, which drifts exactly
+    /// when a run is torn down between them; it is one try/finally around the screen's
+    /// own task now, so the two cannot decide differently.
+    ///
+    /// Driven through that wrapper rather than asserted about it, because what has to
+    /// hold is the count at the end and not the shape of the code that keeps it.
     /// </summary>
     [GameFact]
-    public async Task AScreenCountThatNeverClearsIsGivenUpOnRatherThanWaitedOnForEver()
+    public async Task ACardScreenGivesBackTheCountItTookHoweverItEnds()
     {
-        var budget = new TaskCompletionSource<bool>();
-        var polls = 0;
+        var before = RunRecorder.ScreensOpen;
 
-        var refusal = await RunRecorder.WaitForScreens(
-            budget.Task,
-            () => 1,
-            () =>
-            {
-                polls++;
-                budget.SetResult(true);
-                return Task.CompletedTask;
-            });
+        var answered = new TaskCompletionSource<int?>();
+        var watching = RunRecorder.CardRewardAnswer.Observe(answered.Task);
+        Assert.Equal(before + 1, RunRecorder.ScreensOpen);
 
-        Assert.NotNull(refusal);
-        Assert.Contains("1 card screen(s) were still open", refusal, StringComparison.Ordinal);
+        answered.SetResult(1);
+        await watching;
+        Assert.Equal(before, RunRecorder.ScreensOpen);
 
-        // It waited, and then it gave up rather than polling on for ever.
-        Assert.Equal(1, polls);
-    }
+        // And a screen whose task faults - the run torn down under it, say - is still a
+        // screen that has come down.
+        var abandoned = new TaskCompletionSource<int?>();
+        var stranded = RunRecorder.CardRewardAnswer.Observe(abandoned.Task);
+        Assert.Equal(before + 1, RunRecorder.ScreensOpen);
 
-    /// <summary>And a screen that is answered lets the settle carry on.</summary>
-    [GameFact]
-    public async Task AScreenThatIsAnsweredLetsTheWaitFinish()
-    {
-        var open = 2;
-
-        Assert.Null(await RunRecorder.WaitForScreens(
-            new TaskCompletionSource<bool>().Task,
-            () => open,
-            () =>
-            {
-                open--;
-                return Task.CompletedTask;
-            }));
-        Assert.Equal(0, open);
+        abandoned.SetException(new InvalidOperationException("the run went away under the screen"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => stranded);
+        Assert.Equal(before, RunRecorder.ScreensOpen);
     }
 
     [GameFact]
