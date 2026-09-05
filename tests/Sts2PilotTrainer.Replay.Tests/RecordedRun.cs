@@ -18,7 +18,8 @@ namespace Sts2PilotTrainer.Replay.Tests;
 /// event whose option opens a card screen holding a second copy of the card that gets
 /// picked, a map move from
 /// a node with a reachable sibling, at least two card plays with one of them aimed at
-/// an enemy, a claimed reward, and a card reward that offered more than one card.
+/// an enemy and one made from a hand holding another card of the same cost, a claimed
+/// reward, and a card reward that offered more than one card.
 /// </summary>
 internal static class RecordedRun
 {
@@ -65,15 +66,22 @@ internal static class RecordedRun
 
         capture.Record(ActionVerb.MapMove, Move(act: 0, row: 1, column: 3, reachable: [1, 3]), InFight(2), Digest(3));
 
+        // A hand of one-cost cards, so the Bash the player threw has a same-cost card
+        // beside it for a control to swap in. Two of them are Strikes, which is what a
+        // starting hand looks like and what makes the substitute a different card
+        // rather than another copy.
+        (string, int)[] hand =
+            [("CARD.BASH", 1), ("CARD.STRIKE_IRONCLAD", 1), ("CARD.STRIKE_IRONCLAD", 1), ("CARD.IMPERVIOUS", 2)];
+
         capture.Record(
             ActionVerb.PlayCard,
-            Args(("card_id", "CARD.BASH"), ("hand_index", "0"), ("target_index", "0")),
+            Play(hand, played: 0, targetIndex: 0),
             InFight(2, enemyHp: 30),
             Digest(4));
         capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(5));
         capture.Record(
             ActionVerb.PlayCard,
-            Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
+            Play(hand, played: 1),
             Won(2, hp: 58),
             Digest(6));
 
@@ -85,6 +93,25 @@ internal static class RecordedRun
             Digest(8));
 
         return capture;
+    }
+
+    /// <summary>A card play, with the same-cost card the hand also held.</summary>
+    private static IReadOnlyDictionary<string, string> Play(
+        IReadOnlyList<(string CardId, int EnergyCost)> hand, int played, int? targetIndex = null)
+    {
+        var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["card_id"] = hand[played].CardId,
+            ["hand_index"] = Number(played),
+        };
+        if (targetIndex is { } target) args["target_index"] = Number(target);
+        if (Corruption.NominateSubstitute(hand, played) is { } substitute)
+        {
+            args[Corruption.SubstituteCardId] = substitute.CardId;
+            args[Corruption.SubstituteHandIndex] = Number(substitute.HandIndex);
+        }
+
+        return args;
     }
 
     /// <summary>A map move with the sibling node the same node also led to.</summary>

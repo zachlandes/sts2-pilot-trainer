@@ -213,9 +213,8 @@ public static class Corruption
         var actions = manifest.Actions.ToList();
         var target = NominatedPlay(actions, "substitute-same-cost");
 
-        var substituteCard = target.Args.GetValueOrDefault(
-            "negative_control_substitute_card_id", "CARD.STRIKE_IRONCLAD");
-        var substituteIndex = target.Args.GetValueOrDefault("negative_control_substitute_hand_index", "0");
+        var substituteCard = target.Args.GetValueOrDefault(SubstituteCardId, "CARD.STRIKE_IRONCLAD");
+        var substituteIndex = target.Args.GetValueOrDefault(SubstituteHandIndex, "0");
 
         // A substitution that puts back the card that was already there damages
         // nothing, and an arbiter that accepted it would be reported as having failed
@@ -227,7 +226,7 @@ public static class Corruption
             throw new ManifestException(
                 $"substitute-same-cost would replace action {target.Seq} with the card it already plays, so " +
                 "it would corrupt nothing. The manifest must mark a play with " +
-                "'negative_control_substitute_card_id' naming a genuinely different card of the same cost.");
+                $"'{SubstituteCardId}' naming a genuinely different card of the same cost.");
         }
 
         var args = target.Args
@@ -481,6 +480,40 @@ public static class Corruption
         return null;
     }
 
+    /// <summary>
+    /// Which other card in the hand a control should play in place of the one that was
+    /// played, as the id and position it takes it by, or null where the hand held no
+    /// alternative of the same cost.
+    ///
+    /// The same cost, because that is the whole of what
+    /// <see cref="SubstituteSameCost"/> claims: energy conservation and hand accounting
+    /// both balance, so nothing arithmetic on the footage can tell the two lines apart
+    /// and only the engine can. A substitute of another cost would be caught by
+    /// counting energy, and one this hand did not hold would be refused on card
+    /// identity - either way the control is counted as rejected for a reason that is
+    /// not the one it is named for.
+    ///
+    /// A different card and not another copy at another position: the same card played
+    /// from elsewhere in the hand is a hand-index corruption, which is what a nomination
+    /// nobody made already produces.
+    /// </summary>
+    public static (string CardId, int HandIndex)? NominateSubstitute(
+        IReadOnlyList<(string CardId, int EnergyCost)> hand, int playedIndex)
+    {
+        if (playedIndex < 0 || playedIndex >= hand.Count) return null;
+
+        var played = hand[playedIndex];
+        for (var index = 0; index < hand.Count; index++)
+        {
+            if (index == playedIndex) continue;
+            if (hand[index].EnergyCost != played.EnergyCost) continue;
+            if (string.Equals(hand[index].CardId, played.CardId, StringComparison.Ordinal)) continue;
+            return (hand[index].CardId, index);
+        }
+
+        return null;
+    }
+
     /// <summary>Argument names a manifest uses to nominate the alternative a control
     /// should take. Kept here because the controls are the only readers.</summary>
     public const string AlternativeCardId = "negative_control_alternative_card_id";
@@ -488,6 +521,10 @@ public static class Corruption
     public const string AlternativeOptionIndex = "negative_control_alternative_option_index";
 
     public const string AlternativeColumn = "negative_control_alternative_column";
+
+    public const string SubstituteCardId = "negative_control_substitute_card_id";
+
+    public const string SubstituteHandIndex = "negative_control_substitute_hand_index";
 
     private static IReadOnlyDictionary<string, string> WithoutControls(
         IReadOnlyDictionary<string, string> args) =>
@@ -509,7 +546,7 @@ public static class Corruption
     public static ActionRecord NominatedPlay(IReadOnlyList<ActionRecord> actions, string control = "this control")
     {
         var plays = actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
-        return plays.LastOrDefault(action => action.Args.ContainsKey("negative_control_substitute_card_id"))
+        return plays.LastOrDefault(action => action.Args.ContainsKey(SubstituteCardId))
             ?? plays.LastOrDefault()
             ?? throw new ManifestException($"{control} needs a card play.");
     }

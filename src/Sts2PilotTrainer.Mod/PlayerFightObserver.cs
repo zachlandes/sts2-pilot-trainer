@@ -390,6 +390,13 @@ internal sealed class PlayerFightObserver : IDisposable
         if (HandIndexOf(card) is { } handIndex)
         {
             args["hand_index"] = handIndex.ToString(CultureInfo.InvariantCulture);
+
+            if (Corruption.NominateSubstitute(Hand(), handIndex) is { } substitute)
+            {
+                args[Corruption.SubstituteCardId] = substitute.CardId;
+                args[Corruption.SubstituteHandIndex] =
+                    substitute.HandIndex.ToString(CultureInfo.InvariantCulture);
+            }
         }
 
         // The same index the driver resolves a recorded target by: position among the
@@ -406,6 +413,21 @@ internal sealed class PlayerFightObserver : IDisposable
 
         return args;
     }
+
+    /// <summary>
+    /// The hand as it stands, each card with what the engine would charge to play it
+    /// right now.
+    ///
+    /// <c>GetAmountToSpend</c> is the game's own question - it is what the engine calls
+    /// when it takes the energy - so a cost read here is the cost the player paid rather
+    /// than a base cost this mod worked out for itself and that a modifier could have
+    /// moved. Read while the played card is still in hand, for the same reason its own
+    /// index is.
+    /// </summary>
+    private IReadOnlyList<(string CardId, int EnergyCost)> Hand() =>
+        _player.PlayerCombatState?.Hand.Cards
+            .Select(card => (card.Id.ToString(), card.EnergyCost.GetAmountToSpend()))
+            .ToList() ?? [];
 
     /// <summary>
     /// Which potion, and which belt slot it came off, in the names a manifest uses.

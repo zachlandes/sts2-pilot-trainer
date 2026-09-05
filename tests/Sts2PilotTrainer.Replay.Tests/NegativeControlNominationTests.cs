@@ -124,4 +124,54 @@ public sealed class NegativeControlNominationTests
         Assert.Equal(2, Corruption.NominateScreenOption(deck, takenIndex: 0, chosenIndexes: [0, 1]));
         Assert.Null(Corruption.NominateScreenOption(deck, takenIndex: 0, chosenIndexes: [0, 1, 2]));
     }
+
+    /// <summary>
+    /// A card play nominates another card the hand held at the same energy cost.
+    ///
+    /// Asserted by the nominated card's cost equalling the played card's rather than by
+    /// the indexes differing, because that equality is the whole of what
+    /// <c>substitute-same-cost</c> claims: energy conservation and hand accounting both
+    /// balance, so nothing arithmetic on the footage separates the two lines. A
+    /// substitute of another cost is caught by counting energy, and one the hand did not
+    /// hold is refused on card identity - either way the control is counted as rejected
+    /// for a reason that is not the one it is named for.
+    /// </summary>
+    [Fact]
+    public void ACardPlayNominatesAnotherCardTheHandHeldAtTheSameCost()
+    {
+        IReadOnlyList<(string CardId, int EnergyCost)> hand =
+            [("CARD.BASH", 2), ("CARD.DEFEND_IRONCLAD", 1), ("CARD.IMPERVIOUS", 2)];
+
+        var nominated = Corruption.NominateSubstitute(hand, playedIndex: 0);
+
+        Assert.Equal(("CARD.IMPERVIOUS", 2), nominated);
+        Assert.Equal(hand[0].EnergyCost, hand[nominated!.Value.HandIndex].EnergyCost);
+        Assert.NotEqual(hand[0].CardId, nominated.Value.CardId);
+    }
+
+    /// <summary>
+    /// Another copy of the card that was played is not a substitution.
+    ///
+    /// The same card from another position is a hand-index corruption, which is what a
+    /// nomination nobody made already produces - and it is not the corruption whose
+    /// value is that only the card's face separates the two readings.
+    /// </summary>
+    [Fact]
+    public void AHandHoldingOnlyMoreCopiesOfThePlayedCardLooksPastThem()
+    {
+        IReadOnlyList<(string CardId, int EnergyCost)> hand =
+            [("CARD.STRIKE_IRONCLAD", 1), ("CARD.STRIKE_IRONCLAD", 1), ("CARD.DEFEND_IRONCLAD", 1)];
+
+        var nominated = Corruption.NominateSubstitute(hand, playedIndex: 0);
+
+        Assert.Equal(("CARD.DEFEND_IRONCLAD", 2), nominated);
+    }
+
+    [Fact]
+    public void AHandHoldingNothingElseOfThatCostNominatesNothing()
+    {
+        Assert.Null(Corruption.NominateSubstitute(
+            [("CARD.BASH", 2), ("CARD.STRIKE_IRONCLAD", 1), ("CARD.DEFEND_IRONCLAD", 1)], playedIndex: 0));
+        Assert.Null(Corruption.NominateSubstitute([("CARD.BASH", 2)], playedIndex: 0));
+    }
 }
