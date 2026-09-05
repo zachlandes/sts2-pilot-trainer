@@ -405,6 +405,68 @@ public static class Corruption
         return manifest with { RunId = manifest.RunId + "+move-to-a-different-node", Actions = actions };
     }
 
+    /// <summary>
+    /// Which of the map nodes reachable from here a control should walk to instead, or
+    /// null where the node the player left offered nowhere else to go.
+    ///
+    /// The reachable columns are the caller's to read - from a game, from a video, from
+    /// a fixture - and choosing among them is the rule, so the rule lives here beside
+    /// the control that consumes it rather than inside whichever reader happened to
+    /// need it first. Nothing is invented: a nomination is another node the same
+    /// decision genuinely had, and where there was none the argument is omitted and the
+    /// control has nothing to do.
+    /// </summary>
+    public static int? NominateColumn(int takenColumn, IEnumerable<int> reachableColumns) =>
+        reachableColumns
+            .Where(column => column != takenColumn)
+            .Order()
+            .Cast<int?>()
+            .FirstOrDefault();
+
+    /// <summary>
+    /// Which other card a reward offered, as the id and position a control takes it by,
+    /// or null where the reward offered no other card.
+    ///
+    /// The id has to differ as well as the position: two copies of one card are two
+    /// positions naming the same card, and a nomination whose id equals the one taken
+    /// is refused by the validator because the control would then corrupt nothing.
+    /// </summary>
+    public static (string CardId, int OptionIndex)? NominateCard(
+        IReadOnlyList<string> offeredCardIds, int takenIndex)
+    {
+        if (takenIndex < 0 || takenIndex >= offeredCardIds.Count) return null;
+
+        var taken = offeredCardIds[takenIndex];
+        for (var index = 0; index < offeredCardIds.Count; index++)
+        {
+            if (index == takenIndex) continue;
+            if (string.Equals(offeredCardIds[index], taken, StringComparison.Ordinal)) continue;
+            return (offeredCardIds[index], index);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Which other position a card screen offered that nobody picked off it, or null
+    /// where every position it offered was taken.
+    ///
+    /// Unpicked rather than merely different, because the screen's answers are replayed
+    /// together: nominating a position another pick already claimed would have the
+    /// replay choose one card twice, which <c>ManifestCardSelector</c> refuses - so the
+    /// control would fail on its own illegality rather than on the corruption.
+    /// </summary>
+    public static int? NominateScreenOption(int offeredCount, IEnumerable<int> chosenIndexes)
+    {
+        var chosen = chosenIndexes.ToHashSet();
+        for (var index = 0; index < offeredCount; index++)
+        {
+            if (!chosen.Contains(index)) return index;
+        }
+
+        return null;
+    }
+
     /// <summary>Argument names a manifest uses to nominate the alternative a control
     /// should take. Kept here because the controls are the only readers.</summary>
     public const string AlternativeCardId = "negative_control_alternative_card_id";

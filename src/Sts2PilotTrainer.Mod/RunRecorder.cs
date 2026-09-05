@@ -348,6 +348,7 @@ internal sealed class RunRecorder : IDisposable
         var recorder = Active;
         if (recorder is null || recorder._finished) return;
 
+        var taken = new List<(string CardId, int Index)>();
         foreach (var card in chosen)
         {
             var index = -1;
@@ -368,9 +369,18 @@ internal sealed class RunRecorder : IDisposable
                 return;
             }
 
-            lock (Gate)
+            taken.Add((card.Id.ToString(), index));
+        }
+
+        // Every answer from one screen is resolved before any of them is nominated
+        // against, because the alternative has to be a position none of them took.
+        var alternative = Corruption.NominateScreenOption(offered.Count, taken.Select(pick => pick.Index));
+
+        lock (Gate)
+        {
+            foreach (var (cardId, index) in taken)
             {
-                recorder._screenPicks.Add(new CardScreenPick(card.Id.ToString(), index));
+                recorder._screenPicks.Add(new CardScreenPick(cardId, index, alternative));
             }
         }
     }
@@ -405,9 +415,13 @@ internal sealed class RunRecorder : IDisposable
             return;
         }
 
+        var alternative = Corruption.NominateCard(
+            [.. offered.Select(card => card.Id.ToString())], index);
+
         lock (Gate)
         {
-            recorder._screenPicks.Add(new CardScreenPick(offered[index].Id.ToString(), index));
+            recorder._screenPicks.Add(new CardScreenPick(
+                offered[index].Id.ToString(), index, alternative?.OptionIndex, alternative?.CardId));
         }
     }
 
@@ -593,11 +607,22 @@ internal sealed class RunRecorder : IDisposable
                 return;
             }
 
-            args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+            var reward = new SortedDictionary<string, string>(StringComparer.Ordinal)
             {
                 ["card_id"] = picks[0].CardId,
                 ["option_index"] = picks[0].OptionIndex.ToString(CultureInfo.InvariantCulture),
             };
+
+            // The two appear together or not at all, which is what the validator
+            // requires of them: an id with no position names no decision to take.
+            if (picks[0] is { AlternativeCardId: { } alternativeCard, AlternativeOptionIndex: { } alternativeIndex })
+            {
+                reward[Corruption.AlternativeCardId] = alternativeCard;
+                reward[Corruption.AlternativeOptionIndex] =
+                    alternativeIndex.ToString(CultureInfo.InvariantCulture);
+            }
+
+            args = reward;
             picks.Clear();
         }
 
@@ -623,16 +648,18 @@ internal sealed class RunRecorder : IDisposable
     {
         foreach (var pick in picks)
         {
-            Write(_capture.Record(
-                ActionVerb.SelectCardFromScreen,
-                new SortedDictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["card_id"] = pick.CardId,
-                    ["option_index"] = pick.OptionIndex.ToString(CultureInfo.InvariantCulture),
-                },
-                after,
-                digest,
-                clock));
+            var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["card_id"] = pick.CardId,
+                ["option_index"] = pick.OptionIndex.ToString(CultureInfo.InvariantCulture),
+            };
+
+            if (pick.AlternativeOptionIndex is { } alternative)
+            {
+                args[Corruption.AlternativeOptionIndex] = alternative.ToString(CultureInfo.InvariantCulture);
+            }
+
+            Write(_capture.Record(ActionVerb.SelectCardFromScreen, args, after, digest, clock));
         }
     }
 
@@ -881,7 +908,20 @@ internal sealed class RunRecorder : IDisposable
     /// where the engine hands back a task that says when it is finished.</summary>
     private sealed record Decision(string Verb, IReadOnlyDictionary<string, string> Args);
 
-    private readonly record struct CardScreenPick(string CardId, int OptionIndex);
+    /// <summary>
+    /// One answer a card screen gave, with the alternative that screen also offered.
+    ///
+    /// The alternative is part of the answer rather than a second reading of it: what a
+    /// screen offered is only visible while it is open, and it is what
+    /// <c>take-a-different-card</c> and <c>enchant-a-different-card</c> take instead.
+    /// Null where the screen offered nothing else, which is a decision with no
+    /// alternative rather than one nobody looked for.
+    /// </summary>
+    private readonly record struct CardScreenPick(
+        string CardId,
+        int OptionIndex,
+        int? AlternativeOptionIndex = null,
+        string? AlternativeCardId = null);
 
     private static IReadOnlyDictionary<string, string> Args(params (string Name, string Value)[] args) =>
         new SortedDictionary<string, string>(
@@ -1008,12 +1048,24 @@ internal sealed class RunRecorder : IDisposable
         }
     }
 
+    /// <summary>
+    /// One move on the map, with the sibling node the player could have walked to
+    /// instead.
+    ///
+    /// Read in a prefix, because both halves are only true before the move: the act the
+    /// run is in, and which nodes the node being left leads to. Afterwards the run is
+    /// standing somewhere else and the honest answer would be about a different
+    /// decision.
+    /// </summary>
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.EnterMapCoord))]
     internal static class MapMove
     {
-        [HarmonyPostfix]
-        internal static void After(MapCoord coord, Task __result)
+        private static Decision? _decision;
+
+        [HarmonyPrefix]
+        internal static void Before(MapCoord coord)
         {
+            _decision = null;
             if (Active is null) return;
 
             try
@@ -1022,15 +1074,53 @@ internal sealed class RunRecorder : IDisposable
                 // carries only a row and a column; a move never crosses acts, so the
                 // act the run is in is the act the move is in.
                 var act = LiveRun.State?.CurrentActIndex ?? 0;
-                Announce(
-                    ActionVerb.MapMove,
-                    Args(("act", Number(act)), ("row", Number(coord.row)), ("column", Number(coord.col))),
-                    __result);
+                var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["act"] = Number(act),
+                    ["row"] = Number(coord.row),
+                    ["column"] = Number(coord.col),
+                };
+
+                if (Corruption.NominateColumn(coord.col, ReachableColumns()) is { } alternative)
+                {
+                    args[Corruption.AlternativeColumn] = Number(alternative);
+                }
+
+                _decision = new Decision(nameof(ActionVerb.MapMove), args);
             }
             catch (Exception ex)
             {
                 Active?.Refuse($"A map move could not be read: {ex.GetType().Name}: {ex.Message}");
             }
+        }
+
+        [HarmonyPostfix]
+        internal static void After(Task __result)
+        {
+            if (_decision is not { } decision) return;
+            _decision = null;
+            AnnounceByName(decision.Verb, decision.Args, __result);
+        }
+
+        /// <summary>
+        /// Which columns the node the run is standing on leads to.
+        ///
+        /// Reachability is decided exactly the way <c>RunDriver.MoveToMapNode</c>
+        /// decides it - a child of the current point whose type is not
+        /// <see cref="MapPointType.Unassigned"/> - so a nominated node is one a replay
+        /// can actually enter. Empty where the run has no current node yet, which is a
+        /// move with nothing to nominate rather than a failure.
+        /// </summary>
+        private static IEnumerable<int> ReachableColumns()
+        {
+            if (LiveRun.State is not { Map: { } map } run) return [];
+            if (run.CurrentMapCoord is not { } current) return [];
+            if (map.GetPoint(current.col, current.row) is not { } point) return [];
+
+            return point.Children
+                .Where(child => child is { PointType: not MapPointType.Unassigned })
+                .Select(child => child.coord.col)
+                .ToList();
         }
     }
 
