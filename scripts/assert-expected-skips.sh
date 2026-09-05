@@ -2,7 +2,7 @@
 # Asserts that the set of tests CI skips is the set we agreed it would skip.
 #
 # CI runs sts2-pilot-trainer.domain.slnf on a hosted runner that does not own the
-# game. Of Sts2PilotTrainer.Arbiter.Tests' 145 tests, 97 skip there, and the job
+# game. Of Sts2PilotTrainer.Arbiter.Tests' 147 tests, 99 skip there, and the job
 # still prints "Test Run Successful" and renders a green tick. The skip itself is
 # correct - not owning the game is a good reason to be unable to run a test, and
 # tests/Sts2PilotTrainer.Arbiter.Tests/Arbiter.cs says so. What was missing is that

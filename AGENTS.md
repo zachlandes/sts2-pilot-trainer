@@ -101,8 +101,8 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, 97 of
-`Sts2PilotTrainer.Arbiter.Tests`' 145 tests skip and the job still reports success.
+**What CI cannot run is recorded by name.** On a runner without the game, 99 of
+`Sts2PilotTrainer.Arbiter.Tests`' 147 tests skip and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts that skipped set against
 `scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
 one, or deleting one fails CI until the list is regenerated with `--update` in the
@@ -156,12 +156,17 @@ anything, and each refuses where the manifest is silent.
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
 player's game; `EngineHost.Start` must never run there, and `AdoptRunningGame` is the
-way in. Four traps in that process are written down there. Two cost a crash each: mod
+way in. Five traps in that process are written down there. Two cost a crash each: mod
 initialization runs before the game has a model database, and Godot does not load the
 game into the default assembly load context. Two are about *when* rather than what, and
 were live in a build whose tests were green: waiting a length of time is not waiting for
 the game to finish something, and returning to the main menu frees the popup that
-explains why you returned. `./scripts/install-mod.sh` is the one
+explains why you returned. The fifth stops the mod loading at all, before a line of its
+code runs: a field's type may *be* a sibling assembly's type and may not be a *generic
+type built over* one, in a nullable, a tuple, a delegate's type argument or a
+collection's element. It has fired three times, most recently through a green CI run, so
+run `ModAssemblyLoadOrderTests` on a new field rather than judging its shape.
+`./scripts/install-mod.sh` is the one
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions, and remove the `CombatTrainer` directory the mod was installed under before the rename.
 

@@ -23,9 +23,11 @@ the log below shows the other three skipped.
 Images in this document come from two client sessions, and each section says which.
 Everything up to "Re-proved on the head that ships" was taken on 2026-09-04, against the
 head that carried the model; everything from there down was taken on 2026-09-05 against
-`401db7f`, the head this branch ships. That last section explains why a second session was
-needed, and it is not a detail. Within each session, earlier runs found defects and were
-taken against the code before their fixes; none of those shots survive here. The one exception is deliberate and labelled where it appears: the refusal is
+`401db7f`, the commit that fixed the field shape described in that section. Two commits
+followed it here - this document, and one review pass that changed error logging only - so
+nothing drawn below changed after these were taken. That last section explains why a second
+session was needed, and it is not a detail. Within each session, earlier runs found defects
+and were taken against the code before their fixes; none of those shots survive here. The one exception is deliberate and labelled where it appears: the refusal is
 forced with a fault-injected build, because a correct one does not produce a refusal,
 and that build was reverted immediately after the shot.
 
@@ -424,8 +426,8 @@ than an anecdote. The rule is narrower than the obvious one and had to be: a fie
 type built over one, in a nullable, a tuple, a delegate's type argument or a collection's
 element.
 
-The images from here down were taken on 2026-09-05 against `401db7f`, the head this branch
-ships. Same client, same `--force-steam=off` launch, same isolated save tree.
+The images from here down were taken on 2026-09-05 against `401db7f`, the commit just
+described. Same client, same `--force-steam=off` launch, same isolated save tree.
 
 ### The mod is the one loaded, said by the game rather than by us
 
