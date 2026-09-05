@@ -18,6 +18,7 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
                             # combat-snapshot | combat-compare | enter-fight | recorded-fight |
                             # snapshot-restore-probe | migrate-manifest | engine-commands
 ./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
+./scripts/assert-expected-skips.sh          # what CI skips is still what we recorded (--update to re-record)
 ```
 
 `dotnet test` works without the game: the integration suite skips with an explanation
@@ -99,6 +100,14 @@ stores a serialized run in place of the history that produces it.
 the manifest says, a mismatched environment: each of these fails loudly. A replay
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
+
+**What CI cannot run is recorded by name.** On a runner without the game, 97 of
+`Sts2PilotTrainer.Arbiter.Tests`' 145 tests skip and the job still reports success.
+`./scripts/assert-expected-skips.sh` asserts that skipped set against
+`scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
+one, or deleting one fails CI until the list is regenerated with `--update` in the
+same commit. It catches structural drift only. A test that skips there and is broken
+inside is caught by the local gate, which runs everything.
 
 **Read [docs/environment-identity.md](docs/environment-identity.md) before touching run setup or preflight.**
 Two fields on that list are there because a replay looked correct and was not: the act variant and the player's unlock state.
