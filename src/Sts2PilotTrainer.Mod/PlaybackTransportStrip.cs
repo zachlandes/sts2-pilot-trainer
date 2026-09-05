@@ -803,7 +803,17 @@ internal sealed class PlaybackTransportStrip
         var chosen = _onChoose;
         var rows = OpenRows;
         var enabled = index >= 0 && index < rows.Count && rows[index].Enabled;
-        CloseMenu();
+        try
+        {
+            CloseMenu();
+        }
+        catch (Exception ex)
+        {
+            GD.PushError(
+                $"[{RunmobileMod.ModId}] could not close the menu a row was chosen from: " +
+                $"{ex.GetType().Name}: {ex.Message}");
+        }
+
         if (enabled) chosen?.Invoke(index);
     }
 

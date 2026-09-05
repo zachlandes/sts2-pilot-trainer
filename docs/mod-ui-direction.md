@@ -96,6 +96,7 @@ Step is offered there and walks the view forward through the ledger rather than 
 A control's tooltip is part of what it is: one that names an action it does not perform is the same defect as one that cannot be pressed.
 Opening, between the last recorded choice and the fight it leads to: the tag stays exactly where it was and everything that would move the run is refused, because a run with nothing left to commit must not still be offering to commit it. The speed control is not refused there - it does not move the run.
 Between screens, the window between committing one decision and revealing the next: look back, play and step are all refused, on the same rule and for the same reason - a press there acts on a state nobody has been shown, and the reveal that follows discards it a frame later.
+The one exception is play once it is already running: it is drawn as pause there and pause is never refused, because it stops the run rather than moving it.
 The speed control is offered, as it is in Opening.
 The two ways look back can be refused stay distinguishable in the model, because nothing behind yet and not yet are different answers to somebody who pressed.
 The chip during the player's own fight: the mark and the name, silent until pressed.
