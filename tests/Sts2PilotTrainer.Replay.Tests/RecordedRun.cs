@@ -67,35 +67,25 @@ internal static class RecordedRun
 
         capture.Record(ActionVerb.MapMove, Move(act: 0, row: 1, column: 3, reachable: [1, 3]), InFight(2), Digest(3));
 
-        // A hand where the attack the player threw has another one-cost attack beside
-        // it. The Defend costs the same and aims at nothing, so it is not a substitute
-        // for a card played at an enemy: the corrupted play keeps the target index, and
-        // a card that aims at nothing carrying one is refused on argument shape rather
-        // than on anything the run did.
-        (string, int, bool)[] hand =
-        [
-            ("CARD.STRIKE_IRONCLAD", 1, true),
-            ("CARD.DEFEND_IRONCLAD", 1, false),
-            ("CARD.CLEAVE", 1, true),
-            ("CARD.IMPERVIOUS", 2, false),
-        ];
-
-        // Two plays in this turn, because the hand is redrawn at the end of one and
-        // reorder-plays needs a pair out of a single hand.
+        // Two plays in this turn, because reorder-plays verifies its pair against the
+        // hand the turn's own checkpoint recorded. The first is the last card in that
+        // hand, so the second still sits where the recording says it sat once the first
+        // has gone - which is how a recorder writes an index, and what the control
+        // checks.
         capture.Record(
             ActionVerb.PlayCard,
-            Play(hand, played: 1),
+            Play(Hand, played: 3),
             InFight(2, enemyHp: 42),
             Digest(4));
         capture.Record(
             ActionVerb.PlayCard,
-            Play(hand, played: 2, targetIndex: 0),
+            Play(Hand, played: 2, targetIndex: 0),
             InFight(2, enemyHp: 30),
             Digest(5));
         capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(6));
         capture.Record(
             ActionVerb.PlayCard,
-            Play(hand, played: 0, targetIndex: 0),
+            Play(Hand, played: 0, targetIndex: 0),
             Won(2, hp: 58),
             Digest(7));
 
@@ -220,6 +210,10 @@ internal static class RecordedRun
         int floor, int turn = 1, int enemyHp = 42, int hp = 68) => new Dictionary<string, string>(
         StringComparer.Ordinal)
         {
+            // The hand this turn was dealt. A recorder samples it into every boundary's
+            // state, and reorder-plays verifies its pair against it rather than
+            // predicting what the hand does between two plays.
+            ["combat.hand"] = DealtHand,
             ["combat.in_progress"] = "true",
             ["combat.outcome"] = "in_progress",
             ["combat.turn"] = Number(turn),
@@ -248,6 +242,26 @@ internal static class RecordedRun
         ["player.hp"] = Number(hp),
         ["player.max_hp"] = "68",
     };
+
+    /// <summary>
+    /// The hand every turn of this fixture's fight is dealt, in the order the plays
+    /// index into: card, energy cost, and whether it aims at an enemy.
+    ///
+    /// The attack the player throws has another one-cost attack beside it. The Defend
+    /// costs the same and aims at nothing, so it is not a substitute for a card played
+    /// at an enemy: the corrupted play keeps the target index, and a card that aims at
+    /// nothing carrying one is refused on argument shape rather than on anything the
+    /// run did.
+    /// </summary>
+    private static readonly (string CardId, int EnergyCost, bool TargetsAnEnemy)[] Hand =
+    [
+        ("CARD.STRIKE_IRONCLAD", 1, true),
+        ("CARD.DEFEND_IRONCLAD", 1, false),
+        ("CARD.CLEAVE", 1, true),
+        ("CARD.IMPERVIOUS", 2, false),
+    ];
+
+    private static string DealtHand => string.Join("|", Hand.Select(card => card.CardId));
 
     private static string Digest(int seq) =>
         "sha256:" + (seq + 1).ToString("x2", CultureInfo.InvariantCulture).PadLeft(64, 'a');

@@ -53,9 +53,9 @@ public static class Corruption
             "damage and block totals agree. The intermediate state and hidden pile order still depend on order.",
             ReorderPlays)
         {
-            Requires = "two consecutive plays the recording's own checkpoints place in one hand - no turn " +
-                       "start, combat start or floor entry between them, and one before them - whose order " +
-                       "can matter, differing in the card played or the enemy it is aimed at",
+            Requires = "the first two plays after one of the recording's own hand-beginning checkpoints, " +
+                       "sitting where that checkpoint's recorded combat.hand says they sat, and differing in " +
+                       "the card played or the enemy it is aimed at",
             AppliesTo = manifest => TryFindPlaysWhoseOrderCanMatter(manifest, out _),
         },
 
@@ -181,72 +181,98 @@ public static class Corruption
     /// <summary>
     /// The two plays this control swaps, chosen so that swapping them can matter.
     ///
-    /// Consecutive plays, as before, but the first consecutive pair that is actually
-    /// different: a swap of two of the same card at the same target is the same history
-    /// written twice. Taking the first pair unconditionally does not do: a run whose
-    /// first two plays are both a plain Strike gets
-    /// corrupted into a byte-identical run, the arbiter correctly declines to reject
-    /// it - refusing would be the arbiter lying about a history that really is the
-    /// same - and the control reports a failure that belongs to its own nomination.
-    /// That is what a real recording did.
+    /// Two things have to hold, and both are read out of the recording rather than
+    /// worked out from a model of the game.
     ///
-    /// Order matters between two plays when the cards differ, or when the same card is
-    /// aimed at different enemies: either changes the intermediate state, and the
-    /// engine's own hidden order with it.
+    /// The swap has to change something. A swap of two of the same card at the same
+    /// target is the same history written twice: the arbiter correctly declines to
+    /// reject it, and the control then reports a failure that belongs to its own
+    /// nomination. A real recording did exactly that - its first two plays were both a
+    /// plain Strike.
     ///
-    /// The pair also has to come out of one hand, because that is what the swap's
-    /// arithmetic re-indexes against. A pair drawn from two different hands produces a
-    /// play of a card that hand never held, which the driver refuses on card identity -
-    /// a structural refusal, which is not the state divergence this control exists to
-    /// demonstrate.
+    /// And both plays have to have come out of one hand, because the swap re-indexes
+    /// them against a single one. Rather than predict what the hand does between two
+    /// plays, this checks the pair against the hand the recording <em>observed</em>:
+    /// every boundary that begins a hand - a turn start, and the combat start and floor
+    /// entry that begin a fight - is a checkpoint whose <c>expect</c> carries
+    /// <c>combat.hand</c>. The candidate pair is therefore the first two plays after
+    /// such a checkpoint, with no later one between them, because that is the only
+    /// place the recorded hand is the hand both plays saw; anywhere later in the turn
+    /// would mean replaying the plays in between to work out what the hand had become,
+    /// which is modelling again.
     ///
-    /// Which plays share a hand is read out of the recording rather than guessed at
-    /// from the verbs between them. The hand is discarded and redrawn when a turn
-    /// begins, and every kind of boundary a recording records - a turn start, and the
-    /// combat start and floor entry that begin a fight and so begin a hand - is a
-    /// checkpoint carrying the hand it was dealt. So two plays share a hand exactly
-    /// when a hand-beginning checkpoint sits before the first and none sits between
-    /// them.
+    /// The check itself: the first play's card must sit at its recorded index in that
+    /// hand, and the second's must sit at its recorded index in what is left once the
+    /// first card has gone. A candidate that fails either is declined and the next
+    /// checkpoint is tried; a recording where none verifies reports NOT APPLICABLE, and
+    /// the gate refuses it honestly for coverage.
     ///
-    /// A pair the checkpoints cannot settle is declined rather than assumed, and the
-    /// search moves to the next pair; a recording that can settle none of its pairs
-    /// reports NOT APPLICABLE, which the gate refuses honestly for coverage.
-    ///
-    /// Four earlier versions asked this of the actions instead - raw adjacency, then
-    /// the same fight, then a list of verbs asserted to keep the hand - and each one
-    /// left the next hole, because a verb list is a guess about the game dressed as a
-    /// precondition. The recording says what happened; nothing here needs to predict
-    /// it.
+    /// Five earlier versions asked this of the actions instead - raw adjacency, the
+    /// same fight, the same turn, a list of verbs asserted to keep the hand - and each
+    /// left the next hole, because each was a guess about the game dressed as a
+    /// precondition. A card screen or a potion can rewrite the hand mid-turn without
+    /// any boundary being crossed, and no verb list sees that. The recorded hand does.
     /// </summary>
-    private static bool TryFindPlaysWhoseOrderCanMatter(
-        ReplayManifest manifest, out (ActionRecord First, ActionRecord Second) pair)
+    private static bool TryFindPlaysWhoseOrderCanMatter(ReplayManifest manifest, out Swap swap)
     {
         var handBegins = manifest.Checkpoints
             .Where(checkpoint => BeginsAHand.Contains(checkpoint.Kind, StringComparer.Ordinal))
-            .Select(checkpoint => checkpoint.AfterSeq)
+            .OrderBy(checkpoint => checkpoint.AfterSeq)
             .ToList();
 
         var plays = manifest.Actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
 
-        for (var index = 0; index + 1 < plays.Count; index++)
+        foreach (var checkpoint in handBegins)
         {
-            var first = plays[index];
-            var second = plays[index + 1];
+            if (!checkpoint.Expect.TryGetValue("combat.hand", out var dealt)) continue;
 
-            if (!handBegins.Any(afterSeq => afterSeq < first.Seq)) continue;
-            if (handBegins.Any(afterSeq => afterSeq >= first.Seq && afterSeq < second.Seq)) continue;
+            var candidate = plays.Where(play => play.Seq > checkpoint.AfterSeq).Take(2).ToList();
+            if (candidate.Count < 2) continue;
 
-            if (!string.Equals(Argument(first, "card_id"), Argument(second, "card_id"), StringComparison.Ordinal) ||
-                !string.Equals(Argument(first, "target_index"), Argument(second, "target_index"), StringComparison.Ordinal))
+            var (first, second) = (candidate[0], candidate[1]);
+            if (handBegins.Any(other =>
+                    other.AfterSeq > checkpoint.AfterSeq && other.AfterSeq < second.Seq))
             {
-                pair = (first, second);
-                return true;
+                continue;
             }
+
+            if (string.Equals(Argument(first, "card_id"), Argument(second, "card_id"), StringComparison.Ordinal) &&
+                string.Equals(Argument(first, "target_index"), Argument(second, "target_index"), StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var hand = dealt.Value.Split('|');
+            if (!HandIndex(first, hand.Length, out var firstIndex)) continue;
+            if (!string.Equals(hand[firstIndex], Argument(first, "card_id"), StringComparison.Ordinal)) continue;
+
+            var left = hand.ToList();
+            left.RemoveAt(firstIndex);
+            if (!HandIndex(second, left.Count, out var secondIndex)) continue;
+            if (!string.Equals(left[secondIndex], Argument(second, "card_id"), StringComparison.Ordinal)) continue;
+
+            swap = new Swap(first, second, hand, firstIndex, secondIndex);
+            return true;
         }
 
-        pair = default;
+        swap = default;
         return false;
     }
+
+    /// <summary>A verified pair: the two plays, the hand the recording says they were
+    /// dealt, and where each sat in it.</summary>
+    private readonly record struct Swap(
+        ActionRecord First,
+        ActionRecord Second,
+        IReadOnlyList<string> Hand,
+        int FirstIndex,
+        int SecondIndexAfterFirstLeft);
+
+    private static bool HandIndex(ActionRecord play, int count, out int index) =>
+        int.TryParse(
+            Argument(play, "hand_index"), System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out index) &&
+        index >= 0 && index < count;
 
     /// <summary>The checkpoint kinds that begin a hand: a turn start deals one, and a
     /// combat start and a floor entry begin the fight that deals the first.</summary>
@@ -266,27 +292,31 @@ public static class Corruption
 
         // Unreachable through the gate, which asks AppliesTo first and reports a
         // control with nothing to damage as not applicable rather than running it.
-        if (!TryFindPlaysWhoseOrderCanMatter(manifest, out var pair))
+        if (!TryFindPlaysWhoseOrderCanMatter(manifest, out var swap))
         {
             throw new ManifestException(
-                "reorder-plays needs two consecutive plays this recording's own checkpoints place in one " +
-                "hand - a turn start, combat start or floor entry before them and none between them - whose " +
-                "order can matter, differing in the card played or the enemy it is aimed at. No such pair is " +
-                "in this history, so swapping any two of its plays produces either the same history or one " +
-                "the recording cannot show came out of a single hand, and would prove nothing about the " +
-                "arbiter.");
+                "reorder-plays needs the first two plays after one of this recording's own hand-beginning " +
+                "checkpoints - a turn start, combat start or floor entry carrying combat.hand - to differ in " +
+                "the card played or the enemy it is aimed at, and to sit where that recorded hand says they " +
+                "sat. No pair in this history does, so swapping any two of its plays produces either the same " +
+                "history or one the recording cannot show came out of a single hand, and would prove nothing " +
+                "about the arbiter.");
         }
 
-        var (first, second) = pair;
+        var (first, second, hand, firstIndex, secondIndex) = swap;
 
-        // Both cards are re-indexed to where they sit in the *original* hand, so that
-        // each play is individually legal and the driver's card-identity check passes.
-        // A corruption the driver catches on a bad index would prove nothing about
-        // whether the engine notices the reordering.
-        var firstIndex = int.Parse(first.Args["hand_index"], System.Globalization.CultureInfo.InvariantCulture);
-        var secondIndex = int.Parse(second.Args["hand_index"], System.Globalization.CultureInfo.InvariantCulture);
-        var secondInitialIndex = secondIndex + (firstIndex <= secondIndex ? 1 : 0);
-        var firstAfterSecondIndex = firstIndex - (secondInitialIndex < firstIndex ? 1 : 0);
+        // Where each card sat in the hand the recording observed, so that each play is
+        // individually legal and the driver's card-identity check passes. Read off that
+        // hand rather than computed: a corruption the driver catches on a bad index
+        // would prove nothing about whether the engine notices the reordering.
+        var afterFirstLeft = Enumerable.Range(0, hand.Count).ToList();
+        afterFirstLeft.RemoveAt(firstIndex);
+        var secondInitialIndex = afterFirstLeft[secondIndex];
+
+        var afterSecondLeft = Enumerable.Range(0, hand.Count).ToList();
+        afterSecondLeft.RemoveAt(secondInitialIndex);
+        var firstAfterSecondIndex = afterSecondLeft.IndexOf(firstIndex);
+
         var reordered = new List<ActionRecord>
         {
             MoveToSequence(second, first.Seq, first.Evidence) with

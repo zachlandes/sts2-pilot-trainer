@@ -77,7 +77,7 @@ public class CorruptionTests
             Id = "combat-start",
             AfterSeq = 1,
             Kind = "combat_start",
-            Expect = Expect(native, 1, "3"),
+            Expect = Expect(native, 1, "3", PlayableHand),
         },
         new Checkpoint
         {
@@ -88,13 +88,29 @@ public class CorruptionTests
         },
     ];
 
-    private static IReadOnlyDictionary<string, Fact<string>> Expect(bool native, int afterSeq, string energy) =>
-        new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+    /// <summary>
+    /// The hand the fixture's fight is dealt, which its first two plays index into:
+    /// Hellraiser at 1, and the Defend at 4, which is 3 once the Hellraiser has gone.
+    /// reorder-plays verifies its pair against this rather than against an assumption
+    /// about what the hand does between two plays.
+    /// </summary>
+    private const string PlayableHand =
+        "CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD";
+
+    private static IReadOnlyDictionary<string, Fact<string>> Expect(
+        bool native, int afterSeq, string energy, string? hand = null)
+    {
+        var expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
         {
-            ["combat.energy"] = native
-                ? Fact<string>.Captured(energy, FactEvidence.AtActionOrdinal(afterSeq))
-                : Fact<string>.Observed(energy, FactEvidence.AtVideoTime(PlayableTimes[afterSeq], "energy orb")),
+            ["combat.energy"] = Value(native, afterSeq, energy, "energy orb"),
         };
+        if (hand is not null) expect["combat.hand"] = Value(native, afterSeq, hand, "the hand");
+        return expect;
+    }
+
+    private static Fact<string> Value(bool native, int afterSeq, string value, string method) => native
+        ? Fact<string>.Captured(value, FactEvidence.AtActionOrdinal(afterSeq))
+        : Fact<string>.Observed(value, FactEvidence.AtVideoTime(PlayableTimes[afterSeq], method));
 
     private static IReadOnlyList<ReplayManifest> PlayableRecordings() => [Playable(), Playable(native: true)];
 
@@ -103,14 +119,15 @@ public class CorruptionTests
     /// writes for them. reorder-plays reads these to decide which plays share a hand,
     /// so a fixture that ends a turn has to say so the way a recording does.
     /// </summary>
-    private static IReadOnlyList<Checkpoint> Boundaries(params (int AfterSeq, string Kind)[] boundaries) =>
+    private static IReadOnlyList<Checkpoint> Boundaries(
+        params (int AfterSeq, string Kind, string? Hand)[] boundaries) =>
     [
         .. boundaries.Select(boundary => new Checkpoint
         {
             Id = $"{boundary.Kind}-{boundary.AfterSeq}",
             AfterSeq = boundary.AfterSeq,
             Kind = boundary.Kind,
-            Expect = Expect(native: false, boundary.AfterSeq, "3"),
+            Expect = Expect(native: false, boundary.AfterSeq, "3", boundary.Hand),
         }),
     ];
 
@@ -352,17 +369,18 @@ public class CorruptionTests
     }
 
     /// <summary>
-    /// The reorder control swaps two plays whose order can matter, not the first pair.
+    /// The reorder control swaps a pair whose order can matter, not the first hand it
+    /// finds.
     ///
-    /// A run whose first two plays are the same card at the same target is corrupted
+    /// A turn whose first two plays are the same card at the same target is corrupted
     /// into a byte-identical run. The arbiter then declines to reject it, correctly -
     /// refusing would be the arbiter lying about a history that really is the same -
     /// and the gate reports a failure that belongs to the control's own nomination. A
     /// real recording did exactly that: its first two consecutive plays were both a
-    /// plain Strike.
+    /// plain Strike. So that turn is passed over and the next one is asked.
     /// </summary>
     [Fact]
-    public void ReorderingSwapsAPairWhoseOrderCanMatterRatherThanTheFirstPair()
+    public void ReorderingSwapsAPairWhoseOrderCanMatterRatherThanTheFirstHand()
     {
         var manifest = Playable() with
         {
@@ -375,24 +393,28 @@ public class CorruptionTests
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
                 At(3, Fixtures.Action(3, ActionVerb.PlayCard,
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
-                // Different card: the first consecutive pair that is worth swapping.
-                At(4, Fixtures.Action(4, ActionVerb.PlayCard,
-                    ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
+                At(4, Fixtures.Action(4, ActionVerb.EndTurn)),
+                // The next turn opens with a pair worth swapping.
                 At(5, Fixtures.Action(5, ActionVerb.PlayCard,
+                    ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
+                At(6, Fixtures.Action(6, ActionVerb.PlayCard,
                     ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "2"))),
             ],
-            Checkpoints = Boundaries((1, "combat_start")),
+            Checkpoints = Boundaries(
+                (1, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH"),
+                (4, "turn_start",
+                    "CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD")),
         };
 
         var reordered = Corruption.All.Single(control => control.Name == "reorder-plays").Apply(manifest);
         var swapped = reordered.Actions
             .Where(action => action.Note == "reordered by a negative control")
+            .Select(action => action.Args["card_id"])
             .ToList();
 
-        // Exactly two plays move, and they are a pair whose order can matter: swapping
-        // two of the same card at the same target would produce the same history.
         Assert.Equal(2, swapped.Count);
-        Assert.NotEqual(swapped[0].Args["card_id"], swapped[1].Args["card_id"]);
+        Assert.Contains("CARD.BASH", swapped);
+        Assert.Contains("CARD.DEFEND_IRONCLAD", swapped);
     }
 
     /// <summary>
@@ -413,7 +435,8 @@ public class CorruptionTests
                 At(3, Fixtures.Action(3, ActionVerb.PlayCard,
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
             ],
-            Checkpoints = Boundaries((1, "combat_start")),
+            Checkpoints = Boundaries(
+                (1, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH")),
         };
 
         var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
@@ -424,7 +447,7 @@ public class CorruptionTests
 
         var refusal = Assert.Throws<ManifestException>(() => reorder.Apply(manifest));
 
-        Assert.Contains("order can matter", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("differ in the card played", refusal.Message, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -463,9 +486,9 @@ public class CorruptionTests
     /// pair that straddles a fight boundary - or a turn boundary, since the hand is
     /// discarded and redrawn at the end of a turn - produces a play of a card that hand
     /// never held, which the driver refuses on card identity: a structural refusal
-    /// counted as a rejection while nothing about order was demonstrated. Which is
-    /// which is read out of the checkpoints the recording writes for its boundaries,
-    /// so this history carries the ones it reached.
+    /// counted as a rejection while nothing about order was demonstrated. The pair is
+    /// checked against the hand each boundary's checkpoint recorded, so this history
+    /// carries the boundaries it reached and the hands they were dealt.
     /// </summary>
     [Fact]
     public void ReorderingSwapsAPairFromOneHandRatherThanAcrossAFightOrTurnBoundary()
@@ -495,7 +518,11 @@ public class CorruptionTests
                     ("card_id", "CARD.HELLRAISER"), ("hand_index", "3"))),
             ],
             Checkpoints = Boundaries(
-                (1, "combat_start"), (5, "combat_start"), (7, "turn_start")),
+                (1, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH"),
+                (5, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.HELLRAISER"),
+                (7, "turn_start",
+                    "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.BASH|" +
+                    "CARD.HELLRAISER")),
         };
 
         var reordered = Corruption.All.Single(control => control.Name == "reorder-plays").Apply(manifest);
@@ -524,13 +551,13 @@ public class CorruptionTests
                 At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
                 At(2, Fixtures.Action(2, ActionVerb.PlayCard,
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
-                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
-                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
-                At(4, Fixtures.Action(4, ActionVerb.EndTurn)),
-                At(5, Fixtures.Action(5, ActionVerb.PlayCard,
+                At(3, Fixtures.Action(3, ActionVerb.EndTurn)),
+                At(4, Fixtures.Action(4, ActionVerb.PlayCard,
                     ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "0"))),
             ],
-            Checkpoints = Boundaries((1, "combat_start"), (4, "turn_start")),
+            Checkpoints = Boundaries(
+                (1, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD"),
+                (3, "turn_start", "CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD")),
         };
 
         var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
@@ -539,16 +566,14 @@ public class CorruptionTests
     }
 
     /// <summary>
-    /// A recording whose checkpoints cannot place two plays in one hand is not
-    /// applicable either.
+    /// A recording that never observed a hand is not applicable either.
     ///
-    /// The control does not fall back to reading the verbs between them: nothing in an
-    /// action entry says what the hand was, so a history with no hand-beginning
-    /// checkpoint before its plays has not established the one thing the swap's
-    /// arithmetic depends on.
+    /// The control does not fall back to reading the verbs between the plays: nothing
+    /// in an action entry says what the hand was, so a history with no hand-beginning
+    /// checkpoint has not established the one thing the swap depends on.
     /// </summary>
     [Fact]
-    public void ReorderingDoesNotApplyWhenNoCheckpointPlacesAPairInOneHand()
+    public void ReorderingDoesNotApplyWhenNoCheckpointRecordedTheHand()
     {
         var manifest = Playable() with { Checkpoints = [] };
 
@@ -556,6 +581,44 @@ public class CorruptionTests
 
         Assert.False(reorder.AppliesTo(manifest));
         Assert.Throws<ManifestException>(() => reorder.Apply(manifest));
+    }
+
+    /// <summary>
+    /// Nor does a pair a card screen rewrote the hand between.
+    ///
+    /// A play can open a grid over the hand, and the pick that answers it is recorded
+    /// as the next action with no boundary either side - so nothing about the turn, the
+    /// fight or the verbs in between says the hand changed. The second play's index was
+    /// recorded against what was left after the screen, and against the hand the turn
+    /// was dealt it names a different card. That is what the recorded hand catches and
+    /// every window over the actions missed.
+    /// </summary>
+    [Fact]
+    public void ReorderingDoesNotApplyWhenAScreenRewroteTheHandBetweenThePlays()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                // The screen that play opened takes the Defend out of the hand.
+                At(3, Fixtures.Action(3, ActionVerb.SelectCardFromScreen,
+                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("option_index", "0"))),
+                // Recorded at its index in what the screen left behind.
+                At(4, Fixtures.Action(4, ActionVerb.PlayCard,
+                    ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
+            ],
+            Checkpoints = Boundaries(
+                (1, "combat_start",
+                    "CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.CLEAVE|CARD.BASH")),
+        };
+
+        var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
+
+        Assert.False(reorder.AppliesTo(manifest));
     }
 
     /// <summary>
@@ -580,7 +643,9 @@ public class CorruptionTests
                 At(6, Fixtures.Action(6, ActionVerb.PlayCard,
                     ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
             ],
-            Checkpoints = Boundaries((1, "combat_start"), (5, "combat_start")),
+            Checkpoints = Boundaries(
+                (1, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH"),
+                (5, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.HELLRAISER")),
         };
 
         var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
