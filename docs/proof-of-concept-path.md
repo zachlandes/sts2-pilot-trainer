@@ -385,11 +385,9 @@ first fight before it can offer a later one.
   action opens a card screen, which is the one case no other history here reaches.
 - The `exact` unlock arm, which is how a recording made inside a player's own game
   says which state its content was generated against, rather than requiring a complete
-  one. It is present and deliberately unfinished: the preflight checks that this build
-  ships every epoch and encounter id the recording names and reports the run count, and
-  nothing produces an `exact` recording yet, so the arm is inert until the recorder
-  does. [Environment identity](environment-identity.md) owns what such a state is made
-  of and what "exact" can mean.
+  one.
+  S8's recorder produces recordings that exercise it, so the arm is finished rather than inert: the preflight checks that this build ships every epoch and encounter id the recording names, reports the run count rather than comparing it, and separates a shortfall somebody can go and fix from one nobody can.
+  [Environment identity](environment-identity.md) owns what such a state is made of, what "exact" can mean, and why a refusal has three answers rather than two.
 
 **Runnable now:** `./scripts/arbiter replay
 src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-whole-act.replay.json` reproduces
