@@ -334,4 +334,103 @@ public class CorruptionTests
         Assert.Equal("CARD.HELLRAISER", plays[1].Args["card_id"]);
         Assert.Equal("1", plays[1].Args["hand_index"]);
     }
+
+    /// <summary>
+    /// The reorder control swaps two plays whose order can matter, not the first pair.
+    ///
+    /// A run whose first two plays are the same card at the same target is corrupted
+    /// into a byte-identical run. The arbiter then declines to reject it, correctly -
+    /// refusing would be the arbiter lying about a history that really is the same -
+    /// and the gate reports a failure that belongs to the control's own nomination. A
+    /// real recording did exactly that: its first two consecutive plays were both a
+    /// plain Strike.
+    /// </summary>
+    [Fact]
+    public void ReorderingSwapsAPairWhoseOrderCanMatterRatherThanTheFirstPair()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                // Same card, same target: swapping these two is the same history.
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                // Different card: the first consecutive pair that is worth swapping.
+                At(4, Fixtures.Action(4, ActionVerb.PlayCard,
+                    ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
+                At(5, Fixtures.Action(5, ActionVerb.PlayCard,
+                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "2"))),
+            ],
+        };
+
+        var reordered = Corruption.All.Single(control => control.Name == "reorder-plays").Apply(manifest);
+        var swapped = reordered.Actions
+            .Where(action => action.Note == "reordered by a negative control")
+            .ToList();
+
+        // Exactly two plays move, and they are a pair whose order can matter: swapping
+        // two of the same card at the same target would produce the same history.
+        Assert.Equal(2, swapped.Count);
+        Assert.NotEqual(swapped[0].Args["card_id"], swapped[1].Args["card_id"]);
+    }
+
+    /// <summary>
+    /// A history whose every adjacent pair is interchangeable is refused, not corrupted
+    /// into itself.
+    /// </summary>
+    [Fact]
+    public void ReorderingRefusesAHistoryWhereNoSwapCouldMatter()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+            ],
+        };
+
+        var refusal = Assert.Throws<ManifestException>(
+            () => Corruption.All.Single(control => control.Name == "reorder-plays").Apply(manifest));
+
+        Assert.Contains("order can matter", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A screen that removes the card cannot serve the enchant control.
+    ///
+    /// Whichever identical copy goes, the deck left behind is the same list of the same
+    /// cards, so the corrupted run is the uncorrupted run and no arbiter could tell them
+    /// apart. A real recording nominated a shop removal and the control reported a
+    /// failure that was its own nomination's rather than the arbiter's.
+    /// </summary>
+    [Fact]
+    public void EnchantingADifferentCopyDoesNotApplyToAScreenThatRemovesTheCard()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.ShopPurchase, ("kind", ShopPurchaseKinds.CardRemoval))),
+                At(3, Fixtures.Action(3, ActionVerb.SelectCardFromScreen,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("option_index", "0"),
+                    (Corruption.AlternativeOptionIndex, "1"))),
+            ],
+        };
+
+        var enchant = Corruption.All.Single(control => control.Name == "enchant-a-different-card");
+
+        Assert.False(enchant.AppliesTo(manifest));
+    }
 }
+

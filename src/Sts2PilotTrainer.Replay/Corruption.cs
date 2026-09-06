@@ -128,9 +128,12 @@ public static class Corruption
             "anything a frame of the event screen shows.",
             EnchantADifferentCard)
         {
-            Requires = "a card picked off a screen nominating another copy of the same card",
+            Requires = "a card marked on a screen - upgraded or enchanted, not removed - nominating another " +
+                       "copy of the same card",
             AppliesTo = manifest => manifest.Actions.Any(
-                a => a.Verb == ActionVerb.SelectCardFromScreen && a.Args.ContainsKey(AlternativeOptionIndex)),
+                a => a.Verb == ActionVerb.SelectCardFromScreen &&
+                     a.Args.ContainsKey(AlternativeOptionIndex) &&
+                     ChangesTheCardRatherThanRemovingIt(manifest.Actions, a)),
         },
 
         new("choose-a-different-event-option",
@@ -172,14 +175,54 @@ public static class Corruption
         },
     ];
 
+    /// <summary>
+    /// The two plays this control swaps, chosen so that swapping them can matter.
+    ///
+    /// Consecutive plays, as before, but the first consecutive pair that is actually
+    /// different: a swap of two of the same card at the same target is the same history
+    /// written twice. Taking the first pair unconditionally does not do: a run whose
+    /// first two plays are both a plain Strike gets
+    /// corrupted into a byte-identical run, the arbiter correctly declines to reject
+    /// it - refusing would be the arbiter lying about a history that really is the
+    /// same - and the control reports a failure that belongs to its own nomination.
+    /// That is what a real recording did.
+    ///
+    /// Order matters between two plays when the cards differ, or when the same card is
+    /// aimed at different enemies: either changes the intermediate state, and the
+    /// engine's own hidden order with it.
+    /// </summary>
+    private static (ActionRecord First, ActionRecord Second) PlaysWhoseOrderCanMatter(
+        IReadOnlyList<ActionRecord> plays)
+    {
+        for (var index = 0; index + 1 < plays.Count; index++)
+        {
+            var first = plays[index];
+            var second = plays[index + 1];
+
+            if (!string.Equals(Argument(first, "card_id"), Argument(second, "card_id"), StringComparison.Ordinal) ||
+                !string.Equals(Argument(first, "target_index"), Argument(second, "target_index"), StringComparison.Ordinal))
+            {
+                return (first, second);
+            }
+        }
+
+        throw new ManifestException(
+            "reorder-plays needs two consecutive plays whose order can matter - ones that differ in the card " +
+            "played or the enemy it is aimed at. Every consecutive pair in this history plays the same card " +
+            "at the same target, so swapping any of them produces the same history and would prove nothing " +
+            "about the arbiter.");
+    }
+
+    private static string? Argument(ActionRecord action, string name) =>
+        action.Args.TryGetValue(name, out var value) ? value : null;
+
     private static ReplayManifest ReorderPlays(ReplayManifest manifest)
     {
         var actions = manifest.Actions.ToList();
         var plays = actions.Where(a => a.Verb == ActionVerb.PlayCard).ToList();
         if (plays.Count < 2) throw new ManifestException("reorder-plays needs at least two card plays.");
 
-        var first = plays[0];
-        var second = plays[1];
+        var (first, second) = PlaysWhoseOrderCanMatter(plays);
 
         // Both cards are re-indexed to where they sit in the *original* hand, so that
         // each play is individually legal and the driver's card-identity check passes.
@@ -326,15 +369,53 @@ public static class Corruption
 
     /// <summary>Enchants a different copy of the same card - the subtlest corruption
     /// this history admits, because the two copies are indistinguishable on screen.</summary>
+    /// <summary>
+    /// Whether picking a different identical copy on this screen can change the run.
+    ///
+    /// It can when the pick <em>marks</em> the card - an upgrade or an enchantment -
+    /// because the deck then holds one changed copy among unchanged ones and which
+    /// position carries it is a different deck. It cannot when the pick <em>removes</em>
+    /// the card: the remaining deck is the same list of the same cards whichever
+    /// identical copy went, so the corrupted run is the uncorrupted run and no arbiter
+    /// could tell them apart. A real recording nominated a shop removal and this
+    /// control reported a failure that was its own nomination's, not the arbiter's.
+    /// </summary>
+    private static bool ChangesTheCardRatherThanRemovingIt(
+        IReadOnlyList<ActionRecord> actions, ActionRecord pick)
+    {
+        var index = -1;
+        for (var at = 0; at < actions.Count; at++)
+        {
+            if (!ReferenceEquals(actions[at], pick)) continue;
+            index = at;
+            break;
+        }
+
+        for (var before = index - 1; before >= 0; before--)
+        {
+            var earlier = actions[before];
+            if (earlier.Verb == ActionVerb.SelectCardFromScreen) continue;
+
+            return earlier.Verb != ActionVerb.ShopPurchase ||
+                   !string.Equals(
+                       Argument(earlier, "kind"), ShopPurchaseKinds.CardRemoval, StringComparison.Ordinal);
+        }
+
+        return true;
+    }
+
     private static ReplayManifest EnchantADifferentCard(ReplayManifest manifest)
     {
         var actions = manifest.Actions.ToList();
         var pick = actions.FirstOrDefault(a =>
                        a.Verb == ActionVerb.SelectCardFromScreen &&
-                       a.Args.ContainsKey(AlternativeOptionIndex))
+                       a.Args.ContainsKey(AlternativeOptionIndex) &&
+                       ChangesTheCardRatherThanRemovingIt(actions, a))
             ?? throw new ManifestException(
-                "enchant-a-different-card needs a SelectCardFromScreen nominating another copy of the same " +
-                $"card through '{AlternativeOptionIndex}'.");
+                "enchant-a-different-card needs a SelectCardFromScreen that marks the card it picks - an " +
+                "upgrade or an enchantment - nominating another copy of the same card through " +
+                $"'{AlternativeOptionIndex}'. A screen that removes the card cannot serve: whichever " +
+                "identical copy goes, the deck left behind is the same one.");
 
         actions[actions.IndexOf(pick)] = pick with
         {

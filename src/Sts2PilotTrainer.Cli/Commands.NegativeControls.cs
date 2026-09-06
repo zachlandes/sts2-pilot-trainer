@@ -86,10 +86,18 @@ internal static partial class Commands
                 child.StandardError.Contains("Manifest is not valid", StringComparison.Ordinal);
             allRejected &= arbiterRejected;
 
+            // A control that did not reject has no divergence, and saying so is the
+            // finding. The old chain fell through to the first non-blank line of
+            // standard error, which on a run that replayed cleanly is the engine's own
+            // first log line - "[INFO] Registered 22 migrations" presented as a
+            // divergence. A field that asserts something it did not establish is the
+            // one thing this whole phase is about.
             var reason = replayReport?.Diagnostics.FirstOrDefault() ??
                          FirstDiagnostic(child.StandardOutput) ??
-                         child.StandardError.Split('\n').FirstOrDefault(line => !string.IsNullOrWhiteSpace(line)) ??
-                         "(no diagnostic line found)";
+                         FirstFailure(child.StandardError) ??
+                         (arbiterRejected
+                             ? "(no diagnostic line found)"
+                             : "none - the corrupted history replayed to the end without diverging");
             var digest = Digest(child.StandardOutput);
             bool? endStateChanged = digest is null || baselineDigest is null
                 ? null
@@ -180,6 +188,24 @@ internal static partial class Commands
             ?.Split(':', 2)[1].Trim();
         return value is null or "(none)" ? null : value;
     }
+
+    /// <summary>
+    /// The first line of standard error that is a failure rather than a log line.
+    ///
+    /// The engine logs to standard error as it starts, so the first line there is
+    /// routinely "[INFO] Registered 22 migrations" and means only that the engine
+    /// booted. Informational levels are dropped; [ERROR] is kept, because an engine
+    /// that complained is exactly what a reader of this field needs to see.
+    /// </summary>
+    private static string? FirstFailure(string error) =>
+        error.Split('\n')
+            .Select(line => line.Trim())
+            .FirstOrDefault(line =>
+                !string.IsNullOrWhiteSpace(line) &&
+                !LogLevels.Any(level => line.StartsWith(level, StringComparison.Ordinal)));
+
+    private static readonly string[] LogLevels =
+        ["[INFO]", "[WARN]", "[WARNING]", "[DEBUG]", "[TRACE]"];
 
     /// <summary>Pulls the arbiter's first divergence line out of a child run's output.</summary>
     private static string? FirstDiagnostic(string output) =>
