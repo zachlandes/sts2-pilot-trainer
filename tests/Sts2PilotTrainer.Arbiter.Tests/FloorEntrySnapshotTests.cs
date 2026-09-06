@@ -185,6 +185,17 @@ public sealed class FloorEntrySnapshotTests
 
         // And it still writes nothing, which is the claim the walked route also makes.
         Assert.True(restoredReport.GetProperty("profile_unchanged").GetBoolean());
+
+        // The two routes are two different claims about where the run's unlock state
+        // came from, and each says its own. A restored run generated nothing: its
+        // unlock state came off the save with the rest of it, and reporting the
+        // progress model here would be reporting a reading nothing took.
+        Assert.DoesNotContain(
+            "restored from the game's save",
+            walkedReport.GetProperty("progress_origin").GetString()!, StringComparison.Ordinal);
+        Assert.Contains(
+            "restored from the game's save",
+            restoredReport.GetProperty("progress_origin").GetString()!, StringComparison.Ordinal);
     }
 
     /// <summary>

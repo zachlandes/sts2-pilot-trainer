@@ -57,6 +57,11 @@ public sealed class RecordedFightEntry : IDisposable
     private readonly RunDriver _driver;
     private readonly PlayerProgress _progress;
 
+    /// <summary>Whether this run came off a save rather than out of the decisions that
+    /// produced it. Not a mode: nothing here behaves differently for it. It exists so
+    /// that what this entry reports about itself is what happened.</summary>
+    private bool _restored;
+
     private RecordedFightEntry(
         ReplayManifest manifest, IBoundaryPlan plan, GameSession session, PlayerProgress progress,
         Func<MapCoord, Task>? travelInRunningGame)
@@ -178,6 +183,7 @@ public sealed class RecordedFightEntry : IDisposable
             session => session.RestoreSavedRun(saveJson));
 
         entry.StepsTaken = plan.PrefixActions.Count;
+        entry._restored = true;
         return entry;
     }
 
@@ -622,9 +628,20 @@ public sealed class RecordedFightEntry : IDisposable
         return capture;
     }
 
-    /// <summary>Which progress model this run was generated against, named so a
-    /// report can say it rather than imply a reading of somebody's profile.</summary>
-    public string ProgressOrigin => LocalEnvironment.OriginOf(_progress);
+    /// <summary>
+    /// Where this run's unlock state came from, named so a report can say it rather than
+    /// imply a reading of somebody's profile.
+    ///
+    /// It has to distinguish the two ways in, because they are two different claims. A
+    /// walked entry generated the run against the progress model this entry was given,
+    /// and that model is what shaped its content. A restored one did not generate
+    /// anything: the unlock state came off the save, along with the rest of the run, and
+    /// reporting the model here would be reporting a reading nothing took.
+    /// </summary>
+    public string ProgressOrigin => _restored
+        ? "the run's own unlock state, restored from the game's save along with the rest of it. The progress " +
+          $"model this entry was gated on - {LocalEnvironment.OriginOf(_progress)} - generated nothing here"
+        : LocalEnvironment.OriginOf(_progress);
 
     /// <summary>
     /// The decisions a player can make while a fight is live.
