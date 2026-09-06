@@ -399,32 +399,81 @@ public sealed class RunCaptureTests
     /// That line is last, so the session that wrote it resumes; one more decision puts
     /// it in the middle, where the truncation rule does not apply and the whole journal
     /// is refused - so the rest of the run goes unrecorded and no manifest is written.
-    /// This is that sequence: truncate, repair, append twice, and read the file back.
+    ///
+    /// Driven on a real file through the same three operations the recorder performs on
+    /// one: read it, repair it, append to it. The first assertion is the failure this
+    /// exists to prevent, so the test cannot pass with the repair taken out.
     /// </summary>
     [Fact]
     public void AnEntryAppendedAfterACrashDoesNotFuseOntoTheLineItCutShort()
     {
         var whole = Played().Journal.Render();
-        var truncated = whole[..(whole.Length - 30)];
-        var prefix = RunJournal.RepairTruncatedTail(truncated);
+        var path = Path.Combine(Path.GetTempPath(), $"runmobile-journal-{Guid.NewGuid():N}.journal.jsonl");
+        File.WriteAllText(path, whole[..(whole.Length - 30)]);
 
-        Assert.NotNull(prefix);
-        Assert.Equal(truncated[..prefix!.Length], prefix);
+        try
+        {
+            var crashed = File.ReadAllText(path);
 
-        var resumed = RunCapture.Resume(RunJournal.Parse(prefix), Digest(3));
-        var appended = prefix +
-            RunJournal.RenderEntry(resumed.Record(
-                ActionVerb.PlayCard, Args(("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "0")),
-                InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(4))) +
-            RunJournal.RenderEntry(resumed.Record(
-                ActionVerb.EndTurn, Args(), InFight(2, turn: 3, enemyHp: 30, hp: 58), Digest(5)));
+            // What the file does after two more appends if nothing repairs it: the
+            // fused line is no longer last, so the whole journal is refused.
+            var refused = Record.Exception(() => RunJournal.Parse(crashed + Continued(crashed)));
+            Assert.True(
+                refused is System.Text.Json.JsonException or ManifestException,
+                $"an unrepaired journal read back as {refused?.GetType().Name ?? "readable"}");
 
-        // Every entry reads, including the one that is no longer last, and the prefix
-        // the crash left behind is byte for byte what it was.
-        var read = RunJournal.Parse(appended);
+            var repair = RunJournal.RepairTruncatedTail(crashed);
+            Assert.True(repair?.LostARecord);
+            File.WriteAllText(path, repair!.Value.Text);
+            File.AppendAllText(path, Continued(File.ReadAllText(path)));
 
-        Assert.Equal([-1, 0, 1, 2, 3, 4, 5], read.Entries.Select(entry => entry.Seq));
-        Assert.StartsWith(prefix, appended, StringComparison.Ordinal);
+            var read = RunJournal.Parse(File.ReadAllText(path));
+
+            Assert.Equal([-1, 0, 1, 2, 3, 4, 5], read.Entries.Select(entry => entry.Seq));
+
+            // And the decisions the crash did not touch are the ones that were written.
+            Assert.Equal(
+                Played().Journal.Entries.Take(5).Select(RunJournal.RenderEntry),
+                read.Entries.Take(5).Select(RunJournal.RenderEntry));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    /// <summary>The two decisions a resumed session goes on to record.</summary>
+    private static string Continued(string journal)
+    {
+        var resumed = RunCapture.Resume(RunJournal.Parse(journal), Digest(3));
+        return RunJournal.RenderEntry(resumed.Record(
+                   ActionVerb.PlayCard, Args(("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "0")),
+                   InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(4))) +
+               RunJournal.RenderEntry(resumed.Record(
+                   ActionVerb.EndTurn, Args(), InFight(2, turn: 3, enemyHp: 30, hp: 58), Digest(5)));
+    }
+
+    /// <summary>
+    /// A crash that took only the newline off a finished entry does not cost that
+    /// entry.
+    ///
+    /// The reader keeps it - the line deserializes - so a repair that cut it back would
+    /// delete a decision the capture had already resumed past, leaving a gap in the seq
+    /// numbers that refuses the journal two sessions later. One rule decides whether
+    /// that final line is a record, and both of them ask it.
+    /// </summary>
+    [Fact]
+    public void AJournalWhoseFinalEntryLostOnlyItsNewlineKeepsThatEntry()
+    {
+        var whole = Played().Journal.Render();
+
+        var repair = RunJournal.RepairTruncatedTail(whole[..^1]);
+
+        Assert.False(repair?.LostARecord);
+        Assert.Equal(whole, repair!.Value.Text);
+        Assert.Equal(
+            [-1, 0, 1, 2, 3, 4],
+            RunJournal.Parse(repair.Value.Text).Entries.Select(entry => entry.Seq));
     }
 
     /// <summary>A journal that already ends on a complete line is left exactly as it

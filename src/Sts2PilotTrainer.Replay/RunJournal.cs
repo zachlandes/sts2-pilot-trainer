@@ -101,29 +101,80 @@ public sealed record RunJournal
         string.Concat(Refusals.Select(RenderRefusal));
 
     /// <summary>
-    /// The journal cut back to its last complete line, or null when it already ends on
-    /// one.
+    /// The journal brought back to a boundary an append may follow, or null when it is
+    /// already on one.
     ///
-    /// An append the process did not survive leaves a fragment with no newline after
-    /// it. <see cref="Parse"/> drops that fragment, so the read succeeds while the file
-    /// on disk is still malformed - and appending onto it fuses the next entry to the
-    /// fragment into a line nothing can read. That line is the last one, so the session
-    /// that wrote it can still resume; the session after it cannot, because one more
-    /// decision leaves the unreadable line in the middle, where the truncation rule
-    /// does not apply and the whole journal is refused. A crash that cost one decision
-    /// would then cost every decision after it.
+    /// An append the process did not survive leaves a final line with no newline after
+    /// it, and appending onto that line fuses the next record into it. The fused line
+    /// is last, so the session that wrote it can still resume; the session after it
+    /// cannot, because one more decision leaves the unreadable line in the middle,
+    /// where <see cref="Parse"/>'s truncation rule does not apply and the whole journal
+    /// is refused. A crash that cost one decision would then cost every decision after
+    /// it.
     ///
-    /// So the fragment is cut back to the boundary the last finished append left.
-    /// Nothing before it is touched: the prefix is the recording, and this returns it
+    /// Whether that final line is a record or a fragment is <see cref="ReadsAsARecord"/>'s
+    /// question, which is the same question <see cref="Parse"/> asks of it - one rule,
+    /// so the repair cannot decide a line was lost that the reader kept. A record that
+    /// lost only its newline is terminated; a fragment is cut back to where it began.
+    /// Nothing before it is touched: the prefix is the recording, and it comes back
     /// byte for byte.
     /// </summary>
-    public static string? RepairTruncatedTail(string text)
+    public static JournalRepair? RepairTruncatedTail(string text)
     {
-        if (text.EndsWith('\n')) return null;
+        var lastLineStart = text.LastIndexOf('\n') + 1;
+        var lastLine = text[lastLineStart..];
+        if (lastLine.Length == 0) return null;
 
-        var lastComplete = text.LastIndexOf('\n');
-        return lastComplete < 0 ? null : text[..(lastComplete + 1)];
+        if (ReadsAsARecord(lastLine)) return new JournalRepair(text + "\n", LostARecord: false);
+
+        return lastLineStart == 0 ? null : new JournalRepair(text[..lastLineStart], LostARecord: true);
     }
+
+    /// <summary>
+    /// A journal repaired to a boundary, and whether doing so cost a record.
+    ///
+    /// The two are different things to say about a recording and only one of them
+    /// breaks it: a record that lost its newline is still a decision this journal
+    /// holds, while a fragment cut back is a decision nobody has.
+    /// </summary>
+    public readonly record struct JournalRepair(string Text, bool LostARecord);
+
+    /// <summary>
+    /// Reads one line as the record it is, or hands back why it is not one.
+    ///
+    /// The one place that decides whether a line of a journal is a record. Both the
+    /// reader and the repair ask it about a file's final line, and they have to agree:
+    /// two rules for "this journal was cut short" would sooner or later disagree about
+    /// some shape, and on that shape one of them would be destroying what the other
+    /// kept.
+    /// </summary>
+    private static Exception? ReadRecord(string line, out RunJournalEntry? entry, out string? refusal)
+    {
+        entry = null;
+        refusal = null;
+        try
+        {
+            if (JsonSerializer.Deserialize<JournalRefusal>(line, Compact) is { Reason: not null } read)
+            {
+                refusal = read.Reason;
+                return null;
+            }
+
+            var value = JsonSerializer.Deserialize<RunJournalEntry>(line, Compact)
+                ?? throw new ManifestException("A run journal entry deserialized to null.");
+            ManifestJson.ValidateRequiredMembers(value, "Run journal entry");
+            entry = value;
+            return null;
+        }
+        catch (Exception exception) when (
+            exception is JsonException or ManifestException or InvalidOperationException)
+        {
+            return exception;
+        }
+    }
+
+    private static bool ReadsAsARecord(string line) =>
+        line.Trim().Length > 0 && ReadRecord(line, out _, out _) is null;
 
     /// <summary>
     /// Reads a journal back, refusing one this build cannot faithfully interpret.
@@ -161,27 +212,16 @@ public sealed record RunJournal
         var refusals = new List<string>();
         for (var index = 1; index < lines.Count; index++)
         {
-            try
-            {
-                if (JsonSerializer.Deserialize<JournalRefusal>(lines[index], Compact) is { Reason: not null } refusal)
-                {
-                    refusals.Add(refusal.Reason);
-                    continue;
-                }
-
-                var entry = JsonSerializer.Deserialize<RunJournalEntry>(lines[index], Compact)
-                    ?? throw new ManifestException("A run journal entry deserialized to null.");
-                ManifestJson.ValidateRequiredMembers(entry, "Run journal entry");
-                entries.Add(entry);
-            }
-            catch (Exception exception) when (
-                index == lines.Count - 1 &&
-                exception is JsonException or ManifestException or InvalidOperationException)
+            if (ReadRecord(lines[index], out var entry, out var refusal) is { } unreadable)
             {
                 // The last line of a file a crash interrupted. Everything before it
                 // finished being written and is a real recording of what happened.
-                break;
+                if (index == lines.Count - 1) break;
+                throw unreadable;
             }
+
+            if (refusal is not null) refusals.Add(refusal);
+            else entries.Add(entry!);
         }
 
         var journal = new RunJournal

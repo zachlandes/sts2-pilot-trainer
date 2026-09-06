@@ -229,12 +229,15 @@ internal sealed class RunRecorder : IDisposable
 
                 // Before anything is appended, because an append onto a fragment a
                 // crash left behind produces a line no later session can read.
-                if (RunJournal.RepairTruncatedTail(existing) is { } repaired)
+                if (RunJournal.RepairTruncatedTail(existing) is { } repair)
                 {
-                    RunmobileStore.Write(journalPath, repaired);
-                    capture.MarkBroken(
-                        "The last entry in this journal was cut short by a crash while it was being written, " +
-                        "so the decision it was recording is not in this recording.");
+                    RunmobileStore.Write(journalPath, repair.Text);
+                    if (repair.LostARecord)
+                    {
+                        capture.MarkBroken(
+                            "The last entry in this journal was cut short by a crash while it was being " +
+                            "written, so the decision it was recording is not in this recording.");
+                    }
                 }
 
                 // A break this resume decided on is a fact only this session knows, and
