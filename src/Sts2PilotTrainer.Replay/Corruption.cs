@@ -53,8 +53,9 @@ public static class Corruption
             "damage and block totals agree. The intermediate state and hidden pile order still depend on order.",
             ReorderPlays)
         {
-            Requires = "two card plays",
-            AppliesTo = manifest => manifest.Actions.Count(a => a.Verb == ActionVerb.PlayCard) >= 2,
+            Requires = "two consecutive plays out of the same hand whose order can matter - differing in the " +
+                       "card played or the enemy it is aimed at",
+            AppliesTo = manifest => TryFindPlaysWhoseOrderCanMatter(manifest.Actions, out _),
         },
 
         new("substitute-same-cost",
@@ -190,28 +191,62 @@ public static class Corruption
     /// Order matters between two plays when the cards differ, or when the same card is
     /// aimed at different enemies: either changes the intermediate state, and the
     /// engine's own hidden order with it.
+    ///
+    /// The pair also has to come out of one hand. The swap re-indexes both plays with
+    /// arithmetic over a single shared hand, so a pair that straddles a fight boundary
+    /// produces a history the driver refuses on card identity - a structural refusal,
+    /// which is not the state divergence this control exists to demonstrate. Raw
+    /// adjacency in the action list is too strong: one play per turn is an ordinary
+    /// line, and an <see cref="ActionVerb.EndTurn"/> between two plays keeps the hand.
+    /// So the requirement is that nothing between them leaves the fight.
     /// </summary>
-    private static (ActionRecord First, ActionRecord Second) PlaysWhoseOrderCanMatter(
-        IReadOnlyList<ActionRecord> plays)
+    private static bool TryFindPlaysWhoseOrderCanMatter(
+        IReadOnlyList<ActionRecord> actions, out (ActionRecord First, ActionRecord Second) pair)
     {
+        var plays = new List<int>();
+        for (var at = 0; at < actions.Count; at++)
+        {
+            if (actions[at].Verb == ActionVerb.PlayCard) plays.Add(at);
+        }
+
         for (var index = 0; index + 1 < plays.Count; index++)
         {
-            var first = plays[index];
-            var second = plays[index + 1];
+            var first = actions[plays[index]];
+            var second = actions[plays[index + 1]];
+
+            var stayedInTheFight = true;
+            for (var between = plays[index] + 1; between < plays[index + 1]; between++)
+            {
+                if (InsideAFight.Contains(actions[between].Verb)) continue;
+                stayedInTheFight = false;
+                break;
+            }
+
+            if (!stayedInTheFight) continue;
 
             if (!string.Equals(Argument(first, "card_id"), Argument(second, "card_id"), StringComparison.Ordinal) ||
                 !string.Equals(Argument(first, "target_index"), Argument(second, "target_index"), StringComparison.Ordinal))
             {
-                return (first, second);
+                pair = (first, second);
+                return true;
             }
         }
 
-        throw new ManifestException(
-            "reorder-plays needs two consecutive plays whose order can matter - ones that differ in the card " +
-            "played or the enemy it is aimed at. Every consecutive pair in this history plays the same card " +
-            "at the same target, so swapping any of them produces the same history and would prove nothing " +
-            "about the arbiter.");
+        pair = default;
+        return false;
     }
+
+    /// <summary>The verbs a player can issue without leaving the fight they are in.
+    /// Anything else between two plays means the second play comes out of a hand the
+    /// first never saw.</summary>
+    private static readonly ActionVerb[] InsideAFight =
+    [
+        ActionVerb.PlayCard,
+        ActionVerb.EndTurn,
+        ActionVerb.UsePotion,
+        ActionVerb.DiscardPotion,
+        ActionVerb.SelectCardFromScreen,
+    ];
 
     private static string? Argument(ActionRecord action, string name) =>
         action.Args.TryGetValue(name, out var value) ? value : null;
@@ -219,10 +254,19 @@ public static class Corruption
     private static ReplayManifest ReorderPlays(ReplayManifest manifest)
     {
         var actions = manifest.Actions.ToList();
-        var plays = actions.Where(a => a.Verb == ActionVerb.PlayCard).ToList();
-        if (plays.Count < 2) throw new ManifestException("reorder-plays needs at least two card plays.");
 
-        var (first, second) = PlaysWhoseOrderCanMatter(plays);
+        // Unreachable through the gate, which asks AppliesTo first and reports a
+        // control with nothing to damage as not applicable rather than running it.
+        if (!TryFindPlaysWhoseOrderCanMatter(actions, out var pair))
+        {
+            throw new ManifestException(
+                "reorder-plays needs two consecutive plays out of the same hand whose order can matter - ones " +
+                "that differ in the card played or the enemy it is aimed at. No such pair is in this history, " +
+                "so swapping any two of its plays produces either the same history or an illegal one, and " +
+                "would prove nothing about the arbiter.");
+        }
+
+        var (first, second) = pair;
 
         // Both cards are re-indexed to where they sit in the *original* hand, so that
         // each play is individually legal and the driver's card-identity check passes.
@@ -379,6 +423,11 @@ public static class Corruption
     /// identical copy went, so the corrupted run is the uncorrupted run and no arbiter
     /// could tell them apart. A real recording nominated a shop removal and this
     /// control reported a failure that was its own nomination's, not the arbiter's.
+    ///
+    /// Answered from a list of the openers whose screen marks the card rather than by
+    /// excluding the one removal opener seen so far: an opener not on the list is
+    /// declined, so a screen this project has not established the meaning of costs a
+    /// nomination rather than a false failure.
     /// </summary>
     private static bool ChangesTheCardRatherThanRemovingIt(
         IReadOnlyList<ActionRecord> actions, ActionRecord pick)
@@ -396,13 +445,22 @@ public static class Corruption
             var earlier = actions[before];
             if (earlier.Verb == ActionVerb.SelectCardFromScreen) continue;
 
-            return earlier.Verb != ActionVerb.ShopPurchase ||
-                   !string.Equals(
-                       Argument(earlier, "kind"), ShopPurchaseKinds.CardRemoval, StringComparison.Ordinal);
+            return OpenersWhoseScreenMarksTheCard.Contains(earlier.Verb);
         }
 
-        return true;
+        return false;
     }
+
+    /// <summary>The decisions whose card screen marks the card it picks - a rest site's
+    /// upgrade and an event's enchantment, including the opening blessing's. A shop's
+    /// card removal, and any screen opened from inside a fight, are not among them.
+    /// </summary>
+    private static readonly ActionVerb[] OpenersWhoseScreenMarksTheCard =
+    [
+        ActionVerb.ChooseNeowBlessing,
+        ActionVerb.ChooseEventOption,
+        ActionVerb.ChooseRestSiteOption,
+    ];
 
     private static ReplayManifest EnchantADifferentCard(ReplayManifest manifest)
     {

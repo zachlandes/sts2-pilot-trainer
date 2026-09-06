@@ -17,9 +17,10 @@ namespace Sts2PilotTrainer.Replay.Tests;
 /// the evidence run somebody plays as well as on this fixture: an opening blessing, an
 /// event whose option opens a card screen holding a second copy of the card that gets
 /// picked, a map move from
-/// a node with a reachable sibling, at least two card plays with one of them aimed at
-/// an enemy and one made from a hand holding another card of the same cost and
-/// targeting, a claimed reward, and a card reward that offered more than one card.
+/// a node with a reachable sibling, two consecutive plays out of one fight's hand that
+/// differ in the card played or the enemy it is aimed at, with one of them aimed at an
+/// enemy and one made from a hand holding another card of the same cost and targeting,
+/// a claimed reward, and a card reward that offered more than one card.
 /// </summary>
 internal static class RecordedRun
 {

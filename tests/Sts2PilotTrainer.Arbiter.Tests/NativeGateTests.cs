@@ -7,16 +7,18 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// Which conditions the publication gate applies to a recording this project's own
 /// recorder made.
 ///
-/// Four of the gate's conditions read a public video: the map a seed has to reproduce,
-/// the mode its overlay implies, the mod whose branch has to be shown unreachable in
-/// it, and the binding between those two reports. A recording made inside the player's
-/// own game has no video for any of them, so they are <em>absent</em> for that kind
-/// rather than reported as met - a condition reported as met is a claim somebody
-/// checked something, and nothing checked those.
+/// Two of the gate's conditions read a public video: the map a seed has to reproduce
+/// and the mode its overlay implies. A third, the binding between the mode and BaseLib
+/// reports, needs the mode report those two produce and there is none for a native
+/// recording. A recording made inside the player's own game has no video for any of
+/// them, so they are <em>absent</em> for that kind rather than reported as met - a
+/// condition reported as met is a claim somebody checked something, and nothing
+/// checked those.
 ///
 /// What is not absent is the engine standard. Every condition that replays the history
-/// through the real engine applies to both kinds, which is what keeps "publishable"
-/// meaning the same thing whoever made the recording.
+/// through the real engine applies to both kinds - <c>baselib-path</c> included, whose
+/// probe replays the recorded history against BaseLib.dll and reads no video - which is
+/// what keeps "publishable" meaning the same thing whoever made the recording.
 ///
 /// The manifest is one <see cref="RunCapture"/> produced from the decisions of a short
 /// run, which is the thing under test: what the gate asks a native recording only means
@@ -29,13 +31,13 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 public sealed class NativeGateTests
 {
     private static readonly string[] VideoOnlyConditions =
-        ["game-mode", "seed-topology", "baselib-path", "evidence-binding"];
+        ["game-mode", "seed-topology", "evidence-binding"];
 
     private static readonly string[] EngineConditions =
-        ["reproduction", "covered-fight", "combat-boundary", "determinism", "rejection"];
+        ["baselib-path", "reproduction", "covered-fight", "combat-boundary", "determinism", "rejection"];
 
     [GameFact]
-    public void ANativeRecordingIsNeverAskedTheFourQuestionsThatReadAVideo()
+    public void ANativeRecordingIsNeverAskedTheQuestionsThatNeedAVideo()
     {
         var conditions = GateConditions(Native());
 
