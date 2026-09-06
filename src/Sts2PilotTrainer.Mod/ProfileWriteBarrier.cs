@@ -119,6 +119,15 @@ internal static class ProfileWriteBarrier
         // consequence is deliberate: the settings screen's reset-tutorials does
         // nothing while a trainer run is live, because doing something would mean
         // writing the player's progress file from inside somebody else's run.
+        // A second is deliberate the same way: suppressing MarkFtueAsComplete
+        // suppresses the in-memory mark with it, so SeenFtue keeps returning false
+        // for the whole trainer run and a tutorial the player has not already
+        // dismissed can show again later in the same journey. It is bounded -
+        // SeenFtue reads FtueCompleted as loaded from the player's own progress
+        // file, and the barrier only stops additions to it, so a tutorial they
+        // dismissed in ordinary play never reappears. The fix is to honour the mark
+        // in memory while suppressing only the file write, left to a separate change
+        // because it is a new mechanism rather than a named write.
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkFtueAsComplete"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "SetFtuesEnabled"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "ResetFtues"),

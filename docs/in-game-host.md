@@ -111,6 +111,9 @@ Suppressing `SaveProgressFile` is not the whole of it, because not every progres
 The trainer's own path reaches the tutorial marks from `NMapScreen` and `NEndTurnButton` among others, and it measured clean only because every profile it was measured on had tutorials off - `SeenFtue` short-circuits when they are.
 A player who left them on, which is the default, is the case that was never run.
 One consequence of suppressing the siblings is deliberate: the settings screen's reset-tutorials does nothing while a trainer run is live.
+A second is deliberate too: suppressing `MarkFtueAsComplete` suppresses the in-memory mark with it, so `SeenFtue` keeps returning false for the whole trainer run and a tutorial the player has not already dismissed can show again later in the same journey.
+It is bounded: `SeenFtue` reads `FtueCompleted` as loaded from the player's own progress file, and the barrier only stops additions to it, so a tutorial they dismissed in ordinary play never reappears.
+The fix is to honour the mark in memory while suppressing only the file write, and it is left to a separate change because it is a new mechanism rather than a named write.
 `NGameOverScreen` is the known gap, recorded in the barrier's own docstring: it dirties `Progress.CurrentScore` and the badge state in memory before a `SaveProgressFile` the barrier suppresses, so the mutation outlives the run and the next ordinary write persists it.
 Nothing reaches it while the trainer is fight-scoped; a whole-run replay would, and it is answered on that list when it does.
 
