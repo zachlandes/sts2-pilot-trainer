@@ -52,6 +52,13 @@ internal static partial class Commands
                 "carries source.video.channel_name.");
         }
 
+        if (Args.Has(args, "--restore") && stepOne)
+        {
+            throw new ManifestException(
+                "--restore reaches the boundary from the game's own save, so there are no decisions left to " +
+                "stop after. Walk them with --step, or restore without it.");
+        }
+
         if (Args.Has(args, "--play") && Args.Value(args, "--floor") is not null)
         {
             throw new ManifestException(
@@ -74,8 +81,20 @@ internal static partial class Commands
         Console.WriteLine($"profile before  : {profileBefore}");
         Console.WriteLine();
 
-        using var entry = RecordedFightEntry.StartHeadless(recording, PlanFor(recording, args), progress);
+        // How this run got here, decided before it is built. Restoring is an
+        // optimisation and never a second answer: the boundary is proved the same way
+        // either way, and a cache that is absent, of another history, or of a build this
+        // is not simply is not used.
+        var asked = PlanFor(recording, args);
+        var restoreFrom = Args.Has(args, "--restore")
+            ? SnapshotToRestoreFrom(recording, asked, cacheDir, out var restoreSource)
+            : NotRestoring(out restoreSource);
+
+        using var entry = restoreFrom is null
+            ? RecordedFightEntry.StartHeadless(recording, asked, progress)
+            : RecordedFightEntry.RestoreHeadless(recording, (FloorEntryPlan)asked, restoreFrom, progress);
         var plan = entry.Plan;
+        Console.WriteLine($"entry           : {restoreSource}");
 
         // Every word the mod's transport shows, produced by the mod's own wording
         // owner from the same readings, and the target it would light on the game's
@@ -242,6 +261,8 @@ internal static partial class Commands
                 boundary = plan.Describe(),
                 boundary_seq = plan.BoundarySeq,
                 boundary_checkpoint = plan.Boundary.Id,
+                entry_route = restoreFrom is null ? "replayed" : "restored",
+                entry_source = restoreSource,
                 steps,
                 boundary_matches = equality.Matches,
                 comparisons = equality.Comparisons,
@@ -276,6 +297,72 @@ internal static partial class Commands
         BoundarySelector
             .ParseFightOrFloor(Args.Value(args, "--fight"), Args.Value(args, "--floor"))
             .PlanFor(recording);
+
+    /// <summary>
+    /// The game's own save this entry may be restored from, or null to walk the
+    /// recording's decisions instead.
+    ///
+    /// Null for every reason a cache can fail to answer, and each of them is an ordinary
+    /// thing rather than a defect: nothing has been materialised here, the boundary is a
+    /// fight's rather than a floor's, the cached snapshot is of another history or
+    /// another build, or the file on disk is not the one that was verified. What it must
+    /// never do is hand back a save that does not belong to this exact prefix of this
+    /// exact recording, so every field the key summarises is compared in the open rather
+    /// than inferred from the directory having been found.
+    ///
+    /// A snapshot that binds is still not trusted: it is restored, and the state it
+    /// reaches is compared against what the recording observed and the digest it
+    /// declares, exactly as a walked entry is. See docs/native-replay-format.md.
+    /// </summary>
+    private static string? SnapshotToRestoreFrom(
+        ReplayManifest recording, IBoundaryPlan plan, string cacheDir, out string source)
+    {
+        if (plan is not FloorEntryPlan)
+        {
+            source =
+                $"replayed - {plan.Describe()} is not a floor arrival, and only a floor arrival is stored as " +
+                "a serialized run";
+            return null;
+        }
+
+        var snapshot = FloorEntrySnapshot.Read(plan.SnapshotKey, cacheDir);
+        if (snapshot is null)
+        {
+            source =
+                "replayed - no floor-entry snapshot has been materialised for this history under " +
+                $"{plan.SnapshotKey.ToCacheDirectoryName()}; run floor-snapshot to make one";
+            return null;
+        }
+
+        var identity = GameIdentity.Read();
+        var refusals = snapshot.Binds(recording, plan, identity.BuildVersion, identity.Commit);
+        if (refusals.Count > 0)
+        {
+            source = "replayed - the cached snapshot does not bind: " + string.Join(" ", refusals);
+            return null;
+        }
+
+        var saveJson = File.ReadAllText(
+            snapshot.SavePathIn(plan.SnapshotKey.ResolveCacheDirectory(cacheDir)));
+        if (snapshot.SaveIntegrity(saveJson) is { } damaged)
+        {
+            source = "replayed - " + damaged;
+            return null;
+        }
+
+        source =
+            $"restored from the game's own save at {plan.Describe()}, cached under " +
+            $"{plan.SnapshotKey.ToCacheDirectoryName()}, verified at {snapshot.VerifiedDigest}";
+        return saveJson;
+    }
+
+    /// <summary>Walking the decisions, said in the same shape so the two routes report
+    /// themselves through one field rather than two.</summary>
+    private static string? NotRestoring(out string source)
+    {
+        source = "replayed - the recording's own decisions, one at a time";
+        return null;
+    }
 
     /// <summary>
     /// Plays the recording's own fight through the player-side capture and compares
@@ -401,7 +488,8 @@ internal static partial class Commands
         if (!File.Exists(path))
         {
             source =
-                $"recording manifest; no local cache under {plan.SnapshotKey.ToCacheDirectoryName()}";
+                "recording manifest; combat-snapshot has materialised no state.canonical under " +
+                plan.SnapshotKey.ToCacheDirectoryName();
             return null;
         }
 

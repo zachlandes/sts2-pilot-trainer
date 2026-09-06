@@ -42,6 +42,7 @@ internal static class Program
                 "determinism" => Commands.Determinism(args[1..]),
                 "negative-controls" => Commands.NegativeControls(args[1..]),
                 "combat-snapshot" => Commands.CombatSnapshot(args[1..]),
+                "floor-snapshot" => Commands.FloorSnapshot(args[1..]),
                 "snapshot-restore-probe" => Commands.SnapshotRestoreProbe(args[1..]),
                 "enter-fight" => Commands.EnterFight(args[1..]),
                 "combat-compare" => Commands.CombatCompare(args[1..]),
@@ -171,7 +172,8 @@ internal static class Program
               --require-all-controls also refuses histories that do not exercise every control.
 
           enter-fight     <manifest> [--fight <n> | --floor <n>] [--control <name>] [--cache <dir>]
-                                     [--out <dir>] [--step] [--play [--recorded-fight <path>]]
+                                     [--out <dir>] [--step] [--restore]
+                                     [--play [--recorded-fight <path>]]
               Construct the recording's run, walk it through the recording's own
               decisions in order, and prove the boundary it lands at is the recorded
               one. --fight walks to that fight of the run and --floor to the moment it
@@ -183,6 +185,11 @@ internal static class Program
               them. Reports the profile before and after,
               because nothing here may write to it. --control damages one decision
               before the fight and shows the entry refused; --step stops after one.
+              --restore asks for the floor-entry snapshot cache instead of walking the
+              decisions: with a verified snapshot for exactly this history it restores
+              the run from the game's own save and proves the same boundary, and without
+              one it replays as usual and says which happened. An optimisation with the
+              same proof, never a second answer.
               --play then plays the recording's own fight to its end through the same
               capture the in-game host observes a player with, projects it, and
               compares it with the shipped recorded fight - the whole S5 loop with no
@@ -226,6 +233,19 @@ internal static class Program
               --control damages both states into the same unreadable act room set, so
               their digests agree, and shows the comparison refused rather than
               reported as agreement.
+
+          floor-snapshot  <manifest> --floor <n> [--cache <dir>] [--out <dir>] [--control wrong-floor]
+              Materialise the floor-entry snapshot for one floor arrival: replay the
+              recording's history to it, keep the run save the game itself takes there,
+              restore that save in a fresh process through the retail continue path -
+              the save's own pre-finished room included - and cache it only if the
+              restored run is the recorded arrival on both readings, the observed values
+              and the digest. Keyed by the whole history that produced it, so it can
+              never be served for a run that would not reach it. Only an arrival with a
+              live fight is cached: an arrival with none carries the previous fight's
+              finished combat state in the live run and not in the game's save. --control
+              wrong-floor restores this floor's save against another floor's boundary and
+              requires the comparison to refuse it. See docs/native-replay-format.md.
 
           combat-snapshot <manifest> [--boundary <kind>:<coordinate>] [--cache <dir>] [--out <dir>]
               Materialise a verified boundary's snapshot, restore it by

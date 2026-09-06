@@ -16,7 +16,8 @@ not released yet. See [README.md](README.md).
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
-                            # combat-snapshot | combat-compare | enter-fight | recorded-fight |
+                            # combat-snapshot | floor-snapshot | combat-compare |
+                            # enter-fight | recorded-fight |
                             # snapshot-restore-probe | migrate-manifest | engine-commands
 ./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
 ./scripts/assert-expected-skips.sh          # what CI skips is still what we recorded (--update to re-record)
@@ -92,14 +93,29 @@ reader confidence, not arithmetic over the footage, not a screenshot of a mod li
 Those are filters worth having and they are not evidence: four of the ten history
 corruptions pass every arithmetic check the frames allow.
 
-**A boundary is re-derived, never deserialized.** `./scripts/arbiter
-snapshot-restore-probe` measured the game's own save round trip at a combat-start
-boundary on v0.111.0: `SerializableRun` carries the run's identity and hidden state -
-seed, every RNG stream position, act room set, deck order and relics - but no combat;
-`run.act_floor` also differs until a room is entered, which generates a different fight. The answer,
-its numbers and what it does not refuse are in
-[docs/native-replay-format.md](docs/native-replay-format.md). Do not add a cache that
-stores a serialized run in place of the history that produces it.
+**A fight's boundary is re-derived, never deserialized; a floor arrival with a live
+fight may be restored, and only through the one cache that verifies it.**
+`./scripts/arbiter snapshot-restore-probe` measured the game's own save round trip at a
+combat-start boundary on v0.111.0: `SerializableRun` carries the run's identity and
+hidden state - seed, every RNG stream position, act room set, deck order and relics - but
+no combat, so that boundary keeps meaning "replay the prefix".
+`./scripts/arbiter floor-snapshot` measured the floor arrival, which is a different
+moment: the retail client takes its own run save inside `EnterMapPointInternal`, at the
+floor and before the room type is rolled, and restoring it through the retail continue
+path with the save's own `preFinishedRoom` reproduces the boundary digest field for field
+wherever a fight is live there. Where one is not, the live run is still carrying the
+previous fight's finished `PlayerCombatState` and the save has no representation of it -
+the same run, a different canonical state - so `FloorEntrySnapshotEligibility` refuses it
+by rule rather than leaving it to be noticed.
+Both answers, their numbers and their limits are in
+[docs/native-replay-format.md](docs/native-replay-format.md).
+The cache is a derived one and stays that way: keyed by `SnapshotCacheKey` over the whole
+history that produced it, written only after a restore in a fresh process has already
+reproduced the digest the recording declares, and re-verified through the same
+`BoundaryEquality` on every restore. Do not add a second one, do not cache a boundary the
+measurement did not cover, and do not make the ineligible arrivals pass by changing what
+`CanonicalStateProjection.ProjectCombat` emits - that moves every committed boundary
+digest and is a separate change with its own migration.
 
 **Refuse rather than approximate.** An unknown action verb, a card that is not where
 the manifest says, a mismatched environment: each of these fails loudly. A replay
@@ -221,6 +237,7 @@ test. That document also names three limits this path does not remove.
 
 **Standing somebody in a recorded fight has one owner.**
 `RecordedFightEntry` constructs the run, makes the recording's decisions in order and refuses a boundary that is not the recorded one; the mod owns retail timing, presentation, deviation locks and write isolation.
+It has two ways in and one proof: `StartHeadless` walks the decisions, `RestoreHeadless` continues the run from a verified floor-entry snapshot, and both end at the same `VerifyBoundary`. Restoring is an optimisation a consumer opts into with `enter-fight --restore`, which replays instead whenever the cache is absent, of another history or of another build.
 The watched journey is one long-lived transport and not a popup per step: `PlaybackTransport` in `Sts2PilotTrainer.Trainer` owns what it says, `PlaybackTransportStrip` draws it, `PlaybackTransportDock` parents it to the run's own persistent interface so it survives the map-to-combat transition, and `RecordedFightReveal` lights the game's own selected state without clicking.
 Do not add a second playback path beside it; `docs/in-game-host.md` owns why.
 **What the transport *is* at any moment is derived in one place and never built by hand.**
