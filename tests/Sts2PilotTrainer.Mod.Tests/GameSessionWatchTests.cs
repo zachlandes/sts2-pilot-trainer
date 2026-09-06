@@ -3,6 +3,7 @@ using HarmonyLib;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Replay.Tests;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -23,10 +24,22 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 [CollectionDefinition(nameof(GameSessionWatchTests), DisableParallelization = true)]
 public sealed class GameSessionWatchTests : IDisposable
 {
+    private readonly string _storeRoot = Path.Combine(
+        Path.GetTempPath(), $"runmobile-watch-{Guid.NewGuid():N}", "Runmobile", "steam", "0", "profile0");
+
+    public GameSessionWatchTests()
+    {
+        Directory.CreateDirectory(_storeRoot);
+        RunmobileStore.UseRootForTesting(_storeRoot);
+    }
+
     public void Dispose()
     {
         GameSessionWatch.SessionTornDown();
         RunRecorder.RunTornDown();
+        RunmobileStore.UseRootForTesting(null);
+        var sandbox = _storeRoot[.._storeRoot.IndexOf("Runmobile", StringComparison.Ordinal)];
+        if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
     }
 
     /// <summary>The passing half: an ordinary client, before any run, is one this mod
@@ -65,18 +78,39 @@ public sealed class GameSessionWatchTests : IDisposable
         Assert.NotEmpty(RunmobileMod.MenuCardsFrom(RunmobileMod.Modules));
     }
 
-    /// <summary>And a multiplayer game produces no recording, publishable or
-    /// otherwise.</summary>
+    /// <summary>
+    /// A multiplayer session set up under a live recording stops it and marks it
+    /// unpublishable.
+    ///
+    /// The safety net, not the rule: a multiplayer game normally never gets as far as
+    /// a journal, because the reading at attach refuses first -
+    /// <c>LiveRunSessionTests</c> owns that half against a real run. What is asserted
+    /// here is what happens to a recording that is already live, and it is the same
+    /// answer a console command gets: the recording is kept whole, stops where the
+    /// session changed under it, and states through <c>source.native.integrity</c>
+    /// that nobody may publish it.
+    /// </summary>
     [GameFact]
-    public void AMultiplayerGameIsNotRecorded()
+    public void AMultiplayerSessionUnderALiveRecordingStopsItAndMarksItUnpublishable()
     {
         _ = EngineHost.StartupPhase();
-        Assert.Null(RunRecorder.Active);
+        var capture = RecordedRun.Captured();
+        var journalPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RunJournal.FileExtension}";
+        RunmobileStore.Write(journalPath, capture.Journal.Render());
+        RunRecorder.BeginRecording(capture, journalPath);
+        Assert.NotNull(RunRecorder.Active);
+        Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
+
         GameSessionWatch.MultiplayerSessionSetUp();
 
-        RunRecorder.NoticeRun();
-
         Assert.Null(RunRecorder.Active);
+        Assert.Equal(NativeSource.NonStandardIntegrity, capture.Integrity);
+
+        // Kept whole and on the file, so the session after a crash reads the same run.
+        var written = RunJournal.Parse(RunmobileStore.Read(journalPath)!);
+        Assert.True(written.NonStandard);
+        Assert.Equal(capture.NextSeq + 1, written.Entries.Count);
+        Assert.Equal(RunCaptureState.Recording, capture.State);
     }
 
     /// <summary>

@@ -81,6 +81,11 @@ internal static class GameSessionWatch
     /// Latched rather than read, because this is the one instant where the reading is
     /// not yet available and the fact is certain: the game called its own multiplayer
     /// setup member.
+    ///
+    /// A recording that is already live is told, because a recording of a run this
+    /// client stopped being the only player of is one nobody may publish. That is the
+    /// safety net and not the rule: the reading at attach is what normally keeps a
+    /// multiplayer game out of a recording, and it is taken before any journal exists.
     /// </summary>
     internal static void MultiplayerSessionSetUp()
     {
@@ -93,6 +98,8 @@ internal static class GameSessionWatch
         Log.Info(
             $"[{RunmobileMod.ModId}] this is a multiplayer game; Runmobile will show nothing and record " +
             "nothing until it ends", 2);
+
+        RunRecorder.MultiplayerSessionStarted();
     }
 
     /// <summary>The run is gone. The next session is read again from scratch, because

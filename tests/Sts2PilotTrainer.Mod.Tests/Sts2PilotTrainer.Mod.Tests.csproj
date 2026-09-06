@@ -27,6 +27,10 @@
     <Compile Include="../Sts2PilotTrainer.Arbiter.Tests/Arbiter.cs" Link="Arbiter.cs" />
     <Compile Include="../Sts2PilotTrainer.Arbiter.Tests/OurAssembliesBesideThisOne.cs"
              Link="OurAssembliesBesideThisOne.cs" />
+    <!-- The recorder-produced fixture, shared with the pure suite that owns it: a
+         recording the mod's own patches act on has to be the same shape a recorder
+         writes, and a second copy here would be a second answer. -->
+    <Compile Include="../Sts2PilotTrainer.Replay.Tests/RecordedRun.cs" Link="RecordedRun.cs" />
     <Using Include="Xunit" />
   </ItemGroup>
 

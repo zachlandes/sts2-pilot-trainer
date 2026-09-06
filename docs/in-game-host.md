@@ -296,6 +296,8 @@ A reading that could not be taken is refused exactly like a multiplayer one - a 
 An indicator saying a run is *not* being recorded would still be this mod drawing in a game somebody else is also playing, and one of them never installed it - so the suppression is of every surface rather than of the recorder.
 It is two observations rather than one. `LiveRun.ReadSession` reads the run in progress; the two patches on `RunManager.SetUpNewMultiplayer` and `SetUpSavedMultiplayer` latch the moment the game itself sets a multiplayer session up, which covers the stretch where there is nothing yet to read - continuing a saved multiplayer run is asynchronous, and the method that starts it returns long before the run exists.
 The latch is cleared by `RunManager.CleanUp`, because a client that played a multiplayer game and then started a singleplayer one is in a singleplayer game.
+Nothing is recorded because the reading at attach refuses before a journal exists, so the ordinary path produces no artifact at all; the latch also tells a recording that is already live, and `RunRecorder.MultiplayerSessionStarted` marks that recording non-standard through the same `source.native.integrity` a console run is marked with and stops it there, kept and unpublishable.
+That is the safety net rather than the mechanism: a recording reaching it means a multiplayer session was set up under a run this client was already recording alone.
 The shell has no refusal to fall back on the way `RecorderModule` does, so `GameSessionWatchTests` asserts every member it attaches to is on this build rather than assuming it.
 
 **A run the console was used in is kept, complete, and never publishable.**

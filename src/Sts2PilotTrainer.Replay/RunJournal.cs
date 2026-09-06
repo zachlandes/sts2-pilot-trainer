@@ -74,10 +74,17 @@ public sealed record RunJournal
     ///
     /// A statement about the run rather than a record of what was typed in it, so it
     /// is one flag however many mark lines the file carries and no player-typed text
-    /// is ever persisted. A journal carrying one of those lines is refused by a build
-    /// older than the one that introduced them, which is the right way round: an older
-    /// build cannot tell that this run is unpublishable, and refusing to read it is how
-    /// it says so.
+    /// is ever persisted.
+    ///
+    /// What an older build makes of one of those lines depends on where it is, and
+    /// only one of the two answers is any good. With a record after it, that build
+    /// refuses the journal, which is the right way round: it cannot tell that this run
+    /// is unpublishable, and refusing to read it is how it says so. As the final line -
+    /// the ordinary shape when the console is used and the player then quits to the
+    /// menu without deciding anything else - it is indistinguishable to that build from
+    /// an append a crash cut short, so its truncation rule drops the line and it resumes
+    /// the run as complete. That is a real limit of what an older build can be told,
+    /// not a guarantee.
     /// </summary>
     public bool NonStandard { get; init; }
 

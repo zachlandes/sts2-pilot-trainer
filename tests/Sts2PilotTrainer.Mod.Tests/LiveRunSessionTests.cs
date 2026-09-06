@@ -1,5 +1,6 @@
 using System.Reflection;
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -25,29 +26,74 @@ public sealed class LiveRunSessionTests
     [GameFact]
     public void AnOrdinarySingleplayerRunReadsAsOne()
     {
-        var fixture = SyntheticReplayFixture.Create();
+        Assert.Equal(RunSessionKind.NoRunInProgress, LiveRun.ReadSession());
+
+        WithARunInProgress(() =>
+        {
+            Assert.Equal(RunSessionKind.Singleplayer, LiveRun.ReadSession());
+            Assert.True(RunSession.MayBeRecorded(LiveRun.ReadSession()));
+        });
 
         Assert.Equal(RunSessionKind.NoRunInProgress, LiveRun.ReadSession());
+    }
+
+    /// <summary>
+    /// The recorder refuses a run the session watch says is multiplayer, and refuses it
+    /// for that reason.
+    ///
+    /// Asserted against a run that demonstrably exists, because that is what the
+    /// refusal is about: a recorder that never saw a run records nothing whatever the
+    /// rules say, so a test standing in an empty process would pass with the gate
+    /// deleted. The answer rather than the absence of <c>RunRecorder.Active</c> is
+    /// what is asserted, for the same reason - with the gate deleted this attach still
+    /// records nothing, because a test process is not a game the mod can take, and the
+    /// two refusals are different answers.
+    /// </summary>
+    [GameFact]
+    public void AMultiplayerRunIsRefusedAtAttachForBeingMultiplayer()
+    {
+        WithARunInProgress(() =>
+        {
+            Assert.Equal(RunSessionKind.Singleplayer, LiveRun.ReadSession());
+            GameSessionWatch.MultiplayerSessionSetUp();
+
+            try
+            {
+                Assert.Equal(RunAttachment.NotASingleplayerRun, RunRecorder.Attach());
+                Assert.Null(RunRecorder.Active);
+            }
+            finally
+            {
+                GameSessionWatch.SessionTornDown();
+            }
+        });
+    }
+
+    /// <summary>
+    /// A run of the synthetic fixture's identity, started the way every headless caller
+    /// starts one and taken away again afterwards.
+    /// </summary>
+    private static void WithARunInProgress(Action body)
+    {
+        var fixture = SyntheticReplayFixture.Create();
+        var session = new GameSession();
 
         try
         {
-            new GameSession().StartRun(
+            session.StartRun(
                 fixture.Environment.Seed.Value,
                 fixture.Environment.Character.Value,
                 fixture.Environment.Ascension.Value,
                 fixture.Environment.GameMode.Value,
                 fixture.Environment.Acts.Value);
 
-            Assert.Equal(RunSessionKind.Singleplayer, LiveRun.ReadSession());
-            Assert.True(RunSession.MayBeRecorded(LiveRun.ReadSession()));
+            body();
         }
         finally
         {
             EndTheRun();
             ForgetTheHeadlessEngine();
         }
-
-        Assert.Equal(RunSessionKind.NoRunInProgress, LiveRun.ReadSession());
     }
 
     private static void EndTheRun()
