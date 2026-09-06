@@ -17,7 +17,9 @@ public sealed class RunCaptureTests
     public void ARunRecordedFromItsStartCarriesItsIdentityAsCapturedFacts()
     {
         var capture = RunCapture.Begin(Start());
-        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "2")), Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "2"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
         capture.Finish("abandoned");
 
         var manifest = capture.ToManifest();
@@ -38,7 +40,9 @@ public sealed class RunCaptureTests
     public void EveryDecisionIsCapturedAtItsOwnOrdinal()
     {
         var capture = RunCapture.Begin(Start());
-        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0), 1000);
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0), 1000);
         capture.Record(ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")), Floor(2), Digest(1), 2000);
         capture.Finish("lost");
 
@@ -135,7 +139,9 @@ public sealed class RunCaptureTests
         // A validator rule rather than a nicety: a replay with nothing to disagree with
         // proves only that it ran.
         var capture = RunCapture.Begin(Start());
-        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
         capture.Finish("abandoned");
 
         var checkpoint = Assert.Single(capture.ToManifest().Checkpoints);
@@ -183,7 +189,9 @@ public sealed class RunCaptureTests
     public void AFightStillBeingFoughtWhenTheRunEndsHasNoLineToProject()
     {
         var capture = RunCapture.Begin(Start());
-        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
         capture.Record(ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")), InFight(1), Digest(1));
         capture.Finish("abandoned");
 
@@ -213,7 +221,9 @@ public sealed class RunCaptureTests
         var capture = RunCapture.Begin(Start());
         Assert.Equal(Digest(-1), capture.LastDigest);
 
-        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
         Assert.Equal(Digest(0), capture.LastDigest);
     }
 
@@ -265,7 +275,9 @@ public sealed class RunCaptureTests
     public void ASessionThatStoppedInsideAFightResumesWithThatFightStillLive()
     {
         var capture = RunCapture.Begin(Start());
-        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
             InFight(2, turn: 1), Digest(1));
@@ -397,7 +409,9 @@ public sealed class RunCaptureTests
     public void ARunTheConsoleWasUsedInIsKeptWholeAndRefusedForPublication()
     {
         var capture = RunCapture.Begin(Start());
-        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
         capture.MarkNonStandard();
         capture.Record(ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")), Floor(2), Digest(1));
         capture.Finish("won");
@@ -667,7 +681,9 @@ public sealed class RunCaptureTests
     private static RunCapture Played()
     {
         var capture = RunCapture.Begin(Start());
-        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
             InFight(2, turn: 1), Digest(1));

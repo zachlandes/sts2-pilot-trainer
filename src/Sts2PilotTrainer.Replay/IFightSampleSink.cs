@@ -45,9 +45,6 @@ public interface IFightSampleSink
     /// <summary>The state the open action left.</summary>
     void CompleteStep(IReadOnlyDictionary<string, string> after);
 
-    /// <summary>Forget the open action: the game took it back before it took effect.</summary>
-    void DiscardOpenStep();
-
     /// <summary>The fight has ended, with the state it ended in.</summary>
     void Finish(IReadOnlyDictionary<string, string> final);
 
@@ -74,7 +71,6 @@ public sealed class DelegatingFightSampleSink(
     Action<string, IReadOnlyDictionary<string, string>, IReadOnlyDictionary<string, string>, bool, string>
         beginStepWithUnresolvedArgument,
     Action<IReadOnlyDictionary<string, string>> completeStep,
-    Action discardOpenStep,
     Action<IReadOnlyDictionary<string, string>> finish,
     Action<string> markIncomplete) : IFightSampleSink
 {
@@ -94,8 +90,6 @@ public sealed class DelegatingFightSampleSink(
         beginStepWithUnresolvedArgument(verb, resolved, before, previousActionFinished, unresolved);
 
     public void CompleteStep(IReadOnlyDictionary<string, string> after) => completeStep(after);
-
-    public void DiscardOpenStep() => discardOpenStep();
 
     public void Finish(IReadOnlyDictionary<string, string> final) => finish(final);
 

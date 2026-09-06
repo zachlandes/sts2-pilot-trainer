@@ -98,19 +98,26 @@ public sealed class RunRecorderTests
     }
 
     /// <summary>
-    /// The three decisions no patch on their engine member watches, and why.
+    /// The five decisions no patch on their engine member watches, and why.
     ///
-    /// <see cref="ActionVerb.PlayCard"/> and <see cref="ActionVerb.EndTurn"/> exist only
-    /// inside a fight, where the action executor runs them and
-    /// <see cref="PlayerFightObserver"/> is attached for the whole of it; a patch as
-    /// well would record each of them twice.
-    /// <see cref="ActionVerb.SelectCardFromScreen"/> is answered rather than commanded -
-    /// its engine member is <c>ICardSelector</c>, which is the arbiter's own seam for
-    /// the answer a player's client gives - so what the recorder watches is the two
-    /// screens that ask.
+    /// <see cref="ActionVerb.PlayCard"/>, <see cref="ActionVerb.EndTurn"/> and
+    /// <see cref="ActionVerb.UndoEndTurn"/> exist only inside a fight, where the action
+    /// executor runs them and <see cref="PlayerFightObserver"/> is attached for the
+    /// whole of it; a patch as well would record each of them twice.
+    /// <see cref="ActionVerb.SelectCardFromScreen"/> and
+    /// <see cref="ActionVerb.TakeCardRewardAlternative"/> are answered rather than
+    /// commanded - their engine member is <c>ICardSelector</c>, which is the arbiter's
+    /// own seam for the answer a player's client gives - so what the recorder watches
+    /// is the two screens that ask.
     /// </summary>
     private static readonly IReadOnlyList<ActionVerb> WatchedWithoutAPatch =
-        [ActionVerb.PlayCard, ActionVerb.EndTurn, ActionVerb.SelectCardFromScreen];
+    [
+        ActionVerb.PlayCard,
+        ActionVerb.EndTurn,
+        ActionVerb.UndoEndTurn,
+        ActionVerb.SelectCardFromScreen,
+        ActionVerb.TakeCardRewardAlternative,
+    ];
 
     /// <summary>
     /// The decisions the recorder watches deeper than the member the driver calls, and

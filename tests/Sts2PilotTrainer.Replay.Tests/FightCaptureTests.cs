@@ -214,19 +214,25 @@ public sealed class FightCaptureTests
         Assert.Contains("had not been sampled afterwards", capture.Refusal, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// An ended turn the game took back is two decisions, not none: the ended turn
+    /// closes with the undo's before-sample, the undo opens as a step of its own, and
+    /// both are in the trace in the order they were made. A replay makes the same two.
+    /// </summary>
     [Fact]
-    public void AnEndedTurnTheGameTookBackIsForgotten()
+    public void AnEndedTurnTheGameTookBackIsRecordedAsTwoDecisions()
     {
         var capture = FightCapture.Begin("player", Sample("in_progress", 1, 64, 42), Digest);
         capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 42));
-        capture.DiscardOpenStep();
+        capture.BeginStep("UndoEndTurn", Args(), Sample("in_progress", 1, 64, 42), previousActionFinished: true);
+        capture.CompleteStep(Sample("in_progress", 1, 64, 42));
         Assert.False(capture.HasOpenStep);
 
         capture.BeginStep("PlayCard", Args(), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("victory", 1, 64, 0));
 
         Assert.Equal(FightCaptureState.Completed, capture.State);
-        Assert.Equal(["PlayCard"], capture.Trace.Steps.Skip(1).Select(step => step.Verb));
+        Assert.Equal(["EndTurn", "UndoEndTurn", "PlayCard"], capture.Trace.Steps.Skip(1).Select(step => step.Verb));
     }
 
     [Fact]

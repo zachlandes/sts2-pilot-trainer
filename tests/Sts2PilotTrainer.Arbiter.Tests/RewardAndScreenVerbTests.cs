@@ -42,11 +42,25 @@ public class RewardAndScreenVerbTests
     [GameFact]
     public void ClaimingARewardOutsideThisHistoryIsRefusedAtIngestion()
     {
-        var result = Replay(Retype(ActionVerb.ClaimReward, ("reward_type", "relic")));
+        // 'card' is the kind no ClaimReward may claim: the card reward opens a second
+        // screen and is taken with TakeCard, which records which card came back.
+        var result = Replay(Retype(ActionVerb.ClaimReward, ("reward_type", "card")));
 
         Assert.False(result.Verified, result.All);
-        Assert.Contains("'reward_type' is 'relic'", result.All, StringComparison.Ordinal);
-        Assert.Contains("Known kinds: gold, potion", result.All, StringComparison.Ordinal);
+        Assert.Contains("'reward_type' is 'card'", result.All, StringComparison.Ordinal);
+        Assert.Contains("Known kinds: gold, potion, relic, card_removal, special_card", result.All, StringComparison.Ordinal);
+    }
+
+    /// <summary>A relic claimed off a loot screen that offers none is refused at the
+    /// screen, naming what the screen does offer, rather than at ingestion: the kind
+    /// is one the format names from v6.</summary>
+    [GameFact]
+    public void ClaimingARelicTheLootScreenDoesNotOfferIsRefused()
+    {
+        var result = Replay(Retype(ActionVerb.ClaimReward, ("reward_type", "relic"), ("relic_id", "RELIC.ANCHOR")));
+
+        Assert.False(result.Verified, result.All);
+        Assert.Contains("claims a 'relic' reward, but this loot screen offers", result.All, StringComparison.Ordinal);
     }
 
     [GameFact]
@@ -285,13 +299,13 @@ public class RewardAndScreenVerbTests
 
     /// <summary>The shipped history with one argument of the first action of a given
     /// verb replaced.</summary>
-    private static string Retype(ActionVerb verb, (string Name, string Value) argument) =>
+    private static string Retype(ActionVerb verb, params (string Name, string Value)[] arguments) =>
         Actions(manifest =>
         {
             var actions = manifest.Actions.ToList();
             var target = actions.First(action => action.Verb == verb);
             var args = target.Args.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
-            args[argument.Name] = argument.Value;
+            foreach (var (name, value) in arguments) args[name] = value;
             actions[actions.IndexOf(target)] = target with { Args = args };
             return actions;
         });

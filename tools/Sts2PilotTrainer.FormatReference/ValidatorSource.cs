@@ -43,6 +43,7 @@ public static class ValidatorSource
 
     private const string RulesMethod = "ValidateActionArguments";
     private const string ShopMethod = "ValidateShopPurchase";
+    private const string ClaimMethod = "ValidateClaimReward";
 
     /// <summary>The rules, in the order the switch declares its arms.</summary>
     public static IReadOnlyList<VerbArguments> Read(string repositoryRoot)
@@ -90,37 +91,63 @@ public static class ValidatorSource
     /// spelled here, so renaming it refuses instead of publishing its name.
     /// </summary>
     public static IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> ReadShopPurchaseKinds(
-        string repositoryRoot)
+        string repositoryRoot) =>
+        ReadPerKindArguments(
+            repositoryRoot, ShopMethod, nameof(ShopPurchaseKinds), nameof(ShopPurchaseKinds.All),
+            nameof(ShopPurchaseKinds.IdArgument), ShopPurchaseKinds.All, ShopPurchaseKinds.IdArgument);
+
+    /// <summary>What a claimed reward of each kind must name, read the same way from
+    /// <c>RewardKinds</c> and the sibling rule that checks a claim.</summary>
+    public static IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> ReadClaimRewardKinds(
+        string repositoryRoot) =>
+        ReadPerKindArguments(
+            repositoryRoot, ClaimMethod, nameof(RewardKinds), nameof(RewardKinds.All),
+            nameof(RewardKinds.IdArgument), RewardKinds.All, RewardKinds.IdArgument);
+
+    /// <summary>
+    /// The per-kind rule two verbs share the shape of: a public list of kinds, a public
+    /// function from a kind to the argument naming what it bought or claimed, and a
+    /// method that binds that function's answer to a local and builds the list of
+    /// required arguments around it.
+    /// </summary>
+    private static IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> ReadPerKindArguments(
+        string repositoryRoot,
+        string methodName,
+        string kindsType,
+        string allMember,
+        string idMember,
+        IReadOnlyList<string> kinds,
+        Func<string, string?> idArgument)
     {
-        var method = Method(repositoryRoot, ShopMethod);
-        var all = $"{nameof(ShopPurchaseKinds)}.{nameof(ShopPurchaseKinds.All)}";
+        var method = Method(repositoryRoot, methodName);
+        var all = $"{kindsType}.{allMember}";
         if (!method.ToString().Contains(all, StringComparison.Ordinal))
         {
             throw new SourceRefusal(
-                $"{RelativePath}: {ShopMethod} no longer reads {all}, so this reference cannot keep answering " +
-                "the per-kind question from ShopPurchaseKinds.");
+                $"{RelativePath}: {methodName} no longer reads {all}, so this reference cannot keep answering " +
+                $"the per-kind question from {kindsType}.");
         }
 
-        var idCall = $"{nameof(ShopPurchaseKinds)}.{nameof(ShopPurchaseKinds.IdArgument)}";
+        var idCall = $"{kindsType}.{idMember}";
         var placeholder = method.DescendantNodes().OfType<VariableDeclaratorSyntax>()
                               .FirstOrDefault(candidate =>
                                   candidate.Initializer?.Value is InvocationExpressionSyntax invocation &&
                                   invocation.Expression.ToString() == idCall)
                               ?.Identifier.ValueText
                           ?? throw new SourceRefusal(
-                              $"{RelativePath}: {ShopMethod} binds nothing to {idCall}(...), so this reference " +
+                              $"{RelativePath}: {methodName} binds nothing to {idCall}(...), so this reference " +
                               "cannot tell which name in its list of required arguments stands for the id of " +
-                              "the thing a purchase bought.");
+                              "the thing a decision named.");
 
         var declaration = method.DescendantNodes().OfType<VariableDeclaratorSyntax>()
             .FirstOrDefault(candidate => candidate.Identifier.ValueText == "expected")
             ?? throw new SourceRefusal(
-                $"{RelativePath}: {ShopMethod} declares no `expected`, which is the list of arguments a " +
-                "purchase of a thing must carry.");
+                $"{RelativePath}: {methodName} declares no `expected`, which is the list of arguments a " +
+                "decision naming a thing must carry.");
 
-        // `idArgument is null ? Array.Empty<string>() : [idArgument, "option_index"]`.
-        // Only the branch that buys something has names in it; the other one is empty
-        // by construction and there is nothing to read.
+        // `idArgument is null ? Array.Empty<string>() : [idArgument, ...]`. Only the
+        // branch that names something has names in it; the other one is empty by
+        // construction and there is nothing to read.
         var companions = declaration.Initializer?.Value is ConditionalExpressionSyntax conditional
             ? Names(conditional.WhenTrue).Count == 0
                 ? Names(conditional.WhenFalse)
@@ -132,15 +159,15 @@ public static class ValidatorSource
         {
             throw SourceRefusal.At(
                 declaration,
-                $"`expected` does not name '{placeholder}' exactly once, so the id of the thing a purchase " +
-                "bought cannot be substituted per kind and every buying kind would be published as requiring " +
+                $"`expected` does not name '{placeholder}' exactly once, so the id of the thing a decision " +
+                "named cannot be substituted per kind and every naming kind would be published as requiring " +
                 "an argument named after a local variable.");
         }
 
-        return ShopPurchaseKinds.All
+        return kinds
             .Select(kind =>
             {
-                var id = ShopPurchaseKinds.IdArgument(kind);
+                var id = idArgument(kind);
                 var required = id is null
                     ? Array.Empty<string>()
                     : companions.Select(name => name == placeholder ? id : name).ToArray();
@@ -187,7 +214,7 @@ public static class ValidatorSource
         // somewhere after it, where Set is a public array on a type in the replay
         // assembly. Matched through the local the lookup binds rather than by adjacency,
         // because the shop reads its kind several statements before it checks it.
-        foreach (var method in new[] { RulesMethod, ShopMethod }.Select(name => Method(repositoryRoot, name)))
+        foreach (var method in new[] { RulesMethod, ShopMethod, ClaimMethod }.Select(name => Method(repositoryRoot, name)))
         {
             var bound = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var lookup in method.DescendantNodes().OfType<InvocationExpressionSyntax>()

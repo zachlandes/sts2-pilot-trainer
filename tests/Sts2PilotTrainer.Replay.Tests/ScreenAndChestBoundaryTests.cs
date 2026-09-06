@@ -21,6 +21,30 @@ public sealed class CardScreenAnswerWindowTests
     /// first decision that is not an answer ends it. A later screen's answers belong
     /// to whatever opened that screen.
     /// </summary>
+    /// <summary>
+    /// A bundle screen and a relic screen are answered inside the call that opened
+    /// them, exactly as a card screen is, so their records are followers too. A card
+    /// reward's alternative is not: on this build it is the loot-screen decision
+    /// itself, so the window stops in front of it.
+    /// </summary>
+    [Fact]
+    public void ABundleAndARelicAnswerFollowTheirOpenerAndAnAlternativeDoesNot()
+    {
+        var history = new[]
+        {
+            Fixtures.Action(1, ActionVerb.TakeChestRelic, ("relic_id", "RELIC.SCROLL_BOXES"), ("option_index", "0")),
+            Fixtures.Action(2, ActionVerb.SelectBundleFromScreen, ("card_ids", "CARD.BASH,CARD.ANGER"), ("option_index", "1")),
+            Fixtures.Action(3, ActionVerb.SelectRelicFromScreen, ("relic_id", "RELIC.ANCHOR"), ("option_index", "0")),
+            Select(4, "CARD.HEADBUTT"),
+            Fixtures.Action(5, ActionVerb.TakeCardRewardAlternative, ("option_id", "SACRIFICE"), ("option_index", "3")),
+        };
+
+        Assert.Equal([2, 3, 4], CardScreenAnswers.After(history, 1).Select(action => action.Seq));
+        Assert.Equal(
+            [ActionVerb.SelectCardFromScreen, ActionVerb.SelectBundleFromScreen, ActionVerb.SelectRelicFromScreen],
+            CardScreenAnswers.Verbs);
+    }
+
     [Fact]
     public void TakesTheContiguousRunOfAnswersAndStopsAtTheFirstDecisionThatIsNotOne()
     {

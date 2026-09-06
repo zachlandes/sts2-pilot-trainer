@@ -91,7 +91,7 @@ public sealed record RecordedFightPlan : IBoundaryPlan
     /// <summary>The verbs that can only be issued inside a fight. The first of them
     /// in the history is what makes the action before it the one that entered the
     /// fight.</summary>
-    private static readonly ActionVerb[] CombatVerbs = [ActionVerb.PlayCard, ActionVerb.EndTurn];
+    private static readonly ActionVerb[] CombatVerbs = [ActionVerb.PlayCard, ActionVerb.EndTurn, ActionVerb.UndoEndTurn];
 
     /// <summary>
     /// Whether a verb can only be issued inside a fight.

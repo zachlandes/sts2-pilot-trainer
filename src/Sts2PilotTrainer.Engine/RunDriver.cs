@@ -7,9 +7,12 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Potions;
 using MegaCrit.Sts2.Core.Entities.TreasureRelicPicking;
 using MegaCrit.Sts2.Core.Entities.RestSite;
+using MegaCrit.Sts2.Core.Events;
+using MegaCrit.Sts2.Core.Events.Custom.CrystalSphereEvent;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Rooms;
@@ -26,15 +29,18 @@ namespace Sts2PilotTrainer.Engine;
 /// exist - each of these is a defect in the reconstruction, and the whole value of
 /// the arbiter is that it says so instead of finding something plausible to do.
 ///
-/// Three of the engine's surfaces do not take a command at all: the loot screen a won
-/// fight puts up, the chest a treasure room opens, and the card screens a reward or an
-/// enchantment opens. The retail UI drives the first two and answers the third, and
-/// there is no UI here. The driver therefore stands in for all three, and does so
-/// narrowly: it offers a finished fight's room-end rewards through the game's own
-/// <c>CombatRoom.OfferRoomEndRewards</c>, it opens the chest through the room's own
-/// reward methods, and it answers card screens from the manifest through the game's
-/// own <c>ICardSelector</c> seam. No stand-in decides anything; the manifest does, and
-/// where the manifest is silent each of them refuses. See docs/headless-fidelity.md.
+/// Four of the engine's surfaces do not take a command at all: the loot screen a won
+/// fight puts up, the chest a treasure room opens, the card screens a reward or an
+/// enchantment opens, and the Crystal Sphere's own screen. The retail UI drives the
+/// first two and the last and answers the third, and there is no UI here. The driver
+/// therefore stands in for all four, and does so narrowly: it offers a finished
+/// fight's room-end rewards through the game's own <c>CombatRoom.OfferRoomEndRewards</c>,
+/// it opens the chest through the room's own reward methods, it answers card screens
+/// from the manifest through the game's own <c>ICardSelector</c> seam and the three
+/// prompts that seam does not reach through <see cref="ScreenStandIns"/>, and it
+/// drives the Crystal Sphere's minigame from the manifest's reveals. No stand-in
+/// decides anything; the manifest does, and where the manifest is silent each of them
+/// refuses. See docs/headless-fidelity.md.
 ///
 /// Inside the retail client none of them is installed and none is wanted, because the
 /// screens they answer are on a player's screen. The driver is narrowed
@@ -43,7 +49,7 @@ namespace Sts2PilotTrainer.Engine;
 /// drains the queue in there, and blocking for it on the frame thread wedges the
 /// game. See <see cref="VerbsAllowedInRunningGame"/> and <see cref="Pending"/>.
 /// </summary>
-public sealed class RunDriver : IDisposable
+public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 {
     /// <summary>
     /// The verbs this driver will issue inside a running retail client.
@@ -136,6 +142,11 @@ public sealed class RunDriver : IDisposable
         // runs in turn would otherwise fail on the second.
         _selectorScope = CardSelectCmd.PushSelector(_selector);
 
+        // The three prompts no seam answers - the bundle screen, the relic screen and
+        // the Crystal Sphere's own screen - are stood in for at the prompt and ask
+        // this driver. See ScreenStandIns.
+        ScreenStandIns.Current = this;
+
         // What the retail client does with the loot screen, said in the one place the
         // engine offers: RewardsSet.Offer hands the set to this delegate when test
         // mode is on, in place of showing NRewardsScreen. Parking the set rather than
@@ -191,10 +202,18 @@ public sealed class RunDriver : IDisposable
             _chestRelicsSubscribed = false;
         }
 
+        if (ReferenceEquals(ScreenStandIns.Current, this)) ScreenStandIns.Current = null;
+
         if (_selectorScope is null) return;
         RewardsSet.testSelector = _previousRewardsSelector;
         _selectorScope.Dispose();
     }
+
+    IReadOnlyList<CardModel> ScreenStandIns.IStandInAnswerer.AnswerBundle(
+        IReadOnlyList<IReadOnlyList<CardModel>> bundles) => _selector.GetSelectedBundle(bundles);
+
+    RelicModel? ScreenStandIns.IStandInAnswerer.AnswerRelic(IReadOnlyList<RelicModel> relics) =>
+        _selector.GetSelectedRelic(relics);
 
     /// <summary>
     /// Lets the engine finish what an action started.
@@ -284,7 +303,7 @@ public sealed class RunDriver : IDisposable
         {
             case ActionVerb.ChooseNeowBlessing:
                 QueueFollowingCardSelections(action, upcoming);
-                ChooseEventOption(Arg.Int(action, "option_index"));
+                ChooseEventOption(action, Arg.Int(action, "option_index"));
                 break;
 
             case ActionVerb.ChooseEventOption:
@@ -304,12 +323,20 @@ public sealed class RunDriver : IDisposable
                 EndTurn(action, upcoming);
                 break;
 
+            case ActionVerb.UndoEndTurn:
+                UndoEndTurn(action);
+                break;
+
             case ActionVerb.ClaimReward:
-                ClaimReward(action);
+                ClaimReward(action, upcoming);
                 break;
 
             case ActionVerb.TakeCard:
                 TakeCard(action);
+                break;
+
+            case ActionVerb.TakeCardRewardAlternative:
+                TakeCardRewardAlternative(action);
                 break;
 
             case ActionVerb.SkipRewards:
@@ -317,7 +344,13 @@ public sealed class RunDriver : IDisposable
                 break;
 
             case ActionVerb.SelectCardFromScreen:
+            case ActionVerb.SelectBundleFromScreen:
+            case ActionVerb.SelectRelicFromScreen:
                 ConfirmCardSelectionWasConsumed(action);
+                break;
+
+            case ActionVerb.RevealCrystalSphereCell:
+                RevealCrystalSphereCell(action);
                 break;
 
             case ActionVerb.ChooseRestSiteOption:
@@ -363,7 +396,7 @@ public sealed class RunDriver : IDisposable
         if (_selector.PendingCount > 0)
         {
             throw new EngineException(
-                $"Action {action.Seq} ({action.Verb}) queued card selection(s) that no screen asked for: " +
+                $"Action {action.Seq} ({action.Verb}) queued screen answer(s) that no screen asked for: " +
                 $"{_selector.DescribePending()}. A recorded selection the engine never consumed means the " +
                 "manifest describes a screen this run does not open.");
         }
@@ -429,6 +462,10 @@ public sealed class RunDriver : IDisposable
     /// </summary>
     internal void ImproviseUnrecordedCardSelections() =>
         _selector.AnswersFromTheFrontWhenSilent = true;
+
+    /// <summary>The selector this driver answers screens from. For <see cref="VerbProbe"/>,
+    /// which measures the stand-ins by asking the same selector the prompts ask.</summary>
+    internal ManifestCardSelector Selector => _selector;
 
     /// <summary>The screen answers the last action improvised, as the arguments a
     /// <see cref="ActionVerb.SelectCardFromScreen"/> records, in order.</summary>
@@ -513,8 +550,19 @@ public sealed class RunDriver : IDisposable
         }
 
         QueueFollowingCardSelections(action, upcoming);
-        ChooseEventOption(Arg.Int(action, "option_index"));
+        ChooseEventOption(action, Arg.Int(action, "option_index"));
     }
+
+    /// <summary>
+    /// What an event option is called, independently of where it sits.
+    ///
+    /// The option's text key, which every event sets, or the relic's id for an option
+    /// that offers one: Doll Room names its options after the relic in each doll, so
+    /// the relic is the identity there. The recorder writes the same rule, and the two
+    /// agreeing is what makes a recorded key checkable at all.
+    /// </summary>
+    public static string OptionKey(EventOption option) =>
+        option.Relic?.Id.ToString() ?? option.TextKey;
 
     /// <summary>
     /// The event this player is in, or null when there is none.
@@ -544,7 +592,7 @@ public sealed class RunDriver : IDisposable
         }
     }
 
-    private void ChooseEventOption(int optionIndex)
+    private void ChooseEventOption(ActionRecord action, int optionIndex)
     {
         var synchronizer = RunManager.Instance.EventSynchronizer
             ?? throw new EngineException("No event synchronizer: the run is not in an event room.");
@@ -557,23 +605,49 @@ public sealed class RunDriver : IDisposable
         {
             throw new EngineException(
                 $"Event option {optionIndex} does not exist; this event offers {options.Count} " +
-                $"({string.Join(", ", options.Select((o, i) => $"{i}:{o.GetType().Name}"))}).");
+                $"({DescribeOptions(options)}).");
+        }
+
+        // The key is checked before the option runs, where the recording names one:
+        // an index alone would take whatever a build that reordered the options put
+        // there, and the whole point of naming the option is to refuse instead.
+        if (action.Args.TryGetValue("option_key", out var expectedKey) &&
+            OptionKey(options[optionIndex]) is var actualKey &&
+            actualKey != expectedKey)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} expects option '{expectedKey}' at event option {optionIndex}, but the " +
+                $"engine offers '{actualKey}'. The event is {DescribeOptions(options)}. The replay has " +
+                "diverged from the recorded history before this point.");
         }
 
         synchronizer.ChooseLocalOption(optionIndex);
         Settle();
+
+        // Some events fight without leaving the event, so the run may now be in a
+        // combat room rather than back on the map; nothing here assumes the event
+        // ended. A fight that ended inside the option's own work - possible for an
+        // event that resolves its combat at once - offers its loot here.
+        OfferRoomEndRewardsIfCombatEnded();
     }
 
+    private static string DescribeOptions(IReadOnlyList<EventOption> options) =>
+        string.Join(", ", options.Select((option, index) => $"{index}:{OptionKey(option)}"));
+
     /// <summary>
-    /// Takes one reward off the loot screen: the gold or the potion.
+    /// Takes one reward off the loot screen with a click: the gold, the potion, a
+    /// relic, a card removal or a fixed card.
     ///
     /// The card reward is deliberately not reachable here - it opens a second screen
     /// and so has its own verb, <see cref="ActionVerb.TakeCard"/>, which records which
     /// card came back. Naming the kind rather than an index is what the video shows;
     /// a set that offers two of a kind is refused rather than resolved by position,
     /// because position on that screen is a layout detail and the choice would be ours.
+    /// A relic and a fixed card are named as well, for the reason a played card is: a
+    /// loot screen stocked differently means the run has already diverged. A card
+    /// removal opens a screen over the deck, answered by the selections that follow.
     /// </summary>
-    private void ClaimReward(ActionRecord action)
+    private void ClaimReward(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
     {
         var set = OpenRewards(action);
         var kind = Arg.String(action, "reward_type");
@@ -594,7 +668,31 @@ public sealed class RunDriver : IDisposable
                 "inventing a decision the player made.");
         }
 
-        Select(action, set, matches[0]);
+        var reward = matches[0];
+        if (RewardKinds.IdArgument(kind) is { } idArgument)
+        {
+            var expectedId = Arg.String(action, idArgument);
+            var offeredId = LootRewards.IdOf(reward);
+            if (offeredId != expectedId)
+            {
+                throw new EngineException(
+                    $"Action {action.Seq} claims the '{kind}' reward {expectedId}, but this loot screen offers " +
+                    $"{offeredId ?? "one with no id"}. The loot screen is {DescribeRewards(set)}. The replay " +
+                    "has diverged from the recorded history before this point.");
+            }
+        }
+
+        if (kind == RewardKinds.CardRemoval) QueueFollowingCardSelections(action, upcoming);
+
+        Select(action, set, reward);
+
+        if (kind == RewardKinds.Relic && _selector.Refusal is null &&
+            !Player.Relics.Any(relic => relic.Id.ToString() == Arg.String(action, "relic_id")))
+        {
+            throw new EngineException(
+                $"Action {action.Seq} claimed the relic {Arg.String(action, "relic_id")} and the run does not " +
+                "have it afterwards, so the claim did not take effect.");
+        }
     }
 
     /// <summary>
@@ -622,6 +720,39 @@ public sealed class RunDriver : IDisposable
             throw new EngineException(
                 $"Action {action.Seq} selected the card reward but the engine did not complete it, so no " +
                 "card was added to the deck.");
+        }
+    }
+
+    /// <summary>
+    /// Answers a card reward with one of its alternatives rather than a card.
+    ///
+    /// The same loot-screen click a <see cref="TakeCard"/> makes, and the same seam
+    /// answers the screen it opens; what differs is what came back. On this build the
+    /// one alternative - Pael's Wing's sacrifice - ends the selection and completes the
+    /// reward, so the record is the decision itself. A build whose alternative kept
+    /// the screen open would be answered here and then asked again, and the selector
+    /// refuses that second question rather than inventing an answer to it.
+    /// </summary>
+    private void TakeCardRewardAlternative(ActionRecord action)
+    {
+        var set = OpenRewards(action);
+        var cardReward = set.Rewards.OfType<CardReward>().FirstOrDefault(reward => !reward.SuccessfullySelected)
+            ?? throw new EngineException(
+                $"Action {action.Seq} answers a card reward with an alternative, but this loot screen offers " +
+                $"no unclaimed card reward ({DescribeRewards(set)}).");
+
+        _selector.Enqueue(new ManifestCardSelector.AlternativePick(
+            action.Seq, Arg.String(action, "option_id"), Arg.Int(action, "option_index")));
+
+        Select(action, set, cardReward);
+
+        if (_selector.Refusal is null && !cardReward.SuccessfullySelected)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} answered the card reward with alternative " +
+                $"'{Arg.String(action, "option_id")}' and the engine did not complete the reward. An " +
+                "alternative that keeps the screen open is a decision this build's history has no record " +
+                "of the rest of.");
         }
     }
 
@@ -754,14 +885,19 @@ public sealed class RunDriver : IDisposable
     /// </summary>
     private void ShopPurchase(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
     {
-        if (_session.RunState.CurrentRoom is not MerchantRoom shop)
+        // The merchant room's inventory, or the current event's when the event sells
+        // - the Fake Merchant builds one of its own and draws its own room - else the
+        // refusal. The purchase itself goes through the same member either way.
+        var inventory = _session.RunState.CurrentRoom switch
         {
-            throw new EngineException(
-                $"Action {action.Seq} buys from the merchant, but this floor is a " +
-                $"{_session.RunState.CurrentRoom?.RoomType.ToString() ?? "no"} room, not a shop.");
-        }
+            MerchantRoom shop => shop.GetLocalInventory(),
+            EventRoom when LocalEvent() is FakeMerchant merchant => merchant.Inventory,
+            _ => throw new EngineException(
+                $"Action {action.Seq} buys from a merchant, but this floor is a " +
+                $"{_session.RunState.CurrentRoom?.RoomType.ToString() ?? "no"} room: not a shop and not an " +
+                "event that sells."),
+        };
 
-        var inventory = shop.GetLocalInventory();
         var kind = Arg.String(action, "kind");
         var entry = kind == ShopPurchaseKinds.CardRemoval
             ? CardRemovalEntry(action, inventory)
@@ -1127,8 +1263,12 @@ public sealed class RunDriver : IDisposable
         if (_consumedSelections.Remove(action.Seq)) return;
 
         throw new EngineException(
-            $"Action {action.Seq} selects a card from a screen, but no screen consumed it. A card selection " +
-            "has to follow the action that opens its screen, with nothing else in between.");
+            action.Verb == ActionVerb.SelectRelicFromScreen
+                ? $"Action {action.Seq} answers a relic screen no action opened. No caller reaches " +
+                  "RelicSelectCmd.FromChooseARelicScreen on v0.111.0, so a history that records one is " +
+                  "refused until a build lights the screen."
+                : $"Action {action.Seq} ({action.Verb}) answers a screen, but no screen consumed it. A screen " +
+                  "answer has to follow the action that opens its screen, with nothing else in between.");
     }
 
     /// <summary>
@@ -1139,9 +1279,24 @@ public sealed class RunDriver : IDisposable
     {
         foreach (var next in upcoming)
         {
-            if (next.Verb != ActionVerb.SelectCardFromScreen) break;
-            _selector.Enqueue(new ManifestCardSelector.Pick(
-                next.Seq, Arg.String(next, "card_id"), Arg.Int(next, "option_index")));
+            if (!CardScreenAnswers.Answers(next.Verb)) break;
+
+            switch (next.Verb)
+            {
+                case ActionVerb.SelectCardFromScreen:
+                    _selector.Enqueue(new ManifestCardSelector.Pick(
+                        next.Seq, Arg.String(next, "card_id"), Arg.Int(next, "option_index")));
+                    break;
+                case ActionVerb.SelectBundleFromScreen:
+                    _selector.Enqueue(new ManifestCardSelector.BundlePick(
+                        next.Seq, Arg.String(next, "card_ids"), Arg.Int(next, "option_index")));
+                    break;
+                case ActionVerb.SelectRelicFromScreen:
+                    _selector.Enqueue(new ManifestCardSelector.RelicPick(
+                        next.Seq, Arg.String(next, "relic_id"), Arg.Int(next, "option_index")));
+                    break;
+            }
+
             _consumedSelections.Add(next.Seq);
         }
     }
@@ -1163,16 +1318,7 @@ public sealed class RunDriver : IDisposable
         }
     }
 
-    /// <summary>The reward kinds this milestone's history meets, named as the loot
-    /// screen names them rather than by the engine's internal type.</summary>
-    private static string KindOf(Reward reward) => reward switch
-    {
-        GoldReward => "gold",
-        PotionReward => "potion",
-        RelicReward => "relic",
-        CardReward => "card",
-        _ => reward.GetType().Name,
-    };
+    private static string KindOf(Reward reward) => LootRewards.KindOf(reward);
 
     private static string DescribeRewards(RewardsSet set) =>
         set.Rewards.Count == 0
@@ -1364,13 +1510,110 @@ public sealed class RunDriver : IDisposable
         // engine posts back to the scheduler need to complete inline or the chain
         // stalls; suppressing Task.Yield for the duration is what makes that happen.
         // It changes when continuations run, not which ones or in what order.
+        //
+        // Enqueued as the end-turn button enqueues it, on the run's own queue with the
+        // turn it belongs to, rather than through PlayerCmd.EndTurn with canBackOut
+        // false: that call is what the action itself makes, and whether the turn may
+        // be taken back is the engine's to decide.
         using (YieldSuppression.Enable())
         {
-            PlayerCmd.EndTurn(Player, canBackOut: false);
+            RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(
+                new EndPlayerTurnAction(Player, combat.TurnNumber));
             Pump.Drain();
         }
 
         OfferRoomEndRewardsIfCombatEnded();
+    }
+
+    /// <summary>
+    /// The turn taken back before the enemy turn began.
+    ///
+    /// Refused on v0.111.0, and by measurement rather than by omission. The client
+    /// offers the undo only while another player has not yet ended their turn
+    /// (<c>NEndTurnButton.AfterPlayerEndedTurn</c> checks
+    /// <c>AllPlayersReadyToEndTurn</c>), and in a singleplayer run the one player is
+    /// all of them: the moment the turn ends, the combat manager commits to the enemy
+    /// turn. There is no window a replay could reproduce, so a history that records
+    /// one describes a run this build did not play. The verb stays in the format so a
+    /// build that opens the window lights it without a format bump.
+    /// </summary>
+    private static void UndoEndTurn(ActionRecord action) =>
+        throw new EngineException(
+            $"Action {action.Seq} takes an ended turn back, and no singleplayer run on v0.111.0 can: the " +
+            "client offers the undo only while another player has not ended their turn, and with one " +
+            "player the engine commits to the enemy turn the moment the turn ends. This verb replays " +
+            "nothing on this build.");
+
+    /// <summary>
+    /// Reveals one cell of the Crystal Sphere's grid, with the tool the recording
+    /// names.
+    ///
+    /// The fourth screen with no engine command behind it. The minigame pushes its own
+    /// screen and waits on a completion source the screen's clicks drive, so the host
+    /// captures the minigame where the screen would have been shown and drives the
+    /// same member from the manifest. Which cells hold what was rolled when the
+    /// minigame was built, by the engine, from the event's own stream; nothing here
+    /// decides anything. When the last divination is spent the minigame completes on
+    /// its own and the loot it offers is claimed like any other.
+    /// </summary>
+    private void RevealCrystalSphereCell(ActionRecord action)
+    {
+        var minigame = ScreenStandIns.OpenMinigame
+            ?? throw new EngineException(
+                $"Action {action.Seq} reveals a Crystal Sphere cell, and no Crystal Sphere is open. The " +
+                "minigame is open from the event option that starts it until its last divination is spent.");
+
+        if (minigame.DivinationCount == 0)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} reveals a Crystal Sphere cell and the minigame has no divination " +
+                "left; it completes on its own at zero.");
+        }
+
+        var x = Arg.Int(action, "x");
+        var y = Arg.Int(action, "y");
+        var size = minigame.GridSize;
+        if (x >= size.X || y >= size.Y)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} reveals Crystal Sphere cell ({x}, {y}), outside the " +
+                $"{size.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}x" +
+                $"{size.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)} grid.");
+        }
+
+        var cell = minigame.cells[x, y];
+        if (!cell.IsHidden)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} reveals Crystal Sphere cell ({x}, {y}), which is already revealed. " +
+                "The screen accepts a click on a hidden cell only.");
+        }
+
+        var tool = Arg.String(action, "tool") switch
+        {
+            CrystalSphereTools.Small => CrystalSphereMinigame.CrystalSphereToolType.Small,
+            CrystalSphereTools.Big => CrystalSphereMinigame.CrystalSphereToolType.Big,
+            var other => throw new EngineException(
+                $"Action {action.Seq} reveals a Crystal Sphere cell with tool '{other}', which the minigame " +
+                $"has no tool for. Known tools: {string.Join(", ", CrystalSphereTools.All)}."),
+        };
+
+        minigame.SetTool(tool);
+        if (minigame.CrystalSphereTool != tool)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} set the Crystal Sphere's tool to '{Arg.String(action, "tool")}' and the " +
+                "minigame refused it.");
+        }
+
+        Settle(minigame.CellClicked(cell));
+
+        if (cell.IsHidden)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} revealed Crystal Sphere cell ({x}, {y}) and it is still hidden " +
+                "afterwards, so the reveal did not take effect.");
+        }
     }
 
     private static class Arg

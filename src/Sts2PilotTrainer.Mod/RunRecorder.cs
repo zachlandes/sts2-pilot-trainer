@@ -2,12 +2,16 @@ using System.Globalization;
 using System.Reflection;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.DevConsole;
+using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.RestSite;
+using MegaCrit.Sts2.Core.Events.Custom.CrystalSphereEvent;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
@@ -71,15 +75,17 @@ internal sealed class RunRecorder : IDisposable
     private readonly RunCapture _capture;
     private readonly string _journalPath;
     private readonly Queue<PendingDecision> _pending = new();
-    private readonly List<CardScreenPick> _screenPicks = [];
+    private readonly List<ScreenAnswer> _screenAnswers = [];
 
     private PlayerFightObserver? _observer;
 
     /// <summary>The in-fight action the observer has opened and not yet closed, held
     /// by name rather than as an <see cref="ActionVerb"/>: a value of a sibling
     /// assembly's type in a field here decides this type's layout, and the game loads
-    /// this assembly's types before this mod can say where that sibling is.</summary>
-    private (string Verb, IReadOnlyDictionary<string, string> Args)? _openFightStep;
+    /// this assembly's types before this mod can say where that sibling is. It
+    /// carries the reading taken when the action began, which is the decision's
+    /// before-state.</summary>
+    private (string Verb, IReadOnlyDictionary<string, string> Args, TakenReading Before)? _openFightStep;
 
     private bool _pumping;
     private bool _disposed;
@@ -480,10 +486,41 @@ internal sealed class RunRecorder : IDisposable
 
     // ── Decisions ────────────────────────────────────────────────────────────────
 
-    /// <summary>A decision the game has just been asked to make.</summary>
+    /// <summary>A decision the game has just been asked to make. Called from the
+    /// prefix of the member that makes it, which is where the state it begins from
+    /// is still the state in front of the player.</summary>
     internal static void Announce(
-        ActionVerb verb, IReadOnlyDictionary<string, string> args, Task? engineWork = null) =>
-        AnnounceByName(verb.ToString(), args, engineWork);
+        ActionVerb verb, IReadOnlyDictionary<string, string> args, Task? engineWork = null)
+    {
+        if (ReadBefore(verb.ToString()) is { } before) AnnounceByName(verb.ToString(), args, engineWork, before);
+    }
+
+    /// <summary>
+    /// The reading of the state a decision begins from, or null with the recording
+    /// refused.
+    ///
+    /// Taken in the prefix of the member the decision goes through, before the engine
+    /// has done anything about it: that is the instant a comparison at verification
+    /// asks about, and the only moment it can be read.
+    /// </summary>
+    private static TakenReading? ReadBefore(string verb)
+    {
+        var recorder = Active;
+        if (recorder is null || recorder._finished) return null;
+
+        try
+        {
+            var (sample, digest) = LiveRun.Read();
+            return new TakenReading(sample, digest, LiveRun.RunClockMs());
+        }
+        catch (Exception ex)
+        {
+            recorder.Refuse(
+                $"A {verb} was announced and the state it began from could not be read: " +
+                $"{ex.GetType().Name}: {ex.Message}");
+            return null;
+        }
+    }
 
     /// <summary>
     /// A decision the engine has just finished, inside another decision's work.
@@ -495,7 +532,7 @@ internal sealed class RunRecorder : IDisposable
     /// second's effects attributed to the first.
     /// </summary>
     internal static void AnnounceAsAlreadyFinished(
-        ActionVerb verb, IReadOnlyDictionary<string, string> args)
+        ActionVerb verb, IReadOnlyDictionary<string, string> args, TakenReading before)
     {
         var recorder = Active;
         if (recorder is null || recorder._finished) return;
@@ -516,7 +553,7 @@ internal sealed class RunRecorder : IDisposable
 
         lock (Gate)
         {
-            recorder._pending.Enqueue(new PendingDecision(verb.ToString(), args, null, reading));
+            recorder._pending.Enqueue(new PendingDecision(verb.ToString(), args, null, before, reading));
             if (recorder._pumping) return;
             recorder._pumping = true;
         }
@@ -534,14 +571,14 @@ internal sealed class RunRecorder : IDisposable
     /// card that was played; the state is read at the other end of the settle.
     /// </summary>
     private static void AnnounceByName(
-        string verb, IReadOnlyDictionary<string, string> args, Task? engineWork)
+        string verb, IReadOnlyDictionary<string, string> args, Task? engineWork, TakenReading before)
     {
         var recorder = Active;
         if (recorder is null || recorder._finished) return;
 
         lock (Gate)
         {
-            recorder._pending.Enqueue(new PendingDecision(verb, args, engineWork));
+            recorder._pending.Enqueue(new PendingDecision(verb, args, engineWork, before));
             if (recorder._pumping) return;
             recorder._pumping = true;
         }
@@ -598,9 +635,86 @@ internal sealed class RunRecorder : IDisposable
         {
             foreach (var (cardId, index) in taken)
             {
-                recorder._screenPicks.Add(new CardScreenPick(
-                    cardId, index, Corruption.NominateScreenOption(offeredIds, index, positions)));
+                var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["card_id"] = cardId,
+                    ["option_index"] = Number(index),
+                };
+                if (Corruption.NominateScreenOption(offeredIds, index, positions) is { } alternative)
+                {
+                    args[Corruption.AlternativeOptionIndex] = Number(alternative);
+                }
+
+                recorder._screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.SelectCardFromScreen), args));
             }
+        }
+    }
+
+    /// <summary>
+    /// A bundle screen answered, with what it offered and the position that came back.
+    ///
+    /// A bundle has no id of its own, so its identity is its cards' ids joined in the
+    /// order the prompt listed them - the same value the driver checks the answer
+    /// against. Held like a card screen's answer, because the prompt is answered
+    /// inside the decision that obtained the relic that opened it.
+    /// </summary>
+    internal static void BundleScreenAnswered(
+        IReadOnlyList<IReadOnlyList<CardModel>> offered, int index)
+    {
+        var recorder = Active;
+        if (recorder is null || recorder._finished) return;
+
+        if (index < 0 || index >= offered.Count)
+        {
+            recorder.Refuse(
+                $"A bundle screen answered with position {Number(index)}, which is not one of the " +
+                $"{Number(offered.Count)} bundle(s) it offered, so the recorder cannot say which was picked.");
+            return;
+        }
+
+        var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["card_ids"] = string.Join(",", offered[index].Select(card => card.Id.ToString())),
+            ["option_index"] = Number(index),
+        };
+        var positions = new[] { index };
+        if (Corruption.NominateScreenOption(
+                [.. offered.Select(bundle => string.Join(",", bundle.Select(card => card.Id.ToString())))],
+                index, positions) is { } alternative)
+        {
+            args[Corruption.AlternativeOptionIndex] = Number(alternative);
+        }
+
+        lock (Gate)
+        {
+            recorder._screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.SelectBundleFromScreen), args));
+        }
+    }
+
+    /// <summary>A relic screen answered. Nothing on v0.111.0 opens one; the patch is
+    /// there so a build that does is recorded rather than refused.</summary>
+    internal static void RelicScreenAnswered(IReadOnlyList<RelicModel> offered, int index)
+    {
+        var recorder = Active;
+        if (recorder is null || recorder._finished) return;
+
+        if (index < 0 || index >= offered.Count)
+        {
+            recorder.Refuse(
+                $"A relic screen answered with position {Number(index)}, which is not one of the " +
+                $"{Number(offered.Count)} relic(s) it offered, so the recorder cannot say which was picked.");
+            return;
+        }
+
+        var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["relic_id"] = offered[index].Id.ToString(),
+            ["option_index"] = Number(index),
+        };
+
+        lock (Gate)
+        {
+            recorder._screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.SelectRelicFromScreen), args));
         }
     }
 
@@ -687,8 +801,18 @@ internal sealed class RunRecorder : IDisposable
         $"within {SettleBudgetSeconds.ToString(CultureInfo.InvariantCulture)} seconds" +
         (waitedForAScreen ? " of the last card screen closing" : string.Empty);
 
-    /// <summary>A card reward screen answered, by the position it reports.</summary>
-    internal static void CardRewardAnswered(IReadOnlyList<CardModel> offered, int? option)
+    /// <summary>
+    /// A card reward screen answered, by the position it reports.
+    ///
+    /// A position among the cards is the card that came back, and the loot decision
+    /// that opened the screen is written as <see cref="ActionVerb.TakeCard"/> with it.
+    /// A position past the cards is one of the reward's alternatives, and the same
+    /// decision is written as <see cref="ActionVerb.TakeCardRewardAlternative"/>
+    /// naming it: on this build every alternative ends the selection, so the two are
+    /// the same click answered two ways.
+    /// </summary>
+    internal static void CardRewardAnswered(
+        IReadOnlyList<CardModel> offered, IReadOnlyList<CardRewardAlternative> alternatives, int? option)
     {
         var recorder = Active;
         if (recorder is null || recorder._finished) return;
@@ -697,27 +821,48 @@ internal sealed class RunRecorder : IDisposable
         // the loot screen as a skip and is recorded there.
         if (option is not { } index) return;
 
-        if (index < 0 || index >= offered.Count)
+        if (index < 0 || index >= offered.Count + alternatives.Count)
         {
-            // Past the cards is one of the reward's alternatives - a reroll or a swap -
-            // which this format has no verb for. Refused rather than dropped: a
-            // decision nobody wrote down is one the replay would make differently.
             recorder.Refuse(
-                $"A card reward was answered with option " +
-                $"{index.ToString(CultureInfo.InvariantCulture)}, which is past the " +
-                $"{offered.Count.ToString(CultureInfo.InvariantCulture)} card(s) it offered and is therefore " +
-                "one of its alternatives. This format has no verb for those, so the recording cannot say what " +
-                "was taken.");
+                $"A card reward was answered with option {Number(index)}, which is past the " +
+                $"{Number(offered.Count)} card(s) and {Number(alternatives.Count)} alternative(s) it offered, " +
+                "so the recording cannot say what was taken.");
             return;
         }
 
-        var alternative = Corruption.NominateCard(
-            [.. offered.Select(card => card.Id.ToString())], index);
+        if (index >= offered.Count)
+        {
+            var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["option_id"] = alternatives[index - offered.Count].OptionId,
+                ["option_index"] = Number(index),
+            };
+
+            lock (Gate)
+            {
+                recorder._screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.TakeCardRewardAlternative), args));
+            }
+
+            return;
+        }
+
+        var reward = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["card_id"] = offered[index].Id.ToString(),
+            ["option_index"] = Number(index),
+        };
+
+        // The two appear together or not at all, which is what the validator
+        // requires of them: an id with no position names no decision to take.
+        if (Corruption.NominateCard([.. offered.Select(card => card.Id.ToString())], index) is { } alternative)
+        {
+            reward[Corruption.AlternativeCardId] = alternative.CardId;
+            reward[Corruption.AlternativeOptionIndex] = Number(alternative.OptionIndex);
+        }
 
         lock (Gate)
         {
-            recorder._screenPicks.Add(new CardScreenPick(
-                offered[index].Id.ToString(), index, alternative?.OptionIndex, alternative?.CardId));
+            recorder._screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.TakeCard), reward));
         }
     }
 
@@ -792,7 +937,7 @@ internal sealed class RunRecorder : IDisposable
                     continue;
                 }
 
-                Commit(next.Verb, next.Args, next.Reading);
+                Commit(next.Verb, next.Args, next.Before, next.Reading);
             }
             catch (Exception ex)
             {
@@ -883,7 +1028,7 @@ internal sealed class RunRecorder : IDisposable
     /// changes nothing - so the two traces have the same shape.
     /// </summary>
     private void Commit(
-        string verbName, IReadOnlyDictionary<string, string> args, TakenReading? taken = null)
+        string verbName, IReadOnlyDictionary<string, string> args, TakenReading before, TakenReading? taken = null)
     {
         if (!Enum.TryParse<ActionVerb>(verbName, out var verb))
         {
@@ -896,80 +1041,67 @@ internal sealed class RunRecorder : IDisposable
         var (sample, digest) = taken is null ? LiveRun.Read() : (taken.Sample, taken.Digest);
         var clock = taken is null ? LiveRun.RunClockMs() : taken.RunClockMs;
 
-        List<CardScreenPick> picks;
+        List<ScreenAnswer> answers;
         lock (Gate)
         {
-            picks = _screenPicks.ToList();
-            _screenPicks.Clear();
+            answers = _screenAnswers.ToList();
+            _screenAnswers.Clear();
         }
 
-        // A card reward names the card it took itself; every other screen is answered
-        // by the selections recorded after the decision that opened it.
+        // A card reward names what came back itself - the card, or the alternative
+        // that ended the selection instead - so the loot decision is written with that
+        // answer's own verb and arguments. Every other screen is answered by the
+        // selections recorded after the decision that opened it.
         if (verb == ActionVerb.TakeCard)
         {
-            if (picks.Count != 1)
+            var reward = answers.Where(answer => answer.Verb
+                is nameof(ActionVerb.TakeCard) or nameof(ActionVerb.TakeCardRewardAlternative)).ToList();
+            if (reward.Count != 1)
             {
                 Refuse(
                     $"A card reward was taken and the recorder saw " +
-                    $"{picks.Count.ToString(CultureInfo.InvariantCulture)} screen answer(s) for it. Exactly " +
-                    "one card comes off a card reward, and a recording that could not say which cannot be " +
-                    "replayed.");
+                    $"{reward.Count.ToString(CultureInfo.InvariantCulture)} answer(s) to it. Exactly one thing " +
+                    "comes off a card reward, and a recording that could not say which cannot be replayed.");
                 return;
             }
 
-            var reward = new SortedDictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["card_id"] = picks[0].CardId,
-                ["option_index"] = picks[0].OptionIndex.ToString(CultureInfo.InvariantCulture),
-            };
-
-            // The two appear together or not at all, which is what the validator
-            // requires of them: an id with no position names no decision to take.
-            if (picks[0] is { AlternativeCardId: { } alternativeCard, AlternativeOptionIndex: { } alternativeIndex })
-            {
-                reward[Corruption.AlternativeCardId] = alternativeCard;
-                reward[Corruption.AlternativeOptionIndex] =
-                    alternativeIndex.ToString(CultureInfo.InvariantCulture);
-            }
-
-            args = reward;
-            picks.Clear();
+            verb = Enum.Parse<ActionVerb>(reward[0].Verb);
+            args = reward[0].Args;
+            answers.Remove(reward[0]);
         }
 
-        Write(_capture.Record(verb, args, sample, digest, clock));
-        WritePicks(picks, sample, digest, clock);
+        Write(_capture.Record(
+            verb, args, new StateReading(before.Sample, before.Digest), new StateReading(sample, digest), clock));
+        WriteAnswers(answers, sample, digest, clock);
 
         StartOrStopWatchingTheFight();
     }
 
     /// <summary>
-    /// Records the card screens a decision pulled out of the player, sharing that
-    /// decision's reading.
+    /// Records the screen answers a decision pulled out of the player, sharing that
+    /// decision's after-reading on both sides.
     ///
-    /// They share it because that is what they are: a card screen is answered from
-    /// inside the call that opened it, so the state after the screen's answer and the
-    /// state after the decision are the same state.
+    /// They share it because that is what they are: a screen is answered from inside
+    /// the call that opened it, so the state after the screen's answer and the state
+    /// after the decision are the same state - and the headless driver's trace has
+    /// the same shape, a step that confirms the answer and changes nothing.
     /// </summary>
-    private void WritePicks(
-        IEnumerable<CardScreenPick> picks,
+    private void WriteAnswers(
+        IEnumerable<ScreenAnswer> answers,
         IReadOnlyDictionary<string, string> after,
         string digest,
         int? clock)
     {
-        foreach (var pick in picks)
+        var reading = new StateReading(after, digest);
+        foreach (var answer in answers)
         {
-            var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+            if (!Enum.TryParse<ActionVerb>(answer.Verb, out var verb))
             {
-                ["card_id"] = pick.CardId,
-                ["option_index"] = pick.OptionIndex.ToString(CultureInfo.InvariantCulture),
-            };
-
-            if (pick.AlternativeOptionIndex is { } alternative)
-            {
-                args[Corruption.AlternativeOptionIndex] = alternative.ToString(CultureInfo.InvariantCulture);
+                Refuse($"A screen answered as '{answer.Verb}', which is not a decision this format names.");
+                continue;
             }
 
-            Write(_capture.Record(ActionVerb.SelectCardFromScreen, args, after, digest, clock));
+            Write(_capture.Record(verb, answer.Args, reading, reading, clock));
         }
     }
 
@@ -1051,7 +1183,7 @@ internal sealed class RunRecorder : IDisposable
         {
             if (!CloseStrandedFightStep(verb, before, previousFinished)) return;
 
-            _openFightStep = (verb, args);
+            _openFightStep = (verb, args, ReadingOf(before));
         },
         beginStepWithUnresolvedArgument: (verb, _, before, previousFinished, unresolved) =>
         {
@@ -1064,7 +1196,6 @@ internal sealed class RunRecorder : IDisposable
             _capture.Fight?.MarkIncomplete(unresolved);
         },
         completeStep: CloseFightStep,
-        discardOpenStep: () => _openFightStep = null,
         finish: FinishFight,
         markIncomplete: Refuse);
 
@@ -1100,7 +1231,7 @@ internal sealed class RunRecorder : IDisposable
             return false;
         }
 
-        CommitFightStep(stranded.Verb, stranded.Args, before);
+        CommitFightStep(stranded.Verb, stranded.Args, stranded.Before, before);
         return true;
     }
 
@@ -1108,8 +1239,18 @@ internal sealed class RunRecorder : IDisposable
     {
         if (_openFightStep is not { } open) return;
         _openFightStep = null;
-        CommitFightStep(open.Verb, open.Args, after);
+        CommitFightStep(open.Verb, open.Args, open.Before, after);
     }
+
+    /// <summary>
+    /// The observer's sample with the digest of the same instant beside it.
+    ///
+    /// The sink speaks in samples and a journal line carries the whole digest too; the
+    /// observer samples the moment an action begins and this runs inside that same
+    /// call, so the two are readings of one instant.
+    /// </summary>
+    private static TakenReading ReadingOf(IReadOnlyDictionary<string, string> sample) =>
+        new(sample, LiveRun.Project().Digest(), LiveRun.RunClockMs());
 
     /// <summary>
     /// The fight is over.
@@ -1146,7 +1287,10 @@ internal sealed class RunRecorder : IDisposable
     /// engine settles and this runs inside that same call.
     /// </summary>
     private void CommitFightStep(
-        string verb, IReadOnlyDictionary<string, string> args, IReadOnlyDictionary<string, string> after)
+        string verb,
+        IReadOnlyDictionary<string, string> args,
+        TakenReading before,
+        IReadOnlyDictionary<string, string> after)
     {
         if (_finished || _disposed) return;
 
@@ -1161,15 +1305,16 @@ internal sealed class RunRecorder : IDisposable
             var digest = LiveRun.Project().Digest();
             var clock = LiveRun.RunClockMs();
 
-            List<CardScreenPick> picks;
+            List<ScreenAnswer> answers;
             lock (Gate)
             {
-                picks = _screenPicks.ToList();
-                _screenPicks.Clear();
+                answers = _screenAnswers.ToList();
+                _screenAnswers.Clear();
             }
 
-            Write(_capture.Record(parsed, args, after, digest, clock));
-            WritePicks(picks, after, digest, clock);
+            Write(_capture.Record(
+                parsed, args, new StateReading(before.Sample, before.Digest), new StateReading(after, digest), clock));
+            WriteAnswers(answers, after, digest, clock);
 
             StartOrStopWatchingTheFight();
         }
@@ -1268,39 +1413,38 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     private sealed record PendingDecision(
         string Verb, IReadOnlyDictionary<string, string> Args, Task? EngineWork,
-        TakenReading? Reading = null);
+        TakenReading Before, TakenReading? Reading = null);
 
     /// <summary>
-    /// A reading of the run taken at the moment a decision finished, rather than at
-    /// the other end of a settle.
+    /// A reading of the run taken at one instant: the sample, the complete digest and
+    /// the run clock.
     ///
-    /// For a decision the engine performs synchronously inside another decision's
-    /// work. <see cref="RewardsSkipped"/> is the one that needs it and says why: the
-    /// ambient settle waits for the engine to go quiet, and the engine does not go
-    /// quiet until the decision this one happened inside has finished - by which time
-    /// the run is somewhere else entirely.
+    /// Every decision carries two - the one taken in the prefix of the member it goes
+    /// through, which is the state it began from, and the one taken once the engine
+    /// settled. A decision the engine performs synchronously inside another decision's
+    /// work brings its after-reading with it as well, and <see cref="RewardsSkipped"/>
+    /// says why: the ambient settle waits for the engine to go quiet, and the engine
+    /// does not go quiet until the decision this one happened inside has finished - by
+    /// which time the run is somewhere else entirely.
     /// </summary>
-    private sealed record TakenReading(
+    internal sealed record TakenReading(
         IReadOnlyDictionary<string, string> Sample, string Digest, int? RunClockMs);
 
     /// <summary>A decision read in a prefix and announced in the postfix beside it,
-    /// where the engine hands back a task that says when it is finished.</summary>
-    private sealed record Decision(string Verb, IReadOnlyDictionary<string, string> Args);
+    /// where the engine hands back a task that says when it is finished. It carries
+    /// the reading the prefix took, which is the state the decision began from.</summary>
+    private sealed record Decision(string Verb, IReadOnlyDictionary<string, string> Args, TakenReading Before);
 
     /// <summary>
-    /// One answer a card screen gave, with the alternative that screen also offered.
+    /// One answer a screen gave, as the decision the format records it as.
     ///
-    /// The alternative is part of the answer rather than a second reading of it: what a
-    /// screen offered is only visible while it is open, and it is what
-    /// <c>take-a-different-card</c> and <c>enchant-a-different-card</c> take instead.
-    /// Null where the screen offered nothing else, which is a decision with no
-    /// alternative rather than one nobody looked for.
+    /// The verb is a name rather than an <see cref="ActionVerb"/> for the reason
+    /// <see cref="PendingDecision"/>'s is. The arguments are complete, the alternative a
+    /// screen also offered included: what a screen offered is only visible while it is
+    /// open, and it is what <c>take-a-different-card</c> and
+    /// <c>enchant-a-different-card</c> take instead.
     /// </summary>
-    private readonly record struct CardScreenPick(
-        string CardId,
-        int OptionIndex,
-        int? AlternativeOptionIndex = null,
-        string? AlternativeCardId = null);
+    private readonly record struct ScreenAnswer(string Verb, IReadOnlyDictionary<string, string> Args);
 
     private static IReadOnlyDictionary<string, string> Args(params (string Name, string Value)[] args) =>
         new SortedDictionary<string, string>(
@@ -1342,10 +1486,14 @@ internal sealed class RunRecorder : IDisposable
         ActionVerb.MapMove,
         ActionVerb.PlayCard,
         ActionVerb.EndTurn,
+        ActionVerb.UndoEndTurn,
         ActionVerb.ClaimReward,
         ActionVerb.TakeCard,
+        ActionVerb.TakeCardRewardAlternative,
         ActionVerb.SkipRewards,
         ActionVerb.SelectCardFromScreen,
+        ActionVerb.SelectBundleFromScreen,
+        ActionVerb.SelectRelicFromScreen,
         ActionVerb.ChooseRestSiteOption,
         ActionVerb.TakeChestRelic,
         ActionVerb.SkipChestRelic,
@@ -1353,6 +1501,7 @@ internal sealed class RunRecorder : IDisposable
         ActionVerb.ShopPurchase,
         ActionVerb.UsePotion,
         ActionVerb.DiscardPotion,
+        ActionVerb.RevealCrystalSphereCell,
     ];
 
     /// <summary>
@@ -1401,7 +1550,8 @@ internal sealed class RunRecorder : IDisposable
         typeof(RestSiteOptionTaken), typeof(ChestRelicTaken), typeof(ChestRelicSkipped),
         typeof(ActAdvanced), typeof(ShopPurchased), typeof(ShopCardRemovalPurchased),
         typeof(CardRewardScreen), typeof(PotionUsed), typeof(PotionDiscarded),
-        typeof(ConsoleCommand),
+        typeof(ConsoleCommand), typeof(BundleScreen), typeof(RelicScreen), typeof(ChoiceSynced),
+        typeof(CrystalSphereCellRevealed),
     ];
 
     /// <summary>
@@ -1482,11 +1632,24 @@ internal sealed class RunRecorder : IDisposable
             try
             {
                 var model = __instance.GetLocalEvent();
+                var options = model.CurrentOptions;
+                if (index < 0 || index >= options.Count)
+                {
+                    Active?.Refuse(
+                        $"An event option {Number(index)} was chosen and the event offers " +
+                        $"{Number(options.Count)}. The recorder cannot say which one that was.");
+                    return;
+                }
+
+                // The option's own key beside its position, by the rule the driver
+                // checks it with: what lets a build that reordered the options refuse
+                // rather than take whatever sits at that index.
+                var key = RunDriver.OptionKey(options[index]);
                 Announce(
                     model is Neow ? ActionVerb.ChooseNeowBlessing : ActionVerb.ChooseEventOption,
                     model is Neow
-                        ? Args(("option_index", Number(index)))
-                        : Args(("event_id", model.Id.ToString()), ("option_index", Number(index))));
+                        ? Args(("option_index", Number(index)), ("option_key", key))
+                        : Args(("event_id", model.Id.ToString()), ("option_index", Number(index)), ("option_key", key)));
             }
             catch (Exception ex)
             {
@@ -1533,7 +1696,10 @@ internal sealed class RunRecorder : IDisposable
                     args[Corruption.AlternativeColumn] = Number(alternative);
                 }
 
-                _decision = new Decision(nameof(ActionVerb.MapMove), args);
+                if (ReadBefore(nameof(ActionVerb.MapMove)) is { } before)
+                {
+                    _decision = new Decision(nameof(ActionVerb.MapMove), args, before);
+                }
             }
             catch (Exception ex)
             {
@@ -1546,7 +1712,7 @@ internal sealed class RunRecorder : IDisposable
         {
             if (_decision is not { } decision) return;
             _decision = null;
-            AnnounceByName(decision.Verb, decision.Args, __result);
+            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before);
         }
 
         /// <summary>
@@ -1589,19 +1755,48 @@ internal sealed class RunRecorder : IDisposable
             _decision = null;
             if (Active is null) return;
 
-            _decision = reward switch
+            try
             {
-                CardReward => new Decision(nameof(ActionVerb.TakeCard), Args()),
-                GoldReward => new Decision(nameof(ActionVerb.ClaimReward), Args(("reward_type", "gold"))),
-                PotionReward => new Decision(nameof(ActionVerb.ClaimReward), Args(("reward_type", "potion"))),
-                _ => null,
-            };
+                // The kind by the one reader the driver uses too, and the id beside it
+                // for the kinds that name a thing a build could have changed.
+                var kind = LootRewards.KindOf(reward);
+                IReadOnlyDictionary<string, string>? args = null;
+                var verb = nameof(ActionVerb.ClaimReward);
+                if (reward is CardReward)
+                {
+                    verb = nameof(ActionVerb.TakeCard);
+                    args = Args();
+                }
+                else if (RewardKinds.All.Contains(kind, StringComparer.Ordinal))
+                {
+                    var id = LootRewards.IdOf(reward);
+                    var idArgument = RewardKinds.IdArgument(kind);
+                    if (idArgument is not null && id is null)
+                    {
+                        Active?.Refuse(
+                            $"A '{kind}' reward was taken off a loot screen and this build did not give the " +
+                            "recorder its id, so the recording cannot say what was claimed.");
+                        return;
+                    }
 
-            if (_decision is null)
+                    args = idArgument is null
+                        ? Args(("reward_type", kind))
+                        : Args(("reward_type", kind), (idArgument, id!));
+                }
+
+                if (args is null)
+                {
+                    Active?.Refuse(
+                        $"A {reward.GetType().Name} was taken off a loot screen, and this format has no verb " +
+                        "for that kind of reward. The recording cannot say what was claimed.");
+                    return;
+                }
+
+                if (ReadBefore(verb) is { } before) _decision = new Decision(verb, args, before);
+            }
+            catch (Exception ex)
             {
-                Active?.Refuse(
-                    $"A {reward.GetType().Name} was taken off a loot screen, and this format has no verb " +
-                    "for that kind of reward. The recording cannot say what was claimed.");
+                Active?.Refuse($"A reward could not be read: {ex.GetType().Name}: {ex.Message}");
             }
         }
 
@@ -1613,7 +1808,7 @@ internal sealed class RunRecorder : IDisposable
         {
             if (_decision is not { } decision) return;
             _decision = null;
-            AnnounceByName(decision.Verb, decision.Args, __result);
+            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before);
         }
     }
 
@@ -1664,11 +1859,23 @@ internal sealed class RunRecorder : IDisposable
         /// Nothing here waits, because there is nothing to wait for: the set is
         /// declined synchronously and the state it left is final when this returns.
         /// </summary>
+        private static TakenReading? _before;
+
+        /// <summary>The state the set was declined from, read before the funnel runs.</summary>
+        [HarmonyPrefix]
+        internal static void Before()
+        {
+            _before = null;
+            if (Active is null) return;
+            _before = ReadBefore(nameof(ActionVerb.SkipRewards));
+        }
+
         [HarmonyPostfix]
         internal static void After()
         {
-            if (Active is null) return;
-            AnnounceAsAlreadyFinished(ActionVerb.SkipRewards, Args());
+            if (_before is not { } before) return;
+            _before = null;
+            AnnounceAsAlreadyFinished(ActionVerb.SkipRewards, Args(), before);
         }
     }
 
@@ -1694,9 +1901,13 @@ internal sealed class RunRecorder : IDisposable
                     return;
                 }
 
-                _decision = new Decision(
-                    nameof(ActionVerb.ChooseRestSiteOption),
-                    Args(("option_id", options[index].OptionId), ("option_index", Number(index))));
+                if (ReadBefore(nameof(ActionVerb.ChooseRestSiteOption)) is { } before)
+                {
+                    _decision = new Decision(
+                        nameof(ActionVerb.ChooseRestSiteOption),
+                        Args(("option_id", options[index].OptionId), ("option_index", Number(index))),
+                        before);
+                }
             }
             catch (Exception ex)
             {
@@ -1709,7 +1920,7 @@ internal sealed class RunRecorder : IDisposable
         {
             if (_decision is not { } decision) return;
             _decision = null;
-            AnnounceByName(decision.Verb, decision.Args, __result);
+            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before);
         }
     }
 
@@ -1781,7 +1992,7 @@ internal sealed class RunRecorder : IDisposable
         {
             if (_decision is not { } decision) return;
             _decision = null;
-            AnnounceByName(decision.Verb, decision.Args, __result);
+            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before);
         }
 
         [HarmonyPrefix]
@@ -1800,10 +2011,12 @@ internal sealed class RunRecorder : IDisposable
                     return;
                 }
 
+                if (ReadBefore(nameof(ActionVerb.ShopPurchase)) is not { } before) return;
+
                 if (__instance is MerchantCardRemovalEntry)
                 {
                     _decision = new Decision(
-                        nameof(ActionVerb.ShopPurchase), Args(("kind", ShopPurchaseKinds.CardRemoval)));
+                        nameof(ActionVerb.ShopPurchase), Args(("kind", ShopPurchaseKinds.CardRemoval)), before);
                     return;
                 }
 
@@ -1827,7 +2040,8 @@ internal sealed class RunRecorder : IDisposable
                         Args(
                             ("kind", kind),
                             ("option_index", Number(index)),
-                            (ShopPurchaseKinds.IdArgument(kind)!, id)));
+                            (ShopPurchaseKinds.IdArgument(kind)!, id)),
+                        before);
                     return;
                 }
 
@@ -1929,7 +2143,7 @@ internal sealed class RunRecorder : IDisposable
         {
             try
             {
-                CardRewardAnswered(CardRewardScreen.Offered, option);
+                CardRewardAnswered(CardRewardScreen.Offered, CardRewardScreen.Alternatives, option);
             }
             catch (Exception ex)
             {
@@ -1964,11 +2178,149 @@ internal sealed class RunRecorder : IDisposable
         /// into.</summary>
         internal static IReadOnlyList<CardModel> Offered { get; private set; } = [];
 
+        /// <summary>The alternatives the same screen offered past the cards, in the
+        /// order the position reported back continues into.</summary>
+        internal static IReadOnlyList<CardRewardAlternative> Alternatives { get; private set; } = [];
+
         [HarmonyPostfix]
-        internal static void After(IReadOnlyList<CardCreationResult> options)
+        internal static void After(
+            IReadOnlyList<CardCreationResult> options, IReadOnlyList<CardRewardAlternative> extraOptions)
         {
             if (Active is null) return;
             Offered = [.. options.Select(option => option.Card)];
+            Alternatives = [.. extraOptions];
+        }
+    }
+
+    /// <summary>
+    /// The bundle screen Scroll Boxes opens, watched where the engine asks.
+    ///
+    /// The prompt has no seam of its own - <c>ICardSelector</c> has no bundle member -
+    /// so what is watched is the prompt's entry point, for what it offered, and the
+    /// choice the client then syncs, for what came back. The prefix holds the bundles
+    /// while the prompt is open and <see cref="ChoiceSynced"/> reads the answer.
+    /// </summary>
+    [HarmonyPatch(typeof(CardSelectCmd), nameof(CardSelectCmd.FromChooseABundleScreen))]
+    internal static class BundleScreen
+    {
+        internal static IReadOnlyList<IReadOnlyList<CardModel>>? Open { get; set; }
+
+        [HarmonyPrefix]
+        internal static void Before(IReadOnlyList<IReadOnlyList<CardModel>> bundles)
+        {
+            if (Active is null) return;
+            Open = bundles;
+        }
+    }
+
+    /// <summary>The relic screen, watched the same way. Nothing on v0.111.0 opens it.</summary>
+    [HarmonyPatch(typeof(RelicSelectCmd), nameof(RelicSelectCmd.FromChooseARelicScreen))]
+    internal static class RelicScreen
+    {
+        internal static IReadOnlyList<RelicModel>? Open { get; set; }
+
+        [HarmonyPrefix]
+        internal static void Before(IReadOnlyList<RelicModel> relics)
+        {
+            if (Active is null) return;
+            Open = relics;
+        }
+    }
+
+    /// <summary>
+    /// The client's own answer to a prompt, read as it is synced.
+    ///
+    /// Every locally answered prompt passes through here; only the two whose prompt
+    /// this recorder is holding open are read, and the prompt is closed by reading it.
+    /// A prompt the engine answered without syncing - an ending fight, an empty prompt
+    /// - is closed by the next prompt opening.
+    /// </summary>
+    [HarmonyPatch(typeof(PlayerChoiceSynchronizer), nameof(PlayerChoiceSynchronizer.SyncLocalChoice))]
+    internal static class ChoiceSynced
+    {
+        [HarmonyPrefix]
+        internal static void Before(PlayerChoiceResult result)
+        {
+            if (Active is null) return;
+
+            try
+            {
+                if (BundleScreen.Open is { } bundles)
+                {
+                    BundleScreen.Open = null;
+                    BundleScreenAnswered(bundles, result.AsIndex());
+                    return;
+                }
+
+                if (RelicScreen.Open is { } relics)
+                {
+                    RelicScreen.Open = null;
+                    RelicScreenAnswered(relics, result.AsIndex());
+                }
+            }
+            catch (Exception ex)
+            {
+                Active?.Refuse($"A screen's answer could not be read: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>
+    /// One cell of the Crystal Sphere revealed, with the tool it was revealed with.
+    ///
+    /// The tool is the minigame's own at the moment of the click, which is what
+    /// decides how many cells the click reveals; a reveal recorded without it would
+    /// replay as a different reveal. Read in the prefix, while the cell is still
+    /// hidden, and announced with the task the minigame hands back.
+    /// </summary>
+    [HarmonyPatch(typeof(CrystalSphereMinigame), nameof(CrystalSphereMinigame.CellClicked))]
+    internal static class CrystalSphereCellRevealed
+    {
+        private static Decision? _decision;
+
+        [HarmonyPrefix]
+        internal static void Before(CrystalSphereMinigame __instance, CrystalSphereCell clickedCell)
+        {
+            _decision = null;
+            if (Active is null) return;
+
+            try
+            {
+                var tool = __instance.CrystalSphereTool switch
+                {
+                    CrystalSphereMinigame.CrystalSphereToolType.Small => CrystalSphereTools.Small,
+                    CrystalSphereMinigame.CrystalSphereToolType.Big => CrystalSphereTools.Big,
+                    _ => null,
+                };
+
+                if (tool is null)
+                {
+                    Active?.Refuse(
+                        "A Crystal Sphere cell was revealed with no tool set, so the recorder cannot say what " +
+                        "the click revealed.");
+                    return;
+                }
+
+                if (ReadBefore(nameof(ActionVerb.RevealCrystalSphereCell)) is { } before)
+                {
+                    _decision = new Decision(
+                        nameof(ActionVerb.RevealCrystalSphereCell),
+                        Args(("tool", tool), ("x", Number(clickedCell.X)), ("y", Number(clickedCell.Y))),
+                        before);
+                }
+            }
+            catch (Exception ex)
+            {
+                Active?.Refuse($"A Crystal Sphere reveal could not be read: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        [HarmonyPostfix]
+        internal static void After(Task __result)
+        {
+            if (_decision is not { } decision) return;
+            _decision = null;
+            AnnounceByName(decision.Verb, decision.Args, __result, decision.Before);
         }
     }
 

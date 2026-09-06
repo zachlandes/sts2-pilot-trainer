@@ -310,7 +310,14 @@ The shell has no refusal to fall back on the way `RecorderModule` does, so `Game
 Installing this mod turns the game's full console on: `NDevConsole` reads `ModManager.IsRunningModded()` when it decides whether to register the debug commands, so this is a reachable state in an ordinary modded session rather than a developer-only one.
 `RunCapture.MarkNonStandard` sets `source.native.integrity = "non-standard"` and changes nothing else - not the state, not the continuity, not the history - and the validator refuses the manifest for publication where the field says anything but `complete`.
 The recording is still written to `user://Runmobile/recordings/`, because it is what the player played; what it is not is evidence anybody else can act on, since what a console command did to the state is not among the decisions the history holds.
-Absent is not `complete` under another name: a recording made before the recorder could read this question states nothing, and the validator accepts that because it is the standard the recording was made and gated under.
+From format v6 the field is required, and `unmapped` is its third value: a recorder that met a decision it could not name stops there through `RunCapture.MarkUnmapped`, writes what it met to the journal as a stop line and to the manifest as `source.native.unmapped`, and records nothing past it - a prefix that skipped a decision and carried on would replay into a run that never made it.
+A version-5 recording states no integrity; the migration reads it as `complete` and says so in `migrated_from_version`, because a version-5 recorder refused rather than stopping at anything it could not name.
+The runtime that decides a decision is unmapped is not in this build; the format, the capture and the journal line are, so that build changes no file shape.
+
+**Every decision is read either side.**
+The journal's schema is v2 and every decision line carries `before` and `before_digest` beside the settled `state` and `digest`: the reading taken in the prefix of the member the decision went through, which is the state the player made it from and the instant a comparison at verification asks about.
+Inside a fight that reading is the observer's before-sample and coincides with the previous after-sample, and `FightCapture` still refuses a gap between them; outside one, the reward screen after a fight is generated on the client's clock between two decisions, so `RunCapture` carries the reading that was taken rather than refusing the gap.
+A v1 journal on a player's disk is refused on resume, exactly as any schema this build does not read is, and the run is simply not continued as a recording.
 
 **The seam is the console's own funnel, not the action queue.**
 `DevConsole` has two public entries - `ProcessCommand(string)` for a command typed on this client and `ProcessNetCommand` for one a peer sent - and both reach the private three-argument `ProcessCommand`, so one patch covers both, for the same reason `SkipRewardsSet` is watched rather than the call the driver makes.

@@ -1,6 +1,7 @@
 using System.Reflection;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.Events.Custom.CrystalSphereEvent;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
@@ -85,10 +86,24 @@ public static class EngineCommands
         new()
         {
             Verb = ActionVerb.EndTurn,
-            Type = typeof(PlayerCmd),
-            Member = nameof(PlayerCmd.EndTurn),
+            Type = typeof(EndPlayerTurnAction),
+            Member = ConstructorMember,
             Kind = EngineCommandKind.Issued,
-            Note = "canBackOut is false: a recorded turn end was not taken back.",
+            Note =
+                "Enqueued on the run's own queue, which is what the end-turn button does. canBackOut is " +
+                "the engine's, not ours: an undo that follows is its own decision.",
+        },
+        new()
+        {
+            Verb = ActionVerb.UndoEndTurn,
+            Type = typeof(UndoEndPlayerTurnAction),
+            Member = ConstructorMember,
+            Kind = EngineCommandKind.Issued,
+            Note =
+                "The turn taken back before the enemy turn began. Valid only immediately after an EndTurn " +
+                "of the same turn. The client offers it only while another player has not ended their turn, " +
+                "so no singleplayer run on v0.111.0 reaches it and a history that records one is refused " +
+                "with that sentence.",
         },
         new()
         {
@@ -110,6 +125,18 @@ public static class EngineCommands
         },
         new()
         {
+            Verb = ActionVerb.TakeCardRewardAlternative,
+            Type = typeof(ICardSelector),
+            Member = nameof(ICardSelector.GetSelectedCardReward),
+            Kind = EngineCommandKind.Answered,
+            Note =
+                "The same question a card reward asks, answered past the cards. The id names which " +
+                "alternative, because a build can reorder them. On this build every alternative ends the " +
+                "selection, so the record is the loot-screen decision itself rather than an answer that " +
+                "follows a TakeCard.",
+        },
+        new()
+        {
             Verb = ActionVerb.SkipRewards,
             Type = typeof(RewardsSetSynchronizer),
             Member = nameof(RewardsSetSynchronizer.SkipLocalRewardsSet),
@@ -125,6 +152,28 @@ public static class EngineCommands
             Note =
                 "The engine asks. The driver queues the manifest's picks before the action that opens the " +
                 "screen and confirms afterwards that a screen consumed each one.",
+        },
+        new()
+        {
+            Verb = ActionVerb.SelectBundleFromScreen,
+            Type = typeof(CardSelectCmd),
+            Member = nameof(CardSelectCmd.FromChooseABundleScreen),
+            Kind = EngineCommandKind.Answered,
+            Note =
+                "The engine asks which bundle; the driver queues the manifest's answer before the action " +
+                "that opens the screen, as it does for a card screen. ICardSelector has no bundle member " +
+                "and the engine's own test branch takes the first bundle without asking, so the host " +
+                "stands in at the prompt itself.",
+        },
+        new()
+        {
+            Verb = ActionVerb.SelectRelicFromScreen,
+            Type = typeof(RelicSelectCmd),
+            Member = nameof(RelicSelectCmd.FromChooseARelicScreen),
+            Kind = EngineCommandKind.Answered,
+            Note =
+                "The engine asks which relic. No caller reaches this on v0.111.0, so a history that " +
+                "records it is refused with that sentence until a build lights the screen.",
         },
         new()
         {
@@ -171,7 +220,8 @@ public static class EngineCommands
             Note =
                 "One member for all five kinds, because the merchant's own entries are what differ. A card " +
                 "removal reaches OneOffSynchronizer.DoLocalMerchantCardRemoval through it, and its screen " +
-                "is answered as any other card screen is.",
+                "is answered as any other card screen is. The inventory is the merchant room's, or the " +
+                "current event's when the event exposes one.",
         },
         new()
         {
@@ -189,6 +239,16 @@ public static class EngineCommands
             Kind = EngineCommandKind.Issued,
             Note = "Enqueued on the run's own queue, which is what the potion popup's discard button does.",
         },
+        new()
+        {
+            Verb = ActionVerb.RevealCrystalSphereCell,
+            Type = typeof(CrystalSphereMinigame),
+            Member = nameof(CrystalSphereMinigame.CellClicked),
+            Kind = EngineCommandKind.Issued,
+            Note =
+                "The tool is set on the same minigame first; the cell reveals according to it, so a " +
+                "recording without the tool replays a different reveal.",
+        },
     ];
 
     /// <summary>
@@ -200,19 +260,14 @@ public static class EngineCommands
     private static readonly IReadOnlyDictionary<ActionVerb, string> Unmapped =
         new SortedDictionary<ActionVerb, string>
         {
-            [ActionVerb.CloseShop] =
-                "Nothing to map. The merchant is a room the run leaves by moving on the map, and the shop " +
-                "screen's own proceed button only hides the screen - MerchantRoom.Exit returns immediately " +
-                "under the headless flag. Closing a shop is presentation, like ProceedToMap.",
             [ActionVerb.SelectHandCards] =
                 "Nothing of its own to map. Every card screen this build opens - over the hand, the deck or " +
                 "a pile - is answered through the one ICardSelector seam, by position in the list that " +
                 "screen offered, which SelectCardFromScreen already names. A prompt over the hand offers a " +
                 "filtered subset of it, so a hand position would not even be the right coordinate. A second " +
-                "verb here would be a second name for one thing.",
-            [ActionVerb.ProceedToMap] =
-                "Returning to the map is presentation, not a decision: the engine is already standing " +
-                "wherever the previous action left it. See docs/proof-of-concept-path.md.",
+                "verb here would be a second name for one thing. The hand prompt is observed at the choice " +
+                "seam under SelectCardFromScreen, so a second verb would be a second name for one thing " +
+                "on the recorder's side too.",
         };
 
     /// <summary>How a constructor is named in a row, since it has no name of its own.</summary>

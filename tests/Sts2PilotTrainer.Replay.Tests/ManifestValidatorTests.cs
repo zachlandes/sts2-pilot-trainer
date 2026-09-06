@@ -1173,18 +1173,61 @@ public class ManifestValidatorTests
     [InlineData("bloody-ink")]
     [InlineData("coins")]
     [InlineData("card")]
-    [InlineData("relic")]
+    [InlineData("linked_set")]
     public void RejectsAKindOfRewardThatIsNotClaimedWithOneClick(string kind)
     {
         // 'card' is on this list on purpose: the card reward opens a second screen, so
         // taking it is TakeCard, which records which card came back. Letting it through
-        // here would lose that.
+        // here would lose that. A linked set is a container over other rewards and no
+        // singleplayer path on this build constructs one, so it is not a kind either.
         var manifest = WithActions(Fixtures.Action(0, ActionVerb.ClaimReward, ("reward_type", kind)));
 
         var result = ManifestValidator.Validate(manifest);
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, p => p.Contains("'reward_type'", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The two kinds that claim a thing a build could have changed name it, and the
+    /// three that do not may not carry a name.
+    ///
+    /// The same rule a shop purchase follows, for the same reason: a loot screen
+    /// stocked differently means the run has already diverged, and taking whatever
+    /// sits there would hide it. Gold, a potion and a card removal have nothing to
+    /// name; the card that comes off a removal's screen is a separate selection.
+    /// </summary>
+    [Theory]
+    [InlineData(RewardKinds.Relic, "relic_id")]
+    [InlineData(RewardKinds.SpecialCard, "card_id")]
+    public void AClaimedThingIsNamed(string kind, string idArgument)
+    {
+        var unnamed = ManifestValidator.Validate(
+            WithActions(Fixtures.Action(0, ActionVerb.ClaimReward, ("reward_type", kind))));
+        Assert.False(unnamed.IsValid);
+        Assert.Contains(unnamed.Problems, p =>
+            p.Contains($"claims a '{kind}' reward and is missing required argument '{idArgument}'", StringComparison.Ordinal));
+
+        var named = ManifestValidator.Validate(
+            WithActions(Fixtures.Action(0, ActionVerb.ClaimReward, ("reward_type", kind), (idArgument, "SOME.ID"))));
+        Assert.True(named.IsValid, named.Describe());
+    }
+
+    [Theory]
+    [InlineData(RewardKinds.Gold)]
+    [InlineData(RewardKinds.Potion)]
+    [InlineData(RewardKinds.CardRemoval)]
+    public void AClaimWithNothingToNameMayNotNameAnything(string kind)
+    {
+        var bare = ManifestValidator.Validate(
+            WithActions(Fixtures.Action(0, ActionVerb.ClaimReward, ("reward_type", kind))));
+        Assert.True(bare.IsValid, bare.Describe());
+
+        var named = ManifestValidator.Validate(
+            WithActions(Fixtures.Action(0, ActionVerb.ClaimReward, ("reward_type", kind), ("relic_id", "RELIC.ANCHOR"))));
+        Assert.False(named.IsValid);
+        Assert.Contains(named.Problems, p =>
+            p.Contains($"claims a '{kind}' reward and carries 'relic_id'", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1273,11 +1316,12 @@ public class ManifestValidatorTests
     public void StillRefusesAVerbThisManifestVersionDoesNotImplement()
     {
         // The alphabet is deliberately larger than what is implemented. A named verb
-        // that quietly did nothing would be the worst of both worlds, so the ones with
-        // no mapping have to fail at ingestion rather than at replay. Closing a shop is
-        // one of the two: the merchant is a room the run leaves by moving on the map,
-        // so there is nothing behind the verb to run.
-        var manifest = WithActions(Fixtures.Action(0, ActionVerb.CloseShop));
+        // that quietly did nothing would be the worst of both worlds, so the one with
+        // no mapping has to fail at ingestion rather than at replay. Selecting hand
+        // cards is it: every card screen is answered through the one seam by position,
+        // which SelectCardFromScreen already names, so there is nothing behind the
+        // verb to run.
+        var manifest = WithActions(Fixtures.Action(0, ActionVerb.SelectHandCards));
 
         var result = ManifestValidator.Validate(manifest);
 
@@ -1879,19 +1923,18 @@ public class ExactUnlockValidatorTests
         });
     }
     /// <summary>
-    /// A recording made before the recorder could read whether the console was used
-    /// says nothing, and saying nothing is not a claim.
+    /// A native recording states its integrity, and states one of the three the
+    /// format names.
     ///
-    /// Absent is accepted, because that is the standard those recordings were made and
-    /// gated under and reading absence as "complete" would be the validator inventing a
-    /// reading nobody took. A stated value has to be one of the two the format names.
+    /// Required rather than optional from version 6: a file that states none is a
+    /// version-5 file, and the migration is what says it is complete - by reading, not
+    /// by this validator inventing a reading nothing took.
     /// </summary>
     [Fact]
-    public void ANativeRecordingMayStateNoIntegrityAndMayNotStateAnUnknownOne()
+    public void ANativeRecordingStatesItsIntegrityAndMayNotStateAnUnknownOne()
     {
         var manifest = Fixtures.NativeManifest();
 
-        Assert.True(ManifestValidator.Validate(WithIntegrity(manifest, null)).IsValid);
         Assert.True(ManifestValidator.Validate(
             WithIntegrity(manifest, NativeSource.CompleteIntegrity)).IsValid);
 
@@ -1901,7 +1944,7 @@ public class ExactUnlockValidatorTests
             problem.Contains("source.native.integrity 'probably-fine' is not one of", StringComparison.Ordinal));
     }
 
-    private static ReplayManifest WithIntegrity(ReplayManifest manifest, string? integrity) =>
+    private static ReplayManifest WithIntegrity(ReplayManifest manifest, string integrity) =>
         manifest with
         {
             Source = manifest.Source with

@@ -86,7 +86,8 @@ public class ManifestJsonTests
 
     [Theory]
     [InlineData(3)]
-    [InlineData(6)]
+    [InlineData(4)]
+    [InlineData(7)]
     [InlineData(99)]
     public void RefusesAVersionThisBuildDoesNotRead(int version)
     {
@@ -100,36 +101,92 @@ public class ManifestJsonTests
     }
 
     /// <summary>
-    /// Version 4 carried one combat-start digest on the source. It reads as the first
-    /// entry of the boundary list, with its engine provenance intact - the value was
-    /// produced by the engine and copying it does not make it less so.
+    /// A version-5 video manifest reads as version 6 with only its version changed:
+    /// nothing in it was missing, and the migration invents nothing.
     /// </summary>
     [Fact]
-    public void ReadsAVersionFourManifestAsItsVersionFiveMeaning()
+    public void ReadsAVersionFiveManifestAsItsVersionSixMeaning()
     {
-        var migrated = ManifestJson.Deserialize(VersionFour(Fixtures.ValidManifest()));
+        var original = Fixtures.ValidManifest();
+        var migrated = ManifestJson.Deserialize(VersionFive(original));
 
         Assert.Equal(ReplayManifest.CurrentManifestVersion, migrated.ManifestVersion);
-        var boundary = Assert.Single(migrated.Boundaries);
-        Assert.Equal(ReplayBoundary.CombatStartKind, boundary.Kind);
-        Assert.Equal(1, boundary.Fight);
-        Assert.Equal(1, boundary.AfterSeq);
-        Assert.Equal(FactSource.Engine, boundary.Digest.Source);
-        Assert.Equal(Fixtures.Digest, boundary.Digest.Value);
+        Assert.Null(migrated.Source.Native);
+        Assert.Equal(ManifestJson.Serialize(original), ManifestJson.Serialize(migrated));
         Assert.True(ManifestValidator.Validate(migrated).IsValid);
     }
 
-    /// <summary>A version-4 fixture carried no digest, so it migrates to a manifest
-    /// with no boundary rather than to one with an invented boundary.</summary>
+    /// <summary>
+    /// A version-5 native manifest gains the integrity it could not state and a note
+    /// that it was migrated, and nothing else.
+    ///
+    /// <c>complete</c> is a reading rather than an invention: a version-5 recorder had
+    /// no unmapped stop and refused rather than stopping at anything it could not name.
+    /// The option keys a version-5 recorder never read are not invented either - the
+    /// history hash covers the arguments, and adding one would unbind every recorded
+    /// fight - which is what the migration note is for: the validator waives the key
+    /// for a file that says it was written before the key existed.
+    /// </summary>
     [Fact]
-    public void MigratesAVersionFourManifestThatDeclaredNoBoundary()
+    public void ReadsAVersionFiveNativeManifestAsItsVersionSixMeaning()
     {
-        var document = System.Text.Json.Nodes.JsonNode.Parse(VersionFour(Fixtures.ValidManifest()))!.AsObject();
-        document["source"]!.AsObject().Remove("combat_start_snapshot_digest");
+        var original = Fixtures.NativeManifest() with
+        {
+            Actions = [.. Fixtures.NativeManifest().Actions.Select(action => action with
+            {
+                Args = new SortedDictionary<string, string>(
+                    action.Args.Where(arg => arg.Key != "option_key")
+                        .ToDictionary(arg => arg.Key, arg => arg.Value, StringComparer.Ordinal),
+                    StringComparer.Ordinal),
+            })],
+        };
+        var document = System.Text.Json.Nodes.JsonNode.Parse(VersionFive(original))!.AsObject();
+        document["source"]!["native"]!.AsObject().Remove("integrity");
 
         var migrated = ManifestJson.Deserialize(document.ToJsonString());
 
-        Assert.Empty(migrated.Boundaries);
+        Assert.Equal(ReplayManifest.CurrentManifestVersion, migrated.ManifestVersion);
+        Assert.Equal(NativeSource.CompleteIntegrity, migrated.Source.Native!.Integrity);
+        Assert.Equal(5, migrated.Source.Native.MigratedFromVersion);
+        Assert.Null(migrated.Source.Native.Unmapped);
+        Assert.All(migrated.Actions, action => Assert.False(action.Args.ContainsKey("option_key")));
+
+        // Byte-identical everywhere else: re-serialised, only the two fields differ.
+        var expected = ManifestJson.Serialize(original with
+        {
+            Source = original.Source with
+            {
+                Native = original.Source.Native! with
+                {
+                    Integrity = NativeSource.CompleteIntegrity,
+                    MigratedFromVersion = 5,
+                },
+            },
+        });
+        Assert.Equal(expected, ManifestJson.Serialize(migrated));
+
+        var result = ManifestValidator.Validate(migrated);
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    /// <summary>A version-5 native file that already states an integrity keeps it:
+    /// the console mark a version-5 recorder wrote is a reading, and the migration
+    /// carries it as it was.</summary>
+    [Fact]
+    public void MigrationKeepsAnIntegrityAVersionFiveRecorderStated()
+    {
+        var original = Fixtures.NativeManifest() with
+        {
+            Source = Fixtures.NativeManifest().Source with
+            {
+                Native = Fixtures.NativeSourceBlock(integrity: NativeSource.NonStandardIntegrity),
+            },
+        };
+
+        var migrated = ManifestJson.Deserialize(VersionFive(original));
+
+        Assert.Equal(NativeSource.NonStandardIntegrity, migrated.Source.Native!.Integrity);
+        Assert.Equal(5, migrated.Source.Native.MigratedFromVersion);
     }
 
     /// <summary>Migration happens in memory. The file on disk is only rewritten by
@@ -139,7 +196,7 @@ public class ManifestJsonTests
     public void MigratingDoesNotTouchTheProvenanceAroundTheBoundary()
     {
         var original = Fixtures.ValidManifest();
-        var migrated = ManifestJson.Deserialize(VersionFour(original));
+        var migrated = ManifestJson.Deserialize(VersionFive(original));
 
         Assert.Equal(original.RunId, migrated.RunId);
         Assert.Equal(
@@ -147,6 +204,8 @@ public class ManifestJsonTests
         Assert.Equal(
             original.Source.RunStart!.FirstObservedRunTimeSeconds.Value,
             migrated.Source.RunStart!.FirstObservedRunTimeSeconds.Value);
+        Assert.Equal(original.Boundaries[0].Digest.Value, migrated.Boundaries[0].Digest.Value);
+        Assert.Equal(original.Boundaries[0].Digest.Source, migrated.Boundaries[0].Digest.Source);
     }
 
     // ── A verification report, written and read back ───────────────────────
@@ -225,28 +284,13 @@ public class ManifestJsonTests
         Assert.Equal(PreflightOutcome.Met, fields[1].Outcome);
     }
 
-    /// <summary>The version-4 shape of a manifest: version 4, one combat-start digest
-    /// on the source, no boundary list.</summary>
-    private static string VersionFour(ReplayManifest manifest)
+    /// <summary>The version-5 shape of a manifest: the current shape with the version
+    /// number it was written under. A native one may or may not state an integrity,
+    /// which is the difference the migration reads.</summary>
+    private static string VersionFive(ReplayManifest manifest)
     {
-        var document = System.Text.Json.Nodes.JsonNode.Parse(
-            ManifestJson.Serialize(manifest with { Boundaries = [], Actions = ReachesAFight(manifest) }))!.AsObject();
+        var document = System.Text.Json.Nodes.JsonNode.Parse(ManifestJson.Serialize(manifest))!.AsObject();
         document["manifest_version"] = ManifestJson.PreviousManifestVersion;
-        document["source"]!.AsObject()["combat_start_snapshot_digest"] =
-            System.Text.Json.Nodes.JsonNode.Parse(
-                System.Text.Json.JsonSerializer.Serialize(
-                    Fact<string>.Engine(Fixtures.Digest), ManifestJson.Options));
         return document.ToJsonString();
     }
-
-    /// <summary>The version-4 boundary was found by the first action that could only
-    /// have been taken inside a fight, so a fixture being migrated has to reach one.</summary>
-    private static IReadOnlyList<ActionRecord> ReachesAFight(ReplayManifest manifest) =>
-    [
-        .. manifest.Actions,
-        Fixtures.Action(2, ActionVerb.PlayCard, ("card_id", "CARD.BASH"), ("hand_index", "0")) with
-        {
-            Evidence = FactEvidence.AtVideoTime(80_000, "the card leaves the hand"),
-        },
-    ];
 }

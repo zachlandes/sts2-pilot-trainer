@@ -221,6 +221,11 @@ internal static class HeadlessPatches
 
         RestoreRetailBranches(harmony, assembly, warnings);
 
+        // Three prompts no seam answers - the bundle screen, the relic screen and the
+        // Crystal Sphere's own screen - are stood in for at the prompt itself. See
+        // ScreenStandIns and docs/headless-fidelity.md.
+        ScreenStandIns.Install(harmony, warnings);
+
         // Cmd.Wait(float) sleeps for an animation. With no frame loop the wait never
         // completes and the action executor stalls, so it returns immediately. It
         // gates presentation timing only; the game documents its animation-timing
@@ -318,6 +323,15 @@ internal static class HeadlessPatches
         // touching it. Left alone, a headless replay of a run that picked this relic up
         // gets different relics *and* a differently-positioned bag.
         InRetailMode(harmony, assembly, "MegaCrit.Sts2.Core.Models.Relics.CallingBell", "GenerateRewards", failures);
+
+        // Scroll Boxes builds the bundles it offers from the rewards stream, and hands
+        // the Deprived three copies of Claw instead when test mode is on. Found in the
+        // sweep this project's rule asks for when a fourth site is added: the same
+        // shape as the three above, a generation branch behind the flag, and its
+        // retail path is synchronous and touches no scene tree. The prompt the bundles
+        // are offered on is a separate branch of the same flag and is stood in for at
+        // the prompt; see ScreenStandIns.
+        InRetailMode(harmony, assembly, "MegaCrit.Sts2.Core.Models.Relics.ScrollBoxes", "GenerateRandomBundles", failures);
     }
 
     /// <summary>

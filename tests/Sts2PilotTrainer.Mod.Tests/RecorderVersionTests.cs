@@ -3,6 +3,7 @@ using System.Text.Json;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Replay.Tests;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -80,7 +81,7 @@ public sealed class RecorderVersionTests
         HarmonyRoster.Read());
 
     private static readonly IReadOnlyDictionary<string, string> Args =
-        new Dictionary<string, string>(StringComparer.Ordinal) { ["option_index"] = "0" };
+        new Dictionary<string, string>(StringComparer.Ordinal) { ["option_index"] = "0", ["option_key"] = "NEOW.BLESSING" };
 
     private static readonly IReadOnlyDictionary<string, string> FirstFloor =
         new Dictionary<string, string>(StringComparer.Ordinal)

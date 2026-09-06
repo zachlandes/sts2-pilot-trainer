@@ -27,6 +27,7 @@
          gate's native arm has to be asked about the same manifest a recorder writes,
          and a second copy here would be a second answer. -->
     <Compile Include="../Sts2PilotTrainer.Replay.Tests/RecordedRun.cs" Link="RecordedRun.cs" />
+    <Compile Include="../Sts2PilotTrainer.Replay.Tests/RecordingExtensions.cs" Link="RecordingExtensions.cs" />
     <Using Include="Xunit" />
   </ItemGroup>
 

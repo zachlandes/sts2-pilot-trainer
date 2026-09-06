@@ -148,7 +148,8 @@ needed the decisions between them, and the decisions between them needed verbs.
   the engine had no command - the loot screen appearing, a card screen asking - the
   host stands in for the UI and the manifest still makes every decision. See
   [headless fidelity](headless-fidelity.md).
-- Five, not the six this path was thought to need. `ProceedToMap` was not implemented,
+- Five, not the six this path was thought to need. `ProceedToMap` was not implemented
+  and, from format v6, is no longer named,
   because returning to the map is presentation: the state change is entering the next
   node, which `MapMove` already is, and a verb standing for a screen transition would
   be a decision the run does not contain. The verb names a reconstruction needs are
@@ -545,4 +546,6 @@ No turn-level reset or branching. No solver. No generalized VOD ingestion and no
 multi-VOD support. No presentation designed around rare permanent card removal. No
 candidate search: S2.5 built the prefix one would need and deliberately stopped there.
 
-Three verbs the format names are still not mapped, because this build has nothing to map them onto - `SelectHandCards`, `CloseShop` and `ProceedToMap` - each with its reason written beside the table in `EngineCommands` and printed by `./scripts/arbiter engine-commands`.
+One verb the format names is still not mapped, because this build has nothing to map it onto - `SelectHandCards` - with its reason written beside the table in `EngineCommands` and printed by `./scripts/arbiter engine-commands`.
+`CloseShop` and `ProceedToMap` left the alphabet in format v6: both were presentation rather than decisions, and a name with nothing behind it is a dead verb the tests refuse to keep.
+`UndoEndTurn` is named and mapped and replays nothing on v0.111.0, by measurement: the client offers the undo only while another player has not ended their turn, so no singleplayer run reaches it.

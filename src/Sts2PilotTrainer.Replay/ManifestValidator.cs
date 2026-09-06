@@ -30,13 +30,6 @@ public static partial class ManifestValidator
 
     private static readonly string[] KnownGameModes = ["standard", "custom", "daily"];
 
-    /// <summary>
-    /// The reward kinds this history claims with a single click on the loot screen.
-    /// The card reward is absent on purpose: it opens a card screen, so taking it is
-    /// <see cref="ActionVerb.TakeCard"/>, which records which card came back.
-    /// </summary>
-    public static readonly string[] ClaimableRewardTypes = ["gold", "potion"];
-
     [GeneratedRegex(@"^v\d+\.\d+\.\d+$")]
     private static partial Regex BuildVersionPattern { get; }
 
@@ -54,7 +47,7 @@ public static partial class ManifestValidator
         var problems = new List<string>();
 
         var maxActionOrdinal = manifest.Actions.Count - 1;
-        ValidateSource(manifest.Source, maxActionOrdinal, problems);
+        ValidateSource(manifest.Source, manifest.Actions, problems);
         var videoDurationMs = manifest.Source.Video is { DurationSeconds: > 0 } video
             ? checked(video.DurationSeconds * 1000)
             : 0;
@@ -405,7 +398,7 @@ public static partial class ManifestValidator
     }
 
     private static void ValidateSource(
-        SourceProvenance source, int maxActionOrdinal, List<string> problems)
+        SourceProvenance source, IReadOnlyList<ActionRecord> actions, List<string> problems)
     {
         if (source.Kind is not ("vod" or "native" or "synthetic-engine"))
         {
@@ -458,7 +451,7 @@ public static partial class ManifestValidator
         }
         else if (source.Kind == "native")
         {
-            ValidateNativeSource(source, maxActionOrdinal, problems);
+            ValidateNativeSource(source, actions, problems);
         }
         else if (source.Kind == "synthetic-engine")
         {
@@ -503,10 +496,24 @@ public static partial class ManifestValidator
     /// <c>AGENTS.md</c> gives for their video equivalents: a history recorded from
     /// half way through a run, or from two disconnected stretches of one, replays
     /// perfectly and reconstructs a different run.
+    ///
+    /// <c>integrity</c> is the third fact of that kind, and it says whether the
+    /// recording may ever be published: a run the console was used in, or one the
+    /// recorder stopped watching at a decision it could not name, is kept whole and
+    /// refused here, with what the recorder met printed beside the refusal.
+    ///
+    /// The one rule that relates a source to an argument lives here too: a native
+    /// recording names every event option it chose by key as well as by position,
+    /// because a recorder can read the key and a video cannot. A file migrated from a
+    /// format older than the key is excused, and says so in
+    /// <c>migrated_from_version</c>, rather than being refused for a value nothing
+    /// could have captured.
     /// </summary>
     private static void ValidateNativeSource(
-        SourceProvenance source, int maxActionOrdinal, List<string> problems)
+        SourceProvenance source, IReadOnlyList<ActionRecord> actions, List<string> problems)
     {
+        var maxActionOrdinal = actions.Count - 1;
+
         if (source.Video is not null || source.Synthetic is not null)
         {
             problems.Add("a native source cannot carry a video or synthetic-fixture block.");
@@ -572,26 +579,131 @@ public static partial class ManifestValidator
                 "it cannot know what happened in between, and a history with a hole in it is not this run's.");
         }
 
-        // Absent rather than 'complete' is how a recording made before the recorder
-        // could read this question says so, and it is accepted: that was the standard
-        // it was made and gated under, and reading absence as a claim about the run
-        // would be this validator inventing a reading nothing took.
-        if (native.Integrity is { } integrity &&
-            !NativeSource.Integrities.Contains(integrity, StringComparer.Ordinal))
+        if (native.MigratedFromVersion is { } from &&
+            !NativeSource.MigratableVersions.Contains(from))
         {
             problems.Add(
-                $"source.native.integrity '{integrity}' is not one of: " +
-                $"{string.Join(", ", NativeSource.Integrities)}.");
+                $"source.native.migrated_from_version is {from.ToString(CultureInfo.InvariantCulture)}, which " +
+                $"is not a format this build migrates from ({string.Join(", ", NativeSource.MigratableVersions)}). " +
+                "The field says which older format a file was written in, and only a format this build " +
+                "reads could have produced one.");
         }
-        else if (native.StatesSomethingOtherThanComplete)
+
+        ValidateIntegrity(native, actions.Count, problems);
+
+        // The key beside the index, on every event option a recorder chose. Waived
+        // only for a file that says it was written before the key existed: absent
+        // there is the migration's doing, and absent anywhere else is a recorder that
+        // did not read what it could have.
+        if (!native.PredatesVersion(6))
         {
-            problems.Add(
-                $"source.native.integrity is '{native.Integrity}'. This run was not played entirely by the " +
-                "game's own rules, so what changed the state is not among the decisions this history holds " +
-                "and replaying them reconstructs a different run. The recording is kept and is not " +
-                "publishable.");
+            foreach (var action in actions.Where(action =>
+                         action.Verb is ActionVerb.ChooseEventOption or ActionVerb.ChooseNeowBlessing &&
+                         !action.Args.ContainsKey("option_key")))
+            {
+                problems.Add(
+                    $"actions[{action.Seq}] ({action.Verb}) in a native recording names no option_key. A " +
+                    "recorder reads the option's own key beside its position, which is what lets a build " +
+                    "that reordered the options refuse rather than take whatever sits at that index.");
+            }
         }
     }
+
+    /// <summary>
+    /// What <c>source.native.integrity</c> may say, what has to travel with it, and the
+    /// publication refusal it decides.
+    ///
+    /// The unmapped entries are required exactly when the integrity says the recorder
+    /// stopped, and refused otherwise: a stop with nothing named is a hole with no
+    /// account of itself, and a named stop on a recording claiming to be complete is
+    /// two claims about one run. Each entry stands where the history ends, because
+    /// that is what a stop is.
+    /// </summary>
+    private static void ValidateIntegrity(NativeSource native, int actionCount, List<string> problems)
+    {
+        if (!NativeSource.Integrities.Contains(native.Integrity, StringComparer.Ordinal))
+        {
+            problems.Add(
+                $"source.native.integrity '{native.Integrity}' is not one of: " +
+                $"{string.Join(", ", NativeSource.Integrities)}.");
+            return;
+        }
+
+        var stopped = string.Equals(native.Integrity, NativeSource.UnmappedIntegrity, StringComparison.Ordinal);
+        var unmapped = native.Unmapped ?? [];
+
+        if (stopped && unmapped.Count == 0)
+        {
+            problems.Add(
+                "source.native.integrity is 'unmapped' and source.native.unmapped names nothing. A recorder " +
+                "that stopped says what it stopped at, or the hole in this history has no account of itself.");
+        }
+
+        if (!stopped && unmapped.Count > 0)
+        {
+            problems.Add(
+                $"source.native.unmapped names {unmapped.Count.ToString(CultureInfo.InvariantCulture)} " +
+                $"decision(s) and source.native.integrity is '{native.Integrity}'. A named stop on a recording " +
+                "that says it did not stop is two claims about one run.");
+        }
+
+        foreach (var entry in unmapped)
+        {
+            var path = $"source.native.unmapped[{entry.Seq.ToString(CultureInfo.InvariantCulture)}]";
+
+            if (entry.Seq != actionCount)
+            {
+                problems.Add(
+                    $"{path} would have been decision {entry.Seq.ToString(CultureInfo.InvariantCulture)} and " +
+                    $"the history holds {actionCount.ToString(CultureInfo.InvariantCulture)}. A recording ends " +
+                    "where its recorder stopped, so the decision it stopped at is the one after its last.");
+            }
+
+            if (!UnmappedDecision.Seams.Contains(entry.Seam, StringComparer.Ordinal))
+            {
+                problems.Add(
+                    $"{path} names seam '{entry.Seam}', which is not one of: " +
+                    $"{string.Join(", ", UnmappedDecision.Seams)}.");
+            }
+
+            if (string.IsNullOrWhiteSpace(entry.Name))
+            {
+                problems.Add($"{path} names nothing, so a later build could not say what the recorder met.");
+            }
+
+            if (entry.Evidence.ActionOrdinal != entry.Seq)
+            {
+                problems.Add(
+                    $"{path} carries evidence at action ordinal " +
+                    $"{entry.Evidence.ActionOrdinal?.ToString(CultureInfo.InvariantCulture) ?? "none"}, and " +
+                    "the decision it describes is the one at its own seq.");
+            }
+        }
+
+        if (native.StatesSomethingOtherThanComplete)
+        {
+            var met = unmapped.Count == 0
+                ? string.Empty
+                : " The recorder met: " + string.Join("; ", unmapped.Select(Describe)) + ".";
+            problems.Add(
+                $"source.native.integrity is '{native.Integrity}'. " +
+                (stopped
+                    ? "The recorder stopped at a decision it could not name, so the history ends before the run " +
+                      "did and replaying it reconstructs a run that never made that decision."
+                    : "This run was not played entirely by the game's own rules, so what changed the state is " +
+                      "not among the decisions this history holds and replaying them reconstructs a different " +
+                      "run.") +
+                " The recording is kept and is not publishable." + met);
+        }
+    }
+
+    /// <summary>One unmapped decision, as a refusal names it.</summary>
+    public static string Describe(UnmappedDecision entry) =>
+        $"{entry.Seam} {entry.Name}" +
+        (entry.Discriminator is { } discriminator ? $" ({discriminator})" : string.Empty) +
+        (entry.Args.Count == 0
+            ? string.Empty
+            : " with " + string.Join(", ", entry.Args.Select(arg => $"{arg.Key}={arg.Value}")));
 
     /// <summary>
     /// The places a player can be stood in this recording.
@@ -1021,6 +1133,40 @@ public static partial class ManifestValidator
         }
     }
 
+    /// <summary>
+    /// What a claimed reward has to name, which depends on what it claimed.
+    ///
+    /// Two of the five kinds claim a thing a build could have changed - a relic, a
+    /// fixed card - and the id is what makes a loot screen stocked differently fail
+    /// loudly rather than hand over whatever sits there. The other three claim gold,
+    /// a potion or a card removal and have nothing further to name; the card that
+    /// comes off a removal's screen is a separate selection, as it is at a merchant.
+    /// </summary>
+    private static void ValidateClaimReward(ActionRecord action, List<string> problems)
+    {
+        if (!action.Args.TryGetValue("reward_type", out var kind)) return;
+        if (!RewardKinds.All.Contains(kind, StringComparer.Ordinal)) return;
+
+        var idArgument = RewardKinds.IdArgument(kind);
+        var expected = idArgument is null ? Array.Empty<string>() : [idArgument];
+
+        foreach (var name in expected.Where(name => !action.Args.ContainsKey(name)))
+        {
+            problems.Add(
+                $"actions[{action.Seq}] ({action.Verb}) claims a '{kind}' reward and is missing required " +
+                $"argument '{name}'.");
+        }
+
+        foreach (var name in new[] { "relic_id", "card_id" }
+                     .Where(name => !expected.Contains(name, StringComparer.Ordinal))
+                     .Where(action.Args.ContainsKey))
+        {
+            problems.Add(
+                $"actions[{action.Seq}] ({action.Verb}) claims a '{kind}' reward and carries '{name}', which " +
+                "that kind of reward does not have.");
+        }
+    }
+
     private static void ValidateActionArguments(ActionRecord action, List<string> problems)
     {
         if (action.Args is null)
@@ -1036,9 +1182,12 @@ public static partial class ManifestValidator
         switch (action.Verb)
         {
             case ActionVerb.ChooseNeowBlessing:
+                // The key beside the index is required of a native recording and
+                // allowed of any other; ValidateNativeSource holds that rule, because
+                // it relates a source to an argument.
                 required = ["option_index"];
-                allowed = required;
-                nonNegativeIntegers = required;
+                allowed = [.. required, "option_key"];
+                nonNegativeIntegers = ["option_index"];
                 break;
             case ActionVerb.MapMove:
                 required = ["act", "row", "column"];
@@ -1062,23 +1211,45 @@ public static partial class ManifestValidator
                 allowed = [];
                 nonNegativeIntegers = [];
                 break;
+            case ActionVerb.UndoEndTurn:
+                // The turn taken back before the enemy turn began. Valid only
+                // immediately after an EndTurn of the same turn, which the driver
+                // checks; nothing about it is an argument.
+                required = [];
+                allowed = [];
+                nonNegativeIntegers = [];
+                break;
             case ActionVerb.ChooseEventOption:
                 // The event id is required and the opening blessing's is not: which
                 // event a floor generates is a consequence of the whole history before
                 // it, and an option index means nothing without the event it indexes.
+                // The key beside the index is required of a native recording and
+                // allowed of any other; ValidateNativeSource holds that rule.
                 required = ["event_id", "option_index"];
-                allowed = required;
+                allowed = [.. required, "option_key"];
                 nonNegativeIntegers = ["option_index"];
                 break;
             case ActionVerb.ClaimReward:
+                // The id is required for the two kinds that claim a thing a build could
+                // have changed and refused for the rest, which is checked below where
+                // the kind is known.
                 required = ["reward_type"];
-                allowed = required;
+                allowed = ["reward_type", "relic_id", "card_id"];
                 nonNegativeIntegers = [];
                 break;
             case ActionVerb.TakeCard:
                 required = ["card_id", "option_index"];
                 allowed = [.. required, Corruption.AlternativeCardId, Corruption.AlternativeOptionIndex];
                 nonNegativeIntegers = ["option_index", Corruption.AlternativeOptionIndex];
+                break;
+            case ActionVerb.TakeCardRewardAlternative:
+                // The same question a card reward asks, answered past the cards. The id
+                // names which alternative, because a build can reorder them; the index
+                // is the one the screen reports, the count of cards offered plus the
+                // alternative's own position.
+                required = ["option_id", "option_index"];
+                allowed = required;
+                nonNegativeIntegers = ["option_index"];
                 break;
             case ActionVerb.SkipRewards:
                 required = [];
@@ -1087,6 +1258,19 @@ public static partial class ManifestValidator
                 break;
             case ActionVerb.SelectCardFromScreen:
                 required = ["card_id", "option_index"];
+                allowed = [.. required, Corruption.AlternativeOptionIndex];
+                nonNegativeIntegers = ["option_index", Corruption.AlternativeOptionIndex];
+                break;
+            case ActionVerb.SelectBundleFromScreen:
+                // A bundle has no id of its own, so its identity is its cards' ids
+                // joined with a comma in the order the prompt listed them, beside the
+                // position - the same rule every other pick follows.
+                required = ["card_ids", "option_index"];
+                allowed = [.. required, Corruption.AlternativeOptionIndex];
+                nonNegativeIntegers = ["option_index", Corruption.AlternativeOptionIndex];
+                break;
+            case ActionVerb.SelectRelicFromScreen:
+                required = ["relic_id", "option_index"];
                 allowed = [.. required, Corruption.AlternativeOptionIndex];
                 nonNegativeIntegers = ["option_index", Corruption.AlternativeOptionIndex];
                 break;
@@ -1112,6 +1296,14 @@ public static partial class ManifestValidator
                 required = [];
                 allowed = [];
                 nonNegativeIntegers = [];
+                break;
+            case ActionVerb.RevealCrystalSphereCell:
+                // The tool is set on the minigame before the cell is clicked and decides
+                // how many cells the click reveals, so a reveal recorded without it
+                // replays as a different reveal.
+                required = ["tool", "x", "y"];
+                allowed = required;
+                nonNegativeIntegers = ["x", "y"];
                 break;
             case ActionVerb.TakeChestRelic:
                 required = ["relic_id", "option_index"];
@@ -1190,19 +1382,41 @@ public static partial class ManifestValidator
             problems.Add($"actions[{action.Seq}] ({action.Verb}) argument 'potion_id' is empty.");
         }
 
+        if (action.Args.TryGetValue("option_key", out var optionKey) && string.IsNullOrWhiteSpace(optionKey))
+        {
+            problems.Add($"actions[{action.Seq}] ({action.Verb}) argument 'option_key' is empty.");
+        }
+
+        if (action.Args.TryGetValue("card_ids", out var cardIds) && string.IsNullOrWhiteSpace(cardIds))
+        {
+            problems.Add($"actions[{action.Seq}] ({action.Verb}) argument 'card_ids' is empty.");
+        }
+
         // A reward kind the driver cannot name is refused at ingestion rather than at
         // replay, because a manifest that says 'coins' would otherwise look valid right
         // up until an engine is spent on it.
         if (action.Args.TryGetValue("reward_type", out var rewardType) &&
-            !ClaimableRewardTypes.Contains(rewardType, StringComparer.Ordinal))
+            !RewardKinds.All.Contains(rewardType, StringComparer.Ordinal))
         {
             problems.Add(
                 $"actions[{action.Seq}] ({action.Verb}) argument 'reward_type' is '{rewardType}'. Known " +
-                $"kinds: {string.Join(", ", ClaimableRewardTypes)}. A card reward opens a second screen and " +
+                $"kinds: {string.Join(", ", RewardKinds.All)}. A card reward opens a second screen and " +
                 "is taken with TakeCard, which records which card came back.");
         }
 
+        // The tool decides what a click reveals, so a name the minigame has no tool
+        // for is refused at ingestion rather than replayed as whichever tool the
+        // minigame happened to hold.
+        if (action.Args.TryGetValue("tool", out var tool) &&
+            !CrystalSphereTools.All.Contains(tool, StringComparer.Ordinal))
+        {
+            problems.Add(
+                $"actions[{action.Seq}] ({action.Verb}) argument 'tool' is '{tool}'. Known tools: " +
+                $"{string.Join(", ", CrystalSphereTools.All)}.");
+        }
+
         if (action.Verb == ActionVerb.ShopPurchase) ValidateShopPurchase(action, problems);
+        if (action.Verb == ActionVerb.ClaimReward) ValidateClaimReward(action, problems);
 
         // An alternative a control is meant to take has to differ from what was taken,
         // or the control corrupts nothing and an arbiter that accepted it would be

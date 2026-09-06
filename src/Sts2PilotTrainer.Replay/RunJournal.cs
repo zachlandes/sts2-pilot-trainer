@@ -17,7 +17,7 @@ namespace Sts2PilotTrainer.Replay;
 ///
 /// It carries exactly what <see cref="RunCapture"/> needs to be rebuilt: the run's
 /// identity, whether its start was witnessed, and each decision with the sampled
-/// state and complete state digest that followed it. <see cref="RunCapture.Resume"/>
+/// state and complete state digest either side of it. <see cref="RunCapture.Resume"/>
 /// is the only reader that matters, and it rebuilds the capture rather than reading
 /// the journal as a result - so a session continued from the game's own save
 /// publishes exactly what an uninterrupted one would have.
@@ -28,7 +28,14 @@ namespace Sts2PilotTrainer.Replay;
 /// </summary>
 public sealed record RunJournal
 {
-    public const string Schema = "sts2-pilot-trainer/run-journal/v1";
+    /// <summary>
+    /// Version 2 samples the state before every decision as well as after it. A
+    /// version-1 journal is a run in progress on a player's disk under an older mod,
+    /// and it is refused exactly as any other schema this build does not read is:
+    /// the recorder's resume path refuses a journal it cannot parse rather than
+    /// repairing it, so the run is simply not continued as a recording.
+    /// </summary>
+    public const string Schema = "sts2-pilot-trainer/run-journal/v2";
 
     /// <summary>The file extension for a journal, so the store's entries say what they
     /// are. JSON Lines rather than JSON, because appending to a JSON document means
@@ -88,6 +95,17 @@ public sealed record RunJournal
     /// </summary>
     public bool NonStandard { get; init; }
 
+    /// <summary>
+    /// The decision the recorder stopped at, or null while it has not.
+    ///
+    /// On the file for the reason the refusals and the mark are: a stop only the
+    /// running session knows about is one a crash takes with it, and the session
+    /// after it would carry on recording as if the decision between had not happened.
+    /// It carries the sample and digest of the state the recorder was reading when it
+    /// stopped, which is the state the unmapped decision began from.
+    /// </summary>
+    public JournalStop? Stop { get; init; }
+
     /// <summary>The reading taken before any decision.</summary>
     public RunJournalEntry Opening => Entries[0];
 
@@ -123,13 +141,27 @@ public sealed record RunJournal
     public static string RenderNonStandard() =>
         JsonSerializer.Serialize(new JournalNonStandard { NonStandard = true }, Compact) + "\n";
 
+    /// <summary>The stop, as the line appended for it. Appended the moment the
+    /// recorder stops, before it does anything else, so the session after a crash is
+    /// told where the recording ends and why.</summary>
+    public static string RenderStop(JournalStop stop) =>
+        JsonSerializer.Serialize(
+            new JournalUnmapped
+            {
+                Entry = stop.Decision,
+                Before = stop.Before,
+                BeforeDigest = stop.BeforeDigest,
+            },
+            Compact) + "\n";
+
     /// <summary>The whole journal as it would be on disk. For a caller writing one in
     /// a single pass; a recorder appends instead.</summary>
     public string Render() =>
         RenderHeader() +
         string.Concat(Entries.Select(RenderEntry)) +
         string.Concat(Refusals.Select(RenderRefusal)) +
-        (NonStandard ? RenderNonStandard() : string.Empty);
+        (NonStandard ? RenderNonStandard() : string.Empty) +
+        (Stop is { } stop ? RenderStop(stop) : string.Empty);
 
     /// <summary>
     /// The journal brought back to a boundary an append may follow, or null when it is
@@ -180,11 +212,12 @@ public sealed record RunJournal
     /// kept.
     /// </summary>
     private static Exception? ReadRecord(
-        string line, out RunJournalEntry? entry, out string? refusal, out bool nonStandard)
+        string line, out RunJournalEntry? entry, out string? refusal, out bool nonStandard, out JournalStop? stop)
     {
         entry = null;
         refusal = null;
         nonStandard = false;
+        stop = null;
         try
         {
             if (JsonSerializer.Deserialize<JournalRefusal>(line, Compact) is { Reason: not null } read)
@@ -196,6 +229,19 @@ public sealed record RunJournal
             if (JsonSerializer.Deserialize<JournalNonStandard>(line, Compact) is { NonStandard: not null } mark)
             {
                 nonStandard = mark.NonStandard.Value;
+                return null;
+            }
+
+            if (JsonSerializer.Deserialize<JournalUnmapped>(line, Compact) is { Entry: not null } stopped)
+            {
+                if (stopped.Before is null || stopped.BeforeDigest is null)
+                {
+                    throw new ManifestException(
+                        "A run journal's stop carries no reading of the state the recorder stopped in.");
+                }
+
+                ManifestJson.ValidateRequiredMembers(stopped.Entry, "Run journal stop");
+                stop = new JournalStop(stopped.Entry, stopped.Before, stopped.BeforeDigest);
                 return null;
             }
 
@@ -213,7 +259,7 @@ public sealed record RunJournal
     }
 
     private static bool ReadsAsARecord(string line) =>
-        line.Trim().Length > 0 && ReadRecord(line, out _, out _, out _) is null;
+        line.Trim().Length > 0 && ReadRecord(line, out _, out _, out _, out _) is null;
 
     /// <summary>
     /// Reads a journal back, refusing one this build cannot faithfully interpret.
@@ -250,9 +296,11 @@ public sealed record RunJournal
         var entries = new List<RunJournalEntry>();
         var refusals = new List<string>();
         var nonStandard = false;
+        JournalStop? stop = null;
         for (var index = 1; index < lines.Count; index++)
         {
-            if (ReadRecord(lines[index], out var entry, out var refusal, out var marked) is { } unreadable)
+            if (ReadRecord(lines[index], out var entry, out var refusal, out var marked, out var stopped)
+                is { } unreadable)
             {
                 // The last line of a file a crash interrupted. Everything before it
                 // finished being written and is a real recording of what happened.
@@ -261,8 +309,30 @@ public sealed record RunJournal
             }
 
             if (refusal is not null) refusals.Add(refusal);
+            else if (stopped is not null)
+            {
+                if (stop is not null)
+                {
+                    throw new ManifestException(
+                        "This run journal says the recorder stopped twice. A recorder stops once, at the first " +
+                        "decision it cannot name, so a second stop is a line nothing wrote in order.");
+                }
+
+                stop = stopped;
+            }
             else if (entry is null) nonStandard |= marked;
-            else entries.Add(entry);
+            else
+            {
+                if (stop is not null)
+                {
+                    throw new ManifestException(
+                        $"This run journal holds decision {entry.Seq.ToString(CultureInfo.InvariantCulture)} " +
+                        "after the line saying the recorder stopped. Nothing is recorded past a stop, so a " +
+                        "decision there is one nothing watched.");
+                }
+
+                entries.Add(entry);
+            }
         }
 
         var journal = new RunJournal
@@ -275,6 +345,7 @@ public sealed record RunJournal
             Entries = entries,
             Refusals = refusals,
             NonStandard = nonStandard,
+            Stop = stop,
         };
         journal.RequireReadable();
         return journal;
@@ -306,11 +377,30 @@ public sealed record RunJournal
 
         for (var index = 1; index < Entries.Count; index++)
         {
-            if (Entries[index].Seq == index - 1) continue;
+            if (Entries[index].Seq != index - 1)
+            {
+                throw new ManifestException(
+                    $"This run journal holds seq {Entries[index].Seq.ToString(CultureInfo.InvariantCulture)} where " +
+                    $"{(index - 1).ToString(CultureInfo.InvariantCulture)} was expected. A gap is a missing " +
+                    "decision wearing a plausible face.");
+            }
+
+            if (Entries[index].Before is null || Entries[index].BeforeDigest is null)
+            {
+                throw new ManifestException(
+                    $"This run journal's decision {Entries[index].Seq.ToString(CultureInfo.InvariantCulture)} " +
+                    "carries no reading of the state it began from. Every decision is sampled either side, " +
+                    "because the comparison instant is before each one.");
+            }
+        }
+
+        if (Stop is { } stop && stop.Decision.Seq != Entries.Count - 1)
+        {
             throw new ManifestException(
-                $"This run journal holds seq {Entries[index].Seq.ToString(CultureInfo.InvariantCulture)} where " +
-                $"{(index - 1).ToString(CultureInfo.InvariantCulture)} was expected. A gap is a missing " +
-                "decision wearing a plausible face.");
+                $"This run journal says the recorder stopped at decision " +
+                $"{stop.Decision.Seq.ToString(CultureInfo.InvariantCulture)} and holds " +
+                $"{(Entries.Count - 1).ToString(CultureInfo.InvariantCulture)} decision(s). A recorder stops at " +
+                "the decision after its last, so the two have to agree.");
         }
 
         if (string.IsNullOrWhiteSpace(RunId) || string.IsNullOrWhiteSpace(RecorderVersion))
@@ -367,7 +457,29 @@ public sealed record RunJournal
         [JsonPropertyName("non_standard")]
         public bool? NonStandard { get; init; }
     }
+
+    /// <summary>The stop's line, told apart from the other three shapes the same way.
+    /// It carries the decision the recorder could not name and the reading of the
+    /// state it began from, because that is the state the recording ends in.</summary>
+    private sealed record JournalUnmapped
+    {
+        [JsonPropertyName("unmapped")]
+        public UnmappedDecision? Entry { get; init; }
+
+        [JsonPropertyName("before")]
+        public IReadOnlyDictionary<string, string>? Before { get; init; }
+
+        [JsonPropertyName("before_digest")]
+        public string? BeforeDigest { get; init; }
+    }
 }
+
+/// <summary>
+/// Where a recorder stopped: the decision it could not name, and the sampled state
+/// and complete digest of the moment it met it.
+/// </summary>
+public sealed record JournalStop(
+    UnmappedDecision Decision, IReadOnlyDictionary<string, string> Before, string BeforeDigest);
 
 /// <summary>
 /// One line of a journal: a decision, and the state the game settled into after it.
@@ -392,6 +504,21 @@ public sealed record RunJournalEntry
     [JsonPropertyName("args")]
     public IReadOnlyDictionary<string, string> Args { get; init; } =
         new SortedDictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The sampled canonical state this decision began from, and the complete digest
+    /// of that same moment. Both are required on a decision line and absent from the
+    /// opening reading, which has nothing before it. Read where the recorder already
+    /// stands when a decision is announced, so a comparison at verification can ask
+    /// whether a replay arrived at each decision in the state the player made it from.
+    /// </summary>
+    [JsonPropertyName("before")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyDictionary<string, string>? Before { get; init; }
+
+    [JsonPropertyName("before_digest")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? BeforeDigest { get; init; }
 
     /// <summary>The sampled canonical state after this decision settled.</summary>
     [JsonPropertyName("state")]

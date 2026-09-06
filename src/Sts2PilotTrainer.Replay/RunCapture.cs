@@ -15,7 +15,20 @@ public enum RunCaptureState
     /// <summary>The recorder cannot account for the run continuously.
     /// <see cref="RunCapture.Refusal"/> says why. Nothing is discarded.</summary>
     Broken,
+
+    /// <summary>The recorder met a decision it could not name and stopped there.
+    /// <see cref="RunCapture.Stop"/> says what it met. Everything before it is kept
+    /// and nothing after it is recorded.</summary>
+    Unmapped,
 }
+
+/// <summary>
+/// One reading of the run: the sampled canonical state and the complete digest of
+/// the same instant. Handed over as a pair because the two answer different
+/// questions about one moment, and a sample paired with another moment's digest
+/// would be a reading nobody took.
+/// </summary>
+public sealed record StateReading(IReadOnlyDictionary<string, string> State, string Digest);
 
 /// <summary>
 /// A run somebody is playing, recorded decision by decision into a native manifest.
@@ -71,6 +84,7 @@ public sealed class RunCapture
     private readonly List<string> _refusals = [];
 
     private FightCapture? _fight;
+    private JournalStop? _stop;
 
     private RunCapture(
         RunRecordingStart start, bool witnessedRunStart, string continuity, RunJournalEntry opening)
@@ -111,16 +125,20 @@ public sealed class RunCapture
 
     /// <summary>
     /// One of <see cref="NativeSource.Integrities"/>: whether anything happened in
-    /// this run that puts it outside the game's own rules.
+    /// this run that stops the recording being published, and what.
     ///
     /// Separate from <see cref="Continuity"/> and from <see cref="State"/> because it
     /// is a different fact about a different thing. Continuity says whether the
-    /// recorder watched the whole run; this says whether the run it watched was
-    /// played by the game's rules. A run that used the console is recorded to its
-    /// end, keeps every decision it made and is never publishable, so nothing here
-    /// stops.
+    /// recorder watched the whole run; this says whether what it watched can be
+    /// published. A run that used the console is recorded to its end, keeps every
+    /// decision it made and is never publishable, so nothing there stops. A run whose
+    /// recorder met a decision it could not name stops at that decision, keeps every
+    /// decision before it, and is never publishable either.
     /// </summary>
     public string Integrity { get; private set; } = NativeSource.CompleteIntegrity;
+
+    /// <summary>Where the recorder stopped, or null while it has not.</summary>
+    public JournalStop? Stop => _stop;
 
     public RunCaptureState State { get; private set; } = RunCaptureState.Recording;
 
@@ -179,8 +197,11 @@ public sealed class RunCapture
         WitnessedRunStart = WitnessedRunStart,
         Entries = [Opening, .. _entries],
         Refusals = _refusals.ToList(),
-        NonStandard = !string.Equals(Integrity, NativeSource.CompleteIntegrity, StringComparison.Ordinal),
+        NonStandard = _nonStandard,
+        Stop = _stop,
     };
+
+    private bool _nonStandard;
 
     /// <summary>
     /// Starts recording a run at its beginning.
@@ -270,6 +291,12 @@ public sealed class RunCapture
             start, journal.WitnessedRunStart, NativeSource.ContinuousContinuity, journal.Opening);
         foreach (var entry in journal.Decisions) capture.Replay(entry);
 
+        // A stop is replayed into the same stopped state, before the digest is
+        // compared: the recording ends where the recorder stopped, and the run the
+        // game came back in is past that point by exactly the decision nothing could
+        // name. That is not a hole in the watch, and it is not compared as one.
+        if (journal.Stop is { } stop) capture.StopAt(stop);
+
         // A refusal an earlier session raised is still a hole in this recording's
         // account of the run, and is the reason it is on the file at all: the digest
         // comparison below can only see what happened since the journal's last entry,
@@ -284,7 +311,7 @@ public sealed class RunCapture
         if (journal.NonStandard) capture.MarkNonStandard();
 
         var last = capture._entries.Count > 0 ? capture._entries[^1] : journal.Opening;
-        if (!string.Equals(last.Digest, liveDigest, StringComparison.Ordinal))
+        if (capture._stop is null && !string.Equals(last.Digest, liveDigest, StringComparison.Ordinal))
         {
             var rolledBackTo = capture.Journal.Entries
                 .LastOrDefault(entry => string.Equals(entry.Digest, liveDigest, StringComparison.Ordinal));
@@ -308,26 +335,29 @@ public sealed class RunCapture
     }
 
     /// <summary>
-    /// Records one decision and the settled state it left behind.
+    /// Records one decision, the state it began from, and the settled state it left
+    /// behind.
     ///
-    /// The state a decision begins from is the state the one before it left, which is
-    /// the same continuity rule <see cref="FightCapture"/> applies inside a fight. Out
-    /// of a fight nothing is observed between two decisions, so the previous
-    /// after-sample is this decision's before-sample rather than a second reading that
-    /// could disagree with it.
+    /// Both readings are the recorder's own. Inside a fight they coincide with the
+    /// rule <see cref="FightCapture"/> applies - the state a decision begins from is
+    /// the state the one before it left - and the fight's capture still refuses a
+    /// gap between them. Out of a fight a gap between the previous after-reading and
+    /// this before-reading is not refused here, because the reward screen after a
+    /// fight is generated on the client's own clock between the two, and the
+    /// before-reading is what a comparison at verification reads.
     /// </summary>
     /// <param name="verb">Which decision the game announced.</param>
     /// <param name="args">Its arguments, as the manifest records them.</param>
-    /// <param name="after">The sampled canonical state once the engine settled.</param>
-    /// <param name="digest">The complete canonical state digest at that same moment.</param>
+    /// <param name="before">The sampled canonical state and digest the decision began from.</param>
+    /// <param name="after">The sampled canonical state and digest once the engine settled.</param>
     /// <param name="runClockMs">The game's own run clock, for a person looking for the
     /// moment again in their own recording of the session.</param>
     /// <returns>The journal entry this decision produced, for the caller to append.</returns>
     public RunJournalEntry Record(
         ActionVerb verb,
         IReadOnlyDictionary<string, string> args,
-        IReadOnlyDictionary<string, string> after,
-        string digest,
+        StateReading before,
+        StateReading after,
         int? runClockMs = null)
     {
         if (State == RunCaptureState.Finished)
@@ -336,23 +366,88 @@ public sealed class RunCapture
                 "This run is over, so there is no decision left to record. A second run is a second recording.");
         }
 
+        if (_stop is { } stop)
+        {
+            throw new ManifestException(
+                $"This recording stopped at decision {stop.Decision.Seq.ToString(CultureInfo.InvariantCulture)}, " +
+                $"which the recorder could not name ({ManifestValidator.Describe(stop.Decision)}). Nothing is " +
+                "recorded past a stop: a history that skipped a decision and carried on would replay into a " +
+                "run that never made it.");
+        }
+
         Require(
-            !string.IsNullOrWhiteSpace(digest),
+            !string.IsNullOrWhiteSpace(after.Digest),
             "Every decision is recorded with the complete canonical state digest that followed it, because that " +
             "is what a boundary standing on it is identified by.");
+        Require(
+            !string.IsNullOrWhiteSpace(before.Digest),
+            "Every decision is recorded with the complete canonical state digest it began from, because that " +
+            "is the instant a comparison at verification reads.");
 
         var entry = new RunJournalEntry
         {
             Seq = NextSeq,
             Verb = verb.ToString(),
             Args = Sorted(args),
-            State = ReplayTrace.Sample(after),
-            Digest = digest,
+            Before = ReplayTrace.Sample(before.State),
+            BeforeDigest = before.Digest,
+            State = ReplayTrace.Sample(after.State),
+            Digest = after.Digest,
             RunClockMs = runClockMs,
         };
 
         Append(entry, verb);
         return entry;
+    }
+
+    /// <summary>
+    /// The recorder met a decision it could not name, and stops here.
+    ///
+    /// Everything before it is kept; nothing after it is recorded, and a
+    /// <see cref="Record"/> that follows is refused rather than written. The
+    /// recording is never publishable - a prefix that stops short replays into a run
+    /// that never made the next decision - and <see cref="Integrity"/> says so.
+    /// <see cref="Continuity"/> is untouched, because the watch had no hole: the
+    /// recorder saw the decision and could not say what it was.
+    /// </summary>
+    /// <param name="decision">What was met, raw and uninterpreted.</param>
+    /// <param name="before">The reading of the state the decision began from, which
+    /// is the state the recording ends in.</param>
+    /// <returns>The journal line to append for it, so the stop survives this session
+    /// the same way a decision does.</returns>
+    public string MarkUnmapped(UnmappedDecision decision, StateReading before)
+    {
+        if (State == RunCaptureState.Finished)
+        {
+            throw new ManifestException(
+                "This run is over, so there is no decision left for the recorder to have stopped at.");
+        }
+
+        if (_stop is not null)
+        {
+            throw new ManifestException(
+                "This recording has already stopped. A recorder stops once, at the first decision it " +
+                "cannot name.");
+        }
+
+        if (decision.Seq != NextSeq)
+        {
+            throw new ManifestException(
+                $"The recorder stopped at decision {decision.Seq.ToString(CultureInfo.InvariantCulture)} and " +
+                $"the next decision would be {NextSeq.ToString(CultureInfo.InvariantCulture)}. A stop stands " +
+                "at the decision after the last one recorded.");
+        }
+
+        var stop = new JournalStop(decision, ReplayTrace.Sample(before.State), before.Digest);
+        StopAt(stop);
+        return RunJournal.RenderStop(stop);
+    }
+
+    private void StopAt(JournalStop stop)
+    {
+        _stop = stop;
+        Integrity = NativeSource.UnmappedIntegrity;
+        if (State == RunCaptureState.Recording) State = RunCaptureState.Unmapped;
     }
 
     /// <summary>
@@ -422,7 +517,11 @@ public sealed class RunCapture
     /// the same way a decision does.</returns>
     public string MarkNonStandard()
     {
-        Integrity = NativeSource.NonStandardIntegrity;
+        _nonStandard = true;
+        // A stopped recording stays 'unmapped': the stop names what was met and the
+        // validator reads its entries beside that integrity, and either value refuses
+        // publication. The mark is still on the journal for a later reader.
+        if (_stop is null) Integrity = NativeSource.NonStandardIntegrity;
         return RunJournal.RenderNonStandard();
     }
 
@@ -470,6 +569,7 @@ public sealed class RunCapture
                     Continuity = Continuity,
                     Outcome = Outcome,
                     Integrity = Integrity,
+                    Unmapped = _stop is { } stop ? [stop.Decision] : null,
                 },
             },
             Actions = _actions.ToList(),
@@ -510,7 +610,13 @@ public sealed class RunCapture
 
     private void Append(RunJournalEntry entry, ActionVerb verb)
     {
-        var before = _steps[^1].After;
+        // The entry's own reading rather than the previous after-sample: the two
+        // coincide inside a fight and may not outside one, and the journal carries
+        // the reading that was taken rather than the one that was assumed.
+        var before = entry.Before
+            ?? throw new ManifestException(
+                $"Decision {entry.Seq.ToString(CultureInfo.InvariantCulture)} carries no reading of the state " +
+                "it began from.");
         var after = entry.State;
 
         _steps.Add(new ReplayStep
@@ -657,6 +763,7 @@ public sealed class RunCapture
         var ending = State switch
         {
             RunCaptureState.Broken => "and the recorder's watch of it has a hole in it",
+            RunCaptureState.Unmapped => "and the recorder stopped at a decision it could not name",
             RunCaptureState.Finished => $"and the run ended {Outcome}",
             _ => "and the run was still being played when this was written",
         };

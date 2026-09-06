@@ -15,7 +15,7 @@ public sealed record ReplayManifest
 {
     /// <summary>Bumped whenever a change would make an older arbiter misread a
     /// newer manifest. Readers must refuse an unknown version rather than guess.</summary>
-    public const int CurrentManifestVersion = 5;
+    public const int CurrentManifestVersion = 6;
 
     [JsonPropertyName("manifest_version")]
     public int ManifestVersion { get; init; } = CurrentManifestVersion;
@@ -235,9 +235,15 @@ public sealed record NativeSource
 
     public static readonly string[] Continuities = [ContinuousContinuity, BrokenContinuity];
 
-    /// <summary>The recorder met nothing in this run that puts it outside the game's
-    /// own rules.</summary>
+    /// <summary>The recorder met no decision it could not name and no console
+    /// command.</summary>
     public const string CompleteIntegrity = "complete";
+
+    /// <summary>The recorder stopped at a decision it could not name. The history ends
+    /// at the ordinal before it and <see cref="Unmapped"/> says what it met. Kept,
+    /// and never publishable: a prefix that stops short of a decision replays into a
+    /// run that never made it.</summary>
+    public const string UnmappedIntegrity = "unmapped";
 
     /// <summary>This run was not played entirely by the game's own rules. The run is
     /// still a run and the recording is still what happened, and it is never
@@ -246,7 +252,11 @@ public sealed record NativeSource
     /// more than one thing about a run puts it here.</summary>
     public const string NonStandardIntegrity = "non-standard";
 
-    public static readonly string[] Integrities = [CompleteIntegrity, NonStandardIntegrity];
+    public static readonly string[] Integrities = [CompleteIntegrity, UnmappedIntegrity, NonStandardIntegrity];
+
+    /// <summary>The one older format a migrated file may declare it was written in.
+    /// A later format widens this when it adds a migration of its own.</summary>
+    public static readonly int[] MigratableVersions = [5];
 
     /// <summary>Won, lost, or given up. A give-up is a completed recording: the run is
     /// over, the history is whole, and the fights in it were really played.</summary>
@@ -269,31 +279,50 @@ public sealed record NativeSource
     public required string Outcome { get; init; }
 
     /// <summary>
-    /// Whether anything happened in this run that puts it outside the game's own
-    /// rules, and so whether the recording may ever be published. One of
-    /// <see cref="Integrities"/>.
-    ///
-    /// Written by every recorder that can read the question, and absent from a
-    /// recording made before one could. Absent is not <see cref="CompleteIntegrity"/>
-    /// under another name and is deliberately not read as a claim: it says the file
-    /// carries no reading, which is what a recorder that never watched the console
-    /// left behind. It is accepted for publication because that was already the
-    /// standard those recordings were made and gated under, and every recording made
-    /// from here on states it.
+    /// Whether anything happened in this run that stops it being published, and what.
+    /// One of <see cref="Integrities"/>, and required: a recording that states none
+    /// is a version-5 file, which reads as <see cref="CompleteIntegrity"/> through the
+    /// migration and says so in <see cref="MigratedFromVersion"/>.
     /// </summary>
     [JsonPropertyName("integrity")]
+    public required string Integrity { get; init; }
+
+    /// <summary>
+    /// The decision the recorder stopped at, when <see cref="Integrity"/> is
+    /// <see cref="UnmappedIntegrity"/>, and absent otherwise. A list, because a build
+    /// may one day record more than one seam's account of the same moment; every
+    /// entry's ordinal is the one the history stops before.
+    /// </summary>
+    [JsonPropertyName("unmapped")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Integrity { get; init; }
+    public IReadOnlyList<UnmappedDecision>? Unmapped { get; init; }
+
+    /// <summary>
+    /// The oldest format this file was written in, when it was migrated from one.
+    ///
+    /// Written only by <c>arbiter migrate-manifest</c> and absent from a recording a
+    /// current recorder wrote. A declared fact about the file rather than the run: it
+    /// says fields introduced after that version may be absent because nothing could
+    /// have captured them, which is how the validator knows to waive them. It survives
+    /// a later migration unchanged, because what it records is where the file began.
+    /// </summary>
+    [JsonPropertyName("migrated_from_version")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? MigratedFromVersion { get; init; }
 
     [JsonIgnore]
     public bool IsContinuous => string.Equals(Continuity, ContinuousContinuity, StringComparison.Ordinal);
 
     /// <summary>Whether the recording states an integrity that is not
-    /// <see cref="CompleteIntegrity"/>. False for a recording that states none, which
-    /// <see cref="Integrity"/> explains.</summary>
+    /// <see cref="CompleteIntegrity"/>, which is what refuses it for publication.</summary>
     [JsonIgnore]
     public bool StatesSomethingOtherThanComplete =>
-        Integrity is not null && !string.Equals(Integrity, CompleteIntegrity, StringComparison.Ordinal);
+        !string.Equals(Integrity, CompleteIntegrity, StringComparison.Ordinal);
+
+    /// <summary>Whether this file was migrated from a format older than the one that
+    /// introduced a field, so that field's absence is the migration's rather than a
+    /// recorder's omission.</summary>
+    public bool PredatesVersion(int version) => MigratedFromVersion is { } from && from < version;
 }
 
 public sealed record SyntheticSource

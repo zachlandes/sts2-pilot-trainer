@@ -51,7 +51,8 @@ mechanism rather than an unsupported hook.
 | `SaveManager.SaveProgressFile`, `SavePrefsFile`, `SaveProfileFile` | **The player's save directory is a read-only input.** The run is created with `shouldSave: false`, but the engine still reaches for the save subsystem on room entry. |
 | `SaveManager.SaveRun` | The same refusal with one addition — see [the run save, collected rather than dropped](#the-run-save-collected-rather-than-dropped). |
 | `LocManager.GetTable`, `LocString.GetFormattedText/GetRawText`, `LocTable.*` | Localization is stubbed with no data at all — see below. |
-| `MerchantPotionEntry.CalcCost`, `Cauldron.GenerateRewards`, `CallingBell.GenerateRewards` | **The opposite of the rest of this table.** These run with the headless flag turned off for the duration of the call, because the flag changes what the game *generates* at these three sites — see [three places the flag changes what the game generates](#three-places-the-flag-changes-what-the-game-generates). |
+| `MerchantPotionEntry.CalcCost`, `Cauldron.GenerateRewards`, `CallingBell.GenerateRewards`, `ScrollBoxes.GenerateRandomBundles` | **The opposite of the rest of this table.** These run with the headless flag turned off for the duration of the call, because the flag changes what the game *generates* at these four sites — see [four places the flag changes what the game generates](#four-places-the-flag-changes-what-the-game-generates). |
+| `CardSelectCmd.FromChooseABundleScreen`, `RelicSelectCmd.FromChooseARelicScreen`, `NCrystalSphereScreen.ShowScreen` | Prompts no seam answers, stood in for at the prompt itself — see [four screens the host has to stand in for](#four-screens-the-host-has-to-stand-in-for). Installed only where a driver is answering; with none, the game's own path runs. |
 
 ### The run save, collected rather than dropped
 
@@ -80,9 +81,9 @@ A missing `SaveRun` in a future build is a startup **failure**, as every name in
 patch set is: a host that silently stopped intercepting it would write no save and
 collect none either, and both silences look like success.
 
-### Three screens the host has to stand in for
+### Four screens the host has to stand in for
 
-The engine does not take a command for everything a player does. Three of its surfaces
+The engine does not take a command for everything a player does. Four of its surfaces
 are driven by the UI, and there is no UI here.
 
 **The loot screen a won fight puts up.** `NCombatUi.ShowRewards` waits out the death
@@ -117,8 +118,37 @@ it can actually stop the replay.
 Because the answer is pulled from inside the opening call, the actions that record
 those clicks - which sit after it in the history, because that is when the player made
 them - are handed to the selector before the call is made. Only a contiguous run of
-`SelectCardFromScreen` immediately after the opening action is ever read, and a
-selection no screen consumed is refused.
+screen answers - `SelectCardFromScreen`, `SelectBundleFromScreen`,
+`SelectRelicFromScreen`, which `CardScreenAnswers.Verbs` lists - immediately after the
+opening action is ever read, and a selection no screen consumed is refused.
+
+A card reward's alternative is answered through the same seam and is not one of those
+followers. `ICardSelector.GetSelectedCardReward` hands back either a card or a
+`CardRewardAlternative`, and on v0.111.0 the one alternative there is - Pael's Wing's
+sacrifice - ends the reward's selection. So the loot-screen click is written as
+`TakeCardRewardAlternative` in place of `TakeCard`, naming the alternative's own id and
+the position the screen reports for it, and the driver answers the seam with it. An
+alternative that kept the screen open would be asked again, and the selector refuses
+that second question rather than inventing an answer.
+
+**Three prompts the seam does not reach.** `CardSelectCmd.FromChooseABundleScreen`,
+which Scroll Boxes opens, takes its first bundle without asking when the headless flag
+is on; `RelicSelectCmd.FromChooseARelicScreen` has no test branch and would show a
+scene; the Crystal Sphere's minigame pushes `NCrystalSphereScreen` and waits on a
+completion source the screen's clicks drive. `ScreenStandIns` patches each at the
+game's own entry point, headlessly only, and only answers while a `RunDriver` is the
+current answerer: the bundle and relic prompts are answered from the same selector
+as a card screen, by a queued `SelectBundleFromScreen` or `SelectRelicFromScreen`
+whose identity - the bundle's cards joined in the order the prompt listed them, or the
+relic's id - is checked beside the position; the Crystal Sphere's screen is not shown
+and the minigame it would have drawn is captured for the driver, which sets the tool
+the recording names and clicks the cell it names through the minigame's own
+`SetTool` and `CellClicked`. Which cells hold what was rolled by the engine when the
+minigame was built, from the event's own stream. Nothing on v0.111.0 opens the relic
+screen, so a recorded relic pick refuses as an answer no screen consumed, with that
+sentence.
+
+Where the manifest is silent each of the three refuses, as the card seam does.
 
 **The chest a treasure room puts in front of the player.** `NTreasureRoom.OpenChest`
 is what calls `TreasureRoom.DoNormalRewards` and `TreasureRoom.DoExtraRewardsIfNeeded`,
@@ -135,7 +165,7 @@ undecided relic when the room is left and says nothing, so a history that omitte
 decision would replay into the state of one that declined it. A map move or an act
 transition that would leave either decision unmade is refused.
 
-**None of these three stand-ins is installed inside the retail client.**
+**None of these stand-ins is installed inside the retail client.**
 The same `RunDriver` runs there, walking a constructed run through the recording's decisions before its fight, and in there each of these is on a player's screen: answering one would take a decision away from somebody who was looking at it, and the client opens its own chest through `NTreasureRoom.OpenChest`.
 So the driver installs no selector, no rewards delegate and no chest opening when the engine's origin is a running game, and
 narrows itself to the three verbs that reach a decision before a fight - the opening
@@ -176,25 +206,29 @@ See [the in-game host](in-game-host.md).
 
 That was found by reading the method, not by noticing a symptom.
 
-### Three places the flag changes what the game generates
+### Four places the flag changes what the game generates
 
 `ShouldApplyTutorialModifications` was not the only one, and the rest were found by sweeping the class rather than by chasing a symptom.
-All 393 reads of `TestMode` in `sts2.dll` v0.111.0 were enumerated; 273 are in the presentation, asset, modding, localization, platform, logging and multiplayer namespaces; of the 120 in gameplay code, 117 skip an animation wait, a scene node, a tween, an audio cue, a log line, a history or statistics write, or a test-only assertion, and none of those can move a random stream because the file they are in never touches one.
-Three do move one, and `HeadlessPatches.RestoreRetailBranches` puts each of them back by turning the flag off for the duration of that one call and letting the engine's own retail branch run.
+All 393 reads of `TestMode` in `sts2.dll` v0.111.0 were enumerated; 273 are in the presentation, asset, modding, localization, platform, logging and multiplayer namespaces; of the 120 in gameplay code, most skip an animation wait, a scene node, a tween, an audio cue, a log line, a history or statistics write, or a test-only assertion, and none of those can move a random stream because the file they are in never touches one.
+Four do move one, and `HeadlessPatches.RestoreRetailBranches` puts each of them back by turning the flag off for the duration of that one call and letting the engine's own retail branch run.
 Nothing there reimplements a cost, a roll or a pool.
+The first sweep counted three; the fourth, `ScrollBoxes.GenerateRandomBundles`, was found when the bundle screen it feeds was mapped, which is the sweep the rule above asks for when a site is added.
+It hands the Deprived three copies of Claw under test mode where retail draws every bundle from the rewards stream, so it is the same shape as the other three and is restored the same way.
 
 | Restored | What test mode was doing | What it cost |
 |---|---|---|
 | `MerchantPotionEntry.CalcCost` | Skipping `PlayerRng.Shops.NextFloat(0.95, 1.05)`, which prices one potion slot | Three slots per merchant, so `player.rng.Shops` fell three draws behind the recording's from the first shop and stayed there |
 | `Cauldron.GenerateRewards` | Handing back five hard-coded potions instead of constructing rewards that populate themselves | The potions the run received, and `PlayerRng.Rewards`' position |
 | `CallingBell.GenerateRewards` | Handing back Anchor, Gremlin Horn and Mummified Hand instead of pulling one relic per rarity | The relics the run received, and the position of the run's own relic grab bag |
+| `ScrollBoxes.GenerateRandomBundles` | Handing the Deprived three copies of Claw instead of drawing each bundle from the rewards stream | The bundles the run was offered, and the stream's position, for that character |
 
 The merchant one was live and measured.
 Two native recordings of whole runs, replayed against the engine, disagreed at eight of nineteen and eight of twenty-six boundaries — every disagreement from the shop's own floor entry onward, every recorded digest reproduced by `Shops+3` and by nothing else, and `replay` exiting 0 throughout.
 `ReplayTests.NativeRecordingReproducesEveryBoundaryItCaptured` replays both and asserts every captured boundary is reproduced; it is the only check here that can see a bias this host has, because a synthetic fixture's expected values were produced by this same host.
 
 The two relics are the same defect at a site no recording or fixture has reached, so nothing above measures them.
-`./scripts/arbiter engine-commands` does, and covers all three the same way: it exercises each site through the engine's own construction and reads a consequence retail has and test mode does not - the Shops stream advanced by one, the potion and relic rewards still unpopulated and therefore still to be drawn - and then checks the headless flag is back on.
+Scroll Boxes is the same again, and its retail branch is reachable only for the Deprived holding that relic; no probe exercises it yet, and that gap is stated here rather than closed by a measurement nobody took.
+`./scripts/arbiter engine-commands` measures the first three the same way: it exercises each site through the engine's own construction and reads a consequence retail has and test mode does not - the Shops stream advanced by one, the potion and relic rewards still unpopulated and therefore still to be drawn - and then checks the headless flag is back on.
 It pins no price and no relic, because those are the game's to choose and a measurement that pinned one would fail on the next build for the wrong reason.
 It rides on that command rather than a verb of its own because it is the same patch-day question the command table already asks: does the host's account of this build still describe it.
 With the patches removed all three sites report FAIL and the command exits non-zero, which is what makes its pass mean something; `ReplayTests.EveryRestoredRetailBranchTakesRetailsPath` is what runs it.

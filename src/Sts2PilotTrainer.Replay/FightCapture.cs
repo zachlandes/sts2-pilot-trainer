@@ -255,18 +255,6 @@ public sealed class FightCapture : IFightSampleSink
     }
 
     /// <summary>
-    /// Forgets the open action without recording it, for an action the game itself
-    /// took back before it took effect - an ended turn un-ended before the enemy
-    /// turn began. The state it returns to is checked by the next
-    /// <see cref="BeginStep"/> like any other.
-    /// </summary>
-    public void DiscardOpenStep()
-    {
-        if (State != FightCaptureState.Live) return;
-        _open = null;
-    }
-
-    /// <summary>
     /// The fight has ended. Closes the open action with this final state if there is
     /// one; refuses if the fight ended with no action open, because an end nothing
     /// was sampled around is a change the trace does not account for.
