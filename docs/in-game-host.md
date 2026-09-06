@@ -277,6 +277,7 @@ lowers the write barrier on every one of those paths.
 `RunRecorder` in `Sts2PilotTrainer.Mod` attaches when a run starts, watches every decision the player makes, and writes a v5 native manifest under `user://Runmobile/recordings/` when the run ends.
 Inside a fight it hands the run to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink` in `Sts2PilotTrainer.Replay`: the trainer's sink is a `FightCapture` and the recorder's is an adapter onto the `RunCapture` that keeps the whole run.
 There is one observer, one settle rule and one set of rules about what a sample means, whichever feature is watching.
+The one question the two sinks answer differently is an action whose argument the observer could not resolve, which is why `IFightSampleSink` asks it rather than the observer deciding: a history missing an argument the format requires is a run nobody can replay, so the recorder refuses and keeps nothing for that action, while a fight being compared never reads that argument and the capture keeps the step.
 
 **What it watches is `EngineCommands` read from the other end.**
 The driver calls those members to make a recorded decision; a player clicking makes the game call the same members.
@@ -304,6 +305,10 @@ Nothing in a recording's name says whose game it was.
 **The journal is what survives a crash.**
 `RunJournal` is a header and one line per decision, appended as the run is played, so finishing a write means finishing a line.
 A crash leaves a prefix that is a real recording of the part of the run that happened rather than half of a document describing all of it, and `RunJournal.Parse` drops a truncated final line and refuses anything else.
+A crash mid-append also leaves that final line with no newline after it, so before the resumed session appends anything `RunJournal.RepairTruncatedTail` brings the file back to a line boundary: a record that lost only its newline is terminated, a fragment is cut back to where it began, and nothing before it is touched.
+Appending onto an unterminated line instead fuses two records into one unreadable line, which the writing session can still resume past - it is last - and every session after it cannot, because one more decision leaves that line in the middle where `Parse`'s truncation rule does not apply.
+A crash that cost one decision would then cost every decision after it.
+Whether that final line is a record or a fragment is one predicate both the repair and `Parse` ask, so the repair cannot delete what the reader would have kept, and a fragment cut back marks the recording broken with the decision it lost named.
 On resume, `RunCapture.Resume` rebuilds the capture from the journal and compares the state the game came back in against the state the journal last recorded.
 Equal means nothing happened in between that the recorder missed.
 Anything else marks the recording `continuity = broken` and it is refused for publication - nothing is truncated, because a history missing decisions replays into a different run while every value in it is individually true.
