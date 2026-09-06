@@ -200,28 +200,38 @@ internal static class PatchTargets
     internal static IReadOnlyList<string> Targets(IReadOnlyList<Type> patchClasses)
     {
         var targets = new List<string>();
-        foreach (var patchClass in patchClasses)
+        foreach (var patch in Named(patchClasses))
         {
-            var onClass = Infos(patchClass);
-            var declaring = onClass.Select(info => info.declaringType).FirstOrDefault(type => type is not null);
-
-            foreach (var info in onClass.Concat(patchClass
-                         .GetMethods(BindingFlags.Static | BindingFlags.Instance |
-                                     BindingFlags.Public | BindingFlags.NonPublic)
-                         .SelectMany(Infos)))
-            {
-                var type = info.declaringType ?? declaring;
-                if (type is null || info.methodName is null) continue;
-
-                var name = $"{type.Name}.{info.methodName}";
-                if (!targets.Contains(name, StringComparer.Ordinal)) targets.Add(name);
-            }
+            var name = $"{patch.DeclaringType.Name}.{patch.Info.methodName}";
+            if (!targets.Contains(name, StringComparer.Ordinal)) targets.Add(name);
         }
 
         return targets;
     }
 
     internal static IEnumerable<string> Unresolvable(IReadOnlyList<Type> patchClasses)
+    {
+        foreach (var patch in Named(patchClasses))
+        {
+            if (Resolves(patch.DeclaringType, patch.Info)) continue;
+
+            yield return
+                $"{patch.DeclaringType.Name}.{patch.Info.methodName} is absent from this build, so the " +
+                "surface that hangs on it would not appear.";
+        }
+    }
+
+    /// <summary>
+    /// Every member these patch classes name, whichever half of the attribute pair named
+    /// it.
+    ///
+    /// One traversal for both questions, because "which declaration styles are checked"
+    /// is the thing that has already been got wrong once here: a reader that saw only
+    /// class attributes reported the library's two patch classes clean on every build,
+    /// and a second copy of this walk is a second place for that to happen.
+    /// </summary>
+    private static IEnumerable<(Type DeclaringType, HarmonyMethod Info)> Named(
+        IReadOnlyList<Type> patchClasses)
     {
         foreach (var patchClass in patchClasses)
         {
@@ -235,11 +245,8 @@ internal static class PatchTargets
             {
                 var type = info.declaringType ?? declaring;
                 if (type is null || info.methodName is null) continue;
-                if (Resolves(type, info)) continue;
 
-                yield return
-                    $"{type.Name}.{info.methodName} is absent from this build, so the " +
-                    "surface that hangs on it would not appear.";
+                yield return (type, info);
             }
         }
     }

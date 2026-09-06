@@ -730,7 +730,7 @@ reading fails again on every open.
 Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup
 judge live, every time they open.
 
-**Two states the design names are derived and not reachable, for reasons outside this
+**Three states the design names are derived and not reachable, for reasons outside this
 module.** The plate's console-command state - play rows offered, Submit refused, "A
 console command was used, so it can't be submitted." - is derived correctly by
 `RunHistoryPlate` and nothing supplies the fact behind it, so `RunHistoryPlateHost.FactsFor`
@@ -740,9 +740,26 @@ reporting one it never checked is the claim `AGENTS.md` forbids.
 The reading it waits on is `source.native.integrity`, which the recorder writes on
 `fm/recorder-detection-multiplayer-and-console`; the honest reading once that lands is
 `NativeSource.StatesSomethingOtherThanComplete`.
-The Submit row is the other: the flow it leads to is outside this slice by the design's
-own section 9.8, so `SubmitAvailable` is supplied false and the row is drawn refused with
-"Submitting runs is coming" rather than drawn as an offer nothing honours.
+The browser's multiplayer rule is the second.
+`LibraryRun.Listed` hides an established multiplayer run and `RunBrowser.Lookup` answers a
+run code for one with the multiplayer body, both correctly, and nothing supplies the fact:
+`LibraryRun.Multiplayer` is null on every run the library builds, so neither arm is
+reached.
+Null rather than false for the same reason the console fact is - a host reporting
+"single-player" it never established is the claim `AGENTS.md` forbids, and the hidden rule
+hides what was established and never a question nobody asked.
+The reading it waits on is the recorder's own multiplayer detection, also on
+`fm/recorder-detection-multiplayer-and-console`; both arms become reachable when it merges,
+with no change here.
+
+The Submit row is the third, and it is the one that shows.
+The flow it leads to is outside this slice by the design's own section 9.8, so
+`SubmitAvailable` is supplied false and the row is drawn refused with "Submitting runs is
+coming" rather than drawn as an offer nothing honours.
+That departs from section 5, which gives the healthy state no reason line, and the
+departure closes itself: when the submit flow lands the supplied fact turns true, the row
+is offered, the reason is null, and the state matches section 5 exactly with no other
+change here.
 
 **What the accepted design draws and this does not.** The browser's parchment tabs, the
 run strip, the deck tiles, the relic row and the portrait; and the run-history plate hung

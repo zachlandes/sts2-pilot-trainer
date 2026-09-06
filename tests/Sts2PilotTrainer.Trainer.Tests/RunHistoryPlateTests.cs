@@ -20,7 +20,7 @@ public sealed class RunHistoryPlateTests
         bool? consoleUsed = null,
         string recordedBuild = Build,
         bool runInProgress = false,
-        bool submitAvailable = true,
+        bool submitAvailable = false,
         int? lastFight = 4,
         int? lastFloor = 11) =>
         new(hasRecording, multiplayer, continuous, consoleUsed, recordedBuild, Build,
@@ -32,52 +32,50 @@ public sealed class RunHistoryPlateTests
         Assert.Null(RunHistoryPlate.For(Facts(hasRecording: false)));
     }
 
+    /// <summary>
+    /// The healthy state as a player reaches it today: both ways in offered, and the
+    /// Submit row refused because the flow it leads to is not built. The default here is
+    /// false for that reason - true is a value production never passes, and a test that
+    /// asserted this state's shape under it would be asserting about a screen nobody can
+    /// open.
+    /// </summary>
     [Fact]
-    public void ARecordedContinuousRunOnThisBuildOffersEverything()
+    public void ARecordedContinuousRunOnThisBuildOffersBothWaysIn()
     {
         var plate = RunHistoryPlate.For(Facts())!;
 
         Assert.Equal(PlateMark.Recorded, plate.Mark);
         Assert.Equal(LibraryCopy.PlateRecorded, plate.Head);
-        Assert.Null(plate.Reason);
-        Assert.All(plate.Rows, row => Assert.True(row.Enabled));
+        Assert.True(plate.Rows[0].Enabled);
+        Assert.True(plate.Rows[1].Enabled);
+        Assert.False(plate.Rows[2].Enabled);
+        Assert.Equal(LibraryCopy.PlateSubmitComing, plate.Reason);
         Assert.Equal("Play from fight 4", plate.Rows[0].Label);
         Assert.Equal("Play from floor 11", plate.Rows[1].Label);
         Assert.Equal(LibraryCopy.SubmitThisRun, plate.Rows[2].Label);
     }
 
     /// <summary>
-    /// The flow the Submit row leads to is not built, so the row is refused and says so
-    /// - one owner for the decision, and no greyed row a player has to guess about. The
-    /// two play rows are untouched: whether a run can be submitted says nothing about
-    /// whether it can be played from.
+    /// The shape section 5 specifies for the healthy state, which this build reaches the
+    /// moment the submit flow exists: every row offered and no reason line. Nothing else
+    /// changes with it - the one supplied fact turning true is the whole difference.
     /// </summary>
     [Fact]
-    public void WithNoSubmitFlowTheSubmitRowIsRefusedAndSaysWhyAndNothingElseChanges()
+    public void OnceTheSubmitFlowExistsTheHealthyStateHasNoReasonLine()
     {
-        var plate = RunHistoryPlate.For(Facts(submitAvailable: false))!;
+        var plate = RunHistoryPlate.For(Facts(submitAvailable: true))!;
 
         Assert.Equal(PlateMark.Recorded, plate.Mark);
-        Assert.True(plate.Rows[0].Enabled);
-        Assert.True(plate.Rows[1].Enabled);
-        Assert.False(plate.Rows[2].Enabled);
-        Assert.Equal(LibraryCopy.PlateSubmitComing, plate.Reason);
-    }
-
-    /// <summary>A console command is the more particular thing true of this run, so it
-    /// is what the reason names even where the flow is missing too.</summary>
-    [Fact]
-    public void AConsoleCommandIsNamedAheadOfTheMissingFlow()
-    {
-        var plate = RunHistoryPlate.For(Facts(consoleUsed: true, submitAvailable: false))!;
-
-        Assert.False(plate.Rows[2].Enabled);
-        Assert.Equal(LibraryCopy.PlateConsoleUsed, plate.Reason);
+        Assert.Equal(LibraryCopy.PlateRecorded, plate.Head);
+        Assert.Null(plate.Reason);
+        Assert.All(plate.Rows, row => Assert.True(row.Enabled));
     }
 
     /// <summary>
     /// A console command changes what the run was, so it stops the run being published
-    /// and stops nothing else: the fights really were fought.
+    /// and stops nothing else: the fights really were fought. It is also the more
+    /// particular thing true of this run, so it is what the reason names even where the
+    /// submit flow is missing too.
     /// </summary>
     [Fact]
     public void AConsoleCommandStopsTheSubmitRowAndNothingElse()
@@ -93,13 +91,15 @@ public sealed class RunHistoryPlateTests
 
     /// <summary>
     /// Nobody has established whether a console command was used, so nothing is claimed
-    /// about it. Null is not "no": it is the absence of a reading, and the submit row
-    /// is left as it is rather than being refused on a check that never ran.
+    /// about it. Null is not "no": it is the absence of a reading, and the submit row is
+    /// left as it is rather than being refused on a check that never ran. Asked with the
+    /// submit flow present, so the console question is the only thing that could refuse
+    /// the row.
     /// </summary>
     [Fact]
     public void AnUnaskedConsoleQuestionIsNotAnsweredAsNo()
     {
-        var plate = RunHistoryPlate.For(Facts(consoleUsed: null))!;
+        var plate = RunHistoryPlate.For(Facts(consoleUsed: null, submitAvailable: true))!;
 
         Assert.Null(plate.Reason);
         Assert.True(plate.Rows[2].Enabled);
@@ -166,7 +166,7 @@ public sealed class RunHistoryPlateTests
         Assert.Equal(LibraryCopy.PlayFromAFloor, plate.Rows[1].Label);
         Assert.False(plate.Rows[0].Enabled);
         Assert.False(plate.Rows[1].Enabled);
-        Assert.True(plate.Rows[2].Enabled);
+        Assert.Equal(3, plate.Rows.Count);
     }
 
     /// <summary>Multiplayer is answered before the build question, because nothing
