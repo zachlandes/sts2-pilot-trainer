@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 
@@ -75,7 +76,8 @@ public sealed class RecorderVersionTests
     /// <summary>The mod set as the game would report it, taken from that same manifest.</summary>
     private static ModEnvironment InstalledMods => ModEnvironment.AsRecorded(
         [new LocalMod(
-            RunmobileMod.ModId, RunmobileMod.ModId, DeclaredByTheMod, AffectsGameplay: false, "Loaded")]);
+            RunmobileMod.ModId, RunmobileMod.ModId, DeclaredByTheMod, AffectsGameplay: false, "Loaded")],
+        HarmonyRoster.Read());
 
     private static readonly IReadOnlyDictionary<string, string> Args =
         new Dictionary<string, string>(StringComparer.Ordinal) { ["option_index"] = "0" };
