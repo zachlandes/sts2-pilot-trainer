@@ -154,6 +154,34 @@ internal static class RunmobileStore
     internal static bool Exists(string relativePath) => File.Exists(PathOf(relativePath));
 
     /// <summary>
+    /// How many bytes one entry occupies, and nothing else about it.
+    ///
+    /// A read, and the reason it is here rather than at the caller is the same reason
+    /// <see cref="Read"/> is: a caller that resolved its own path would be a caller
+    /// outside the containment gate, and measuring a file is enough to say whether it
+    /// is there. The settings row that tells a player what their runs take on disk sums
+    /// this over the names <c>RecordingLibrary.Index</c> returns.
+    ///
+    /// An entry that is not there occupies nothing, which is the answer a sum wants: a
+    /// recording removed between the listing and the measuring is not a hole in the
+    /// figure. A directory is refused for the same reason <see cref="Remove"/> refuses
+    /// one - the store holds files, and a caller asking this about a directory is a
+    /// caller who thinks it holds something else.
+    /// </summary>
+    internal static long SizeOf(string relativePath)
+    {
+        var path = PathOf(relativePath);
+        if (Directory.Exists(path))
+        {
+            throw new InvalidOperationException(
+                $"'{relativePath}' is a directory. This store measures files it wrote, one at a time.");
+        }
+
+        var file = new FileInfo(path);
+        return file.Exists ? file.Length : 0L;
+    }
+
+    /// <summary>
     /// The names of the files directly inside one of the store's own directories, in a
     /// stable order, or nothing when that directory is not there yet.
     ///
@@ -206,11 +234,11 @@ internal static class RunmobileStore
     private static string ScopedUserPath()
     {
         var saves = SaveManager.Instance
-            ?? throw new InvalidOperationException(
+            ?? throw new StoreNotReadyException(
                 "This game has no SaveManager, so Runmobile cannot tell whose files these would be.");
         if (!saves.IsProfileInitialized)
         {
-            throw new InvalidOperationException(
+            throw new StoreNotReadyException(
                 "This game has not chosen a save profile yet, so Runmobile cannot tell whose files these " +
                 "would be.");
         }
@@ -288,3 +316,15 @@ internal static class RunmobileStore
     internal static void UseRootProviderForTesting(Func<string> rootProvider) =>
         _rootForTesting = rootProvider ?? throw new ArgumentNullException(nameof(rootProvider));
 }
+
+/// <summary>
+/// The store saying it cannot yet be asked, because the game has not said whose files
+/// these would be.
+///
+/// A type of its own rather than a message to read, because it is the one failure a
+/// surface may name to a player: choosing a save profile resolves it, and it happens
+/// on the ordinary path into the main menu. Every other refusal is a fault this mod
+/// cannot describe honestly, and a screen that told a player to choose a profile over
+/// one would be stating a cause nobody established.
+/// </summary>
+internal sealed class StoreNotReadyException(string message) : InvalidOperationException(message);

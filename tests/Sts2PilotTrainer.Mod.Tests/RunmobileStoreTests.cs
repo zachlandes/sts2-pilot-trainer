@@ -77,6 +77,44 @@ public sealed class RunmobileStoreTests : IDisposable
         Assert.Equal("second", RunmobileStore.Read("progress.json"));
     }
 
+    /// <summary>
+    /// The reading the settings row sums. A file that is not there occupies nothing,
+    /// which is the answer a sum wants: a run removed between the listing and the
+    /// measuring is not a hole in the figure.
+    /// </summary>
+    [Fact]
+    public void AnEntryIsMeasuredAndAMissingOneOccupiesNothing()
+    {
+        RunmobileStore.Write("recordings/one.json", "{\"a\":1}");
+
+        Assert.Equal(7, RunmobileStore.SizeOf("recordings/one.json"));
+        Assert.Equal(0, RunmobileStore.SizeOf("recordings/never-written.json"));
+    }
+
+    /// <summary>
+    /// Measuring goes through the same gate a write does. A read that resolved its own
+    /// path would be a caller outside the store, and the store's whole point is that
+    /// there is no second way to name a path.
+    /// </summary>
+    [Fact]
+    public void MeasuringOutsideTheStoreIsRefused()
+    {
+        Assert.Throws<PathContainmentException>(() => RunmobileStore.SizeOf("../stolen.json"));
+        Assert.Throws<PathContainmentException>(() => RunmobileStore.SizeOf("."));
+        Assert.Throws<ArgumentException>(() => RunmobileStore.SizeOf("  "));
+    }
+
+    /// <summary>A directory is refused for the reason a removal refuses one: this store
+    /// holds files, and a caller measuring a directory thinks it holds something
+    /// else.</summary>
+    [Fact]
+    public void MeasuringADirectoryIsRefused()
+    {
+        RunmobileStore.Write("recordings/one.json", "{}");
+
+        Assert.Throws<InvalidOperationException>(() => RunmobileStore.SizeOf("recordings"));
+    }
+
     [Fact]
     public void ATraversalIsRefusedBeforeAnythingIsWritten()
     {

@@ -25,12 +25,21 @@ namespace Sts2PilotTrainer.Mod;
 /// runs from cannot be pushed before that - so a corrupt save was renamed by the game,
 /// not by us. On the recorder's path the save was just written by the game's own atomic
 /// writer, so there is no torn file to trip it either. Anything that would call this
-/// earlier than the main menu has to establish that again.</para>
+/// earlier than the main menu has to establish that again.
+///
+/// The settings row is the third caller and is established on the same grounds rather
+/// than by inheriting them: it is drawn from the game's own modding entry point on the
+/// main menu, which is after that <c>RefreshButtons</c> call, and it is asked again
+/// only while a run is live, where the save is the one the game's atomic writer just
+/// finished. It is asked at all because a row that predicted a removal without it would
+/// promise one more than the next main menu performs.</para>
 ///
 /// It refuses rather than approximates. A game with no <c>SaveManager</c>, or one
 /// holding a run save it could not read, gets an exception rather than a null: the
 /// caller is <see cref="RecordingRetention"/> deciding what to delete, and "there is
-/// no run to continue" and "this game cannot say" must not answer the same way.
+/// no run to continue" and "this game cannot say" must not answer the same way. That
+/// refusal reaches the settings row as a disk that would not read, which is the same
+/// answer it gives any other fault - not a pending count it could not compute.
 /// </summary>
 internal static class ContinuableRun
 {

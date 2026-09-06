@@ -329,6 +329,11 @@ public partial class Button
     /// <summary>Godot: a button drawn without its own panel. The transport's identity
     /// block and its menu rows are hit areas over text the tag already draws.</summary>
     public bool Flat { get; set; }
+
+    /// <summary>Godot: whether the label is cut to the box rather than widening it. A
+    /// Button's own minimum size is its unwrapped text, so a control that does not clip
+    /// pushes itself out of the row it was placed in.</summary>
+    public bool ClipText { get; set; }
 }
 
 public partial class BaseButton

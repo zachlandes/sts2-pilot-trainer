@@ -12,8 +12,12 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// rules are the whole of the behaviour: an absent file is the default, a file this
 /// build cannot read means do nothing rather than being guessed at, and what the
 /// player wrote is what happens. Three sentences are sayable in it - record my runs,
-/// keep this many, remove them all - and the last is the only member this mod ever
-/// writes back.
+/// keep this many, remove them all - and the settings row writes the last two back
+/// where a player moves a control instead of typing.
+///
+/// Every write here edits the member it names and nothing else, which is the property
+/// most of the tests below are about: the rest of the document is the player's own
+/// text, refused values included.
 /// </summary>
 public sealed class RunmobileSettingsTests : IDisposable
 {
@@ -170,6 +174,131 @@ public sealed class RunmobileSettingsTests : IDisposable
         Assert.False((bool)written["purge_my_runs"]!);
         Assert.Equal(7, (int)written["keep_recent_runs"]!);
         Assert.False(RunmobileSettings.Read().PurgeMyRuns);
+    }
+
+    /// <summary>The act a player asks for on the settings row, recorded before anything
+    /// is removed so that a game which stops in between finishes at the next main
+    /// menu.</summary>
+    [Fact]
+    public void APurgeCanBeRequestedAndLeavesEveryOtherMemberAlone()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","record_my_runs":false,"keep_recent_runs":7}""");
+
+        RunmobileSettings.RequestPurge();
+
+        var written = JsonNode.Parse(RunmobileStore.Read(RunmobileSettings.FileName)!)!.AsObject();
+        Assert.True((bool)written["purge_my_runs"]!);
+        Assert.Equal(7, (int)written["keep_recent_runs"]!);
+        Assert.False((bool)written["record_my_runs"]!);
+        Assert.True(RunmobileSettings.Read().PurgeMyRuns);
+    }
+
+    /// <summary>A player who has never written the file can still ask, so the request
+    /// is written with the defaults around it rather than refused.</summary>
+    [Fact]
+    public void ARequestWithNoFileYetWritesTheDefaultsAroundIt()
+    {
+        RunmobileSettings.RequestPurge();
+
+        var settings = RunmobileSettings.Read();
+        Assert.True(settings.PurgeMyRuns);
+        Assert.True(settings.RecordMyRuns);
+        Assert.Equal(RunmobileSettings.DefaultKeepRecentRuns, settings.KeepRecentRuns);
+    }
+
+    [Fact]
+    public void ThePolicyCanBeWrittenAndLeavesEveryOtherMemberAlone()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","record_my_runs":false,"purge_my_runs":true}""");
+
+        RunmobileSettings.SetKeepRecentRuns(12);
+
+        var written = JsonNode.Parse(RunmobileStore.Read(RunmobileSettings.FileName)!)!.AsObject();
+        Assert.Equal(12, (int)written["keep_recent_runs"]!);
+        Assert.True((bool)written["purge_my_runs"]!);
+        Assert.False((bool)written["record_my_runs"]!);
+    }
+
+    /// <summary>A negative is not a number of runs. The file has an answer for one a
+    /// player typed; a caller passing one has a bug.</summary>
+    [Fact]
+    public void ANegativePolicyIsRefusedRatherThanWritten()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => RunmobileSettings.SetKeepRecentRuns(-1));
+        Assert.Null(RunmobileStore.Read(RunmobileSettings.FileName));
+    }
+
+    /// <summary>
+    /// A file that is there and is not a settings object is not written over. Reading
+    /// one already means "record nothing"; overwriting it would be this mod discarding
+    /// something the player wrote in order to store something they meant to add to it.
+    /// </summary>
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("not json at all")]
+    public void AFileThatIsNotASettingsObjectIsNotWrittenOver(string content)
+    {
+        RunmobileStore.Write(RunmobileSettings.FileName, content);
+
+        Assert.ThrowsAny<Exception>(RunmobileSettings.RequestPurge);
+        Assert.ThrowsAny<Exception>(() => RunmobileSettings.SetKeepRecentRuns(12));
+        Assert.Equal(content, RunmobileStore.Read(RunmobileSettings.FileName));
+    }
+
+    /// <summary>
+    /// A file that will not deserialize is not written into either, whatever its schema
+    /// says. <see cref="RunmobileSettings.Read"/> refuses it, and the writer asks the
+    /// same reader rather than keeping a second set of rules: a document that is
+    /// unreadable to the settings row may not be writable by the control beside it.
+    /// Before this, a valid schema over a member of the wrong type let a purge request
+    /// be written into a file this build had just declared it could not read.
+    /// </summary>
+    [Fact]
+    public void AFileWhoseMembersDoNotReadIsNotWrittenIntoEither()
+    {
+        var content = $$"""{"schema":"{{RunmobileSettings.Schema}}","keep_recent_runs":"fifty"}""";
+        RunmobileStore.Write(RunmobileSettings.FileName, content);
+
+        Assert.False(RunmobileSettings.Read().Readable);
+        Assert.ThrowsAny<Exception>(RunmobileSettings.RequestPurge);
+        Assert.ThrowsAny<Exception>(() => RunmobileSettings.SetKeepRecentRuns(12));
+        Assert.Equal(content, RunmobileStore.Read(RunmobileSettings.FileName));
+    }
+
+    /// <summary>
+    /// A file declaring a schema this build does not read is not written into either.
+    /// <see cref="RunmobileSettings.Read"/> already refuses it, and editing one member
+    /// of it would put this build's meaning of <c>keep_recent_runs</c> or
+    /// <c>purge_my_runs</c> into a document written by a build with another - a sentence
+    /// neither of them said, in a file this one has declared it cannot read.
+    /// </summary>
+    [Fact]
+    public void AFileThisBuildCannotReadIsNotWrittenIntoEither()
+    {
+        const string content = """{"schema":"sts2-pilot-trainer/runmobile-settings/v2","keep_recent_runs":7}""";
+        RunmobileStore.Write(RunmobileSettings.FileName, content);
+
+        Assert.ThrowsAny<Exception>(RunmobileSettings.RequestPurge);
+        Assert.ThrowsAny<Exception>(() => RunmobileSettings.SetKeepRecentRuns(12));
+        Assert.Equal(content, RunmobileStore.Read(RunmobileSettings.FileName));
+    }
+
+    /// <summary>A file that could be read says so, which is what the settings row shows
+    /// the player's own policy from rather than the stand-in.</summary>
+    [Fact]
+    public void AReadableFileSaysItWasReadAndAnUnreadableOneSaysItWasNot()
+    {
+        Assert.True(RunmobileSettings.Read().Readable);
+
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            """{"schema":"sts2-pilot-trainer/runmobile-settings/v2"}""");
+
+        Assert.False(RunmobileSettings.Read().Readable);
     }
 
     /// <summary>The setting is in the store, like everything else this mod writes, so
