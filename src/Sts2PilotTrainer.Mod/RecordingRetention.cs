@@ -24,10 +24,10 @@ namespace Sts2PilotTrainer.Mod;
 /// resolved per operation and two profiles do not share a library, so a policy applied
 /// to one says nothing about the other - and it latches a profile only once it has
 /// actually run against it, so a call made before the store could answer is retried at
-/// the next one rather than swallowed. <see cref="RunmobileMod.EnsureAdopted"/> is where it is called from, and
-/// every path that reaches the store goes through that first - the recorder asks it
-/// before it computes a journal path at all - so a removal here can never race a
-/// journal being appended to.</para>
+/// the next one rather than swallowed. <see cref="RunmobileMod.EnsureAdopted"/> is where it is called
+/// from, and no journal is being appended to when it runs: the recorder opens one only
+/// after asking the same gate, and it has let go of the run it was recording before the
+/// singleplayer menu this is called from can be reached again.</para>
 ///
 /// <para><b>It removes recordings, and nothing else.</b> Every file it names came back
 /// from <see cref="RecordingLibrary"/> as part of a recording this build recognises,
@@ -89,6 +89,11 @@ internal static class RecordingRetention
     /// Removes what <paramref name="settings"/> says to remove, and returns how many
     /// runs went.
     ///
+    /// The count is of runs this call removed a file of, not of runs the library
+    /// named: a recording that was already gone by the time the delete reached it - a
+    /// second process on the same profile, or a player emptying the directory by hand
+    /// - is not something to tell them was removed.
+    ///
     /// A purge clears its own request afterwards rather than before: a game that
     /// stopped part way through finishes the job at the next launch, which is the
     /// direction a player who asked for everything to go wants it to fail in.
@@ -99,15 +104,22 @@ internal static class RecordingRetention
         var removing = RecordingLibrary.Cull(
             RunmobileStore.ListFileNames(RunRecorder.RecordingsDirectory), keep);
 
-        foreach (var file in removing.SelectMany(recording => recording.FileNames))
+        var removed = 0;
+        foreach (var recording in removing)
         {
-            RunmobileStore.Remove($"{RunRecorder.RecordingsDirectory}/{file}");
+            var went = false;
+            foreach (var file in recording.FileNames)
+            {
+                went |= RunmobileStore.Remove($"{RunRecorder.RecordingsDirectory}/{file}");
+            }
+
+            if (went) removed++;
         }
 
         if (settings.PurgeMyRuns) RunmobileSettings.ClearPurgeRequest();
 
-        Announce(settings, removing.Count);
-        return removing.Count;
+        Announce(settings, removed);
+        return removed;
     }
 
     /// <summary>

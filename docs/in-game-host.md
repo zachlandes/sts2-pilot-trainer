@@ -745,7 +745,7 @@ It is the only member of that file the mod ever writes: the file is edited in pl
 Three properties hold, and each is asserted rather than described.
 Every file removed came back from `RecordingLibrary` as part of a recording written under the name this build writes, so a player's own file in that directory, a manifest they copied in, and this mod's `settings.json` all survive a purge.
 Every removal goes through `RunmobileStore.Remove`, which refuses a path outside the store, a path inside a game installation and a directory, exactly as a write does.
-And the moment is `RunmobileMod.EnsureAdopted` - the mod's one "there is demonstrably a running game" gate, which every path reaching the store passes first, so a removal can never race a journal being appended to.
+And the moment is `RunmobileMod.EnsureAdopted` - the mod's one "there is demonstrably a running game" gate, which the recorder passes before it opens a journal, so a removal can never race a journal being appended to: no journal is open when the singleplayer menu is reached, because the recorder lets go of a run before the player is back at it.
 It is asked from the shell's own singleplayer-menu patch, ahead of any question about which modules contributed a card, because keeping and removing a player's files is the shell's duty.
 Retention runs there whether or not the adoption itself succeeded: its condition is the store's, a chosen save profile, and not the engine layer's verdict on whether this game can be read.
 So a build where the Combat Trainer and the recorder both decline, and a build the engine layer refuses to adopt, both still honour a purge and still enforce `keep_recent_runs`.
