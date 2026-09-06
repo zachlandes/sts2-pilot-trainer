@@ -285,6 +285,38 @@ Inside a fight it hands the run to the same `PlayerFightObserver` the Combat Tra
 There is one observer, one settle rule and one set of rules about what a sample means, whichever feature is watching.
 The one question the two sinks answer differently is an action whose argument the observer could not resolve, which is why `IFightSampleSink` asks it rather than the observer deciding: a history missing an argument the format requires is a run nobody can replay, so the recorder refuses and keeps nothing for that action, while a fight being compared never reads that argument and the capture keeps the step.
 
+**It records singleplayer runs only, and the reading is taken rather than the member's name trusted.**
+The recorder attaches through `RunManager.SetUpNewSingleplayer` and `SetUpSavedSingleplayer`, and a member whose name says "singleplayer" is a claim about what that member is for rather than a reading of what this session became.
+`LiveRun.ReadSession` is the reading: `NetService.Type` for the network game, and the run's player count for the half `RunManager.IsSingleplayerOrFakeMultiplayer` folds together.
+`RunSession` in `Sts2PilotTrainer.Replay` owns what a `RunSessionKind` permits, so both rules are checkable without the game.
+Two players sharing one client is a multiplayer run here even though the game's own property calls it singleplayer: what that property is about is whether anything goes over a wire, and what this is about is whose decisions the history holds.
+A reading that could not be taken is refused exactly like a multiplayer one - a run nothing established anything about is not a singleplayer run.
+
+**A multiplayer game gets no mod surface at all, which is a stronger rule than recording nothing.**
+`GameSessionWatch` is the shell's, installed however the modules answer, and `RunmobileMod.MenuCards` returns nothing while it says this is a multiplayer game.
+An indicator saying a run is *not* being recorded would still be this mod drawing in a game somebody else is also playing, and one of them never installed it - so the suppression is of every surface rather than of the recorder.
+It is two observations rather than one. `LiveRun.ReadSession` reads the run in progress; the two patches on `RunManager.SetUpNewMultiplayer` and `SetUpSavedMultiplayer` latch the moment the game is asked to set a multiplayer session up, which covers the stretch where there is nothing yet to read - continuing a saved multiplayer run is asynchronous, and the method that starts it returns long before the run exists.
+The latch is cleared by `RunManager.CleanUp`, because a client that played a multiplayer game and then started a singleplayer one is in a singleplayer game.
+Nothing is recorded because the reading at attach refuses before a journal exists, so no recording is begun and no artifact is created: the latch is the whole of the safety net.
+It is set from a prefix on purpose - being early is what closes the window - and a setup the game then refuses would strand it, because the `CleanUp` that clears it only happens where a run existed; `GameSessionWatch.MultiplayerSetupRefused`, a finalizer on `SetUpNewMultiplayer`, is the way back, and the saved setup has none because it is asynchronous and carries its refusal in the task it returns.
+What this build cannot do is mark a recording that is already live: nothing here reaches one mid-run, and no path was found that creates a partial artifact, so that is a limit rather than a guarantee.
+The shell has no refusal to fall back on the way `RecorderModule` does, so `GameSessionWatchTests` asserts every member it attaches to is on this build rather than assuming it.
+
+**A run the console was used in is kept, complete, and never publishable.**
+Installing this mod turns the game's full console on: `NDevConsole` reads `ModManager.IsRunningModded()` when it decides whether to register the debug commands, so this is a reachable state in an ordinary modded session rather than a developer-only one.
+`RunCapture.MarkNonStandard` sets `source.native.integrity = "non-standard"` and changes nothing else - not the state, not the continuity, not the history - and the validator refuses the manifest for publication where the field says anything but `complete`.
+The recording is still written to `user://Runmobile/recordings/`, because it is what the player played; what it is not is evidence anybody else can act on, since what a console command did to the state is not among the decisions the history holds.
+Absent is not `complete` under another name: a recording made before the recorder could read this question states nothing, and the validator accepts that because it is the standard the recording was made and gated under.
+
+**The seam is the console's own funnel, not the action queue.**
+`DevConsole` has two public entries - `ProcessCommand(string)` for a command typed on this client and `ProcessNetCommand` for one a peer sent - and both reach the private three-argument `ProcessCommand`, so one patch covers both, for the same reason `SkipRewardsSet` is watched rather than the call the driver makes.
+The queue is deliberately not it. A console command reaches the queue only in a networked game, and as two types rather than one: the game's own generated `INetActionSubtypes` list holds the eleven `Net*` structs, of which the console's is `NetConsoleCmdGameAction`, and the action it builds and puts on the queue is `ConsoleCmdGameAction`. In singleplayer `DevConsole.ProcessCommand` takes its local branch and builds neither.
+Since singleplayer is the only kind of run this records, a watch on the queue would have seen a console command in exactly the runs that are never recorded and in none of the runs that are.
+Every command the console accepted counts, read off the game's own `CmdResult.success` so a typo is not one; a command that only printed something counts too, because which of the game's commands change a run is not a judgement this mod is in a position to make and the cheap direction to be wrong in is the one that keeps the recording on the player's disk and off the gate.
+A command used between the run starting and the recorder attaching is held and applied to the capture at attach, because it is in that run's history and nothing later could recover it - held unconditionally rather than only while there is a run to read, since continuing a saved run is asynchronous and there is nothing to read for the whole of that load.
+The hold is cleared when the next run starts, so a command typed at the main menu is never carried into the run that follows it.
+Nothing the player typed is kept: the journal line carries the mark and nothing else, `RunJournal.NonStandard` reads back as whether the mark is present, and `source.native.integrity` is the whole of what a recording states.
+
 **What it watches is `EngineCommands` read from the other end.**
 The driver calls those members to make a recorded decision; a player clicking makes the game call the same members.
 `RunRecorder.RecordedVerbs` has to equal the table's mapped set, and `RunRecorderTests` asserts it - a verb one side has and the other does not is either a recording nothing can replay or a replay of a decision nothing can record, and both are silent until somebody tries.
@@ -710,7 +742,7 @@ The same file says how many runs are kept and how to remove them all; "Keeping r
    Any turn in the run can supply the pair, so this is usually satisfied by accident; it is only worth thinking about if you find yourself opening every turn with the same card.
    A run that misses either finishes normally and then gets `NOT PUBLISHABLE` for coverage, with nothing wrong with the recording.
    The recorder writes the alternative each of the last three offered, and omits it where the decision genuinely had none - a run that never met one of them records honestly and is not publishable.
-5. End it - won, dead, or given up from the pause menu. `[Runmobile] recorded <id>: <outcome>, N decision(s), M boundary/boundaries, continuity continuous, written to recordings/<id>.replay.json` says it finished, and a line after it says so if the recording does not validate.
+5. End it - won, dead, or given up from the pause menu. `[Runmobile] recorded <id>: <outcome>, N decision(s), M boundary/boundaries, continuity continuous, integrity complete, written to recordings/<id>.replay.json` says it finished, and a line after it says so if the recording does not validate.
 6. The recording is under the store: `~/Library/Application Support/SlayTheSpire2/Runmobile/<the game's own profile scope>/recordings/`. The scope mirrors what the game resolved for its own saves, so two accounts and two profiles do not share a library.
 7. `./scripts/arbiter gate <that file>` is the verdict, and `./scripts/arbiter enter-fight <that file> --fight 2` stands the arbiter in its second fight.
 8. `./scripts/protected-files.sh compare before.ledger` reports what the session changed. The game's own saves, profile and run history are expected to change - the player really played a run - and everything of this mod's is under `user://Runmobile/`.

@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.DevConsole;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -60,6 +61,13 @@ internal sealed class RunRecorder : IDisposable
 
     private static readonly Lock Gate = new();
 
+    /// <summary>Whether the console was used before this recorder attached to the run
+    /// it is being started for. Applied to the capture at attach, because a command
+    /// used in that stretch is in the run's history and nothing later could recover it.
+    /// A static field of a framework type, so this type still lays out before the
+    /// sibling assemblies are resolvable - see docs/in-game-host.md.</summary>
+    private static bool _consoleUsedBeforeAttach;
+
     private readonly RunCapture _capture;
     private readonly string _journalPath;
     private readonly Queue<PendingDecision> _pending = new();
@@ -92,6 +100,7 @@ internal sealed class RunRecorder : IDisposable
     /// <summary>Where this recording's journal is being written.</summary>
     internal string JournalPath => _journalPath;
 
+
     // ── Lifecycle ────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -114,6 +123,12 @@ internal sealed class RunRecorder : IDisposable
                 // publish somebody else's recording back as the player's own.
                 return;
             }
+
+            // Cleared at the start of a run rather than only at the end of one, so a
+            // command typed at the main menu is never carried into the run that
+            // follows it. Before any refusal below, because a run this recorder does
+            // not attach to still ends the stretch the mark would have belonged to.
+            lock (Gate) _consoleUsedBeforeAttach = false;
 
             if (!RunmobileSettings.Read().RecordMyRuns) return;
 
@@ -158,11 +173,79 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     internal static void RunTornDown()
     {
+        lock (Gate) _consoleUsedBeforeAttach = false;
+
         var recorder = Active;
         if (recorder is null) return;
 
         Active = null;
         recorder.Dispose();
+    }
+
+    /// <summary>
+    /// The developer console was used.
+    ///
+    /// Installing this mod turns the game's full console on for the player
+    /// (<c>NDevConsole</c> reads <c>ModManager.IsRunningModded()</c> when it decides
+    /// whether to register the debug commands), so this is a reachable state in an
+    /// ordinary modded session rather than a developer-only one. What a command did to
+    /// the run is not among the decisions the history holds, so the run is recorded to
+    /// its end, kept, and never publishable.
+    ///
+    /// Taken whether or not a recording is live, because the two cases are different
+    /// and neither is "nothing happened": with a recording, the mark goes on it now;
+    /// without one, the mark is held until a recording of this run exists, and dropped
+    /// when the next run starts.
+    ///
+    /// Held unconditionally rather than only while there is a run to read. Continuing a
+    /// saved run is asynchronous, so between the game saying a run is starting and the
+    /// run existing there is nothing to read, and a command used in that stretch is in
+    /// the run's history exactly like one used a second later.
+    /// </summary>
+    internal static void ConsoleCommandUsed()
+    {
+        try
+        {
+            if (Active is { } recorder)
+            {
+                recorder.NoticeConsoleCommand();
+                return;
+            }
+
+            // No recording yet. Whether one of this run ever exists is the attach's
+            // question; if it does, this is part of what it holds.
+            lock (Gate) _consoleUsedBeforeAttach = true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not mark this recording as one the console was used in: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    /// <summary>
+    /// Marks this recording as one the console was used in, and writes the mark to the
+    /// journal before anything else happens.
+    ///
+    /// Appended the moment it is seen, for the same reason a refusal is: a mark only
+    /// the running session knows about is one a crash takes with it, and the session
+    /// after it would publish a run the console had been used in.
+    ///
+    /// A recording that has finished takes no more marks. Its manifest is already
+    /// written and says what the run was, and the run's last decision is behind it -
+    /// so a command used on the score screen is not in the history this recording
+    /// holds, and marking the journal for it would leave two artifacts disagreeing
+    /// about the same field with nothing raised anywhere.
+    /// </summary>
+    private void NoticeConsoleCommand()
+    {
+        if (_finished || _disposed) return;
+
+        Append(_journalPath, _capture.MarkNonStandard());
+        Log.Warn(
+            $"[{RunmobileMod.ModId}] the console was used in this run, so its recording is kept and is not " +
+            "publishable", 2);
     }
 
     /// <summary>
@@ -212,94 +295,7 @@ internal sealed class RunRecorder : IDisposable
                 return;
             }
 
-            if (Active is not null || ProfileWriteBarrier.IsActive) return;
-            if (LiveRun.State is not { } run) return;
-
-            // Asked here rather than assumed: until the engine layer has taken this
-            // client, the identity below is read out of the prepared copy on disk
-            // instead of out of the game the run is being played in - three true values
-            // from a source nobody established. Adoption is the mod's, not the mode
-            // card's, and this module contributes no card to trigger it, so a trainer
-            // that refuses on some future build must not leave the recorder reading
-            // from somewhere else.
-            if (!RunmobileMod.EnsureAdopted())
-            {
-                Log.Warn(
-                    $"[{RunmobileMod.ModId}] not recording this run: the mod could not take this running " +
-                    "game, so the recording could not say which build it was played on.", 2);
-                return;
-            }
-
-            var startedUtc = LiveRun.RunStartedUtc();
-            var runId = RecordingLibrary.Name(run.Rng.StringSeed, startedUtc);
-            var journalPath = $"{RecordingsDirectory}/{runId}{RunJournal.FileExtension}";
-            var (sample, digest) = LiveRun.Read();
-            var clock = LiveRun.RunClockMs();
-
-            RunCapture capture;
-            if (RunmobileStore.Read(journalPath) is { } existing)
-            {
-                var journal = RunJournal.Parse(existing);
-                capture = RunCapture.Resume(journal, digest);
-
-                // Before anything is appended, because an append onto a fragment a
-                // crash left behind produces a line no later session can read.
-                if (RunJournal.RepairTruncatedTail(existing) is { } repair)
-                {
-                    RunmobileStore.Write(journalPath, repair.Text);
-                    if (repair.LostARecord)
-                    {
-                        capture.MarkBroken(
-                            "The last entry in this journal was cut short by a crash while it was being " +
-                            "written, so the decision it was recording is not in this recording.");
-                    }
-                }
-
-                // A break this resume decided on is a fact only this session knows, and
-                // the session after it would compare its own live digest against a
-                // journal that says nothing about the hole. Appended before the
-                // recorder is live, so a crash between here and the next decision still
-                // leaves the refusal on the file.
-                foreach (var reason in capture.Refusals.Skip(journal.Refusals.Count))
-                {
-                    Append(journalPath, RunJournal.RenderRefusal(reason));
-                }
-
-                Log.Info(
-                    $"[{RunmobileMod.ModId}] continuing the recording of {runId} at decision " +
-                    $"{capture.NextSeq.ToString(CultureInfo.InvariantCulture)}; continuity {capture.Continuity}", 2);
-                if (capture.Refusal is { } refusal) Log.Warn($"[{RunmobileMod.ModId}] {refusal}", 2);
-            }
-            else
-            {
-                capture = RunCapture.Begin(new RunRecordingStart
-                {
-                    RunId = runId,
-                    RecorderVersion = RecorderVersion,
-                    Identity = LiveRun.ReadIdentity(run),
-                    State = sample,
-                    Digest = digest,
-                    RunClockMs = clock,
-                });
-                RunmobileStore.Write(journalPath, capture.Journal.Render());
-                Log.Info($"[{RunmobileMod.ModId}] recording this run as {runId}", 2);
-            }
-
-            var recorder = new RunRecorder(capture, journalPath);
-
-            // A journal whose last decision left a fight live resumes with that fight
-            // still live, and nothing else here would ever ask: the question is asked
-            // after each decision, and a resumed session has not made one yet. Left
-            // unasked, every card play and ended turn of the rest of that fight goes
-            // unrecorded while the recording still reports a continuous watch.
-            //
-            // Before Active is published rather than after, so that a throw from here
-            // lands in the catch below with nothing recording: a log line saying the run
-            // is not being recorded while it is would tell the player the opposite of
-            // what happened.
-            recorder.StartOrStopWatchingTheFight();
-
-            Active = recorder;
+            _ = Attach();
         }
         catch (Exception ex)
         {
@@ -309,6 +305,150 @@ internal sealed class RunRecorder : IDisposable
             Log.Error(
                 $"[{RunmobileMod.ModId}] not recording this run: {ex.GetType().Name}: {ex.Message}", 2);
         }
+    }
+
+    /// <summary>
+    /// The half of the attach that decides, once there is a settled run to decide
+    /// about.
+    ///
+    /// Separate from the waiting half because they answer different questions and only
+    /// one of them needs a scene tree: everything above waits for the game to have a
+    /// run, and everything here reads that run and either records it or says which
+    /// rule refused it. The answer is a value rather than only a line in the log, so a
+    /// caller can tell one refusal from another.
+    /// </summary>
+    internal static RunAttachment Attach()
+    {
+        if (Active is not null || ProfileWriteBarrier.IsActive)
+        {
+            return RunAttachment.AlreadyRecordingOrATrainerRun;
+        }
+
+        if (LiveRun.State is not { } run) return RunAttachment.TheRunWentAway;
+
+        // The reading that decides, taken here because this is the first moment
+        // there is demonstrably a run to read: its networking and its player list
+        // both exist, and neither of them is what the member the game called was
+        // named. Anything but a singleplayer run is refused - the MVP records,
+        // replays and enters those only, and a history of a run more than one
+        // person made holds decisions this client never got to see.
+        var session = GameSessionWatch.Observed;
+        if (!RunSession.MayBeRecorded(session))
+        {
+            Log.Info(
+                $"[{RunmobileMod.ModId}] not recording this run: it is {RunSession.Describe(session)}, and " +
+                "this build records singleplayer runs only.", 2);
+            return RunAttachment.NotASingleplayerRun;
+        }
+
+        // Asked here rather than assumed: until the engine layer has taken this
+        // client, the identity below is read out of the prepared copy on disk
+        // instead of out of the game the run is being played in - three true values
+        // from a source nobody established. Adoption is the mod's, not the mode
+        // card's, and this module contributes no card to trigger it, so a trainer
+        // that refuses on some future build must not leave the recorder reading
+        // from somewhere else.
+        if (!RunmobileMod.EnsureAdopted())
+        {
+            Log.Warn(
+                $"[{RunmobileMod.ModId}] not recording this run: the mod could not take this running " +
+                "game, so the recording could not say which build it was played on.", 2);
+            return RunAttachment.CouldNotTakeTheGame;
+        }
+
+        var startedUtc = LiveRun.RunStartedUtc();
+        var runId = RecordingLibrary.Name(run.Rng.StringSeed, startedUtc);
+        var journalPath = $"{RecordingsDirectory}/{runId}{RunJournal.FileExtension}";
+        var (sample, digest) = LiveRun.Read();
+        var clock = LiveRun.RunClockMs();
+
+        RunCapture capture;
+        if (RunmobileStore.Read(journalPath) is { } existing)
+        {
+            var journal = RunJournal.Parse(existing);
+            capture = RunCapture.Resume(journal, digest);
+
+            // Before anything is appended, because an append onto a fragment a
+            // crash left behind produces a line no later session can read.
+            if (RunJournal.RepairTruncatedTail(existing) is { } repair)
+            {
+                RunmobileStore.Write(journalPath, repair.Text);
+                if (repair.LostARecord)
+                {
+                    capture.MarkBroken(
+                        "The last entry in this journal was cut short by a crash while it was being " +
+                        "written, so the decision it was recording is not in this recording.");
+                }
+            }
+
+            // A break this resume decided on is a fact only this session knows, and
+            // the session after it would compare its own live digest against a
+            // journal that says nothing about the hole. Appended before the
+            // recorder is live, so a crash between here and the next decision still
+            // leaves the refusal on the file.
+            foreach (var reason in capture.Refusals.Skip(journal.Refusals.Count))
+            {
+                Append(journalPath, RunJournal.RenderRefusal(reason));
+            }
+
+            Log.Info(
+                $"[{RunmobileMod.ModId}] continuing the recording of {runId} at decision " +
+                $"{capture.NextSeq.ToString(CultureInfo.InvariantCulture)}; continuity {capture.Continuity}", 2);
+            if (capture.Refusal is { } refusal) Log.Warn($"[{RunmobileMod.ModId}] {refusal}", 2);
+        }
+        else
+        {
+            capture = RunCapture.Begin(new RunRecordingStart
+            {
+                RunId = runId,
+                RecorderVersion = RecorderVersion,
+                Identity = LiveRun.ReadIdentity(run),
+                State = sample,
+                Digest = digest,
+                RunClockMs = clock,
+            });
+            RunmobileStore.Write(journalPath, capture.Journal.Render());
+            Log.Info($"[{RunmobileMod.ModId}] recording this run as {runId}", 2);
+        }
+
+        BeginRecording(capture, journalPath);
+        return RunAttachment.Attached;
+    }
+
+    /// <summary>
+    /// The recording becomes the live one: everything between a capture this session
+    /// will write to and the recorder the game's patches then reach.
+    /// </summary>
+    internal static void BeginRecording(RunCapture capture, string journalPath)
+    {
+        var recorder = new RunRecorder(capture, journalPath);
+
+        // A console command used between the run starting and this attaching is in
+        // this run's history and nothing later could recover it, so it is applied
+        // here rather than dropped. Before Active is published, so the mark is on
+        // the file before the first decision that follows it.
+        bool early;
+        lock (Gate)
+        {
+            early = _consoleUsedBeforeAttach;
+            _consoleUsedBeforeAttach = false;
+        }
+
+        if (early) recorder.NoticeConsoleCommand();
+
+        // A journal whose last decision left a fight live resumes with that fight
+        // still live, and nothing else here would ever ask: the question is asked
+        // after each decision, and a resumed session has not made one yet. Left
+        // unasked, every card play and ended turn of the rest of that fight goes
+        // unrecorded while the recording still reports a continuous watch.
+        //
+        // Before Active is published rather than after, so that a throw from here
+        // lands in the caller's catch with nothing recording: a log line saying the run
+        // is not being recorded while it is would tell the player the opposite of
+        // what happened.
+        recorder.StartOrStopWatchingTheFight();
+
+        Active = recorder;
     }
 
     /// <summary>
@@ -1072,7 +1212,7 @@ internal sealed class RunRecorder : IDisposable
             $"[{RunmobileMod.ModId}] recorded {_capture.RunId}: {outcome}, " +
             $"{manifest.Actions.Count.ToString(CultureInfo.InvariantCulture)} decision(s), " +
             $"{manifest.Boundaries.Count.ToString(CultureInfo.InvariantCulture)} boundary/boundaries, " +
-            $"continuity {_capture.Continuity}, written to {path}", 2);
+            $"continuity {_capture.Continuity}, integrity {_capture.Integrity}, written to {path}", 2);
 
         if (!problems.IsValid)
         {
@@ -1225,6 +1365,33 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     internal const string SkipRewardsSetMember = "SkipRewardsSet";
 
+    /// <summary>
+    /// The private funnel every console command passes through, whichever way it was
+    /// entered.
+    ///
+    /// The game has two public entries - <c>ProcessCommand(string)</c> for a command
+    /// typed on this client and <c>ProcessNetCommand</c> for one a peer sent - and
+    /// both reach this three-argument overload. Watching it rather than either entry
+    /// is what makes one patch cover both, and the same reason <c>SkipRewardsSet</c>
+    /// is watched rather than the call the driver makes.
+    ///
+    /// It is deliberately not the queue. A console command reaches the action queue
+    /// only in a networked game, and as two types rather than one: the game's own
+    /// generated <c>INetActionSubtypes</c> list holds the eleven <c>Net*</c> structs,
+    /// of which the console's is <c>NetConsoleCmdGameAction</c>, and the action it
+    /// builds and puts on the queue is <c>ConsoleCmdGameAction</c>. In singleplayer
+    /// <c>DevConsole.ProcessCommand</c> takes the local branch and builds neither, and
+    /// singleplayer is the only kind of run this recorder records. A
+    /// watch on the queue would therefore have seen a console command in exactly the
+    /// runs that are never recorded and none of the runs that are.
+    /// </summary>
+    internal const string ProcessConsoleCommandMember = "ProcessCommand";
+
+    /// <summary>The three-argument overload's parameters, because
+    /// <c>DevConsole</c> has a one-argument <c>ProcessCommand</c> beside it and a
+    /// lookup by name alone is ambiguous.</summary>
+    internal static Type[] ProcessConsoleCommandArguments => [typeof(Player), typeof(string), typeof(string[])];
+
     /// <summary>Every patch class this module installs, listed rather than discovered:
     /// <c>PatchAll</c> over the assembly would install the Combat Trainer's too.</summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } =
@@ -1234,7 +1401,38 @@ internal sealed class RunRecorder : IDisposable
         typeof(RestSiteOptionTaken), typeof(ChestRelicTaken), typeof(ChestRelicSkipped),
         typeof(ActAdvanced), typeof(ShopPurchased), typeof(ShopCardRemovalPurchased),
         typeof(CardRewardScreen), typeof(PotionUsed), typeof(PotionDiscarded),
+        typeof(ConsoleCommand),
     ];
+
+    /// <summary>
+    /// Every console command the game accepted, in a run or out of one.
+    ///
+    /// A postfix on the console's own funnel, reading the answer the console gave. Only
+    /// a command it accepted counts: a typo is not a console command in the run's
+    /// history, and the game's own <c>CmdResult.success</c> is what tells them apart -
+    /// which is a reading rather than a judgement about which command names are real.
+    ///
+    /// Every accepted command counts, including the ones that only print something.
+    /// Which of the game's commands change a run is not a judgement this mod is in a
+    /// position to make, and the captain's ruling is about the console having been used
+    /// at all. A run this was wrong about is one that stays on the player's disk and is
+    /// refused for publication, which is the cheap direction to be wrong in.
+    ///
+    /// It reads and returns, like every patch here: the command runs exactly as the
+    /// game wrote it and the recording is what changes.
+    /// </summary>
+    [HarmonyPatch(typeof(DevConsole), ProcessConsoleCommandMember,
+        [typeof(Player), typeof(string), typeof(string[])])]
+    internal static class ConsoleCommand
+    {
+        [HarmonyPostfix]
+        internal static void After(CmdResult __result)
+        {
+            if (!__result.success) return;
+
+            ConsoleCommandUsed();
+        }
+    }
 
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.SetUpNewSingleplayer))]
     internal static class NewRun
@@ -1878,4 +2076,34 @@ internal sealed class RunRecorder : IDisposable
 
         return null;
     }
+}
+
+/// <summary>
+/// What the deciding half of an attach answered about a run.
+///
+/// One value per way <see cref="RunRecorder.Attach"/> can end, so the answer is
+/// something a caller can act on rather than only a line in the player's log. The refusals are kept apart rather
+/// than collapsed into one "no" for the same reason <see cref="RunSessionKind"/>'s
+/// are: they are different facts about the run, and the difference between "this is
+/// not a singleplayer run" and "the mod could not take this game" is the difference
+/// between two rules.
+/// </summary>
+internal enum RunAttachment
+{
+    /// <summary>The recorder is now recording this run.</summary>
+    Attached,
+
+    /// <summary>Another recording or a trainer run had this game.</summary>
+    AlreadyRecordingOrATrainerRun,
+
+    /// <summary>The run went away between the settle and the reading.</summary>
+    TheRunWentAway,
+
+    /// <summary>The reading said this is not a singleplayer run, which is the only
+    /// kind this build records.</summary>
+    NotASingleplayerRun,
+
+    /// <summary>The mod could not take this running game, so the recording could not
+    /// say which build it was played on.</summary>
+    CouldNotTakeTheGame,
 }

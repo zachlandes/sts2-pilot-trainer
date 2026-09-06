@@ -33,10 +33,11 @@ public static class IngestionCorruption
     /// <summary>
     /// Damage to a native recording's account of itself.
     ///
-    /// The two here are the native counterparts of the two checks that cannot move
+    /// The first two are the native counterparts of the two checks that cannot move
     /// downstream. A recorder that joined a run late, and one that stopped and
     /// started again, both produce a history that replays perfectly against a run
-    /// that is not the one it describes.
+    /// that is not the one it describes. The third is the same shape reached another
+    /// way: a run the console was used in replays perfectly into a run nobody played.
     /// </summary>
     public static IReadOnlyList<Case> Native =>
     [
@@ -56,6 +57,13 @@ public static class IngestionCorruption
             "happened between them. The history it wrote is missing decisions, and a history missing " +
             "decisions replays into a different run while every value in it is individually true.",
             m => WithNative(m, n => n with { Continuity = NativeSource.BrokenContinuity })),
+
+        new("run-used-the-console",
+            "Marks the recording as one the developer console was used in.",
+            "Installing this mod turns the game's full console on. What a console command did to the run is " +
+            "not among the decisions the history holds, so the history replays into a different run while " +
+            "every value in it is individually true. The recording is kept and is refused for publication.",
+            m => WithNative(m, n => n with { Integrity = NativeSource.NonStandardIntegrity })),
 
         new("unidentified-mod",
             "Drops one mod from the environment while leaving the reported count where it was.",

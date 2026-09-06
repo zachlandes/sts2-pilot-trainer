@@ -346,6 +346,17 @@ public class IngestionCorruptionTests
         Assert.Contains("recording-has-a-hole-in-it", names);
     }
 
+    /// <summary>
+    /// And the run the console was used in, which is the same shape reached another
+    /// way: it replays perfectly into a run nobody played, because what the console
+    /// did is not among the decisions the history holds.
+    /// </summary>
+    [Fact]
+    public void CoversTheRunTheConsoleWasUsedIn()
+    {
+        Assert.Contains("run-used-the-console", IngestionCorruption.Native.Select(c => c.Name));
+    }
+
     [Fact]
     public void CoversTheResumedRunSpecifically()
     {

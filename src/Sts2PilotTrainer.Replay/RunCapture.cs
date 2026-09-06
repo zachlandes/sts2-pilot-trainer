@@ -109,6 +109,19 @@ public sealed class RunCapture
     /// <summary>One of <see cref="NativeSource.Continuities"/>.</summary>
     public string Continuity { get; private set; }
 
+    /// <summary>
+    /// One of <see cref="NativeSource.Integrities"/>: whether anything happened in
+    /// this run that puts it outside the game's own rules.
+    ///
+    /// Separate from <see cref="Continuity"/> and from <see cref="State"/> because it
+    /// is a different fact about a different thing. Continuity says whether the
+    /// recorder watched the whole run; this says whether the run it watched was
+    /// played by the game's rules. A run that used the console is recorded to its
+    /// end, keeps every decision it made and is never publishable, so nothing here
+    /// stops.
+    /// </summary>
+    public string Integrity { get; private set; } = NativeSource.CompleteIntegrity;
+
     public RunCaptureState State { get; private set; } = RunCaptureState.Recording;
 
     /// <summary>Why this recording is not a continuous account of the run, or null
@@ -166,6 +179,7 @@ public sealed class RunCapture
         WitnessedRunStart = WitnessedRunStart,
         Entries = [Opening, .. _entries],
         Refusals = _refusals.ToList(),
+        NonStandard = !string.Equals(Integrity, NativeSource.CompleteIntegrity, StringComparison.Ordinal),
     };
 
     /// <summary>
@@ -262,6 +276,12 @@ public sealed class RunCapture
         // so a session that recorded on past its own break would otherwise resume as
         // continuous.
         foreach (var reason in journal.Refusals) capture.Break(reason);
+
+        // Same reasoning, for the same reason: the console having been used in this
+        // run is a fact about it that no later reading of the live game could recover,
+        // and a session that resumed without it would publish a run the console had
+        // been used in.
+        if (journal.NonStandard) capture.MarkNonStandard();
 
         var last = capture._entries.Count > 0 ? capture._entries[^1] : journal.Opening;
         if (!string.Equals(last.Digest, liveDigest, StringComparison.Ordinal))
@@ -376,6 +396,37 @@ public sealed class RunCapture
     }
 
     /// <summary>
+    /// This run was not played entirely by the game's own rules.
+    ///
+    /// The run is kept, whole, and recorded to its end: it is what the player played
+    /// and it is theirs. What it is not is publishable, and
+    /// <see cref="Integrity"/> is what says so - whatever changed the state is not
+    /// among the decisions this history holds, so replaying the history reconstructs a
+    /// different run while every value in it is individually true.
+    ///
+    /// Which of the things that make a run one of these happened is not recorded here
+    /// and is not in the field: this is the mark more than one caller writes, and a
+    /// caller that knows its own cause says so in its own log line.
+    ///
+    /// It marks and never stops, which is the difference between this and
+    /// <see cref="MarkBroken"/>: a broken watch is a recording that cannot account for
+    /// the run, and this is a complete account of a run nobody may publish.
+    ///
+    /// Nothing the player typed is kept, here or on the file. Which of the game's
+    /// commands change a run is not a judgement this class is in a position to make,
+    /// and what a recording states is <see cref="Integrity"/> and nothing else - so a
+    /// mark is a statement about the run rather than a record of what was entered in
+    /// it, and marking twice says the same thing as marking once.
+    /// </summary>
+    /// <returns>The journal line to append for it, so the mark survives this session
+    /// the same way a decision does.</returns>
+    public string MarkNonStandard()
+    {
+        Integrity = NativeSource.NonStandardIntegrity;
+        return RunJournal.RenderNonStandard();
+    }
+
+    /// <summary>
     /// This recording, as a manifest.
     ///
     /// Only once the run has ended, because a manifest says how it ended and that is
@@ -418,6 +469,7 @@ public sealed class RunCapture
                         WitnessedRunStart, FactEvidence.AtActionOrdinal(-1, Opening.RunClockMs)),
                     Continuity = Continuity,
                     Outcome = Outcome,
+                    Integrity = Integrity,
                 },
             },
             Actions = _actions.ToList(),

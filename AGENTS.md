@@ -207,6 +207,7 @@ Its final state is exactly `Runmobile` under the selected supported game mod dir
 
 **The mod a player installs is `Runmobile`, and the Combat Trainer is one module inside it.**
 `RunmobileMod` is the shell and `IRunmobileModule` the line between it and a feature; a module says whether it can run, installs its own patches and contributes its own surfaces, and one that refuses does not take the rest of the mod with it.
+Whether this mod may draw anything at all is the shell's and never a feature's: `GameSessionWatch` observes a multiplayer game and `RunmobileMod.MenuCards` then contributes nothing, not even an indicator saying a run is not being recorded.
 `RunmobileStore` is the only thing in the mod that writes, under `user://Runmobile/` scoped by the game's own resolved platform, account and profile - taken whole from `UserDataPathProvider`, never reassembled here, and never part of an exported recording's identity.
 `ProfileWriteBarrier` is a different thing and stays as it is: it suppresses the game's own writes during a trainer run.
 `./scripts/protected-files.sh` is how "nothing outside that subtree changed" is measured rather than asserted.
@@ -259,6 +260,8 @@ path that writes what the barrier suppresses.
 
 **A run a person plays is recorded by one owner, and refused rather than repaired.**
 `RunCapture` in `Sts2PilotTrainer.Replay` is the whole-run counterpart of `FightCapture` and delegates the inside of each fight to one, so there is one capture path.
+It records singleplayer runs only, and which kind of run this is is read - `LiveRun.ReadSession` off the game's own networking and player list, with `RunSession` owning what each `RunSessionKind` permits - never inferred from the name of the setup member the game called.
+A run the console was used in is kept whole, recorded to its end, and marked `source.native.integrity = "non-standard"` through `RunCapture.MarkNonStandard`, which the validator refuses for publication; `integrity` is the one field that says this, and a recording written before the recorder could read the question states none.
 `RunRecorder` in the mod owns only what a pure class cannot: which game member is which decision, what its arguments are, and when the engine has settled enough to read.
 Inside a fight it hands over to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink`.
 The recorder refuses a run whose start it did not witness, marks `continuity = broken` when a resumed session's live state is not the state its journal last recorded, and never truncates.

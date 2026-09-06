@@ -44,7 +44,7 @@ public static class RunmobileMod
     private const string HarmonyId = PatchRoster.HostOwnerId;
 
     internal static IReadOnlyList<Type> ShellPatchClasses { get; } =
-        [typeof(ModeCard), .. CardScreensUp.PatchClasses];
+        [typeof(ModeCard), .. CardScreensUp.PatchClasses, .. GameSessionWatch.PatchClasses];
 
     private static readonly Lock AdoptionGate = new();
 
@@ -68,8 +68,18 @@ public static class RunmobileMod
     /// <summary>The modules that could establish what they need in this process.</summary>
     internal static IEnumerable<IRunmobileModule> EnabledModules => Modules.Where(module => module.Enabled);
 
-    /// <summary>Every singleplayer-menu card the enabled modules contribute.</summary>
-    internal static IReadOnlyList<MenuCard> MenuCards => MenuCardsFrom(Modules);
+    /// <summary>
+    /// Every singleplayer-menu card the enabled modules contribute, or none at all in
+    /// a game this mod may not speak in.
+    ///
+    /// The gate is here rather than in each module for the same reason the write
+    /// barrier is the shell's: what this mod may do to somebody else's session is not
+    /// a decision a feature gets to make for itself, and a module that has not been
+    /// written yet would be a module that had not been told.
+    /// <see cref="GameSessionWatch"/> owns the reading.
+    /// </summary>
+    internal static IReadOnlyList<MenuCard> MenuCards =>
+        GameSessionWatch.MaySpeak ? MenuCardsFrom(Modules) : [];
 
     internal static IReadOnlyList<MenuCard> MenuCardsFrom(IReadOnlyList<IRunmobileModule> modules) =>
         modules.Where(module => module.Enabled).SelectMany(module => module.MenuCards).ToList();

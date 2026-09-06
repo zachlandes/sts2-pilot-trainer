@@ -235,6 +235,19 @@ public sealed record NativeSource
 
     public static readonly string[] Continuities = [ContinuousContinuity, BrokenContinuity];
 
+    /// <summary>The recorder met nothing in this run that puts it outside the game's
+    /// own rules.</summary>
+    public const string CompleteIntegrity = "complete";
+
+    /// <summary>This run was not played entirely by the game's own rules. The run is
+    /// still a run and the recording is still what happened, and it is never
+    /// publishable: whatever changed the state is not in the history, so replaying
+    /// the history reconstructs a different run. The field states that and no cause -
+    /// more than one thing about a run puts it here.</summary>
+    public const string NonStandardIntegrity = "non-standard";
+
+    public static readonly string[] Integrities = [CompleteIntegrity, NonStandardIntegrity];
+
     /// <summary>Won, lost, or given up. A give-up is a completed recording: the run is
     /// over, the history is whole, and the fights in it were really played.</summary>
     public static readonly string[] Outcomes = ["won", "lost", "abandoned"];
@@ -255,8 +268,32 @@ public sealed record NativeSource
     [JsonPropertyName("outcome")]
     public required string Outcome { get; init; }
 
+    /// <summary>
+    /// Whether anything happened in this run that puts it outside the game's own
+    /// rules, and so whether the recording may ever be published. One of
+    /// <see cref="Integrities"/>.
+    ///
+    /// Written by every recorder that can read the question, and absent from a
+    /// recording made before one could. Absent is not <see cref="CompleteIntegrity"/>
+    /// under another name and is deliberately not read as a claim: it says the file
+    /// carries no reading, which is what a recorder that never watched the console
+    /// left behind. It is accepted for publication because that was already the
+    /// standard those recordings were made and gated under, and every recording made
+    /// from here on states it.
+    /// </summary>
+    [JsonPropertyName("integrity")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Integrity { get; init; }
+
     [JsonIgnore]
     public bool IsContinuous => string.Equals(Continuity, ContinuousContinuity, StringComparison.Ordinal);
+
+    /// <summary>Whether the recording states an integrity that is not
+    /// <see cref="CompleteIntegrity"/>. False for a recording that states none, which
+    /// <see cref="Integrity"/> explains.</summary>
+    [JsonIgnore]
+    public bool StatesSomethingOtherThanComplete =>
+        Integrity is not null && !string.Equals(Integrity, CompleteIntegrity, StringComparison.Ordinal);
 }
 
 public sealed record SyntheticSource
