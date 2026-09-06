@@ -799,8 +799,10 @@ That makes the settings row `ContinuableRun`'s third caller, and its docstring n
 A game that cannot say which run it can continue refuses there as it does anywhere else, and the row shows the same could-not-be-read line rather than a pending count it could not compute.
 The confirmation is the game's own `NGenericPopup`, the one the eligibility screen uses, with the way out focused.
 
-Two deliberate departures from the design, both presentation rather than wording.
+Three deliberate departures from the design, all presentation rather than wording.
 The keep control is a stepper where the design says slider: Godot draws a slider's grabber from a theme *icon*, so a slider here would wear the engine's default grey on a screen made of torn stone or need art this mod does not ship, and the game's own `NSettingsSlider` cannot be had outside the settings scene it lives in.
+The removal is a stock Godot `Button` carrying the game's own red where the design says the game's red ribbon, and it is the same case: the game assembly ships no ribbon node at all - *ribbon* is the design's word for the button bar the game's own popup draws - and the game's settings furniture, `NSettingsButton` and its siblings, is scene-resident and cannot be instantiated standalone, so a hand-rolled section has nothing to duplicate.
+The design's ribbon material is where it actually exists: the confirm behind that button is the game's own `NGenericPopup`, with its two real ribbons.
 The label and the numeral are exactly as the design settles them.
 And the numeral shows what the player's file says even where the control cannot reach it: a file that keeps zero is a standing purge and a row reading "1" over it would misstate the policy, so the numeral is the truth and the control is only how far a press reaches.
 

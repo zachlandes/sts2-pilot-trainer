@@ -30,6 +30,15 @@ namespace Sts2PilotTrainer.Mod;
 /// written. How the number moves is presentation, which
 /// docs/mod-ui-direction.md puts on this side of the line.</para>
 ///
+/// <para><b>The removal is a stock button and the design says the game's red
+/// ribbon.</b> The same case as the stepper. The game assembly ships no ribbon node -
+/// <em>ribbon</em> is the design's word for the button bar the game's own popup draws -
+/// and the game's settings furniture, <c>NSettingsButton</c> and its siblings, is
+/// scene-resident and cannot be had standalone, so a hand-rolled row has nothing to
+/// duplicate. The red is carried instead, by <see cref="Destructive"/>; the design's
+/// ribbon material is where it actually exists, on the game's own popup behind the
+/// press.</para>
+///
 /// Built from stock Godot nodes for the reason the transport and the result panel are:
 /// this assembly has no Godot source generators, so a <c>Control</c> subclass of ours
 /// would never have its overrides called.
@@ -341,6 +350,10 @@ internal sealed class MyRunsSettingsRow
 
     /// <summary>
     /// The one control here that cannot be undone, in the game's own red.
+    ///
+    /// The red is what the design's "red ribbon" lands as here, because there is no
+    /// ribbon node to reach for: the class docstring above says why, and the popup
+    /// behind this press is where the game's own ribbons do the asking.
     ///
     /// Red on its edge and its word rather than a red slab, because a filled red
     /// rectangle on a settings screen reads as an error the player has already made.
