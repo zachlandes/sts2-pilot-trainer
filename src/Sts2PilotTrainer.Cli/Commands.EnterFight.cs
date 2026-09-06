@@ -119,9 +119,15 @@ internal static partial class Commands
         // is standing in front of, and that is only readable while it is.
         var steps = new List<object>();
 
+        // Two numbers because they are two things, and a recording whose opening
+        // blessing opens a card screen is where they part. Every prefix action is
+        // executed; the card selections among them are answers the engine took inside
+        // the call that opened the screen, so they are never shown and the transport's
+        // counter below does not count them.
         Console.WriteLine(
             $"decisions before {plan.Describe()}: " +
-            $"{plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)}, " +
+            $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)} in " +
+            $"{plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)} recorded action(s), " +
             $"reached after action {plan.BoundarySeq.ToString(CultureInfo.InvariantCulture)}");
         if (creator is not null) Console.WriteLine($"  {TrainerCopy.ChoicesShownAsRecorded(creator)}");
         Console.WriteLine();
@@ -150,8 +156,8 @@ internal static partial class Commands
                         creator!, recording.Source.Video?.Title, recording.Source.Video?.Url, null),
                     Made: [],
                     Next: choice,
-                    StepsTaken: entry.StepsTaken,
-                    Count: plan.PrefixActions.Count,
+                    StepsTaken: entry.DecisionsMade,
+                    Count: entry.Decisions,
                     AtCombatStart: false,
                     Arrived: true,
                     Lit: true,

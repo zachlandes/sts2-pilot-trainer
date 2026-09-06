@@ -49,6 +49,18 @@ internal sealed class ManifestCardSelector : ICardSelector
     private readonly Queue<RelicPick> _pendingRelics = new();
 
     /// <summary>
+    /// The queued picks a screen has actually taken, by the sequence number of the
+    /// action that recorded each.
+    ///
+    /// Filled here, where a screen really asked, and never at the point the driver
+    /// queued them. The two are the same moment headlessly and are not inside the
+    /// retail client, where the engine resumes the call that opens the screen on a
+    /// later frame - so a driver that recorded a queued pick as consumed would be
+    /// reporting an answer nobody had given yet.
+    /// </summary>
+    private readonly List<int> _consumed = [];
+
+    /// <summary>
     /// Whether a screen the manifest is silent about is answered from the front of
     /// what it offered instead of refused.
     ///
@@ -85,6 +97,14 @@ internal sealed class ManifestCardSelector : ICardSelector
 
     internal int PendingCount =>
         _pending.Count + _pendingAlternatives.Count + _pendingBundles.Count + _pendingRelics.Count;
+
+    /// <summary>The picks taken since this was last asked, and clears them.</summary>
+    internal IReadOnlyList<int> TakeConsumed()
+    {
+        var taken = _consumed.ToList();
+        _consumed.Clear();
+        return taken;
+    }
 
     /// <summary>The queued picks nothing consumed, by the action that recorded each,
     /// so a refusal names the stray decisions rather than counting them.</summary>
@@ -135,6 +155,7 @@ internal sealed class ManifestCardSelector : ICardSelector
             return [];
         }
 
+        _consumed.Add(pick.Seq);
         return bundles[pick.OptionIndex];
     }
 
@@ -176,6 +197,7 @@ internal sealed class ManifestCardSelector : ICardSelector
             return null;
         }
 
+        _consumed.Add(pick.Seq);
         return relic;
     }
 
@@ -275,6 +297,7 @@ internal sealed class ManifestCardSelector : ICardSelector
             return default;
         }
 
+        _consumed.Add(pick.Seq);
         return new CardRewardSelection { card = card };
     }
 
@@ -347,6 +370,7 @@ internal sealed class ManifestCardSelector : ICardSelector
             }
 
             chosen.Add(card);
+            _consumed.Add(pick.Seq);
         }
 
         return Task.FromResult<IEnumerable<CardModel>>(chosen);

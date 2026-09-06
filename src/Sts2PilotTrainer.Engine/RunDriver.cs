@@ -42,12 +42,22 @@ namespace Sts2PilotTrainer.Engine;
 /// decides anything; the manifest does, and where the manifest is silent each of them
 /// refuses. See docs/headless-fidelity.md.
 ///
-/// Inside the retail client none of them is installed and none is wanted, because the
-/// screens they answer are on a player's screen. The driver is narrowed
+/// Inside the retail client none of them is installed for the run's lifetime, because
+/// the screens they answer are on a player's screen. The driver is narrowed
 /// there to the recording's decisions before a fight, and it hands the engine's work
 /// back to the host to wait for rather than draining it - a frame loop is what
 /// drains the queue in there, and blocking for it on the frame thread wedges the
 /// game. See <see cref="VerbsAllowedInRunningGame"/> and <see cref="Pending"/>.
+///
+/// The card screens are the one place that needs saying more precisely, because a
+/// screen an opening blessing opens is not the player's: the recording opened it and
+/// the recording answered it, and until the boundary the player is watching rather
+/// than deciding. So in the client the selector is pushed for the one step that
+/// queued an answer and released as soon as the engine has taken it - see
+/// <see cref="QueueFollowingCardSelections"/> and
+/// <see cref="SettleAnyCardScreenTheLastStepOpened"/>. It cannot reach the player's
+/// fight: the last decision before a boundary is a map move, or an event option that
+/// starts its room's fight, and neither of those queues anything.
 /// </summary>
 public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 {
@@ -57,12 +67,35 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// Everything before the fight, and nothing in it. Two reasons, and both are
     /// about not taking something away from the player: the decisions before a fight
     /// are the recording's and the fight is theirs, and the stand-ins this driver
-    /// installs for the loot and card screens exist because a headless process has no
-    /// UI - the retail client has one, and intercepting it would answer a screen the
+    /// installs for the loot and the chest exist because a headless process has no UI
+    /// - the retail client has one, and intercepting it would answer a screen the
     /// player was looking at. See docs/headless-fidelity.md.
+    ///
+    /// <see cref="ActionVerb.SelectCardFromScreen"/> is here for a reason that reads
+    /// like an exception and is not one. It is not a decision made in the fight and it
+    /// is not a screen the player is looking at: it is the recording's own answer to a
+    /// screen the recording's own previous decision opened - an opening blessing whose
+    /// relic removes, transforms or upgrades a card, or an event option that does. The
+    /// answer is taken inside the engine call that opens the screen, so by the time
+    /// this verb's own action is executed there is nothing left to do but confirm the
+    /// screen took it; <see cref="ConfirmCardSelectionWasConsumed"/> is the whole of
+    /// it. Leaving it out is what made such a recording verify headlessly and then
+    /// abort in the client after the player had watched the blessing being made, which
+    /// is the worst place for a refusal this project has.
     /// </summary>
     private static readonly ActionVerb[] VerbsAllowedInRunningGame =
-        [ActionVerb.ChooseNeowBlessing, ActionVerb.ChooseEventOption, ActionVerb.MapMove];
+    [
+        ActionVerb.ChooseNeowBlessing, ActionVerb.ChooseEventOption, ActionVerb.MapMove,
+        ActionVerb.SelectCardFromScreen, ActionVerb.SelectBundleFromScreen,
+        ActionVerb.SelectRelicFromScreen,
+    ];
+
+    /// <summary>
+    /// The same list, for a test that has to hold it against what a boundary plan's
+    /// prefix can contain. Exposed rather than duplicated: two copies of this set is
+    /// how the client came to refuse a verb the arbiter had started issuing.
+    /// </summary>
+    public static IReadOnlyList<ActionVerb> VerbsIssuedInsideARunningGame => VerbsAllowedInRunningGame;
 
     private readonly GameSession _session;
     private readonly ManifestCardSelector _selector = new();
@@ -111,8 +144,20 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     private AbstractRoom? _chestRelicDecidedForRoom;
 
     /// <summary>Sequence numbers of card selections a screen has already consumed,
-    /// so the action that records each one can insist it was used.</summary>
+    /// so the action that records each one can insist it was used. Filled from what
+    /// the selector reports it took, never from what was queued for it.</summary>
     private readonly HashSet<int> _consumedSelections = [];
+
+    /// <summary>
+    /// The selector's place on the engine's stack while a step's card selections are
+    /// outstanding, or null. Only ever set inside a running game, where it is the one
+    /// way this driver can answer a screen the recording opened without a scene tree.
+    /// </summary>
+    private IDisposable? _stepSelectorScope;
+
+    /// <summary>The action whose selections that scope is holding, so a refusal names
+    /// the decision that queued them rather than the one that noticed.</summary>
+    private ActionRecord? _stepThatQueuedSelections;
 
     /// <summary>
     /// How a map move is issued inside a running game, or null headlessly.
@@ -196,6 +241,11 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
     public void Dispose()
     {
+        // Silently: a driver being torn down is a run being abandoned or handed over,
+        // and a refusal raised out of Dispose would replace whatever is already being
+        // reported with a complaint about the same failure.
+        ReleaseTheStepSelector();
+
         if (_chestRelicsSubscribed)
         {
             RunManager.Instance.TreasureRoomRelicSynchronizer.RelicsAwarded -= AwardChestRelics;
@@ -297,6 +347,13 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     {
         Pending = null;
 
+        // Whatever the last step opened, settled before this one begins. Headlessly
+        // that already happened at the end of the last Apply; in the client the engine
+        // resumes the call that opens a card screen on a later frame, so this is where
+        // it is known. Asked first so a screen the recording described and this run did
+        // not open is reported as itself rather than as a complaint about this verb.
+        if (_insideRunningGame) SettleAnyCardScreenTheLastStepOpened();
+
         if (_insideRunningGame && !VerbsAllowedInRunningGame.Contains(action.Verb))
         {
             throw new EngineException(
@@ -392,21 +449,77 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
                 throw Unhandled(action);
         }
 
-        // A card screen answers inside the engine call the action above made, and the
-        // engine runs those callbacks in tasks that swallow exceptions. The refusal is
-        // therefore raised here, where it can actually stop the replay.
-        // Raised unprefixed: the arbiter already names the action and verb, and the
-        // selector's own message names the action whose selection disagreed, which is
-        // not always this one.
+        // Headlessly the engine has finished by now - the host drains it to idle and
+        // the selector's own answer is handed back inside the call that asked - so what
+        // this step opened is settled here. Inside a running game it has not: the
+        // engine's continuation runs on a frame this call does not own, and the answer
+        // arrives after this returns. There it is settled at the start of the next step
+        // and by RecordedFightEntry before the boundary is proved.
+        if (_insideRunningGame) CollectWhatACardScreenTook();
+        else SettleAnyCardScreenTheLastStepOpened();
+    }
+
+    /// <summary>
+    /// Takes into <see cref="_consumedSelections"/> whatever a card screen has
+    /// actually taken since this was last asked, and raises the selector's own refusal
+    /// if it recorded one.
+    ///
+    /// Raised unprefixed: the arbiter already names the action and verb, and the
+    /// selector's own message names the action whose selection disagreed, which is not
+    /// always the one being executed. The engine runs those callbacks in tasks that
+    /// swallow exceptions, which is why the refusal is recorded there and thrown here,
+    /// where it can actually stop the replay.
+    /// </summary>
+    private void CollectWhatACardScreenTook()
+    {
+        foreach (var seq in _selector.TakeConsumed()) _consumedSelections.Add(seq);
         if (_selector.Refusal is { } refusal) throw new EngineException(refusal);
+    }
+
+    /// <summary>
+    /// Closes out the card screen a step opened: what the screen took, whether it took
+    /// everything the recording queued, and the selector's place on the engine's stack.
+    ///
+    /// Headlessly this runs at the end of the step that opened the screen. In the
+    /// client it runs at the start of the next step and before the boundary is proved,
+    /// because those are the two moments where the engine has been given frames and an
+    /// answer that has not arrived by then is one that is not coming.
+    ///
+    /// A queued selection nothing took is refused rather than dropped. It means the
+    /// manifest describes a screen this run does not open, which is a divergence, and
+    /// the alternative is a run that quietly keeps a card the recording removed.
+    /// </summary>
+    internal void SettleAnyCardScreenTheLastStepOpened()
+    {
+        CollectWhatACardScreenTook();
 
         if (_selector.PendingCount > 0)
         {
+            var stray = _selector.DescribePending();
+            var opener = _stepThatQueuedSelections;
+            ReleaseTheStepSelector();
             throw new EngineException(
-                $"Action {action.Seq} ({action.Verb}) queued screen answer(s) that no screen asked for: " +
-                $"{_selector.DescribePending()}. A recorded selection the engine never consumed means the " +
-                "manifest describes a screen this run does not open.");
+                opener is null
+                    ? $"Screen answer(s) that no screen asked for: {stray}. A recorded selection the engine " +
+                      "never consumed means the manifest describes a screen this run does not open."
+                    : $"Action {opener.Seq} ({opener.Verb}) queued screen answer(s) that no screen asked " +
+                      $"for: {stray}. A recorded selection the engine never consumed means the manifest " +
+                      "describes a screen this run does not open.");
         }
+
+        ReleaseTheStepSelector();
+    }
+
+    /// <summary>Whether a card selection this driver queued is still waiting for the
+    /// screen that was to take it. Always false once a step has been settled.</summary>
+    internal bool ACardScreenAnswerIsOutstanding => _selector.PendingCount > 0;
+
+    private void ReleaseTheStepSelector()
+    {
+        _stepThatQueuedSelections = null;
+        var scope = _stepSelectorScope;
+        _stepSelectorScope = null;
+        scope?.Dispose();
     }
 
     /// <summary>
@@ -1252,14 +1365,14 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
             : string.Join(", ", options.Select((option, index) => $"{index}:{option.OptionId}"));
 
     /// <summary>
-    /// Confirms a card the manifest picked off a screen was the card the engine asked
-    /// for.
+    /// Confirms a screen really took the card this action records, and does nothing
+    /// else.
     ///
-    /// The engine consumed this decision inside the action that opened the screen -
-    /// see the <c>upcoming</c> parameter on <see cref="Apply(ActionRecord, IReadOnlyList{ActionRecord})"/> -
-    /// so there is nothing left to send. What is left is to insist the decision was
-    /// actually used: a selection that no screen consumed is an action recorded
-    /// against a screen this run never opened.
+    /// The set it asks is filled from what the selector reports it took, so this is an
+    /// observation rather than a restatement of what was queued. That distinction only
+    /// costs anything inside the retail client, where the queueing and the taking are
+    /// on different frames and a driver that confirmed its own queue would be
+    /// confirming an answer nobody had given.
     /// </summary>
     private void ConfirmCardSelectionWasConsumed(ActionRecord action)
     {
@@ -1280,6 +1393,7 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// </summary>
     private void QueueFollowingCardSelections(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
     {
+        var queued = 0;
         foreach (var next in upcoming)
         {
             if (!CardScreenAnswers.Answers(next.Verb)) break;
@@ -1300,8 +1414,18 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
                     break;
             }
 
-            _consumedSelections.Add(next.Seq);
+            queued++;
         }
+
+        if (queued == 0 || !_insideRunningGame) return;
+
+        // The client's selector, installed for this step alone. Pushed rather than
+        // exclusively claimed, and released by SettleAnyCardScreenTheLastStepOpened as
+        // soon as the engine has taken what was queued - so between the boundary and
+        // the fight there is nothing of this driver's on the engine's stack, and a
+        // screen the player opens is theirs.
+        _stepThatQueuedSelections = action;
+        _stepSelectorScope = CardSelectCmd.PushSelector(_selector);
     }
 
     private void Select(ActionRecord action, RewardsSet set, Reward reward)

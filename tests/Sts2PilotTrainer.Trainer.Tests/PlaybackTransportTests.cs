@@ -19,6 +19,9 @@ public sealed class PlaybackTransportTests
 {
     private static readonly PrefightChoice Blessing = new PrefightChoice.Blessing(0, "RELIC.LEAFY_POULTICE");
 
+    private static readonly PrefightChoice BlessingWithACard =
+        new PrefightChoice.Blessing(0, "RELIC.PRECISE_SCISSORS", ["CARD.STRIKE_IRONCLAD"]);
+
     /// <summary>The shipped recording's map move: column 3 of the act's seven.</summary>
     private static readonly PrefightChoice MapMove = new PrefightChoice.MapMove(1, "Monster", 3, 7);
 
@@ -385,6 +388,28 @@ public sealed class PlaybackTransportTests
             For(JourneyPhase.Watching, next: new UnknownChoice(4), count: 1));
 
         Assert.Contains("no way to describe", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ABlessingThatOpensACardScreenNamesTheCardNobodySaw()
+    {
+        var transport = Revealing(BlessingWithACard, 1, noteShown: true);
+
+        Assert.Contains(
+            "1 of 2 · NaveGreed took Precise Scissors and chose Strike Ironclad",
+            transport.Step.TooltipBody,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheLedgerRowForSuchABlessingNamesItToo()
+    {
+        var transport = For(
+            JourneyPhase.Watching, made: [BlessingWithACard], next: MapMove, stepsTaken: 1,
+            lookingBackAt: 1);
+
+        Assert.Equal("Precise Scissors, Strike Ironclad", transport.Ledger[0].Label);
+        Assert.Equal("RELIC.PRECISE_SCISSORS", transport.Ledger[0].ArtModelId);
     }
 
     // ── Consider, reveal, commit ────────────────────────────────────────────

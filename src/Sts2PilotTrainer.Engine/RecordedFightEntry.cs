@@ -97,6 +97,39 @@ public sealed class RecordedFightEntry : IDisposable
     /// <see cref="VerifyBoundary"/>'s question.</summary>
     public bool AtBoundary => StepsTaken == Plan.PrefixActions.Count;
 
+    /// <summary>
+    /// Whether the recording's next step is its own answer to a screen the step before
+    /// it opened, rather than a decision of its own.
+    ///
+    /// A host that shows the recording deciding has to know, because such a step has
+    /// nothing on the game's own screen to point at: the engine took the answer inside
+    /// the call that opened the screen, so by the time this step is executed the screen
+    /// is gone and the card is already removed, transformed or upgraded. It is executed
+    /// like every other step and it is not revealed, held or counted - see
+    /// <see cref="Decisions"/>.
+    /// </summary>
+    public bool NextStepAnswersAScreenAlreadyOpened =>
+        NextStep is { } next && CardScreenAnswers.IsAnAnswer(next);
+
+    /// <summary>Whether a card selection the last step queued is still waiting for the
+    /// screen that was to take it. A host waits for this to go out rather than for a
+    /// length of time; see docs/in-game-host.md.</summary>
+    public bool ACardScreenAnswerIsOutstanding => _driver.ACardScreenAnswerIsOutstanding;
+
+    /// <summary>
+    /// How many of the recording's decisions a watcher is shown on the way to the
+    /// boundary, which is not how many actions the plan's prefix holds.
+    ///
+    /// A card selection is executed and never shown, so counting it would make the
+    /// transport's position skip a number nobody was offered. Derived rather than
+    /// stored, from the one owner of which actions are answers.
+    /// </summary>
+    public int Decisions => Plan.PrefixActions.Count(action => !CardScreenAnswers.IsAnAnswer(action));
+
+    /// <summary>How many of those have been made.</summary>
+    public int DecisionsMade =>
+        Plan.PrefixActions.Take(StepsTaken).Count(action => !CardScreenAnswers.IsAnAnswer(action));
+
     /// <summary>The run this entry constructed, for a host that has to finish
     /// launching it through the game's own continuation.</summary>
     public RunState PreparedRun => _session.RunState;
@@ -349,11 +382,27 @@ public sealed class RecordedFightEntry : IDisposable
 
         return action.Verb switch
         {
-            ActionVerb.ChooseNeowBlessing => new PrefightChoice.Blessing(action.Seq, BlessingRelic(action)),
+            ActionVerb.ChooseNeowBlessing => new PrefightChoice.Blessing(
+                action.Seq, BlessingRelic(action), CardsThisDecisionPicks(action)),
             ActionVerb.MapMove => DescribeMapMove(action),
             _ => null,
         };
     }
+
+    /// <summary>
+    /// The cards the recording picked off the screen this decision opens, in the order
+    /// it picked them, and empty where it opens none.
+    ///
+    /// Read from the manifest rather than from the run, because at the moment a
+    /// decision is being shown the screen has not opened and the cards it will offer do
+    /// not exist yet. <see cref="CardScreenAnswers"/> owns where that window is cut;
+    /// cutting it anywhere else would name a card a different decision picked.
+    /// </summary>
+    private IReadOnlyList<string> CardsThisDecisionPicks(ActionRecord action) =>
+        CardScreenAnswers.After(Manifest.Actions, action.Seq)
+            .Where(answer => answer.Verb == ActionVerb.SelectCardFromScreen)
+            .Select(answer => ArgumentString(answer, "card_id"))
+            .ToList();
 
     /// <summary>
     /// Where the recording's next decision lands on the game's own screen.
@@ -429,8 +478,11 @@ public sealed class RecordedFightEntry : IDisposable
     }
 
     private static int ArgumentInt(ActionRecord action, string name) =>
+        int.Parse(ArgumentString(action, name), CultureInfo.InvariantCulture);
+
+    private static string ArgumentString(ActionRecord action, string name) =>
         action.Args.TryGetValue(name, out var raw)
-            ? int.Parse(raw, CultureInfo.InvariantCulture)
+            ? raw
             : throw new EngineException(
                 $"Action {action.Seq} ({action.Verb}) is missing required argument '{name}'.");
 
@@ -484,6 +536,14 @@ public sealed class RecordedFightEntry : IDisposable
                 $"{Plan.PrefixActions.Count - StepsTaken} of the recording's decisions before " +
                 $"{Plan.Describe()} have not been made yet, so there is nothing to compare against.");
         }
+
+        // The last thing a card screen the walk opened can be settled against, and the
+        // last moment this driver may still be on the engine's stack. No history on
+        // v0.111.0 reaches here with one open - the decision that reaches a boundary is
+        // a map move or an event option that starts its room's fight, and neither opens
+        // a card screen - so the refusal this can raise is a divergence rather than an
+        // ordinary step, and it belongs before a boundary is proved rather than after.
+        _driver.SettleAnyCardScreenTheLastStepOpened();
 
         var expectedDigest = Manifest.BoundaryAt(Plan.Kind, fight: Plan.Fight, floor: Plan.Floor)?.Digest.Value
             ?? throw new ManifestException(
