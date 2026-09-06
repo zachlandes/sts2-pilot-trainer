@@ -86,6 +86,194 @@ public sealed class ProfileWriteBarrierTests
         Assert.Contains(("MegaCrit.Sts2.Core.Saves.SaveManager", "SaveRun"), named);
     }
 
+    /// <summary>
+    /// The case that was never run, and so the case this escaped through: a profile
+    /// with tutorials on.
+    ///
+    /// <c>ProgressSaveManager.SeenFtue</c> returns true whenever
+    /// <c>Progress.EnableFtues</c> is false, so on a profile with tutorials off no
+    /// call site ever reaches the mark - and every profile this was measured on had
+    /// them off. A player who left them on, which is the default, walks the trainer's
+    /// own path through <c>map_select_ftue</c> and <c>can_play_cards_ftue</c> and has
+    /// their progress file rewritten from somebody else's run.
+    ///
+    /// The lowered half is not decoration: it is what says the call reached the mark
+    /// at all, and it is the assertion the raised half would fail without the fix.
+    /// </summary>
+    [BarrierFact]
+    public void WithTutorialsOnATrainerRunMarksNoTutorialComplete()
+    {
+        const string ftueId = "map_select_ftue";
+        var (saveManager, progress) = SaveManagerWithFreshProgress();
+
+        // Tutorials on, which is what a normal player has and what no fixture had.
+        SetEnableFtues(progress, true);
+        Assert.DoesNotContain(ftueId, FtueCompleted(progress));
+
+        WithTheBarrier(
+            raised: () =>
+            {
+                Invoke(saveManager, "MarkFtueAsComplete", ftueId);
+                Assert.DoesNotContain(ftueId, FtueCompleted(progress));
+            },
+            lowered: () =>
+            {
+                Invoke(saveManager, "MarkFtueAsComplete", ftueId);
+                Assert.Contains(ftueId, FtueCompleted(progress));
+            });
+    }
+
+    /// <summary>
+    /// The first sibling, driven rather than named. <c>SetFtuesEnabled</c> writes the
+    /// progress file the same way the mark does, and suppressing one entry point while
+    /// leaving this one would be a barrier with a door open.
+    /// </summary>
+    [BarrierFact]
+    public void WithATrainerRunLiveTurningTutorialsOffChangesNothing()
+    {
+        var (saveManager, progress) = SaveManagerWithFreshProgress();
+        SetEnableFtues(progress, true);
+
+        WithTheBarrier(
+            raised: () =>
+            {
+                Invoke(saveManager, "SetFtuesEnabled", false);
+                Assert.True(EnableFtues(progress), "The trainer's run turned the player's tutorials off.");
+            },
+            lowered: () =>
+            {
+                Invoke(saveManager, "SetFtuesEnabled", false);
+                Assert.False(EnableFtues(progress));
+            });
+    }
+
+    /// <summary>
+    /// The second sibling. <c>ResetFtues</c> turns tutorials back on and empties the
+    /// set of ones already seen, and then writes - so a trainer run that reached it
+    /// would hand the player back every tutorial they had already dismissed.
+    /// </summary>
+    [BarrierFact]
+    public void WithATrainerRunLiveResettingTutorialsChangesNothing()
+    {
+        const string ftueId = "map_select_ftue";
+        var (saveManager, progress) = SaveManagerWithFreshProgress();
+
+        // Set up through the progress object's own mark rather than the SaveManager's.
+        // The barrier patches the SaveManager entry point, so going through it here
+        // would make this arrangement depend on the thing under test.
+        SetEnableFtues(progress, false);
+        Invoke(progress, "MarkFtueAsComplete", ftueId);
+        Assert.Contains(ftueId, FtueCompleted(progress));
+
+        WithTheBarrier(
+            raised: () =>
+            {
+                Invoke(saveManager, "ResetFtues");
+                Assert.Contains(ftueId, FtueCompleted(progress));
+                Assert.False(EnableFtues(progress), "The trainer's run turned the player's tutorials back on.");
+            },
+            lowered: () =>
+            {
+                Invoke(saveManager, "ResetFtues");
+                Assert.DoesNotContain(ftueId, FtueCompleted(progress));
+                Assert.True(EnableFtues(progress));
+            });
+    }
+
+    /// <summary>
+    /// Installs the real barrier over the real game, runs <paramref name="raised"/>
+    /// with a trainer run live and <paramref name="lowered"/> without one, and takes
+    /// the patches back off.
+    ///
+    /// Both halves, always: the raised one is the claim, and the lowered one is what
+    /// says the call reached the write at all rather than never arriving. A raised
+    /// half on its own would pass just as well against a method the game had renamed.
+    /// </summary>
+    private static void WithTheBarrier(Action raised, Action lowered)
+    {
+        var harmony = new Harmony($"sts2-pilot-trainer.barrier-test.{Guid.NewGuid():N}");
+        try
+        {
+            ProfileWriteBarrier.Install(harmony);
+
+            ProfileWriteBarrier.Raise();
+            raised();
+
+            ProfileWriteBarrier.Lower();
+            lowered();
+        }
+        finally
+        {
+            ProfileWriteBarrier.Lower();
+            harmony.UnpatchAll(harmony.Id);
+        }
+    }
+
+    /// <summary>
+    /// The game's own <c>SaveManager</c>, holding a progress object these tests can
+    /// drive.
+    ///
+    /// What is asserted on that object is the progress the game holds in memory,
+    /// because that is what this process can honestly observe: the file write
+    /// underneath every one of these calls goes through Godot's <c>FileAccess</c>,
+    /// which the headless stubs answer with a null handle, so a "no file appeared"
+    /// assertion would pass whatever the barrier did. That these calls write at all is
+    /// read off the game's own code - each of <c>MarkFtueAsComplete</c>,
+    /// <c>SetFtuesEnabled</c> and <c>ResetFtues</c> on <c>ProgressSaveManager</c> ends
+    /// in <c>SaveProgress</c>, which calls <c>ISaveStore.WriteFile</c> without going
+    /// through the patched <c>SaveProgressFile</c> - and proving it on disk needs the
+    /// retail client on a profile with tutorials still on.
+    ///
+    /// The progress is a default one rather than one loaded off disk.
+    /// <c>InitProgressData</c> reads a character out of the model database, which only
+    /// a started engine has, and starting one here would leave this process holding a
+    /// headless host - which is a different refusal from the one ModHostBoundaryTests
+    /// asserts on.
+    ///
+    /// Reflection rather than a compile-time reference to the game, the way every
+    /// other test here reaches it: a second resolved copy of sts2 is the trap
+    /// docs/in-game-host.md records.
+    /// </summary>
+    private static (object SaveManager, object Progress) SaveManagerWithFreshProgress()
+    {
+        var saveManagerType = GameType("MegaCrit.Sts2.Core.Saves.SaveManager");
+        var saveManager = saveManagerType
+            .GetProperty("Instance", BindingFlags.Public | BindingFlags.Static)!
+            .GetValue(null)!;
+        Invoke(saveManager, "InitProfileId", (int?)0);
+
+        var progressProperty = saveManagerType
+            .GetProperty("Progress", BindingFlags.Public | BindingFlags.Instance)!;
+        progressProperty.SetValue(
+            saveManager, Activator.CreateInstance(GameType("MegaCrit.Sts2.Core.Saves.ProgressState")));
+        return (saveManager, progressProperty.GetValue(saveManager)!);
+    }
+
+    private static bool EnableFtues(object progress) =>
+        (bool)Property(progress, "EnableFtues").GetValue(progress)!;
+
+    private static void SetEnableFtues(object progress, bool value) =>
+        Property(progress, "EnableFtues").SetValue(progress, value);
+
+    private static IEnumerable<string> FtueCompleted(object progress) =>
+        (IEnumerable<string>)Property(progress, "FtueCompleted").GetValue(progress)!;
+
+    private static PropertyInfo Property(object target, string name) =>
+        target.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance)!;
+
+    /// <summary>A type from the game assembly this process loaded, by name.</summary>
+    private static Type GameType(string name) =>
+        GameAssembly().GetType(name)
+            ?? throw new InvalidOperationException($"This build has no {name}.");
+
+    /// <summary>A method on the game's own object, by name. Every parameter here is
+    /// the type the game declares, so an overload set of one needs no
+    /// disambiguation.</summary>
+    private static void Invoke(object target, string method, params object?[] arguments) =>
+        target.GetType()
+            .GetMethod(method, BindingFlags.Public | BindingFlags.Instance)!
+            .Invoke(target, arguments);
+
     [BarrierFact]
     public void ItInstallsTheBoundariesFoundByTheRetailProof()
     {

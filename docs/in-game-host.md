@@ -106,6 +106,19 @@ existing on every path there is; a barrier left raised after the recorded fight 
 silently stop saving the next run the player started, which is the same defect
 pointed the other way.
 
+Suppressing `SaveProgressFile` is not the whole of it, because not every progress write goes through it.
+`ProgressSaveManager.MarkFtueAsComplete` writes the progress file itself, so `MarkFtueAsComplete`, `SetFtuesEnabled` and `ResetFtues` are named in `ProfileWriteBarrier.SuppressedWrites` directly.
+The trainer's own path reaches the tutorial marks from `NMapScreen` and `NEndTurnButton` among others, and it measured clean only because every profile it was measured on had tutorials off - `SeenFtue` short-circuits when they are.
+A player who left them on, which is the default, is the case that was never run.
+One consequence of suppressing the siblings is deliberate: the settings screen's reset-tutorials does nothing while a trainer run is live.
+A second is deliberate too: suppressing `MarkFtueAsComplete` suppresses the in-memory mark with it, so `SeenFtue` keeps returning false for the whole trainer run and a tutorial the player has not already dismissed can show again later in the same journey.
+It is bounded: `SeenFtue` reads `FtueCompleted` as loaded from the player's own progress file, and the barrier only stops additions to it, so a tutorial they dismissed in ordinary play never reappears.
+The fix has to answer `SeenFtue` true for the duration of a trainer run without writing or leaving a mark in the player's stored `Progress`: a run-scoped overlay dropped when the run ends.
+Marking it in the real `Progress` object would not do, because that mark survives the run, and the next ordinary write after the barrier lowers - `NGame.Quit` calling `SaveProgressFile` - would persist a tutorial mark made inside somebody else's run, the same measured sequence the seen-marks record.
+That is why it is a new mechanism rather than a named write, and it is left to a separate change.
+`NGameOverScreen` is the known gap, recorded in the barrier's own docstring: it dirties `Progress.CurrentScore` and the badge state in memory before a `SaveProgressFile` the barrier suppresses, so the mutation outlives the run and the next ordinary write persists it.
+Nothing reaches it while the trainer is fight-scoped; a whole-run replay would, and it is answered on that list when it does.
+
 **The recording owns every decision before the fight.**
 Enforced on the two commands those decisions reach — `EventSynchronizer.ChooseLocalOption`
 and `RunManager.EnterMapCoord` — rather than on the buttons that usually reach them.
