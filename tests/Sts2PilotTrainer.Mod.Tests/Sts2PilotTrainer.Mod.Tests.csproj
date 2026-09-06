@@ -25,6 +25,8 @@
 
   <ItemGroup>
     <Compile Include="../Sts2PilotTrainer.Arbiter.Tests/Arbiter.cs" Link="Arbiter.cs" />
+    <Compile Include="../Sts2PilotTrainer.Arbiter.Tests/OurAssembliesBesideThisOne.cs"
+             Link="OurAssembliesBesideThisOne.cs" />
     <Using Include="Xunit" />
   </ItemGroup>
 

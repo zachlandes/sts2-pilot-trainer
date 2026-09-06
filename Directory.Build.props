@@ -13,5 +13,36 @@
     <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)build/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
     <!-- Every test run is bounded, however it was started. See .runsettings. -->
     <RunSettingsFilePath>$(MSBuildThisFileDirectory).runsettings</RunSettingsFilePath>
+
+    <!-- One version for everything this repository ships, read out of the mod
+         manifest the player's game reads. Nothing else declares one.
+
+         A native recording names this build twice - once as the mod the game
+         reported loaded, once as the recorder that wrote the file - and a reader
+         holding the two side by side is entitled to see the same string. It did
+         not: no version was set anywhere, so the assemblies carried .NET's default
+         1.0.0.0 and every recording said runmobile-recorder/1.0.0.0 while the
+         manifest beside it said 0.1.0.
+         GodotStubs overrides this deliberately - that assembly has to keep
+         GodotSharp's own identity for the game assembly's references to resolve. -->
+    <RunmobileManifestPath>$(MSBuildThisFileDirectory)src/Sts2PilotTrainer.Mod/Runmobile.json</RunmobileManifestPath>
+    <RunmobileVersion>$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText($(RunmobileManifestPath))), '(?s)^.*?"version"\s*:\s*"([^"]*)".*$', '$1'))</RunmobileVersion>
+    <Version>$(RunmobileVersion)</Version>
   </PropertyGroup>
+
+  <!-- A regex that fails to match returns the whole file, so the extraction says so
+       rather than stamping a JSON document into every assembly as its version. This
+       catches a failed extraction and nothing else: what the version numbers are, and
+       whether one is a prerelease, is not a question the build gets to decide.
+
+       A '+' is refused as well, and that one is about the round trip rather than the
+       extraction. Source-stamping tools append '+<commit>' to the informational
+       version and RunmobileVersion.Of has to strip it, so a declared 0.2.0+beta would
+       come back as 0.2.0 and sit beside a mod set saying 0.2.0+beta - the same two
+       strings disagreeing that this arrangement exists to remove. -->
+  <Target Name="RequireAReadableRunmobileVersion" BeforeTargets="BeforeBuild">
+    <Error Condition="'$(RunmobileVersion)' == '' or $([System.Text.RegularExpressions.Regex]::IsMatch($(RunmobileVersion), '[\s{}+&quot;]'))"
+           Text="Could not read a usable version out of $(RunmobileManifestPath). Its &quot;version&quot; must be a version string with no build metadata: a '+' cannot survive the trip into an assembly stamp. Every assembly here takes its version from that one field." />
+  </Target>
+
 </Project>
