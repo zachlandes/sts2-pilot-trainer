@@ -48,8 +48,12 @@ See [dependencies](dependencies.md).
 `Directory.Build.props` reads it and stamps every assembly here from it, so a release is one edit to one field and nothing can be left behind.
 This matters past tidiness because a native recording names the build twice - once in its mod set, as the mod the game reported loaded, and once as `source.native.recorder_version` - and a reader deciding whether a recording is browsable and reproducible on their own patch is reading those strings.
 They disagreed: nothing declared a version, so the assemblies carried .NET's default `1.0.0.0` and every recording written before this said `runmobile-recorder/1.0.0.0` beside a mod set saying `Runmobile 0.1.0`.
-Those recordings are evidence of what happened and are not edited to match; `RunmobileVersion` is the one reader of the stamped value, and `VersionAgreementTests` asserts nothing has grown a second one.
-`GodotStubs` is the deliberate exception and is not ours: that assembly has to keep `GodotSharp`'s own identity for the game assembly's references to resolve.
+Those recordings are evidence of what happened and are not edited to match; `RunmobileVersion` is the one reader of the stamped value.
+`VersionAgreementTests` and `RecorderVersionTests` assert it over every assembly of ours found beside the running test binary rather than a list they name, so a project added later is asked as soon as anything references it - the first suite covers the game-free set CI runs, the second the two that need the game.
+Two versions are deliberately outside the arrangement.
+`GodotStubs` is not ours: that assembly has to keep `GodotSharp`'s own identity for the game assembly's references to resolve.
+`Arbiter.Version` in `Sts2PilotTrainer.Engine` is the headless arbiter's own version, written into every verification report as `arbiter_version`, and it stays independent because the CLI is a separate artifact that no player installs.
+The consequence is intended and worth stating: bump the mod's version and `arbiter_version` still reads the arbiter's own until somebody bumps that too.
 
 ## What the installed mod writes
 

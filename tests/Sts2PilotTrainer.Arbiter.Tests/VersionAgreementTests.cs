@@ -12,15 +12,20 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// runmobile-recorder/1.0.0.0 while the mod set in the same file said Runmobile 0.1.0.
 /// Both were describing the same DLL.
 ///
-/// This is the sweep that fails when a future project declares a version of its own:
-/// a stated invariant with no test that can fail is not an invariant. It asks every
-/// assembly that runs in CI - Replay, IO, Trainer, the Bootstrap tool and this test
-/// assembly. Runmobile and Engine are asked the same question by RecorderVersionTests
-/// in Sts2PilotTrainer.Mod.Tests, because they need the game assembly and this project
-/// is in the game-free solution filter. Between the two, everything shipped is asked
-/// except GodotStubs, which keeps GodotSharp's identity so the game assembly's
-/// references resolve. Nothing else is: Sts2PilotTrainer.Cli may not be referenced
-/// from the solution at all, and the remaining test assemblies are not shipped.
+/// This is the sweep that fails when a project declares a version of its own: a stated
+/// invariant with no test that can fail is not an invariant. It names no assembly - it
+/// asks every one of ours sitting beside the test binary, so a project added tomorrow
+/// is asked the moment anything here references it, without an array to remember to
+/// edit. Here that is the game-free set, which is what CI runs; RecorderVersionTests in
+/// Sts2PilotTrainer.Mod.Tests runs the same sweep over its own output, which is where
+/// Runmobile and Engine appear, because they need the game assembly and this project is
+/// in the game-free solution filter.
+///
+/// GodotStubs is out by construction: it builds as GodotSharp, keeping that identity so
+/// the game assembly's references resolve. Sts2PilotTrainer.Cli is asked by neither,
+/// because nothing in the solution may reference it. So is Arbiter.Version, which is a
+/// deliberately independent version for a separate artifact rather than an assembly
+/// stamp; docs/distribution.md owns both exceptions.
 ///
 /// These need no game: they read the manifest this repository ships and the version
 /// stamped into the assemblies loaded to run them.
@@ -30,15 +35,9 @@ public class VersionAgreementTests
     [Fact]
     public void EveryAssemblyWeShipIsStampedWithTheVersionTheModManifestDeclares()
     {
-        var ours = new[]
-        {
-            typeof(RunmobileVersion).Assembly,
-            typeof(Sts2PilotTrainer.IO.AtomicFile).Assembly,
-            typeof(Sts2PilotTrainer.Trainer.TrainerCopy).Assembly,
-            typeof(Sts2PilotTrainer.Bootstrap.Program).Assembly,
-            typeof(VersionAgreementTests).Assembly,
-        };
+        var ours = OurAssembliesBesideThisOne.All();
 
+        Assert.Contains(typeof(RunmobileVersion).Assembly.GetName().Name, ours.Select(a => a.GetName().Name));
         Assert.All(ours, assembly => Assert.Equal(Declared, RunmobileVersion.Of(assembly)));
     }
 

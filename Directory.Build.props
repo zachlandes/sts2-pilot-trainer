@@ -33,10 +33,16 @@
   <!-- A regex that fails to match returns the whole file, so the extraction says so
        rather than stamping a JSON document into every assembly as its version. This
        catches a failed extraction and nothing else: what the version numbers are, and
-       whether one is a prerelease, is not a question the build gets to decide. -->
+       whether one is a prerelease, is not a question the build gets to decide.
+
+       A '+' is refused as well, and that one is about the round trip rather than the
+       extraction. Source-stamping tools append '+<commit>' to the informational
+       version and RunmobileVersion.Of has to strip it, so a declared 0.2.0+beta would
+       come back as 0.2.0 and sit beside a mod set saying 0.2.0+beta - the same two
+       strings disagreeing that this arrangement exists to remove. -->
   <Target Name="RequireAReadableRunmobileVersion" BeforeTargets="BeforeBuild">
-    <Error Condition="'$(RunmobileVersion)' == '' or $([System.Text.RegularExpressions.Regex]::IsMatch($(RunmobileVersion), '[\s{}&quot;]'))"
-           Text="Could not read a version out of $(RunmobileManifestPath); what came back was not a version string. Every assembly here takes its version from that one &quot;version&quot; field." />
+    <Error Condition="'$(RunmobileVersion)' == '' or $([System.Text.RegularExpressions.Regex]::IsMatch($(RunmobileVersion), '[\s{}+&quot;]'))"
+           Text="Could not read a usable version out of $(RunmobileManifestPath). Its &quot;version&quot; must be a version string with no build metadata: a '+' cannot survive the trip into an assembly stamp. Every assembly here takes its version from that one field." />
   </Target>
 
 </Project>

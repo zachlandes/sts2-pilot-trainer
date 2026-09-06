@@ -232,12 +232,18 @@ The recording's side of the in-game comparison is `manifests/<id>.recorded-fight
 Do not add a second capture path, a turn-level reset, a score or a verdict; `docs/comparison-direction.md` owns why.
 
 **One version, written in one place.** `src/Sts2PilotTrainer.Mod/Runmobile.json`'s
-`version` field is the only version declaration here; `Directory.Build.props` reads it
-and stamps every assembly, `RunmobileVersion` is the one reader, and a native recording
-names that build twice - in its mod set and as `source.native.recorder_version` - so the
-two have to be the same string. Do not add a second declaration; recordings written
-before this carry the old wrong value and are not edited to match.
-[docs/distribution.md](docs/distribution.md) owns the detail.
+`version` field is the only version declaration for the assemblies the mod ships;
+`Directory.Build.props` reads it and stamps every assembly, `RunmobileVersion` is the
+one reader, and a native recording names that build twice - in its mod set and as
+`source.native.recorder_version` - so the two have to be the same string. Do not add a
+second declaration; recordings written before this carry the old wrong value and are
+not edited to match.
+Two versions sit outside that on purpose. `Arbiter.Version` is the headless CLI's own,
+a separate artifact that is not in the mod archive, so `arbiter_version` in every
+verification report is bumped deliberately rather than following a mod-only release -
+after a mod bump it still reads the arbiter's version, which is the point.
+`GodotStubs` has to keep `GodotSharp`'s identity for the game assembly's references to
+resolve. [docs/distribution.md](docs/distribution.md) owns the detail.
 
 **Player-facing wording is a template, never a recording.** Everything the mod says
 lives in `Sts2PilotTrainer.Trainer`, and every recording-specific value in it is
