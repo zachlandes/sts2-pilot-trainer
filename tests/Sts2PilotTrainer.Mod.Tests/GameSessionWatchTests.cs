@@ -79,63 +79,31 @@ public sealed class GameSessionWatchTests : IDisposable
     }
 
     /// <summary>
-    /// A multiplayer session set up under a live recording stops it and marks it
-    /// unpublishable.
+    /// A multiplayer setup the game refused leaves the mod watching this client again.
     ///
-    /// The safety net, not the rule: a multiplayer game normally never gets as far as
-    /// a journal, because the reading at attach refuses first -
-    /// <c>LiveRunSessionTests</c> owns that half against a real run. What is asserted
-    /// here is what happens to a recording that is already live, and it is the same
-    /// answer a console command gets: the recording is kept whole, stops where the
-    /// session changed under it, and states through <c>source.native.integrity</c>
-    /// that nobody may publish it.
+    /// The latch is set from a prefix, so it fires on a request rather than on a
+    /// session, and the teardown that normally clears it only happens where a run
+    /// existed. A setup attempted with no run and refused would otherwise leave this
+    /// process drawing no card and recording no run for the rest of its life, saying so
+    /// in one log line - silent, safe, and still a mod that stopped working.
     /// </summary>
     [GameFact]
-    public void AMultiplayerSessionUnderALiveRecordingStopsItAndMarksItUnpublishable()
+    public void AMultiplayerSetupTheGameRefusedLetsTheModSpeakAgain()
     {
         _ = EngineHost.StartupPhase();
-        var capture = ALiveRecording(out var journalPath);
-
-        RunRecorder.MultiplayerSessionStarted();
-
-        Assert.Null(RunRecorder.Active);
-        Assert.Equal(NativeSource.NonStandardIntegrity, capture.Integrity);
-
-        // Kept whole and on the file, so the session after a crash reads the same run.
-        var written = RunJournal.Parse(RunmobileStore.Read(journalPath)!);
-        Assert.True(written.NonStandard);
-        Assert.Equal(capture.NextSeq + 1, written.Entries.Count);
-        Assert.Equal(RunCaptureState.Recording, capture.State);
-    }
-
-    /// <summary>
-    /// A multiplayer setup that did not take effect changes no recording.
-    ///
-    /// The two halves of the watch answer different questions and only one of them may
-    /// act on a request. The latch is set from a prefix, so it fires on a call the game
-    /// may go on to refuse - going quiet for that is free, and ending somebody's
-    /// recording is not. Marking waits for a reading that says this client really is in
-    /// a multiplayer game, which a process still playing its singleplayer run never
-    /// gives.
-    /// </summary>
-    [GameFact]
-    public void AMultiplayerSetupThatTookNoEffectLeavesALiveRecordingAlone()
-    {
-        _ = EngineHost.StartupPhase();
-        var capture = ALiveRecording(out var journalPath);
-
         GameSessionWatch.MultiplayerSessionSetUp();
-        GameSessionWatch.MultiplayerSessionTookEffect();
-
         Assert.False(GameSessionWatch.MaySpeak);
-        Assert.NotNull(RunRecorder.Active);
-        Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
-        Assert.False(RunJournal.Parse(RunmobileStore.Read(journalPath)!).NonStandard);
+
+        GameSessionWatch.MultiplayerSetupRefused();
+
+        Assert.Equal(RunSessionKind.NoRunInProgress, GameSessionWatch.Observed);
+        Assert.True(GameSessionWatch.MaySpeak);
+        Assert.NotEmpty(RunmobileMod.MenuCards);
     }
 
     /// <summary>A recording live enough for the patches to reach, written the way a
-    /// recorder writes one.</summary>
-    private static RunCapture ALiveRecording(out string journalPath)
+    /// recorder writes one and begun the way the attach begins one.</summary>
+    private static RunCapture ARecordingThatBegins(out string journalPath)
     {
         var capture = RecordedRun.Captured();
         journalPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RunJournal.FileExtension}";
@@ -143,6 +111,15 @@ public sealed class GameSessionWatchTests : IDisposable
         RunRecorder.BeginRecording(capture, journalPath);
 
         Assert.NotNull(RunRecorder.Active);
+        return capture;
+    }
+
+    /// <summary>The same, for a test whose subject is what happens to a recording that
+    /// was standing at complete when it began.</summary>
+    private static RunCapture ALiveRecording(out string journalPath)
+    {
+        var capture = ARecordingThatBegins(out journalPath);
+
         Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
         return capture;
     }
@@ -168,20 +145,19 @@ public sealed class GameSessionWatchTests : IDisposable
     }
 
     /// <summary>
-    /// A console command used before the recorder attaches is held, not dropped.
+    /// A console command used before the recorder attaches reaches the recording it
+    /// attaches to.
     ///
     /// The stretch this covers is the one where there is nothing to read: continuing a
     /// saved run is asynchronous, so between the game saying a run is starting and the
-    /// run existing <c>LiveRun.State</c> is null for the whole of a save load. A
-    /// command typed then is in that run's history exactly like one typed a second
-    /// later, and a recording that dropped it would state <c>integrity = "complete"</c>
-    /// for a run the console was used in - a wrong label with no error anywhere.
-    ///
-    /// And the hold does not outlive the stretch: the next run starting clears it, so a
-    /// command typed at the main menu is never carried into the run that follows.
+    /// run existing there is no run to read for the whole of a save load. A command
+    /// typed then is in that run's history exactly like one typed a second later, and a
+    /// recording that dropped it would state <c>integrity = "complete"</c> for a run the
+    /// console was used in - a wrong label with no error anywhere. So what is asserted
+    /// is the recording, not the holding.
     /// </summary>
     [GameFact]
-    public void AConsoleCommandUsedBeforeTheRecorderAttachesIsHeldForIt()
+    public void AConsoleCommandUsedBeforeTheRecorderAttachesReachesTheRecording()
     {
         _ = EngineHost.StartupPhase();
         Assert.Null(RunRecorder.Active);
@@ -189,24 +165,58 @@ public sealed class GameSessionWatchTests : IDisposable
         // The game says a run is starting. There is no run yet, and no reading to take.
         RunRecorder.NoticeRun();
         Assert.Equal(RunSessionKind.NoRunInProgress, LiveRun.ReadSession());
-        Assert.False(HeldForAttach());
+
+        RunRecorder.ConsoleCommandUsed();
+        var capture = ARecordingThatBegins(out var journalPath);
+
+        Assert.Equal(NativeSource.NonStandardIntegrity, capture.Integrity);
+        Assert.True(RunJournal.Parse(RunmobileStore.Read(journalPath)!).NonStandard);
+    }
+
+    /// <summary>
+    /// A console command typed at the main menu is not carried into the run that
+    /// follows it.
+    ///
+    /// The other end of the same hold, and the reason it is cleared when a run starts
+    /// rather than only when one ends: a recording marked for something that happened
+    /// before its run began states an untruth about that run as surely as a dropped
+    /// mark states one about this one.
+    /// </summary>
+    [GameFact]
+    public void AConsoleCommandTypedAtTheMenuIsNotCarriedIntoTheNextRun()
+    {
+        _ = EngineHost.StartupPhase();
+        Assert.Null(RunRecorder.Active);
+        RunRecorder.ConsoleCommandUsed();
+
+        RunRecorder.NoticeRun();
+        var capture = ARecordingThatBegins(out var journalPath);
+
+        Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
+        Assert.False(RunJournal.Parse(RunmobileStore.Read(journalPath)!).NonStandard);
+    }
+
+    /// <summary>
+    /// The ordinary case: a console command used while a run is being recorded marks
+    /// that recording.
+    ///
+    /// The two either side of it are the edges - before the recorder attached and after
+    /// the run ended - and this is the one the ruling is about. The recording keeps
+    /// going: it is what the player played, and what it is not is publishable.
+    /// </summary>
+    [GameFact]
+    public void AConsoleCommandUsedDuringTheRunMarksTheRecordingAndKeepsIt()
+    {
+        _ = EngineHost.StartupPhase();
+        var capture = ALiveRecording(out var journalPath);
 
         RunRecorder.ConsoleCommandUsed();
 
-        Assert.True(HeldForAttach());
-
-        // And the run that follows this one starts from nothing held.
-        RunRecorder.NoticeRun();
-        Assert.False(HeldForAttach());
+        Assert.Equal(NativeSource.NonStandardIntegrity, capture.Integrity);
+        Assert.True(RunJournal.Parse(RunmobileStore.Read(journalPath)!).NonStandard);
+        Assert.NotNull(RunRecorder.Active);
+        Assert.Equal(RunCaptureState.Recording, capture.State);
     }
-
-    /// <summary>Whether a console command is being held for the recording this run is
-    /// about to have. Private because nothing outside the recorder may act on it; read
-    /// here because it is the whole of what the hold does before an attach.</summary>
-    private static bool HeldForAttach() =>
-        (bool)typeof(RunRecorder)
-            .GetField("_consoleUsedBeforeAttach", BindingFlags.NonPublic | BindingFlags.Static)!
-            .GetValue(null)!;
 
     /// <summary>
     /// A console command used after the run ended changes neither artifact.
@@ -267,7 +277,7 @@ public sealed class GameSessionWatchTests : IDisposable
             .Select(attribute => attribute.info)
             .ToList();
 
-        Assert.Equal(3, targets.Count);
+        Assert.Equal(4, targets.Count);
         Assert.All(targets, target => Assert.NotNull(
             AccessTools.Method(target.declaringType!, target.methodName!, target.argumentTypes)));
 

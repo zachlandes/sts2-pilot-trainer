@@ -43,9 +43,13 @@ internal static class GameSessionWatch
     private static bool _multiplayerSessionSetUp;
 
     /// <summary>The patch classes the shell installs for this. Two on the game's own
-    /// multiplayer run setup, and one on the teardown every run reaches.</summary>
+    /// multiplayer run setup, one on the refusal the first of those can answer with,
+    /// and one on the teardown every run reaches.</summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } =
-        [typeof(NewMultiplayerRun), typeof(SavedMultiplayerRun), typeof(RunTornDown)];
+    [
+        typeof(NewMultiplayerRun), typeof(SavedMultiplayerRun), typeof(MultiplayerSetupRefusedPatch),
+        typeof(RunTornDown),
+    ];
 
     /// <summary>
     /// What this session is, as observed.
@@ -82,10 +86,18 @@ internal static class GameSessionWatch
     /// not yet available and the fact is certain: the game called its own multiplayer
     /// setup member.
     ///
-    /// This suppresses surfaces and nothing else. It is called from a prefix, so what
-    /// it knows is that the game was asked to set a multiplayer session up - not that
-    /// the setup took effect - and going quiet on a request that then fails costs
-    /// nothing, because the next teardown clears the latch.
+    /// This suppresses surfaces and nothing else, and it is the whole of what a
+    /// multiplayer game gets from this mod: a latch set here refuses every later
+    /// reading, so no recording is begun and no artifact is created. What it cannot do
+    /// is reach a recording that is already live - see docs/in-game-host.md for that
+    /// limit.
+    ///
+    /// It is called from a prefix, so what it knows is that the game was asked to set
+    /// a multiplayer session up rather than that the setup took effect. Going quiet on
+    /// a request the game then refuses is the safe direction and it is not free: with
+    /// a run in progress the next teardown clears the latch, but a setup attempted
+    /// with no run leaves no teardown to reach, which is what
+    /// <see cref="MultiplayerSetupRefused"/> is for.
     /// </summary>
     internal static void MultiplayerSessionSetUp()
     {
@@ -101,26 +113,27 @@ internal static class GameSessionWatch
     }
 
     /// <summary>
-    /// This client is in a multiplayer game, so a recording of it is one nobody may
-    /// publish.
+    /// The setup this process latched for threw, so there is no multiplayer session
+    /// and there may be no run to clear the latch either.
     ///
-    /// The other half of the question the latch answers, and deliberately not the same
-    /// half. Suppressing surfaces asks "may this mod draw", which a request to set a
-    /// multiplayer session up settles on its own; marking a recording asks "did this
-    /// run stop being a singleplayer run", which only the game's own state answers -
-    /// so this reads it rather than trusting the call, because ending somebody's
-    /// recording is permanent and a setup the game refuses did not happen.
-    ///
-    /// The reading is the whole condition. <see cref="LiveRun.ReadSession"/> answers
-    /// what this client is playing right now, and only an answer that names a
-    /// multiplayer game reaches the recorder: a reading that could not be taken is an
-    /// absence, and a recording is never ended on one.
+    /// The one way back. A latch nothing lifts is a client that draws no card and
+    /// records no run for the rest of the process, saying so in a single log line -
+    /// silent and safe, and still a mod that stopped working.
     /// </summary>
-    internal static void MultiplayerSessionTookEffect()
+    internal static void MultiplayerSetupRefused()
     {
-        if (!RunSession.IsMultiplayer(LiveRun.ReadSession())) return;
+        bool latched;
+        lock (Gate)
+        {
+            latched = _multiplayerSessionSetUp;
+            _multiplayerSessionSetUp = false;
+        }
 
-        RunRecorder.MultiplayerSessionStarted();
+        if (!latched) return;
+
+        Log.Info(
+            $"[{RunmobileMod.ModId}] that multiplayer game did not start, so Runmobile is watching this " +
+            "client again", 2);
     }
 
     /// <summary>The run is gone. The next session is read again from scratch, because
@@ -136,12 +149,6 @@ internal static class GameSessionWatch
     {
         [HarmonyPrefix]
         internal static void Before() => MultiplayerSessionSetUp();
-
-        // A postfix does not run when the body throws, which is the difference that
-        // matters here: this member refuses a setup while a run's state is still set,
-        // and a recording must not be ended by a call the game rejected.
-        [HarmonyPostfix]
-        internal static void After() => MultiplayerSessionTookEffect();
     }
 
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.SetUpSavedMultiplayer))]
@@ -152,12 +159,25 @@ internal static class GameSessionWatch
         // the whole point of the latch is to cover that stretch.
         [HarmonyPrefix]
         internal static void Before() => MultiplayerSessionSetUp();
+    }
 
-        // Which is also why the marking half cannot lean on this one running late:
-        // an asynchronous member carries its refusal in the task it returns, so the
-        // reading rather than the postfix is what establishes the session here.
-        [HarmonyPostfix]
-        internal static void After() => MultiplayerSessionTookEffect();
+    /// <summary>
+    /// The synchronous setup refused the call, so the latch it set comes off.
+    ///
+    /// A finalizer rather than a postfix because a postfix does not run when the body
+    /// throws, and the throw is the whole signal. Only this member has one: the saved
+    /// setup is asynchronous and carries its refusal in the task it returns, where no
+    /// patch here sees it, so a failed continue is cleared by the next teardown or not
+    /// at all.
+    /// </summary>
+    [HarmonyPatch(typeof(RunManager), nameof(RunManager.SetUpNewMultiplayer))]
+    internal static class MultiplayerSetupRefusedPatch
+    {
+        [HarmonyFinalizer]
+        internal static void Finally(Exception? __exception)
+        {
+            if (__exception is not null) MultiplayerSetupRefused();
+        }
     }
 
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.CleanUp))]

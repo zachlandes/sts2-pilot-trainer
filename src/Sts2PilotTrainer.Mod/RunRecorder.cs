@@ -225,35 +225,6 @@ internal sealed class RunRecorder : IDisposable
     }
 
     /// <summary>
-    /// A multiplayer session was set up while this run was being recorded.
-    ///
-    /// The safety net rather than the rule. What keeps a multiplayer game out of a
-    /// recording is the reading at attach, taken before any journal exists, so the
-    /// ordinary path produces no artifact at all. This is what happens to a recording
-    /// that is already live: it is kept whole, marked through the one field that says
-    /// a recording may not be published, and stops there, because the decisions after
-    /// this point are not all this client's player's.
-    /// </summary>
-    internal static void MultiplayerSessionStarted()
-    {
-        var recorder = Active;
-        if (recorder is null) return;
-
-        try
-        {
-            recorder.NoticeMultiplayerSession();
-        }
-        catch (Exception ex)
-        {
-            Log.Error(
-                $"[{RunmobileMod.ModId}] could not mark this recording as one a multiplayer session began " +
-                $"in: {ex.GetType().Name}: {ex.Message}", 2);
-        }
-
-        RunTornDown();
-    }
-
-    /// <summary>
     /// Marks this recording as one the console was used in, and writes the mark to the
     /// journal before anything else happens.
     ///
@@ -275,20 +246,6 @@ internal sealed class RunRecorder : IDisposable
         Log.Warn(
             $"[{RunmobileMod.ModId}] the console was used in this run, so its recording is kept and is not " +
             "publishable", 2);
-    }
-
-    /// <summary>The same mark, for the same reason, on the other thing that makes a
-    /// run one nobody may publish. Written before the recorder detaches, so a crash
-    /// between the two still leaves the mark on the file, and not at all once the
-    /// recording has finished - for the reason above.</summary>
-    private void NoticeMultiplayerSession()
-    {
-        if (_finished || _disposed) return;
-
-        Append(_journalPath, _capture.MarkNonStandard());
-        Log.Warn(
-            $"[{RunmobileMod.ModId}] a multiplayer session began while this run was being recorded, so its " +
-            "recording stops here, is kept and is not publishable", 2);
     }
 
     /// <summary>
