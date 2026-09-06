@@ -10,6 +10,23 @@ namespace Sts2PilotTrainer.Mod;
 /// start time, which is what <see cref="Sts2PilotTrainer.Replay.RecordingLibrary.Name"/>
 /// writes into a recording's name and reads back out of it.
 ///
+/// <para><b><c>LoadRunSave</c> is not a pure read, and this is the only call in the mod
+/// that reaches one.</b> It goes through <c>MigrationManager.LoadSave</c>, which
+/// renames a run save it cannot read - empty, too old, from a future version, or
+/// undeserializable - to a <c>.corrupt</c> path, and leaves a <c>.pre-repair</c>
+/// sibling where it repairs the JSON. Those are writes inside the player's save
+/// directory, which everything else in this mod routes through
+/// <see cref="RunmobileStore"/> instead.
+///
+/// What makes it safe is when it is called rather than what it does, so a second caller
+/// does not inherit it. The game has already made the same call by then: the main menu's
+/// <c>RefreshButtons</c> calls <c>LoadRunSave</c> itself whenever there is a run save, at
+/// its own <c>_Ready</c> and after every abandoned run, and the singleplayer submenu this
+/// runs from cannot be pushed before that - so a corrupt save was renamed by the game,
+/// not by us. On the recorder's path the save was just written by the game's own atomic
+/// writer, so there is no torn file to trip it either. Anything that would call this
+/// earlier than the main menu has to establish that again.</para>
+///
 /// It refuses rather than approximates. A game with no <c>SaveManager</c>, or one
 /// holding a run save it could not read, gets an exception rather than a null: the
 /// caller is <see cref="RecordingRetention"/> deciding what to delete, and "there is

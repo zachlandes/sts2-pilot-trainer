@@ -59,6 +59,9 @@ Those identifiers are local path scoping and nothing else: no platform directory
 `RunmobileStore` is the only thing in the mod that writes at all: it takes the root from the game's own `ProjectSettings.GlobalizePath`, requires that root to resolve inside `user://` by the same containment rule, so a `Runmobile` directory that is a symlink elsewhere is refused rather than followed out of the ledger's reach, checks every path against that root with `PathContainment.RequireContained`, refuses any path with a `Steam`, `steamapps` or `Slay the Spire 2` component, and writes a whole file through a temporary sibling and a move so a crash leaves the previous file rather than half of a new one.
 Removing is a write and goes through the same gate: `RunmobileStore.Remove` names one file at a time and refuses a directory, so the one operation here that cannot be undone can never reach the store's own root.
 Which files it is asked for is `RecordingRetention`'s, deliberately somewhere else - see "Keeping runs, and removing them" below.
+One call in the mod reaches a game API that can write inside the player's *save* directory, and it is `ContinuableRun`: `SaveManager.LoadRunSave` goes through `MigrationManager.LoadSave`, which renames a corrupt run save to a `.corrupt` path and leaves a `.pre-repair` sibling where it repairs JSON.
+It is safe here for a reason that is about *when* it is called rather than what it does, and that reason is written out in `ContinuableRun`'s own docstring; a second caller does not inherit it.
+
 `PrepareForWrite` is the containment gate rather than the atomic writer, because not every write is a whole file - the recorder appends to a journal - and the point is one place that decides where this mod may write, not one way of writing.
 Each component is judged by the name it actually has on disk, after the path itself is resolved, so neither a symlink into an installation nor an alias spelling on a case-insensitive volume gets past it.
 `Steam` is then matched exactly: the game's own user data has a lower-case `steam` platform level, which is where this store lives.
@@ -488,9 +491,11 @@ and every feature that reads the engine asks it for itself at the first moment i
 demonstrably has a running game - the singleplayer menu for the mode card, the recorder
 when a run has entered its first room. No feature's correctness rests on another having
 asked first, and a refusal is the caller's to act on: no mode card, and no recording.
-The singleplayer-menu postfix asks before it looks at what the modules contribute, so
-adoption is attempted on a build where every module declined and there is no card to
-draw - and the retention duty beside it runs there even when that adoption is refused.
+The singleplayer-menu postfix asks for adoption only where a module contributed a card
+it is about to draw, so on a build where every module declined it is never reached from
+there at all. The retention duty above it is: that runs first and unconditionally, so a
+purge is honoured on such a build, and on one where the adoption it does attempt is
+refused.
 
 **Godot does not load the game into the default load context.**
 A mod's sibling assemblies have to be resolved on the load context the mod itself was
