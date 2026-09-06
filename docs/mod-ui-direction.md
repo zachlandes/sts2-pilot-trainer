@@ -138,7 +138,7 @@ Absent is the only state that hides a node, and an absent element is never hit-t
 **The same rule now carries a second surface.**
 The settings row about the player's own runs - keep, size, remove - is derived in one place too, by `MyRunsRow.For(facts)` in `Sts2PilotTrainer.Trainer`, and `MyRunsSettingsRow` in the mod projects it without working anything out.
 It is there for the reason the transport's rule is there: the number the policy keeps, the number on the disk and what a removal just did are three facts that can disagree, and a row where each control set its own label would show a reading taken before an act beside a receipt taken after it.
-Where that row hangs, what it reads, and the two places its drawing departs from the accepted design are in [in-game-host.md](in-game-host.md) under "The settings row, and the size figure".
+Where that row hangs, what it reads, and where its drawing departs from the accepted design are in [in-game-host.md](in-game-host.md) under "The settings row, and the size figure".
 
 ## What a redesign owns, and what it does not
 
