@@ -49,6 +49,22 @@ public static partial class ManifestValidator
     [GeneratedRegex(@"^sha256:[0-9a-f]{64}$")]
     private static partial Regex SnapshotDigestPattern { get; }
 
+    /// <summary>
+    /// The same question, asked of the manifest a verified replay just wrote.
+    ///
+    /// The boundary cross-checks only fire where a trace is attached, and the only
+    /// manifest that carries one is that copy - not the file a recorder wrote or a
+    /// stranger submitted. So the publication gate asks its declared-boundary
+    /// condition through this rather than validating the file on disk twice, and a
+    /// test with no game can ask for the same verdict.
+    /// </summary>
+    /// <returns>Null where it holds, and the refusal to report otherwise.</returns>
+    public static string? RefusalForVerified(ReplayManifest verified)
+    {
+        var result = Validate(verified);
+        return result.IsValid ? null : result.Describe();
+    }
+
     public static ValidationResult Validate(ReplayManifest manifest)
     {
         var problems = new List<string>();
@@ -70,8 +86,7 @@ public static partial class ManifestValidator
         ValidateRunStart(manifest.Source, videoDurationMs, problems);
         ValidateRunSummary(manifest, videoDurationMs, problems);
         ValidateActions(manifest.Actions, manifest.Source.Kind, videoDurationMs, problems);
-        ValidateCheckpoints(
-            manifest.Checkpoints, manifest.Actions, manifest.Source.Kind, videoDurationMs, problems);
+        ValidateCheckpoints(manifest, videoDurationMs, problems);
         ValidateBoundaries(manifest, problems);
         ValidateEvidenceTimeline(manifest, problems);
 
@@ -629,6 +644,11 @@ public static partial class ManifestValidator
     /// fights, and the other two are places it may also stand somebody, not places it
     /// must be able to.
     ///
+    /// A floor entry is asked more than that, and asked it with no trace, because
+    /// standing somebody on a floor needs more than a coordinate the run reached:
+    /// <see cref="ValidateFloorEntry"/> refuses here everything
+    /// <see cref="FloorEntryPlan.For"/> would abort on in front of a player.
+    ///
     /// A generated fixture may declare boundaries and is not required to. The rule
     /// that it may not was written when a boundary meant a publication claim; it does
     /// not - what may be published is the gate's question, and the gate refuses a
@@ -692,6 +712,7 @@ public static partial class ManifestValidator
                     {
                         problems.Add($"the boundary at {name} names a fight or a turn, which a floor entry is not.");
                     }
+                    if (boundary.Floor is > 0) ValidateFloorEntry(manifest, boundary, isFixture, problems);
                     break;
                 case ReplayBoundary.TurnStartKind:
                     if (boundary.Fight is not > 0 || boundary.Turn is not > 0)
@@ -1352,10 +1373,70 @@ public static partial class ManifestValidator
     [GeneratedRegex(@"^(0|[1-9]\d*)$")]
     private static partial Regex NonNegativeIntegerPattern { get; }
 
-    private static void ValidateCheckpoints(
-        IReadOnlyList<Checkpoint> checkpoints, IReadOnlyList<ActionRecord> actions,
-        string sourceKind, int videoDurationMs, List<string> problems)
+    /// <summary>
+    /// Everything <see cref="FloorEntryPlan.For"/> asks of a floor_entry, asked here
+    /// instead of in front of a player.
+    ///
+    /// That plan aborts on a boundary whose action is not a map move, on one with no
+    /// checkpoint at that action naming <see cref="FloorEntryPlan.RequiredBoundaryFields"/>,
+    /// and on one whose arrival names a different floor. A coordinate checked for
+    /// shape alone passes publication and is refused later, as an aborted entry, so
+    /// the same three questions are asked at validation and resolved the same way:
+    /// where several checkpoints sit at one action, the one the plan would take is the
+    /// one this reads.
+    ///
+    /// A generated fixture is exempt from the checkpoint rule alone. One committed
+    /// fixture declares a floor entry its generator writes no arrival for, and a
+    /// fixture is not publication evidence - the gate refuses a synthetic source
+    /// outright.
+    /// </summary>
+    private static void ValidateFloorEntry(
+        ReplayManifest manifest, ReplayBoundary boundary, bool isFixture, List<string> problems)
     {
+        var action = manifest.Actions.FirstOrDefault(candidate => candidate.Seq == boundary.AfterSeq);
+        if (action is null) return;
+
+        if (action.Verb != ActionVerb.MapMove)
+        {
+            problems.Add(
+                $"boundaries declares {boundary.Describe()} after action " +
+                $"{boundary.AfterSeq.ToString(CultureInfo.InvariantCulture)} ({action.Verb}), and a floor is " +
+                "arrived on by moving on the map. A boundary pointing at any other action is not the moment it " +
+                "claims to be.");
+            return;
+        }
+
+        if (isFixture) return;
+
+        var arrival = FloorArrival.ArrivalCheckpointAt(manifest.Checkpoints, boundary.AfterSeq);
+        if (arrival is null)
+        {
+            problems.Add(
+                $"boundaries declares {boundary.Describe()} after action " +
+                $"{boundary.AfterSeq.ToString(CultureInfo.InvariantCulture)} and no checkpoint there names " +
+                $"{string.Join(" and ", FloorEntryPlan.RequiredBoundaryFields)}. A floor arrival is proved by " +
+                "where the run stands, and standing a player somewhere nobody established is what this arbiter " +
+                "exists to prevent.");
+            return;
+        }
+
+        var declared = boundary.Floor.GetValueOrDefault().ToString(CultureInfo.InvariantCulture);
+        var stated = arrival.Expect["run.total_floor"].Value;
+        if (!string.Equals(stated, declared, StringComparison.Ordinal))
+        {
+            problems.Add(
+                $"boundaries declares {boundary.Describe()}, and the checkpoint at that action says " +
+                $"run.total_floor is {stated}. A floor cannot hand over a checkpoint for another floor.");
+        }
+    }
+
+    private static void ValidateCheckpoints(
+        ReplayManifest manifest, int videoDurationMs, List<string> problems)
+    {
+        var checkpoints = manifest.Checkpoints;
+        var actions = manifest.Actions;
+        var sourceKind = manifest.Source.Kind;
+
         if (checkpoints.Count == 0)
         {
             problems.Add(
@@ -1384,8 +1465,34 @@ public static partial class ManifestValidator
                 problems.Add($"checkpoint '{checkpoint.Id}' expects nothing, so it can never fail.");
             }
 
+            var arrival = FloorArrival.At(manifest, checkpoint.AfterSeq);
+
             foreach (var (field, fact) in checkpoint.Expect)
             {
+                // A value nobody read is admissible here exactly where this validator
+                // can re-derive it from the history: the two fields a floor arrival is
+                // proved by follow from the map move that arrived and the floor the
+                // boundary names. Anything else inferred is a reading that was never
+                // taken, and the rules below refuse it.
+                if (fact.Source == FactSource.Inferred &&
+                    arrival is not null && arrival.TryGetValue(field, out var derived))
+                {
+                    if (!string.Equals(fact.Value, derived, StringComparison.Ordinal))
+                    {
+                        problems.Add(
+                            $"checkpoint '{checkpoint.Id}' field '{field}' is inferred as '{fact.Value}', and " +
+                            $"this recording's own history gives '{derived}'. An inferred arrival is admissible " +
+                            "because it can be re-derived; one that does not re-derive is a value nobody took.");
+                    }
+                    else if (string.IsNullOrWhiteSpace(fact.Evidence?.Note))
+                    {
+                        problems.Add(
+                            $"checkpoint '{checkpoint.Id}' field '{field}' is inferred and records no reasoning, " +
+                            "so nobody can re-check what it was derived from.");
+                    }
+                    continue;
+                }
+
                 if (sourceKind == "synthetic-engine")
                 {
                     if (fact.Source != FactSource.Engine || fact.Evidence is not null)

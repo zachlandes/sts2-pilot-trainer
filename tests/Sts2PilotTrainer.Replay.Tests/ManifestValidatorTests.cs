@@ -242,7 +242,7 @@ public class ManifestValidatorTests
     [Fact]
     public void AcceptsFloorEntryAndTurnStartBoundaries()
     {
-        var manifest = Fixtures.ValidManifest() with
+        var manifest = FloorArrival.WithArrivalCheckpoints(Fixtures.ValidManifest() with
         {
             Boundaries =
             [
@@ -250,7 +250,7 @@ public class ManifestValidatorTests
                 ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
                 ReplayBoundary.TurnStart(1, 2, 1, Fact<string>.Engine(Fixtures.Digest)),
             ],
-        };
+        });
 
         var result = ManifestValidator.Validate(manifest);
         Assert.True(result.IsValid, result.Describe());
@@ -432,7 +432,7 @@ public class ManifestValidatorTests
     public void AcceptsBoundariesTheVerifiedTraceReallyReaches()
     {
         var manifest = WithVerifiedFloorAndTurnTrace(
-            Fixtures.ValidManifest() with { Boundaries = WalkedBoundaries });
+            Walked(Fixtures.ValidManifest() with { Boundaries = WalkedBoundaries }));
 
         var result = ManifestValidator.Validate(manifest);
         Assert.True(result.IsValid, result.Describe());
@@ -447,14 +447,14 @@ public class ManifestValidatorTests
     [Fact]
     public void RejectsAFloorEntryForAFloorTheRecordingNeverReaches()
     {
-        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        var manifest = WithVerifiedFloorAndTurnTrace(Walked(Fixtures.ValidManifest() with
         {
             Boundaries =
             [
                 .. WalkedBoundaries,
                 ReplayBoundary.FloorEntry(7, 1, Fact<string>.Engine(Fixtures.Digest)),
             ],
-        });
+        }));
 
         var result = ManifestValidator.Validate(manifest);
 
@@ -470,14 +470,14 @@ public class ManifestValidatorTests
     [Fact]
     public void RejectsAFloorEntryOnTheFloorTheRunStartsOn()
     {
-        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        var manifest = WithVerifiedFloorAndTurnTrace(Walked(Fixtures.ValidManifest() with
         {
             Boundaries =
             [
                 .. WalkedBoundaries,
                 ReplayBoundary.FloorEntry(1, -1, Fact<string>.Engine(Fixtures.Digest)),
             ],
-        });
+        }));
 
         var result = ManifestValidator.Validate(manifest);
 
@@ -490,34 +490,34 @@ public class ManifestValidatorTests
     [Fact]
     public void RejectsAFloorEntryAtAnActionOtherThanTheArrival()
     {
-        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        var manifest = WithVerifiedFloorAndTurnTrace(Walked(Fixtures.ValidManifest() with
         {
             Boundaries =
             [
-                ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
-                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 2, Fact<string>.Engine(Fixtures.Digest)),
             ],
-        });
+        }));
 
         var result = ManifestValidator.Validate(manifest);
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, problem =>
-            problem.Contains("enters floor 2 after action 0", StringComparison.Ordinal) &&
-            problem.Contains("names action 1", StringComparison.Ordinal));
+            problem.Contains("enters floor 2 after action 1", StringComparison.Ordinal) &&
+            problem.Contains("names action 2", StringComparison.Ordinal));
     }
 
     [Fact]
     public void RejectsATurnStartForAFightTheRecordingDoesNotHold()
     {
-        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        var manifest = WithVerifiedFloorAndTurnTrace(Walked(Fixtures.ValidManifest() with
         {
             Boundaries =
             [
                 .. WalkedBoundaries,
-                ReplayBoundary.TurnStart(2, 1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.TurnStart(2, 1, 2, Fact<string>.Engine(Fixtures.Digest)),
             ],
-        });
+        }));
 
         var result = ManifestValidator.Validate(manifest);
 
@@ -530,14 +530,14 @@ public class ManifestValidatorTests
     [Fact]
     public void RejectsATurnStartForATurnTheFightNeverReaches()
     {
-        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        var manifest = WithVerifiedFloorAndTurnTrace(Walked(Fixtures.ValidManifest() with
         {
             Boundaries =
             [
                 .. WalkedBoundaries,
-                ReplayBoundary.TurnStart(1, 5, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.TurnStart(1, 5, 2, Fact<string>.Engine(Fixtures.Digest)),
             ],
-        });
+        }));
 
         var result = ManifestValidator.Validate(manifest);
 
@@ -550,21 +550,21 @@ public class ManifestValidatorTests
     [Fact]
     public void RejectsATurnStartAtAnActionOtherThanTheTurnItNames()
     {
-        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        var manifest = WithVerifiedFloorAndTurnTrace(Walked(Fixtures.ValidManifest() with
         {
             Boundaries =
             [
-                ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
-                ReplayBoundary.FloorEntry(2, 0, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
                 ReplayBoundary.TurnStart(1, 2, 0, Fact<string>.Engine(Fixtures.Digest)),
             ],
-        });
+        }));
 
         var result = ManifestValidator.Validate(manifest);
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Problems, problem =>
-            problem.Contains("starts turn 2 of fight 1 after action 1", StringComparison.Ordinal) &&
+            problem.Contains("starts turn 2 of fight 1 after action 2", StringComparison.Ordinal) &&
             problem.Contains("names action 0", StringComparison.Ordinal));
     }
 
@@ -574,21 +574,21 @@ public class ManifestValidatorTests
     [Fact]
     public void RejectsATurnStartInAFightTheRecordingNeverFinishes()
     {
-        var manifest = WithVerifiedTrace(Fixtures.ValidManifest() with
+        var manifest = WithVerifiedTrace(Walked(Fixtures.ValidManifest() with
         {
             Boundaries =
             [
-                ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
-                ReplayBoundary.FloorEntry(2, 0, Fact<string>.Engine(Fixtures.Digest)),
-                ReplayBoundary.FloorEntry(3, 1, Fact<string>.Engine(Fixtures.Digest)),
-                ReplayBoundary.TurnStart(1, 1, 0, Fact<string>.Engine(Fixtures.Digest)),
-                ReplayBoundary.TurnStart(2, 1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(3, 2, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.TurnStart(1, 1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.TurnStart(2, 1, 2, Fact<string>.Engine(Fixtures.Digest)),
             ],
-        },
+        }),
             RunStep(-1, floor: 1, outcome: "none"),
-            RunStep(0, floor: 2, outcome: "in_progress", turn: 1),
-            RunStep(0, floor: 2, outcome: "victory"),
-            RunStep(1, floor: 3, outcome: "in_progress", turn: 1));
+            RunStep(1, floor: 2, outcome: "in_progress", turn: 1),
+            RunStep(1, floor: 2, outcome: "victory"),
+            RunStep(2, floor: 3, outcome: "in_progress", turn: 1));
 
         var result = ManifestValidator.Validate(manifest);
 
@@ -598,14 +598,248 @@ public class ManifestValidatorTests
             problem.Contains("never finishes that fight", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// What <see cref="FloorEntryPlan.For"/> aborts on, refused where a submission is
+    /// judged instead of in front of a player: a floor is arrived on by moving on the
+    /// map, so a boundary naming any other decision is not the moment it claims.
+    /// </summary>
+    [Fact]
+    public void RejectsAFloorEntryAtAnActionThatIsNotAMapMove()
+    {
+        var manifest = Walked(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 0, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("arrival on floor 2", StringComparison.Ordinal) &&
+            problem.Contains("arrived on by moving on the map", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAFloorEntryWithNoArrivalCheckpointAtIt()
+    {
+        var manifest = WalkedHistory(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("arrival on floor 2", StringComparison.Ordinal) &&
+            problem.Contains("run.total_floor and run.map_coord", StringComparison.Ordinal));
+    }
+
+    /// <summary>A checkpoint naming both fields is not enough: the plan requires it to
+    /// be about the floor the boundary names, and refuses at entry otherwise.</summary>
+    [Fact]
+    public void RejectsAnArrivalCheckpointForAnotherFloor()
+    {
+        var manifest = WalkedHistory(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(3, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        }) with
+        {
+            Checkpoints = [ObservedArrival("floor-3-arrival", 1, floor: 2, coord: "r1c3")],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("arrival on floor 3", StringComparison.Ordinal) &&
+            problem.Contains("run.total_floor is 2", StringComparison.Ordinal));
+    }
+
+    /// <summary>Where several checkpoints sit at one action, the plan takes the first
+    /// that names every field it needs. So does this, or a manifest could satisfy the
+    /// validator with a checkpoint the plan would never reach.</summary>
+    [Fact]
+    public void ReadsTheArrivalCheckpointAFloorPlanWouldTake()
+    {
+        var manifest = WalkedHistory(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        }) with
+        {
+            Checkpoints =
+            [
+                ObservedArrival("first-arrival", 1, floor: 9, coord: "r1c3"),
+                ObservedArrival("second-arrival", 1, floor: 2, coord: "r1c3"),
+            ],
+        };
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("run.total_floor is 9", StringComparison.Ordinal));
+    }
+
+    /// <summary>An arrival nobody watched is admissible because the history gives it.
+    /// One the history does not give is a value nobody took.</summary>
+    [Fact]
+    public void RejectsAnInferredArrivalTheHistoryDoesNotGive()
+    {
+        var manifest = Walked(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+        var arrival = manifest.Checkpoints.Single(checkpoint => checkpoint.Id == "floor-2-arrival");
+
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Checkpoints =
+            [
+                .. manifest.Checkpoints.Where(checkpoint => checkpoint != arrival),
+                arrival with
+                {
+                    Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+                    {
+                        ["run.total_floor"] = arrival.Expect["run.total_floor"],
+                        ["run.map_coord"] = Fact<string>.Inferred(
+                            "r9c9", FactEvidence.Reasoning("the map move at action 1")),
+                    },
+                },
+            ],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("inferred as 'r9c9'", StringComparison.Ordinal) &&
+            problem.Contains("gives 'r1c3'", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The deriver's own output validates.
+    ///
+    /// <c>migrate-manifest --derive-boundaries</c> writes floor entries and, through
+    /// this same owner, the arrival each one needs. Without that it would emit
+    /// manifests its own validator refuses, and the guard and the deriver would
+    /// disagree about one history.
+    /// </summary>
+    [Fact]
+    public void DerivingArrivalsMakesADerivedFloorEntryAdmissible()
+    {
+        var derivedBoundariesOnly = WithVerifiedFloorAndTurnTrace(
+            WalkedHistory(Fixtures.ValidManifest() with { Boundaries = WalkedBoundaries }));
+
+        var before = ManifestValidator.Validate(derivedBoundariesOnly);
+        Assert.False(before.IsValid);
+
+        var after = ManifestValidator.Validate(FloorArrival.WithArrivalCheckpoints(derivedBoundariesOnly));
+        Assert.True(after.IsValid, after.Describe());
+    }
+
+    /// <summary>
+    /// The verdict the publication gate reads for its declared-boundaries condition.
+    ///
+    /// The file on disk carries no trace, so the cross-checks sit idle there; the copy
+    /// a verified replay writes is where they fire, and this is the question the gate
+    /// asks of it.
+    /// </summary>
+    [Fact]
+    public void RefusesAVerifiedManifestWhoseBoundariesDisagreeWithItsTrace()
+    {
+        var refusal = ManifestValidator.RefusalForVerified(
+            WithVerifiedFloorAndTurnTrace(Walked(Fixtures.ValidManifest() with
+            {
+                Boundaries =
+                [
+                    .. WalkedBoundaries,
+                    ReplayBoundary.FloorEntry(7, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ],
+            })));
+
+        Assert.NotNull(refusal);
+        Assert.Contains("never reaches that floor", refusal, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AcceptsAVerifiedManifestWhoseBoundariesAgreeWithItsTrace()
+    {
+        Assert.Null(ManifestValidator.RefusalForVerified(
+            WithVerifiedFloorAndTurnTrace(
+                Walked(Fixtures.ValidManifest() with { Boundaries = WalkedBoundaries }))));
+    }
+
+    /// <summary>An arrival a video reading took, for a rule that is about the floor it
+    /// names rather than about how it was established.</summary>
+    private static Checkpoint ObservedArrival(string id, int afterSeq, int floor, string coord) => new()
+    {
+        Id = id,
+        AfterSeq = afterSeq,
+        Kind = "floor_entry",
+        Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+        {
+            ["run.total_floor"] = Fact<string>.Observed(
+                Number(floor), FactEvidence.AtVideoTime(75600, "floor counter")),
+            ["run.map_coord"] = Fact<string>.Observed(
+                coord, FactEvidence.AtVideoTime(75600, "ringed node")),
+        },
+    };
+
+    /// <summary>The same manifest over a history its floor entries can be declared
+    /// against: a second map move, so there is a floor to arrive on after one.</summary>
+    private static ReplayManifest WalkedHistory(ReplayManifest manifest) => manifest with
+    {
+        Actions =
+        [
+            .. manifest.Actions,
+            new ActionRecord
+            {
+                Seq = 2,
+                Verb = ActionVerb.MapMove,
+                Args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["act"] = "0",
+                    ["row"] = "2",
+                    ["column"] = "4",
+                },
+                Source = FactSource.Observed,
+                Evidence = FactEvidence.AtVideoTime(120000, "ringed node on the map"),
+            },
+        ],
+    };
+
+    /// <summary>That history with the arrival every floor_entry in it needs, built
+    /// through the owner the validator re-derives with.</summary>
+    private static ReplayManifest Walked(ReplayManifest manifest) =>
+        FloorArrival.WithArrivalCheckpoints(WalkedHistory(manifest));
+
     /// <summary>Every boundary the trace below really reaches, which is what the
     /// derive path would produce from it.</summary>
     private static readonly ReplayBoundary[] WalkedBoundaries =
     [
-        ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
-        ReplayBoundary.FloorEntry(2, 0, Fact<string>.Engine(Fixtures.Digest)),
-        ReplayBoundary.TurnStart(1, 1, 0, Fact<string>.Engine(Fixtures.Digest)),
-        ReplayBoundary.TurnStart(1, 2, 1, Fact<string>.Engine(Fixtures.Digest)),
+        ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+        ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+        ReplayBoundary.TurnStart(1, 1, 1, Fact<string>.Engine(Fixtures.Digest)),
+        ReplayBoundary.TurnStart(1, 2, 2, Fact<string>.Engine(Fixtures.Digest)),
     ];
 
     /// <summary>A verified result whose trace starts on floor 1, moves to floor 2 and
@@ -613,9 +847,9 @@ public class ManifestValidatorTests
     private static ReplayManifest WithVerifiedFloorAndTurnTrace(ReplayManifest manifest) =>
         WithVerifiedTrace(manifest,
             RunStep(-1, floor: 1, outcome: "none"),
-            RunStep(0, floor: 2, outcome: "in_progress", turn: 1),
-            RunStep(1, floor: 2, outcome: "in_progress", turn: 2),
-            RunStep(1, floor: 2, outcome: "victory"));
+            RunStep(1, floor: 2, outcome: "in_progress", turn: 1),
+            RunStep(2, floor: 2, outcome: "in_progress", turn: 2),
+            RunStep(2, floor: 2, outcome: "victory"));
 
     /// <summary>A step carrying the floor and turn as well as the outcome. Only the
     /// after side is set: coverage reads the sample after each action, and a before

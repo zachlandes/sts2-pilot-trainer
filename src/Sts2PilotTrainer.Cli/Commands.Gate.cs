@@ -136,6 +136,12 @@ internal static partial class Commands
                         "covered-fight", CoveredFightRequirement, false,
                         "A completed fight can only be read out of a verified reproduction."));
 
+                conditions.Add(reproduction.Passed
+                    ? DeclaredBoundariesHold(verifiedPath)
+                    : new Condition(
+                        "declared-boundaries", DeclaredBoundariesRequirement, false,
+                        "A declared boundary can only be checked against a verified reproduction."));
+
                 conditions.Add(Check(
                     "combat-boundary",
                     CombatBoundaryRequirement,
@@ -251,6 +257,7 @@ internal static partial class Commands
         new Condition("reproduction",
             "The reconstructed history replays through the real engine and matches every observed value.", false),
         new Condition("covered-fight", CoveredFightRequirement, false),
+        new Condition("declared-boundaries", DeclaredBoundariesRequirement, false),
         new Condition("combat-boundary", CombatBoundaryRequirement, false),
         new Condition("determinism",
             "Fresh processes produce byte-identical canonical state.", false),
@@ -263,6 +270,9 @@ internal static partial class Commands
 
     private const string CoveredFightRequirement =
         "The reproduced history covers a whole fight, from its combat start to the end of that fight.";
+
+    private const string DeclaredBoundariesRequirement =
+        "Every boundary the recording declares is one the verified history reaches, at the action it names.";
 
     private const string CombatBoundaryRequirement =
         "The manifest's combat-start snapshot digest matches a fresh real-engine derivation.";
@@ -294,6 +304,34 @@ internal static partial class Commands
             return new Condition(
                 "covered-fight", CoveredFightRequirement, false,
                 $"The covered fight could not be read: {exception.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Whether the boundaries the recording declares agree with the history that just
+    /// reproduced.
+    ///
+    /// The validate condition above reads the file on disk, which carries no trace, so
+    /// every cross-check between a declared boundary and the run it names sits idle
+    /// there - and that file is the one a recorder wrote or a stranger submitted. This
+    /// asks the same validator of the copy the replay just produced, where the trace
+    /// is, so a boundary naming a fight the run never held or a floor it never reached
+    /// is refused at publication rather than in front of a player.
+    /// </summary>
+    private static Condition DeclaredBoundariesHold(string verifiedManifestPath)
+    {
+        try
+        {
+            var refusal = ManifestValidator.RefusalForVerified(ManifestJson.Load(verifiedManifestPath));
+            return new Condition(
+                "declared-boundaries", DeclaredBoundariesRequirement, refusal is null, refusal);
+        }
+        catch (Exception exception) when (
+            exception is IOException or JsonException or ManifestException or InvalidOperationException)
+        {
+            return new Condition(
+                "declared-boundaries", DeclaredBoundariesRequirement, false,
+                $"The verified manifest could not be read: {exception.Message}");
         }
     }
 

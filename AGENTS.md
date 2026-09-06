@@ -93,6 +93,17 @@ arrives on, a turn that fight takes, each at the action the trace says.
 its boundaries from, so the guard and the deriver cannot disagree about one history.
 A coordinate checked for shape alone passes publication and is refused later, in front
 of a player. Do not add a boundary kind without its cross-check.
+Everything else that entry demands of a floor_entry is refused there too, and needs no
+trace to ask: the action it names is the map move that arrived, and a checkpoint there
+names `run.total_floor` and `run.map_coord` for the floor the boundary names, resolved
+the way `FloorEntryPlan.For` resolves several checkpoints at one action.
+`FloorArrival` is the one owner of that arrival - the validator re-derives through it
+and `migrate-manifest --derive-boundaries` writes through it, so the deriver's own
+output validates. A derived arrival is inferred and says so, and is admissible only
+because this validator can re-derive it from the recorded map move.
+The file a recorder or a stranger hands over carries no trace, so `gate` asks the
+validator again of the verified copy its own replay wrote, as the `declared-boundaries`
+condition; without that the cross-checks never run on the manifests they exist for.
 
 **Real-engine reproduction is the publication standard.** `gate` is where it is
 written down and computed. No condition may be satisfied by a cheaper proxy - not

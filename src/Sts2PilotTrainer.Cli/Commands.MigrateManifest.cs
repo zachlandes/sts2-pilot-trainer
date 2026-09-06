@@ -123,7 +123,12 @@ internal static partial class Commands
         Console.WriteLine(
             $"derived  : {report.Boundaries.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)} " +
             $"boundaries from a verified replay");
-        return manifest with { Boundaries = boundaries };
+
+        // A floor entry with no arrival checkpoint is one the validator refuses and a
+        // host aborts on, so the deriver writes the arrival beside every floor entry it
+        // derives - through the same owner the validator re-derives through, rather
+        // than a second copy of the rule.
+        return FloorArrival.WithArrivalCheckpoints(manifest with { Boundaries = boundaries });
     }
 
     /// <summary>The boundary in a list naming the same place as this one, or null where

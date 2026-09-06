@@ -1612,6 +1612,27 @@
       }
     },
     {
+      "id": "floor-2-arrival",
+      "after_seq": 1,
+      "kind": "floor_entry",
+      "expect": {
+        "run.total_floor": {
+          "Value": "2",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 1 and the floor its boundary names"
+          }
+        },
+        "run.map_coord": {
+          "Value": "r1c6",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 1 and the floor its boundary names"
+          }
+        }
+      }
+    },
+    {
       "id": "fight-1-turn-2",
       "after_seq": 5,
       "kind": "turn_start",
@@ -2807,6 +2828,27 @@
       }
     },
     {
+      "id": "floor-3-arrival",
+      "after_seq": 14,
+      "kind": "floor_entry",
+      "expect": {
+        "run.total_floor": {
+          "Value": "3",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 14 and the floor its boundary names"
+          }
+        },
+        "run.map_coord": {
+          "Value": "r2c6",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 14 and the floor its boundary names"
+          }
+        }
+      }
+    },
+    {
       "id": "fight-2-turn-2",
       "after_seq": 18,
       "kind": "turn_start",
@@ -3670,6 +3712,27 @@
           "Evidence": {
             "action_ordinal": 28,
             "run_clock_ms": 435000
+          }
+        }
+      }
+    },
+    {
+      "id": "floor-4-arrival",
+      "after_seq": 28,
+      "kind": "floor_entry",
+      "expect": {
+        "run.total_floor": {
+          "Value": "4",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 28 and the floor its boundary names"
+          }
+        },
+        "run.map_coord": {
+          "Value": "r3c6",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 28 and the floor its boundary names"
           }
         }
       }
@@ -4824,6 +4887,27 @@
       }
     },
     {
+      "id": "floor-5-arrival",
+      "after_seq": 32,
+      "kind": "floor_entry",
+      "expect": {
+        "run.total_floor": {
+          "Value": "5",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 32 and the floor its boundary names"
+          }
+        },
+        "run.map_coord": {
+          "Value": "r4c6",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 32 and the floor its boundary names"
+          }
+        }
+      }
+    },
+    {
       "id": "fight-3-turn-2",
       "after_seq": 35,
       "kind": "turn_start",
@@ -5919,6 +6003,27 @@
           "Evidence": {
             "action_ordinal": 46,
             "run_clock_ms": 759000
+          }
+        }
+      }
+    },
+    {
+      "id": "floor-6-arrival",
+      "after_seq": 46,
+      "kind": "floor_entry",
+      "expect": {
+        "run.total_floor": {
+          "Value": "6",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 46 and the floor its boundary names"
+          }
+        },
+        "run.map_coord": {
+          "Value": "r5c6",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 46 and the floor its boundary names"
           }
         }
       }
