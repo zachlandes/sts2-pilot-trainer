@@ -55,6 +55,54 @@ public sealed class BoundarySelectorTests
     }
 
     /// <summary>
+    /// The other spelling reads the same boundaries. <c>enter-fight</c> asks for a
+    /// fight or a floor with the kind left to the option, and what comes back is the
+    /// selector the coordinate spelling would have produced - one reader, two ways of
+    /// asking.
+    /// </summary>
+    [Theory]
+    [InlineData("2", null, "combat_start:2")]
+    [InlineData("12", null, "combat_start:12")]
+    [InlineData(null, "5", "floor_entry:5")]
+    public void ReadsTheFightAndFloorSpellingAsTheSameBoundary(
+        string? fight, string? floor, string coordinate)
+    {
+        Assert.Equal(
+            BoundarySelector.Parse(coordinate),
+            BoundarySelector.ParseFightOrFloor(fight, floor));
+    }
+
+    /// <summary>
+    /// Neither option is the recording's first fight, which is what this command was
+    /// for when a recording had one boundary.
+    /// </summary>
+    [Fact]
+    public void ReadsNeitherOptionAsTheFirstFight()
+    {
+        Assert.Equal(
+            BoundarySelector.FirstFight, BoundarySelector.ParseFightOrFloor(null, null));
+    }
+
+    /// <summary>
+    /// A fight and a floor are different destinations rather than two ways of saying
+    /// one, and a coordinate that is not counted from 1 is refused in that spelling's
+    /// own words - the option that carried it, not the coordinate grammar nobody read.
+    /// </summary>
+    [Theory]
+    [InlineData("2", "5", "not both")]
+    [InlineData("0", null, "--fight takes a whole number from 1")]
+    [InlineData("two", null, "--fight takes a whole number from 1")]
+    [InlineData(null, "-1", "--floor takes a whole number from 1")]
+    public void RefusesAFightOrFloorThatIdentifiesNoBoundary(
+        string? fight, string? floor, string expected)
+    {
+        var refusal = Assert.Throws<ManifestException>(
+            () => BoundarySelector.ParseFightOrFloor(fight, floor));
+
+        Assert.Contains(expected, refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Every kind is named in the refusal for an unknown one. The set is closed and a
     /// person who guessed a kind is a person who has not seen the list.
     /// </summary>

@@ -6,6 +6,11 @@ namespace Sts2PilotTrainer.Replay;
 /// Which boundary of a recording somebody asked for, written the way a person would
 /// say it.
 ///
+/// Two commands ask in two spellings on purpose - <c>combat-snapshot --boundary
+/// combat_start:2</c> and <c>enter-fight --fight 2</c> - and both arrive here, so a
+/// coordinate has one reader however it was spelled and a boundary becomes a plan in
+/// one place.
+///
 /// A boundary's coordinate is the kind's own, not a position in a list. The third
 /// combat start is fight 3 and the third floor arrival is not floor 3 - the run
 /// begins on a floor it never arrived at - so a single ordinal counted across the
@@ -101,6 +106,42 @@ public sealed record BoundarySelector
     }
 
     /// <summary>
+    /// The same boundary asked for the other way: a fight or a floor on its own, with
+    /// the kind left implicit because the option already said it.
+    ///
+    /// The recording's first fight when neither was given, because that is what these
+    /// commands were for when a recording had one boundary. A fight and a floor are
+    /// different destinations rather than two ways of saying one, so asking for both is
+    /// refused. The coordinate itself is read by the same rule as the other spelling -
+    /// counted from 1 - and the refusal names the option that carried it.
+    /// </summary>
+    public static BoundarySelector ParseFightOrFloor(string? fight, string? floor)
+    {
+        if (fight is not null && floor is not null)
+        {
+            throw new ManifestException(
+                "enter-fight takes --fight or --floor, not both. They are different places to be stood.");
+        }
+
+        if (floor is not null)
+        {
+            return new BoundarySelector
+            {
+                Kind = ReplayBoundary.FloorEntryKind,
+                Floor = OptionOrdinal(floor, "--floor"),
+            };
+        }
+
+        return fight is null
+            ? FirstFight
+            : new BoundarySelector
+            {
+                Kind = ReplayBoundary.CombatStartKind,
+                Fight = OptionOrdinal(fight, "--fight"),
+            };
+    }
+
+    /// <summary>
     /// The boundary this names in a list, or null when the list has none.
     ///
     /// Selection only. Whether a list that lacks it is a defect depends on whose list
@@ -132,13 +173,20 @@ public sealed record BoundarySelector
 
     /// <summary>
     /// The positive whole number this text spells, or null when it spells anything
-    /// else. Every coordinate here and every boundary option elsewhere counts from 1,
-    /// and each caller names what was being counted in its own refusal.
+    /// else. Every coordinate a boundary has counts from 1, in either spelling, and
+    /// each spelling refuses in its own words.
     /// </summary>
-    public static int? PositiveOrdinal(string value) =>
+    private static int? PositiveOrdinal(string value) =>
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) && parsed > 0
             ? parsed
             : null;
+
+    /// <summary>The coordinate an option carried, refused in the option's own words:
+    /// somebody who wrote <c>--fight two</c> was not told the coordinate grammar and
+    /// does not need it.</summary>
+    private static int OptionOrdinal(string value, string option) =>
+        PositiveOrdinal(value)
+            ?? throw new ManifestException($"{option} takes a whole number from 1, not '{value}'.");
 
     private static int Ordinal(string value, string text) =>
         PositiveOrdinal(value)
