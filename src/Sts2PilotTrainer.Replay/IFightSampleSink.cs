@@ -24,6 +24,24 @@ public interface IFightSampleSink
         IReadOnlyDictionary<string, string> before,
         bool previousActionFinished = false);
 
+    /// <summary>
+    /// An action the watcher could describe only in part, with the arguments it did
+    /// resolve, the state it happens from, and the sentence saying what it could not.
+    ///
+    /// The two sinks answer this differently, and that is why the question is asked
+    /// here rather than settled by the watcher. A recording whose history is missing an
+    /// argument the format requires is a run nobody can replay, so the recorder refuses
+    /// and keeps nothing for this action; a fight being compared never reads that
+    /// argument, so the capture keeps the step and carries on with the line the player
+    /// took.
+    /// </summary>
+    void BeginStepWithUnresolvedArgument(
+        string verb,
+        IReadOnlyDictionary<string, string> resolved,
+        IReadOnlyDictionary<string, string> before,
+        bool previousActionFinished,
+        string unresolved);
+
     /// <summary>The state the open action left.</summary>
     void CompleteStep(IReadOnlyDictionary<string, string> after);
 
@@ -53,6 +71,8 @@ public interface IFightSampleSink
 /// </summary>
 public sealed class DelegatingFightSampleSink(
     Action<string, IReadOnlyDictionary<string, string>, IReadOnlyDictionary<string, string>, bool> beginStep,
+    Action<string, IReadOnlyDictionary<string, string>, IReadOnlyDictionary<string, string>, bool, string>
+        beginStepWithUnresolvedArgument,
     Action<IReadOnlyDictionary<string, string>> completeStep,
     Action discardOpenStep,
     Action<IReadOnlyDictionary<string, string>> finish,
@@ -64,6 +84,14 @@ public sealed class DelegatingFightSampleSink(
         IReadOnlyDictionary<string, string> before,
         bool previousActionFinished = false) =>
         beginStep(verb, args, before, previousActionFinished);
+
+    public void BeginStepWithUnresolvedArgument(
+        string verb,
+        IReadOnlyDictionary<string, string> resolved,
+        IReadOnlyDictionary<string, string> before,
+        bool previousActionFinished,
+        string unresolved) =>
+        beginStepWithUnresolvedArgument(verb, resolved, before, previousActionFinished, unresolved);
 
     public void CompleteStep(IReadOnlyDictionary<string, string> after) => completeStep(after);
 

@@ -213,6 +213,23 @@ public sealed class FightCapture : IFightSampleSink
     /// If the fight is no longer in progress afterwards, the fight ended inside this
     /// action and the capture is complete - which is the only way it completes.
     /// </summary>
+    /// <summary>
+    /// An action whose argument the watcher could not resolve is kept anyway.
+    ///
+    /// The comparison is over what the fight did, and it reads that from the samples
+    /// either side of each action rather than from the arguments: the hand position a
+    /// card came from and the belt slot a potion came off are the manifest's business,
+    /// not this one's. Dropping the fight a player had just played, over a value
+    /// nothing here reads, would be a refusal about somebody else's contract.
+    /// </summary>
+    public void BeginStepWithUnresolvedArgument(
+        string verb,
+        IReadOnlyDictionary<string, string> resolved,
+        IReadOnlyDictionary<string, string> before,
+        bool previousActionFinished,
+        string unresolved) =>
+        BeginStep(verb, resolved, before, previousActionFinished);
+
     public void CompleteStep(IReadOnlyDictionary<string, string> after)
     {
         if (State != FightCaptureState.Live) return;

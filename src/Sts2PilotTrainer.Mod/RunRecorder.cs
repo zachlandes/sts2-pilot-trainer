@@ -890,6 +890,20 @@ internal sealed class RunRecorder : IDisposable
 
             _openFightStep = (verb, args);
         },
+        beginStepWithUnresolvedArgument: (_, _, before, _, unresolved) =>
+        {
+            // The decision before this one was resolvable and is kept: its after-state
+            // is the state this action begins from, the same as on the ordinary path.
+            // This one is not recorded at all - the format requires the argument, and a
+            // decision written without it is one nobody can replay.
+            if (_openFightStep is { } stranded)
+            {
+                CommitFightStep(stranded.Verb, stranded.Args, before);
+                _openFightStep = null;
+            }
+
+            Refuse(unresolved);
+        },
         completeStep: CloseFightStep,
         discardOpenStep: () => _openFightStep = null,
         finish: FinishFight,

@@ -146,37 +146,20 @@ internal sealed class PlayerFightObserver : IDisposable
             switch (action)
             {
                 case PlayCardAction play:
-                    if (PlayCardArgs(play) is not { } playArgs)
-                    {
-                        _sink.MarkIncomplete(
-                            $"A {play.CardModelId} was played and the hand this recorder can see does not hold " +
-                            "it, so the recording cannot say which position it came from.");
-                        break;
-                    }
-
-                    opened = Begin(nameof(ActionVerb.PlayCard), playArgs, previousFinished);
+                    opened = Begin(nameof(ActionVerb.PlayCard), PlayCardArgs(play), previousFinished);
                     break;
                 case UsePotionAction potion:
-                    if (PotionArgs(potion.PotionIndex) is not { } useArgs)
-                    {
-                        _sink.MarkIncomplete(UnreadablePotion(potion.PotionIndex, "drunk"));
-                        break;
-                    }
-
-                    opened = Begin(nameof(ActionVerb.UsePotion), useArgs, previousFinished);
+                    opened = Begin(
+                        nameof(ActionVerb.UsePotion),
+                        PotionArgs(potion.PotionIndex, "drunk"), previousFinished);
                     break;
                 case DiscardPotionGameAction discard:
-                    var discarded = SlotOf(discard);
-                    if (PotionArgs(discarded) is not { } discardArgs)
-                    {
-                        _sink.MarkIncomplete(UnreadablePotion(discarded, "discarded"));
-                        break;
-                    }
-
-                    opened = Begin(nameof(ActionVerb.DiscardPotion), discardArgs, previousFinished);
+                    opened = Begin(
+                        nameof(ActionVerb.DiscardPotion),
+                        PotionArgs(SlotOf(discard), "discarded"), previousFinished);
                     break;
                 case EndPlayerTurnAction:
-                    opened = Begin(nameof(ActionVerb.EndTurn), Empty, previousFinished);
+                    opened = Begin(nameof(ActionVerb.EndTurn), new Arguments(Empty), previousFinished);
                     break;
                 case UndoEndPlayerTurnAction:
                     // The game took the ended turn back before the enemy turn began.
@@ -215,13 +198,33 @@ internal sealed class PlayerFightObserver : IDisposable
     /// action that began while another was open closes that one here, and the wait
     /// still running for it must not then close this one with a state that is not its.
     /// </summary>
-    private bool Begin(string verb, IReadOnlyDictionary<string, string> args, bool previousFinished)
+    private bool Begin(string verb, Arguments arguments, bool previousFinished)
     {
-        _sink.BeginStep(verb, args, _sample(), previousFinished);
+        var before = _sample();
+        if (arguments.Unresolved is { } unresolved)
+        {
+            _sink.BeginStepWithUnresolvedArgument(
+                verb, arguments.Args, before, previousFinished, unresolved);
+        }
+        else
+        {
+            _sink.BeginStep(verb, arguments.Args, before, previousFinished);
+        }
+
         _openedSteps++;
         _openStepFinished = false;
         return true;
     }
+
+    /// <summary>
+    /// What an action was described as, and - where one could not be resolved - the
+    /// sentence naming the argument and the reason actually determined.
+    ///
+    /// The watcher reports; it does not decide what an unresolved argument means. The
+    /// two sinks want opposite things and each says so in its own implementation.
+    /// </summary>
+    private readonly record struct Arguments(
+        IReadOnlyDictionary<string, string> Args, string? Unresolved = null);
 
     private void AfterAction(GameAction action)
     {
@@ -414,21 +417,36 @@ internal sealed class PlayerFightObserver : IDisposable
     /// sharpest refusal in the whole driver. It is read while the action is only
     /// enqueued, which is the last moment the card is still in hand.
     ///
-    /// Null when it cannot be read, and the caller then breaks the recording rather
-    /// than opening the step: the format requires the index, and a play recorded
-    /// without one is a decision nobody can replay wearing the shape of one somebody
-    /// made from no position at all.
+    /// Where it cannot be read the index is absent and the reason is reported beside
+    /// the arguments, naming which of the two things actually happened: the card the
+    /// play names could not be read as a card at all, or it was read and the hand does
+    /// not hold it. A sentence covering both would state a cause nobody established.
     /// </summary>
-    private IReadOnlyDictionary<string, string>? PlayCardArgs(PlayCardAction play)
+    private Arguments PlayCardArgs(PlayCardAction play)
     {
-        var card = play.NetCombatCard.ToCardModelOrNull();
-        if (HandIndexOf(card) is not { } handIndex) return null;
-
         var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["card_id"] = play.CardModelId.ToString(),
-            ["hand_index"] = handIndex.ToString(CultureInfo.InvariantCulture),
         };
+
+        var card = play.NetCombatCard.ToCardModelOrNull();
+        if (card is null)
+        {
+            return new Arguments(
+                args,
+                $"A {play.CardModelId} was played and the card it names could not be read as a card at all, " +
+                "so the recording cannot say which position it came from.");
+        }
+
+        if (HandIndexOf(card) is not { } handIndex)
+        {
+            return new Arguments(
+                args,
+                $"A {play.CardModelId} was played and the hand this recorder can see does not hold it, so the " +
+                "recording cannot say which position it came from.");
+        }
+
+        args["hand_index"] = handIndex.ToString(CultureInfo.InvariantCulture);
 
         if (Corruption.NominateSubstitute(Hand(), handIndex) is { } substitute)
         {
@@ -449,7 +467,7 @@ internal sealed class PlayerFightObserver : IDisposable
             if (index >= 0) args["target_index"] = index.ToString(CultureInfo.InvariantCulture);
         }
 
-        return args;
+        return new Arguments(args);
     }
 
     /// <summary>
@@ -478,23 +496,29 @@ internal sealed class PlayerFightObserver : IDisposable
     /// is read while the card is still in hand: afterwards the slot is empty and the
     /// only honest answer would be the position of nothing.
     ///
-    /// Null when the slot holds nothing this recorder can see, and the caller then
-    /// breaks the recording, the way the recorder's own out-of-fight potion patches do.
+    /// Where the slot holds nothing this recorder can see the id is absent and the
+    /// reason is reported beside the slot, the way the recorder's own out-of-fight
+    /// potion patches say it.
     /// </summary>
-    private IReadOnlyDictionary<string, string>? PotionArgs(uint slot)
+    private Arguments PotionArgs(uint slot, string what)
     {
-        if (slot >= _player.PotionSlots.Count || _player.PotionSlots[(int)slot] is not { } potion) return null;
-
-        return new SortedDictionary<string, string>(StringComparer.Ordinal)
+        var index = slot.ToString(CultureInfo.InvariantCulture);
+        var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
-            ["potion_id"] = potion.Id.ToString(),
-            ["slot_index"] = slot.ToString(CultureInfo.InvariantCulture),
+            ["slot_index"] = index,
         };
-    }
 
-    private static string UnreadablePotion(uint slot, string what) =>
-        $"A potion was {what} from slot {slot.ToString(CultureInfo.InvariantCulture)}, which holds nothing " +
-        "this recorder can see, so the recording cannot say which potion it was.";
+        if (slot >= _player.PotionSlots.Count || _player.PotionSlots[(int)slot] is not { } potion)
+        {
+            return new Arguments(
+                args,
+                $"A potion was {what} from slot {index}, which holds nothing this recorder can see, so the " +
+                "recording cannot say which potion it was.");
+        }
+
+        args["potion_id"] = potion.Id.ToString();
+        return new Arguments(args);
+    }
 
     /// <summary>
     /// Where in the hand the card being played is, or null when the hand no longer
