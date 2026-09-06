@@ -104,8 +104,8 @@ internal static class Fixtures
     /// all.</summary>
     internal static EnvironmentIdentity ExactIdentity(
         IReadOnlyList<string>? epochs = null, IReadOnlyList<string>? encounters = null) => Identity() with
-    {
-        Unlocks = Fact<UnlockRequirement>.Captured(
+        {
+            Unlocks = Fact<UnlockRequirement>.Captured(
             UnlockRequirement.Exact(
                 "read out of the running game by the recorder at run start",
                 new UnlockStateInventory
@@ -115,7 +115,7 @@ internal static class Fixtures
                     Runs = 11,
                 }),
             FactEvidence.AtActionOrdinal(0)),
-    };
+        };
 
     internal static LocalRunReading Run(string? seed = null, int ascension = 10, string? character = null) =>
         new()
