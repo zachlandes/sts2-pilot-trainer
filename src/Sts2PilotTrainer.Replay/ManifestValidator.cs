@@ -1377,13 +1377,13 @@ public static partial class ManifestValidator
     /// Everything <see cref="FloorEntryPlan.For"/> asks of a floor_entry, asked here
     /// instead of in front of a player.
     ///
-    /// That plan aborts on a boundary whose action is not a map move, on one with no
-    /// checkpoint at that action naming <see cref="FloorEntryPlan.RequiredBoundaryFields"/>,
-    /// and on one whose arrival names a different floor. A coordinate checked for
-    /// shape alone passes publication and is refused later, as an aborted entry, so
-    /// the same three questions are asked at validation and resolved the same way:
-    /// where several checkpoints sit at one action, the one the plan would take is the
-    /// one this reads.
+    /// That plan aborts on a boundary naming an action the history does not contain,
+    /// on one whose action is not a map move, on one with no checkpoint at that action
+    /// naming <see cref="FloorEntryPlan.RequiredBoundaryFields"/>, and on one whose
+    /// arrival names a different floor. A coordinate checked for shape alone passes
+    /// publication and is refused later, as an aborted entry, so the same questions are
+    /// asked at validation and resolved the same way: where several checkpoints sit at
+    /// one action, the one the plan would take is the one this reads.
     ///
     /// A generated fixture is exempt from the checkpoint rule alone. One committed
     /// fixture declares a floor entry its generator writes no arrival for, and a
@@ -1394,7 +1394,15 @@ public static partial class ManifestValidator
         ReplayManifest manifest, ReplayBoundary boundary, bool isFixture, List<string> problems)
     {
         var action = manifest.Actions.FirstOrDefault(candidate => candidate.Seq == boundary.AfterSeq);
-        if (action is null) return;
+        if (action is null)
+        {
+            problems.Add(
+                $"boundaries declares {boundary.Describe()} after action " +
+                $"{boundary.AfterSeq.ToString(CultureInfo.InvariantCulture)}, which is not in this history. A " +
+                "floor is arrived on by moving on the map, so a boundary naming no decision at all names a " +
+                "moment this recording does not contain.");
+            return;
+        }
 
         if (action.Verb != ActionVerb.MapMove)
         {

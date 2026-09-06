@@ -623,6 +623,31 @@ public class ManifestValidatorTests
             problem.Contains("arrived on by moving on the map", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Before any action is a legal place for a boundary that means it, and no map
+    /// move is there - so a floor entry naming it names no decision at all, and
+    /// <see cref="FloorEntryPlan.For"/> aborts on it in front of a player.
+    /// </summary>
+    [Fact]
+    public void RejectsAFloorEntryAtAnActionTheHistoryDoesNotContain()
+    {
+        var manifest = WalkedHistory(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(3, -1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("arrival on floor 3", StringComparison.Ordinal) &&
+            problem.Contains("which is not in this history", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void RejectsAFloorEntryWithNoArrivalCheckpointAtIt()
     {

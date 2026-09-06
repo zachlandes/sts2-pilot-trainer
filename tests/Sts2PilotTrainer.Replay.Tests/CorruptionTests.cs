@@ -235,11 +235,6 @@ public class CorruptionTests
     }
 
     /// <summary>
-    /// Every kind of decision the driver can apply has a control aimed at it. A verb
-    /// that nothing corrupts is a verb whose rejection has never been demonstrated,
-    /// and this is what stops the next verb from arriving without one.
-    /// </summary>
-    /// <summary>
     /// A control that walks somewhere else leaves a history the validator still reads.
     ///
     /// The arrival a floor_entry is proved by is derived from the map move, so a
@@ -270,6 +265,11 @@ public class CorruptionTests
                 .Expect["run.map_coord"].Value);
     }
 
+    /// <summary>
+    /// Every kind of decision the driver can apply has a control aimed at it. A verb
+    /// that nothing corrupts is a verb whose rejection has never been demonstrated,
+    /// and this is what stops the next verb from arriving without one.
+    /// </summary>
     [Theory]
     [InlineData(ActionVerb.ChooseNeowBlessing, "wrong-opening-choice")]
     [InlineData(ActionVerb.MapMove, "move-to-a-different-node")]
