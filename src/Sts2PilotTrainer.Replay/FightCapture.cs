@@ -208,12 +208,6 @@ public sealed class FightCapture : IFightSampleSink
     }
 
     /// <summary>
-    /// Records the state the open action left.
-    ///
-    /// If the fight is no longer in progress afterwards, the fight ended inside this
-    /// action and the capture is complete - which is the only way it completes.
-    /// </summary>
-    /// <summary>
     /// An action whose argument the watcher could not resolve is kept anyway.
     ///
     /// The comparison is over what the fight did, and it reads that from the samples
@@ -230,6 +224,12 @@ public sealed class FightCapture : IFightSampleSink
         string unresolved) =>
         BeginStep(verb, resolved, before, previousActionFinished);
 
+    /// <summary>
+    /// Records the state the open action left.
+    ///
+    /// If the fight is no longer in progress afterwards, the fight ended inside this
+    /// action and the capture is complete - which is the only way it completes.
+    /// </summary>
     public void CompleteStep(IReadOnlyDictionary<string, string> after)
     {
         if (State != FightCaptureState.Live) return;

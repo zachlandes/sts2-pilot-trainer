@@ -878,29 +878,18 @@ internal sealed class RunRecorder : IDisposable
     /// <see cref="DelegatingFightSampleSink"/>.
     /// </summary>
     private IFightSampleSink FightSink() => new DelegatingFightSampleSink(
-        beginStep: (verb, args, before, _) =>
+        beginStep: (verb, args, before, previousFinished) =>
         {
-            if (_openFightStep is { } stranded)
-            {
-                // The observer only reaches this where the previous action had already
-                // finished, so the state that closed it is the state this one starts
-                // from and nothing is guessed.
-                CommitFightStep(stranded.Verb, stranded.Args, before);
-            }
+            if (!CloseStrandedFightStep(verb, before, previousFinished)) return;
 
             _openFightStep = (verb, args);
         },
-        beginStepWithUnresolvedArgument: (_, _, before, _, unresolved) =>
+        beginStepWithUnresolvedArgument: (verb, _, before, previousFinished, unresolved) =>
         {
-            // The decision before this one was resolvable and is kept: its after-state
-            // is the state this action begins from, the same as on the ordinary path.
-            // This one is not recorded at all - the format requires the argument, and a
-            // decision written without it is one nobody can replay.
-            if (_openFightStep is { } stranded)
-            {
-                CommitFightStep(stranded.Verb, stranded.Args, before);
-                _openFightStep = null;
-            }
+            // The decision before this one is closed the same way the ordinary path
+            // closes it. This one is not recorded at all - the format requires the
+            // argument, and a decision written without it is one nobody can replay.
+            if (!CloseStrandedFightStep(verb, before, previousFinished)) return;
 
             Refuse(unresolved);
         },
@@ -908,6 +897,40 @@ internal sealed class RunRecorder : IDisposable
         discardOpenStep: () => _openFightStep = null,
         finish: FinishFight,
         markIncomplete: Refuse);
+
+    /// <summary>
+    /// Closes the decision still open when another begins, and says whether the one
+    /// beginning may be acted on.
+    ///
+    /// Two actions can arrive with nothing between them, and the difference between a
+    /// sample that is exact and one that is a guess is whether the open one had already
+    /// finished executing. Where it had, the state this action begins from <em>is</em>
+    /// the state that one left. Where it had not, the two overlap: the after-state and
+    /// the boundary digest read here would describe an instant the engine was never
+    /// settled in, with part of the first action still outstanding, so the recording
+    /// says so instead - the same answer <see cref="FightCapture.BeginStep"/> gives,
+    /// because a run recorded that way replays into a different run.
+    ///
+    /// Both entries into this sink go through here, so neither can acquire its own
+    /// sequencing rule.
+    /// </summary>
+    private bool CloseStrandedFightStep(
+        string verb, IReadOnlyDictionary<string, string> before, bool previousActionFinished)
+    {
+        if (_openFightStep is not { } stranded) return true;
+
+        _openFightStep = null;
+        if (!previousActionFinished)
+        {
+            Refuse(
+                $"A '{verb}' began while the '{stranded.Verb}' before it had not been sampled afterwards, so " +
+                "the recording cannot say what each of them did.");
+            return false;
+        }
+
+        CommitFightStep(stranded.Verb, stranded.Args, before);
+        return true;
+    }
 
     private void CloseFightStep(IReadOnlyDictionary<string, string> after)
     {
