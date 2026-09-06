@@ -560,6 +560,28 @@ The general check is now a test rather than a note:
 declares, finds every subclass that re-declares the patched name in a new slot, and fails
 naming it.
 
+**A fourth, and this one was caused by fixing the other three.**
+The skip above is announced from `BeforeLeavingRoom`, which the engine runs as *part of*
+the map move, and the sampling fix above makes the settle wait for the next fight to be
+ready for the player.
+Together they gave the skip the state of the room *after* the one it happened in -
+byte-identical to the map move's own reading.
+`RunCoverage` starts a fight at the first step whose after-state reports combat in
+progress, so it attributed every fight's start to the skip rather than to the room entry:
+`fight 1 after_seq=3 verb=MapMove` was right and fights 2 to 5 pointed at a `SkipRewards`.
+`gate` then refused, reporting the recorder observing a fight the engine said had not
+begun.
+The fix is on the sample rather than on the boundary, deliberately.
+`RunCoverage` reads combat from the state and not from the verb - the comment beside its
+turn rule says why, and a fight is not always entered by a `MapMove` - so teaching it to
+look for one would be wrong the first time an event starts a fight.
+A decision the engine performs synchronously inside another's work has no engine work of
+its own, so it is read where it happens: `RunRecorder.AnnounceAsAlreadyFinished` carries
+the reading, and the pump does not settle a decision that arrives with one.
+The pump's own docstring had already named the failure - "a batch settled together would
+give two decisions one state and put the second one's effects on the first" - and this
+arrived by a route the pump could not see.
+
 ## The surfaces, and why they are the game's own
 
 **The mode card is a duplicate of the game's Custom Run card**, renamed and rewired.

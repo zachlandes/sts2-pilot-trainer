@@ -317,6 +317,45 @@ internal sealed class RunRecorder : IDisposable
         AnnounceByName(verb.ToString(), args, engineWork);
 
     /// <summary>
+    /// A decision the engine has just finished, inside another decision's work.
+    ///
+    /// Its state is read here rather than after a settle, because the settle waits for
+    /// the engine and the engine is still busy with the decision this one happened
+    /// inside. Waiting would hand this decision the state that one left, which is the
+    /// batching the pump exists to prevent: two decisions on one state, and the
+    /// second's effects attributed to the first.
+    /// </summary>
+    internal static void AnnounceAsAlreadyFinished(
+        ActionVerb verb, IReadOnlyDictionary<string, string> args)
+    {
+        var recorder = Active;
+        if (recorder is null || recorder._finished) return;
+
+        TakenReading reading;
+        try
+        {
+            var (sample, digest) = LiveRun.Read();
+            reading = new TakenReading(sample, digest, LiveRun.RunClockMs());
+        }
+        catch (Exception ex)
+        {
+            recorder.Refuse(
+                $"A {verb} finished and the state it left could not be read: " +
+                $"{ex.GetType().Name}: {ex.Message}");
+            return;
+        }
+
+        lock (Gate)
+        {
+            recorder._pending.Enqueue(new PendingDecision(verb.ToString(), args, null, reading));
+            if (recorder._pumping) return;
+            recorder._pumping = true;
+        }
+
+        _ = recorder.Pump();
+    }
+
+    /// <summary>
     /// The same, for a decision already held by name - which the patches that read
     /// their arguments in a prefix and announce in the postfix beside it hold it as.
     ///
@@ -539,11 +578,16 @@ internal sealed class RunRecorder : IDisposable
             var taken = false;
             try
             {
-                var unsettled = await Settle(
-                    next.EngineWork,
-                    () => _disposed || _finished
-                        ? "The recording ended before this decision could be read."
-                        : RunWentAway());
+                // A decision that arrived with its state already read does not settle:
+                // it finished inside another decision's work, and the engine will not
+                // go quiet until that one has finished too.
+                var unsettled = next.Reading is not null
+                    ? null
+                    : await Settle(
+                        next.EngineWork,
+                        () => _disposed || _finished
+                            ? "The recording ended before this decision could be read."
+                            : RunWentAway());
                 lock (Gate)
                 {
                     // A wait that ended because there is no recording left has nothing
@@ -579,7 +623,7 @@ internal sealed class RunRecorder : IDisposable
                     continue;
                 }
 
-                Commit(next.Verb, next.Args);
+                Commit(next.Verb, next.Args, next.Reading);
             }
             catch (Exception ex)
             {
@@ -669,7 +713,8 @@ internal sealed class RunRecorder : IDisposable
     /// headless driver reads them back the same way - the selection is confirmed and
     /// changes nothing - so the two traces have the same shape.
     /// </summary>
-    private void Commit(string verbName, IReadOnlyDictionary<string, string> args)
+    private void Commit(
+        string verbName, IReadOnlyDictionary<string, string> args, TakenReading? taken = null)
     {
         if (!Enum.TryParse<ActionVerb>(verbName, out var verb))
         {
@@ -677,8 +722,10 @@ internal sealed class RunRecorder : IDisposable
             return;
         }
 
-        var (sample, digest) = LiveRun.Read();
-        var clock = LiveRun.RunClockMs();
+        // Read now unless this decision brought the state it left with it, which one
+        // that finished inside another decision's work has to.
+        var (sample, digest) = taken is null ? LiveRun.Read() : (taken.Sample, taken.Digest);
+        var clock = taken is null ? LiveRun.RunClockMs() : taken.RunClockMs;
 
         List<CardScreenPick> picks;
         lock (Gate)
@@ -1011,7 +1058,21 @@ internal sealed class RunRecorder : IDisposable
     /// back at the one place that records them.
     /// </summary>
     private sealed record PendingDecision(
-        string Verb, IReadOnlyDictionary<string, string> Args, Task? EngineWork);
+        string Verb, IReadOnlyDictionary<string, string> Args, Task? EngineWork,
+        TakenReading? Reading = null);
+
+    /// <summary>
+    /// A reading of the run taken at the moment a decision finished, rather than at
+    /// the other end of a settle.
+    ///
+    /// For a decision the engine performs synchronously inside another decision's
+    /// work. <see cref="RewardsSkipped"/> is the one that needs it and says why: the
+    /// ambient settle waits for the engine to go quiet, and the engine does not go
+    /// quiet until the decision this one happened inside has finished - by which time
+    /// the run is somewhere else entirely.
+    /// </summary>
+    private sealed record TakenReading(
+        IReadOnlyDictionary<string, string> Sample, string Digest, int? RunClockMs);
 
     /// <summary>A decision read in a prefix and announced in the postfix beside it,
     /// where the engine hands back a task that says when it is finished.</summary>
@@ -1316,11 +1377,31 @@ internal sealed class RunRecorder : IDisposable
     [HarmonyPatch(typeof(RewardsSetSynchronizer), SkipRewardsSetMember)]
     internal static class RewardsSkipped
     {
-        [HarmonyPrefix]
-        internal static void Before()
+        /// <summary>
+        /// Announced after the set is declined, and read there rather than after a
+        /// settle.
+        ///
+        /// Both halves matter. A prefix would read the state before the rewards were
+        /// declined, which is the state the decision started from. And the ambient
+        /// settle would read it long after: <c>BeforeLeavingRoom</c> runs as part of
+        /// the map move, so the engine is not quiet until the room has been left and
+        /// the next fight has opened - and the recorder now waits for that fight to be
+        /// ready for the player before it reads anything. A skip settled that way
+        /// carries the state of the room after the one it happened in, byte-identical
+        /// to the move's own, and <c>RunCoverage</c> then attributes the fight's start
+        /// to the skip rather than to the room entry. That is the batching the pump
+        /// exists to prevent, arriving by a route the pump could not see, and it is
+        /// what made every combat-start boundary after a skip point one decision too
+        /// early.
+        ///
+        /// Nothing here waits, because there is nothing to wait for: the set is
+        /// declined synchronously and the state it left is final when this returns.
+        /// </summary>
+        [HarmonyPostfix]
+        internal static void After()
         {
             if (Active is null) return;
-            Announce(ActionVerb.SkipRewards, Args());
+            AnnounceAsAlreadyFinished(ActionVerb.SkipRewards, Args());
         }
     }
 

@@ -512,5 +512,45 @@ public sealed class RunRecorderTests
 
         return all.Where(candidate => candidate != type && type.IsAssignableFrom(candidate));
     }
+
+    /// <summary>
+    /// The skip is read where it happens, not after a settle.
+    ///
+    /// <c>BeforeLeavingRoom</c> runs as part of the map move, so a skip that waited for
+    /// the ambient settle would be read once the room had been left and the next fight
+    /// opened - the recorder now waits for that fight to be ready before reading
+    /// anything - and would carry a state byte-identical to the move's own.
+    /// <c>RunCoverage</c> starts a fight at the first step whose after-state reports
+    /// combat, so it then anchored every combat-start boundary after a skip to the skip
+    /// instead of to the room entry, and `gate` refused the reproduction. This is the
+    /// structural half of that fix: a prefix would read before the set was declined,
+    /// and the ordinary announce would settle.
+    ///
+    /// The behavioural half is `gate` itself, which is where a mis-anchored boundary
+    /// shows up, and it is not something a process without the game can produce.
+    /// </summary>
+    [GameFact]
+    public void TheSkipIsReadWhereItHappensRatherThanAfterASettle()
+    {
+        Assert.Null(RecorderModule.Instance.Refusal);
+
+        var skip = typeof(RunRecorder)
+            .GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Public)
+            .Single(type => type.Name == "RewardsSkipped");
+
+        var methods = skip.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
+            .Where(method => method.DeclaringType == skip)
+            .ToList();
+
+        Assert.All(methods, method =>
+            Assert.Null(method.GetCustomAttribute<HarmonyPrefix>()));
+        Assert.Contains(methods, method => method.GetCustomAttribute<HarmonyPostfix>() is not null);
+
+        // The announce that carries its own reading exists and is the one a decision
+        // finishing inside another's work has to use.
+        Assert.NotNull(typeof(RunRecorder).GetMethod(
+            nameof(RunRecorder.AnnounceAsAlreadyFinished),
+            BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public));
+    }
 }
 
