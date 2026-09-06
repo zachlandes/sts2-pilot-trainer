@@ -703,6 +703,14 @@ controller walking down into rows nobody can see.
 count and the measured room and nothing else; the last two places of a paged page go to
 Previous and Next, which are rows like any other, and focus is joined across what is drawn
 and nothing else.
+The measurement is the only thing that decides how many rows are drawn: room for fewer
+than a page is refused by `ScreenPage.For` rather than raised to the minimum, because a
+page of three in room for two and a half is a row over the popup's own ribbons.
+A row may be pinned instead of paged - it is drawn above the page's own rows on every
+page and spends one of the page's places, so pinning shrinks the page rather than pushing
+its last row past the panel. The browser's way to its other tab is the one pinned row
+today: it is that screen's own navigation, the ribbon there closes the library outright,
+and an ordinary row carrying it would be gone from every page after the first.
 Paging is presentation: `RunBrowser` and `RunView` return every row they always did, and
 only the drawing decides what a player is looking at.
 
@@ -799,7 +807,7 @@ and only the browser itself, which is the screen a player enters on, closes the 
 The tab travels as a bool because the way back ends up in a lambda's captured fields, and
 a captured `LibraryTab` has stopped this mod loading once already.
 
-## Two more surfaces, and the hook each one needs
+## Three surfaces, and the hook each one needs
 
 Read out of v0.111.0 in a scratch decompile, ahead of building anything on them.
 Mechanism only: node paths and the lifecycle method a `[HarmonyPatch]` postfix would
