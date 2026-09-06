@@ -114,7 +114,7 @@ internal static class CompendiumCard
         try
         {
             if (Existing(__instance) is not { } button) return;
-            button.Visible = RunLibrary.HasAnythingToShow();
+            button.Visible = ShowsButton();
         }
         catch (Exception ex)
         {
@@ -208,6 +208,16 @@ internal static class CompendiumCard
                 "NCompendiumBottomButton has no label on this build, so the button's wording cannot be set.");
         label.SetTextAutoSize(text);
     }
+
+    /// <summary>
+    /// Whether the button is there at all: the shell has to allow this mod a surface,
+    /// and the library has to have something behind the button.
+    ///
+    /// The shell is asked first and its answer is not a state to draw. A button greyed
+    /// or a popup explaining itself would each be this mod speaking in a game it was
+    /// told to stay out of, so silence here means the button is simply not there.
+    /// </summary>
+    internal static bool ShowsButton() => RunmobileMod.MayDraw && RunLibrary.HasAnythingToShow();
 
     /// <summary>
     /// The library button this Compendium already has, wherever in the submenu's own

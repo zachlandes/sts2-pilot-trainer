@@ -216,7 +216,8 @@ What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [doc
 
 **The mod a player installs is `Runmobile`, and the Combat Trainer is one module inside it.**
 `RunmobileMod` is the shell and `IRunmobileModule` the line between it and a feature; a module says whether it can run, installs its own patches and contributes its own surfaces, and one that refuses does not take the rest of the mod with it.
-Whether this mod may draw anything at all is the shell's and never a feature's: `GameSessionWatch` observes a multiplayer game and `RunmobileMod.MenuCards` then contributes nothing, not even an indicator saying a run is not being recorded.
+Whether this mod may draw anything at all is the shell's and never a feature's: `GameSessionWatch` observes a multiplayer game and `RunmobileMod.MayDraw` then says no to every surface - the menu cards, and equally a surface a module draws from its own Harmony patches, which is the path the cards' gate never sees.
+A module asks that gate and never the reading, so no file under one names `GameSessionWatch`, `MaySpeak`, `RunSession` or `RunSessionKind`, and a no draws nothing at all - not a greyed control, not a popup saying why, not an indicator saying a run is not being recorded.
 `RunmobileStore` is the only thing in the mod that writes, under `user://Runmobile/` scoped by the game's own resolved platform, account and profile - taken whole from `UserDataPathProvider`, never reassembled here, and never part of an exported recording's identity.
 `ProfileWriteBarrier` is a different thing and stays as it is: it suppresses the game's own writes during a trainer run.
 `./scripts/protected-files.sh` is how "nothing outside that subtree changed" is measured rather than asserted.

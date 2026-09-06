@@ -293,7 +293,10 @@ Two players sharing one client is a multiplayer run here even though the game's 
 A reading that could not be taken is refused exactly like a multiplayer one - a run nothing established anything about is not a singleplayer run.
 
 **A multiplayer game gets no mod surface at all, which is a stronger rule than recording nothing.**
-`GameSessionWatch` is the shell's, installed however the modules answer, and `RunmobileMod.MenuCards` returns nothing while it says this is a multiplayer game.
+`GameSessionWatch` is the shell's, installed however the modules answer, and `RunmobileMod.MayDraw` is the one gate every surface passes: the menu cards go through it, and so does a surface a module draws from its own Harmony patches, which is where the cards' gate never looks.
+The run library's two are both of that kind - `CompendiumCard.ShowsButton` decides whether the Compendium button is there and `RunHistoryPlateHost.PlateFor` whether a history-row press opens anything - and each asks the shell rather than reading the session, so a module knows only that the shell said no.
+A module may not name `GameSessionWatch`, `MaySpeak`, `RunSession` or `RunSessionKind`; the reading is the shell's and the module's question is "may I draw this".
+Silence is silence rather than a degraded surface: nothing is drawn, not even a refusal saying why, because a refusal is itself this mod speaking.
 An indicator saying a run is *not* being recorded would still be this mod drawing in a game somebody else is also playing, and one of them never installed it - so the suppression is of every surface rather than of the recorder.
 It is two observations rather than one. `LiveRun.ReadSession` reads the run in progress; the two patches on `RunManager.SetUpNewMultiplayer` and `SetUpSavedMultiplayer` latch the moment the game is asked to set a multiplayer session up, which covers the stretch where there is nothing yet to read - continuing a saved multiplayer run is asynchronous, and the method that starts it returns long before the run exists.
 The latch is cleared by `RunManager.CleanUp`, because a client that played a multiplayer game and then started a singleplayer one is in a singleplayer game.

@@ -79,6 +79,44 @@ public sealed class GameSessionWatchTests : IDisposable
     }
 
     /// <summary>
+    /// A module's own patched surfaces go quiet too, not only the cards the shell draws.
+    ///
+    /// The run library reaches a player through its own Harmony patches - the button in
+    /// the Compendium and the plate under run history - so neither of them passes the
+    /// point where the menu cards are gated. Both ask the shell instead, and silence is
+    /// silence: the button is not there and a history-row press opens nothing at all,
+    /// not even a popup saying why, because a refusal would itself be this mod speaking
+    /// in somebody else's game.
+    ///
+    /// Driven through the latch the game's own multiplayer setup sets, so the test fails
+    /// if either surface stops consulting the shell.
+    /// </summary>
+    [GameFact]
+    public void AMultiplayerGameGetsNoneOfAModulesPatchedSurfacesEither()
+    {
+        _ = EngineHost.StartupPhase();
+        var recording = RunLibraryStoreTests.BareRecording("native-a");
+        RunmobileStore.Write(
+            $"{RunLibraryStore.RecordingsDirectory}/native-a-20260906-120000.replay.json",
+            ManifestJson.Serialize(recording));
+
+        Assert.True(RunLibrary.HasAnythingToShow());
+        Assert.True(CompendiumCard.ShowsButton());
+        Assert.NotNull(RunHistoryPlateHost.PlateFor(null, recording));
+
+        GameSessionWatch.MultiplayerSessionSetUp();
+
+        Assert.True(RunLibrary.HasAnythingToShow());
+        Assert.False(CompendiumCard.ShowsButton());
+        Assert.Null(RunHistoryPlateHost.PlateFor(null, recording));
+
+        GameSessionWatch.SessionTornDown();
+
+        Assert.True(CompendiumCard.ShowsButton());
+        Assert.NotNull(RunHistoryPlateHost.PlateFor(null, recording));
+    }
+
+    /// <summary>
     /// A multiplayer setup the game refused leaves the mod watching this client again.
     ///
     /// The latch is set from a prefix, so it fires on a request rather than on a

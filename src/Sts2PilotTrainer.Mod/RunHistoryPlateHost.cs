@@ -90,8 +90,7 @@ internal static class RunHistoryPlateHost
         {
             var history = HistoryOf(entry);
             var recording = history is null ? null : RecordingFor(history);
-            var facts = FactsFor(history, recording);
-            if (RunHistoryPlate.For(facts) is not { } plate) return;
+            if (PlateFor(history, recording) is not { } plate) return;
 
             LibraryScreen.Show(
                 plate.Head,
@@ -106,6 +105,17 @@ internal static class RunHistoryPlateHost
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
     }
+
+    /// <summary>
+    /// The plate a press gets, or none at all.
+    ///
+    /// The shell is asked before anything is drawn, and a no is the whole answer: no
+    /// plate, so no modal, and no sentence saying why one is missing. What this mod may
+    /// put in front of somebody else's game is the shell's, and a refusal popup would be
+    /// the mod speaking anyway.
+    /// </summary>
+    internal static RunHistoryPlate? PlateFor(RunHistory? history, ReplayManifest? recording) =>
+        RunmobileMod.MayDraw ? RunHistoryPlate.For(FactsFor(history, recording)) : null;
 
     /// <summary>
     /// What is true of the run the history is showing, each part read from whatever

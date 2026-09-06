@@ -69,17 +69,27 @@ public static class RunmobileMod
     internal static IEnumerable<IRunmobileModule> EnabledModules => Modules.Where(module => module.Enabled);
 
     /// <summary>
-    /// Every singleplayer-menu card the enabled modules contribute, or none at all in
-    /// a game this mod may not speak in.
+    /// Whether a module may put anything in front of the player right now.
     ///
     /// The gate is here rather than in each module for the same reason the write
     /// barrier is the shell's: what this mod may do to somebody else's session is not
     /// a decision a feature gets to make for itself, and a module that has not been
     /// written yet would be a module that had not been told.
-    /// <see cref="GameSessionWatch"/> owns the reading.
+    /// <see cref="GameSessionWatch"/> owns the reading, and a module knows only that
+    /// the shell said no - it never learns what the answer depended on.
+    ///
+    /// Every surface goes through this, not only the cards. A module's own Harmony
+    /// patches draw where the shell never looks - the run library's Compendium button
+    /// and its run-history plate are both of those - so this is what those entry points
+    /// ask before they draw. A silent shell is silent rather than degraded: nothing is
+    /// drawn, including a refusal saying why, because a refusal is itself this mod
+    /// speaking in somebody else's session.
     /// </summary>
-    internal static IReadOnlyList<MenuCard> MenuCards =>
-        GameSessionWatch.MaySpeak ? MenuCardsFrom(Modules) : [];
+    internal static bool MayDraw => GameSessionWatch.MaySpeak;
+
+    /// <summary>Every singleplayer-menu card the enabled modules contribute, or none at
+    /// all in a game this mod may not draw in.</summary>
+    internal static IReadOnlyList<MenuCard> MenuCards => MayDraw ? MenuCardsFrom(Modules) : [];
 
     internal static IReadOnlyList<MenuCard> MenuCardsFrom(IReadOnlyList<IRunmobileModule> modules) =>
         modules.Where(module => module.Enabled).SelectMany(module => module.MenuCards).ToList();
