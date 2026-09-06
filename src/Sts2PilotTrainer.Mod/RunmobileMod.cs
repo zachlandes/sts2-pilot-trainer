@@ -171,6 +171,22 @@ public static class RunmobileMod
     /// </summary>
     internal static bool EnsureAdopted()
     {
+        var adopted = Adopt();
+
+        // The first moment there is a game is also the first moment there is a chosen
+        // save profile, which is what the store needs before it can say whose files
+        // these are - so this is where the player's own answer about keeping their
+        // recordings is acted on. It is the shell's rather than the recorder's: it is
+        // about what this mod leaves on a player's disk, which no feature gets to
+        // decide for itself, and a build the recorder declines to watch must still
+        // honour a player who asked for their runs to be removed.
+        if (adopted) RecordingRetention.ApplyOnce();
+
+        return adopted;
+    }
+
+    private static bool Adopt()
+    {
         lock (AdoptionGate)
         {
             if (_adoptionAttempted) return _adopted;

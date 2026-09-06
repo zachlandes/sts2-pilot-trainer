@@ -188,7 +188,9 @@ Its final state is exactly `Runmobile` under the selected supported game mod dir
 `RunmobileStore` is the only thing in the mod that writes, under `user://Runmobile/` scoped by the game's own resolved platform, account and profile - taken whole from `UserDataPathProvider`, never reassembled here, and never part of an exported recording's identity.
 `ProfileWriteBarrier` is a different thing and stays as it is: it suppresses the game's own writes during a trainer run.
 `./scripts/protected-files.sh` is how "nothing outside that subtree changed" is measured rather than asserted.
-Do not add a second writer, a second path rule or a second account-identity mechanism; [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
+Removing is a write and goes through the same gate - `RunmobileStore.Remove` names one file and refuses a directory - and *which* files is `RecordingRetention`'s, so the one operation that cannot be undone does not also pick its own targets.
+The player's `settings.json` says how many runs to keep and can ask for them all to be removed; both are `RecordingLibrary.Cull` with a different number, applied at `RunmobileMod.EnsureAdopted` because that is the first moment there is a profile and the last moment before any journal is open.
+Do not add a second writer, a second path rule, a second account-identity mechanism or a second thing that deletes; [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
 
 **Read [docs/ingestion.md](docs/ingestion.md) before touching how a recording is found or
 dated.** Screening runs on free metadata and establishes nothing: a seed it recovers is a

@@ -4,12 +4,14 @@ using Sts2PilotTrainer.Mod;
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
 /// <summary>
-/// The one setting this release has, read out of the store.
+/// What the player told this mod to do, read out of the store.
 ///
 /// There is no screen for it yet, so the file is the whole of the surface and its
 /// rules are the whole of the behaviour: an absent file is the default, a file this
-/// build cannot read means do not record rather than being guessed at, and what the
-/// player wrote is what happens.
+/// build cannot read means do nothing rather than being guessed at, and what the
+/// player wrote is what happens. Three sentences are sayable in it - record my runs,
+/// keep this many, remove them all - and the last is the only member this mod ever
+/// writes back.
 /// </summary>
 public sealed class RunmobileSettingsTests : IDisposable
 {
@@ -86,6 +88,61 @@ public sealed class RunmobileSettingsTests : IDisposable
         RunmobileStore.Write(RunmobileSettings.FileName, "record_my_runs = false");
 
         Assert.False(RunmobileSettings.Read().RecordMyRuns);
+    }
+
+    [Fact]
+    public void APlayerWhoHasNeverTouchedTheFileKeepsTheirFiftyMostRecentRunsAndPurgesNothing()
+    {
+        var settings = RunmobileSettings.Read();
+
+        Assert.Equal(RunmobileSettings.DefaultKeepRecentRuns, settings.KeepRecentRuns);
+        Assert.False(settings.PurgeMyRuns);
+    }
+
+    [Fact]
+    public void APlayerWhoWroteAPolicyGetsIt()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","keep_recent_runs":3,"purge_my_runs":true}""");
+
+        var settings = RunmobileSettings.Read();
+
+        Assert.Equal(3, settings.KeepRecentRuns);
+        Assert.True(settings.PurgeMyRuns);
+        Assert.True(settings.RecordMyRuns);
+    }
+
+    /// <summary>
+    /// A file this build cannot read fails in the direction of doing less, on both
+    /// questions: nothing is recorded, and nothing is deleted. A sentence nobody could
+    /// read is not somebody asking for their runs to be removed.
+    /// </summary>
+    [Fact]
+    public void ASettingsFileThisBuildCannotReadDeletesNothingEither()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            """{"schema":"somebody-elses/settings/v9","keep_recent_runs":0,"purge_my_runs":true}""");
+
+        var settings = RunmobileSettings.Read();
+
+        Assert.Equal(RunmobileSettings.KeepEveryRun, settings.KeepRecentRuns);
+        Assert.False(settings.PurgeMyRuns);
+    }
+
+    /// <summary>The one member this mod writes back, so a purge is an act rather than
+    /// a state the player is left in.</summary>
+    [Fact]
+    public void SavingWritesEveryMemberBackWhereThePlayerWroteIt()
+    {
+        (RunmobileSettings.Default with { KeepRecentRuns = 7, PurgeMyRuns = false }).Save();
+
+        var written = RunmobileStore.Read(RunmobileSettings.FileName);
+
+        Assert.Contains("\"keep_recent_runs\": 7", written);
+        Assert.Contains("\"purge_my_runs\": false", written);
+        Assert.Equal(7, RunmobileSettings.Read().KeepRecentRuns);
     }
 
     /// <summary>The setting is in the store, like everything else this mod writes, so

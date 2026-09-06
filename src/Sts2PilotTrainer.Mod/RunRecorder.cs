@@ -1063,7 +1063,7 @@ internal sealed class RunRecorder : IDisposable
         _capture.Finish(outcome);
 
         var manifest = _capture.ToManifest();
-        var path = $"{RecordingsDirectory}/{_capture.RunId}.replay.json";
+        var path = $"{RecordingsDirectory}/{_capture.RunId}{RecordingLibrary.ManifestExtension}";
         RunmobileStore.Write(path, ManifestJson.Serialize(manifest) + "\n");
 
         var problems = ManifestValidator.Validate(manifest);
