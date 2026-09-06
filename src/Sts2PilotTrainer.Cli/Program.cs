@@ -83,9 +83,14 @@ internal static class Program
 
           engine-commands
               Print which of the game's own members each recorded decision maps onto,
-              and check that the mapping still describes this build: every named
-              member still exists, and every verb in the format is either mapped or
-              carries a written reason it is not.
+              and check that the host's account of this build still describes it: every
+              named member still exists, every verb in the format is either mapped or
+              carries a written reason it is not, and each of the three gameplay paths
+              the test-mode flag would otherwise change still takes retail's branch -
+              the merchant's potion price, and the rewards Cauldron and Calling Bell
+              generate. Those three read a consequence retail has and test mode does
+              not and pin no value, because what the price or the relic turns out to be
+              is the game's business. See docs/headless-fidelity.md.
 
           preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile]
                                      [--shipped-ids]

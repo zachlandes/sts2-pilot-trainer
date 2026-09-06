@@ -163,13 +163,17 @@ internal static class EngineInitialization
     /// is set directly rather than going through a path the game reserves for its
     /// test runners.
     /// </summary>
-    internal static void SetTestMode(bool on)
-    {
-        var field = typeof(MegaCrit.Sts2.Core.TestSupport.TestMode)
+    internal static void SetTestMode(bool on) => TestModeField.SetValue(null, on);
+
+    /// <summary>
+    /// Resolved once: <see cref="HeadlessPatches"/> flips this field around individual
+    /// engine calls, so it is on a path taken several times per shop rather than once
+    /// per process.
+    /// </summary>
+    private static readonly FieldInfo TestModeField =
+        typeof(MegaCrit.Sts2.Core.TestSupport.TestMode)
             .GetField("<IsOn>k__BackingField", BindingFlags.Static | BindingFlags.NonPublic)
-            ?? throw new EngineException("TestMode.IsOn is absent from this build.");
-        field.SetValue(null, on);
-    }
+        ?? throw new EngineException("TestMode.IsOn is absent from this build.");
 
     private static void TryRequired(List<string> failures, string what, Action action)
     {
@@ -199,10 +203,12 @@ internal static class EngineInitialization
 /// <summary>
 /// Runtime patches that stand in for subsystems the headless host does not have.
 ///
-/// Each one replaces a presentation-layer call that blocks forever or throws with
-/// no scene tree. None of them touch a gameplay decision, and each says why. They
-/// are applied with Harmony, which the game itself ships and loads - so this is the
-/// same mechanism any Workshop mod uses, not an unsupported hook.
+/// Most of them replace a presentation-layer call that blocks forever or throws with
+/// no scene tree. A second, smaller set does the opposite: it puts back a gameplay
+/// decision the engine's own test-mode flag takes away. None of them invent a
+/// decision, and each says why. They are applied with Harmony, which the game itself
+/// ships and loads - so this is the same mechanism any Workshop mod uses, not an
+/// unsupported hook.
 /// </summary>
 internal static class HeadlessPatches
 {
@@ -212,6 +218,8 @@ internal static class HeadlessPatches
     {
         var harmony = new Harmony(HarmonyId);
         var assembly = typeof(ModelDb).Assembly;
+
+        RestoreRetailBranches(harmony, assembly, warnings);
 
         // Cmd.Wait(float) sleeps for an animation. With no frame loop the wait never
         // completes and the action executor stalls, so it returns immediately. It
@@ -251,6 +259,116 @@ internal static class HeadlessPatches
         Neutralize(harmony, assembly, "MegaCrit.Sts2.Core.Runs.RunManager", "FadeIn", warnings);
         Neutralize(harmony, assembly, "MegaCrit.Sts2.Core.Runs.RunManager", "ClearScreens", warnings);
         Neutralize(harmony, assembly, "MegaCrit.Sts2.Core.Runs.RunManager", "UpdateRichPresence", warnings);
+    }
+
+    /// <summary>
+    /// The gameplay paths that consume randomness only when the engine's test-mode
+    /// flag is off, run here the way retail runs them.
+    ///
+    /// This is a different kind of patch from every other one in this class and the
+    /// difference is the point. The rest stand in for a subsystem that is absent. These
+    /// exist because <c>TestMode.IsOn</c> is not only a presentation switch: at three
+    /// sites it changes what the game *generates*, and each one leaves a run-persistent
+    /// random stream in a different place than the same run leaves it in the player's
+    /// own client. A replay that diverges from the recording it is checking is the one
+    /// failure this project cannot tolerate, and it is silent - the streams' positions
+    /// are inside the canonical state, so the divergence surfaces as a boundary digest
+    /// that does not match, downstream of the room that caused it.
+    ///
+    /// The remedy is to turn the flag off for the duration of the call and let the
+    /// engine's own retail branch run. Nothing here reimplements a cost, a roll or a
+    /// pool: the game computes what it would have computed. Each of the three bodies
+    /// is synchronous and touches no scene tree on its retail path, which is what makes
+    /// the flip safe to scope this way - see docs/headless-fidelity.md.
+    ///
+    /// A name that stops matching is a failure rather than a warning. A silently
+    /// unpatched site here is a headless host that reproduces nothing and says so
+    /// nowhere.
+    /// </summary>
+    private static void RestoreRetailBranches(Harmony harmony, Assembly assembly, List<string> failures)
+    {
+        // MerchantPotionEntry.CalcCost multiplies the potion's shelf price by
+        // PlayerRng.Shops.NextFloat(0.95, 1.05), and only when test mode is off. A
+        // normal merchant builds exactly three potion entries, so every shop a headless
+        // replay walks into leaves player.rng.Shops three draws behind the recording's,
+        // permanently, for the rest of the run. Measured on two native recordings: the
+        // recorded digest at every boundary from the shop's own floor entry onward is
+        // reproduced by Shops+3 and by nothing else.
+        //
+        // The card and relic entries take the same draw with no guard, which is why
+        // only the potion slots drift.
+        InRetailMode(harmony, assembly, "MegaCrit.Sts2.Core.Entities.Merchant.MerchantPotionEntry", "CalcCost", failures);
+
+        // Cauldron hands the player its potions from a hard-coded array when test mode
+        // is on, and constructs unpopulated PotionRewards when it is off. An unpopulated
+        // reward draws from PlayerRng.Rewards when it is populated; a pre-filled one
+        // never does. Same defect, different stream.
+        InRetailMode(harmony, assembly, "MegaCrit.Sts2.Core.Models.Relics.Cauldron", "GenerateRewards", failures);
+
+        // Calling Bell is the same shape and costs more than a stream position: its
+        // retail branch pulls three relics from the run's own relic grab bag by rarity,
+        // and the test branch hands back Anchor, Gremlin Horn and Mummified Hand without
+        // touching it. Left alone, a headless replay of a run that picked this relic up
+        // gets different relics *and* a differently-positioned bag.
+        InRetailMode(harmony, assembly, "MegaCrit.Sts2.Core.Models.Relics.CallingBell", "GenerateRewards", failures);
+    }
+
+    /// <summary>
+    /// Runs one method with the engine's test-mode flag off and puts it back
+    /// afterwards, including when the method throws.
+    ///
+    /// The depth counter is not for concurrency - this host is single-threaded - it is
+    /// for a patched method that reaches another patched method, so the flag is only
+    /// restored by the outermost call.
+    /// </summary>
+    private static void InRetailMode(
+        Harmony harmony, Assembly assembly, string typeName, string methodName, List<string> failures)
+    {
+        var type = assembly.GetType(typeName);
+        if (type is null)
+        {
+            failures.Add($"retail-branch patch: type {typeName} not found in this build");
+            return;
+        }
+
+        var methods = type
+            .GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(m => m.Name == methodName)
+            .ToArray();
+
+        if (methods.Length == 0)
+        {
+            failures.Add($"retail-branch patch: {typeName}.{methodName} not found in this build");
+            return;
+        }
+
+        var prefix = typeof(HeadlessPatches).GetMethod(nameof(EnterRetailMode), BindingFlags.NonPublic | BindingFlags.Static)!;
+        var finalizer = typeof(HeadlessPatches).GetMethod(nameof(LeaveRetailMode), BindingFlags.NonPublic | BindingFlags.Static)!;
+        foreach (var method in methods)
+        {
+            try
+            {
+                harmony.Patch(method, prefix: new HarmonyMethod(prefix), finalizer: new HarmonyMethod(finalizer));
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"retail-branch patch {typeName}.{methodName}: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+    }
+
+    private static int _retailModeDepth;
+
+    /// <summary>Harmony prefix: take the retail branch through this call.</summary>
+    private static void EnterRetailMode()
+    {
+        if (_retailModeDepth++ == 0) EngineInitialization.SetTestMode(false);
+    }
+
+    /// <summary>Harmony finalizer: restore the headless flag, thrown or returned.</summary>
+    private static void LeaveRetailMode()
+    {
+        if (--_retailModeDepth == 0) EngineInitialization.SetTestMode(true);
     }
 
     /// <summary>

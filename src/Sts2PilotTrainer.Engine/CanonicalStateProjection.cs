@@ -314,7 +314,7 @@ public static class CanonicalStateProjection
     /// the game keeps it; the position is the whole point, and a stream reported
     /// without one would be a field that always agrees.
     /// </summary>
-    private static int Counter(Rng? stream)
+    internal static int Counter(Rng? stream)
     {
         if (stream is null) return -1;
         var field = typeof(Rng).GetField("_counter", NonPublicInstance)

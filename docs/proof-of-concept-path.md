@@ -378,9 +378,9 @@ first fight before it can offer a later one.
   --fight <n>` or `--floor <n>`. A floor arrival is proved by where the run stands, so
   entering one needs a checkpoint there naming `run.total_floor` and `run.map_coord`.
 - Two committed engine-generated fixtures to exercise it against, because no
-  transcribed video reaches any of this. The whole-act history is 225 actions through
-  a whole Act 1 to `ProceedToNextAct`, with 67 boundaries - nine fights, sixteen floor
-  arrivals and forty-two turns - each carrying the digest a replay produced. The
+  transcribed video reaches any of this. The whole-act history is 222 actions through
+  a whole Act 1 to `ProceedToNextAct`, with 66 boundaries - nine fights, sixteen floor
+  arrivals and forty-one turns - each carrying the digest a replay produced. The
   screen-at-boundary history walks the same act and stops at the first turn whose own
   action opens a card screen, which is the one case no other history here reaches.
 - The `exact` unlock arm, which is how a recording made inside a player's own game

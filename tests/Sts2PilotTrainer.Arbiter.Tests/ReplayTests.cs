@@ -350,6 +350,93 @@ public class ReplayTests
             StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A whole run recorded in the player's own client, replayed headlessly, agrees at
+    /// every place a player could be stood.
+    ///
+    /// This is the check that catches a headless host which decides something
+    /// differently from the retail client. It is the strongest one available without a
+    /// running game, and it is not the same check as the one above it: a synthetic
+    /// fixture's expected values were produced by this same host, so a fixture cannot
+    /// see a bias this host has. These digests were captured live inside the game.
+    ///
+    /// Both recordings enter a merchant. Before the potion-cost draw was restored -
+    /// see HeadlessPatches.RestoreRetailBranches - eight of nineteen and eight of
+    /// twenty-six boundaries disagreed, every one of them from the shop's own floor
+    /// entry onward, and `replay` still exited 0.
+    ///
+    /// The comparison direction is the point and it is easy to get backwards: the
+    /// manifest carries the recording's captured `boundaries` and the verifier writes
+    /// its own engine-derived ones under `verification`. Comparing the manifest's
+    /// against themselves compares a recording with itself and always passes.
+    /// </summary>
+    [GameTheory]
+    [InlineData("native-9F8CY60C5BK7-20260906-005737.replay.json")]
+    [InlineData("native-3LACFJ5NJ371-20260906-015901.replay.json")]
+    public void NativeRecordingReproducesEveryBoundaryItCaptured(string fileName)
+    {
+        var recording = Path.Combine(Arbiter.RepoRoot, "manifests", fileName);
+        var verifiedPath = Temp("verified-" + fileName);
+
+        var result = Arbiter.Run("replay", recording, "--out", verifiedPath);
+        Assert.True(result.Verified, result.All);
+
+        var verified = ManifestJson.Load(verifiedPath);
+        var derived = verified.Verification?.Boundaries ?? [];
+        Assert.NotEmpty(verified.Boundaries);
+        Assert.Equal(verified.Boundaries.Count, derived.Count);
+
+        var byCoordinate = derived.ToDictionary(Coordinate, StringComparer.Ordinal);
+        var mismatched = verified.Boundaries
+            .Where(captured =>
+                !byCoordinate.TryGetValue(Coordinate(captured), out var engine) ||
+                !string.Equals(captured.Digest.Value, engine.Digest.Value, StringComparison.Ordinal))
+            .Select(captured => captured.Describe())
+            .ToList();
+
+        Assert.True(
+            mismatched.Count == 0,
+            $"{mismatched.Count} of {verified.Boundaries.Count} captured boundaries were not reproduced: " +
+            string.Join(", ", mismatched));
+    }
+
+    /// <summary>
+    /// Every gameplay path the engine's test-mode flag would otherwise change takes
+    /// retail's branch under this host.
+    ///
+    /// The test above covers the merchant's potion price, because both recordings walk
+    /// into a shop. It cannot cover the other two: Cauldron and Calling Bell are picked
+    /// up by no committed recording and no fixture, so without this their patches would
+    /// ship measured by nothing. The measurement reads a consequence retail has and test
+    /// mode does not - the Shops stream moved, the rewards still have to be populated -
+    /// and pins no price and no relic, because those are the game's to choose.
+    ///
+    /// It rides on `engine-commands` rather than a verb of its own: the question is the
+    /// same patch-day one that command already asks, and this project drives the built
+    /// CLI in a subprocess precisely so the test project need not reference the engine.
+    /// The command exits non-zero if any site did not take retail's branch or if the
+    /// headless flag was not back on afterwards, so the assertion here is the exit code
+    /// and the output is what says which site and by how much.
+    /// </summary>
+    [GameFact]
+    public void EveryRestoredRetailBranchTakesRetailsPath()
+    {
+        var result = Arbiter.Run("engine-commands");
+
+        Assert.True(result.ExitCode == 0, result.All);
+        Assert.Contains("restored retail branch takes retail's path", result.Output, StringComparison.Ordinal);
+        Assert.Contains("MerchantPotionEntry.CalcCost", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Cauldron.GenerateRewards", result.Output, StringComparison.Ordinal);
+        Assert.Contains("CallingBell.GenerateRewards", result.Output, StringComparison.Ordinal);
+        Assert.Contains("TestMode.IsOn", result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("FAIL", result.Output, StringComparison.Ordinal);
+    }
+
+    /// <summary>How a boundary in one list is matched to the same boundary in the
+    /// other. Sequence alone is not identity: three kinds can share one.</summary>
+    private static string Coordinate(ReplayBoundary boundary) =>
+        $"{boundary.Kind}:{boundary.AfterSeq}:{boundary.Fight}:{boundary.Floor}:{boundary.Turn}";
+
     private static string Temp(string name)
     {
         var dir = TempDir();

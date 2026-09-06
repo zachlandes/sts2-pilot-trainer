@@ -36,8 +36,13 @@ public static partial class SyntheticFixtureGenerator
     /// into the deck, and the fight after that lasts long enough to end a turn holding
     /// it. Nothing here depends on that being true - the journey refuses below if the
     /// act went by without a turn that began with a decision.
+    ///
+    /// It replaced S00126 for the same reason and in the same change as the act seed:
+    /// once the headless host takes the merchant's potion-cost draw, this journey's run
+    /// no longer reaches a turn that begins with a decision on that seed, and it says
+    /// so rather than emitting a fixture without the case it exists for.
     /// </summary>
-    private const string ScreenAtBoundarySeed = "S00126";
+    private const string ScreenAtBoundarySeed = "S89274";
 
     /// <summary>The Regent's, whose pool holds two of the four cards that open a screen
     /// at the start of a turn.</summary>
