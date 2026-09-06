@@ -1,0 +1,238 @@
+using Godot;
+using Sts2PilotTrainer.Mod;
+using Sts2PilotTrainer.Trainer;
+
+namespace Sts2PilotTrainer.Arbiter.Tests;
+
+/// <summary>
+/// The settings row, assembled node by node in a process with no game.
+///
+/// Every node it puts up is a stock Godot node, so the whole row can be built here and
+/// asked what it drew: the two sentences, the numeral, and which of its three controls
+/// a player can reach.
+///
+/// What is asserted here is the projection and not the words - <c>MyRunsRowTests</c>
+/// owns those. The properties this suite exists for are the ones a wrong drawing would
+/// break silently: that the row reads what the derivation says rather than working
+/// anything out, that its controls report rather than act, and that the number the
+/// stepper stands on and the numeral beside it can never be two different answers.
+/// </summary>
+public sealed class MyRunsSettingsRowTests
+{
+    private const float Width = 520f;
+
+    [Fact]
+    public void TheRowCarriesWhatTheDerivationSaysAndNothingElse()
+    {
+        var row = Build(new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20));
+
+        Assert.Equal("Keep my runs", Label(row, "KeepLabel").Text);
+        Assert.Equal("20", Label(row, "KeepNumeral").Text);
+        Assert.Equal("keeps the newest; older ones are removed at the main menu", Label(row, "KeepNote").Text);
+        Assert.Equal("12 runs · 6 MB", Label(row, "Reading").Text);
+        Assert.Equal("on this computer, in user://Runmobile/recordings", Label(row, "Detail").Text);
+        Assert.Equal("Remove all my runs", row.Remove.Text);
+    }
+
+    /// <summary>
+    /// Nothing to remove refuses the control rather than hiding it, so the row keeps its
+    /// shape as the number changes and nothing moves about under the player's aim.
+    /// </summary>
+    [Fact]
+    public void WithNothingToRemoveTheControlIsDrawnAndRefused()
+    {
+        var row = Build(new MyRunsFacts(Runs: 0, Bytes: 0, Keep: 20));
+
+        Assert.True(row.Remove.Disabled);
+        Assert.True(row.Remove.Visible);
+        Assert.Equal(Control.FocusModeEnum.None, row.Remove.FocusMode);
+    }
+
+    [Fact]
+    public void WithSomethingToRemoveTheControlCanBeReached()
+    {
+        var row = Build(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20));
+
+        Assert.False(row.Remove.Disabled);
+        Assert.Equal(Control.FocusModeEnum.All, row.Remove.FocusMode);
+    }
+
+    /// <summary>The row raises what a player asked for and removes nothing itself. What
+    /// files a removal names is the retention owner's and always was.</summary>
+    [Fact]
+    public void PressingRemoveReportsItRatherThanActing()
+    {
+        var asked = 0;
+        var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 20), removePressed: () => asked++);
+
+        row.Remove.EmitPressed();
+
+        Assert.Equal(1, asked);
+    }
+
+    [Fact]
+    public void TheStepperReportsTheNumberOnePressWouldMoveThePolicyTo()
+    {
+        var reported = new List<int>();
+        var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 20), keepChanged: reported.Add);
+
+        row.More.EmitPressed();
+        row.Fewer.EmitPressed();
+
+        Assert.Equal([21, 19], reported);
+    }
+
+    /// <summary>
+    /// The stepper does not move itself. A control that advanced on the press would be
+    /// a run ahead of the file the moment a write failed, and would then refuse an end
+    /// the policy had never reached.
+    /// </summary>
+    [Fact]
+    public void TheStepperDoesNotMoveUntilTheRowIsToldWhatTheFileNowSays()
+    {
+        var reported = new List<int>();
+        var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 20), keepChanged: reported.Add);
+
+        row.More.EmitPressed();
+        row.More.EmitPressed();
+
+        Assert.Equal([21, 21], reported);
+        Assert.Equal("20", Label(row, "KeepNumeral").Text);
+    }
+
+    [Fact]
+    public void TheStepperMovesOnceTheRowIsToldWhatTheFileNowSays()
+    {
+        var reported = new List<int>();
+        var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 20), keepChanged: reported.Add);
+
+        row.More.EmitPressed();
+        Apply(row, new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 21));
+        row.More.EmitPressed();
+
+        Assert.Equal([21, 22], reported);
+        Assert.Equal("21", Label(row, "KeepNumeral").Text);
+    }
+
+    /// <summary>Each end of the range refuses its own control and leaves the other one
+    /// reachable.</summary>
+    [Fact]
+    public void TheStepperRefusesAtEachEndOfItsRange()
+    {
+        var bottom = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: MyRunsRow.MinimumKeep));
+        Assert.True(bottom.Fewer.Disabled);
+        Assert.False(bottom.More.Disabled);
+
+        var top = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: MyRunsRow.MaximumKeep));
+        Assert.False(top.Fewer.Disabled);
+        Assert.True(top.More.Disabled);
+    }
+
+    /// <summary>
+    /// A policy written by hand outside the range the control offers is shown as the
+    /// player wrote it. The numeral is the truth and the control is only how far a press
+    /// reaches; the first press lands inside the range rather than one step from a
+    /// number the control cannot represent.
+    /// </summary>
+    [Fact]
+    public void APolicyOutsideTheControlsRangeIsShownAsWrittenAndSteppedIntoIt()
+    {
+        var reported = new List<int>();
+        var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 500), keepChanged: reported.Add);
+
+        Assert.Equal("500", Label(row, "KeepNumeral").Text);
+
+        row.Fewer.EmitPressed();
+        Assert.Equal([MyRunsRow.MaximumKeep], reported);
+    }
+
+    /// <summary>
+    /// A standing purge written by hand is shown as the zero it is. The control cannot
+    /// be moved there - asking for every run to go is the ribbon's job, and it asks
+    /// first - but a row that read "1" over a file saying "0" would be misstating the
+    /// policy.
+    /// </summary>
+    [Fact]
+    public void AStandingPurgeWrittenByHandIsShownAsZero()
+    {
+        var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 0));
+
+        Assert.Equal("0", Label(row, "KeepNumeral").Text);
+        Assert.True(row.Fewer.Disabled);
+    }
+
+    /// <summary>
+    /// The whole row is re-read on every change rather than the element a caller thinks
+    /// moved. A receipt arrives with a new reading and a new policy in the same act.
+    /// </summary>
+    [Fact]
+    public void ApplyingAReceiptRedrawsEveryLine()
+    {
+        var row = Build(new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20));
+
+        Apply(row, new MyRunsFacts(Runs: 0, Bytes: 0, Keep: 20, RemovedJustNow: 12));
+
+        Assert.Equal("0 runs · 0 MB", Label(row, "Reading").Text);
+        Assert.Equal("12 runs removed just now · user://Runmobile/recordings", Label(row, "Detail").Text);
+        Assert.True(row.Remove.Disabled);
+    }
+
+    /// <summary>
+    /// The row lets a click through everywhere except on a control, which is what keeps
+    /// the section it is hosted in working underneath it.
+    /// </summary>
+    [Fact]
+    public void OnlyTheControlsTakeTheMouse()
+    {
+        var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 20));
+
+        Assert.Equal(Control.MouseFilterEnum.Ignore, row.Root.MouseFilter);
+        foreach (var name in new[] { "KeepLabel", "KeepNumeral", "KeepNote", "Reading", "Detail" })
+        {
+            Assert.Equal(Control.MouseFilterEnum.Ignore, Label(row, name).MouseFilter);
+        }
+    }
+
+    /// <summary>Its controls take focus, which is what a controller needs to reach
+    /// them.</summary>
+    [Fact]
+    public void TheControlsTakeFocus()
+    {
+        var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 20));
+
+        Assert.Equal(Control.FocusModeEnum.All, row.Fewer.FocusMode);
+        Assert.Equal(Control.FocusModeEnum.All, row.More.FocusMode);
+        Assert.Equal(Control.FocusModeEnum.All, row.Remove.FocusMode);
+    }
+
+    /// <summary>The row is laid out inside the width the section gave it, so nothing it
+    /// draws runs off the side of the panel hosting it.</summary>
+    [Fact]
+    public void EveryElementStaysInsideTheWidthItWasGiven()
+    {
+        var row = Build(new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20));
+
+        foreach (var child in row.Root.GetChildren().OfType<Control>())
+        {
+            Assert.True(child.Position.X >= 0f, $"{child.Name} starts left of the row");
+            Assert.True(
+                child.Position.X + child.Size.X <= Width, $"{child.Name} runs past the width it was given");
+        }
+    }
+
+    private static MyRunsSettingsRow Build(
+        MyRunsFacts facts, Action<int>? keepChanged = null, Action? removePressed = null) =>
+        MyRunsSettingsRow.Build(
+            MyRunsRow.For(facts),
+            facts.Keep,
+            Width,
+            font: null,
+            keepChanged ?? (_ => { }),
+            removePressed ?? (() => { }));
+
+    private static void Apply(MyRunsSettingsRow row, MyRunsFacts facts) =>
+        row.Apply(MyRunsRow.For(facts), facts.Keep);
+
+    private static Label Label(MyRunsSettingsRow row, string name) =>
+        row.Root.GetChildren().OfType<Label>().Single(label => label.Name == name);
+}

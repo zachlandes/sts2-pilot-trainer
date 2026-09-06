@@ -1,6 +1,7 @@
 using System.Globalization;
 using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -13,10 +14,14 @@ namespace Sts2PilotTrainer.Mod;
 /// answers, and they are the same operation with a different number:
 /// <c>keep_recent_runs</c> is a standing policy and <c>purge_my_runs</c> is a one-shot
 /// act that keeps none. <see cref="RecordingLibrary.Cull"/> decides which recordings
-/// either one names; this owns the disk and the moment.
+/// either one names; this owns the disk and the moment. It also owns the reading a
+/// player is shown of that disk - <see cref="OnDisk"/> - because a surface that listed
+/// the directory for itself would be a second thing to keep in step with the removal.
 ///
-/// <para><b>The moment is the mod's first chosen save profile, and that is not an
-/// accident.</b> It cannot be mod start: the game has no chosen save profile then, so
+/// <para><b>The unasked-for moment is the mod's first chosen save profile, and that is
+/// not an accident.</b> A player pressing Remove on the settings row is the other
+/// moment and answers to none of what follows: it is a person acting, through
+/// <see cref="PurgeNow"/>, and it happens where they pressed. It cannot be mod start: the game has no chosen save profile then, so
 /// the store cannot yet say whose files these are, and asking it throws. That is the
 /// whole of the condition - whether the engine layer could adopt this game is a
 /// different question, and a player who asked for their runs to be removed is answered
@@ -87,6 +92,59 @@ internal static class RecordingRetention
             }
 
             Applied.Add(root);
+        }
+    }
+
+    /// <summary>
+    /// What the player's recorded runs are on this disk right now: how many, what they
+    /// take, and the policy standing over them.
+    ///
+    /// Here because this is already the one place that knows where recordings live and
+    /// which files each is made of. A settings row that listed the directory itself
+    /// would be a second thing to keep in step with the removal, and the two would be
+    /// read a frame apart.
+    ///
+    /// It measures the files <see cref="RecordingLibrary"/> recognises and no others, so
+    /// the figure is what this mod's own runs occupy rather than what is in the
+    /// directory - a file a player put there themselves is not this mod's to count, for
+    /// the same reason it is not this mod's to delete.
+    /// </summary>
+    internal static MyRunsFacts OnDisk()
+    {
+        var recordings = RecordingLibrary.Index(
+            RunmobileStore.ListFileNames(RunRecorder.RecordingsDirectory));
+        var bytes = recordings
+            .SelectMany(recording => recording.FileNames)
+            .Sum(file => RunmobileStore.SizeOf($"{RunRecorder.RecordingsDirectory}/{file}"));
+
+        return new MyRunsFacts(recordings.Count, bytes, RunmobileSettings.Read().KeepRecentRuns);
+    }
+
+    /// <summary>
+    /// Removes every recorded run, now, because the player just asked for it on a
+    /// screen - and returns how many went.
+    ///
+    /// The same operation as a purge requested in the file, reached the other way
+    /// round. It is written to the file first and applied second, so a game that stops
+    /// in between finishes at the next main menu rather than forgetting that anybody
+    /// asked; <see cref="Apply"/> then takes the request back out, which is what stops
+    /// it repeating for ever.
+    ///
+    /// Not behind the once-per-profile latch <see cref="ApplyOnce"/> keeps, and not
+    /// latching one: that latch is there so a standing policy is applied once as a
+    /// profile is entered, and this is a person pressing a control. It refuses rather
+    /// than approximating - the store, the settings file and the game's answer about the
+    /// continuable run all throw here rather than returning a guess - so the row that
+    /// called it can say nothing happened instead of showing a receipt for work that did
+    /// not happen.
+    /// </summary>
+    internal static int PurgeNow()
+    {
+        lock (Gate)
+        {
+            var continuable = ContinuableRun.StartedUtc();
+            RunmobileSettings.RequestPurge();
+            return Apply(RunmobileSettings.Read() with { PurgeMyRuns = true }, continuable);
         }
     }
 

@@ -58,6 +58,7 @@ Those identifiers are local path scoping and nothing else: no platform directory
 
 `RunmobileStore` is the only thing in the mod that writes at all: it takes the root from the game's own `ProjectSettings.GlobalizePath`, requires that root to resolve inside `user://` by the same containment rule, so a `Runmobile` directory that is a symlink elsewhere is refused rather than followed out of the ledger's reach, checks every path against that root with `PathContainment.RequireContained`, refuses any path with a `Steam`, `steamapps` or `Slay the Spire 2` component, and writes a whole file through a temporary sibling and a move so a crash leaves the previous file rather than half of a new one.
 Removing is a write and goes through the same gate: `RunmobileStore.Remove` names one file at a time and refuses a directory, so the one operation here that cannot be undone can never reach the store's own root.
+Reading goes through it too, `RunmobileStore.SizeOf` included - the settings row's size figure is a sum over entries the store named, not over a directory somebody listed.
 Which files it is asked for is `RecordingRetention`'s, deliberately somewhere else - see "Keeping runs, and removing them" below.
 One call in the mod reaches a game API that can write inside the player's *save* directory, and it is `ContinuableRun`: `SaveManager.LoadRunSave` goes through `MigrationManager.LoadSave`, which renames a corrupt run save to a `.corrupt` path and leaves a `.pre-repair` sibling where it repairs JSON.
 It is safe here for a reason that is about *when* it is called rather than what it does, and that reason is written out in `ContinuableRun`'s own docstring; a second caller does not inherit it.
@@ -745,7 +746,8 @@ A negative number is refused with a logged sentence naming the file and the valu
 Removing nothing survives only as an internal answer for a settings file this build cannot read - a sentence nobody could read is not somebody asking for their runs to be deleted, so recording off and deleting nothing fail in the same direction.
 
 `purge_my_runs` is the one-shot act: every recorded run is removed, and then the mod writes the member back to `false` so a purge is something a player did rather than a state they are left in.
-It is the only member of that file the mod ever writes: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
+`keep_recent_runs` and `purge_my_runs` are the two members the mod writes, and each write edits the member it names: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
+A file that is there and is not a settings object is refused rather than written over, because reading one already means "record nothing" and overwriting it would discard what the player wrote in order to store what they meant to add to it.
 `godot.log` carries the receipt either way - `purged your recorded runs: N removed` for the act, `keeping your 50 most recent runs: N older one(s) removed` for the policy.
 
 Three properties hold, and each is asserted rather than described.
@@ -758,6 +760,31 @@ Retention runs whether or not the adoption succeeded, and where adoption is neve
 So a build where the Combat Trainer and the recorder both decline, and a build the engine layer refuses to adopt, both still honour a purge and still enforce `keep_recent_runs`.
 The policy is applied once per save profile rather than once per process: the store is resolved per operation and two profiles do not share a library, so a player who switches profile has their second profile's `settings.json` honoured against their second profile's recordings.
 It cannot be mod start: the game has no chosen save profile then, so the store cannot yet say whose files these are.
+
+### The settings row, and the size figure
+
+Both members have a control now, and the whole of it is one row: `MyRunsSettingsRow` in the mod, drawn from `MyRunsRow` in `Sts2PilotTrainer.Trainer`, wired to the disk by `MyRunsSettings`.
+It is a row and not a section.
+Where Runmobile's settings section hangs - `%ModdingButton` is the game's own modding entry point, and there is no Mods tab to extend - belongs to the run library along with everything else in it; this is one thing that section places, built whole so that placing it is all there is to do.
+Keeping it apart is also what lets it be assembled and asserted on in a process with no game, which `MyRunsSettingsRowTests` does node by node.
+
+What it reads is a sum, and the sum goes through the containment gate.
+`RunmobileStore.SizeOf` measures one entry through `PathOf`, exactly as `Read` does, and refuses a directory the way `Remove` does; a file that is not there occupies nothing, so a run removed between the listing and the measuring is not a hole in the figure.
+`RecordingRetention.OnDisk` is what sums it, because that is already the one place that knows where recordings live and which files each is made of - a surface that listed the directory for itself would be a second thing to keep in step with the removal.
+It measures only what `RecordingLibrary` recognises, so the figure is what this mod's own runs take rather than what is in the directory.
+
+`MyRunsRow.For` derives every line, the same way `PlaybackTransport.For` derives the transport, and for the same reason: the policy's number, the disk's number and what a removal just did are three facts that can disagree, and a surface where each control set its own label would eventually show a reading taken before an act beside a receipt taken after it.
+The reading after a removal is re-taken from the disk rather than predicted, so a purge that left the continuable run's journal behind reads as the one run it actually left.
+A failure - the store not ready, a settings file this build will not write over, a disk that refused - goes to the log and leaves the row saying what it said, because a receipt is a claim that something happened.
+
+Pressing Remove is `RecordingRetention.PurgeNow`, which writes the request to the file first and removes second, so a game that stops in between finishes at the next main menu.
+It is not behind the once-per-profile latch and does not set one: that latch exists so a standing policy is applied once as a profile is entered, and this is a person pressing a control.
+The confirmation is the game's own `NGenericPopup`, the one the eligibility screen uses, with the way out focused.
+
+Two deliberate departures from the design, both presentation rather than wording.
+The keep control is a stepper where the design says slider: Godot draws a slider's grabber from a theme *icon*, so a slider here would wear the engine's default grey on a screen made of torn stone or need art this mod does not ship, and the game's own `NSettingsSlider` cannot be had outside the settings scene it lives in.
+The label, the numeral and the note are exactly as the design settles them.
+And the numeral shows what the player's file says even where the control cannot reach it: a file that keeps zero is a standing purge and a row reading "1" over it would misstate the policy, so the numeral is the truth and the control is only how far a press reaches.
 
 The one recording retention never names is the run the game can currently Continue, and neither a cap nor a purge removes its journal.
 A run whose journal went missing under it is one the recorder picks up again at its next room and records as a run it watched from the start, which is a claim about what was observed that nobody established - and that is worse than a purge which leaves one file, so the file stays and the log says it was left.

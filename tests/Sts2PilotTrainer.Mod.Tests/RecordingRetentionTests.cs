@@ -303,6 +303,129 @@ public sealed class RecordingRetentionTests : IDisposable
         Assert.Empty(RunmobileStore.ListFileNames(Recordings));
     }
 
+    // ── What the settings row reads, and what pressing it does ─────────────
+
+    /// <summary>
+    /// The reading the settings row shows: runs rather than files, measured over the
+    /// files each run is made of, with the standing policy beside it.
+    /// </summary>
+    [Fact]
+    public void TheReadingCountsRunsAndMeasuresTheirFiles()
+    {
+        WriteSettings(keep: 20);
+        RunmobileStore.Write($"{Recordings}/{Older}{RunJournal.FileExtension}", new string('j', 100));
+        RunmobileStore.Write($"{Recordings}/{Older}{RecordingLibrary.ManifestExtension}", new string('m', 40));
+        RunmobileStore.Write($"{Recordings}/{Newest}{RunJournal.FileExtension}", new string('j', 60));
+
+        var facts = RecordingRetention.OnDisk();
+
+        Assert.Equal(2, facts.Runs);
+        Assert.Equal(200, facts.Bytes);
+        Assert.Equal(20, facts.Keep);
+        Assert.Null(facts.RemovedJustNow);
+    }
+
+    /// <summary>
+    /// A file nobody recorded is not counted, for the same reason it is not removed:
+    /// the figure is what this mod's own runs take, not what is in the directory.
+    /// </summary>
+    [Fact]
+    public void TheReadingIgnoresWhatIsNotARecordedRun()
+    {
+        Record(Older);
+        RunmobileStore.Write($"{Recordings}/notes.txt", new string('x', 5000));
+
+        Assert.Equal(1, RecordingRetention.OnDisk().Runs);
+        Assert.Equal(4, RecordingRetention.OnDisk().Bytes);
+    }
+
+    [Fact]
+    public void TheReadingOfAnEmptyStoreIsNothing()
+    {
+        var facts = RecordingRetention.OnDisk();
+
+        Assert.Equal(0, facts.Runs);
+        Assert.Equal(0, facts.Bytes);
+    }
+
+    /// <summary>
+    /// Pressing Remove writes the request before it removes anything, so a game that
+    /// stops in between finishes at the next main menu - and clears it afterwards, so
+    /// the act does not repeat for ever.
+    /// </summary>
+    [Fact]
+    public void PressingRemoveTakesEveryRunAndLeavesNoStandingRequest()
+    {
+        WriteSettings(keep: 50);
+        Record(Older);
+        Record(Newer);
+        Record(Newest);
+
+        Assert.Equal(3, RecordingRetention.PurgeNow());
+
+        Assert.Empty(RunmobileStore.ListFileNames(Recordings));
+        Assert.False(RunmobileSettings.Read().PurgeMyRuns);
+        Assert.Equal(50, RunmobileSettings.Read().KeepRecentRuns);
+    }
+
+    /// <summary>A player who never wrote a settings file can still press Remove: the
+    /// request has to go somewhere, so the defaults are written with it.</summary>
+    [Fact]
+    public void PressingRemoveWorksWithNoSettingsFileYet()
+    {
+        Record(Older);
+
+        Assert.Equal(1, RecordingRetention.PurgeNow());
+
+        Assert.Empty(RunmobileStore.ListFileNames(Recordings));
+        Assert.False(RunmobileSettings.Read().PurgeMyRuns);
+    }
+
+    /// <summary>The run the game can still continue survives the pressed act exactly as
+    /// it survives the requested one, and the count is of what actually went.</summary>
+    [Fact]
+    public void PressingRemoveLeavesTheRunTheGameCanStillContinue()
+    {
+        RunmobileStore.Write($"{Recordings}/{Newest}{RunJournal.FileExtension}", "{}");
+        Record(Older);
+        ContinuableRun.UseReaderForTesting(() => StartOf(Newest));
+
+        Assert.Equal(1, RecordingRetention.PurgeNow());
+
+        Assert.Equal([$"{Newest}.journal.jsonl"], RunmobileStore.ListFileNames(Recordings));
+    }
+
+    /// <summary>
+    /// Pressing Remove is not the once-per-profile policy and does not latch it. A
+    /// player who presses it, plays another run and presses it again gets the second
+    /// run removed too.
+    /// </summary>
+    [Fact]
+    public void PressingRemoveIsNotLatchedByTheOncePerProfilePolicy()
+    {
+        Record(Older);
+        Assert.Equal(1, RecordingRetention.PurgeNow());
+
+        Record(Newest);
+        Assert.Equal(1, RecordingRetention.PurgeNow());
+        Assert.Empty(RunmobileStore.ListFileNames(Recordings));
+    }
+
+    /// <summary>
+    /// A settings file this build will not write over stops the act before anything is
+    /// deleted. A removal that went ahead having failed to record that it was asked for
+    /// would be one nothing could finish after a crash.
+    /// </summary>
+    [Fact]
+    public void PressingRemoveOnAFileThisBuildWillNotWriteOverRemovesNothing()
+    {
+        RunmobileStore.Write(RunmobileSettings.FileName, "[]");
+        Record(Older);
+
+        Assert.ThrowsAny<Exception>(() => RecordingRetention.PurgeNow());
+        Assert.Equal(2, RunmobileStore.ListFileNames(Recordings).Count);
+    }
+
     private static DateTime StartOf(string runId) => RecordingLibrary.StartedUtc(runId)!.Value;
 
     private static readonly DateTime? NoContinuableRun = null;

@@ -1,0 +1,194 @@
+namespace Sts2PilotTrainer.Trainer.Tests;
+
+/// <summary>
+/// What the settings row says about the player's own runs.
+///
+/// The derivation is pure, so everything the row can ever read is reachable here: each
+/// of the three second lines, both ends of the size figure, the refusal with nothing to
+/// remove, and the receipt that follows a purge which could not take everything.
+///
+/// Two of these are about the vocabulary rather than about arithmetic, and they are
+/// here because a wrong word on this row is the defect nothing else would catch. The
+/// row says <em>runs</em>: journal, manifest and recording are this project's internal
+/// names, and a player has never heard any of them.
+/// </summary>
+public sealed class MyRunsRowTests
+{
+    private const long Mb = 1024L * 1024L;
+
+    [Fact]
+    public void TheReadingIsHowManyRunsAndWhatTheyTake()
+    {
+        var row = MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: 6 * Mb, Keep: 50));
+
+        Assert.Equal("12 runs · 6 MB", row.Reading);
+        Assert.Equal("on this computer, in user://Runmobile/recordings", row.Detail);
+    }
+
+    /// <summary>
+    /// A count of one reads as one. The design writes every count as a template, and a
+    /// row reading "1 runs" is the template showing through to the player.
+    /// </summary>
+    [Fact]
+    public void OneRunIsSingular()
+    {
+        var row = MyRunsRow.For(new MyRunsFacts(Runs: 1, Bytes: 40 * 1024, Keep: 50));
+
+        Assert.Equal("1 run · 40 KB", row.Reading);
+    }
+
+    [Fact]
+    public void AnEmptyLibraryReadsAsNothingAndRefusesTheControl()
+    {
+        var row = MyRunsRow.For(new MyRunsFacts(Runs: 0, Bytes: 0, Keep: 50));
+
+        Assert.Equal("0 runs · 0 MB", row.Reading);
+        Assert.False(row.RemovePressable);
+    }
+
+    [Fact]
+    public void TheControlIsOfferedAsSoonAsThereIsSomethingToRemove()
+    {
+        Assert.True(MyRunsRow.For(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 50)).RemovePressable);
+    }
+
+    /// <summary>
+    /// A policy standing below what is on the disk says so on the row, which is the
+    /// design's rule that the standing act is as visible as the immediate one.
+    /// </summary>
+    [Fact]
+    public void APolicyBelowTheCountSaysHowManyWillGo()
+    {
+        var row = MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: 6 * Mb, Keep: 5));
+
+        Assert.Equal(
+            "7 older runs will be removed at the main menu · user://Runmobile/recordings", row.Detail);
+    }
+
+    [Fact]
+    public void APolicyAboveTheCountSaysNothingAboutRemoving()
+    {
+        var row = MyRunsRow.For(new MyRunsFacts(Runs: 3, Bytes: Mb, Keep: 50));
+
+        Assert.Equal("on this computer, in user://Runmobile/recordings", row.Detail);
+    }
+
+    /// <summary>
+    /// The receipt beats the warning: the removal already happened, and what the policy
+    /// will do at the next main menu is the smaller news.
+    /// </summary>
+    [Fact]
+    public void AReceiptIsWhatTheRowSaysAfterAPurge()
+    {
+        var row = MyRunsRow.For(new MyRunsFacts(Runs: 0, Bytes: 0, Keep: 5, RemovedJustNow: 12));
+
+        Assert.Equal("0 runs · 0 MB", row.Reading);
+        Assert.Equal("12 runs removed just now · user://Runmobile/recordings", row.Detail);
+    }
+
+    /// <summary>
+    /// A purge leaves the run the game can still continue, so the reading afterwards is
+    /// the one run that is still there rather than the zero that was asked for. The
+    /// receipt and the reading are two different facts and the row states both.
+    /// </summary>
+    [Fact]
+    public void APurgeThatCouldNotTakeEverythingStillReadsAsWhatIsLeft()
+    {
+        var row = MyRunsRow.For(new MyRunsFacts(Runs: 1, Bytes: 90 * 1024, Keep: 50, RemovedJustNow: 11));
+
+        Assert.Equal("1 run · 90 KB", row.Reading);
+        Assert.Equal("11 runs removed just now · user://Runmobile/recordings", row.Detail);
+    }
+
+    /// <summary>Zero removed is a real answer: somebody pressed Remove and is owed the
+    /// receipt whether or not there was anything to take.</summary>
+    [Fact]
+    public void APurgeThatFoundNothingStillSaysSo()
+    {
+        var row = MyRunsRow.For(new MyRunsFacts(Runs: 0, Bytes: 0, Keep: 50, RemovedJustNow: 0));
+
+        Assert.Equal("0 runs removed just now · user://Runmobile/recordings", row.Detail);
+    }
+
+    /// <summary>
+    /// The figure follows the magnitude. A single run in megabytes rounds to nothing
+    /// while the row says there is one, and a full library in kilobytes is a number
+    /// nobody can weigh.
+    /// </summary>
+    [Theory]
+    [InlineData(0L, "0 MB")]
+    [InlineData(1L, "1 KB")]
+    [InlineData(40L * 1024, "40 KB")]
+    [InlineData(1024L * 1024, "1 MB")]
+    [InlineData((long)(1.55 * 1024 * 1024), "1.5 MB")]
+    [InlineData(120L * 1024 * 1024, "120 MB")]
+    [InlineData(3L * 1024 * 1024 * 1024, "3 GB")]
+    public void TheSizeIsReadInTheUnitThatCarriesIt(long bytes, string expected)
+    {
+        Assert.Equal(expected, MyRunsRow.Size(bytes));
+    }
+
+    /// <summary>A policy nobody could read names nothing, the same way the retention
+    /// owner's own sentinel does: an unreadable file is not somebody asking for their
+    /// runs to be deleted.</summary>
+    [Fact]
+    public void AnUnreadablePolicyIsPendingOnNothing()
+    {
+        Assert.Equal(0, MyRunsRow.Pending(runs: 12, keep: -1));
+    }
+
+    /// <summary>
+    /// The row is written in the player's noun. Every internal name for the same thing
+    /// stays internal.
+    ///
+    /// The directory is the one place an internal name is on the surface, and it is
+    /// there on purpose: it is a path a player can open, not a word for a run. It is
+    /// taken out before the sentence is judged rather than left to weaken the rule.
+    /// </summary>
+    [Theory]
+    [InlineData("recording")]
+    [InlineData("journal")]
+    [InlineData("manifest")]
+    public void NoInternalNameForARunReachesTheRow(string internalName)
+    {
+        var row = MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: 6 * Mb, Keep: 5, RemovedJustNow: 3));
+
+        foreach (var line in new[]
+                 {
+                     row.Reading, row.Detail, row.KeepLabel, row.KeepNote, row.RemoveLabel,
+                     row.Confirm.Title, row.Confirm.Body, row.Confirm.Remove, row.Confirm.Keep,
+                 })
+        {
+            var prose = line.Replace("user://Runmobile/recordings", string.Empty, StringComparison.Ordinal);
+            Assert.DoesNotContain(internalName, prose, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public void ThePolicyCarriesTheSettledLabel()
+    {
+        var row = MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: 6 * Mb, Keep: 5));
+
+        Assert.Equal("Keep my runs", row.KeepLabel);
+        Assert.Equal("5", row.KeepNumeral);
+        Assert.Equal("keeps the newest; older ones are removed at the main menu", row.KeepNote);
+    }
+
+    /// <summary>
+    /// The confirmation names what goes and what does not. The second half is the claim
+    /// the store's containment rule is what keeps: a save, a profile and run history are
+    /// not files this removal can name.
+    /// </summary>
+    [Fact]
+    public void TheConfirmationNamesWhatGoesAndWhatIsLeftAlone()
+    {
+        var confirm = MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: 6 * Mb, Keep: 5)).Confirm;
+
+        Assert.Equal("Remove all your runs?", confirm.Title);
+        Assert.Equal(
+            "12 runs, 6 MB, recorded by Runmobile. Your saves, profile and run history are not touched.",
+            confirm.Body);
+        Assert.Equal("Remove", confirm.Remove);
+        Assert.Equal("Keep them", confirm.Keep);
+    }
+}

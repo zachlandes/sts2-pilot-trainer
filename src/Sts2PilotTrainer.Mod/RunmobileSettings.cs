@@ -11,10 +11,12 @@ namespace Sts2PilotTrainer.Mod;
 /// What the player has told Runmobile to do, read from
 /// <c>settings.json</c> in the store.
 ///
-/// A file rather than a screen, for now. The settings surface belongs with the rest of
-/// Runmobile's own drawing, and until that exists a player who wants the recorder off,
-/// or their recordings gone, edits one line - which is the honest shape of a control
-/// that has no screen yet rather than a control nobody can find.
+/// The file is the record and a screen is a way of editing it. Two of these members
+/// have a control now - <c>MyRunsSettingsRow</c> draws the standing policy and the act -
+/// and both go through the writers below rather than keeping a second copy of the
+/// answer, so a player who edits the file by hand and a player who moves the control
+/// are saying the same thing in the same place. Whether to record has no control yet
+/// and is a line in this file.
 ///
 /// Recording is on by default because the recorder is not released to players before
 /// that surface is: the default is what the person building this wants while it is
@@ -24,9 +26,13 @@ namespace Sts2PilotTrainer.Mod;
 /// to record is a standing choice. How many runs to keep is a standing policy, and it
 /// has a default rather than being unbounded because the recorder writes a real file
 /// per run and nothing else ever removed one. Asking for every run to be removed is a
-/// one-shot act, so it is the one member this mod writes back: it is honoured once and
-/// then set to false, which is both how it stops repeating and how a player sees that
-/// it happened.
+/// one-shot act: it is honoured once and then set to false, which is both how it stops
+/// repeating and how a player sees that it happened.
+///
+/// Every write here edits the member it names and leaves the rest of the document as
+/// the player wrote it. That is not tidiness: the rest of the file is their own text,
+/// including values this build refuses, and a mod that re-serialised the whole document
+/// from this record would silently correct sentences it was never asked about.
 ///
 /// It carries a schema string and refuses an unrecognised one, like every other file
 /// under <see cref="RunmobileStore"/>. A settings file this build cannot read is not
@@ -73,9 +79,10 @@ internal sealed record RunmobileSettings
     /// <summary>
     /// Remove every run this mod has recorded, once.
     ///
-    /// The player's control over their own disk, and the one member of this file the
-    /// mod writes back: it acts at the next singleplayer menu with a save profile
-    /// chosen, and is then set to false in the file, so it is a thing a player does rather than a
+    /// The player's control over their own disk. It acts at the next singleplayer menu
+    /// with a save profile chosen - or there and then, when the settings row is what
+    /// asked - and is set to false in the file afterwards either way, so it is a thing a
+    /// player does rather than a
     /// state they are left in. It removes the recordings and nothing else - not a save,
     /// not a profile, not run history, and not a file in this mod's own store that no
     /// recording is made of.
@@ -173,6 +180,78 @@ internal sealed record RunmobileSettings
         if (JsonNode.Parse(json) is not JsonObject settings) return;
 
         settings["purge_my_runs"] = false;
+        RunmobileStore.Write(FileName, settings.ToJsonString(ManifestJson.Options) + "\n");
+    }
+
+    /// <summary>
+    /// Records that the player has asked for every run to go, so that the act survives
+    /// the game stopping in the middle of it.
+    ///
+    /// The other direction of the one member this mod writes, and the reason it is
+    /// written before anything is deleted rather than instead of deleting: the settings
+    /// screen removes the runs there and then, and a game that died between the two
+    /// finishes at the next main menu, which is the direction a player who pressed
+    /// Remove wants it to fail in. <see cref="ClearPurgeRequest"/> takes it back out
+    /// afterwards.
+    /// </summary>
+    internal static void RequestPurge() => Set("purge_my_runs", true);
+
+    /// <summary>
+    /// Writes the player's standing policy, in runs.
+    ///
+    /// Refused rather than clamped outside the range the control offers: a caller
+    /// asking to keep a negative number of runs is a caller with a bug, and
+    /// <see cref="Read"/> already has an answer for a <em>file</em> that says one.
+    /// </summary>
+    internal static void SetKeepRecentRuns(int keep)
+    {
+        if (keep < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(keep), keep, "A policy keeps a number of runs, and a negative is not one.");
+        }
+
+        Set("keep_recent_runs", keep);
+    }
+
+    /// <summary>
+    /// Writes one member of the player's file and leaves every other one exactly as
+    /// they wrote it.
+    ///
+    /// The file is edited rather than re-serialised from this record, for the reason
+    /// <see cref="ClearPurgeRequest"/> gives: the rest of it is the player's own text,
+    /// refused values included, and a build that rewrote the whole document would
+    /// quietly correct sentences it was never asked about. A player who has written
+    /// nothing yet gets the defaults with this one member set, because there has to be
+    /// somewhere to put the answer.
+    ///
+    /// A file that is there and is not a JSON object is refused. <see cref="Read"/>
+    /// already treats an unreadable file as "record nothing", and overwriting it here
+    /// would be this mod discarding something a player wrote in order to store
+    /// something they meant to add to it.
+    /// </summary>
+    private static void Set(string member, JsonNode value)
+    {
+        var json = RunmobileStore.Read(FileName);
+        JsonObject settings;
+        if (json is null)
+        {
+            settings = new JsonObject
+            {
+                ["schema"] = Schema,
+                ["record_my_runs"] = Default.RecordMyRuns,
+                ["keep_recent_runs"] = Default.KeepRecentRuns,
+                ["purge_my_runs"] = false,
+            };
+        }
+        else
+        {
+            settings = JsonNode.Parse(json) as JsonObject
+                ?? throw new ManifestException(
+                    $"{FileName} is not a settings object, so Runmobile will not write over it.");
+        }
+
+        settings[member] = value;
         RunmobileStore.Write(FileName, settings.ToJsonString(ManifestJson.Options) + "\n");
     }
 }
