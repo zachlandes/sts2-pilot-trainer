@@ -227,15 +227,19 @@ internal static class LibraryScreen
     }
 
     /// <summary>
-    /// Runs a row's action with the modal taken down first.
+    /// Takes down whatever this module has up.
     ///
-    /// The screen a row opens is another modal, and the container holds one: opening
-    /// the next while this one is up would leave the two stacked with the old one
-    /// taking the input.
+    /// The container holds one screen: opening the next while this one is up would
+    /// leave the two stacked with the old one taking the input. Every way in calls
+    /// this first, rows and the run-code field alike, and this is the only place that
+    /// knows which container it is.
     /// </summary>
+    internal static void Dismiss() => NModalContainer.Instance?.Clear();
+
+    /// <summary>Runs a row's action with the modal taken down first.</summary>
     private static void Press(ScreenRow row)
     {
-        NModalContainer.Instance?.Clear();
+        Dismiss();
         try
         {
             row.Press();

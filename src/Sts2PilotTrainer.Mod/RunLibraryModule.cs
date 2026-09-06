@@ -1,3 +1,4 @@
+using System.Reflection;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Engine;
@@ -119,8 +120,9 @@ internal sealed class RunLibraryModule : IRunmobileModule
 /// "come back when a verdict for {build} arrives".</item>
 /// <item>A recording made on <em>this</em> build is checked here, against the same
 /// preflight the entry itself will apply, over the same supplied progress model. A
-/// pass is <see cref="RunVerdict.Passed"/> and anything else is
-/// <see cref="RunVerdict.Failed"/>.</item>
+/// pass is <see cref="RunVerdict.Passed"/>, a mismatch is
+/// <see cref="RunVerdict.Failed"/>, and a reading that could not be taken at all is
+/// <see cref="RunVerdict.Unjudged"/>.</item>
 /// </list>
 ///
 /// It computes nothing of its own. Every field it reads is
@@ -133,9 +135,11 @@ internal static class RunVerdicts
     /// This build's verdict on one recording.
     ///
     /// A game this process cannot read is not a game that can approve anything, so a
-    /// failure to read is <see cref="RunVerdict.Absent"/> rather than a refusal: the
+    /// failure to read is <see cref="RunVerdict.Unjudged"/> rather than a refusal: the
     /// library then lists nothing and says how many it did not list, which is honest
-    /// and leaves the run findable by its code.
+    /// and leaves the run findable by its code. Its own answer rather than
+    /// <see cref="RunVerdict.Absent"/>, because a verdict nobody could reach and a
+    /// verdict that does not exist are different facts, and the run code says which.
     /// </summary>
     internal static RunVerdict For(ReplayManifest recording, string thisBuild)
     {
@@ -158,7 +162,7 @@ internal static class RunVerdicts
             Log.Error(
                 $"[{RunmobileMod.ModId}] could not judge {recording.RunId} against this game, so it has no " +
                 $"verdict here: {ex.GetType().Name}: {ex.Message}", 2);
-            return RunVerdict.Absent;
+            return RunVerdict.Unjudged;
         }
     }
 }
@@ -174,28 +178,75 @@ internal static class RunVerdicts
 /// </summary>
 internal static class PatchTargets
 {
+    /// <summary>
+    /// Every member these patch classes hang on, as Harmony would resolve it, named
+    /// <c>Type.Method</c>.
+    ///
+    /// Both declaration styles are read here rather than one: a class attribute may
+    /// carry the type and the method name together, the way the recorder writes them,
+    /// or carry the type alone with the method name on each patched method, the way the
+    /// library's two classes are written. Reading only the first said nothing at all
+    /// about the second, on every build.
+    /// </summary>
+    internal static IReadOnlyList<string> Targets(IReadOnlyList<Type> patchClasses)
+    {
+        var targets = new List<string>();
+        foreach (var patchClass in patchClasses)
+        {
+            var onClass = Infos(patchClass);
+            var declaring = onClass.Select(info => info.declaringType).FirstOrDefault(type => type is not null);
+
+            foreach (var info in onClass.Concat(patchClass
+                         .GetMethods(BindingFlags.Static | BindingFlags.Instance |
+                                     BindingFlags.Public | BindingFlags.NonPublic)
+                         .SelectMany(Infos)))
+            {
+                var type = info.declaringType ?? declaring;
+                if (type is null || info.methodName is null) continue;
+
+                var name = $"{type.Name}.{info.methodName}";
+                if (!targets.Contains(name, StringComparer.Ordinal)) targets.Add(name);
+            }
+        }
+
+        return targets;
+    }
+
     internal static IEnumerable<string> Unresolvable(IReadOnlyList<Type> patchClasses)
     {
         foreach (var patchClass in patchClasses)
         {
-            foreach (var patch in patchClass.GetCustomAttributes(typeof(HarmonyPatch), inherit: false)
-                         .OfType<HarmonyPatch>()
-                         .Select(attribute => attribute.info)
-                         .Where(info => info.declaringType is not null && info.methodName is not null))
+            var onClass = Infos(patchClass);
+            var declaring = onClass.Select(info => info.declaringType).FirstOrDefault(type => type is not null);
+
+            foreach (var info in onClass.Concat(patchClass
+                         .GetMethods(BindingFlags.Static | BindingFlags.Instance |
+                                     BindingFlags.Public | BindingFlags.NonPublic)
+                         .SelectMany(Infos)))
             {
-                if (Resolves(patch)) continue;
+                var type = info.declaringType ?? declaring;
+                if (type is null || info.methodName is null) continue;
+                if (Resolves(type, info)) continue;
+
                 yield return
-                    $"{patch.declaringType!.Name}.{patch.methodName} is absent from this build, so the " +
+                    $"{type.Name}.{info.methodName} is absent from this build, so the " +
                     "surface that hangs on it would not appear.";
             }
         }
     }
 
-    private static bool Resolves(HarmonyMethod patch)
+    private static IReadOnlyList<HarmonyMethod> Infos(MemberInfo member) =>
+        [
+            .. member.GetCustomAttributes(typeof(HarmonyPatch), inherit: false)
+                .OfType<HarmonyPatch>()
+                .Select(attribute => attribute.info),
+        ];
+
+    private static bool Resolves(Type declaringType, HarmonyMethod patch)
     {
         try
         {
-            return AccessTools.Method(patch.declaringType!, patch.methodName, patch.argumentTypes) is not null;
+            return AccessTools.Method(declaringType, patch.methodName, patch.argumentTypes) is not null;
         }
         catch (Exception)
         {

@@ -240,6 +240,62 @@ public sealed class RunBrowserTests
         Assert.NotEqual(LibraryCopy.LookupRefusedMultiplayer, answer.Body);
     }
 
+    /// <summary>
+    /// A verdict nobody could reach is a third fact again: not a verdict that failed,
+    /// and not a build this game is not.
+    /// </summary>
+    [Fact]
+    public void ACodeForARunThisGameCouldNotJudgeSaysThatAndNoneOfTheOthers()
+    {
+        var answer = RunBrowser.Lookup("unread", [Run("unread", verdict: RunVerdict.Unjudged)], Build);
+
+        Assert.Equal(LookupOutcome.CouldNotJudge, answer.Outcome);
+        Assert.Equal(LibraryCopy.LookupRefusedTitle, answer.Title);
+        Assert.Equal(LibraryCopy.LookupRefusedUnjudged, answer.Body);
+        Assert.Equal(LibraryCopy.LookupRefusedUnjudgedNote, answer.Note);
+        Assert.DoesNotContain(Build, answer.Body, StringComparison.Ordinal);
+        Assert.NotEqual(LibraryCopy.LookupRefusedNoLongerMatches, answer.Body);
+        Assert.NotEqual(LibraryCopy.LookupRefusedMultiplayer, answer.Body);
+    }
+
+    /// <summary>A run this game could not judge is no more in the list than one whose
+    /// verdict failed.</summary>
+    [Fact]
+    public void ARunThisGameCouldNotJudgeIsNotInTheList()
+    {
+        var browser = RunBrowser.For(
+            LibraryTab.Community,
+            [Run("shown"), Run("unread", verdict: RunVerdict.Unjudged)],
+            Build);
+
+        Assert.Equal(["shown"], Listed(browser).Select(run => run.RunId));
+        Assert.Equal(1, browser.NotShown);
+    }
+
+    /// <summary>
+    /// The intent names one exception to newest-first and it is Featured. The shipped
+    /// group is sorted like the rest; the curated one keeps the order it arrived in.
+    /// </summary>
+    [Fact]
+    public void EveryGroupButFeaturedIsNewestFirst()
+    {
+        var older = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var newer = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
+        var browser = RunBrowser.For(
+            LibraryTab.Community,
+            [
+                Run("shipped-old", RunOrigin.Included, recorded: older),
+                Run("shipped-new", RunOrigin.Included, recorded: newer),
+                Run("curated-old", RunOrigin.Featured, recorded: older),
+                Run("curated-new", RunOrigin.Featured, recorded: newer),
+            ],
+            Build);
+
+        Assert.Equal(
+            ["shipped-new", "shipped-old", "curated-old", "curated-new"],
+            Listed(browser).Select(run => run.RunId));
+    }
+
     /// <summary>A multiplayer run stays a multiplayer run whatever its verdict says,
     /// so that answer is reached first.</summary>
     [Fact]

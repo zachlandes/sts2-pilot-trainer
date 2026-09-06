@@ -13,10 +13,9 @@ namespace Sts2PilotTrainer.Trainer;
 /// actions say a fight happened and the absence of a combat-start boundary says it
 /// never finished, which is the difference between "there was no fight here" and
 /// "there is no finished line to compare yours against".</param>
-/// <param name="IsRunStart">Whether this is where the run begins. A run is not
-/// arrived at where it starts, so no floor entry proves it and there is no boundary
-/// to stand somebody at - which is why the floor row here is refused rather than
-/// offered.</param>
+/// <param name="IsRunStart">Whether this is where the run begins. It is a place to
+/// stand and it is the same place "Start the run over" already puts a player, which
+/// is why the floor row is refused rather than offered twice.</param>
 public sealed record RunViewPosition(int Floor, int? Fight, bool Unfinished, bool IsRunStart);
 
 /// <summary>Which offer a row is. Named rather than matched on its label, so the
@@ -26,6 +25,7 @@ public enum RunViewRowKind
     PlayFromFight,
     PlayFromFloor,
     Continue,
+    StartOver,
 }
 
 /// <summary>
@@ -61,8 +61,8 @@ public sealed record RunViewRow(
 /// thing on this screen that is about the person rather than the run.
 ///
 /// <para>Every way in is the one entering verb. "Play from this fight", "Play from
-/// this floor" and "Continue: play from fight N" are three boundaries of the same
-/// journey, not three features.</para>
+/// this floor", "Continue: play from fight N" and "Start the run over" are four
+/// boundaries of the same journey, not four features.</para>
 /// </summary>
 public sealed record RunView(
     string RunId,
@@ -183,6 +183,18 @@ public sealed record RunView(
                 LibraryCopy.ContinueNote,
                 Enabled: true,
                 Fight: next));
+        }
+
+        // Absent for the same reason Continue is: it walks to fight 1's combat start,
+        // and a recording that proves no fight 1 has nowhere for it to come to rest.
+        if (fights.Contains(1))
+        {
+            rows.Add(new RunViewRow(
+                RunViewRowKind.StartOver,
+                LibraryCopy.StartTheRunOver,
+                LibraryCopy.StartTheRunOverNote,
+                Enabled: true,
+                Fight: 1));
         }
 
         return rows;

@@ -23,10 +23,12 @@ public enum RunOrigin
 /// <summary>
 /// Whether a run reproduces on the build being asked about.
 ///
-/// Three answers rather than two, because "nobody has checked" and "somebody checked
-/// and it did not reproduce" are different facts and a surface that collapsed them
-/// would be claiming a check it never saw. Both are hidden from the list; only the
-/// first can change by itself.
+/// Four answers rather than two, because "nobody has checked", "somebody checked and
+/// it did not reproduce" and "this game could not be read to check" are different
+/// facts and a surface that collapsed them would be claiming a check it never saw.
+/// Every answer but a pass is hidden from the list, and each of the three can change
+/// on its own terms - a verdict arriving, the game matching again, the reading
+/// succeeding.
 /// </summary>
 public enum RunVerdict
 {
@@ -35,6 +37,11 @@ public enum RunVerdict
 
     /// <summary>A verdict exists for this build and the run did not reproduce.</summary>
     Failed,
+
+    /// <summary>Recorded on this build, and this game could not be read to judge it.
+    /// Not the same as no verdict existing: nothing was asked of an index, a reading
+    /// this game takes for itself failed.</summary>
+    Unjudged,
 
     /// <summary>A verdict exists for this build and the run reproduced.</summary>
     Passed,

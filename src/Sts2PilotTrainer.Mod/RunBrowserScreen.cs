@@ -161,9 +161,15 @@ internal static class RunBrowserScreen
     /// cannot play says so - which is the only place on this surface such a run is
     /// described at all - and a code that names nothing says that instead of
     /// pretending the run does not exist.
+    ///
+    /// The browser's own modal comes down first, once, because both exits open another
+    /// one and the container holds a single screen - the same rule
+    /// <c>LibraryScreen.Press</c> follows for every row, and this is the one way in that
+    /// does not go through a row.
     /// </summary>
     private static void Look(string code)
     {
+        LibraryScreen.Dismiss();
         var answer = RunBrowser.Lookup(code, RunLibrary.Runs(), RunLibrary.ThisBuild());
         if (!answer.Refused && answer.Run is { } found)
         {

@@ -115,6 +115,25 @@ public sealed class RunLibraryStoreTests : IDisposable
         Assert.Equal(["native-good"], recordings.Select(stored => stored.Recording.RunId));
     }
 
+    /// <summary>
+    /// The Compendium's cheap question and the list it opens are the same walk, so they
+    /// cannot disagree about which runs are listed. Asserted as an equivalence rather
+    /// than as a value, because what is at stake is that one answer never outruns the
+    /// other - not what this particular game's verdicts happen to be.
+    /// </summary>
+    [GameFact]
+    public void TheCheapCheckAnswersExactlyWhenTheListWouldHoldARow()
+    {
+        Assert.Equal(RunLibrary.Runs().Any(run => run.Listed), RunLibrary.HasAnythingToShow());
+
+        Write("native-a-20260906-120000.replay.json", ManifestJson.Serialize(Recording("native-a")));
+        Write("native-b-20260906-130000.replay.json", ManifestJson.Serialize(Recording("native-b")));
+
+        var runs = RunLibrary.Runs();
+        Assert.Contains(runs, run => run.RunId == "native-a");
+        Assert.Equal(runs.Any(run => run.Listed), RunLibrary.HasAnythingToShow());
+    }
+
     [GameFact]
     public void ProgressIsWrittenOnceAndReadBack()
     {
@@ -203,9 +222,42 @@ public sealed class RunLibraryModuleTests
     {
         _ = EngineHost.StartupPhase();
 
+        // Named rather than counted, because an empty refusal list is also what a walk
+        // that found nothing to check returns: both of the library's patch classes put
+        // the type on the class and the method name on the method, and a reader that
+        // saw only class attributes reported them clean on every build.
+        Assert.Equal(
+            [
+                "NCompendiumSubmenu.OnSubmenuOpened",
+                "NCompendiumSubmenu._Ready",
+                "NMapPointHistoryEntry._Ready",
+            ],
+            PatchTargets.Targets(RunLibraryModule.PatchClasses).Order(StringComparer.Ordinal));
         Assert.Empty(PatchTargets.Unresolvable(RunLibraryModule.PatchClasses));
         Assert.True(RunLibraryModule.Instance.Enabled);
         Assert.Null(RunLibraryModule.Instance.Refusal);
+    }
+
+    /// <summary>A member this build does not have is named by whichever of the two
+    /// declaration styles carries it, so a patch class written the library's way is
+    /// checked as well as one written the recorder's.</summary>
+    [GameFact]
+    public void AMethodLevelTargetThisBuildDoesNotHaveIsRefusedByName()
+    {
+        _ = EngineHost.StartupPhase();
+
+        var refusal = Assert.Single(PatchTargets.Unresolvable([typeof(AMethodNobodyHas)]));
+
+        Assert.Contains("NoSuchMethodOnThisBuild", refusal, StringComparison.Ordinal);
+    }
+
+    [HarmonyPatch(typeof(RunLibraryStoreTests))]
+    private static class AMethodNobodyHas
+    {
+        [HarmonyPatch("NoSuchMethodOnThisBuild")]
+        internal static void Postfix()
+        {
+        }
     }
 
     /// <summary>The check is a real reading and not a formality: a patch class naming a

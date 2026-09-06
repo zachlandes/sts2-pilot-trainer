@@ -131,6 +131,23 @@ public static class LibraryCopy
     public const string LookupRefusedNoLongerMatchesNote =
         "It returns to the list when your game matches it again.";
 
+    /// <summary>
+    /// What a run code answers with for a run recorded on this very build that this
+    /// game could not be read to judge.
+    ///
+    /// A verdict nobody could reach is not the same fact as a verdict that does not
+    /// exist, so it gets its own sentence rather than borrowing the build one - which
+    /// would name one build twice and promise a verdict that is not what is missing.
+    /// What went wrong is a line in the log, not something a player reads.
+    /// </summary>
+    public const string LookupRefusedUnjudged =
+        "This run exists. It was recorded on your build, and your game could not be read to say whether " +
+        "it plays.";
+
+    /// <summary>Said under <see cref="LookupRefusedUnjudged"/>: what the run is waiting
+    /// for is a reading, and it is one this game takes again every time.</summary>
+    public const string LookupRefusedUnjudgedNote = "It returns to the list once it can.";
+
     /// <summary>The one refusal with no note: nothing arriving later makes a
     /// multiplayer run into a single-player one.</summary>
     public const string LookupRefusedMultiplayer =
@@ -182,6 +199,20 @@ public static class LibraryCopy
     /// <inheritdoc cref="ChooseAFloor"/>
     public const string ChooseAFloorNote = "pick where in the run to stand";
 
+    /// <summary>
+    /// Walks the recording from its beginning, showing every decision on the game's own
+    /// screens, and comes to rest at the first fight.
+    ///
+    /// The same destination as "Play from this fight" on fight 1's floor, reached two
+    /// ways: one walks the run and one goes straight in. The note says where it ends
+    /// because a row promising run start and landing mid-fight-1 without saying so was
+    /// the row describing somewhere it does not go.
+    /// </summary>
+    public const string StartTheRunOver = "Start the run over";
+
+    /// <inheritdoc cref="StartTheRunOver"/>
+    public const string StartTheRunOverNote = "from run start, every choice shown, ending at fight 1";
+
     /// <summary>One floor on the chooser, and what the recording proves about
     /// it.</summary>
     public static string FloorRow(int floor, int? fight) =>
@@ -197,9 +228,8 @@ public static class LibraryCopy
     /// finished recorded line for a player's own to be set beside.</summary>
     public const string FightNotFinished = "the recording does not reach the end of this fight";
 
-    /// <summary>Why the run's first floor is not a floor to play from: a run is not
-    /// arrived at where it begins, so there is no floor entry to stand anybody
-    /// at.</summary>
+    /// <summary>Why the run's first floor is not a floor to play from: it is where
+    /// starting the run over already puts you.</summary>
     public const string RunStartsHere = "the run starts here";
 
     /// <summary>Said on the floor rows, and only there. From a floor entry nothing is

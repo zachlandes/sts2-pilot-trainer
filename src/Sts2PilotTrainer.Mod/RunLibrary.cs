@@ -27,20 +27,20 @@ namespace Sts2PilotTrainer.Mod;
 /// while the game is running and a list built once would be a list that goes stale the
 /// moment a player finishes a run. It is not a few files: the retention default keeps
 /// fifty recordings, each hundreds of kilobytes, and each costs a deserialization and a
-/// preflight. So <see cref="Runs"/> - which the browser and the run code want whole - is
-/// the expensive one, and <see cref="HasAnythingToShow"/>, which the Compendium asks on
-/// every menu open, walks the same two sources itself and stops at the first listed run.
-/// In the ordinary case that is the shipped recording: one preflight, and not one of the
-/// player's own manifests read. It reaches them only when no shipped recording is
-/// playable on this build, which is the case where the answer genuinely depends on
-/// them.</para>
+/// preflight. So <see cref="HasAnythingToShow"/>, which the Compendium asks on every
+/// menu open, stops at the first listed run. In the ordinary case that is the shipped
+/// recording: one preflight, and not one of the player's own manifests read. It reaches
+/// them only when no shipped recording is playable on this build, which is the case
+/// where the answer genuinely depends on them.</para>
 ///
-/// <para>The two walks are not one lazy walk because they cannot be. An iterator in this
-/// assembly is a compiler-written class whose fields include the element type, and
-/// <c>LibraryRun</c> lives in a sibling the game cannot resolve at the phase it
-/// enumerates these types - <c>ModAssemblyLoadOrderTests</c> refuses it. Both walks read
-/// the same two sources in the same order and ask <c>LibraryRun.Listed</c>, which is
-/// still the one owner of what "listed" means.</para>
+/// <para>It is one walk that stops early rather than a second walk of its own.
+/// <see cref="Gather"/> is the only place a <c>LibraryRun</c> is built from a recording,
+/// so the cheap question and the whole list cannot disagree about source order or about
+/// what a run is - there is nothing to keep in step. A lazy sequence would have been the
+/// obvious shape and is not available here: an iterator in this assembly is a
+/// compiler-written class whose fields include the element type, and <c>LibraryRun</c>
+/// lives in a sibling the game cannot resolve at the phase it enumerates these types,
+/// which <c>ModAssemblyLoadOrderTests</c> refuses.</para>
 /// </summary>
 internal static class RunLibrary
 {
@@ -50,7 +50,18 @@ internal static class RunLibrary
     /// The hidden ones are here on purpose: the numeral under the list counts them, and
     /// a run code finds them. A list filtered before it arrived could do neither.
     /// </summary>
-    internal static IReadOnlyList<LibraryRun> Runs()
+    internal static IReadOnlyList<LibraryRun> Runs() => Gather(stopAtFirstListed: false);
+
+    /// <summary>
+    /// The one walk of the two sources, optionally stopping the moment it has a listed
+    /// run.
+    ///
+    /// The shipped recordings come first, so a caller that only wants to know whether
+    /// anything is playable usually answers without reading a manifest off this
+    /// computer. Stopping early changes how far it gets and nothing about what it built
+    /// on the way, which is what makes the cheap answer and the list the same answer.
+    /// </summary>
+    private static IReadOnlyList<LibraryRun> Gather(bool stopAtFirstListed)
     {
         var build = ThisBuild();
         var progress = RunLibraryStore.ReadProgress();
@@ -63,6 +74,7 @@ internal static class RunLibrary
                 RunOrigin.Included,
                 RunVerdicts.For(included, build),
                 progress.PlayedFrom(included.RunId)));
+            if (stopAtFirstListed && runs[^1].Listed) return runs;
         }
 
         foreach (var stored in RunLibraryStore.MyRecordings())
@@ -73,6 +85,7 @@ internal static class RunLibrary
                 RunVerdicts.For(stored.Recording, build),
                 progress.PlayedFrom(stored.Recording.RunId),
                 recorded: stored.Started));
+            if (stopAtFirstListed && runs[^1].Listed) return runs;
         }
 
         return runs;
@@ -86,31 +99,15 @@ internal static class RunLibrary
     /// run in it was recorded on.
     ///
     /// It stops at the first listed run rather than building the library, which is what
-    /// makes it cheap enough to ask on a menu open at all. The shipped recordings come
-    /// first, so the ordinary answer costs one preflight and reads none of the player's
-    /// own manifests; a build no shipped recording is playable on is the one case where
-    /// the answer really does depend on them.
+    /// makes it cheap enough to ask on a menu open at all. It is the same walk
+    /// <see cref="Runs"/> makes, cut short - so it answers true exactly when the list
+    /// would hold a row, without a second reading of what "listed" means.
     /// </summary>
     internal static bool HasAnythingToShow()
     {
         try
         {
-            var build = ThisBuild();
-            foreach (var included in Included())
-            {
-                if (LibraryRun.From(included, RunOrigin.Included, RunVerdicts.For(included, build)).Listed)
-                {
-                    return true;
-                }
-            }
-
-            foreach (var stored in RunLibraryStore.MyRecordings())
-            {
-                var verdict = RunVerdicts.For(stored.Recording, build);
-                if (LibraryRun.From(stored.Recording, RunOrigin.Mine, verdict).Listed) return true;
-            }
-
-            return false;
+            return Gather(stopAtFirstListed: true).Any(run => run.Listed);
         }
         catch (Exception ex)
         {

@@ -79,9 +79,40 @@ public sealed class RunViewTests
 
         Assert.All(view.Rows, row => Assert.True(row.Enabled));
         Assert.Equal(
-            [RunViewRowKind.PlayFromFight, RunViewRowKind.PlayFromFloor, RunViewRowKind.Continue],
+            [
+                RunViewRowKind.PlayFromFight, RunViewRowKind.PlayFromFloor,
+                RunViewRowKind.Continue, RunViewRowKind.StartOver,
+            ],
             view.Rows.Select(row => row.Kind));
         Assert.Equal(1, view.Rows[0].Fight);
+    }
+
+    /// <summary>
+    /// Starting over walks to fight 1's combat start, so it carries fight 1 - which is
+    /// what makes the row record the pip through the same path every other entering row
+    /// uses, and what makes it the same destination as "Play from this fight" there.
+    /// </summary>
+    [Fact]
+    public void StartingOverNamesFightOneSoItRecordsThePipLikeEveryOtherWayIn()
+    {
+        var view = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 1);
+
+        var startOver = view.Rows.Single(row => row.Kind == RunViewRowKind.StartOver);
+        Assert.Equal(1, startOver.Fight);
+        Assert.Equal(LibraryCopy.StartTheRunOver, startOver.Label);
+        Assert.Equal(LibraryCopy.StartTheRunOverNote, startOver.Note);
+    }
+
+    /// <summary>A boundary the recording does not prove is not drawn, so a recording
+    /// with no fight 1 offers no row that would walk to one.</summary>
+    [Fact]
+    public void StartingOverIsAbsentWhenTheRecordingProvesNoFirstFight()
+    {
+        var recording = Recording([ReplayBoundary.CombatStart(fight: 2, afterSeq: 9, Digest("two"))]);
+
+        var view = RunView.For(recording, RunProgress.Empty);
+
+        Assert.DoesNotContain(view.Rows, row => row.Kind == RunViewRowKind.StartOver);
     }
 
     /// <summary>A refused row keeps its place, because the row's position is how a
@@ -226,6 +257,7 @@ public sealed class RunViewTests
         Assert.Equal([1], view.Positions.Select(position => position.Floor));
         Assert.Equal(0, view.FightCount);
         Assert.DoesNotContain(view.Rows, row => row.Kind == RunViewRowKind.Continue);
+        Assert.DoesNotContain(view.Rows, row => row.Kind == RunViewRowKind.StartOver);
         Assert.False(view.Rows.Single(row => row.Kind == RunViewRowKind.PlayFromFight).Enabled);
     }
 

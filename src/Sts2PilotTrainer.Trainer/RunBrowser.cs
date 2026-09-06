@@ -72,8 +72,8 @@ public sealed record RunBrowser(
             ? Group(null, Newest(listed))
             :
             [
-                .. Group(LibraryCopy.IncludedGroup, InGivenOrder(listed, RunOrigin.Included)),
-                .. Group(LibraryCopy.FeaturedGroup, InGivenOrder(listed, RunOrigin.Featured)),
+                .. Group(LibraryCopy.IncludedGroup, Newest(Of(listed, RunOrigin.Included))),
+                .. Group(LibraryCopy.FeaturedGroup, Of(listed, RunOrigin.Featured)),
                 .. Group(LibraryCopy.RecentGroup, Newest(Of(listed, RunOrigin.Recent))),
             ];
 
@@ -117,16 +117,25 @@ public sealed record RunBrowser(
                 LibraryCopy.LookupNotFoundTitle, LibraryCopy.LookupNotFound, null);
         }
 
-        // Multiplayer first, because it is the answer that nothing arriving later
+        // Narrowest first, so each refusal is answered by the thing most nearly true of
+        // it. Multiplayer heads the list because it is the answer nothing arriving later
         // changes: a build verdict can turn up tomorrow and a multiplayer run stays a
-        // multiplayer run, so telling somebody to wait for one would be wrong. Then the
-        // failed verdict, which is only ever reached for a recording made on this very
-        // build, so the build sentence below would name one build twice.
+        // multiplayer run. Then the two same-build answers, both of which the build
+        // sentence at the end would report by naming one build twice.
         if (run.Multiplayer == true)
         {
             return new RunLookup(
                 LookupOutcome.Multiplayer, run,
                 LibraryCopy.LookupRefusedTitle, LibraryCopy.LookupRefusedMultiplayer, null);
+        }
+
+        if (run.Verdict == RunVerdict.Unjudged)
+        {
+            return new RunLookup(
+                LookupOutcome.CouldNotJudge, run,
+                LibraryCopy.LookupRefusedTitle,
+                LibraryCopy.LookupRefusedUnjudged,
+                LibraryCopy.LookupRefusedUnjudgedNote);
         }
 
         if (run.Verdict == RunVerdict.Failed)
@@ -153,14 +162,11 @@ public sealed record RunBrowser(
     private static IReadOnlyList<BrowserGroup> Group(string? heading, IReadOnlyList<LibraryRun> runs) =>
         runs.Count == 0 ? [] : [new BrowserGroup(heading, runs)];
 
+    /// <summary>The runs of one origin, in the order they arrived. Featured is the one
+    /// group drawn straight from this: the curator chose that order and re-sorting it
+    /// would be this surface overruling them. Every other group is newest first.</summary>
     private static IReadOnlyList<LibraryRun> Of(IEnumerable<LibraryRun> runs, RunOrigin origin) =>
         [.. runs.Where(run => run.Origin == origin)];
-
-    /// <summary>The shipped set and the curated set keep the order they arrived in:
-    /// one is what the mod ships and the other is what a curator chose, and re-sorting
-    /// either would be this surface overruling them.</summary>
-    private static IReadOnlyList<LibraryRun> InGivenOrder(IEnumerable<LibraryRun> runs, RunOrigin origin) =>
-        Of(runs, origin);
 
     /// <summary>Newest first, with a run whose time nobody read sorting last rather
     /// than being given one.</summary>
@@ -173,7 +179,7 @@ public sealed record RunBrowser(
     ];
 }
 
-/// <summary>What a run code found. Four refusals and one hit, because a player who
+/// <summary>What a run code found. Five refusals and one hit, because a player who
 /// typed a code is owed which of them it was.</summary>
 public enum LookupOutcome
 {
@@ -187,6 +193,11 @@ public enum LookupOutcome
     /// was recorded under. A verdict exists for it and it failed, which is a different
     /// fact from there being none.</summary>
     NoLongerMatches,
+
+    /// <summary>Recorded on this very build, and this game could not be read to say
+    /// whether it plays. A verdict nobody could reach, which is a third fact again.
+    /// </summary>
+    CouldNotJudge,
 
     Multiplayer,
     NotFound,
