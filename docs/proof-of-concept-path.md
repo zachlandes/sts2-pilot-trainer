@@ -237,13 +237,16 @@ and proves it arrived.
   a requirement of the fight on offer rather than of a run nobody starts by hand -
   otherwise the ascension row would sit in red above an offer it does not stop.
 - `ProfileWriteBarrier` in the mod: `shouldSave: false` covers the run save and
-  everything at the end of a run, and it does not cover the two writes on this
-  fight's path - winning a combat rewrites the progress file, and an event room saves
-  the run with progress saving defaulted on. The barrier stops the writes themselves,
-  is installed at mod start and does nothing unless a trainer run is live, so a
-  crash, a forced exit and a quit are all covered by the write never happening. It
-  comes down on the game's own end-of-run path, because one left raised would stop
-  saving the player's next run.
+  everything at the end of a run, and it does not cover the writes this fight's path
+  reaches anyway - winning a combat rewrites the progress file, an event room saves
+  the run with progress saving defaulted on, and marking a tutorial complete writes
+  the progress file without going through `SaveProgressFile` at all. The barrier
+  stops the writes themselves, is installed at mod start and does nothing unless a
+  trainer run is live, so a crash, a forced exit and a quit are all covered by the
+  write never happening. It comes down on the game's own end-of-run path, because one
+  left raised would stop saving the player's next run. Which writes it names, and the
+  one gap a whole-run replay would reach, are in
+  [in-game host](in-game-host.md).
 - A deviation lock on the two commands the recording's decisions reach, rather than
   on the buttons that usually reach them: a screen with its buttons hidden is one a
   controller, a hotkey or another mod can still drive, and the command is the thing
