@@ -18,12 +18,13 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// These need no game: the version is decided at build time and read from the
 /// assembly, and the capture that carries it is pure.
 ///
-/// This half also covers the stamped version of the three assemblies only a project
+/// This half also asks the stamped version of the three assemblies only a project
 /// that references the mod can load - Runmobile, Engine and Trainer. Replay, IO, the
 /// Bootstrap tool and the test assembly are asked the same question by
 /// VersionAgreementTests in Sts2PilotTrainer.Arbiter.Tests, which is in the game-free
-/// solution filter and cannot reference the mod project. GodotStubs is deliberately
-/// out of both: that assembly keeps GodotSharp's identity.
+/// solution filter and cannot reference the mod project. GodotStubs and
+/// Sts2PilotTrainer.Cli are asked by neither: the first keeps GodotSharp's identity,
+/// and nothing in the solution may reference the second, whose stamp nothing reads.
 /// </summary>
 public sealed class RecorderVersionTests
 {
@@ -49,9 +50,9 @@ public sealed class RecorderVersionTests
     [Fact]
     public void AFreshRecordingNamesTheVersionTheInstalledModDeclares()
     {
-        // source.native.recorder_version on a manifest this build's capture produces.
-        // The version string is the patch gate a reader uses, so it has to be the one
-        // the mod the game loaded says it is.
+        // That RunCapture carries the recorder's own string all the way through to the
+        // emitted source.native.recorder_version, on top of the property assertion
+        // above: what a reader acts on is the field in the file, not the property.
         var capture = RunCapture.Begin(new RunRecordingStart
         {
             RunId = "native-SFXT47K77RFK-20260906-120000",

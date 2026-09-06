@@ -12,13 +12,13 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// runmobile-recorder/1.0.0.0 while the mod set in the same file said Runmobile 0.1.0.
 /// Both were describing the same DLL.
 ///
-/// This half covers the assemblies a game-free suite can load: Replay, IO, the
-/// Bootstrap tool and this test assembly. Runmobile, Engine and Trainer are asked the
-/// same question by RecorderVersionTests in Sts2PilotTrainer.Mod.Tests, because this
-/// project is in the game-free solution filter and cannot reference the mod. Between
-/// the two, a version declared anywhere but the mod manifest shows up here as a
-/// stamped-attribute mismatch. GodotStubs is deliberately out of both: that assembly
-/// keeps GodotSharp's identity so the game assembly's references resolve.
+/// This half asks Replay, IO, the Bootstrap tool and this test assembly. Runmobile,
+/// Engine and Trainer are asked the same question by RecorderVersionTests in
+/// Sts2PilotTrainer.Mod.Tests, because this project is in the game-free solution
+/// filter and cannot reference the mod. Two assemblies are asked by neither.
+/// GodotStubs keeps GodotSharp's identity so the game assembly's references resolve,
+/// and Sts2PilotTrainer.Cli may not be referenced from the solution at all - nothing
+/// reads a version off it, so its own stamp carries nothing.
 ///
 /// These need no game: they read the manifest this repository ships and the version
 /// stamped into the assemblies loaded to run them.
