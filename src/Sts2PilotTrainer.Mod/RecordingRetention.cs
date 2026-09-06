@@ -20,9 +20,11 @@ namespace Sts2PilotTrainer.Mod;
 /// the store cannot yet say whose files these are, and asking it throws. That is the
 /// whole of the condition - whether the engine layer could adopt this game is a
 /// different question, and a player who asked for their runs to be removed is answered
-/// either way. It runs once per process, and it latches only once it has actually run,
-/// so a call made before the store could answer is retried at the next one rather than
-/// swallowed. <see cref="RunmobileMod.EnsureAdopted"/> is where it is called from, and
+/// either way. It runs once for each save profile this process plays as - the store is
+/// resolved per operation and two profiles do not share a library, so a policy applied
+/// to one says nothing about the other - and it latches a profile only once it has
+/// actually run against it, so a call made before the store could answer is retried at
+/// the next one rather than swallowed. <see cref="RunmobileMod.EnsureAdopted"/> is where it is called from, and
 /// every path that reaches the store goes through that first - the recorder asks it
 /// before it computes a journal path at all - so a removal here can never race a
 /// journal being appended to.</para>
@@ -45,11 +47,16 @@ internal static class RecordingRetention
 {
     private static readonly Lock Gate = new();
 
-    private static bool _applied;
+    private static readonly HashSet<string> Applied = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Applies the player's policy once in this process, and says nothing at all when
-    /// there was nothing to do.
+    /// Applies the player's policy once for the save profile this game is running as,
+    /// and says nothing at all when there was nothing to do.
+    ///
+    /// The profile is the store's own answer and is asked for here the same way an
+    /// operation asks: a player who switches profile gets their second profile's
+    /// settings honoured against their second profile's recordings, because the first
+    /// one having been answered says nothing about it.
     ///
     /// Failure is reported and not latched. The store throwing here means the profile
     /// was not ready or the disk refused, both of which the next adopted moment may
@@ -59,10 +66,11 @@ internal static class RecordingRetention
     {
         lock (Gate)
         {
-            if (_applied) return;
-
+            string root;
             try
             {
+                root = RunmobileStore.Root;
+                if (Applied.Contains(root)) return;
                 Apply(RunmobileSettings.Read());
             }
             catch (Exception ex)
@@ -73,7 +81,7 @@ internal static class RecordingRetention
                 return;
             }
 
-            _applied = true;
+            Applied.Add(root);
         }
     }
 
@@ -129,9 +137,9 @@ internal static class RecordingRetention
     }
 
     /// <summary>Lets a test run more than one policy against one store. Nothing in the
-    /// mod calls it: a player's process applies the policy once.</summary>
+    /// mod calls it: a player's process applies each profile's policy once.</summary>
     internal static void ForgetForTesting()
     {
-        lock (Gate) _applied = false;
+        lock (Gate) Applied.Clear();
     }
 }

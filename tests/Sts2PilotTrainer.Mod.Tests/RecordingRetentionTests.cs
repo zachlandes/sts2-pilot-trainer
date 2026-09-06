@@ -142,10 +142,11 @@ public sealed class RecordingRetentionTests : IDisposable
             [$"{Newest}.journal.jsonl", $"{Newest}.replay.json"], RunmobileStore.ListFileNames(Recordings));
     }
 
-    /// <summary>Applied once in a process, and latched only once it has run - so a
-    /// moment where the store could not answer is retried at the next one.</summary>
+    /// <summary>Applied once for the profile it ran against, and latched only once it
+    /// has run - so a moment where the store could not answer is retried at the next
+    /// one.</summary>
     [Fact]
-    public void ItIsAppliedOncePerProcess()
+    public void ItIsAppliedOncePerProfile()
     {
         WriteSettings(keep: 0);
         Record(Older);
@@ -155,6 +156,36 @@ public sealed class RecordingRetentionTests : IDisposable
 
         Record(Newer);
         RecordingRetention.ApplyOnce();
+        Assert.Equal(2, RunmobileStore.ListFileNames(Recordings).Count);
+    }
+
+    /// <summary>
+    /// Two save profiles do not share a library, so being answered in one is not being
+    /// answered in the other: a purge written in the profile a player switches to is
+    /// carried out against that profile's own recordings, and the first profile's
+    /// files are left where they are.
+    /// </summary>
+    [Fact]
+    public void EachProfileGetsItsOwnPolicy()
+    {
+        var second = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
+        Directory.CreateDirectory(second);
+
+        WriteSettings(keep: 50);
+        Record(Older);
+        RecordingRetention.ApplyOnce();
+
+        RunmobileStore.UseRootForTesting(second);
+        WriteSettings(keep: 50, purge: true);
+        Record(Older);
+        Record(Newest);
+
+        RecordingRetention.ApplyOnce();
+
+        Assert.Empty(RunmobileStore.ListFileNames(Recordings));
+        Assert.False(RunmobileSettings.Read().PurgeMyRuns);
+
+        RunmobileStore.UseRootForTesting(_root);
         Assert.Equal(2, RunmobileStore.ListFileNames(Recordings).Count);
     }
 

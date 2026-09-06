@@ -749,6 +749,7 @@ And the moment is `RunmobileMod.EnsureAdopted` - the mod's one "there is demonst
 It is asked from the shell's own singleplayer-menu patch, ahead of any question about which modules contributed a card, because keeping and removing a player's files is the shell's duty.
 Retention runs there whether or not the adoption itself succeeded: its condition is the store's, a chosen save profile, and not the engine layer's verdict on whether this game can be read.
 So a build where the Combat Trainer and the recorder both decline, and a build the engine layer refuses to adopt, both still honour a purge and still enforce `keep_recent_runs`.
+The policy is applied once per save profile rather than once per process: the store is resolved per operation and two profiles do not share a library, so a player who switches profile has their second profile's `settings.json` honoured against their second profile's recordings.
 It cannot be mod start: the game has no chosen save profile then, so the store cannot yet say whose files these are.
 
 One consequence, stated rather than hidden: a run the player saved and has not finished is a recording like any other, so a cap small enough to reach it removes the journal of a run still on the game's Continue.
