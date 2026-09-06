@@ -751,34 +751,6 @@ public class EnvironmentPreflightTests
     }
 
     /// <summary>
-    /// The yield-suppression patch is one of Runmobile's own, so a roster naming it
-    /// passes.
-    ///
-    /// It is installed on a framework member rather than a game one and it is never
-    /// unpatched, so once a watched journey has driven a fight it stays on the roster
-    /// for the rest of the session and appears on the reading the recorder takes of
-    /// the player's own run afterwards. Under its own Harmony id that read as somebody
-    /// else's patch and refused a clean recording, naming a mod that does not exist.
-    /// </summary>
-    [Fact]
-    public void TheHostsOwnYieldSuppressionPatchDoesNotRefuseTheRecording()
-    {
-        var result = NativeMods(Fixtures.NativeModEnvironment(new PatchRoster
-        {
-            Members =
-            [
-                RecordedPatchRoster.Member(
-                    "MegaCrit.Sts2.Core.Saving.ProgressSaveManager", "SaveProgressFile()"),
-                RecordedPatchRoster.Member(
-                    "System.Runtime.CompilerServices.YieldAwaitable+YieldAwaiter",
-                    "get_IsCompleted()"),
-            ],
-        }));
-
-        Assert.True(Field(result, "patched_members").Matches, Describe(result));
-    }
-
-    /// <summary>
     /// A member somebody else patched refuses the recording, and the refusal names
     /// the member and who patched it.
     ///

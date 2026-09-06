@@ -150,12 +150,15 @@ public static class RunmobileMod
         }
     }
 
-    internal static void InstallShellPatches(Harmony harmony)
+    internal static IReadOnlyList<System.Reflection.MethodBase> InstallShellPatches(Harmony harmony)
     {
+        var patched = new List<System.Reflection.MethodBase>();
         foreach (var patchClass in ShellPatchClasses)
         {
-            harmony.CreateClassProcessor(patchClass).Patch();
+            patched.AddRange(harmony.CreateClassProcessor(patchClass).Patch());
         }
+
+        return patched;
     }
 
     /// <summary>

@@ -113,16 +113,46 @@ public sealed class HarmonyRosterTests
         _ = EngineHost.StartupPhase();
         var harmony = new Harmony(PatchRoster.HostOwnerId);
 
+        var patched = new List<System.Reflection.MethodBase>();
+
         try
         {
-            RunmobileMod.InstallShellPatches(harmony);
+            patched.AddRange(RunmobileMod.InstallShellPatches(harmony));
 
             Assert.True(HarmonyRoster.Read().NamesTheHost);
         }
         finally
         {
-            harmony.UnpatchAll(PatchRoster.HostOwnerId);
+            // Everything this project installs shares that id, so unpatching by id
+            // would take the yield-suppression patch off with it - and its one-shot
+            // latch means nothing would put it back.
+            foreach (var method in patched)
+            {
+                harmony.Unpatch(method, HarmonyPatchType.All, PatchRoster.HostOwnerId);
+            }
         }
+    }
+
+    /// <summary>
+    /// The yield-suppression patch lands under that same id.
+    ///
+    /// It is installed on a framework member, from the engine rather than the mod
+    /// shell, and it is never unpatched - so once a watched journey has driven a fight
+    /// it is on every roster the recorder reads for the rest of the session. Under an
+    /// id of its own the preflight read it as somebody else's patch and refused a
+    /// clean recording, naming a mod that does not exist.
+    /// </summary>
+    [Fact]
+    public void TheYieldSuppressionPatchIsOwnedByTheIdThePreflightLooksFor()
+    {
+        // Idempotent on purpose: the patch is installed once per process and stays,
+        // so this holds whether or not something else already enabled suppression.
+        YieldSuppression.Enable().Dispose();
+
+        Assert.Contains(
+            HarmonyRoster.Read().Members,
+            entry => entry.Member == "get_IsCompleted()"
+                && entry.Owners.Contains(PatchRoster.HostOwnerId));
     }
 
     /// <summary>Something to patch. Never inlined, because a method the JIT folded

@@ -18,6 +18,13 @@
     <PreparedLibDir>$(MSBuildThisFileDirectory)../../build/lib</PreparedLibDir>
   </PropertyGroup>
 
+  <!-- The yield-suppression patch is installed under the one owner id the preflight
+       rule reads, and the test that proves that pairing calls YieldSuppression
+       directly so a rename breaks the build rather than the test at runtime. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sts2PilotTrainer.Mod.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../third_party/godot-stubs/GodotStubs.csproj" />
     <ProjectReference Include="../Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj" />
