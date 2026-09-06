@@ -78,6 +78,23 @@ public sealed class RunProgressTests
         Assert.Null(progress.ContinueAt(Run, [1, 2]));
     }
 
+    /// <summary>
+    /// "The last one played" means the last one played from <em>this</em> run. A record
+    /// written against a longer recording holds an ordinal this one does not prove, and
+    /// anchoring on it would put Continue past everything the recording has and take
+    /// the row off the screen while proved fights sat unplayed.
+    /// </summary>
+    [Fact]
+    public void AnOrdinalTheRecordingDoesNotProveIsNotWhereThePlayerIs()
+    {
+        var progress = RunProgress.Empty
+            .WithFightPlayed(Run, 1)
+            .WithFightPlayed(Run, 3)
+            .WithFightPlayed(Run, 99);
+
+        Assert.Equal(2, progress.ContinueAt(Run, [1, 2, 4]));
+    }
+
     [Fact]
     public void RecordingAFightAlreadyPlayedChangesNothing()
     {

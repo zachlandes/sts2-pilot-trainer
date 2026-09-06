@@ -46,13 +46,17 @@ public sealed record RunBrowser(
     /// or null when nobody read it. The footer is drawn only with a reading behind it,
     /// because a size nobody measured is not a size to put on screen.
     ///
-    /// Its two halves are one set on purpose: the count is every run stored on this
-    /// computer, which is the set the size covers and the set the settings purge would
-    /// remove. It is deliberately not the count of rows - a player whose game has just
-    /// updated has nothing listed and twelve megabytes on disk, and a footer reading
-    /// "0 runs, 12 MB" would be describing two different things in one sentence. The
-    /// runs that are listed are the rows themselves, and what is not listed is the
-    /// numeral above.</param>
+    /// The count beside it is every finished run of the player's own this build can
+    /// read, listed or not - deliberately not the count of rows, because a player whose
+    /// game has just updated has nothing listed and twelve megabytes on disk, and "0
+    /// runs, 12 MB" would be describing two different things in one sentence. The runs
+    /// that are listed are the rows themselves, and what is not listed is the numeral
+    /// above.
+    ///
+    /// The two halves are close together rather than identical, and the difference is a
+    /// run still being played: its journal is sized and its manifest does not exist
+    /// yet, so it is in the megabytes and not in the count. The size covers everything
+    /// the settings purge would remove.</param>
     public static RunBrowser For(
         LibraryTab tab,
         IReadOnlyList<LibraryRun> runs,
@@ -115,12 +119,23 @@ public sealed record RunBrowser(
 
         // Multiplayer first, because it is the answer that nothing arriving later
         // changes: a build verdict can turn up tomorrow and a multiplayer run stays a
-        // multiplayer run, so telling somebody to wait for one would be wrong.
+        // multiplayer run, so telling somebody to wait for one would be wrong. Then the
+        // failed verdict, which is only ever reached for a recording made on this very
+        // build, so the build sentence below would name one build twice.
         if (run.Multiplayer == true)
         {
             return new RunLookup(
                 LookupOutcome.Multiplayer, run,
                 LibraryCopy.LookupRefusedTitle, LibraryCopy.LookupRefusedMultiplayer, null);
+        }
+
+        if (run.Verdict == RunVerdict.Failed)
+        {
+            return new RunLookup(
+                LookupOutcome.NoLongerMatches, run,
+                LibraryCopy.LookupRefusedTitle,
+                LibraryCopy.LookupRefusedNoLongerMatches,
+                LibraryCopy.LookupRefusedNoLongerMatchesNote);
         }
 
         if (!run.Listed)
@@ -158,12 +173,21 @@ public sealed record RunBrowser(
     ];
 }
 
-/// <summary>What a run code found. Three refusals and one hit, because a player who
+/// <summary>What a run code found. Four refusals and one hit, because a player who
 /// typed a code is owed which of them it was.</summary>
 public enum LookupOutcome
 {
     Found,
+
+    /// <summary>Recorded on a build this game is not, and waiting on a verdict for
+    /// this one.</summary>
     IncompatibleBuild,
+
+    /// <summary>Recorded on this very build, and this game no longer matches what it
+    /// was recorded under. A verdict exists for it and it failed, which is a different
+    /// fact from there being none.</summary>
+    NoLongerMatches,
+
     Multiplayer,
     NotFound,
 }

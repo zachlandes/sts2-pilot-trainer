@@ -74,10 +74,15 @@ public sealed record RunProgress
     /// hole in it - and counting instead of reading would let this name a fight nothing
     /// proves, which the entry would then refuse. Past the last proved fight there is
     /// nothing to continue to and this answers null.</para>
+    ///
+    /// <para>Both ends are read through that list. "The last one played" means the last
+    /// one played <em>from this run</em>, so an ordinal the recording no longer proves
+    /// is not where a player is: a record written against a longer recording would
+    /// otherwise anchor this past everything and take the row off the screen.</para>
     /// </summary>
     public int? ContinueAt(string runId, IReadOnlyList<int> fights)
     {
-        var played = PlayedFrom(runId);
+        var played = PlayedFrom(runId).Where(fights.Contains).ToList();
         var after = played.Count == 0 ? 0 : played[^1];
         return fights.Where(fight => fight > after).Cast<int?>().FirstOrDefault();
     }

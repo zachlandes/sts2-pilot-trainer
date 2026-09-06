@@ -222,6 +222,35 @@ public sealed class RunBrowserTests
         Assert.Null(answer.Note);
     }
 
+    /// <summary>
+    /// A run recorded on this very build that this game can no longer reproduce gets
+    /// its own sentence. The build refusal would name one build twice and promise a
+    /// verdict that already exists and already failed.
+    /// </summary>
+    [Fact]
+    public void ACodeForARunThisGameNoLongerMatchesSaysThatAndNotTheBuildSentence()
+    {
+        var answer = RunBrowser.Lookup("moved", [Run("moved", verdict: RunVerdict.Failed)], Build);
+
+        Assert.Equal(LookupOutcome.NoLongerMatches, answer.Outcome);
+        Assert.Equal(LibraryCopy.LookupRefusedTitle, answer.Title);
+        Assert.Equal(LibraryCopy.LookupRefusedNoLongerMatches, answer.Body);
+        Assert.Equal(LibraryCopy.LookupRefusedNoLongerMatchesNote, answer.Note);
+        Assert.DoesNotContain(Build, answer.Body, StringComparison.Ordinal);
+        Assert.NotEqual(LibraryCopy.LookupRefusedMultiplayer, answer.Body);
+    }
+
+    /// <summary>A multiplayer run stays a multiplayer run whatever its verdict says,
+    /// so that answer is reached first.</summary>
+    [Fact]
+    public void AMultiplayerRunIsAnsweredAsOneEvenWhenItsVerdictAlsoFailed()
+    {
+        var answer = RunBrowser.Lookup(
+            "party", [Run("party", verdict: RunVerdict.Failed, multiplayer: true)], Build);
+
+        Assert.Equal(LookupOutcome.Multiplayer, answer.Outcome);
+    }
+
     [Fact]
     public void ACodeForNothingSaysThatRatherThanRefusingARunThatDoesNotExist()
     {

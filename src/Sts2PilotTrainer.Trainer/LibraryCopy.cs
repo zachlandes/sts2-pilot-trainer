@@ -113,7 +113,25 @@ public static class LibraryCopy
     public static string LookupRefusedBuildNote(string thisBuild) =>
         $"It returns to the list if a verdict for {thisBuild} arrives.";
 
-    /// <summary>The other refusal, which has no note: nothing arriving later makes a
+    /// <summary>
+    /// What a run code answers with for a run recorded on this very build that this
+    /// game can no longer reproduce.
+    ///
+    /// Its own sentence rather than the build one, because the build one would print
+    /// the same build twice and promise a verdict that already exists and already
+    /// failed. It names what is true and diagnoses nothing: which prerequisite moved is
+    /// the eligibility screen's to say, not a popup's.
+    /// </summary>
+    public const string LookupRefusedNoLongerMatches =
+        "This run exists. It was recorded on your build, and your game no longer matches what it was " +
+        "recorded under.";
+
+    /// <summary>Said under <see cref="LookupRefusedNoLongerMatches"/>: the run is not
+    /// gone, and what it is waiting for is the game rather than a verdict.</summary>
+    public const string LookupRefusedNoLongerMatchesNote =
+        "It returns to the list when your game matches it again.";
+
+    /// <summary>The one refusal with no note: nothing arriving later makes a
     /// multiplayer run into a single-player one.</summary>
     public const string LookupRefusedMultiplayer =
         "This run exists. It is a multiplayer run, and Runmobile plays single-player runs.";
