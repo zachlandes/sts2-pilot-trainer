@@ -326,6 +326,8 @@ The recording is still written, because it is what happened; what it is not is p
 - **A mod list wider than the rule that reads it.** `EnvironmentPreflight` refuses a native recording if any mod in it declares itself gameplay-affecting, while the sibling rule about the same installation drops the disabled ones first. The recorder wrote every mod the game had discovered, so a recording could be refused for a mod that never loaded and never touched the run. `LocalMod.Loaded` is the one place that decides now, and both rules ask it.
 - **A continuous watch of a fight nobody was watching.** A session continued while the last recorded decision left a fight live came back with that fight still open in the capture and no observer attached, so every card play and ended turn left in it went unrecorded while the recording still reported `continuity = continuous`. The recorder asks whether a fight needs watching the moment it attaches, and refuses the recording where it holds one open and cannot watch it.
 
+- **A build read off a copy on disk.** `LiveRun.ReadIdentity` reads the running client only once the engine layer has adopted it, and otherwise falls back to `build/lib/prepared-assembly.json`. The recorder relied on the mode card having adopted the game first, so a build on which the Combat Trainer refused - contributing no card, and the recorder contributes none - left the recorder writing a build, build date and content hash captured from a prepared copy on the developer's disk into a manifest that says it read them off this client. The recorder asks `EnsureAdopted` itself now and declines the run where it cannot.
+
 Each was a component reporting a state it had not established, and in each the recording read as trustworthy precisely because every individual value in it was true.
 
 ## What it does not prove
@@ -476,9 +478,14 @@ phase before `ExecuteEssential` builds the model database and the id-serializati
 cache. Reading the game there does not return a wrong answer; it ends the process
 with a segmentation fault inside a static constructor. So the mod reads nothing at
 initialization: it loads its embedded recording, installs one Harmony patch, and
-adopts the running game later, from the singleplayer menu, which cannot exist before
-startup has finished. `EngineHost.AdoptRunningGame` refuses unless the game's own
-startup phase says otherwise.
+adopts the running game later, once startup has finished.
+`EngineHost.AdoptRunningGame` refuses unless the game's own startup phase says
+otherwise.
+`RunmobileMod.EnsureAdopted` is the mod's one adoption entry and remembers its answer,
+and every feature that reads the engine asks it for itself at the first moment it
+demonstrably has a running game - the singleplayer menu for the mode card, the recorder
+when a run has entered its first room. No feature's correctness rests on another having
+asked first, and a refusal is the caller's to act on: no mode card, and no recording.
 
 **Godot does not load the game into the default load context.**
 A mod's sibling assemblies have to be resolved on the load context the mod itself was
