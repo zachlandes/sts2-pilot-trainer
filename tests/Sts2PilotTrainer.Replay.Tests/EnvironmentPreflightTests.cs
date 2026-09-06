@@ -718,7 +718,8 @@ public class EnvironmentPreflightTests
             Environment() with
             {
                 Mods = Fact<ModEnvironment>.Captured(
-                    ModEnvironment.AsRecorded(discovered), FactEvidence.AtActionOrdinal(0)),
+                    ModEnvironment.AsRecorded(discovered, RecordedPatchRoster.HostOnly()),
+                    FactEvidence.AtActionOrdinal(0)),
             },
             Local() with { Mods = discovered },
             sourceKind: "native");
@@ -728,9 +729,114 @@ public class EnvironmentPreflightTests
 
         // And the count stays a count of what was loaded, so "we identified one of one"
         // is still distinguishable from "we identified one".
-        var recorded = ModEnvironment.AsRecorded(discovered);
+        var recorded = ModEnvironment.AsRecorded(discovered, RecordedPatchRoster.HostOnly());
         Assert.Equal(1, recorded.ReportedCount);
         Assert.Equal(["Runmobile"], recorded.Mods.Select(mod => mod.Name));
+    }
+
+    /// <summary>
+    /// A recording made in a game only Runmobile had patched passes, and the row
+    /// says how many members it read rather than only that it was happy.
+    /// </summary>
+    [Fact]
+    public void ARosterOnlyTheHostPatchedPasses()
+    {
+        var result = NativeMods(Fixtures.NativeModEnvironment());
+
+        Assert.True(Field(result, "patched_members").Matches, Describe(result));
+        Assert.Contains(
+            "member(s) at run start, all patched by Runmobile alone",
+            Field(result, "patched_members").Actual,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A member somebody else patched refuses the recording, and the refusal names
+    /// the member and who patched it.
+    ///
+    /// This is the reading a declaration cannot lie to. The mod list beside it is
+    /// unchanged and still passes - one mod, declaring itself non-gameplay - which is
+    /// exactly the hole the roster closes: a mod that says it changes nothing and
+    /// prefixes the combat state says nothing about that anywhere else.
+    /// </summary>
+    [Fact]
+    public void AMemberSomebodyElsePatchedRefusesTheRecording()
+    {
+        var result = NativeMods(Fixtures.NativeModEnvironment(new PatchRoster
+        {
+            Members =
+            [
+                RecordedPatchRoster.Member(
+                    "MegaCrit.Sts2.Core.Saving.ProgressSaveManager", "SaveProgressFile()"),
+                RecordedPatchRoster.Member(
+                    "MegaCrit.Sts2.Core.Combat.CombatState", "DrawCards(Int32)", "somebody.else"),
+            ],
+        }));
+
+        Assert.False(result.Matches);
+        Assert.False(Field(result, "patched_members").Matches);
+
+        var diagnostic = Diagnostic(result, "patched_members");
+        Assert.Contains("CombatState.DrawCards(Int32)", diagnostic, StringComparison.Ordinal);
+        Assert.Contains("somebody.else", diagnostic, StringComparison.Ordinal);
+
+        // And the rule it strengthens is untouched: this recording's one mod still
+        // declares itself non-gameplay, so the declaration row passes on its own terms.
+        Assert.True(Field(result, "mod_environment").Matches, diagnostic);
+    }
+
+    /// <summary>
+    /// A roster with none of the host's own patches on it is a broken reading, not a
+    /// clean game, and is refused as one.
+    ///
+    /// The recorder records only inside a shell that installed the write barrier and
+    /// its screen patches, so a roster that saw none of them saw nothing - and what it
+    /// says about anybody else's patches is worth nothing either. This is the
+    /// "did our patches silently fail" question, promoted from a log line to a verdict.
+    /// </summary>
+    [Fact]
+    public void ARosterMissingTheHostsOwnPatchesIsRefusedAsABrokenReading()
+    {
+        var result = NativeMods(Fixtures.NativeModEnvironment(new PatchRoster { Members = [] }));
+
+        Assert.False(result.Matches);
+        Assert.Contains(
+            "names none of Runmobile's own patches",
+            Diagnostic(result, "patched_members"),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A recording made before the recorder took this reading is judged exactly as
+    /// well as it was before, and the row says which of the two it is.
+    ///
+    /// Not dropped and not a refusal. Only a recorder can read a patch roster, so an
+    /// older recording has nobody to blame for the gap, and voiding it would remove
+    /// evidence for a reading nobody could have taken. The declaration rule beside it
+    /// is unchanged and still decides.
+    /// </summary>
+    [Fact]
+    public void ARecordingThatPredatesTheReadingSaysSoRatherThanPassingSilently()
+    {
+        var result = NativeMods(Fixtures.NativeModEnvironment() with { Patches = null });
+
+        Assert.True(result.Matches, Describe(result));
+        Assert.Contains(
+            "not read", Field(result, "patched_members").Actual, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A manifest reconstructed from a video draws no roster row at all.
+    ///
+    /// Nobody watching footage could take the reading, so a row that always passed
+    /// would be a check that can only ever pass sitting in a list of real ones.
+    /// </summary>
+    [Fact]
+    public void AVideoManifestHasNoPatchRosterRow()
+    {
+        var result = EnvironmentPreflight.Prerequisites(Environment(), Local());
+
+        Assert.DoesNotContain("patched_members", result.Fields.Select(field => field.Field));
     }
 
     private static PreflightResult NativeMods(ModEnvironment mods) =>

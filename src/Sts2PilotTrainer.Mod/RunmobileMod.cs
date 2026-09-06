@@ -4,6 +4,7 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -36,7 +37,11 @@ public static class RunmobileMod
 {
     internal const string ModId = "Runmobile";
 
-    private const string HarmonyId = "sts2-pilot-trainer.runmobile";
+    /// <summary>The id every patch this mod installs is owned by. Taken from the
+    /// rules rather than written twice: <c>EnvironmentPreflight</c> tells our patches
+    /// from somebody else's in a recording's roster by this exact string, and a mod
+    /// that could rename itself out of its own rule would pass it by accident.</summary>
+    private const string HarmonyId = PatchRoster.HostOwnerId;
 
     internal static IReadOnlyList<Type> ShellPatchClasses { get; } =
         [typeof(ModeCard), .. CardScreensUp.PatchClasses];
@@ -106,8 +111,43 @@ public static class RunmobileMod
         ProfileWriteBarrier.Install(harmony);
         InstallShellPatches(harmony);
         InstallModules(harmony, Modules);
+        LogThePatchRoster();
         Started = true;
         Log.Info($"[{ModId}] loaded; its cards are added when the singleplayer menu opens", 2);
+    }
+
+    /// <summary>
+    /// Writes what is patched in this process into the game's own log, one line per
+    /// member, the moment this mod's patches are installed.
+    ///
+    /// It is a fingerprint of what actually attached, which is not what the mod
+    /// intended to attach. A patch whose target this build renamed resolves to
+    /// nothing and applies silently; the module that owns it refuses first
+    /// (<see cref="RecorderModule"/>), and this is what says so from the other end,
+    /// in a file a player can attach to a bug report without rebuilding anything.
+    /// It also names anybody else patching this game, which is the question a
+    /// content hash cannot answer.
+    ///
+    /// A diagnostic never takes the mod down with it. Failing to describe the patches
+    /// is not failing to have installed them, and refusing to run over a log line
+    /// would be a worse outcome than the missing line.
+    /// </summary>
+    private static void LogThePatchRoster()
+    {
+        try
+        {
+            var roster = HarmonyRoster.Read();
+            Log.Info(
+                $"[{ModId}] patch roster: {roster.Members.Count} patched member(s) in this process", 2);
+            foreach (var member in roster.Members)
+            {
+                Log.Info($"[{ModId}]   {member.Describe()}", 2);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[{ModId}] could not read the patch roster: {ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     internal static void InstallShellPatches(Harmony harmony)

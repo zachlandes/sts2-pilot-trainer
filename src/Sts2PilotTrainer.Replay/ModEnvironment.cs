@@ -37,6 +37,26 @@ public sealed record ModEnvironment
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public HeadlessParityWaiver? HeadlessParityWaiver { get; init; }
 
+    /// <summary>
+    /// What was actually patched in the process this run was played in, when
+    /// something was in a position to look.
+    ///
+    /// The list above it is what each mod says about itself; this is what they did.
+    /// Kept on the same field because it answers the same question and a reader
+    /// weighing one against the other should not have to go looking - a mod
+    /// declaring itself non-gameplay and a member of the combat state on this roster
+    /// under its name are the same paragraph.
+    ///
+    /// Null where nobody could take the reading: every manifest reconstructed from a
+    /// video, and every recording made before the recorder took it. An absence is
+    /// therefore not a claim that nothing else was patched, and
+    /// <c>EnvironmentPreflight</c> reports it as the reading that was never taken
+    /// rather than as a pass.
+    /// </summary>
+    [JsonPropertyName("patch_roster")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PatchRoster? Patches { get; init; }
+
     /// <summary>The name a recorder writes for the environment it read. Every native
     /// recording carries the same one, because "whatever this player had loaded" is
     /// not a named environment somebody audited and calling it one would be a claim
@@ -67,13 +87,20 @@ public sealed record ModEnvironment
     /// recorder identifies every mod it counts, both from the game's own loaded set, so
     /// for a native recording the two agree by construction.
     /// </summary>
-    public static ModEnvironment AsRecorded(IReadOnlyList<LocalMod> discovered)
+    /// <param name="patches">
+    /// What was patched in this process, read from Harmony rather than from anybody's
+    /// manifest. Required rather than optional: a recorder is in a position to take
+    /// this reading, so leaving it out would be a reading skipped rather than one
+    /// nobody could take, and the two are not the same absence.
+    /// </param>
+    public static ModEnvironment AsRecorded(IReadOnlyList<LocalMod> discovered, PatchRoster patches)
     {
         var loaded = discovered.Where(mod => mod.Loaded).ToList();
         return new ModEnvironment
         {
             Name = RecordedName,
             ReportedCount = loaded.Count,
+            Patches = patches,
             Mods =
             [
                 .. loaded.Select(mod => new InstalledMod(

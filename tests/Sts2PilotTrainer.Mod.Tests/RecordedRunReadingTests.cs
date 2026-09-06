@@ -92,10 +92,11 @@ public sealed class RecordedRunReadingTests
     public void TheRecordedModListReportsWhatEachModDeclaredAndAssessesNothing()
     {
         var mods = ModEnvironment.AsRecorded(
-        [
-            new LocalMod("Runmobile", "Runmobile", "0.1.0", AffectsGameplay: false, "Loaded"),
-            new LocalMod("Thing", "Some Thing", "2.0", AffectsGameplay: true, "Loaded"),
-        ]);
+            [
+                new LocalMod("Runmobile", "Runmobile", "0.1.0", AffectsGameplay: false, "Loaded"),
+                new LocalMod("Thing", "Some Thing", "2.0", AffectsGameplay: true, "Loaded"),
+            ],
+            HarmonyRoster.Read());
 
         Assert.Equal(2, mods.ReportedCount);
         Assert.Equal(mods.ReportedCount, mods.Mods.Count);
@@ -114,7 +115,8 @@ public sealed class RecordedRunReadingTests
     {
         var refused = EnvironmentPreflight.Prerequisites(
             Identity(ModEnvironment.AsRecorded(
-                [new LocalMod("Thing", "Some Thing", "2.0", AffectsGameplay: true, "Loaded")])),
+                [new LocalMod("Thing", "Some Thing", "2.0", AffectsGameplay: true, "Loaded")],
+                HarmonyRoster.Read())),
             LocalReading(),
             "native");
 

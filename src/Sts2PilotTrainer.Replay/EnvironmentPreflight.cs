@@ -79,6 +79,7 @@ public static class EnvironmentPreflight
             EvaluateLocalMods(actual.Mods, requireHost),
         };
 
+        fields.AddRange(EvaluatePatchRoster(expected.Mods.Value, sourceKind));
         fields.AddRange(EvaluateUnlocks(expected, actual));
         return new PreflightResult(fields.All(field => field.Matches), fields);
     }
@@ -516,5 +517,99 @@ public static class EnvironmentPreflight
                           $"never taken rather than a mod that changes nothing. {ContentHashScope}"
                         : $"This recording was played with mod(s) that declare themselves gameplay-affecting: " +
                           $"{string.Join("; ", gameplayAffecting.Select(mod => mod.Name))}. {ContentHashScope}");
+    }
+
+    /// <summary>How many patched members a refusal names before it stops. Enough to
+    /// act on and not so many that the sentence stops being readable; the count of
+    /// the rest is carried either way, because "and 40 more" is the part that says
+    /// how bad it is.</summary>
+    private const int NamedMembersInARefusal = 5;
+
+    /// <summary>
+    /// What was actually patched in the process a recording was made in, judged.
+    ///
+    /// The rule beside this one asks every loaded mod what it says about itself. This
+    /// one asks the process what was done to it, which is the reading a declaration
+    /// cannot lie to: a mod declaring itself non-gameplay and prefixing a member of
+    /// the combat state passes <c>mod_environment</c> and fails here, by member name.
+    ///
+    /// Two refusals, and they are different failures. A foreign owner is somebody
+    /// else's patch on this game, and nothing here has bounded what it did. A roster
+    /// with none of Runmobile's own patches on it is a broken reading rather than a
+    /// clean game: the shell installs the write barrier and its screen patches before
+    /// it reports itself started, and only a started shell records - so a roster that
+    /// did not see those did not see anything, and a pass from it would be a claim
+    /// nobody established.
+    ///
+    /// One reading, taken at run start. A mod that patches lazily on first use rather
+    /// than at initialization installs after it and is outside it - this project's own
+    /// <c>YieldSuppression</c> is exactly that shape, a one-shot latch tripped on the
+    /// first end turn - so the row says what was patched when the run began and not
+    /// what was patched for the whole of it. Closing that would take a second reading
+    /// at run end and a comparison between the two, which this does not do.
+    ///
+    /// Absent is neither. Only a recorder can take this reading, so a manifest
+    /// reconstructed from a video never has one, and a recording made before the
+    /// recorder took it has no one to blame for the gap. The row is emitted saying so
+    /// rather than dropped, and it passes: the roster strengthens the declaration rule
+    /// that already stands, and refusing an absence would void recordings for a
+    /// reading nobody could have taken while judging them exactly as well as before.
+    /// </summary>
+    private static IEnumerable<PreflightField> EvaluatePatchRoster(ModEnvironment mods, string sourceKind)
+    {
+        // A video shows a mod list overlay and never a patch roster, so there is no
+        // row to draw rather than a row that always passes.
+        if (sourceKind != "native") yield break;
+
+        if (mods.Patches is not { } roster)
+        {
+            yield return new PreflightField(
+                "patched_members",
+                $"every member patched at run start owned by {HostModName}",
+                "not read: this recording predates the recorder reading what was patched",
+                true);
+            yield break;
+        }
+
+        var foreign = roster.PatchedByAnybodyElse;
+        var matches = foreign.Count == 0 && roster.NamesTheHost;
+
+        yield return new PreflightField(
+            "patched_members",
+            $"every member patched at run start owned by {HostModName}",
+            matches
+                ? $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s) at run start, all " +
+                  $"patched by {HostModName} alone"
+                : !roster.NamesTheHost
+                    ? $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s), none of them " +
+                      $"patched by {HostModName}"
+                    : $"{foreign.Count.ToString(CultureInfo.InvariantCulture)} of " +
+                      $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s) patched by " +
+                      "somebody else",
+            matches,
+            matches ? null : Refusal());
+
+        string Refusal()
+        {
+            if (!roster.NamesTheHost)
+            {
+                return $"This recording's patch roster names none of {HostModName}'s own patches, and the " +
+                       "recorder only records inside a shell that installed them. So the roster is a reading " +
+                       "that did not see what this process definitely did, and what it says about anybody " +
+                       "else's patches cannot be relied on either. Re-record the run.";
+            }
+
+            var named = foreign.Take(NamedMembersInARefusal)
+                .Select(member =>
+                    $"{member.DeclaringType}.{member.Member} (by {string.Join(", ", member.ForeignOwners)})");
+            var rest = foreign.Count - NamedMembersInARefusal;
+
+            return "This recording was made in a game where something other than " +
+                   $"{HostModName} had patched {foreign.Count.ToString(CultureInfo.InvariantCulture)} " +
+                   $"member(s): {string.Join("; ", named)}" +
+                   (rest > 0 ? $", and {rest.ToString(CultureInfo.InvariantCulture)} more" : string.Empty) +
+                   $". A patch changes behaviour without adding content, so nothing bounded what those did to " +
+                   $"the run. {ContentHashScope}";
+        }
     }
 }

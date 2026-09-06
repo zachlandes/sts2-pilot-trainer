@@ -128,6 +128,39 @@ The exact BaseLib v3.4.5 target probe uses Harmony on retail `PowerCmd.Apply` an
 It demonstrates that BaseLib clears `SkipNextDurationTick` for a player-applied custom debuff while the unpatched host leaves it set.
 The publication gate therefore instruments every `PowerCmd.Apply` invocation in the exact reconstructed history and accepts path-specific parity only when none reaches that branch and an injected affected call proves the detector fires.
 
+## The patch roster
+
+A mod list is what each mod says about itself.
+The patch roster is what they did.
+
+Inside a player's own game there is one reading a declaration cannot lie to: Harmony's own registry of every member something has patched, and who patched it.
+`HarmonyRoster.Read` takes it, the recorder captures it into `environment.mods.patch_roster` at run start alongside the mod list, and `EnvironmentPreflight` judges it.
+A mod that declares itself non-gameplay and prefixes a member of the combat state passes the declaration rule, passes the content hash, and appears on the roster by member name.
+
+Each entry names the declaring type, the member with its parameter types, every owner id, and how many prefixes, postfixes, transpilers and finalizers sit on it.
+The parameter types are there because the drift this is a fingerprint against is not only a rename: this game grew two parameters on a run-start method once already, which a name-only roster would have read as unchanged.
+
+Two things refuse a native recording, and they are different failures.
+
+A member owned by anybody other than `PatchRoster.HostOwnerId` is somebody else's patch on the game the run was played in, and nothing here bounded what it did.
+That includes a member Runmobile also patched: two prefixes on one method is the case where the order they run in decides the answer.
+
+A roster naming none of Runmobile's own patches is a broken reading rather than a clean game.
+The shell installs the profile write barrier and its screen patches before it reports itself started, and only a started shell records, so a roster that saw none of those saw nothing — and what it says about anybody else's patches is worth nothing either.
+This is the "did our patches apply, or silently fail after a rename" question, as a verdict rather than a log line.
+
+It is one reading, taken at run start, and the row says so.
+A mod that patches lazily on first use rather than at initialization is installed after the reading and is outside it, so a run played under its prefix can still read back as patched by Runmobile alone.
+That shape is not hypothetical: this project's own `YieldSuppression` is a one-shot latch tripped on the first end turn.
+Closing it would take a second reading at run end and a comparison between the two, and this does not do that.
+
+An absent roster is neither.
+Only a recorder can take this reading, so a manifest reconstructed from a video never carries one and draws no row at all, and a recording made before the recorder took it has nobody to blame for the gap.
+That row is emitted saying it was not read, and it passes: the roster strengthens the declaration rule beside it rather than replacing it, and refusing an absence would void evidence for a reading nobody could have taken while judging it exactly as well as before.
+
+The same reading is written into the game's own log at mod start, one line per member.
+A `godot.log` attached to a bug report then already answers "what else was patching this game", without rebuilding anything.
+
 ## The resumed-run problem
 
 Hindsight resumes a past run from a chosen floor. A resumed run has the **same seed,

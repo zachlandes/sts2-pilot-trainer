@@ -596,7 +596,8 @@ public sealed class RunCaptureTests
             Runs = 137,
         },
         Mods = ModEnvironment.AsRecorded(
-            [new LocalMod("Runmobile", "Runmobile", "0.1.0", AffectsGameplay: false, "Loaded")]),
+            [new LocalMod("Runmobile", "Runmobile", "0.1.0", AffectsGameplay: false, "Loaded")],
+            RecordedPatchRoster.HostOnly()),
     };
 
     /// <summary>A reading taken between fights, on a floor.</summary>

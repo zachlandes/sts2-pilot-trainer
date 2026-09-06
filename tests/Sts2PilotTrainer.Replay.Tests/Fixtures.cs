@@ -171,11 +171,15 @@ internal static class Fixtures
         Runs = 137,
     };
 
-    internal static ModEnvironment NativeModEnvironment() => new()
+    /// <summary>A recording made in a game holding only the recorder, patch roster
+    /// included: a native recording carries one, so a fixture without one would put
+    /// every native test on the path for a recording that predates the reading.</summary>
+    internal static ModEnvironment NativeModEnvironment(PatchRoster? patches = null) => new()
     {
         Name = "the player's own game",
         ReportedCount = 1,
         Mods = [new InstalledMod("Runmobile", "the recorder itself", "reads only", AffectsGameplay: false)],
+        Patches = patches ?? RecordedPatchRoster.HostOnly(),
     };
 
     private static Fact<string> Captured(string value, int actionOrdinal) =>

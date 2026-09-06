@@ -115,6 +115,7 @@ Two fields on that list are there because a replay looked correct and was not: t
 Both change every fight in a run while leaving the map identical.
 The document also owns the distinction between a runtime reading and an explicitly supplied headless progress model.
 `LocalEnvironment` owns the v0.111.0 adapter, `EnvironmentPreflight` owns the game-free rules, and neither path writes.
+What a mod *says* about itself and what it *did* are two readings, not one: `HarmonyRoster` takes the second from Harmony's own registry, the recorder captures it into `environment.mods.patch_roster`, and the preflight judges it beside the declaration rule rather than in place of it.
 Every prerequisite it refuses is remediated by playing the game.
 Do not add a path that edits a save, a profile, an unlock, a build or a game mode.
 

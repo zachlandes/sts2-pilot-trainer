@@ -1,6 +1,7 @@
 using System.Reflection;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Runs;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
 
@@ -83,7 +84,13 @@ internal static class YieldSuppression
         var isCompleted = awaiter.GetProperty("IsCompleted")?.GetGetMethod();
         if (isCompleted is null) return;
 
-        new Harmony("sts2-pilot-trainer.yield").Patch(
+        // Everything this project patches inside a player's process is owned by the
+        // one Harmony id. This patch is reached in the retail client through
+        // RecordedFightEntry.PrepareInRunningGame -> RunDriver.Apply ->
+        // YieldSuppression.Enable and is never unpatched, so a second owner id would
+        // leave it on the roster for the rest of the session and the preflight would
+        // read our own patch as somebody else's and refuse a clean recording.
+        new Harmony(PatchRoster.HostOwnerId).Patch(
             isCompleted,
             prefix: new HarmonyMethod(typeof(YieldSuppression)
                 .GetMethod(nameof(CompleteWhenActive), BindingFlags.NonPublic | BindingFlags.Static)!));

@@ -319,7 +319,7 @@ Without that the break lives only in the session that decided on it: quit and co
 A reward kind the format has no verb for, a card reward answered with one of its alternatives, a screen whose offered list this build no longer exposes, an engine that did not settle: each marks the recording broken with a sentence rather than writing a value it guessed.
 The recording is still written, because it is what happened; what it is not is publishable, and the validator and `./scripts/arbiter gate` are what say so.
 
-**An integrity claim is a reading, and three of them were assumptions before review caught them.**
+**An integrity claim is a reading, and four of them were assumptions before review caught them.**
 `AGENTS.md`'s recorder invariant states the rule; these are what it is made of, because a rule with no instances is one nobody can check themselves against.
 
 - **A verdict about controls that were never applied.** `gate`'s `rejection` condition runs `negative-controls --require-all-controls`, and three of the ten controls damage a decision only where the history nominates the alternative they take. The recorder wrote none of them, so no native recording could ever pass - and two of the three that did apply were satisfied by the driver refusing on argument shape rather than on the run diverging, which is a control counted as rejected having demonstrated nothing. The recorder derives all four nominations now, from what the decision itself offered, and omits one where the decision genuinely had no alternative.
@@ -456,6 +456,7 @@ Silent and pressable at once is a distinction the strip has to be able to make: 
 The row carries the engine's own sentence saying so, whether it is green or red.
 The hash covers content contributed by mods that declare themselves gameplay-affecting; it says nothing about a mod that patches behaviour.
 The same prerequisite reading therefore inspects every mod the game discovered, including failed states that may have left resources loaded, and refuses every active local mod except the known non-gameplay Runmobile host.
+What a mod actually patched is a separate reading, taken from Harmony rather than from anybody's manifest and captured into a recording as `environment.mods.patch_roster`; [environment-identity.md](environment-identity.md) owns it and the two refusals over it.
 
 **A profile reading describes the modded profile.**
 The game forks a separate profile for modded play, and that is the one a modded session reads.
