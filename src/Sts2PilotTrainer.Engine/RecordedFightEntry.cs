@@ -478,11 +478,11 @@ public sealed class RecordedFightEntry : IDisposable
                $"turn={(combat is null ? "-" : combat.TurnNumber.ToString(CultureInfo.InvariantCulture))}";
     }
 
-    /// <summary>The live run's canonical state, as the arbiter reads it.</summary>
     /// <summary>Whether the game would save this run, read off the engine rather than
     /// assumed from the route that built it.</summary>
     public bool RunSaving => _session.RunSaving;
 
+    /// <summary>The live run's canonical state, as the arbiter reads it.</summary>
     public CanonicalState LiveState() => CanonicalStateProjection.Project(_session.RunState);
 
     /// <summary>
