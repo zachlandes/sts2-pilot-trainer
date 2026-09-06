@@ -22,11 +22,13 @@ namespace Sts2PilotTrainer.Engine;
 /// own argument, and hands it over. With no collector installed it is exactly the
 /// neutralize it replaces, and <c>ToSave</c> is not called at all.
 ///
-/// One thing it deliberately does not reproduce. The retail client reaches
-/// <c>SaveManager.SaveRun</c> through <c>RunSaveManager</c>, which consults
-/// <c>RunManager.Instance.ShouldSave</c> first; this host's runs are created with
-/// <c>shouldSave: false</c>, so what is collected here is what the game <em>asked</em>
-/// to save rather than what a player's client would have written to disk. For a
+/// One thing it deliberately does not reproduce. <c>SaveManager.SaveRun</c> is what
+/// reaches <c>RunSaveManager.SaveRun</c>, and it is the latter that consults
+/// <c>RunManager.Instance.ShouldSave</c> before writing; this prefix sits upstream of
+/// that gate, and every run in this host carries <c>shouldSave: false</c> anyway - a
+/// started run is created with it and a restored one is put back to it. So what is
+/// collected here is what the game <em>asked</em> to save rather than what a player's
+/// client would have written to disk. For a
 /// snapshot produced from a replay they are the same object. Reading a save file a
 /// player's own client wrote is a different path and is not this one.
 /// </summary>

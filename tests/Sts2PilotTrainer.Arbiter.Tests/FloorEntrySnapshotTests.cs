@@ -52,6 +52,12 @@ public sealed class FloorEntrySnapshotTests
         Assert.True(report.GetProperty("replayed_act_room_set").GetProperty("present").GetBoolean());
         Assert.True(report.GetProperty("restored_act_room_set").GetProperty("present").GetBoolean());
 
+        // The restored run is on the same footing a started one is: the retail continue
+        // path creates a run saving, and this host puts it back before launching it, so
+        // the run's non-persistence rests on that flag and the write barrier rather than
+        // on the patched savers alone.
+        Assert.False(report.GetProperty("restored_run_saving").GetBoolean());
+
         // The save kept is the one taken on arriving at a floor, not the one taken on
         // leaving a room. Only the first is a floor-entry snapshot: the second carries a
         // finished room, which stops the engine generating the arrival's own.
@@ -121,6 +127,15 @@ public sealed class FloorEntrySnapshotTests
         Assert.Contains("CONTROL HELD", result.All, StringComparison.Ordinal);
 
         var report = Report(outDir, "floor-snapshot.control-wrong-floor.json");
+
+        // The coordinate that makes the control re-checkable: which boundary the save
+        // was measured against, which is not the floor it was taken at.
+        Assert.NotEqual(
+            report.GetProperty("floor").GetInt32(), report.GetProperty("restored_against_floor").GetInt32());
+        Assert.NotEqual(
+            report.GetProperty("after_seq").GetInt32(),
+            report.GetProperty("restored_against_after_seq").GetInt32());
+
         Assert.False(report.GetProperty("boundary_matches").GetBoolean());
         Assert.False(report.GetProperty("cached").GetBoolean());
         Assert.True(report.GetProperty("observed_values_disagreeing").GetInt32() > 0);
@@ -256,6 +271,25 @@ public sealed class FloorEntrySnapshotTests
         Assert.DoesNotContain(cached, source, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A snapshot is keyed on the recording's own progress model and carries its unlock
+    /// state in the save, so restoring cannot answer a question about a different one.
+    /// Answering it anyway would make an optimisation flag decide the verdict: the same
+    /// command without --restore generates the run against the model named and refuses
+    /// on the digest.
+    /// </summary>
+    [GameFact]
+    public void RefusesToRestoreAgainstAProgressModelTheSnapshotDoesNotAnswerFor()
+    {
+        var result = Arbiter.Run(
+            "enter-fight", Arbiter.WholeAct, "--floor", LiveCombatFloor, "--restore",
+            "--progress", "none-unlocked", "--out", TempDir());
+
+        Assert.False(result.Verified);
+        Assert.Contains(
+            "keyed on the recording's own progress model", result.All, StringComparison.Ordinal);
+    }
+
     [GameFact]
     public void RefusesToSnapshotAFightsBoundary()
     {
@@ -291,6 +325,7 @@ public sealed class FloorEntrySnapshotTests
     [InlineData("--cache")]
     [InlineData("--control")]
     [InlineData("--out")]
+    [InlineData("--save")]
     public void RefusesAValueOptionWithoutAValueBeforeCreatingOutput(string option)
     {
         var outDir = Path.Combine(

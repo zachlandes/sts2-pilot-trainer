@@ -1,3 +1,4 @@
+using System.Reflection;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
@@ -28,6 +29,11 @@ public sealed class GameSession
 
     public RunState RunState => _runState
         ?? throw new EngineException("No run has been started in this session.");
+
+    /// <summary>Whether the game would save this run if it asked to. False on both
+    /// routes into a session, and read rather than asserted because "this host never
+    /// writes your run" is a claim and a claim wants a measurement.</summary>
+    public bool RunSaving => RunManager.Instance.ShouldSave;
 
     /// <summary>
     /// Starts a run exactly as the retail client would, at the given identity.
@@ -112,6 +118,11 @@ public sealed class GameSession
     /// floor arrival carries no room, and re-entering the coordinate is exactly how it
     /// gets one.
     ///
+    /// The retail continue path creates its run saving, so <see cref="StopSavingThisRun"/>
+    /// puts it back to <c>shouldSave: false</c> before the run is launched: both routes
+    /// into this session carry the same flag, and neither leans on the patched savers
+    /// alone.
+    ///
     /// Nothing here is a source of truth. What may be restored, and the digest a
     /// restored state has to reproduce before anybody is stood in it, are
     /// <see cref="FloorEntrySnapshot"/>'s and <see cref="RecordedFightEntry"/>'s.
@@ -151,12 +162,38 @@ public sealed class GameSession
         RunManager.Instance.ForceDiscoveryOrderModifications = runState.GameMode == GameMode.Standard;
 
         RunManager.Instance.SetUpSavedSingleplayer(runState, save).GetAwaiter().GetResult();
+        StopSavingThisRun();
         RunManager.Instance.Launch();
         RunManager.Instance.GenerateMap().GetAwaiter().GetResult();
         RunManager.Instance.LoadIntoLatestMapCoord(
             AbstractRoom.FromSerializable(save.PreFinishedRoom, runState)).GetAwaiter().GetResult();
 
         _runState = runState;
+    }
+
+    /// <summary>
+    /// Puts a restored run back on the footing a started one is created with.
+    ///
+    /// <c>SetUpSavedSingleplayer</c> takes no <c>shouldSave</c> argument and hands
+    /// <c>true</c> to the shared initializer, because the retail client continues a run
+    /// in order to go on saving it. This host never does, and the flag is the first of
+    /// two defences rather than a detail - the second being the in-game host's profile
+    /// write barrier. A build whose setter this cannot reach is refused outright: a host
+    /// that silently could not turn saving off is the failure being guarded against.
+    /// </summary>
+    private static void StopSavingThisRun()
+    {
+        var setter = typeof(RunManager)
+            .GetProperty(
+                nameof(RunManager.ShouldSave),
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            ?.GetSetMethod(nonPublic: true)
+            ?? throw new EngineException(
+                "RunManager.ShouldSave has no setter this build exposes, so a run continued through the " +
+                "retail path cannot be put back to shouldSave: false. The player's save directory is a " +
+                "read-only input and this host will not restore a run it cannot stop the game saving.");
+
+        setter.Invoke(RunManager.Instance, [false]);
     }
 
     /// <summary>

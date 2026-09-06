@@ -70,11 +70,11 @@ rolling the room type — so the game's own save is a floor-entry snapshot by co
 `RunSaveInterception` owns it and `docs/native-replay-format.md` owns what may be done
 with the result.
 
-One thing it does not reproduce: the retail client reaches `SaveRun` through
-`RunSaveManager`, which consults `RunManager.Instance.ShouldSave` first, and this host's
-runs are created with `shouldSave: false`. What is collected is therefore what the game
-*asked* to save. For a snapshot produced from a replay that is the same object; reading a
-save a player's own client wrote is a different path.
+One thing it does not reproduce: `SaveManager.SaveRun` is what reaches
+`RunSaveManager.SaveRun`, and it is the latter that consults `RunManager.Instance.ShouldSave` before writing.
+The prefix sits upstream of that gate, and every run in this host carries `shouldSave: false` anyway — a started run is created with it, and `GameSession.RestoreSavedRun` puts a run continued through the retail path back to it.
+What is collected is therefore what the game *asked* to save.
+For a snapshot produced from a replay that is the same object; reading a save a player's own client wrote is a different path.
 
 A missing `SaveRun` in a future build is a startup **failure**, as every name in this
 patch set is: a host that silently stopped intercepting it would write no save and

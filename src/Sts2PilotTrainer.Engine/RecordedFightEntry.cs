@@ -479,6 +479,10 @@ public sealed class RecordedFightEntry : IDisposable
     }
 
     /// <summary>The live run's canonical state, as the arbiter reads it.</summary>
+    /// <summary>Whether the game would save this run, read off the engine rather than
+    /// assumed from the route that built it.</summary>
+    public bool RunSaving => _session.RunSaving;
+
     public CanonicalState LiveState() => CanonicalStateProjection.Project(_session.RunState);
 
     /// <summary>

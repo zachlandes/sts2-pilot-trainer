@@ -41,6 +41,9 @@ internal static partial class Commands
         var outOption = Args.Value(args, "--out");
         var cacheOption = Args.Value(args, "--cache");
         var control = Args.Value(args, "--control");
+
+        // Read and discarded: the phases below take their save path from it, and this is
+        // where a --save with no value is refused, before any output directory exists.
         Args.Value(args, "--save");
 
         if (Args.Value(args, "--fight") is not null)
@@ -98,6 +101,12 @@ internal static partial class Commands
         Console.WriteLine($"boundary        : {plan.Describe()}, after action {Text(plan.BoundarySeq)}");
         Console.WriteLine($"snapshot key    : {plan.SnapshotKey.ToCacheDirectoryName()}");
 
+        // The floor the restored save is compared against. The same one for a real
+        // materialisation; a different one for the control, whose whole content is that
+        // the comparison refuses it. Named before the capture, so a recording that
+        // cannot form the control is told so rather than after a replay of its history.
+        var against = control is null ? plan : ControlPlan(manifest, plan);
+
         var captured = SelfProcess.Run(
             "floor-snapshot", manifestPath, "--phase", "capture",
             "--floor", Text(plan.FloorNumber), "--save", savePath, "--out", capturePath);
@@ -127,7 +136,7 @@ internal static partial class Commands
             Console.WriteLine();
             foreach (var refusal in candidate.Refusals) Console.Error.WriteLine(refusal);
             reportArtifact.WriteAtomic(JsonSerializer.Serialize(
-                Report(manifestPath, plan, candidate, restored: null, control, cached: false,
+                Report(manifestPath, plan, against, candidate, restored: null, control, cached: false,
                     refusals: candidate.Refusals),
                 Json.Indented) + "\n");
             Console.WriteLine();
@@ -135,11 +144,6 @@ internal static partial class Commands
             Console.WriteLine($"report: {Paths.Display(reportArtifact.Path)}");
             return 1;
         }
-
-        // The floor the restored save is compared against. The same one for a real
-        // materialisation; a different one for the control, whose whole content is that
-        // the comparison refuses it.
-        var against = control is null ? plan : ControlPlan(manifest, plan);
 
         Console.WriteLine();
         Console.WriteLine(control is null
@@ -182,7 +186,7 @@ internal static partial class Commands
                     : "CONTROL FAILED: restoring another floor's save reproduced this boundary, so the comparison " +
                       "discriminates nothing and no snapshot may be trusted on it.");
             reportArtifact.WriteAtomic(JsonSerializer.Serialize(
-                Report(manifestPath, plan, candidate, restored, control, cached: false, refusals),
+                Report(manifestPath, plan, against, candidate, restored, control, cached: false, refusals),
                 Json.Indented) + "\n");
             Console.WriteLine($"report: {Paths.Display(reportArtifact.Path)}");
             return refused ? 0 : 1;
@@ -194,7 +198,7 @@ internal static partial class Commands
             foreach (var refusal in refusals) Console.Error.WriteLine(refusal);
             if (restored.Refusal is { } why) Console.Error.WriteLine(why);
             reportArtifact.WriteAtomic(JsonSerializer.Serialize(
-                Report(manifestPath, plan, candidate, restored, control, cached: false, refusals),
+                Report(manifestPath, plan, against, candidate, restored, control, cached: false, refusals),
                 Json.Indented) + "\n");
             Console.WriteLine();
             Console.WriteLine("NOT SNAPSHOTTABLE: nothing was written into the cache.");
@@ -224,7 +228,7 @@ internal static partial class Commands
         var directory = snapshot.WriteInto(cacheDir, File.ReadAllText(savePath));
 
         reportArtifact.WriteAtomic(JsonSerializer.Serialize(
-            Report(manifestPath, plan, candidate, restored, control, cached: true, refusals),
+            Report(manifestPath, plan, against, candidate, restored, control, cached: true, refusals),
             Json.Indented) + "\n");
 
         Console.WriteLine();
@@ -275,8 +279,9 @@ internal static partial class Commands
     }
 
     private static object Report(
-        string manifestPath, FloorEntryPlan plan, FloorEntrySnapshotCandidate candidate,
-        FloorEntryRestoreReading? restored, string? control, bool cached, IReadOnlyList<string> refusals) => new
+        string manifestPath, FloorEntryPlan plan, FloorEntryPlan against,
+        FloorEntrySnapshotCandidate candidate, FloorEntryRestoreReading? restored, string? control, bool cached,
+        IReadOnlyList<string> refusals) => new
     {
         schema = "sts2-pilot-trainer/floor-snapshot/v1",
         manifest = Path.GetFileName(manifestPath),
@@ -292,6 +297,11 @@ internal static partial class Commands
         after_seq = plan.BoundarySeq,
         act_index = candidate.ActIndex,
         control,
+        // The boundary the restored save was measured against, which is this floor's
+        // for a materialisation and another floor's for the control. Without it a
+        // reader of a control report cannot re-check what it refused.
+        restored_against_floor = against.FloorNumber,
+        restored_against_after_seq = against.BoundarySeq,
         snapshot_key = plan.SnapshotKey,
         declared_digest = candidate.DeclaredDigest,
         declared_digest_source = candidate.DeclaredDigestSource,
@@ -309,6 +319,7 @@ internal static partial class Commands
         observed_values_compared = restored?.Comparisons.Count ?? 0,
         observed_values_disagreeing =
             restored?.Comparisons.Count(comparison => !comparison.Matches) ?? 0,
+        restored_run_saving = restored?.RunSaving,
         boundary_matches = restored?.Matches ?? false,
         boundary_refusal = restored?.Refusal,
         refusals,
@@ -361,6 +372,7 @@ internal static partial class Commands
                             BuildCommit: identity.Commit,
                             SaveSha256: FloorEntrySnapshot.HashOf(saveJson),
                             Digest: equality.ActualDigest,
+                            RunSaving: entry.RunSaving,
                             ActRoomSet: Engine.SnapshotRestoreProbe.RoomSetReading(state),
                             Matches: equality.Matches,
                             Refusal: equality.Refusal,
@@ -422,6 +434,7 @@ internal sealed record FloorEntryRestoreReading(
     [property: JsonPropertyName("build_commit")] string BuildCommit,
     [property: JsonPropertyName("save_sha256")] string SaveSha256,
     [property: JsonPropertyName("digest")] string Digest,
+    [property: JsonPropertyName("run_saving")] bool RunSaving,
     [property: JsonPropertyName("act_room_set")] ActRoomSetReading ActRoomSet,
     [property: JsonPropertyName("matches")] bool Matches,
     [property: JsonPropertyName("refusal")] string? Refusal,

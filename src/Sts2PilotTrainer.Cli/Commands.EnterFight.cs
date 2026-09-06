@@ -59,6 +59,15 @@ internal static partial class Commands
                 "stop after. Walk them with --step, or restore without it.");
         }
 
+        if (Args.Has(args, "--restore") && Args.Value(args, "--progress") is not null)
+        {
+            throw new ManifestException(
+                "A floor-entry snapshot is keyed on the recording's own progress model and carries its unlock " +
+                "state in the save, so restoring cannot answer a question about a different one. Ask that " +
+                "question with --progress and no --restore, which generates the run against the model you " +
+                "named.");
+        }
+
         if (Args.Has(args, "--play") && Args.Value(args, "--floor") is not null)
         {
             throw new ManifestException(
