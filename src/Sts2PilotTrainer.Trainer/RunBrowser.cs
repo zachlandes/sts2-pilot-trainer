@@ -110,6 +110,13 @@ public sealed record RunBrowser(
     /// verdict that already exists and already failed. Adding a refusal here means a
     /// player could be told something untrue without one; it is not a place to elaborate.
     /// </para>
+    ///
+    /// <para><b>The code is the one string here a person types.</b> Every other run-id
+    /// comparison in the library is <c>Ordinal</c>, because every other one is a string a
+    /// program passed. This one is trimmed and matched without case, so a code somebody
+    /// was sent is not defeated by a trailing space or by how they typed it. What leaves
+    /// this method is the run's canonical id, so the exact-match readers downstream still
+    /// get the exact string.</para>
     /// </summary>
     public static RunLookup Lookup(string? code, IReadOnlyList<LibraryRun> runs, string thisBuild)
     {

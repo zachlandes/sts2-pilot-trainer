@@ -211,24 +211,36 @@ internal static class RunBrowserScreen
     /// <c>LibraryScreen.Press</c> follows for every row, and this is the one way in that
     /// does not go through a row. Both exits go back to the tab the code was typed on,
     /// for the same reason every other nested screen does.
+    ///
+    /// Guarded like every other way in here, and for a sharper reason: this is reached
+    /// from a signal rather than from a row, so a throw would leave Godot's own dispatch
+    /// holding it - with the browser already taken down and nothing on screen to say
+    /// what happened.
     /// </summary>
     private static void Look(string code, bool fromMyRuns)
     {
-        LibraryScreen.Dismiss();
-        var answer = RunBrowser.Lookup(code, RunLibrary.Runs(), RunLibrary.ThisBuild());
-        if (!answer.Refused && answer.Run is { } found)
+        try
         {
-            OpenRun(found.RunId, fromMyRuns: fromMyRuns);
-            return;
-        }
+            LibraryScreen.Dismiss();
+            var answer = RunBrowser.Lookup(code, RunLibrary.Runs(), RunLibrary.ThisBuild());
+            if (!answer.Refused && answer.Run is { } found)
+            {
+                OpenRun(found.RunId, fromMyRuns: fromMyRuns);
+                return;
+            }
 
-        var body = answer.Note is { Length: > 0 } note
-            ? $"{answer.Body}\n\n{LibraryMarkup.Dim(note)}"
-            : answer.Body;
-        var mine = fromMyRuns;
-        LibraryScreen.Show(
-            answer.Title, body, [], answer.Back,
-            back: () => OpenTab(mine ? LibraryTab.MyRuns : LibraryTab.Community));
+            var body = answer.Note is { Length: > 0 } note
+                ? $"{answer.Body}\n\n{LibraryMarkup.Dim(note)}"
+                : answer.Body;
+            var mine = fromMyRuns;
+            LibraryScreen.Show(
+                answer.Title, body, [], answer.Back,
+                back: () => OpenTab(mine ? LibraryTab.MyRuns : LibraryTab.Community));
+        }
+        catch (Exception ex)
+        {
+            Refuse("could not look up that run code", ex);
+        }
     }
 
     /// <summary>

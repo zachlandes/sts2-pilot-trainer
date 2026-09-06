@@ -59,7 +59,7 @@ internal static class CompendiumCard
     {
         try
         {
-            if (__instance.GetNodeOrNull<Node>(NodeName) is not null) return;
+            if (Existing(__instance) is not null) return;
 
             // The first moment there is demonstrably a running game to read. Mod
             // loading is not: it runs before the game has a model database at all.
@@ -113,7 +113,7 @@ internal static class CompendiumCard
     {
         try
         {
-            if (__instance.GetNodeOrNull<Control>(NodeName) is not { } button) return;
+            if (Existing(__instance) is not { } button) return;
             button.Visible = RunLibrary.HasAnythingToShow();
         }
         catch (Exception ex)
@@ -138,15 +138,23 @@ internal static class CompendiumCard
         NCompendiumBottomButton previous,
         NCompendiumBottomButton button)
     {
+        // The row the game's own bottom buttons sit in, not the submenu. A position is
+        // only meaningful in its own parent's space, and the buttons are resolved by
+        // Godot unique name, which searches the whole scene rather than the submenu's
+        // direct children - so nothing says the two are the same node.
+        var row = source.GetParent()
+            ?? throw new InvalidOperationException(
+                "This build's Compendium button is not in a row, so there is nowhere to add one beside it.");
+
         var sourcePosition = source.Position;
         var added = false;
         try
         {
             button.Name = NodeName;
-            submenu.AddChild(button);
+            row.AddChild(button);
             added = true;
             SetLabel(button, LibraryCopy.CompendiumCard);
-            Place(submenu, source, previous, button);
+            Place(row, source, previous, button);
             JoinFocusChain(submenu, source, button);
 
             var error = button.Connect(
@@ -168,7 +176,7 @@ internal static class CompendiumCard
             {
                 try
                 {
-                    if (added && button.GetParent() == submenu) submenu.RemoveChild(button);
+                    if (added && button.GetParent() == row) row.RemoveChild(button);
                 }
                 finally
                 {
@@ -198,6 +206,14 @@ internal static class CompendiumCard
         label.SetTextAutoSize(text);
     }
 
+    /// <summary>
+    /// The library button this Compendium already has, wherever in the submenu's own
+    /// tree it sits. Searched rather than named as a direct child, because it is added
+    /// to the game's bottom row and the row is not the submenu itself on every
+    /// build.</summary>
+    private static Control? Existing(Node submenu) =>
+        submenu.FindChild(NodeName, recursive: true, owned: false) as Control;
+
     private static FieldInfo ButtonField(string name) =>
         typeof(NCompendiumBottomButton).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)
         ?? throw new InvalidOperationException(
@@ -206,15 +222,19 @@ internal static class CompendiumCard
     /// <summary>
     /// Where the fourth button goes.
     ///
-    /// When the game lays the row out in a container, the container decides and this
-    /// does nothing. When it positions the buttons itself - which is what v0.111.0 does
-    /// - the step between two of the game's own buttons is measured and reused, so a
-    /// build that changes the spacing changes this with it.
+    /// <paramref name="row"/> is the game's own buttons' parent, and both questions here
+    /// are asked of it: whether it lays its children out itself, and the space the two
+    /// measured positions are in. Asking the new button's parent instead would answer
+    /// about wherever it had been added rather than about the row it is joining.
+    ///
+    /// When the row is a container, the container decides and this does nothing. When it
+    /// positions its buttons itself - which is what v0.111.0 does - the step between two
+    /// of the game's own is measured and reused, so a build that changes the spacing
+    /// changes this with it.
     /// </summary>
-    private static void Place(
-        NCompendiumSubmenu submenu, Control source, Control previous, Control button)
+    private static void Place(Node row, Control source, Control previous, Control button)
     {
-        if (button.GetParent() is Container) return;
+        if (row is Container) return;
 
         var step = source.Position - previous.Position;
         if (step.LengthSquared() <= 0f)
@@ -223,7 +243,6 @@ internal static class CompendiumCard
         }
 
         button.Position = source.Position + step;
-        _ = submenu;
     }
 
     /// <summary>

@@ -203,8 +203,14 @@ public static class LibraryCopy
     /// Walks the recording from its beginning, showing every decision on the game's own
     /// screens, and comes to rest at the first fight.
     ///
-    /// The same destination as "Play from this fight" on fight 1's floor, reached two
-    /// ways: one walks the run and one goes straight in.
+    /// Every way into a recorded run walks it from run start - <c>RecordedFightEntry</c>
+    /// has one journey and every plan replays the recording's own decisions up to its
+    /// boundary, with the transport revealing each. The rows differ only in where they
+    /// come to rest. This one always rests at fight 1; "Play from this fight" rests at
+    /// whichever fight the selected floor holds. So on fight 1's own floor the two are
+    /// one offer reached from two rows, and on every other floor they are different
+    /// destinations - which is what this row is for: it is the offer that does not move
+    /// with the selection.
     /// </summary>
     public const string StartTheRunOver = "Start the run over";
 
