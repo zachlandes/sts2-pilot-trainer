@@ -155,13 +155,19 @@ public static class RunmobileMod
     /// <summary>
     /// Takes the running game, once, at a moment when there is one.
     ///
-    /// Called from the singleplayer menu rather than from mod loading, because that
-    /// menu cannot exist before the game has finished starting up.
+    /// Not from mod loading, because the game has no model database yet then. Every
+    /// feature that reads the engine asks this for itself at the first moment it has
+    /// demonstrably got a running game - the menu for the mode card, the recorder when
+    /// a run has entered its first room - so no feature's correctness rests on another
+    /// having asked first. It is the mod's one adoption entry and answers the same way
+    /// however many ask.
+    ///
     /// <see cref="EngineHost.AdoptRunningGame"/> refuses anything it cannot read
-    /// honestly, and a refusal here means no mode card at all: a card that opened
-    /// onto a screen which could not answer its own question would be worse than no
-    /// card. The outcome is remembered, so a refusal is reported once rather than on
-    /// every visit to the menu.
+    /// honestly, and a refusal here is the caller's to act on: no mode card, and no
+    /// recording. A card that opened onto a screen which could not answer its own
+    /// question, or a recording that named a build nobody read off this client, would
+    /// each be worse than not being there. The outcome is remembered, so a refusal is
+    /// reported once rather than on every visit to the menu.
     /// </summary>
     internal static bool EnsureAdopted()
     {
@@ -172,7 +178,7 @@ public static class RunmobileMod
 
             if (!Started)
             {
-                Log.Error($"[{ModId}] the mod refused to start; not adding the mode card.", 2);
+                Log.Error($"[{ModId}] the mod refused to start, so it will not take this game.", 2);
                 return false;
             }
 

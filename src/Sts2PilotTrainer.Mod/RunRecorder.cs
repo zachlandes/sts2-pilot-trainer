@@ -215,6 +215,21 @@ internal sealed class RunRecorder : IDisposable
             if (Active is not null || ProfileWriteBarrier.IsActive) return;
             if (LiveRun.State is not { } run) return;
 
+            // Asked here rather than assumed: until the engine layer has taken this
+            // client, the identity below is read out of the prepared copy on disk
+            // instead of out of the game the run is being played in - three true values
+            // from a source nobody established. Adoption is the mod's, not the mode
+            // card's, and this module contributes no card to trigger it, so a trainer
+            // that refuses on some future build must not leave the recorder reading
+            // from somewhere else.
+            if (!RunmobileMod.EnsureAdopted())
+            {
+                Log.Warn(
+                    $"[{RunmobileMod.ModId}] not recording this run: the mod could not take this running " +
+                    "game, so the recording could not say which build it was played on.", 2);
+                return;
+            }
+
             var startedUtc = LiveRun.RunStartedUtc();
             var runId = LiveRun.NameRecording(run.Rng.StringSeed, startedUtc);
             var journalPath = $"{RecordingsDirectory}/{runId}{RunJournal.FileExtension}";
