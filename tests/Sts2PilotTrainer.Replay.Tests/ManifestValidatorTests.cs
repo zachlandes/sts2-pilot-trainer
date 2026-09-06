@@ -829,6 +829,83 @@ public class ManifestValidatorTests
     }
 
     /// <summary>
+    /// The arrival's derivation is admissible in the arrival, and nowhere else.
+    ///
+    /// Several checkpoints stand at the action a floor is arrived after - a fight's
+    /// start, a turn's, the recorder's own reading of the floor - and every one of them
+    /// may name the floor. Only the one a floor plan would take is the arrival, so only
+    /// there is a value nobody read admissible; in any of the others it is a reading
+    /// that was never taken, and what a video shows is what a video checkpoint owes.
+    /// </summary>
+    [Fact]
+    public void RefusesAnInferredReadingInAnotherCheckpointStandingAtTheArrival()
+    {
+        var manifest = FloorArrival.WithArrivalCheckpoints(WalkedHistory(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        }));
+
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Checkpoints = [.. manifest.Checkpoints, NeighbouringFloorReading("floor-2-entry", 1, floor: 2)],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("checkpoint 'floor-2-entry' field 'run.total_floor'", StringComparison.Ordinal) &&
+            problem.Contains("must be source=observed", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.Problems, problem =>
+            problem.Contains("floor-2-arrival", StringComparison.Ordinal));
+    }
+
+    /// <summary>The same, for a recorder's own reading: what a live game read is what a
+    /// captured checkpoint owes, and the arrival beside it does not excuse it.</summary>
+    [Fact]
+    public void RefusesAnInferredReadingInAnotherCapturedCheckpointStandingAtTheArrival()
+    {
+        var manifest = FloorArrival.WithArrivalCheckpoints(Fixtures.NativeManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+        Assert.True(ManifestValidator.Validate(manifest).IsValid, ManifestValidator.Validate(manifest).Describe());
+
+        var result = ManifestValidator.Validate(manifest with
+        {
+            Checkpoints = [.. manifest.Checkpoints, NeighbouringFloorReading("floor-2-entry", 1, floor: 2)],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("checkpoint 'floor-2-entry' field 'run.total_floor'", StringComparison.Ordinal) &&
+            problem.Contains("must be source=captured", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.Problems, problem =>
+            problem.Contains("floor-2-arrival", StringComparison.Ordinal));
+    }
+
+    /// <summary>A checkpoint standing where a floor was arrived at and naming the floor,
+    /// as a reading nobody took. It carries no coordinate, so it is not the arrival a
+    /// floor plan would take.</summary>
+    private static Checkpoint NeighbouringFloorReading(string id, int afterSeq, int floor) => new()
+    {
+        Id = id,
+        AfterSeq = afterSeq,
+        Kind = "floor_entry",
+        Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+        {
+            ["run.total_floor"] = Fact<string>.Inferred(
+                Number(floor), FactEvidence.Reasoning("the boundary beside it names this floor")),
+        },
+    };
+
+    /// <summary>
     /// The verdict the publication gate reads for its declared-boundaries condition.
     ///
     /// The file on disk carries no trace, so the cross-checks sit idle there; the copy

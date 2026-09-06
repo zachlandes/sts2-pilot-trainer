@@ -1473,15 +1473,20 @@ public static partial class ManifestValidator
                 problems.Add($"checkpoint '{checkpoint.Id}' expects nothing, so it can never fail.");
             }
 
-            var arrival = FloorArrival.At(manifest, checkpoint.AfterSeq);
+            var arrival = ReferenceEquals(
+                FloorArrival.ArrivalCheckpointAt(checkpoints, checkpoint.AfterSeq), checkpoint)
+                ? FloorArrival.At(manifest, checkpoint.AfterSeq)
+                : null;
 
             foreach (var (field, fact) in checkpoint.Expect)
             {
                 // A value nobody read is admissible here exactly where this validator
                 // can re-derive it from the history: the two fields a floor arrival is
                 // proved by follow from the map move that arrived and the floor the
-                // boundary names. Anything else inferred is a reading that was never
-                // taken, and the rules below refuse it.
+                // boundary names, and only in the one checkpoint a floor plan would take
+                // as that arrival. Anything else inferred is a reading that was never
+                // taken - including the same field in another checkpoint standing at the
+                // same action - and the rules below refuse it.
                 if (fact.Source == FactSource.Inferred &&
                     arrival is not null && arrival.TryGetValue(field, out var derived))
                 {
