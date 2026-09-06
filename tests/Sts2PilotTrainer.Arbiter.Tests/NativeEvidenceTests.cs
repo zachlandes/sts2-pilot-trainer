@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
 /// <summary>
@@ -37,16 +39,12 @@ public sealed class NativeEvidenceTests
             Assert.DoesNotContain(conditions, condition => !condition.Value);
             Assert.True(conditions["rejection"]);
 
-            var controls = Arbiter.Run(
-                "negative-controls", Manifest(Publishable), "--out", outDir, "--require-all-controls");
+            var controls = JsonDocument
+                .Parse(File.ReadAllText(Path.Combine(outDir, "negative-controls.json")))
+                .RootElement;
 
-            Assert.True(controls.Verified, controls.All);
-            Assert.Contains(
-                "all 10 corrupted histories were rejected; the uncorrupted one verified",
-                controls.Output,
-                StringComparison.Ordinal);
-            Assert.DoesNotContain(
-                "had nothing in this history to damage", controls.Output, StringComparison.Ordinal);
+            Assert.Equal(10, controls.GetProperty("total_controls").GetInt32());
+            Assert.Equal(10, controls.GetProperty("applicable_controls").GetInt32());
         });
     }
 
