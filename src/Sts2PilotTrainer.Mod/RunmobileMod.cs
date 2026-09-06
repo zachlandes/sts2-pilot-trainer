@@ -168,20 +168,24 @@ public static class RunmobileMod
     /// question, or a recording that named a build nobody read off this client, would
     /// each be worse than not being there. The outcome is remembered, so a refusal is
     /// reported once rather than on every visit to the menu.
+    ///
+    /// Applying the player's retention policy happens here too and is not one of the
+    /// things a refusal stops. Nothing it removes can race a journal being appended
+    /// to: on the path where adoption succeeded it has run before the recorder is told
+    /// a run exists, and where adoption failed the recorder opens no journal at all.
     /// </summary>
     internal static bool EnsureAdopted()
     {
         var adopted = Adopt();
 
-        // The first moment there is a game is also the first moment there is a chosen
-        // save profile, which is what the store needs before it can say whose files
-        // these are - so this is where the player's own answer about keeping their
-        // recordings is acted on. It is the shell's rather than the recorder's: it is
-        // about what this mod leaves on a player's disk, which no feature gets to
-        // decide for itself. The shell's own singleplayer-menu patch asks here before
-        // it looks at which modules contributed a card, so a build where every module
-        // declines still honours a player who asked for their runs to be removed.
-        if (adopted) RecordingRetention.ApplyOnce();
+        // What this mod leaves on a player's disk is the shell's, and it does not
+        // depend on this mod being able to read the game. Retention has its own
+        // readiness condition and it is the store's own: a chosen save profile, which
+        // is what says whose files these are. A game the engine layer refuses to adopt
+        // still answers a player who asked for their runs to be removed, and a visit
+        // where the profile was not resolved yet is retried at the next one, because
+        // ApplyOnce latches only once it has actually run.
+        RecordingRetention.ApplyOnce();
 
         return adopted;
     }

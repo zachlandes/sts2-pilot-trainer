@@ -15,15 +15,17 @@ namespace Sts2PilotTrainer.Mod;
 /// act that keeps none. <see cref="RecordingLibrary.Cull"/> decides which recordings
 /// either one names; this owns the disk and the moment.
 ///
-/// <para><b>The moment is the mod's first adopted game, and that is not an
+/// <para><b>The moment is the mod's first chosen save profile, and that is not an
 /// accident.</b> It cannot be mod start: the game has no chosen save profile then, so
-/// the store cannot yet say whose files these are.
-/// <see cref="RunmobileMod.EnsureAdopted"/> is the mod's one "there is demonstrably a
-/// running game" gate and every path that reaches the store goes through it first -
-/// the recorder asks it before it computes a journal path at all - so a removal here
-/// can never race a journal being appended to. It runs once per process, and it latches
-/// only once it has actually run, so a call made before the store could answer is
-/// retried at the next one rather than swallowed.</para>
+/// the store cannot yet say whose files these are, and asking it throws. That is the
+/// whole of the condition - whether the engine layer could adopt this game is a
+/// different question, and a player who asked for their runs to be removed is answered
+/// either way. It runs once per process, and it latches only once it has actually run,
+/// so a call made before the store could answer is retried at the next one rather than
+/// swallowed. <see cref="RunmobileMod.EnsureAdopted"/> is where it is called from, and
+/// every path that reaches the store goes through that first - the recorder asks it
+/// before it computes a journal path at all - so a removal here can never race a
+/// journal being appended to.</para>
 ///
 /// <para><b>It removes recordings, and nothing else.</b> Every file it names came back
 /// from <see cref="RecordingLibrary"/> as part of a recording this build recognises,

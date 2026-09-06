@@ -190,7 +190,7 @@ Its final state is exactly `Runmobile` under the selected supported game mod dir
 `./scripts/protected-files.sh` is how "nothing outside that subtree changed" is measured rather than asserted.
 Removing is a write and goes through the same gate - `RunmobileStore.Remove` names one file and refuses a directory - and *which* files is `RecordingRetention`'s, so the one operation that cannot be undone does not also pick its own targets.
 The player's `settings.json` says how many runs to keep and can ask for them all to be removed; both are `RecordingLibrary.Cull` with a different number, applied at `RunmobileMod.EnsureAdopted` because that is the first moment there is a profile and the last moment before any journal is open.
-The shell's singleplayer-menu patch asks for adoption before it consults the modules' cards, so a build on which every module declines still honours a purge.
+The shell's singleplayer-menu patch asks for adoption before it consults the modules' cards, and retention is applied whether or not that adoption succeeded - its own condition is a chosen save profile - so a build on which every module declines, and one the engine layer refuses to adopt, both still honour a purge.
 Do not add a second writer, a second path rule, a second account-identity mechanism or a second thing that deletes; [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
 
 **Read [docs/ingestion.md](docs/ingestion.md) before touching how a recording is found or

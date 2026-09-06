@@ -180,6 +180,42 @@ public sealed class RecordingRetentionTests : IDisposable
         Assert.Empty(RunmobileStore.ListFileNames(Recordings));
     }
 
+    /// <summary>
+    /// The player's disk is not the engine layer's to hold hostage. This process is
+    /// not a running game, so the shell refuses to adopt it - and a purge the player
+    /// asked for is carried out anyway, with the request written back off, because
+    /// what retention needs is a profile the store can name rather than a game this
+    /// mod can read.
+    /// </summary>
+    [Fact]
+    public void APurgeIsHonouredEvenWhereTheGameCouldNotBeAdopted()
+    {
+        WriteSettings(keep: 50, purge: true);
+        Record(Older);
+        Record(Newest);
+
+        Assert.False(RunmobileMod.EnsureAdopted());
+
+        Assert.Empty(RunmobileStore.ListFileNames(Recordings));
+        Assert.False(RunmobileSettings.Read().PurgeMyRuns);
+    }
+
+    /// <summary>The standing policy is not the engine layer's either: the same
+    /// unadoptable process still keeps the number of runs the player asked for.</summary>
+    [Fact]
+    public void APolicyIsEnforcedEvenWhereTheGameCouldNotBeAdopted()
+    {
+        WriteSettings(keep: 1);
+        Record(Older);
+        Record(Newer);
+        Record(Newest);
+
+        Assert.False(RunmobileMod.EnsureAdopted());
+
+        Assert.Equal(
+            [$"{Newest}.journal.jsonl", $"{Newest}.replay.json"], RunmobileStore.ListFileNames(Recordings));
+    }
+
     private static void WriteSettings(int keep, bool purge = false) =>
         RunmobileStore.Write(
             RunmobileSettings.FileName,
