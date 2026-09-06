@@ -203,7 +203,8 @@ public static class Corruption
     ///
     /// The check itself: the first play's card must sit at its recorded index in that
     /// hand, and the second's must sit at its recorded index in what is left once the
-    /// first card has gone. A candidate that fails either is declined and the next
+    /// first card has gone - the same card by model id, since a hand entry also carries
+    /// what the card had become. A candidate that fails either is declined and the next
     /// checkpoint is tried; a recording where none verifies reports NOT APPLICABLE, and
     /// the gate refuses it honestly for coverage.
     ///
@@ -244,12 +245,12 @@ public static class Corruption
 
             var hand = dealt.Value.Split('|');
             if (!HandIndex(first, hand.Length, out var firstIndex)) continue;
-            if (!string.Equals(hand[firstIndex], Argument(first, "card_id"), StringComparison.Ordinal)) continue;
+            if (!IsTheCardPlayed(hand[firstIndex], first)) continue;
 
             var left = hand.ToList();
             left.RemoveAt(firstIndex);
             if (!HandIndex(second, left.Count, out var secondIndex)) continue;
-            if (!string.Equals(left[secondIndex], Argument(second, "card_id"), StringComparison.Ordinal)) continue;
+            if (!IsTheCardPlayed(left[secondIndex], second)) continue;
 
             swap = new Swap(first, second, hand, firstIndex, secondIndex);
             return true;
@@ -267,6 +268,28 @@ public static class Corruption
         IReadOnlyList<string> Hand,
         int FirstIndex,
         int SecondIndexAfterFirstLeft);
+
+    /// <summary>
+    /// Whether the card in this hand slot is the card that play took.
+    ///
+    /// The two sides spell a card differently and both spellings are the recording's
+    /// own. A canonical hand entry carries what the card had become - its upgrade level
+    /// after a <c>+</c> and its enchantment after an <c>@</c> - while an action's
+    /// <c>card_id</c> is the model id alone, which is the spelling the driver checks a
+    /// play against. So both are read down to the model id and compared as equals: the
+    /// index is what pins the position, and this is the check that the position holds
+    /// the card the recording says was played. Comparing the two spellings directly
+    /// declined every pair that opened with an upgraded or enchanted card, silently.
+    /// </summary>
+    private static bool IsTheCardPlayed(string handEntry, ActionRecord play) =>
+        string.Equals(
+            ModelId(handEntry), ModelId(Argument(play, "card_id") ?? string.Empty), StringComparison.Ordinal);
+
+    private static string ModelId(string card)
+    {
+        var decoration = card.IndexOfAny(['+', '@']);
+        return decoration < 0 ? card : card[..decoration];
+    }
 
     private static bool HandIndex(ActionRecord play, int count, out int index) =>
         int.TryParse(

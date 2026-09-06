@@ -584,6 +584,44 @@ public class CorruptionTests
     }
 
     /// <summary>
+    /// A card the run had marked is still the card the hand slot holds.
+    ///
+    /// A canonical hand entry carries what a card had become - <c>+1</c> for an upgrade,
+    /// <c>@</c> and an id for an enchantment - while the play that took it names the
+    /// model alone. Comparing the two spellings directly declined every pair that opened
+    /// with a card the run had smithed or enchanted, which is an ordinary shape in a run
+    /// that visited a rest site, and left such a recording short of a control it should
+    /// have had.
+    /// </summary>
+    [Theory]
+    [InlineData("CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.BASH")]
+    [InlineData("CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.BASH")]
+    public void ReorderingAcceptsAPairWhoseRecordedHandCarriesAMarkedCard(string dealt)
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
+                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "0"))),
+            ],
+            Checkpoints = Boundaries((1, "combat_start", dealt)),
+        };
+
+        var reordered = Corruption.All.Single(control => control.Name == "reorder-plays").Apply(manifest);
+        var plays = reordered.Actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
+
+        // The pair was accepted and the two plays came out in the other order.
+        Assert.All(plays, play => Assert.Equal("reordered by a negative control", play.Note));
+        Assert.Equal("CARD.DEFEND_IRONCLAD", plays[0].Args["card_id"]);
+        Assert.Equal("CARD.STRIKE_IRONCLAD", plays[1].Args["card_id"]);
+    }
+
+    /// <summary>
     /// Nor does a pair a card screen rewrote the hand between.
     ///
     /// A play can open a grid over the hand, and the pick that answers it is recorded
