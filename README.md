@@ -5,8 +5,6 @@
 A free, open-source mod for Slay the Spire 2.
 It ships with one recorded run from a featured creator: play from that run's first fight, from the moment it began, with the same deck, relics, health, enemies and opening hand.
 When the fight ends, your fight is shown beside theirs, turn by turn, with no grade and no score.
-**Coming soon:** play from any fight of any recorded run, your own recorded runs included.
-**Coming soon:** a run browser for choosing which run and which fight to play from.
 Playing from a recording, yours or anyone else's, writes nothing to your saves, your stats or your run history, win or lose.
 Recording your own runs changes nothing about them: they save and count exactly as they always did.
 Works on Slay the Spire 2 `v0.111.0`, with no other mod required.
@@ -86,7 +84,7 @@ Nothing here is a claim about anybody's craft: each row is what the mod does and
 
 | Mod | What it does | Runmobile |
 |---|---|---|
-| Rewind (44,187) | Undo turns inside a fight; return to a room checkpoint. | One whole fight from its real start, no undo. The fight is re-derived through the real engine and refused if it is not the recorded one. |
+| [Rewind](https://steamcommunity.com/sharedfiles/filedetails/?id=3747557762) (44,187) | Undo turns inside a fight; return to a room checkpoint. | One whole fight from its real start, no undo. The fight is re-derived through the real engine and refused if it is not the recorded one. |
 | [Hindsight](https://www.nexusmods.com/slaythespire2/mods/925) (670 Nexus downloads, not on the Workshop) | Re-enter your own finished run at a floor, from a save snapshot it took. | Plays from history, never a snapshot. Playing from a recording writes nothing to saves, stats or run history. |
 | [RunReplays](https://steamcommunity.com/sharedfiles/filedetails/?id=3759973128) (53) | Record every decision of a run and replay it by driving the game's screens; load to a floor. | Replays through the engine and checks the result at every boundary; nothing is compared on trust. A version mismatch is a sentence before anything starts. |
 | [STS2Dojo](https://steamcommunity.com/sharedfiles/filedetails/?id=3758840693) (21) | Rebuild one fight from your run-history file and a seed, as a standalone practice combat. | The fight is the one that happened, reached by replaying the run's decisions, and the comparison is against the recorded fight. |
