@@ -53,10 +53,10 @@ public static class Corruption
             "damage and block totals agree. The intermediate state and hidden pile order still depend on order.",
             ReorderPlays)
         {
-            Requires = "two consecutive plays out of one hand - the same turn, since the hand is redrawn at " +
-                       "the end of one - whose order can matter, differing in the card played or the enemy " +
-                       "it is aimed at",
-            AppliesTo = manifest => TryFindPlaysWhoseOrderCanMatter(manifest.Actions, out _),
+            Requires = "two consecutive plays the recording's own checkpoints place in one hand - no turn " +
+                       "start, combat start or floor entry between them, and one before them - whose order " +
+                       "can matter, differing in the card played or the enemy it is aimed at",
+            AppliesTo = manifest => TryFindPlaysWhoseOrderCanMatter(manifest, out _),
         },
 
         new("substitute-same-cost",
@@ -200,37 +200,41 @@ public static class Corruption
     /// a structural refusal, which is not the state divergence this control exists to
     /// demonstrate.
     ///
-    /// The hand is discarded and redrawn at end of turn: the shipped reconstruction
-    /// shows its hand indices restarting after every <see cref="ActionVerb.EndTurn"/>.
-    /// So the window is one turn, not one fight and not raw adjacency in the action
-    /// list, and it is written as a window rather than as a list of the sequences that
-    /// break it. Three earlier versions of this narrowed to the case last reported -
-    /// adjacency, then same-fight - and each left the next hole; the invariant is that
-    /// the two plays come out of one hand.
+    /// Which plays share a hand is read out of the recording rather than guessed at
+    /// from the verbs between them. The hand is discarded and redrawn when a turn
+    /// begins, and every kind of boundary a recording records - a turn start, and the
+    /// combat start and floor entry that begin a fight and so begin a hand - is a
+    /// checkpoint carrying the hand it was dealt. So two plays share a hand exactly
+    /// when a hand-beginning checkpoint sits before the first and none sits between
+    /// them.
+    ///
+    /// A pair the checkpoints cannot settle is declined rather than assumed, and the
+    /// search moves to the next pair; a recording that can settle none of its pairs
+    /// reports NOT APPLICABLE, which the gate refuses honestly for coverage.
+    ///
+    /// Four earlier versions asked this of the actions instead - raw adjacency, then
+    /// the same fight, then a list of verbs asserted to keep the hand - and each one
+    /// left the next hole, because a verb list is a guess about the game dressed as a
+    /// precondition. The recording says what happened; nothing here needs to predict
+    /// it.
     /// </summary>
     private static bool TryFindPlaysWhoseOrderCanMatter(
-        IReadOnlyList<ActionRecord> actions, out (ActionRecord First, ActionRecord Second) pair)
+        ReplayManifest manifest, out (ActionRecord First, ActionRecord Second) pair)
     {
-        var plays = new List<int>();
-        for (var at = 0; at < actions.Count; at++)
-        {
-            if (actions[at].Verb == ActionVerb.PlayCard) plays.Add(at);
-        }
+        var handBegins = manifest.Checkpoints
+            .Where(checkpoint => BeginsAHand.Contains(checkpoint.Kind, StringComparer.Ordinal))
+            .Select(checkpoint => checkpoint.AfterSeq)
+            .ToList();
+
+        var plays = manifest.Actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
 
         for (var index = 0; index + 1 < plays.Count; index++)
         {
-            var first = actions[plays[index]];
-            var second = actions[plays[index + 1]];
+            var first = plays[index];
+            var second = plays[index + 1];
 
-            var sameHand = true;
-            for (var between = plays[index] + 1; between < plays[index + 1]; between++)
-            {
-                if (KeepsTheHand.Contains(actions[between].Verb)) continue;
-                sameHand = false;
-                break;
-            }
-
-            if (!sameHand) continue;
+            if (!handBegins.Any(afterSeq => afterSeq < first.Seq)) continue;
+            if (handBegins.Any(afterSeq => afterSeq >= first.Seq && afterSeq < second.Seq)) continue;
 
             if (!string.Equals(Argument(first, "card_id"), Argument(second, "card_id"), StringComparison.Ordinal) ||
                 !string.Equals(Argument(first, "target_index"), Argument(second, "target_index"), StringComparison.Ordinal))
@@ -244,16 +248,13 @@ public static class Corruption
         return false;
     }
 
-    /// <summary>The verbs a player can issue without the hand in front of them being
-    /// replaced. Anything else between two plays - an <see cref="ActionVerb.EndTurn"/>
-    /// above all, which discards and redraws - means the second play comes out of a
-    /// hand the first never saw.</summary>
-    private static readonly ActionVerb[] KeepsTheHand =
+    /// <summary>The checkpoint kinds that begin a hand: a turn start deals one, and a
+    /// combat start and a floor entry begin the fight that deals the first.</summary>
+    private static readonly string[] BeginsAHand =
     [
-        ActionVerb.PlayCard,
-        ActionVerb.UsePotion,
-        ActionVerb.DiscardPotion,
-        ActionVerb.SelectCardFromScreen,
+        ReplayBoundary.TurnStartKind,
+        ReplayBoundary.CombatStartKind,
+        ReplayBoundary.FloorEntryKind,
     ];
 
     private static string? Argument(ActionRecord action, string name) =>
@@ -265,14 +266,15 @@ public static class Corruption
 
         // Unreachable through the gate, which asks AppliesTo first and reports a
         // control with nothing to damage as not applicable rather than running it.
-        if (!TryFindPlaysWhoseOrderCanMatter(actions, out var pair))
+        if (!TryFindPlaysWhoseOrderCanMatter(manifest, out var pair))
         {
             throw new ManifestException(
-                "reorder-plays needs two consecutive plays out of one hand - the same turn, since the hand is " +
-                "discarded and redrawn at the end of one - whose order can matter, differing in the card " +
-                "played or the enemy it is aimed at. No such pair is in this history, so swapping any two of " +
-                "its plays produces either the same history or an illegal one, and would prove nothing about " +
-                "the arbiter.");
+                "reorder-plays needs two consecutive plays this recording's own checkpoints place in one " +
+                "hand - a turn start, combat start or floor entry before them and none between them - whose " +
+                "order can matter, differing in the card played or the enemy it is aimed at. No such pair is " +
+                "in this history, so swapping any two of its plays produces either the same history or one " +
+                "the recording cannot show came out of a single hand, and would prove nothing about the " +
+                "arbiter.");
         }
 
         var (first, second) = pair;

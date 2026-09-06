@@ -98,6 +98,22 @@ public class CorruptionTests
 
     private static IReadOnlyList<ReplayManifest> PlayableRecordings() => [Playable(), Playable(native: true)];
 
+    /// <summary>
+    /// The hand-beginning boundaries a history records, as the checkpoints a recorder
+    /// writes for them. reorder-plays reads these to decide which plays share a hand,
+    /// so a fixture that ends a turn has to say so the way a recording does.
+    /// </summary>
+    private static IReadOnlyList<Checkpoint> Boundaries(params (int AfterSeq, string Kind)[] boundaries) =>
+    [
+        .. boundaries.Select(boundary => new Checkpoint
+        {
+            Id = $"{boundary.Kind}-{boundary.AfterSeq}",
+            AfterSeq = boundary.AfterSeq,
+            Kind = boundary.Kind,
+            Expect = Expect(native: false, boundary.AfterSeq, "3"),
+        }),
+    ];
+
     private static ActionRecord At(int index, ActionRecord action) => action with
     {
         Evidence = FactEvidence.AtVideoTime(PlayableTimes[index], "test fixture"),
@@ -365,6 +381,7 @@ public class CorruptionTests
                 At(5, Fixtures.Action(5, ActionVerb.PlayCard,
                     ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "2"))),
             ],
+            Checkpoints = Boundaries((1, "combat_start")),
         };
 
         var reordered = Corruption.All.Single(control => control.Name == "reorder-plays").Apply(manifest);
@@ -396,6 +413,7 @@ public class CorruptionTests
                 At(3, Fixtures.Action(3, ActionVerb.PlayCard,
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
             ],
+            Checkpoints = Boundaries((1, "combat_start")),
         };
 
         var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
@@ -445,7 +463,9 @@ public class CorruptionTests
     /// pair that straddles a fight boundary - or a turn boundary, since the hand is
     /// discarded and redrawn at the end of a turn - produces a play of a card that hand
     /// never held, which the driver refuses on card identity: a structural refusal
-    /// counted as a rejection while nothing about order was demonstrated.
+    /// counted as a rejection while nothing about order was demonstrated. Which is
+    /// which is read out of the checkpoints the recording writes for its boundaries,
+    /// so this history carries the ones it reached.
     /// </summary>
     [Fact]
     public void ReorderingSwapsAPairFromOneHandRatherThanAcrossAFightOrTurnBoundary()
@@ -474,6 +494,8 @@ public class CorruptionTests
                 At(9, Fixtures.Action(9, ActionVerb.PlayCard,
                     ("card_id", "CARD.HELLRAISER"), ("hand_index", "3"))),
             ],
+            Checkpoints = Boundaries(
+                (1, "combat_start"), (5, "combat_start"), (7, "turn_start")),
         };
 
         var reordered = Corruption.All.Single(control => control.Name == "reorder-plays").Apply(manifest);
@@ -508,11 +530,32 @@ public class CorruptionTests
                 At(5, Fixtures.Action(5, ActionVerb.PlayCard,
                     ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "0"))),
             ],
+            Checkpoints = Boundaries((1, "combat_start"), (4, "turn_start")),
         };
 
         var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
 
         Assert.False(reorder.AppliesTo(manifest));
+    }
+
+    /// <summary>
+    /// A recording whose checkpoints cannot place two plays in one hand is not
+    /// applicable either.
+    ///
+    /// The control does not fall back to reading the verbs between them: nothing in an
+    /// action entry says what the hand was, so a history with no hand-beginning
+    /// checkpoint before its plays has not established the one thing the swap's
+    /// arithmetic depends on.
+    /// </summary>
+    [Fact]
+    public void ReorderingDoesNotApplyWhenNoCheckpointPlacesAPairInOneHand()
+    {
+        var manifest = Playable() with { Checkpoints = [] };
+
+        var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
+
+        Assert.False(reorder.AppliesTo(manifest));
+        Assert.Throws<ManifestException>(() => reorder.Apply(manifest));
     }
 
     /// <summary>
@@ -537,6 +580,7 @@ public class CorruptionTests
                 At(6, Fixtures.Action(6, ActionVerb.PlayCard,
                     ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
             ],
+            Checkpoints = Boundaries((1, "combat_start"), (5, "combat_start")),
         };
 
         var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
