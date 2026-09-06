@@ -86,6 +86,19 @@ internal static class RunLibraryStore
         ];
 
     /// <summary>
+    /// The run ids of the finished recordings that could be recordings of a run on this
+    /// seed, newest run first.
+    ///
+    /// A recording's name carries the seed of the run it recorded, so the index alone
+    /// narrows a directory of fifty to the one or two a given run could be - before a
+    /// single manifest is opened. Which names a seed could have produced is
+    /// <see cref="RecordingLibrary"/>'s answer, because it is the same knowledge that
+    /// composes them.
+    /// </summary>
+    internal static IReadOnlyList<string> StoredRunIdsOn(string seed) =>
+        [.. StoredRunIds().Where(runId => RecordingLibrary.NamesRunOn(runId, seed))];
+
+    /// <summary>
     /// One recording of the player's own, by its run id, or null when this computer has
     /// no readable recording of that run.
     ///

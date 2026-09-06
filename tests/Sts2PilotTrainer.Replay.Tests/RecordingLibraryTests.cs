@@ -141,6 +141,31 @@ public sealed class RecordingLibraryTests
         Assert.Equal([$"{Older}.replay.json"], recording.FileNames);
     }
 
+    /// <summary>
+    /// Which names one seed could have produced, so a caller can narrow a directory of
+    /// recordings before opening any of them. It is the same knowledge that composes a
+    /// name, which is why it lives beside it.
+    /// </summary>
+    [Fact]
+    public void ANameSaysWhichSeedItsRunWasOn()
+    {
+        var name = RecordingLibrary.Name("SFXT-47K", new DateTimeOffset(2026, 9, 6, 1, 0, 0, TimeSpan.Zero));
+
+        Assert.True(RecordingLibrary.NamesRunOn(name, "SFXT-47K"));
+        Assert.True(RecordingLibrary.NamesRunOn(name, "SFXT47K"));
+        Assert.False(RecordingLibrary.NamesRunOn(name, "SFXT47"));
+        Assert.False(RecordingLibrary.NamesRunOn(name, "SFXT47KK"));
+    }
+
+    /// <summary>A file this library did not name is not a recording of any seed, so
+    /// narrowing on one never reaches it.</summary>
+    [Fact]
+    public void ANameThisLibraryDidNotWriteIsOnNoSeed()
+    {
+        Assert.False(RecordingLibrary.NamesRunOn("navegreed-OJ-6QXhNgdg", "OJ"));
+        Assert.False(RecordingLibrary.NamesRunOn("native-AAAA-nonsense", "AAAA"));
+    }
+
     private const string Older = "native-ZZZZ-20260901-010000";
     private const string Newer = "native-AAAA-20260906-010000";
     private const string Newest = "native-MMMM-20260906-020000";

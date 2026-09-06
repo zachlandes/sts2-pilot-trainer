@@ -22,6 +22,9 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// </summary>
 public sealed class RunLibraryStoreTests : IDisposable
 {
+    private const string Seed = "SFXT47K77RFK";
+    private const string Build = "v0.111.0";
+
     private readonly string _root = Path.Combine(
         Path.GetTempPath(), $"runmobile-library-{Guid.NewGuid():N}", "Runmobile", "steam", "account",
         "profile1");
@@ -140,6 +143,64 @@ public sealed class RunLibraryStoreTests : IDisposable
         Assert.True(RunLibrary.HasAnythingToShow());
     }
 
+    /// <summary>
+    /// A press on a run-history row opens only the recordings that could be that run.
+    ///
+    /// Proved by leaving a recording of another seed on disk whose manifest this build
+    /// cannot parse: a walk of everything stored would have read and refused it, and
+    /// narrowing on the seed first never opens it. That narrowing is what keeps the cost
+    /// of a press proportional to the runs on one seed rather than to the fifty a player
+    /// may keep.
+    /// </summary>
+    [GameFact]
+    public void APressReadsOnlyTheRecordingsOfItsOwnSeed()
+    {
+        Write("native-SFXT47K77RFK-20260906-120000.replay.json", ManifestJson.Serialize(
+            Recording("native-SFXT47K77RFK-20260906-120000")));
+        Write("native-OTHERSEED-20260906-130000.replay.json", "{\"manifest_version\": 9999}");
+
+        Assert.Equal(
+            ["native-SFXT47K77RFK-20260906-120000"],
+            RunLibraryStore.StoredRunIdsOn(Seed));
+
+        var found = RunHistoryPlateHost.RecordingOf(Wanted());
+
+        Assert.Equal("native-SFXT47K77RFK-20260906-120000", found?.RunId);
+    }
+
+    /// <summary>
+    /// Two runs on one seed with the same character, ascension and build are
+    /// indistinguishable from a history row, and the honest answer is none rather than
+    /// the first of them.
+    /// </summary>
+    [GameFact]
+    public void TwoRecordingsAHistoryRowCannotBeToldApartAnswerNone()
+    {
+        Write("native-SFXT47K77RFK-20260906-120000.replay.json", ManifestJson.Serialize(
+            Recording("native-SFXT47K77RFK-20260906-120000")));
+        Write("native-SFXT47K77RFK-20260906-130000.replay.json", ManifestJson.Serialize(
+            Recording("native-SFXT47K77RFK-20260906-130000")));
+
+        Assert.Null(RunHistoryPlateHost.RecordingOf(Wanted()));
+    }
+
+    /// <summary>A run more than one person played is a run no recording is a recording
+    /// of, because the recorder does not attach to one.</summary>
+    [GameFact]
+    public void ARunWithNoSinglePlayerCharacterMatchesNothing()
+    {
+        Write("native-SFXT47K77RFK-20260906-120000.replay.json", ManifestJson.Serialize(
+            Recording("native-SFXT47K77RFK-20260906-120000")));
+
+        Assert.Null(RunHistoryPlateHost.RecordingOf(Wanted() with { Character = null }));
+    }
+
+    /// <summary>What the game's history says about the run these recordings are of.
+    /// The values are the fixture's own; nothing here is under test but the
+    /// matching.</summary>
+    private static RunHistoryPlateHost.HistoryIdentity Wanted() =>
+        new(Seed, Ascension: 0, Build, "CHARACTER.IRONCLAD");
+
     /// <summary>A run still being played has a journal and no manifest, so it is not a
     /// run the cheap question can count.</summary>
     [GameFact]
@@ -199,10 +260,10 @@ public sealed class RunLibraryStoreTests : IDisposable
 
     internal static ReplayManifest BareRecording(string runId) => Recording(runId);
 
-    private static ReplayManifest Recording(string runId) => new()
+    private static ReplayManifest Recording(string runId, string seed = Seed) => new()
     {
         RunId = runId,
-        Environment = Identity(),
+        Environment = Identity(seed),
         Source = new SourceProvenance
         {
             Kind = "native",
@@ -222,7 +283,7 @@ public sealed class RunLibraryStoreTests : IDisposable
 
     /// <summary>The identity a recording carries. Nothing here is under test - the
     /// recordings exist so there is something on disk for the store to find.</summary>
-    private static EnvironmentIdentity Identity()
+    private static EnvironmentIdentity Identity(string seed)
     {
         var evidence = FactEvidence.AtActionOrdinal(-1);
         return new EnvironmentIdentity
@@ -230,7 +291,7 @@ public sealed class RunLibraryStoreTests : IDisposable
             BuildVersion = Fact<string>.Captured("v0.111.0", evidence),
             BuildDateUtc = Fact<string>.Captured("2026.08.14", evidence),
             GameMode = Fact<string>.Captured("standard", evidence),
-            Seed = Fact<string>.Captured("SFXT47K77RFK", evidence),
+            Seed = Fact<string>.Captured(seed, evidence),
             ContentHash = Fact<string>.Captured("1568834832", evidence),
             Ascension = Fact<int>.Captured(0, evidence),
             Unlocks = Fact<UnlockRequirement>.Captured(

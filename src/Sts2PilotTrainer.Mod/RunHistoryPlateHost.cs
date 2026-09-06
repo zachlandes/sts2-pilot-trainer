@@ -200,6 +200,24 @@ internal static class RunHistoryPlateHost
         ReplayManifest? recording, Func<ReplayManifest, IReadOnlyList<int>> proved) =>
         recording is null ? null : proved(recording).Cast<int?>().LastOrDefault();
 
+    /// <summary>The four things the game's own history and a recording both carry and
+    /// both mean the same way. Read off the history once, so what a recording is matched
+    /// against is a value rather than a screen. A character of null is a run more than
+    /// one person played, which no recording is a recording of.</summary>
+    internal readonly record struct HistoryIdentity(
+        string Seed, int Ascension, string Build, string? Character);
+
+    /// <summary>Which of the player's recordings is a recording of this run.</summary>
+    internal static ReplayManifest? RecordingFor(RunHistory history) => RecordingOf(IdentityOf(history));
+
+    /// <inheritdoc cref="RecordingFor"/>
+    internal static HistoryIdentity IdentityOf(RunHistory history) =>
+        new(
+            history.Seed,
+            history.Ascension,
+            history.BuildId,
+            history.Players.Count == 1 ? history.Players[0].Character.ToString() : null);
+
     /// <summary>
     /// Which of the player's recordings is a recording of this run.
     ///
@@ -209,27 +227,35 @@ internal static class RunHistoryPlateHost
     /// ascension on the same build are indistinguishable here, and the honest answer to
     /// that is none rather than the first of them - a plate that offered the wrong run's
     /// fights would stand somebody in a fight they never had.
+    ///
+    /// <para>The seed narrows before anything is opened. A recording's name carries the
+    /// seed of the run it recorded, so a press reads the one or two recordings that could
+    /// be this run rather than the fifty a player's disk may hold - and it stops at the
+    /// second match, which is all the ambiguity rule needs to know.</para>
     /// </summary>
-    internal static ReplayManifest? RecordingFor(RunHistory history)
+    internal static ReplayManifest? RecordingOf(HistoryIdentity identity)
     {
-        var candidates = RunLibraryStore.MyRecordings()
-            .Select(stored => stored.Recording)
-            .Where(recording => Matches(recording, history))
-            .Take(2)
-            .ToList();
-        return candidates.Count == 1 ? candidates[0] : null;
+        ReplayManifest? found = null;
+        foreach (var runId in RunLibraryStore.StoredRunIdsOn(identity.Seed))
+        {
+            if (RunLibraryStore.RecordingFor(runId) is not { } recording) continue;
+            if (!Matches(recording, identity)) continue;
+            if (found is not null) return null;
+
+            found = recording;
+        }
+
+        return found;
     }
 
-    private static bool Matches(ReplayManifest recording, RunHistory history) =>
-        string.Equals(recording.Environment.Seed.Value, history.Seed, StringComparison.Ordinal) &&
-        recording.Environment.Ascension.Value == history.Ascension &&
+    private static bool Matches(ReplayManifest recording, HistoryIdentity identity) =>
+        identity.Character is not null &&
+        string.Equals(recording.Environment.Seed.Value, identity.Seed, StringComparison.Ordinal) &&
+        recording.Environment.Ascension.Value == identity.Ascension &&
         string.Equals(
-            recording.Environment.BuildVersion.Value, history.BuildId, StringComparison.Ordinal) &&
-        history.Players.Count == 1 &&
+            recording.Environment.BuildVersion.Value, identity.Build, StringComparison.Ordinal) &&
         string.Equals(
-            recording.Environment.Character.Value,
-            history.Players[0].Character.ToString(),
-            StringComparison.Ordinal);
+            recording.Environment.Character.Value, identity.Character, StringComparison.Ordinal);
 
     /// <summary>
     /// The run one history entry belongs to.
