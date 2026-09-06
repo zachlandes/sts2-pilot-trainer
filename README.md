@@ -158,7 +158,7 @@ The full walkthrough, with commands and their real output, is in
 | `src/Sts2PilotTrainer.Trainer` | The game-free owner of the Combat Trainer screen model, wording, and chart derivation. |
 | `src/Sts2PilotTrainer.Mod` | The only project loaded into the retail game; it owns the native mode card and retail presentation. |
 | `src/Sts2PilotTrainer.Cli` | The arbiter's commands. |
-| `manifests/` | The reconstructed run, and the map read from the video. Facts only. |
+| `manifests/` | The reconstructed run and the map read from the video, plus two runs recorded inside the player's own game. Facts only. |
 | `docs/` | [The proof-of-concept path](docs/proof-of-concept-path.md) · [the in-game host](docs/in-game-host.md) · [environment identity](docs/environment-identity.md) · [comparison direction](docs/comparison-direction.md) · [headless fidelity](docs/headless-fidelity.md) · [dependencies](docs/dependencies.md) · [distribution](docs/distribution.md) · [the engine's own replay format](docs/native-replay-format.md) |
 
 ## What this repository does not contain
