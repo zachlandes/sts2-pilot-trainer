@@ -140,9 +140,44 @@ public sealed class RunLibraryStoreTests : IDisposable
         var remembered = RunLibraryStore.ReadVerdicts();
         Assert.Equal(RunVerdict.Passed, remembered.For("native-a-20260906-120000", build));
         Assert.Null(remembered.For("native-a-20260906-120000", "some-other-build"));
-        Assert.Contains(
-            RunLibraryStore.StoredRunIds(),
-            runId => remembered.For(runId, build) == RunVerdict.Passed);
+        Assert.True(remembered.CouldListAny(RunLibraryStore.StoredRunIds(), build));
+    }
+
+    /// <summary>
+    /// The loop the round-6 cache closed, traced end to end. A player who updates the
+    /// game arrives with nothing remembered for the build they are now on, and their
+    /// stored runs are unknown - which shows the button, so the browser is reachable,
+    /// so the browser judges and records, so from then on the cache answers.
+    ///
+    /// Hiding on unknown had no way out of this: the browser is the only thing that
+    /// judges and the button is the only way to the browser.
+    /// </summary>
+    [GameFact]
+    public void AfterAGameUpdateTheUnjudgedRunsStillReachTheBrowser()
+    {
+        Write(
+            "native-a-20260906-120000.replay.json",
+            ManifestJson.Serialize(Recording("native-a-20260906-120000")));
+
+        var build = RunLibrary.ThisBuild();
+        var stored = RunLibraryStore.StoredRunIds();
+
+        // What is left of a previous build's session: answers, none of them about this
+        // build.
+        Assert.True(RunLibraryStore.RecordVerdicts(
+            "v0.110.0", new Dictionary<string, RunVerdict>(StringComparer.Ordinal)
+            {
+                ["native-a-20260906-120000"] = RunVerdict.Passed,
+            }));
+
+        Assert.True(RunLibraryStore.ReadVerdicts().CouldListAny(stored, build));
+
+        // Opening the browser is what judges, and it records what it judged.
+        _ = RunLibrary.Runs();
+
+        Assert.Equal(
+            RunVerdicts.For(RunLibraryStore.RecordingFor("native-a-20260906-120000")!, build),
+            RunLibraryStore.ReadVerdicts().For("native-a-20260906-120000", build));
     }
 
     /// <summary>A run still being played has a journal and no manifest, so it is not a

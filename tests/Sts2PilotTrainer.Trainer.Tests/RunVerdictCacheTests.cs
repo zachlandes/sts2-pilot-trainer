@@ -74,6 +74,83 @@ public sealed class RunVerdictCacheTests
         Assert.Null(cache.For("native-a", Build));
     }
 
+    /// <summary>
+    /// The equivalence the cache exists to keep: where what has been judged is in step
+    /// with what the preflight would say now, the cheap question answers exactly what
+    /// building the list would answer. Asserted against the list's own rule - a run is in
+    /// the list when its verdict passed - rather than against a second copy of it.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(CachesInStep))]
+    public void AnUpToDateCacheAnswersWhatBuildingTheListWouldAnswer(
+        IReadOnlyDictionary<string, RunVerdict> live)
+    {
+        var cache = live.Count == 0 ? RunVerdictCache.Empty : RunVerdictCache.Empty.WithJudged(Build, live);
+
+        Assert.Equal(
+            live.Values.Any(verdict => verdict == RunVerdict.Passed),
+            cache.CouldListAny(live.Keys, Build));
+    }
+
+    public static TheoryData<IReadOnlyDictionary<string, RunVerdict>> CachesInStep() => new()
+    {
+        new Dictionary<string, RunVerdict>(StringComparer.Ordinal),
+        new Dictionary<string, RunVerdict>(StringComparer.Ordinal)
+        {
+            ["native-a"] = RunVerdict.Failed,
+            ["native-b"] = RunVerdict.Absent,
+        },
+        new Dictionary<string, RunVerdict>(StringComparer.Ordinal)
+        {
+            ["native-a"] = RunVerdict.Failed,
+            ["native-b"] = RunVerdict.Passed,
+        },
+        new Dictionary<string, RunVerdict>(StringComparer.Ordinal)
+        {
+            ["native-a"] = RunVerdict.Passed,
+        },
+    };
+
+    /// <summary>
+    /// A run nobody has judged on this build is a reason to look, so it shows the button
+    /// even where judging it live would list nothing.
+    ///
+    /// That is the one direction a cold or stale cache can be wrong in, and it is the
+    /// safe one: it costs one browser open, and the same open judges every run and writes
+    /// the answers, so it corrects itself. The opposite direction was a lockout with no
+    /// way out - the browser is the only thing that judges and the button is the only way
+    /// to the browser, so a player who updated the game past every remembered verdict
+    /// never got the feature back.
+    /// </summary>
+    [Fact]
+    public void ARunNobodyHasJudgedOnThisBuildIsAReasonToLook()
+    {
+        Assert.True(RunVerdictCache.Empty.CouldListAny(["native-a"], Build));
+
+        var otherBuild = RunVerdictCache.Empty.WithJudged(
+            "v0.110.0", Judged("native-a", RunVerdict.Passed));
+        Assert.True(otherBuild.CouldListAny(["native-a"], Build));
+
+        var judgedHere = otherBuild.WithJudged(Build, Judged("native-a", RunVerdict.Failed));
+        Assert.False(judgedHere.CouldListAny(["native-a"], Build));
+    }
+
+    /// <summary>A verdict nobody could reach is not a run that is out: the reading is
+    /// taken again, so it stays a reason to look.</summary>
+    [Fact]
+    public void ARunThisGameCouldNotBeReadToJudgeIsStillAReasonToLook()
+    {
+        var cache = RunVerdictCache.Empty.WithJudged(Build, Judged("native-a", RunVerdict.Unjudged));
+
+        Assert.True(cache.CouldListAny(["native-a"], Build));
+    }
+
+    [Fact]
+    public void NoRunsAtAllIsNothingToLookAt()
+    {
+        Assert.False(RunVerdictCache.Empty.CouldListAny([], Build));
+    }
+
     [Fact]
     public void ACacheFromAnotherSchemaIsRefused()
     {

@@ -721,9 +721,17 @@ with the wrong run.
 The cache is a hint about one menu button and never evidence about a run: `RunBrowser`'s
 list and the run-code lookup judge live through `RunVerdicts.For` every time they open,
 because a verdict is a reading of the whole environment and not of the build alone.
-A stale entry can show a button onto a list that turns out empty, or hide the button
-until the browser has been opened once, and neither is a false claim to a player about a
-run - that containment is the reason the file is allowed to exist.
+A run nobody has judged on this build shows the button rather than hiding it: only a
+remembered failed or absent verdict takes a run out of the reckoning.
+That direction is deliberate.
+Hiding on unknown closed a loop with no way out - the browser is the only thing that
+judges and the button is the only way to the browser, so a player who updated the game
+past every remembered verdict lost the feature permanently.
+Erring the other way shows a button onto a list that turns out empty, which is not a
+claim about a run and which the same browser open corrects by judging every run and
+writing the answers.
+Where the remembered verdicts are in step with what the preflight would say now, the
+cheap question answers exactly what building the list would answer.
 Only a judgement actually taken is written; nothing seeds it and nothing backfills it.
 
 **Two states the design names are derived and not reachable, for reasons outside this

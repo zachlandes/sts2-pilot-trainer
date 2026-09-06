@@ -19,15 +19,30 @@ namespace Sts2PilotTrainer.Trainer;
 /// run-code lookup judge live, every time they are opened. The reason is that a verdict
 /// is a reading of the whole environment - content hash, mod set, supplied unlocks, act
 /// variant - and not of the build alone, so an entry keyed by build is stale the moment
-/// a mod is installed. What a stale entry can do is bounded by that: it can show a
-/// button onto a list that turns out empty, or hide a button until the player opens the
-/// browser once. Neither is a false claim about a run, and that containment is the only
-/// reason this file is allowed to exist.</para>
+/// a mod is installed. What a stale entry can do is bounded by that: at worst it shows a
+/// button onto a list that turns out empty. That is not a claim about a run, and that
+/// containment is the only reason this file is allowed to exist.</para>
+///
+/// <para><b>Unknown means go and look.</b> A run this game has never judged on this
+/// build is a reason to show the button, not a reason to hide it: only a remembered
+/// <see cref="RunVerdict.Failed"/> or <see cref="RunVerdict.Absent"/> takes a run out of
+/// the reckoning, because those are the two answers that say the run is not listed. That
+/// direction is chosen deliberately. Hiding on unknown closed a loop with no way out -
+/// the cache is written only when the browser is opened, and the browser is reached only
+/// through the button, so a player who updated the game past every remembered verdict
+/// lost the feature permanently. Erring the other way costs one browser open onto a list
+/// that turns out empty, and the same open judges every run and writes the answers, so it
+/// corrects itself.</para>
+///
+/// <para>What that buys is an accelerator rather than a second opinion: where the
+/// remembered verdicts are in step with what the preflight would say now, this answers
+/// exactly what building the list would have answered. Where they are stale it can be
+/// wrong in one direction only, the one above.</para>
 ///
 /// <para><b>An entry is a record that a judgement happened.</b> Only a judgement
 /// actually taken is written. Nothing seeds this, nothing backfills it, and a recording
-/// the browser did not evaluate has no entry - which reads as "not listed", so the
-/// button waits rather than guessing.</para>
+/// the browser did not evaluate has no entry - which is the unknown the rule above sends
+/// somebody to look at rather than an answer this file made up.</para>
 ///
 /// <para>It carries a schema string and refuses an unrecognised one, like every other
 /// file under the store. A verdict name this build does not know reads as no entry
@@ -137,6 +152,19 @@ public sealed record RunVerdictCache
 
         return cache;
     }
+
+    /// <summary>
+    /// Whether any of these runs could be in the list on this build, as far as what has
+    /// been judged says.
+    ///
+    /// The Compendium card's whole question about the player's own runs, and the one
+    /// place the unknown-means-look rule is written. A run with a remembered
+    /// <see cref="RunVerdict.Failed"/> or <see cref="RunVerdict.Absent"/> is out of the
+    /// reckoning; everything else - judged and passed, judged and unreadable, never
+    /// judged at all - is a reason to open the browser and find out.
+    /// </summary>
+    public bool CouldListAny(IEnumerable<string> runIds, string build) =>
+        runIds.Any(runId => For(runId, build) is not (RunVerdict.Failed or RunVerdict.Absent));
 
     /// <summary>The record as it goes on disk.</summary>
     public string Write() => System.Text.Json.JsonSerializer.Serialize(this, ManifestJson.Options);

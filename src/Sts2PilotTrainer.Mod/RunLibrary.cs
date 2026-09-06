@@ -34,11 +34,13 @@ namespace Sts2PilotTrainer.Mod;
 /// directory index and the verdicts <see cref="RunVerdictCache"/> remembers.</para>
 ///
 /// <para>So what is cached is one hint about one menu button, and what is not cached is
-/// everything a player reads. A run with no remembered verdict for this build counts as
-/// not listed, which means the button waits until the browser has been opened once
-/// rather than guessing; the shipped recording normally answers before that ever
-/// matters. <see cref="RunVerdictCache"/> owns why a stale hint cannot become a false
-/// claim about a run.</para>
+/// everything a player reads. A run nobody has judged on this build shows the button
+/// rather than hiding it, because the browser is the only thing that judges and the
+/// button is the only way to the browser. Where the remembered verdicts are in step with
+/// what the preflight would say now, the cheap question answers exactly what building the
+/// list would answer; where they are stale it can be wrong in one direction only - a
+/// button onto a list that turns out empty, which the same open then corrects.
+/// <see cref="RunVerdictCache"/> owns why neither is a false claim about a run.</para>
 /// </summary>
 internal static class RunLibrary
 {
@@ -93,9 +95,11 @@ internal static class RunLibrary
     /// at all. The shipped recordings are in memory already and are judged the same way
     /// the list judges them, so on an ordinary build they answer it outright. Only when
     /// none of them is playable does it reach the player's own runs, and then it asks
-    /// the remembered verdicts rather than the recordings: a run this browser has never
-    /// judged on this build counts as not listed, so the button waits for one browser
-    /// open rather than deserializing fifty recordings to say no.
+    /// the remembered verdicts rather than the recordings - and a run nobody has judged
+    /// on this build is a reason to show the button rather than to hide it. See
+    /// <see cref="RunVerdictCache.CouldListAny"/>: hiding on unknown is what a game
+    /// update would otherwise turn into a permanent lockout, since the browser is the
+    /// only thing that judges and the button is the only way to the browser.
     /// </summary>
     internal static bool HasAnythingToShow()
     {
@@ -110,9 +114,8 @@ internal static class RunLibrary
                 }
             }
 
-            var remembered = RunLibraryStore.ReadVerdicts();
-            return RunLibraryStore.StoredRunIds()
-                .Any(runId => remembered.For(runId, build) == RunVerdict.Passed);
+            return RunLibraryStore.ReadVerdicts()
+                .CouldListAny(RunLibraryStore.StoredRunIds(), build);
         }
         catch (Exception ex)
         {

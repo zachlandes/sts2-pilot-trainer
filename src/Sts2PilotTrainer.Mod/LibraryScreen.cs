@@ -72,8 +72,8 @@ internal static class LibraryScreen
     private const float NotedRowStep = 1.55f;
 
     /// <summary>How far under a row its second line sits, as a multiple of the row's own
-    /// height.</summary>
-    private const float NoteDrop = 0.92f;
+    /// height. A row occupies its whole height, so anything under one clears it.</summary>
+    private const float NoteDrop = 1.02f;
 
     /// <summary>The second line is supporting text and reads after the row, so it is
     /// smaller and dimmer than the label the game drew.</summary>
@@ -241,6 +241,11 @@ internal static class LibraryScreen
     /// beneath it: a note run into the label with a dash would read as part of what the
     /// row is called. It is a plain label wearing the game's font and takes no input, so
     /// the row above it keeps the whole press and the whole focus.
+    ///
+    /// Parented to the row rather than to the popup, so the dimming a refused row
+    /// carries reaches it. A note at full brightness under a row at 45% would read
+    /// louder than the refusal it belongs to, and a refused row would stop looking
+    /// refused at note level.
     /// </summary>
     private static void AddNote(NVerticalPopup content, Control row, string note)
     {
@@ -248,7 +253,7 @@ internal static class LibraryScreen
         {
             Name = $"{row.Name}Note",
             Text = note,
-            Position = new Vector2(row.Position.X, row.Position.Y + (row.Size.Y * NoteDrop)),
+            Position = new Vector2(0f, row.Size.Y * NoteDrop),
             CustomMinimumSize = new Vector2(row.Size.X, 0f),
             MouseFilter = Control.MouseFilterEnum.Ignore,
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -257,7 +262,7 @@ internal static class LibraryScreen
         if (GameFont.Of(content.GetTree()?.Root) is { } font) label.AddThemeFontOverride("font", font);
         label.AddThemeFontSizeOverride("font_size", NoteFontSize);
         label.AddThemeColorOverride("font_color", NoteColour);
-        content.AddChild(label);
+        row.AddChild(label);
     }
 
     /// <summary>
