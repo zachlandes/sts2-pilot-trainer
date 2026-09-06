@@ -30,7 +30,7 @@ Run it on its own only when that is what you want, because the skip is silent in
 totals and the suite still reports green.
 Building first is what makes it run everything: nothing in the solution references
 `Sts2PilotTrainer.Cli`, so `dotnet test` never builds the arbiter the integration
-tests drive, and bootstrapping alone leaves 164 of them skipped.
+tests drive, and bootstrapping alone leaves 223 of them skipped.
 Every test run is bounded by `TestSessionTimeout` in `.runsettings`, wired in from
 `Directory.Build.props` so it applies however `dotnet test` was started. A run that
 exceeds it aborts with a non-zero exit rather than hanging: a deadlocked test used to
@@ -122,8 +122,8 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, 142 of
-`Sts2PilotTrainer.Arbiter.Tests`' 207 tests skip and the job still reports success.
+**What CI cannot run is recorded by name.** On a runner without the game, 139 of
+`Sts2PilotTrainer.Arbiter.Tests`' 192 tests skip and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts that skipped set against
 `scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
 one, or deleting one fails CI until the list is regenerated with `--update` in the

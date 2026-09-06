@@ -128,11 +128,11 @@ internal static class RunHistoryPlateHost
     ///
     /// <para>Whether a console command was used is the recording's own answer, read
     /// through <c>NativeSource.StatesSomethingOtherThanComplete</c> - the owner of that
-    /// reading, so the integrity values are compared in one place. It is three-valued
-    /// rather than a boolean because a recording written before the recorder could tell
-    /// states no integrity at all, and absent is not a clean run under another name:
-    /// reporting one this never established is the claim <c>AGENTS.md</c> forbids, so
-    /// such a recording answers null.</para>
+    /// reading, so the integrity values are compared in one place. A recording stating
+    /// no integrity at all answers null rather than a clean run, because reporting one
+    /// this never established is the claim <c>AGENTS.md</c> forbids; from format v6 the
+    /// field is required and a version-5 file reads as <c>complete</c> through the
+    /// migration, so no manifest this build parses reaches that answer.</para>
     ///
     /// <para>Whether there is a submit flow is this build's own answer and it is no:
     /// section 9.8 puts the flow outside this slice, so the row is drawn refused with a

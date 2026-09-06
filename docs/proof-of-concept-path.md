@@ -367,7 +367,7 @@ first fight before it can offer a later one.
   handlers. The driver's refusal for an unimplemented verb is derived from it, and the
   recorder reads the same table from the other end - a decision the driver issues is a
   decision a running game announces. `./scripts/arbiter engine-commands` prints it,
-  including the three verbs that map onto nothing here and the reason beside each.
+  including the one verb that maps onto nothing here and the reason beside it.
 - A digest at every boundary the history passes, not only at its first fight.
   `RunCoverage` derives *where* the boundaries are, as a rule over the history with no
   engine; what each one holds needs a replay, so `migrate-manifest --derive-boundaries`

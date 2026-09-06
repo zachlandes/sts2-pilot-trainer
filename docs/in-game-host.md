@@ -280,7 +280,7 @@ lowers the write barrier on every one of those paths.
 ## Recording the player's own run
 
 **The recorder is that observer widened to a whole run, and it shares its parts.**
-`RunRecorder` in `Sts2PilotTrainer.Mod` attaches when a run starts, watches every decision the player makes, and writes a v5 native manifest under `user://Runmobile/recordings/` when the run ends.
+`RunRecorder` in `Sts2PilotTrainer.Mod` attaches when a run starts, watches every decision the player makes, and writes a v6 native manifest under `user://Runmobile/recordings/` when the run ends.
 Inside a fight it hands the run to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink` in `Sts2PilotTrainer.Replay`: the trainer's sink is a `FightCapture` and the recorder's is an adapter onto the `RunCapture` that keeps the whole run.
 There is one observer, one settle rule and one set of rules about what a sample means, whichever feature is watching.
 The one question the two sinks answer differently is an action whose argument the observer could not resolve, which is why `IFightSampleSink` asks it rather than the observer deciding: a history missing an argument the format requires is a run nobody can replay, so the recorder refuses and keeps nothing for that action, while a fight being compared never reads that argument and the capture keeps the step.
@@ -766,10 +766,10 @@ module.** The plate's console-command state - play rows offered, Submit refused,
 console command was used, so it can't be submitted." - is not one of them any more: the
 recorder writes `source.native.integrity`, and `RunHistoryPlateHost.FactsFor` reads it
 through `NativeSource.StatesSomethingOtherThanComplete`, which owns the comparison.
-That reading is three-valued rather than a boolean, because a recording written before the
-recorder could tell states no integrity at all and answers `ConsoleUsed` null - absent is
-not a clean run under another name, and a plate reporting one it never checked is the claim
-`AGENTS.md` forbids.
+That reading answers `ConsoleUsed` null where a recording states no integrity at all, because
+absent is not a clean run under another name and a plate reporting one it never checked is the
+claim `AGENTS.md` forbids. From format v6 the field is required and a version-5 file reads as
+`complete` through the migration, so no manifest this build parses reaches that answer.
 The browser's multiplayer rule is the first that is still unreachable.
 `LibraryRun.Listed` hides an established multiplayer run and `RunBrowser.Lookup` answers a
 run code for one with the multiplayer body, both correctly, and nothing supplies the fact:
