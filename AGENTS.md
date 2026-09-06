@@ -102,7 +102,7 @@ that quietly does something plausible is the failure mode this whole project exi
 to prevent.
 
 **What CI cannot run is recorded by name.** On a runner without the game, 119 of
-`Sts2PilotTrainer.Arbiter.Tests`' 167 tests skip and the job still reports success.
+`Sts2PilotTrainer.Arbiter.Tests`' 170 tests skip and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts that skipped set against
 `scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
 one, or deleting one fails CI until the list is regenerated with `--update` in the
@@ -230,6 +230,14 @@ Every write goes through `RunmobileStore`. [docs/in-game-host.md](docs/in-game-h
 A projection is handed over only once the fight ended inside a sampled action, and a gap between two samples is refused rather than bridged.
 The recording's side of the in-game comparison is `manifests/<id>.recorded-fights.json`, produced by `./scripts/arbiter recorded-fight` from a fresh replay and bound to the manifest per fight by run id, history hash and the combat-start boundary of the same ordinal; regenerate it in the same change that edits the manifest's fights.
 Do not add a second capture path, a turn-level reset, a score or a verdict; `docs/comparison-direction.md` owns why.
+
+**One version, written in one place.** `src/Sts2PilotTrainer.Mod/Runmobile.json`'s
+`version` field is the only version declaration here; `Directory.Build.props` reads it
+and stamps every assembly, `RunmobileVersion` is the one reader, and a native recording
+names that build twice - in its mod set and as `source.native.recorder_version` - so the
+two have to be the same string. Do not add a second declaration; recordings written
+before this carry the old wrong value and are not edited to match.
+[docs/distribution.md](docs/distribution.md) owns the detail.
 
 **Player-facing wording is a template, never a recording.** Everything the mod says
 lives in `Sts2PilotTrainer.Trainer`, and every recording-specific value in it is

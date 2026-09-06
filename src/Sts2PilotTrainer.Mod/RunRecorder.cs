@@ -333,9 +333,9 @@ internal sealed class RunRecorder : IDisposable
     }
 
     /// <summary>Which build of the recorder is writing, so a defect found in one is
-    /// traceable to everything it wrote.</summary>
-    internal static string RecorderVersion =>
-        $"runmobile-recorder/{typeof(RunRecorder).Assembly.GetName().Version?.ToString() ?? "0.0.0"}";
+    /// traceable to everything it wrote. The same answer the mod set in the same
+    /// recording gives, because both come from <see cref="RunmobileVersion"/>.</summary>
+    internal static string RecorderVersion => RunmobileVersion.Recorder;
 
     // ── Decisions ────────────────────────────────────────────────────────────────
 

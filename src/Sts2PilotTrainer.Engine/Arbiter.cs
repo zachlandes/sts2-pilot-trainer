@@ -13,7 +13,9 @@ namespace Sts2PilotTrainer.Engine;
 /// </summary>
 public static class Arbiter
 {
-    public const string Version = "sts2-pilot-trainer/arbiter/0.1.0";
+    /// <summary>Which build replayed, from the same source every other version
+    /// string here comes from. Hardcoded, it was a fourth answer waiting to drift.</summary>
+    public static string Version => $"sts2-pilot-trainer/arbiter/{RunmobileVersion.Current}";
 
     public static ArbiterOutcome Run(
         ReplayManifest manifest, int? stopAfterSeq = null,
