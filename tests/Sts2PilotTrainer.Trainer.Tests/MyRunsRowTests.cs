@@ -114,6 +114,11 @@ public sealed class MyRunsRowTests
     /// The figure follows the magnitude. A single run in megabytes rounds to nothing
     /// while the row says there is one, and a full library in kilobytes is a number
     /// nobody can weigh.
+    ///
+    /// The unit follows the rounded figure rather than the byte count, so nothing reads
+    /// as a thousand and twenty-four of the smaller unit: the last four rows are the
+    /// band either side of each boundary, where rounding is what carries the figure
+    /// into the next one.
     /// </summary>
     [Theory]
     [InlineData(0L, "0 MB")]
@@ -123,6 +128,10 @@ public sealed class MyRunsRowTests
     [InlineData((long)(1.55 * 1024 * 1024), "1.5 MB")]
     [InlineData(120L * 1024 * 1024, "120 MB")]
     [InlineData(3L * 1024 * 1024 * 1024, "3 GB")]
+    [InlineData(1023L * 1024, "1023 KB")]
+    [InlineData(1_048_000L, "1 MB")]
+    [InlineData((1024L * 1024) - 1, "1 MB")]
+    [InlineData((1024L * 1024 * 1024) - 1, "1 GB")]
     public void TheSizeIsReadInTheUnitThatCarriesIt(long bytes, string expected)
     {
         Assert.Equal(expected, MyRunsRow.Size(bytes));

@@ -201,6 +201,12 @@ public sealed record MyRunsRow(
     /// the row says there is one, and a full library in kilobytes is a number nobody can
     /// weigh. Nothing at all reads as zero megabytes, which is the design's own word for
     /// an empty library.
+    ///
+    /// The unit follows the figure after it is rounded rather than the byte count it
+    /// came from. Rounding first and choosing the unit second is what stops a library a
+    /// few hundred bytes short of a megabyte reading as "1024 KB": the two questions
+    /// look independent and are not, because rounding is what can carry a figure into
+    /// the next unit.
     /// </summary>
     public static string Size(long bytes)
     {
@@ -209,8 +215,13 @@ public sealed record MyRunsRow(
         const long gb = mb * 1024L;
 
         if (bytes <= 0) return "0 MB";
-        if (bytes < mb) return $"{Math.Max(1, (bytes + kb - 1) / kb).ToString(CultureInfo.InvariantCulture)} KB";
-        if (bytes < gb) return $"{Fraction((double)bytes / mb)} MB";
+
+        var kilobytes = Math.Max(1, (bytes + kb - 1) / kb);
+        if (kilobytes < kb) return $"{kilobytes.ToString(CultureInfo.InvariantCulture)} KB";
+
+        var megabytes = (double)bytes / mb;
+        if (bytes < gb && Math.Round(megabytes) < kb) return $"{Fraction(megabytes)} MB";
+
         return $"{Fraction((double)bytes / gb)} GB";
     }
 

@@ -122,17 +122,30 @@ internal static class MyRunsSettings
     /// </summary>
     private static void Retain(int keep)
     {
+        // Each failure says only what happened. A component may not report a claim it
+        // did not establish, and a refusal logged over a write that succeeded is one.
         try
         {
             RunmobileSettings.SetKeepRecentRuns(keep);
-            RecordingRetention.ReapplyPolicyAtNextMenu();
-            Redraw(null);
         }
         catch (Exception ex)
         {
             Log.Error(
                 $"[{RunmobileMod.ModId}] could not write how many runs you keep: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
+            return;
+        }
+
+        try
+        {
+            RecordingRetention.ReapplyPolicyAtNextMenu();
+            Redraw(null);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] wrote how many runs you keep, but could not arm it for this " +
+                $"session or say so on the screen: {ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 
@@ -203,14 +216,27 @@ internal static class MyRunsSettings
     {
         NModalContainer.Instance?.Clear();
 
+        int removed;
         try
         {
-            Redraw(RecordingRetention.PurgeNow());
+            removed = RecordingRetention.PurgeNow();
         }
         catch (Exception ex)
         {
             Log.Error(
                 $"[{RunmobileMod.ModId}] could not remove your runs: {ex.GetType().Name}: {ex.Message}", 2);
+            return;
+        }
+
+        try
+        {
+            Redraw(removed);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] removed your runs, but could not say so on the screen: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 
