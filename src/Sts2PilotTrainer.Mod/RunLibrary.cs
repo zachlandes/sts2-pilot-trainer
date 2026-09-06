@@ -22,10 +22,25 @@ namespace Sts2PilotTrainer.Mod;
 /// simply empty - which is what the browser draws when a group has nothing in it,
 /// rather than a placeholder saying so.</para>
 ///
-/// <para><b>Nothing is cached.</b> The library is re-read each time it is asked for,
-/// because the recorder writes into it while the game is running and a list built once
-/// would be a list that goes stale the moment a player finishes a run. It is a few
-/// files on a menu screen.</para>
+/// <para><b>Nothing is cached, and the cheap question does not build the list.</b> The
+/// library is re-read each time it is asked for, because the recorder writes into it
+/// while the game is running and a list built once would be a list that goes stale the
+/// moment a player finishes a run. It is not a few files: the retention default keeps
+/// fifty recordings, each hundreds of kilobytes, and each costs a deserialization and a
+/// preflight. So <see cref="Runs"/> - which the browser and the run code want whole - is
+/// the expensive one, and <see cref="HasAnythingToShow"/>, which the Compendium asks on
+/// every menu open, walks the same two sources itself and stops at the first listed run.
+/// In the ordinary case that is the shipped recording: one preflight, and not one of the
+/// player's own manifests read. It reaches them only when no shipped recording is
+/// playable on this build, which is the case where the answer genuinely depends on
+/// them.</para>
+///
+/// <para>The two walks are not one lazy walk because they cannot be. An iterator in this
+/// assembly is a compiler-written class whose fields include the element type, and
+/// <c>LibraryRun</c> lives in a sibling the game cannot resolve at the phase it
+/// enumerates these types - <c>ModAssemblyLoadOrderTests</c> refuses it. Both walks read
+/// the same two sources in the same order and ask <c>LibraryRun.Listed</c>, which is
+/// still the one owner of what "listed" means.</para>
 /// </summary>
 internal static class RunLibrary
 {
@@ -69,12 +84,33 @@ internal static class RunLibrary
     /// The Compendium button asks this each time the menu opens. A button opening an
     /// empty browser would be a promise the mod cannot keep on a game whose build no
     /// run in it was recorded on.
+    ///
+    /// It stops at the first listed run rather than building the library, which is what
+    /// makes it cheap enough to ask on a menu open at all. The shipped recordings come
+    /// first, so the ordinary answer costs one preflight and reads none of the player's
+    /// own manifests; a build no shipped recording is playable on is the one case where
+    /// the answer really does depend on them.
     /// </summary>
     internal static bool HasAnythingToShow()
     {
         try
         {
-            return Runs().Any(run => run.Listed);
+            var build = ThisBuild();
+            foreach (var included in Included())
+            {
+                if (LibraryRun.From(included, RunOrigin.Included, RunVerdicts.For(included, build)).Listed)
+                {
+                    return true;
+                }
+            }
+
+            foreach (var stored in RunLibraryStore.MyRecordings())
+            {
+                var verdict = RunVerdicts.For(stored.Recording, build);
+                if (LibraryRun.From(stored.Recording, RunOrigin.Mine, verdict).Listed) return true;
+            }
+
+            return false;
         }
         catch (Exception ex)
         {

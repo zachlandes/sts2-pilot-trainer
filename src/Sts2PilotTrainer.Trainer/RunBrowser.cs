@@ -44,7 +44,15 @@ public sealed record RunBrowser(
     /// </summary>
     /// <param name="myRunsBytes">What the player's own runs occupy on this computer,
     /// or null when nobody read it. The footer is drawn only with a reading behind it,
-    /// because a size nobody measured is not a size to put on screen.</param>
+    /// because a size nobody measured is not a size to put on screen.
+    ///
+    /// Its two halves are one set on purpose: the count is every run stored on this
+    /// computer, which is the set the size covers and the set the settings purge would
+    /// remove. It is deliberately not the count of rows - a player whose game has just
+    /// updated has nothing listed and twelve megabytes on disk, and a footer reading
+    /// "0 runs, 12 MB" would be describing two different things in one sentence. The
+    /// runs that are listed are the rows themselves, and what is not listed is the
+    /// numeral above.</param>
     public static RunBrowser For(
         LibraryTab tab,
         IReadOnlyList<LibraryRun> runs,
@@ -72,7 +80,7 @@ public sealed record RunBrowser(
             hidden > 0 ? LibraryCopy.NotShown(hidden) : null,
             LibraryCopy.NotShownTooltip(thisBuild),
             mine && myRunsBytes is { } bytes
-                ? LibraryCopy.MyRunsFooter(listed.Count, LibraryCopy.Size(bytes))
+                ? LibraryCopy.MyRunsFooter(inTab.Count, LibraryCopy.Size(bytes))
                 : null,
             mine && myRunsBytes is not null ? LibraryCopy.MyRunsFooterAction : null);
     }

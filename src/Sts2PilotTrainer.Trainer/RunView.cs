@@ -49,6 +49,10 @@ public sealed record RunViewRow(
 /// One run, opened: every place the recording proves a player can be stood, and the
 /// ways in.
 ///
+/// <see cref="FightsPlayed"/> is counted against the ordinals the recording proves,
+/// the way <see cref="LibraryRun.PlayedCount"/> is, so the row in the list and this
+/// screen never print two numbers for the same fact.
+///
 /// It computes nothing about the run and judges nothing about how it was played.
 /// Which places exist is <see cref="ReplayManifest.Boundaries"/>' answer - the same
 /// list <c>RecordedFightEntry</c> walks to and the same list the validator enforces -
@@ -83,7 +87,7 @@ public sealed record RunView(
             ? positions.FirstOrDefault(position => position.Floor == floor)
             : positions.FirstOrDefault();
         var fights = LibraryRun.ProvedFights(recording);
-        var played = progress.PlayedFrom(recording.RunId);
+        var played = progress.PlayedFrom(recording.RunId).Where(fights.Contains).ToList();
 
         return new RunView(
             recording.RunId,

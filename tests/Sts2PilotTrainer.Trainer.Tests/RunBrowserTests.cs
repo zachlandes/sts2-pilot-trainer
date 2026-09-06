@@ -112,6 +112,29 @@ public sealed class RunBrowserTests
         Assert.Equal(LibraryCopy.MyRunsFooterAction, browser.FooterAction);
     }
 
+    /// <summary>
+    /// The footer's two halves are one set: everything stored on this computer, which
+    /// is what the size covers and what the settings purge would remove. Counting the
+    /// rows instead would have a player whose game has just updated reading "0 runs,
+    /// 3 MB on this computer" - two different things in one sentence.
+    /// </summary>
+    [Fact]
+    public void TheFooterCountsEveryStoredRunAndNotJustTheRowsDrawn()
+    {
+        var browser = RunBrowser.For(
+            LibraryTab.MyRuns,
+            [
+                Run("mine", RunOrigin.Mine),
+                Run("hidden", RunOrigin.Mine, verdict: RunVerdict.Absent),
+            ],
+            Build,
+            myRunsBytes: 3 * 1024 * 1024);
+
+        Assert.Equal("2 runs, 3 MB on this computer", browser.Footer);
+        Assert.Equal(["mine"], Listed(browser).Select(run => run.RunId));
+        Assert.Equal("1 not shown", browser.NotShownLabel);
+    }
+
     /// <summary>A size nobody measured is not a size to put on screen.</summary>
     [Fact]
     public void TheFooterIsAbsentWithoutAReadingBehindIt()

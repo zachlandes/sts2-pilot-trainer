@@ -229,6 +229,34 @@ public sealed class RunViewTests
         Assert.False(view.Rows.Single(row => row.Kind == RunViewRowKind.PlayFromFight).Enabled);
     }
 
+    /// <summary>
+    /// The run view and the row in the list count the same thing. Both count against
+    /// the ordinals the recording proves, so a progress record holding a fight this
+    /// recording does not have cannot make one screen say three and the other one.
+    /// </summary>
+    [Fact]
+    public void TheRunViewAndTheListRowCountPlayedFightsTheSameWay()
+    {
+        var recording = Recording(
+        [
+            ReplayBoundary.CombatStart(fight: 1, afterSeq: 5, Digest("one")),
+            ReplayBoundary.CombatStart(fight: 2, afterSeq: 9, Digest("two")),
+            ReplayBoundary.CombatStart(fight: 4, afterSeq: 20, Digest("four")),
+        ]);
+        var progress = RunProgress.Empty
+            .WithFightPlayed(Run, 1)
+            .WithFightPlayed(Run, 3)
+            .WithFightPlayed(Run, 99);
+
+        var view = RunView.For(recording, progress);
+        var row = LibraryRun.From(
+            recording, RunOrigin.Mine, RunVerdict.Passed, progress.PlayedFrom(Run));
+
+        Assert.Equal([1], view.FightsPlayed);
+        Assert.Equal(row.PlayedCount, view.FightsPlayed.Count);
+        Assert.Equal(row.FightCount, view.FightCount);
+    }
+
     /// <summary>Nothing is compared from a floor entry, and the sentence that says so
     /// travels with the view rather than being written at a drawing site.</summary>
     [Fact]
