@@ -252,7 +252,8 @@ A shortfall somebody can go and fix and a shortfall nobody can fix are both "the
 So `PreflightField.Outcome` has three values, and `Matches` is derived from it rather than stored beside it.
 `Met` is a rule this environment satisfies.
 `NotMet` is an errand - unlock the content by playing, install the build the recording names, disable a mod - and those diagnostics carry `EnvironmentPreflight.UnlockRemediation`, which says what to do.
-`Unavailable` is a rule nobody can satisfy here: this build does not ship an id the recording names, or the act question could not be asked because of that, and those diagnostics carry `EnvironmentPreflight.ContentNotShipped` instead, which states the fact and stops.
+`Unavailable` is a rule nobody can satisfy here: this build does not ship an id the recording names, or the act question could not be asked because of that, or the state supplied under an `exact` requirement leaves an act locked, and those diagnostics carry `EnvironmentPreflight.ContentNotShipped` instead, which states the fact and stops.
+A locked act is an errand only under the `complete` arm, where the state really is this installation's; under `exact` the state is built from the recording's own ids and supplied to the run, so the player's own unlocks never enter it and no amount of playing changes which acts it leaves locked.
 The command line prints the three as `ok`, `FAIL` and `MISS`.
 
 `LocalPrerequisites` carries the cause rather than only the absence.

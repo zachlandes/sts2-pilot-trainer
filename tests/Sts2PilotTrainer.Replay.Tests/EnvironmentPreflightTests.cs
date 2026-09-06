@@ -659,7 +659,28 @@ public class EnvironmentPreflightTests
         Assert.DoesNotContain(EnvironmentPreflight.UnlockRemediation, acts, StringComparison.Ordinal);
     }
 
-    /// <summary>And a locked act stays an errand, with the remediation on it.</summary>
+    /// <summary>
+    /// Under an exact requirement the state is built from the recording's own ids and
+    /// supplied to the run, so the player's own unlocks never enter it: an act it
+    /// leaves locked is a shortfall no play can fix, and telling somebody to go and
+    /// unlock it is an instruction that can never be carried out.
+    /// </summary>
+    [Fact]
+    public void ALockedActUnderAnExactRequirementIsUnavailableRatherThanAnErrand()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Exact(), Enumerated() with { LockedActs = ["ACT.UNDERDOCKS"] }, sourceKind: "native");
+        var acts = Diagnostic(result, "acts_unlocked");
+
+        Assert.False(result.Matches);
+        Assert.Equal(PreflightOutcome.Unavailable, Field(result, "acts_unlocked").Outcome);
+        Assert.Contains("would take the other variant", acts, StringComparison.Ordinal);
+        Assert.Contains(EnvironmentPreflight.ContentNotShipped, acts, StringComparison.Ordinal);
+        Assert.DoesNotContain(EnvironmentPreflight.UnlockRemediation, acts, StringComparison.Ordinal);
+    }
+
+    /// <summary>And under a complete requirement, where the state really is this
+    /// installation's, a locked act stays an errand with the remediation on it.</summary>
     [Fact]
     public void ALockedActIsUnmetRatherThanUnavailable()
     {

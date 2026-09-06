@@ -181,7 +181,7 @@ public static class EnvironmentPreflight
         if (requirement.IsExact)
         {
             foreach (var field in EvaluateExactUnlocks(requirement, actual)) yield return field;
-            yield return EvaluateActUnlocks(expected, actual);
+            yield return EvaluateActUnlocks(expected, actual, exact: true);
             yield return EvaluateAscensionCeiling(expected, actual);
             yield break;
         }
@@ -221,7 +221,7 @@ public static class EnvironmentPreflight
                       $"same seed produces a different run.{missing} {UnlockRemediation}");
         }
 
-        yield return EvaluateActUnlocks(expected, actual);
+        yield return EvaluateActUnlocks(expected, actual, exact: false);
         yield return EvaluateAscensionCeiling(expected, actual);
     }
 
@@ -314,14 +314,20 @@ public static class EnvironmentPreflight
     /// a shortfall of one act is invisible in a total, and it is the one shortfall
     /// that changes every fight in the run.
     ///
-    /// Two failures, and they are not the same failure. An act the game reports locked
-    /// is a prerequisite somebody can go and meet. A state that could not be built at
-    /// all leaves the question unasked, and no amount of playing answers it - so it is
+    /// Three failures, and they are not the same failure. Under a complete
+    /// requirement the state really is this installation's, so an act the game
+    /// reports locked is a prerequisite somebody can go and meet. Under an exact
+    /// requirement the state is constructed from the recording's own ids and
+    /// supplied to the run, so the player's own unlocks never enter it and no amount
+    /// of playing changes which acts it leaves locked - that act is
+    /// <see cref="PreflightOutcome.Unavailable"/> and carries
+    /// <see cref="ContentNotShipped"/>. A state that could not be built at all leaves
+    /// the question unasked, and no amount of playing answers it either - so it is
     /// <see cref="PreflightOutcome.Unavailable"/> and it names the reading's own
     /// shortfall rather than pointing at a row it assumes is above it.
     /// </summary>
     private static PreflightField EvaluateActUnlocks(
-        EnvironmentIdentity expected, LocalPrerequisites actual)
+        EnvironmentIdentity expected, LocalPrerequisites actual, bool exact)
     {
         var wanted = string.Join(", ", expected.Acts.Value);
         if (actual.LockedActs is not { } locked)
@@ -342,11 +348,13 @@ public static class EnvironmentPreflight
         }
 
         return new PreflightField(
-            "acts_unlocked", wanted, $"locked: {string.Join(", ", locked)}", false,
+            "acts_unlocked", wanted, $"locked: {string.Join(", ", locked)}",
+            exact ? PreflightOutcome.Unavailable : PreflightOutcome.NotMet,
             $"This environment cannot climb {string.Join(", ", locked)}: the game reports the act " +
             "locked under the unlock state a run here would be generated against. An act that is not unlocked " +
             "is not merely unavailable - the run would take the other variant shipped at the same index, which " +
-            $"generates different content from the same seed while producing the same map. {UnlockRemediation}");
+            "generates different content from the same seed while producing the same map. " +
+            (exact ? ContentNotShipped : UnlockRemediation));
     }
 
     /// <summary>
