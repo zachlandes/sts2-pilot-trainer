@@ -17,4 +17,12 @@
     <ProjectReference Include="../Sts2PilotTrainer.IO/Sts2PilotTrainer.IO.csproj" />
   </ItemGroup>
 
+  <!-- The per-assembly reader behind Current. The two test projects between them ask
+       every assembly this repository ships whether it carries the version the mod
+       manifest declares; the public surface stays the single answer. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sts2PilotTrainer.Arbiter.Tests" />
+    <InternalsVisibleTo Include="Sts2PilotTrainer.Mod.Tests" />
+  </ItemGroup>
+
 </Project>

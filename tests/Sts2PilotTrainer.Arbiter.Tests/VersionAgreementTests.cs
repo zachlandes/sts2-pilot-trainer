@@ -12,8 +12,16 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// runmobile-recorder/1.0.0.0 while the mod set in the same file said Runmobile 0.1.0.
 /// Both were describing the same DLL.
 ///
-/// These need no game: they read the manifest this repository ships, the projects that
-/// build it, and the version stamped into the assemblies loaded to run them.
+/// This half covers the assemblies a game-free suite can load: Replay, IO, the
+/// Bootstrap tool and this test assembly. Runmobile, Engine and Trainer are asked the
+/// same question by RecorderVersionTests in Sts2PilotTrainer.Mod.Tests, because this
+/// project is in the game-free solution filter and cannot reference the mod. Between
+/// the two, a version declared anywhere but the mod manifest shows up here as a
+/// stamped-attribute mismatch. GodotStubs is deliberately out of both: that assembly
+/// keeps GodotSharp's identity so the game assembly's references resolve.
+///
+/// These need no game: they read the manifest this repository ships and the version
+/// stamped into the assemblies loaded to run them.
 /// </summary>
 public class VersionAgreementTests
 {
@@ -23,6 +31,7 @@ public class VersionAgreementTests
         var ours = new[]
         {
             typeof(RunmobileVersion).Assembly,
+            typeof(Sts2PilotTrainer.IO.AtomicFile).Assembly,
             typeof(Sts2PilotTrainer.Bootstrap.Program).Assembly,
             typeof(VersionAgreementTests).Assembly,
         };
@@ -35,24 +44,6 @@ public class VersionAgreementTests
     {
         // The string every native recording carries as source.native.recorder_version.
         Assert.Equal($"runmobile-recorder/{Declared}", RunmobileVersion.Recorder);
-    }
-
-    [Fact]
-    public void NoProjectDeclaresAVersionOfItsOwn()
-    {
-        // Directory.Build.props reads the mod manifest and stamps every project from
-        // it. A project setting its own would be a second source, and a second source
-        // is what this whole file exists to keep from coming back. GodotStubs is the
-        // one exception and is not ours: that assembly has to keep GodotSharp's
-        // identity for the game assembly's references to resolve.
-        var declaring = Directory
-            .EnumerateFiles(Arbiter.RepoRoot, "*.csproj", SearchOption.AllDirectories)
-            .Where(project => !project.Contains($"{Path.DirectorySeparatorChar}build{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
-            .Where(project => File.ReadAllText(project).Contains("<Version>", StringComparison.Ordinal))
-            .Select(project => Path.GetFileName(project))
-            .Order(StringComparer.Ordinal);
-
-        Assert.Equal(new[] { "GodotStubs.csproj" }, declaring);
     }
 
     /// <summary>The one field a human edits, and what everything above must agree with.</summary>

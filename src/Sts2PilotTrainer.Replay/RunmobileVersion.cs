@@ -31,7 +31,7 @@ public static class RunmobileVersion
     /// downstream of this is evidence, and a recording labelled with a version its
     /// recorder guessed is worse than one that was never written.
     /// </summary>
-    public static string Of(Assembly assembly)
+    internal static string Of(Assembly assembly)
     {
         var stamped = assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;

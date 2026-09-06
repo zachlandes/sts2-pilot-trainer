@@ -17,6 +17,13 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 ///
 /// These need no game: the version is decided at build time and read from the
 /// assembly, and the capture that carries it is pure.
+///
+/// This half also covers the stamped version of the three assemblies only a project
+/// that references the mod can load - Runmobile, Engine and Trainer. Replay, IO, the
+/// Bootstrap tool and the test assembly are asked the same question by
+/// VersionAgreementTests in Sts2PilotTrainer.Arbiter.Tests, which is in the game-free
+/// solution filter and cannot reference the mod project. GodotStubs is deliberately
+/// out of both: that assembly keeps GodotSharp's identity.
 /// </summary>
 public sealed class RecorderVersionTests
 {
@@ -27,10 +34,24 @@ public sealed class RecorderVersionTests
     }
 
     [Fact]
-    public void AFreshRecordingNamesTheSameBuildTwiceTheSameWay()
+    public void EveryAssemblyOnlyTheModCanLoadIsStampedWithThatSameVersion()
     {
-        // The two places one file names this build. A reader holding them side by side
-        // is entitled to see the same version, which is the whole defect.
+        var ours = new[]
+        {
+            typeof(RunRecorder).Assembly,
+            typeof(Sts2PilotTrainer.Engine.BaseLibReachabilityProbe).Assembly,
+            typeof(Sts2PilotTrainer.Trainer.TrainerCopy).Assembly,
+        };
+
+        Assert.All(ours, assembly => Assert.Equal(DeclaredByTheMod, RunmobileVersion.Of(assembly)));
+    }
+
+    [Fact]
+    public void AFreshRecordingNamesTheVersionTheInstalledModDeclares()
+    {
+        // source.native.recorder_version on a manifest this build's capture produces.
+        // The version string is the patch gate a reader uses, so it has to be the one
+        // the mod the game loaded says it is.
         var capture = RunCapture.Begin(new RunRecordingStart
         {
             RunId = "native-SFXT47K77RFK-20260906-120000",
@@ -44,11 +65,8 @@ public sealed class RecorderVersionTests
         capture.Finish("abandoned");
 
         var manifest = capture.ToManifest();
-        var loaded = manifest.Environment.Mods.Value.Mods.Single(mod => mod.Name == RunmobileMod.ModId);
 
         Assert.Equal($"runmobile-recorder/{DeclaredByTheMod}", manifest.Source.Native!.RecorderVersion);
-        Assert.Contains(
-            $"{RunmobileMod.ModId} {DeclaredByTheMod}", loaded.Role, StringComparison.Ordinal);
     }
 
     /// <summary>The version out of the manifest the game reads to load this mod.</summary>
