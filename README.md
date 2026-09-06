@@ -7,7 +7,7 @@ It ships with one run reconstructed from a top player's public video: play from 
 When the fight ends, your fight is shown beside theirs, turn by turn, with no grade and no score.
 Playing from a recording writes nothing to your saves, your stats or your run history, win or lose.
 Recording your own runs changes nothing about them: they save and count exactly as they always did.
-Works on Slay the Spire 2 `v0.111.0`, with no other mod required.
+Works on Slay the Spire 2 `v0.111.0`, needs no other mod, and asks you to play from a recording with only Runmobile enabled.
 
 This repository is `sts2-pilot-trainer`: the mod a player installs is `Runmobile`, and the Combat Trainer is one feature inside it.
 Anything marked **Coming soon** below is planned for launch and not built yet.
