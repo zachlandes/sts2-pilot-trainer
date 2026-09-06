@@ -23,6 +23,20 @@ namespace Sts2PilotTrainer.Mod;
 /// ordinary path the barrier must not stop. State that will be written is a write
 /// that has not happened yet.
 ///
+/// One more kind, on the list for the same reason but reached by a different route:
+/// marking a tutorial complete writes the progress file itself rather than through
+/// <c>SaveManager.SaveProgressFile</c>, so suppressing that method does not cover it.
+/// The barrier names <c>MarkFtueAsComplete</c> and its two siblings directly.
+///
+/// Known and deliberately not covered: <c>NGameOverScreen</c> mutates
+/// <c>Progress.CurrentScore</c> and the badge state in memory and then calls
+/// <c>SaveProgressFile</c>. The write is suppressed here; the mutation is not, so
+/// the dirtied score outlives the trainer run and the next ordinary write persists
+/// it - the same shape as the seen-marks above, and it would be answered the same
+/// way. Nothing reaches it today, because a fight-scoped trainer never opens the
+/// game-over screen; a whole-run replay would, by construction, and this list is
+/// where that is answered when it does.
+///
 /// So the writes themselves are stopped rather than the flags that usually reach
 /// them. Every patch here is installed once, at mod start, and every one of them
 /// does nothing at all unless a trainer run is live. That order matters: a barrier
@@ -86,6 +100,28 @@ internal static class ProfileWriteBarrier
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkCardAsSeen"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkRelicAsSeen"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkPotionAsSeen"),
+
+        // The tutorial marks, which reach the progress file by a path the entries
+        // above do not cover. ProgressSaveManager.MarkFtueAsComplete calls
+        // SaveProgress() itself rather than SaveManager.SaveProgressFile, so
+        // suppressing that method leaves this one writing; the barrier has to name
+        // these three. Suppressing them here also stops the in-memory mark, which is
+        // the same reasoning as the seen-marks above.
+        //
+        // The trainer's own path reaches map_select_ftue from NMapScreen and
+        // can_play_cards_ftue from NEndTurnButton, with more from NCardPlay,
+        // CardPileCmd, NRewardsScreen, NCardRewardSelectionScreen and
+        // NPotionContainer. Nothing measured it because SeenFtue short-circuits on
+        // !EnableFtues and every profile it was measured on had tutorials off; a
+        // player who left them on is the case that was never run.
+        //
+        // The two siblings write the same way and are here for the same reason. One
+        // consequence is deliberate: the settings screen's reset-tutorials does
+        // nothing while a trainer run is live, because doing something would mean
+        // writing the player's progress file from inside somebody else's run.
+        ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkFtueAsComplete"),
+        ("MegaCrit.Sts2.Core.Saves.SaveManager", "SetFtuesEnabled"),
+        ("MegaCrit.Sts2.Core.Saves.SaveManager", "ResetFtues"),
 
         // Outward-facing, and so worse than a local write: an achievement earned in
         // somebody else's fight is not the player's, and it cannot be taken back.
