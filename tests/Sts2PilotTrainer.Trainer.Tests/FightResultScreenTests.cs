@@ -123,16 +123,34 @@ public sealed class FightResultScreenTests
         Assert.Contains("has not ended", screen.Notice, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A lost fight is a finished one, and it is compared. The projection treats a
+    /// defeat as finished and the comparison carries the outcome row, so the screen
+    /// draws Lost against Won rather than a notice claiming there is no line to set
+    /// beside the recording's - which was untrue of the data, and the loss is exactly
+    /// the case a player will ask to see.
+    /// </summary>
     [Fact]
-    public void ALostFightIsANotice()
+    public void ALostFightIsComparedWithLostAgainstWon()
     {
         var capture = Live();
         capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("defeat", 1, 0, 42));
 
         var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
-        Assert.Equal(
-            "You did not win this fight, so there is no completed line to compare with NaveGreed's.", screen.Notice);
+        Assert.True(screen.HasComparison);
+        Assert.False(screen.Won);
+        Assert.Equal(string.Empty, screen.Notice);
+        Assert.Equal(new FightResultRow("Outcome", "Lost", "Won", false), screen.Rows[0]);
+        Assert.Equal("Your fight and NaveGreed's", screen.Title);
+    }
+
+    [Fact]
+    public void AWonFightSaysSo()
+    {
+        var screen = FightResultScreen.For("NaveGreed", CombatComparison.Between(PlayersLine(), RecordingsLine()));
+        Assert.True(screen.Won);
+        Assert.False(FightResultScreen.Left().Won);
     }
 
     [Fact]

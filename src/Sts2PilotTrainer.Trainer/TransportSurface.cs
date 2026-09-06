@@ -39,6 +39,10 @@ public enum Press
     Step,
     OpenSpeedMenu,
     OpenChipMenu,
+
+    /// <summary>The chip's press target once the fight has ended: closes and re-opens
+    /// the post-fight choice.</summary>
+    OpenPostFightMenu,
     OpenVideo,
 }
 
@@ -48,6 +52,11 @@ public enum MenuKind
     None,
     Speed,
     Chip,
+
+    /// <summary>The post-fight choice, hung under the chip once the fight has ended.
+    /// Its own kind rather than the chip's, so the in-fight menu cannot survive the
+    /// fight's end with different rows under the same open plate.</summary>
+    PostFight,
 }
 
 /// <summary>

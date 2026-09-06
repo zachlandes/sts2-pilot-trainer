@@ -528,8 +528,9 @@ internal sealed class PlaybackTransportStrip
     ///
     /// Drawn only while there are few enough to be read at a glance; the numerals are
     /// always there, so a whole run loses the picture and keeps the fact. Done is a
-    /// filled grey dot, the current one is teal, the ones ahead are hollow, and the
-    /// one being looked at is ringed.
+    /// filled grey dot, the current one is teal - filled once the decision is revealed
+    /// and hollow while it is considered - the ones ahead are hollow, and the one
+    /// being looked at is ringed.
     /// </summary>
     private void ApplyPips(TransportCounter counter, TransportSurface surface, float x, float y)
     {
@@ -542,7 +543,7 @@ internal sealed class PlaybackTransportStrip
         {
             var centre = new Vector2(x + ((step - 1) * PipPitch * _unit), y);
             var (radius, colour, filled) = step == counter.Current
-                ? (2.9f, Teal, true)
+                ? (2.9f, Teal, counter.Lit)
                 : step < counter.Current ? (2.9f, Muted, true) : (2.6f, Dim, false);
 
             _pips.AddChild(filled
@@ -574,8 +575,6 @@ internal sealed class PlaybackTransportStrip
         _note.Visible = surface.Note;
         if (!_note.Visible) return;
 
-        _noteText.Text = state.Note;
-
         // The sentence is longer than the tag is wide, so it wraps, and the panel is
         // sized to the wrapped text rather than to one line. Sizing it to a line is
         // what cut the sentence off after "what was cho" in the client.
@@ -590,7 +589,26 @@ internal sealed class PlaybackTransportStrip
         Clear(_notePlate);
         Place(_notePlate, 0, 0, width, noteHeight);
         PlatePolygon(_notePlate, width, noteHeight);
-        Place(_noteText, inset, 0, textWidth, noteHeight);
+        Sentence(_noteText, state.Note, inset, 0, textWidth, noteHeight);
+    }
+
+    /// <summary>
+    /// Puts a wrapping sentence in its box: the width first, then the words, then the
+    /// box.
+    ///
+    /// The order is the whole of it and was measured in the client. A wrapping label
+    /// given its text while its width is still nothing wraps one character per line
+    /// and grows to that height - 108 characters made it 1986 units tall - and the
+    /// size set afterwards is clamped up to that stale minimum, so the sentence sat
+    /// centred a thousand units below its plate and the plate drew empty. The note
+    /// is the case that showed it, because it now arrives on a tag already up rather
+    /// than on the first paint, where no layout had run yet.
+    /// </summary>
+    private static void Sentence(Label label, string text, float x, float y, float width, float height)
+    {
+        Place(label, x, y, width, height);
+        label.Text = text;
+        Place(label, x, y, width, height);
     }
 
     /// <summary>
@@ -661,8 +679,8 @@ internal sealed class PlaybackTransportStrip
         }
     }
 
-    /// <summary>The speed menu, or the chip's two directions, hung in the same shape
-    /// as the ledger so they read as one family.</summary>
+    /// <summary>The speed menu, the chip's two directions or the post-fight choice,
+    /// hung in the same shape as the ledger so they read as one family.</summary>
     private void ApplyMenu(PlaybackTransport state, float left, float width)
     {
         Clear(_menu);
@@ -671,7 +689,7 @@ internal sealed class PlaybackTransportStrip
         if (!_menu.Visible) return;
 
         var rowHeight = 32 * _unit;
-        var chip = _openMenu == Code(MenuKind.Chip);
+        var chip = _openMenu == Code(MenuKind.Chip) || _openMenu == Code(MenuKind.PostFight);
         var menuWidth = (chip ? 260 : 96) * _unit;
         var menuHeight = (10 * _unit) + (rowHeight * rows.Count);
         var menuLeft = chip ? left + width - menuWidth : left + (192 * _unit);
@@ -756,7 +774,7 @@ internal sealed class PlaybackTransportStrip
     /// <summary>The rows the open menu is showing, read from the state rather than
     /// held.</summary>
     private IReadOnlyList<MenuRow> OpenRows =>
-        _openMenu == Code(MenuKind.Chip) ? _state.ChipMenu
+        _openMenu == Code(MenuKind.Chip) || _openMenu == Code(MenuKind.PostFight) ? _state.ChipMenu
         : _openMenu == Code(MenuKind.Speed) ? _state.SpeedMenu
         : [];
 
@@ -1063,7 +1081,6 @@ internal sealed class PlaybackTransportStrip
         }
 
         _tipTitle.Text = title;
-        _tipBody.Text = body;
         _tip.Visible = true;
 
         // Sized to the body once it has wrapped, not to the newlines in it: at this
@@ -1086,7 +1103,7 @@ internal sealed class PlaybackTransportStrip
         Place(_tipPlate, 0, 0, width, height);
         PlatePolygon(_tipPlate, width, height);
         Place(_tipTitle, inset, 6 * _unit, width - (2 * inset), 18 * _unit);
-        Place(_tipBody, inset, bodyTop, width - (2 * inset), bodyHeight);
+        Sentence(_tipBody, body, inset, bodyTop, width - (2 * inset), bodyHeight);
     }
 
     private void HideTooltip()

@@ -115,6 +115,27 @@ public sealed class RunViewTests
         Assert.DoesNotContain(view.Rows, row => row.Kind == RunViewRowKind.StartOver);
     }
 
+    /// <summary>
+    /// A fight whose recording has been shown this sitting carries the mark on its
+    /// row, and only that fight; the row stays offered. The set is whoever drew the
+    /// comparison's, held in memory, so a view given nothing marks nothing.
+    /// </summary>
+    [Fact]
+    public void AFightShownThisSittingIsMarkedAndStillOffered()
+    {
+        var marked = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 2, shownThisSitting: [1]);
+        var cold = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 2);
+        var other = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 2, shownThisSitting: [2]);
+
+        var row = marked.Rows.Single(entry => entry.Kind == RunViewRowKind.PlayFromFight);
+        Assert.True(row.ShownThisSitting);
+        Assert.True(row.Enabled);
+        Assert.False(cold.Rows.Single(entry => entry.Kind == RunViewRowKind.PlayFromFight).ShownThisSitting);
+        Assert.False(other.Rows.Single(entry => entry.Kind == RunViewRowKind.PlayFromFight).ShownThisSitting);
+        Assert.All(marked.Rows.Where(entry => entry.Kind != RunViewRowKind.PlayFromFight),
+            entry => Assert.False(entry.ShownThisSitting));
+    }
+
     /// <summary>A refused row keeps its place, because the row's position is how a
     /// player learns the offer exists.</summary>
     [Fact]

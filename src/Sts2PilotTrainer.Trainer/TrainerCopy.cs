@@ -104,6 +104,20 @@ public static class TrainerCopy
     /// and the caption are appended to this line.</summary>
     public const string StepTooltipBody = "Makes this choice, then shows the next.";
 
+    /// <summary>
+    /// Step's tooltip before the reveal, when the same press shows rather than makes.
+    ///
+    /// A different word for a different press: the first press on a considered
+    /// decision lights what the recording chose and commits nothing, and a tooltip
+    /// naming an action the control does not perform is the same defect as a control
+    /// that cannot be pressed. The counter follows this line; the caption naming the
+    /// decision does not, because nothing on the tag may say what was chosen before
+    /// the reveal.
+    /// </summary>
+    public const string ShowTooltipTitle = "Show";
+
+    public static string ShowTooltipBody(string creator) => $"Shows what {creator} chose here.";
+
     /// <summary>The playback speed, which the captain asked for the way a video
     /// player has it.</summary>
     public const string SpeedTooltipTitle = "Speed";
@@ -213,7 +227,38 @@ public static class TrainerCopy
     /// anything. It says what the screens are and, as importantly, what they are
     /// not.</summary>
     public static string ChoicesShownAsRecorded(string creator) =>
-        $"{creator}'s choices are shown as recorded. This shows what was chosen, not why.";
+        $"{creator}'s choices are shown as recorded, one press after each screen. This shows what was " +
+        "chosen, not why.";
+
+    // ── The post-fight choice ───────────────────────────────────────────────
+    //
+    // What the chip offers once the fight has ended, in place of a result drawn
+    // unbidden. The rows are in the teaching's order - look, then act - and a row for
+    // something this build cannot do is absent rather than written here in grey.
+
+    /// <summary>Draws the comparison panel. The hollow-eye row: it only looks.</summary>
+    public const string ShowTheComparison = "Show the comparison";
+
+    /// <summary>Runs the recording's fight through the engine on the transport.
+    /// Absent until in-combat playback exists.</summary>
+    public static string WatchTheirFight(string creator) => $"Watch {creator}'s fight";
+
+    /// <summary>Back to the proven combat start. No confirmation: the attempt is over
+    /// and nothing is discarded by repeating it.</summary>
+    public const string FightItAgain = "Fight it again";
+
+    /// <summary>The run goes on and the hold is the player's. Absent until run-level
+    /// continuation exists, and always absent on a loss.</summary>
+    public const string ContinueAsYou = "Continue as you";
+
+    /// <summary>Discards the run and leaves the fight, as Done did.</summary>
+    public const string Leave = "Leave";
+
+    /// <summary>The hollow-eye mark beside a fight whose recording has been shown this
+    /// sitting. Its tooltip is the whole explanation, and it says the mark is for the
+    /// sitting only because the state behind it is never written.</summary>
+    public static string ShownThisSittingTooltip(string creator) =>
+        $"You have seen {creator}'s fight this sitting. It is cold again next time you launch the game.";
 
     // ── A refusal, in a player's words ─────────────────────────────────────
     //
@@ -363,15 +408,9 @@ public static class TrainerCopy
     public const string BlockNote =
         "Health lost counts only health that came off. Damage absorbed by block is not counted.";
 
-    /// <summary>Closes the result and returns to the main menu. The run is discarded,
-    /// as a refused entry's is.</summary>
+    /// <summary>Closes the result and returns to the post-fight choice. Leaving is the
+    /// choice's own row.</summary>
     public const string DoneButton = "Done";
-
-    /// <summary>Shown in place of a comparison when the player's fight was lost. The
-    /// recording's fight was won, and a lost fight has no completed line to put
-    /// beside it.</summary>
-    public static string LostNote(string creator) =>
-        $"You did not win this fight, so there is no completed line to compare with {creator}'s.";
 
     /// <summary>Shown in place of a comparison when the fight was left before it
     /// ended: quit, returned to the main menu, or abandoned.</summary>

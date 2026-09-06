@@ -31,6 +31,7 @@ internal sealed class CombatTrainerModule : IRunmobileModule
         typeof(RecordedFightRun.TrainerRunTeardown),
         typeof(RecordedFightRun.MainMenuReturn),
         typeof(RecordedFightRun.DeviationLock),
+        typeof(RecordedFightRun.LootLock),
     ];
 
     private readonly Lock _gate = new();
@@ -39,6 +40,19 @@ internal sealed class CombatTrainerModule : IRunmobileModule
     private RecordedFights? _recordedFights;
     private string? _refusal;
     private bool _examined;
+
+    /// <summary>
+    /// The fights whose recorded line has been shown this sitting, by run id.
+    ///
+    /// A sitting is the game process, from launch to quit. This is never written -
+    /// not to progress, not to the store, not to a recording - so a later launch
+    /// starts empty and every fight is cold again. It changes what is drawn and gates
+    /// nothing: the dot on a post-fight row already taken, and the hollow-eye mark
+    /// beside the fight in the run view. Fight it again is offered after a reveal; a
+    /// rehearsal of a line just seen is a teaching move of its own, and the mark is
+    /// there so the player knows which kind of attempt this is.
+    /// </summary>
+    private readonly Dictionary<string, HashSet<int>> _shownThisSitting = new(StringComparer.Ordinal);
 
     private CombatTrainerModule()
     {
@@ -93,6 +107,39 @@ internal sealed class CombatTrainerModule : IRunmobileModule
         Enabled
             ? _recordedFights!
             : throw new InvalidOperationException($"This build ships no readable recording: {_refusal}");
+
+    /// <summary>Records that the recording's line for this fight has been shown: the
+    /// comparison drawn, or the attempt finished by name.</summary>
+    internal void MarkShownThisSitting(string runId, int fight)
+    {
+        lock (_gate)
+        {
+            if (!_shownThisSitting.TryGetValue(runId, out var fights))
+            {
+                fights = [];
+                _shownThisSitting[runId] = fights;
+            }
+
+            fights.Add(fight);
+        }
+    }
+
+    internal bool WasShownThisSitting(string runId, int fight)
+    {
+        lock (_gate)
+        {
+            return _shownThisSitting.TryGetValue(runId, out var fights) && fights.Contains(fight);
+        }
+    }
+
+    /// <summary>Every fight of one run shown this sitting, for the run view's marks.</summary>
+    internal IReadOnlyCollection<int> FightsShownThisSitting(string runId)
+    {
+        lock (_gate)
+        {
+            return _shownThisSitting.TryGetValue(runId, out var fights) ? [.. fights] : [];
+        }
+    }
 
     public void Install(Harmony harmony)
     {

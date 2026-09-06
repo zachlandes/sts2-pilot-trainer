@@ -93,6 +93,33 @@ internal static class TransportGlyphArt
             Shape.Fill("TickRight", Rect(24.5f, 14.9f, 4, 2.2f)),
         ],
 
+        // The mark with nothing to point at yet: the same ring and ticks, no centre
+        // dot. Drawn while a decision is considered and not revealed.
+        TransportGlyph.MarkUnlit =>
+        [
+            Shape.Outline("Ring", Circle(16, 16, 9), closed: true),
+            Shape.Fill("TickTop", Rect(14.9f, 3.5f, 2.2f, 4)),
+            Shape.Fill("TickBottom", Rect(14.9f, 24.5f, 2.2f, 4)),
+            Shape.Fill("TickLeft", Rect(3.5f, 14.9f, 4, 2.2f)),
+            Shape.Fill("TickRight", Rect(24.5f, 14.9f, 4, 2.2f)),
+        ],
+
+        // A hollow eye: an almond outline round a hollow ring. Hollow because it only
+        // looks - it shows the comparison and marks a fight shown this sitting.
+        TransportGlyph.Reveal =>
+        [
+            Shape.Outline("Lid", Almond(16, 16, 11.5f, 6.5f), closed: true),
+            Shape.Outline("Iris", Circle(16, 16, 3.4f), closed: true),
+        ],
+
+        // Play with a hollow bar after it: the run goes on and the hold is the
+        // player's. The triangle is filled because it moves the run.
+        TransportGlyph.Continue =>
+        [
+            Shape.Fill("Triangle", [new(7, 8), new(20, 16), new(7, 24)]),
+            Shape.Outline("Bar", Rect(22.5f, 8, 3.2f, 16), closed: true),
+        ],
+
         // A circular arrow with a filled head. It restarts the fight, so it is filled.
         TransportGlyph.Again =>
         [
@@ -121,6 +148,22 @@ internal static class TransportGlyphArt
         [new(x, y), new(x + width, y), new(x + width, y + height), new(x, y + height)];
 
     private static Vector2[] Circle(float x, float y, float radius) => Arc(x, y, radius, 0, 360);
+
+    /// <summary>An eye's lid: two arcs meeting at the corners, as points.</summary>
+    private static Vector2[] Almond(float x, float y, float halfWidth, float depth)
+    {
+        const int segments = 14;
+        var points = new Vector2[segments * 2];
+        for (var i = 0; i < segments; i++)
+        {
+            var t = (float)i / segments;
+            var bulge = depth * Mathf.Sin(Mathf.Pi * t);
+            points[i] = new Vector2(x - halfWidth + (2 * halfWidth * t), y - bulge);
+            points[segments + i] = new Vector2(x + halfWidth - (2 * halfWidth * t), y + bulge);
+        }
+
+        return points;
+    }
 
     /// <summary>
     /// A circle or part of one, as points.

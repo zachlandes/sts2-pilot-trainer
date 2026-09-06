@@ -135,7 +135,10 @@ Player block is reset at the start of a turn and the trace samples either side o
 
 ## What is deliberately not built yet
 
-The retail mod now captures a person's completed fight, compares it with the recording from the same combat-start boundary, and draws the result: the whole-combat summary as figures, then the turn chronology as card art in the order it was played, then the chart.
+The retail mod now captures a person's completed fight, compares it with the recording from the same combat-start boundary, and draws the result when asked: the whole-combat summary as figures, then the turn chronology as card art in the order it was played, then the chart.
+When asked, and not before: after the fight the chip offers a choice - show the comparison, fight it again, leave - and the panel is drawn only from its first row, because the mod never volunteers the recording's answer and never withholds it from somebody who asks.
+A lost line compares.
+A defeat is a finished fight to the projection and the outcome row already carries it, so the panel draws Lost against Won; the notice that once stood in for a comparison on a loss claimed there was no completed line, which was untrue of the data, and is gone.
 The text-led modal that first showed it is gone; the captain read it and reported that prose describing the difference from the recording, on a large popup, was not the interface.
 The chart is the one hypothesised above, built and kept honest: `FightResultChart` in `Sts2PilotTrainer.Trainer` derives it from `CombatComparison` alone, plots enemy health lost and player health lost for both lines against the turn, marks potions by their stable model ids at the turn they were spent, and leaves a gap in a line where a projection has no value rather than drawing a zero.
 It lives with the presentation rather than in this contract on purpose: what a comparison *says* is still an interface question, and a chart baked into the contract would be an answer nothing could revisit.

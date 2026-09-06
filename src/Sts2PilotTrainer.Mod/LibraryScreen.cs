@@ -22,9 +22,12 @@ namespace Sts2PilotTrainer.Mod;
 /// <param name="Pinned">A row that is not paged: it is drawn above the page's own rows
 /// on every page. A column's own navigation belongs to the column, so a screen whose
 /// way to somewhere else is a row would otherwise lose it on page one.</param>
+/// <param name="MarkTooltip">The sentence behind the hollow-eye mark at the row's end,
+/// or null for a row with no mark. The mark says the recording's line for this row's
+/// fight has been shown this sitting, and its tooltip is the whole explanation.</param>
 internal sealed record ScreenRow(
     string Label, bool Enabled, Action Press, string? Note = null, string? Reason = null,
-    bool Pinned = false);
+    bool Pinned = false, string? MarkTooltip = null);
 
 /// <summary>
 /// The one way this module puts anything on screen: the game's own modal popup, with
@@ -283,6 +286,7 @@ internal static class LibraryScreen
             }
 
             if (row.Note is { Length: > 0 } note) AddNote(content, button, note);
+            if (row.MarkTooltip is { Length: > 0 } tooltip) AddMark(button, tooltip);
 
             placed.Add(button);
         }
@@ -290,6 +294,28 @@ internal static class LibraryScreen
         JoinColumn(placed, content);
         return placed.FirstOrDefault(control => control.FocusMode != Control.FocusModeEnum.None);
     }
+
+    /// <summary>
+    /// The hollow-eye mark at a row's end: shown this sitting.
+    ///
+    /// The transport's own glyph, so the run view and the post-fight choice say
+    /// "shown" in one shape. It is parented to the row so it moves and dims with it,
+    /// and it passes the mouse through rather than stopping it, so the row keeps the
+    /// press and the engine's own tooltip still reads the sentence on hover.
+    /// </summary>
+    private static void AddMark(Control row, string tooltip)
+    {
+        var size = row.Size.Y * 0.5f;
+        var mark = TransportGlyphArt.Of(TransportGlyph.Reveal, "ShownThisSitting", size, MarkColour);
+        mark.MouseFilter = Control.MouseFilterEnum.Pass;
+        mark.TooltipText = tooltip;
+        mark.Position = new Vector2(row.Size.X - size - (size * 0.6f), (row.Size.Y - size) / 2f);
+        row.AddChild(mark);
+    }
+
+    /// <summary>The mark's ink: the note's own colour, so it reads as supporting the
+    /// row rather than competing with its label.</summary>
+    private static readonly Color MarkColour = new(0.714f, 0.659f, 0.573f);
 
     /// <summary>
     /// Draws a row's second line under it.
