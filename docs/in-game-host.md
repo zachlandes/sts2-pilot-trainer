@@ -687,8 +687,20 @@ hotkeys immediately.** `NHotkeyManager` is a stack, so five rows all binding con
 would mean the key pressing whichever was pushed last rather than the one a player is
 looking at. Each duplicate is disconnected as it is added; the keys stay with the two
 ribbons and the rows are reached by focus. `LibraryScreen` measures every position from
-the game's own nodes - the column starts under the popup's body label and steps by a
-row's own height - so a build that changes the popup's layout changes this with it.
+the game's own nodes - the column starts under the popup's body label, steps by a row's
+own height, and holds as many rows as fit between the two - so a build that changes the
+popup's layout changes all three with it.
+
+**A column longer than the panel is paged rather than drawn past it.** The rows are
+absolutely positioned siblings, not a scrolling list, so a run of a real length or a
+player's fifty stored runs would put most of the column off the screen and leave a
+controller walking down into rows nobody can see.
+`ScreenPage` in `Sts2PilotTrainer.Trainer` says which slice is on screen, from the row
+count and the measured room and nothing else; the last two places of a paged page go to
+Previous and Next, which are rows like any other, and focus is joined across what is drawn
+and nothing else.
+Paging is presentation: `RunBrowser` and `RunView` return every row they always did, and
+only the drawing decides what a player is looking at.
 
 **The plate's marks are derived and not drawn.** `RunHistoryPlate` answers a `PlateMark`
 for every state - the record mark, the record mark muted, the warning mark - and nothing

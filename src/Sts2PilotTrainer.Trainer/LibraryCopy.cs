@@ -163,6 +163,14 @@ public static class LibraryCopy
     /// <summary>Leaves any of the lookup's answers.</summary>
     public const string Back = "Back";
 
+    /// <summary>The two rows a column too long for the panel spends its last places on.
+    /// Rows rather than a control of their own, because everything a player presses on
+    /// this surface is a row and a second kind would be a second thing to learn.</summary>
+    public const string PreviousPage = "Previous";
+
+    /// <inheritdoc cref="PreviousPage"/>
+    public const string NextPage = "Next";
+
     // ── The run view ───────────────────────────────────────────────────────
 
     /// <summary>Stands the player at the recorded start of the selected fight.</summary>

@@ -23,9 +23,12 @@ namespace Sts2PilotTrainer.Mod;
 /// with the game's own popup rather than by putting a row back.</para>
 ///
 /// <para>What the accepted design draws and this does not: the run strip, the deck
-/// tiles, the relic row and the portrait. Those are a scene this mod has no path to
-/// build, and what stands in for them is a row per floor and a line of text. The
-/// offers, the wording and the rules are the design's exactly.</para>
+/// tiles, the relic row and the portrait; and the Community list's group headings,
+/// which are a summary line in the popup's body rather than headings between the rows,
+/// so the rows follow group order without each one saying which group it is in. Those
+/// are a scene this mod has no path to build, and what stands in for them is a row per
+/// floor and a line of text. The offers, the wording and the rules are the design's
+/// exactly, and the furniture follow-up draws them properly.</para>
 /// </summary>
 internal static class RunBrowserScreen
 {

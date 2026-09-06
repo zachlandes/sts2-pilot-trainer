@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
 using MegaCrit.Sts2.Core.Nodes.Multiplayer;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -40,9 +41,19 @@ internal sealed record ScreenRow(
 /// other list in this game is reached - by focus.</para>
 ///
 /// <para>Every position here is measured from the game's own nodes rather than
-/// written down: the first row starts under the popup's own body label and the step
-/// between rows is the row's own height. A build that changes the popup's layout
-/// changes this with it.</para>
+/// written down: the first row starts under the popup's own body label, the step
+/// between rows is the row's own height, and how many rows a page holds is the space
+/// between the two divided by that step. A build that changes the popup's layout
+/// changes all three with it.</para>
+///
+/// <para><b>A column longer than the panel is paged, never drawn past it.</b> The rows
+/// are absolutely positioned siblings rather than a scrolling list, so a column of fifty
+/// would put most of itself off the screen and leave a controller walking down into rows
+/// nobody can see. <see cref="ScreenPage"/> decides which slice is on screen and the last
+/// two places of a paged page go to Previous and Next; focus is joined across what is
+/// drawn and nothing else, so it cannot reach a row that is not there. Paging is
+/// presentation: <c>RunBrowser</c> and <c>RunView</c> return every row they always did,
+/// and this decides what a player is looking at.</para>
 ///
 /// It composes nothing and decides nothing. What the rows are is
 /// <c>Sts2PilotTrainer.Trainer</c>'s answer; this puts them on screen.
@@ -95,6 +106,9 @@ internal static class LibraryScreen
     /// what the screen a player entered on does; a screen opened from another one hands
     /// in the way back to it, so the surface is one place a player moves around in
     /// rather than a sequence they fall out of the bottom of.</param>
+    /// <param name="page">Which page of a column too long for the panel to draw. Zero is
+    /// the first, and a caller never passes anything else - the Previous and Next rows
+    /// re-show this same screen at the page either side.</param>
     internal static void Show(
         string title,
         string body,
@@ -102,7 +116,8 @@ internal static class LibraryScreen
         string backLabel,
         Action? back = null,
         Action<string>? codeSubmitted = null,
-        string codePlaceholder = "")
+        string codePlaceholder = "",
+        int page = 0)
     {
         NGenericPopup? popup = null;
         NModalContainer? container = null;
@@ -136,7 +151,13 @@ internal static class LibraryScreen
             content.YesButton.SetText(backLabel);
 
             var field = codeSubmitted is null ? null : AddCodeField(content, codePlaceholder, codeSubmitted);
-            var first = AddRows(content, rows, field is null ? 0f : 1f);
+            var first = AddRows(
+                content,
+                rows,
+                field is null ? 0f : 1f,
+                page,
+                turned => Show(
+                    title, body, rows, backLabel, back, codeSubmitted, codePlaceholder, turned));
 
             // Deferred: adding the modal updates the game's active screen context,
             // which decides what is focused. Grabbing focus before that has finished
@@ -171,8 +192,18 @@ internal static class LibraryScreen
     /// Returns the first row a player can press, which is where focus goes: a screen
     /// that opened with the Back ribbon highlighted would put the way out ahead of the
     /// way in. Null when nothing is pressable, and the caller then focuses a ribbon.
+    ///
+    /// How many rows fit is the space between the top of the column and the popup's own
+    /// ribbons, in steps - measured, like everything else positioned here. A panel with
+    /// no room for a column at all is refused rather than drawn over, the way a ribbon
+    /// with no measurable height already is.
     /// </summary>
-    private static Control? AddRows(NVerticalPopup content, IReadOnlyList<ScreenRow> rows, float offsetSteps)
+    private static Control? AddRows(
+        NVerticalPopup content,
+        IReadOnlyList<ScreenRow> rows,
+        float offsetSteps,
+        int page,
+        Action<int> turnTo)
     {
         if (rows.Count == 0) return null;
 
@@ -187,10 +218,32 @@ internal static class LibraryScreen
                 "This build's popup ribbon has no measurable height, so a row column cannot be laid out.");
         }
 
-        var placed = new List<Control>();
-        for (var index = 0; index < rows.Count; index++)
+        var room = prototype.Position.Y - top;
+        if (room < step)
         {
-            var row = rows[index];
+            throw new InvalidOperationException(
+                "This build's popup has no room between its body and its ribbons for a row column.");
+        }
+
+        var perPage = Math.Max(ScreenPage.MinimumPerPage, (int)Math.Floor(room / step));
+        var slice = ScreenPage.For(rows.Count, perPage, page);
+        var drawn = new List<ScreenRow>(rows.Skip(slice.First).Take(slice.Count));
+        if (slice.HasPrevious)
+        {
+            var previous = slice.Index - 1;
+            drawn.Add(new ScreenRow(LibraryCopy.PreviousPage, Enabled: true, () => turnTo(previous)));
+        }
+
+        if (slice.HasNext)
+        {
+            var next = slice.Index + 1;
+            drawn.Add(new ScreenRow(LibraryCopy.NextPage, Enabled: true, () => turnTo(next)));
+        }
+
+        var placed = new List<Control>();
+        for (var index = 0; index < drawn.Count; index++)
+        {
+            var row = drawn[index];
             const int duplicateFlags =
                 (int)(Node.DuplicateFlags.Groups | Node.DuplicateFlags.Scripts |
                       Node.DuplicateFlags.UseInstantiation);
