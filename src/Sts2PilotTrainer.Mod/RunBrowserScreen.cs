@@ -53,10 +53,15 @@ internal static class RunBrowserScreen
             var community = tab == LibraryTab.Community;
             var rows = new List<ScreenRow>
             {
+                // Pinned: the way to the other tab is this screen's own navigation, and
+                // a paged column that carried it as an ordinary row would drop it on
+                // every page after the first. The ribbon here closes the library, so
+                // that would leave a player no way across.
                 new(
                     community ? LibraryCopy.MyRunsTab : LibraryCopy.CommunityTab,
                     Enabled: true,
-                    () => OpenTab(community ? LibraryTab.MyRuns : LibraryTab.Community)),
+                    () => OpenTab(community ? LibraryTab.MyRuns : LibraryTab.Community),
+                    Pinned: true),
             };
 
             foreach (var group in browser.Groups)

@@ -108,11 +108,87 @@ public sealed class ScreenPageTests
     }
 
     /// <summary>A panel measured to hold less than a paged page needs is refused rather
-    /// than drawn over, the way an unmeasurable row height already is.</summary>
+    /// than drawn over, the way an unmeasurable row height already is. The measurement
+    /// is the only thing that decides: nothing raises it to the minimum, because a page
+    /// of three in room for two and a half is a row over the panel's own ribbons.</summary>
     [Fact]
     public void APanelTooSmallToPageIsRefused()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => ScreenPage.For(rows: 10, perPage: 2, page: 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ScreenPage.For(rows: 10, perPage: 0, page: 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => ScreenPage.For(rows: -1, perPage: 8, page: 0));
+    }
+
+    /// <summary>
+    /// The browser's way to its other tab is a row, and a column longer than one page
+    /// keeps it on every page rather than dropping it after the first - which is what
+    /// pinning is for.
+    /// </summary>
+    [Fact]
+    public void APinnedRowIsOnEveryPageOfALongColumn()
+    {
+        const int perPage = 8;
+        var pages = ScreenPage.For(rows: 50, perPage, page: 0, pinned: 1).Pages;
+
+        Assert.True(pages > 1);
+        for (var index = 0; index < pages; index++)
+        {
+            var page = ScreenPage.For(rows: 50, perPage, index, pinned: 1);
+            Assert.Equal(1, page.Pinned);
+            Assert.True(page.Drawn <= perPage, $"page {index} drew {page.Drawn}.");
+        }
+    }
+
+    /// <summary>Pinning shrinks the page rather than pushing its last row past the
+    /// panel: the pinned row, the page's own rows and Previous and Next together are
+    /// what was measured to fit.</summary>
+    [Theory]
+    [InlineData(4, 1)]
+    [InlineData(8, 1)]
+    [InlineData(8, 2)]
+    [InlineData(20, 3)]
+    public void NoPageEverDrawsMoreThanFitsBesideItsPinnedRows(int perPage, int pinned)
+    {
+        for (var rows = 0; rows <= 60; rows++)
+        {
+            var pages = ScreenPage.For(rows, perPage, page: 0, pinned).Pages;
+            for (var index = 0; index < pages; index++)
+            {
+                var page = ScreenPage.For(rows, perPage, index, pinned);
+                Assert.True(
+                    page.Drawn <= perPage,
+                    $"{rows} rows at {perPage} a page with {pinned} pinned drew {page.Drawn} " +
+                    $"on page {index}.");
+            }
+        }
+    }
+
+    /// <summary>Paging still walks the column once when a row is pinned to every
+    /// page.</summary>
+    [Fact]
+    public void EveryRowIsOnExactlyOnePageBesideAPinnedRow()
+    {
+        const int rows = 41;
+        var seen = new List<int>();
+        var pages = ScreenPage.For(rows, perPage: 8, page: 0, pinned: 1).Pages;
+        for (var index = 0; index < pages; index++)
+        {
+            var page = ScreenPage.For(rows, perPage: 8, index, pinned: 1);
+            seen.AddRange(Enumerable.Range(page.First, page.Count));
+        }
+
+        Assert.Equal(Enumerable.Range(0, rows), seen);
+    }
+
+    /// <summary>A panel with room for a page, but not once a row is pinned to it, is
+    /// refused rather than drawing the pinned row over the ribbons.</summary>
+    [Fact]
+    public void APanelWithNoRoomLeftBesideAPinnedRowIsRefused()
+    {
+        Assert.True(ScreenPage.For(rows: 10, perPage: 3, page: 0).Drawn <= 3);
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => ScreenPage.For(rows: 10, perPage: 3, page: 0, pinned: 1));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => ScreenPage.For(rows: 10, perPage: 8, page: 0, pinned: -1));
     }
 }

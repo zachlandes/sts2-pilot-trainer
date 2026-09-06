@@ -19,8 +19,12 @@ namespace Sts2PilotTrainer.Mod;
 /// that a refused row on this surface states its reason, unlike the transport's
 /// refused menu rows, because here the reason is a fact about the recording rather
 /// than a state that clears itself in seconds.</param>
+/// <param name="Pinned">A row that is not paged: it is drawn above the page's own rows
+/// on every page. A column's own navigation belongs to the column, so a screen whose
+/// way to somewhere else is a row would otherwise lose it on page one.</param>
 internal sealed record ScreenRow(
-    string Label, bool Enabled, Action Press, string? Note = null, string? Reason = null);
+    string Label, bool Enabled, Action Press, string? Note = null, string? Reason = null,
+    bool Pinned = false);
 
 /// <summary>
 /// The one way this module puts anything on screen: the game's own modal popup, with
@@ -51,9 +55,11 @@ internal sealed record ScreenRow(
 /// would put most of itself off the screen and leave a controller walking down into rows
 /// nobody can see. <see cref="ScreenPage"/> decides which slice is on screen and the last
 /// two places of a paged page go to Previous and Next; focus is joined across what is
-/// drawn and nothing else, so it cannot reach a row that is not there. Paging is
-/// presentation: <c>RunBrowser</c> and <c>RunView</c> return every row they always did,
-/// and this decides what a player is looking at.</para>
+/// drawn and nothing else, so it cannot reach a row that is not there. A pinned row is
+/// on every page and spends one of the page's own places, so pinning shrinks the page
+/// rather than pushing its last row past the panel. Paging is presentation:
+/// <c>RunBrowser</c> and <c>RunView</c> return every row they always did, and this
+/// decides what a player is looking at.</para>
 ///
 /// It composes nothing and decides nothing. What the rows are is
 /// <c>Sts2PilotTrainer.Trainer</c>'s answer; this puts them on screen.
@@ -194,9 +200,10 @@ internal static class LibraryScreen
     /// way in. Null when nothing is pressable, and the caller then focuses a ribbon.
     ///
     /// How many rows fit is the space between the top of the column and the popup's own
-    /// ribbons, in steps - measured, like everything else positioned here. A panel with
-    /// no room for a column at all is refused rather than drawn over, the way a ribbon
-    /// with no measurable height already is.
+    /// ribbons, in steps - measured, like everything else positioned here. The
+    /// measurement is the only thing that decides how many rows are drawn: a panel with
+    /// no room for a page is refused by <see cref="ScreenPage.For"/> rather than drawn
+    /// over, the way a ribbon with no measurable height already is.
     /// </summary>
     private static Control? AddRows(
         NVerticalPopup content,
@@ -219,15 +226,12 @@ internal static class LibraryScreen
         }
 
         var room = prototype.Position.Y - top;
-        if (room < step)
-        {
-            throw new InvalidOperationException(
-                "This build's popup has no room between its body and its ribbons for a row column.");
-        }
-
-        var perPage = Math.Max(ScreenPage.MinimumPerPage, (int)Math.Floor(room / step));
-        var slice = ScreenPage.For(rows.Count, perPage, page);
-        var drawn = new List<ScreenRow>(rows.Skip(slice.First).Take(slice.Count));
+        var fits = (int)Math.Floor(room / step);
+        var pinned = rows.Where(row => row.Pinned).ToList();
+        var paged = rows.Where(row => !row.Pinned).ToList();
+        var slice = ScreenPage.For(paged.Count, fits, page, pinned.Count);
+        var drawn = new List<ScreenRow>(pinned);
+        drawn.AddRange(paged.Skip(slice.First).Take(slice.Count));
         if (slice.HasPrevious)
         {
             var previous = slice.Index - 1;

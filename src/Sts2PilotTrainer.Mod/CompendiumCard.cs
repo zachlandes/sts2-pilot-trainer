@@ -146,7 +146,11 @@ internal static class CompendiumCard
             ?? throw new InvalidOperationException(
                 "This build's Compendium button is not in a row, so there is nowhere to add one beside it.");
 
-        var sourcePosition = source.Position;
+        // Saved before JoinFocusChain writes it, and put back exactly as it was: this
+        // is the one edge of the game's own chain this touches, and an empty one is a
+        // real answer - Godot then picks a neighbour geometrically, which is what the
+        // player had.
+        var sourceNeighbour = source.FocusNeighborRight;
         var added = false;
         try
         {
@@ -169,8 +173,7 @@ internal static class CompendiumCard
         {
             try
             {
-                source.Position = sourcePosition;
-                RestoreFocusChain(source);
+                source.FocusNeighborRight = sourceNeighbour;
             }
             finally
             {
@@ -264,8 +267,4 @@ internal static class CompendiumCard
             ? above.GetPath()
             : source.GetPath();
     }
-
-    /// <summary>Puts Run History's own right-hand neighbour back where the game had
-    /// it: pointing at itself, which is what the last button in a row does.</summary>
-    private static void RestoreFocusChain(Control source) => source.FocusNeighborRight = source.GetPath();
 }

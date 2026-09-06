@@ -27,17 +27,20 @@ namespace Sts2PilotTrainer.Trainer;
 /// <param name="HasNext">Whether there is a page after it.</param>
 /// <param name="Index">Which page this is, from zero.</param>
 /// <param name="Pages">How many pages the column takes.</param>
+/// <param name="Pinned">How many of the page's places are spent on rows that are not
+/// paged at all - drawn above the slice on every page, the way Previous and Next are
+/// drawn below it.</param>
 public sealed record ScreenPage(
-    int First, int Count, bool HasPrevious, bool HasNext, int Index, int Pages)
+    int First, int Count, bool HasPrevious, bool HasNext, int Index, int Pages, int Pinned = 0)
 {
     /// <summary>The fewest rows a page may hold. Three, because a paged page spends two
     /// places on Previous and Next and a page that could hold nothing else would be a
     /// column a player cannot walk down.</summary>
     public const int MinimumPerPage = 3;
 
-    /// <summary>How many controls this page puts on screen: its own rows and whichever
-    /// of Previous and Next it offers.</summary>
-    public int Drawn => Count + (HasPrevious ? 1 : 0) + (HasNext ? 1 : 0);
+    /// <summary>How many controls this page puts on screen: the rows pinned to every
+    /// page, its own rows, and whichever of Previous and Next it offers.</summary>
+    public int Drawn => Pinned + Count + (HasPrevious ? 1 : 0) + (HasNext ? 1 : 0);
 
     /// <summary>
     /// The page of a column of <paramref name="rows"/> rows in a panel that fits
@@ -49,27 +52,42 @@ public sealed record ScreenPage(
     /// clamped rather than refused: a column that shortened under a player - a recording
     /// removed while the browser was open - should show them the last page rather than
     /// nothing.
+    ///
+    /// <paramref name="pinned"/> rows are on every page and are counted against
+    /// <paramref name="perPage"/> before anything else, so pinning one shrinks the page
+    /// rather than pushing its last row past what was measured. A panel with no room
+    /// left for a page is refused here, which is the only place that answer is given.
     /// </summary>
-    public static ScreenPage For(int rows, int perPage, int page)
+    public static ScreenPage For(int rows, int perPage, int page, int pinned = 0)
     {
         if (rows < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(rows), rows, "A column has no negative length.");
         }
 
-        if (perPage < MinimumPerPage)
+        if (pinned < 0)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(perPage), perPage, $"A page holds at least {MinimumPerPage} rows.");
+                nameof(pinned), pinned, "A page pins no negative number of rows.");
         }
 
-        if (rows <= perPage) return new ScreenPage(0, rows, false, false, 0, 1);
+        var places = perPage - pinned;
+        if (places < MinimumPerPage)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(perPage),
+                perPage,
+                $"A page of {perPage} places with {pinned} pinned to it leaves fewer than the " +
+                $"{MinimumPerPage} rows a page holds.");
+        }
 
-        var size = perPage - 2;
+        if (rows <= places) return new ScreenPage(0, rows, false, false, 0, 1, pinned);
+
+        var size = places - 2;
         var pages = ((rows - 1) / size) + 1;
         var index = Math.Clamp(page, 0, pages - 1);
         var first = index * size;
         return new ScreenPage(
-            first, Math.Min(size, rows - first), index > 0, index < pages - 1, index, pages);
+            first, Math.Min(size, rows - first), index > 0, index < pages - 1, index, pages, pinned);
     }
 }
