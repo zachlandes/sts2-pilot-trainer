@@ -19,8 +19,8 @@ namespace Sts2PilotTrainer.Mod;
 /// installs the patches for its feature.
 ///
 /// It is a shell: what is true of the mod however it is configured lives here, and
-/// each feature lives behind <see cref="IRunmobileModule"/>. Today there are two
-/// modules, the Combat Trainer and the recorder.
+/// each feature lives behind <see cref="IRunmobileModule"/>. Today there are three
+/// modules: the Combat Trainer, the recorder and the run library.
 ///
 /// Mod initialization deliberately reads nothing about the game. It runs inside the
 /// game's "very early" startup phase, one phase before the game builds its model
@@ -59,27 +59,37 @@ public static class RunmobileMod
     /// <summary>
     /// Every feature this build carries, in the order they are installed.
     ///
-    /// The run library is the third and is not built yet; when it is, it is added here
-    /// and nothing else about the shell changes.
+    /// Three: the Combat Trainer, the recorder, and the run library. Adding the third
+    /// changed nothing else about the shell, which is what the seam was for.
     /// </summary>
     internal static IReadOnlyList<IRunmobileModule> Modules { get; } =
-        [CombatTrainerModule.Instance, RecorderModule.Instance];
+        [CombatTrainerModule.Instance, RecorderModule.Instance, RunLibraryModule.Instance];
 
     /// <summary>The modules that could establish what they need in this process.</summary>
     internal static IEnumerable<IRunmobileModule> EnabledModules => Modules.Where(module => module.Enabled);
 
     /// <summary>
-    /// Every singleplayer-menu card the enabled modules contribute, or none at all in
-    /// a game this mod may not speak in.
+    /// Whether a module may put anything in front of the player right now.
     ///
     /// The gate is here rather than in each module for the same reason the write
     /// barrier is the shell's: what this mod may do to somebody else's session is not
     /// a decision a feature gets to make for itself, and a module that has not been
     /// written yet would be a module that had not been told.
-    /// <see cref="GameSessionWatch"/> owns the reading.
+    /// <see cref="GameSessionWatch"/> owns the reading, and a module knows only that
+    /// the shell said no - it never learns what the answer depended on.
+    ///
+    /// Every surface goes through this, not only the cards. A module's own Harmony
+    /// patches draw where the shell never looks - the run library's Compendium button
+    /// and its run-history plate are both of those - so this is what those entry points
+    /// ask before they draw. A silent shell is silent rather than degraded: nothing is
+    /// drawn, including a refusal saying why, because a refusal is itself this mod
+    /// speaking in somebody else's session.
     /// </summary>
-    internal static IReadOnlyList<MenuCard> MenuCards =>
-        GameSessionWatch.MaySpeak ? MenuCardsFrom(Modules) : [];
+    internal static bool MayDraw => GameSessionWatch.MaySpeak;
+
+    /// <summary>Every singleplayer-menu card the enabled modules contribute, or none at
+    /// all in a game this mod may not draw in.</summary>
+    internal static IReadOnlyList<MenuCard> MenuCards => MayDraw ? MenuCardsFrom(Modules) : [];
 
     internal static IReadOnlyList<MenuCard> MenuCardsFrom(IReadOnlyList<IRunmobileModule> modules) =>
         modules.Where(module => module.Enabled).SelectMany(module => module.MenuCards).ToList();

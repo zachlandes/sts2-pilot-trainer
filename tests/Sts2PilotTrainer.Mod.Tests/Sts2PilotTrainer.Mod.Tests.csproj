@@ -15,6 +15,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The game's own assembly, because a surface these tests drive names a game type
+         in its signature - RunHistoryPlateHost takes the history entry's own run. A
+         <Reference> does not flow through a ProjectReference, so the mod having one is
+         not this project having one. -->
+    <Reference Include="sts2">
+      <HintPath>../../build/lib/sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
     <Reference Include="0Harmony">
       <HintPath>../../build/lib/0Harmony.dll</HintPath>
     </Reference>

@@ -16,13 +16,17 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// The whole mod then fails to load with a `ReflectionTypeLoadException`, and the game
 /// reports "Loaded 0 mods".
 ///
-/// It has happened four times, in four shapes, and each time the rule written after it
+/// It has happened five times, in five shapes, and each time the rule written after it
 /// was narrower than the next one. `IReadOnlyList&lt;MenuRow&gt;` as a field was the
 /// first and cost a startup to learn; a `PlaybackSpeed` field was the second, which is
 /// why `_speedIndex` is an int; a `(Control, Func&lt;ElementSurface&gt;)?` field was
 /// the third, which reached a green pull request and a passing CI run before a retail
-/// launch found it; and a type <em>implementing</em> `IFightSampleSink` was the fourth,
-/// which no rule about fields covered at all.
+/// launch found it; a type <em>implementing</em> `IFightSampleSink` was the fourth,
+/// which no rule about fields covered at all; and the fifth was a lambda that captured
+/// a `LibraryTab` - a closure is a compiler-written class whose fields are whatever it
+/// captured, and nobody writing `() =&gt; OpenTab(tab)` is thinking about a field at
+/// all. Capture a string, an int or a bool and read the real thing back inside the
+/// body, which is what the run library's rows do.
 ///
 /// So this test is the arbiter and the prose is not. It reproduces the condition rather
 /// than any description of it: enumerate every type in the built mod with the siblings
@@ -89,9 +93,12 @@ public sealed class ModAssemblyLoadOrderTests
                 "class, not an interface it implements, and not the type of an instance field - the field's " +
                 "own type, a generic argument, or a tuple element inside it. Method bodies, method " +
                 "signatures, static fields and reference-typed fields are resolved later and are fine. " +
-                "Hold such state as a plain reference or as an int and read the real thing back on use, the " +
-                "way _speedIndex and _phase already do; reach an interface through a delegating " +
-                "implementation that lives in the sibling, the way DelegatingFightSampleSink is reached.\n" +
+                "A lambda counts: a closure is a compiler-written class whose fields are what it captured, " +
+                "so capture a string, an int or a bool and read the real thing back inside the body, the way " +
+                "the run library's rows do. Hold such state as a plain reference or as an int and read the " +
+                "real thing back on use, the way _speedIndex and _phase already do; reach an interface " +
+                "through a delegating implementation that lives in the sibling, the way " +
+                "DelegatingFightSampleSink is reached.\n" +
                 $"Loader said: {string.Join("; ", reasons)}\n" +
                 $"Types that did load: {blamed.Length} of {failure.Types.Length}.");
         }

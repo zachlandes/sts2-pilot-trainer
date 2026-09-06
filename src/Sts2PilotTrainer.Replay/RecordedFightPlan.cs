@@ -93,6 +93,16 @@ public sealed record RecordedFightPlan : IBoundaryPlan
     /// fight.</summary>
     private static readonly ActionVerb[] CombatVerbs = [ActionVerb.PlayCard, ActionVerb.EndTurn];
 
+    /// <summary>
+    /// Whether a verb can only be issued inside a fight.
+    ///
+    /// Exposed because a second reader needs the same answer: a run view deciding
+    /// whether a floor's fight was fought at all reads the history the same way this
+    /// plan does. One owner for the list, so the two cannot come to disagree about
+    /// what counts as being in a fight.
+    /// </summary>
+    public static bool IsCombatVerb(ActionVerb verb) => CombatVerbs.Contains(verb);
+
     /// <summary>Canonical fields that only exist while a fight is live. A boundary
     /// checkpoint has to name at least one, or it is not an observation of a fight
     /// starting.</summary>

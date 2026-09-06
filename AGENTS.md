@@ -198,19 +198,30 @@ phase before `SiblingAssemblies` has said where the siblings are, and loading a 
 resolves its base class, the interfaces it implements and enough of its instance fields
 to lay it out. Method bodies, method signatures, static fields and reference-typed
 fields are resolved later and are fine. The shapes are not the rule and naming them is
-how the rule was too narrow three times running - a generic built over a sibling type
-has done it, and so has a type implementing a sibling interface. Run
+how the rule was too narrow four times running - a generic built over a sibling type
+has done it, a type implementing a sibling interface has, and so has a *lambda*, because
+a closure is a compiler-written class whose fields are whatever it captured. Run
 `ModAssemblyLoadOrderTests` against a new type rather than judging its shape; it is the
-only thing here that reproduces the game's own condition. It has fired four times, twice
+only thing here that reproduces the game's own condition. It has fired five times, twice
 through a green CI run. `DelegatingFightSampleSink` is how the mod reaches an interface
 it may not implement.
 `./scripts/install-mod.sh` is the one
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions, and remove the `CombatTrainer` directory the mod was installed under before the rename.
 
+**The run library is the third module, and browsing is after the fact.**
+`RunLibraryModule` owns the Compendium button (`NCompendiumSubmenu`), the browser, one run opened, and the plate under the game's own run history (`NMapPointHistoryEntry.Released`).
+Two settled rules run through all of it and neither is a preference: a player plays *from* a run, one verb everywhere; and a run this build has no passing verdict for - or an established multiplayer run - is not in the list in any state, with no tickbox and no greyed row.
+`LibraryRun.Listed` is that rule in one place; the numeral under the list counts what it hid, and a run code still finds one, which is the only place an unplayable run is ever described.
+Where a player can be stood is the recording's own `boundaries[]`, read through `RunView`, so no row can offer somewhere `RecordedFightEntry` would refuse; `RecordedFightRun.Start` takes the plan, because there is still one playback path.
+`RunProgress` under the store holds fight ordinals and nothing resumable - it is the pips and Continue's number, never a save.
+What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [docs/in-game-host.md](docs/in-game-host.md) owns what it draws and what the accepted design still wants.
+
 **The mod a player installs is `Runmobile`, and the Combat Trainer is one module inside it.**
 `RunmobileMod` is the shell and `IRunmobileModule` the line between it and a feature; a module says whether it can run, installs its own patches and contributes its own surfaces, and one that refuses does not take the rest of the mod with it.
-Whether this mod may draw anything at all is the shell's and never a feature's: `GameSessionWatch` observes a multiplayer game and `RunmobileMod.MenuCards` then contributes nothing, not even an indicator saying a run is not being recorded.
+Whether this mod may draw anything at all is the shell's and never a feature's: `GameSessionWatch` observes a multiplayer game and `RunmobileMod.MayDraw` then says no to every surface - the menu cards, and equally a surface a module draws from its own Harmony patches, which is the path the cards' gate never sees.
+A module asks that gate rather than reading the session for itself, because whether a surface may be put in front of a player is not a feature's decision, and a no draws nothing at all - not a greyed control, not a popup saying why, not an indicator saying a run is not being recorded.
+Whether a run may be *recorded* is the other question and has the other answer: `RunRecorder.Attach` reads `GameSessionWatch.Observed` and asks `RunSession.MayBeRecorded` directly, which is the reading the recorder paragraph below requires.
 `RunmobileStore` is the only thing in the mod that writes, under `user://Runmobile/` scoped by the game's own resolved platform, account and profile - taken whole from `UserDataPathProvider`, never reassembled here, and never part of an exported recording's identity.
 `ProfileWriteBarrier` is a different thing and stays as it is: it suppresses the game's own writes during a trainer run.
 `./scripts/protected-files.sh` is how "nothing outside that subtree changed" is measured rather than asserted.

@@ -72,6 +72,19 @@ public static class RecordingLibrary
         startedUtc.UtcDateTime.ToString(StampFormat, CultureInfo.InvariantCulture);
 
     /// <summary>
+    /// Whether this is a name <see cref="Name"/> could have written for a run on this
+    /// seed.
+    ///
+    /// Here rather than at a caller, because it is the same knowledge <see cref="Name"/>
+    /// has and a second reader of that shape is a second thing to keep in step. What it
+    /// buys is a caller that can narrow a directory of recordings to the ones a given run
+    /// could be, before opening any of them.
+    /// </summary>
+    public static bool NamesRunOn(string runId, string seed) =>
+        StartedUtc(runId) is not null &&
+        runId.StartsWith($"{NamePrefix}{Sanitise(seed)}-", StringComparison.Ordinal);
+
+    /// <summary>
     /// When the run behind a recording began, or null when this is not a name
     /// <see cref="Name"/> wrote.
     /// </summary>

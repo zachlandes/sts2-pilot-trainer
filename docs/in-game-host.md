@@ -293,7 +293,11 @@ Two players sharing one client is a multiplayer run here even though the game's 
 A reading that could not be taken is refused exactly like a multiplayer one - a run nothing established anything about is not a singleplayer run.
 
 **A multiplayer game gets no mod surface at all, which is a stronger rule than recording nothing.**
-`GameSessionWatch` is the shell's, installed however the modules answer, and `RunmobileMod.MenuCards` returns nothing while it says this is a multiplayer game.
+`GameSessionWatch` is the shell's, installed however the modules answer, and `RunmobileMod.MayDraw` is the one gate every surface passes: the menu cards go through it, and so does a surface a module draws from its own Harmony patches, which is where the cards' gate never looks.
+The run library's two are both of that kind - `CompendiumCard.ShowsButton` decides whether the Compendium button is there and `RunHistoryPlateHost.PlateFor` whether a history-row press opens anything - and each asks the shell rather than reading the session, so a module knows only that the shell said no.
+What a module may not do is read the session to decide whether to draw; the reading behind that decision is the shell's and the module's question is "may I draw this".
+Reading it to decide whether to *record* is a different question with a different answer, and `RunRecorder.Attach` asks it directly through `GameSessionWatch.Observed` and `RunSession.MayBeRecorded` - the two permissions are separate, which is why `RunSession` carries both.
+Silence is silence rather than a degraded surface: nothing is drawn, not even a refusal saying why, because a refusal is itself this mod speaking.
 An indicator saying a run is *not* being recorded would still be this mod drawing in a game somebody else is also playing, and one of them never installed it - so the suppression is of every surface rather than of the recorder.
 It is two observations rather than one. `LiveRun.ReadSession` reads the run in progress; the two patches on `RunManager.SetUpNewMultiplayer` and `SetUpSavedMultiplayer` latch the moment the game is asked to set a multiplayer session up, which covers the stretch where there is nothing yet to read - continuing a saved multiplayer run is asynchronous, and the method that starts it returns long before the run exists.
 The latch is cleared by `RunManager.CleanUp`, because a client that played a multiplayer game and then started a singleplayer one is in a singleplayer game.
@@ -658,12 +662,158 @@ And the popup's body scrolls when the evidence is longer than the panel, which i
 unmet rows are ordered first: what a player has to act on is above the fold, and the
 rows that already passed are below it.
 
-## Three more surfaces, and the hook each one needs
+## The run library
+
+The third module, and the only one with a surface a player browses. What it offers and
+what it refuses is `Sts2PilotTrainer.Trainer`'s - `RunBrowser`, `RunView`,
+`RunHistoryPlate` and `LibraryCopy` - and every one of those is pure and tested without
+a game. What runs inside the client is the two patches below plus one drawing class.
+
+**Two hooks, and each is the honest one for its question.** `CompendiumCard` follows
+`NCompendiumSubmenu._Ready`, which is where the row is built and where every focus
+neighbour is assigned index by index, so a button added anywhere else exists and is
+unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides
+per-visit visibility, so "is there a run to show" is asked each time rather than once.
+`RunHistoryPlateHost` follows `NMapPointHistoryEntry._Ready` and connects the `Released`
+that entry already emits and nothing in the game listens to. One patch there rather than
+two: the entry carries both its own `FloorNum` and the `RunHistory` it belongs to, so
+nothing has to follow the screen's own selection to know which run a press is about.
+
+**Which recording is this run's is matched on four values, and ambiguity answers none.**
+The game's history and a recording both carry a seed, a character, an ascension and a
+build, and both mean them the same way. Two runs a player started on the same seed with
+the same character at the same ascension on the same build are indistinguishable, and the
+honest answer is no recording rather than the first of them - a plate offering the wrong
+run's fights would stand somebody in a fight they never had.
+
+**The row column is duplicated from the popup's own second ribbon, and gives up its
+hotkeys immediately.** `NHotkeyManager` is a stack, so five rows all binding confirm
+would mean the key pressing whichever was pushed last rather than the one a player is
+looking at. Each duplicate is disconnected as it is added; the keys stay with the two
+ribbons and the rows are reached by focus. `LibraryScreen` measures every position from
+the game's own nodes - the column starts under the popup's body label, steps by a row's
+own height, and holds as many rows as fit between the two - so a build that changes the
+popup's layout changes all three with it.
+
+**A column longer than the panel is paged rather than drawn past it.** The rows are
+absolutely positioned siblings, not a scrolling list, so a run of a real length or a
+player's fifty stored runs would put most of the column off the screen and leave a
+controller walking down into rows nobody can see.
+`ScreenPage` in `Sts2PilotTrainer.Trainer` says which slice is on screen, from the row
+count and the measured room and nothing else; the last two places of a paged page go to
+Previous and Next, which are rows like any other, and focus is joined across what is drawn
+and nothing else.
+The measurement is the only thing that decides how many rows are drawn: room for fewer
+than a page is refused by `ScreenPage.For` rather than raised to the minimum, because a
+page of three in room for two and a half is a row over the popup's own ribbons.
+A row may be pinned instead of paged - it is drawn above the page's own rows on every
+page and spends one of the page's places, so pinning shrinks the page rather than pushing
+its last row past the panel. The browser's way to its other tab is the one pinned row
+today: it is that screen's own navigation, the ribbon there closes the library outright,
+and an ordinary row carrying it would be gone from every page after the first.
+Paging is presentation: `RunBrowser` and `RunView` return every row they always did, and
+only the drawing decides what a player is looking at.
+
+**The plate's marks are derived and not drawn.** `RunHistoryPlate` answers a `PlateMark`
+for every state - the record mark, the record mark muted, the warning mark - and nothing
+inside the client puts one on screen.
+Two separate reasons, and both are furniture rather than a decision about what a player
+is owed.
+The design's record mark belongs at a *run* row's end, and the game builds one
+`NMapPointHistoryEntry` per map point of the one run it is showing, so this patch has no
+per-run row to hang it on.
+The plate itself is the game's own popup, whose head is a plain string; a mark beside it
+would be a positioned control carrying art `TransportGlyphArt` does not have, because
+that family is the transport's and no record mark is in it.
+What holds the states apart meanwhile is that each one says what it is in words -
+"Recorded, not saved, not counted", "Recorded, with a gap", "Recorded on {build}".
+Drawing the marks is a change to `LibraryScreen` and `TransportGlyphArt` and to nothing
+behind either.
+
+**The Compendium's question reads no manifest.** Whether the card appears is asked on
+every menu open, and answering it by building the library meant deserialising every
+recording on the player's disk and preflighting each one - fifty files at the retention
+default, on the game's own thread, exactly in the case where the answer is no.
+So `RunLibrary.HasAnythingToShow` judges the shipped recordings, which are in memory
+already and normally answer it outright, and otherwise reads the run ids out of the
+recorder's directory index: any finished recording is a reason to show the button.
+`RunLibrary.RecordingFor` resolves one run the same way - the id names the recording in
+the index, so pressing a row costs that recording's manifest and no other's, and a
+manifest whose own run id disagrees with its name answers nothing rather than answering
+with the wrong run.
+
+The promise that makes is one-directional and nothing stronger: the card never hides a
+run the list would hold, and it can show onto a list that turns out empty, which the
+browser then draws with the "{n} not shown" numeral underneath.
+That direction is the point rather than a compromise.
+The browser is the only thing that judges a recording and the card is the only way to the
+browser, so anything persisted that could hide the card could close the only path to
+judging again - a per-build verdict cache lived here for two rounds and did exactly that
+after a game update, and a cached "could not judge" would have repeated it, because that
+reading fails again on every open.
+Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup
+judge live, every time they open.
+
+**Two states the design names are derived and not reachable, for reasons outside this
+module.** The plate's console-command state - play rows offered, Submit refused, "A
+console command was used, so it can't be submitted." - is not one of them any more: the
+recorder writes `source.native.integrity`, and `RunHistoryPlateHost.FactsFor` reads it
+through `NativeSource.StatesSomethingOtherThanComplete`, which owns the comparison.
+That reading is three-valued rather than a boolean, because a recording written before the
+recorder could tell states no integrity at all and answers `ConsoleUsed` null - absent is
+not a clean run under another name, and a plate reporting one it never checked is the claim
+`AGENTS.md` forbids.
+The browser's multiplayer rule is the first that is still unreachable.
+`LibraryRun.Listed` hides an established multiplayer run and `RunBrowser.Lookup` answers a
+run code for one with the multiplayer body, both correctly, and nothing supplies the fact:
+`LibraryRun.Multiplayer` is null on every run the library builds, so neither arm is
+reached.
+Null rather than false for the same reason the console fact is null where it is - a host
+reporting "single-player" it never established is the claim `AGENTS.md` forbids, and the
+hidden rule hides what was established and never a question nobody asked.
+The reading it waits on is a recording that says which kind of run it was, and no manifest
+field carries one: the recorder attaches to singleplayer runs only, so nothing writes a
+session kind for the library to read.
+Both arms become reachable when something does, with no change here.
+
+The Submit row is the second, and it is the one that shows.
+The flow it leads to is outside this slice by the design's own section 9.8, so
+`SubmitAvailable` is supplied false and the row is drawn refused with "Submitting runs is
+coming" rather than drawn as an offer nothing honours.
+That departs from section 5, which gives the healthy state no reason line, and the
+departure closes itself: when the submit flow lands the supplied fact turns true, the row
+is offered, the reason is null, and the state matches section 5 exactly with no other
+change here.
+
+**What the accepted design draws and this does not.** The browser's parchment tabs, the
+run strip, the deck tiles, the relic row and the portrait; and the run-history plate hung
+flat under the game's pane. Those are scene work against furniture this mod has no path
+to instantiate or measure, so the same headings, the same rows, the same refusals and the
+same sentences are shown in the game's own modal instead. Named in the design's own
+terms: the Community list's grouping is a summary line in the popup's body over one flat
+row column rather than headed sections; the run strip with played fights ticked and the
+selected position ringed is a "Choose a floor" row; and the deck at the selected position
+and the fight pane are not drawn at all. The vocabulary, the offers and the rules are the
+design's exactly; only the furniture is smaller. Changing that is a change to
+`LibraryScreen` and `RunBrowserScreen` and to nothing behind them, and is filed as
+run-library-parchment-furniture.
+
+**A screen opened from another goes back to it.** The container holds one modal, so every
+step replaces the last, and the ribbon would otherwise drop a player out of the library
+from wherever they had got to. Each screen is handed the way back as an argument -
+`LibraryScreen.Show`'s `back` - rather than a stack being kept: the run view returns to
+the tab it was opened from, the floor chooser to the run at the floor it was standing on,
+and only the browser itself, which is the screen a player enters on, closes the library.
+The tab travels as a bool because the way back ends up in a lambda's captured fields, and
+a captured `LibraryTab` has stopped this mod loading once already.
+
+## Three surfaces, and the hook each one needs
 
 Read out of v0.111.0 in a scratch decompile, ahead of building anything on them.
 Mechanism only: node paths and the lifecycle method a `[HarmonyPatch]` postfix would
 follow, in the shape the mode card already uses. Nothing here is a decision about what
-to draw.
+to draw. The Compendium and run-history hooks below are the ones the run library now
+uses; the settings screen's is still unbuilt.
 
 **A card in the Compendium.** `NCompendiumSubmenu._Ready` is the hook. It resolves
 every entry by Godot unique name: a top row of four `NShortSubmenuButton`s

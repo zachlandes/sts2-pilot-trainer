@@ -3,7 +3,7 @@
 **Play from the fight a top player played, and see how your fight compared.**
 
 A free, open-source mod for Slay the Spire 2.
-It ships with one run reconstructed from a top player's public video: play from that run's first fight, from the moment it began, with the same deck, relics, health, enemies and opening hand.
+It ships with one run reconstructed from a top player's public video: play from a fight of that run, from the moment it began, with the same deck, relics, health, enemies and opening hand.
 When the fight ends, your fight is shown beside theirs, turn by turn, with no grade and no score.
 Playing from a recording writes nothing to your saves, your stats or your run history, win or lose.
 Recording your own runs changes nothing about them: they save and count exactly as they always did.
@@ -32,9 +32,9 @@ Then the fight is yours.
 When it ends, the result panel shows the two fights side by side: summary figures, the cards and potions each of you played by turn, and a chart of health lost each turn.
 The two lines stay distinct by colour and marker and nothing scores either one.
 Built and shown in the retail client; [demo/PLAYBACK-TRANSPORT.md](demo/PLAYBACK-TRANSPORT.md) and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md) have the screenshots.
-Today that is the first fight of one featured run.
+Today that is one featured run, and its menu card opens the first fight; the run library below opens every fight that recording proves.
 - **Coming soon:** more featured runs, from more creators, named on the page.
-- **Coming soon:** every fight of a featured run, not only the first, with every screen between fights carried on the playback controls.
+- **Coming soon:** every screen between fights carried on the playback controls, so a featured run plays through as one journey.
 - **Coming soon:** watch the creator's own fight played through, and peek at it mid-fight if you choose to.
 - **Coming soon:** continue the run past the fight, as them or as you.
 
@@ -55,10 +55,14 @@ Three of the gate's conditions need a video, game-mode, seed-topology and eviden
 A fourth, baselib-path, is not asked either, and a weaker check stands in for it: the loaded mods' own declaration that they do not affect gameplay, which the gate's artifact says out loud.
 The arbiter enters fight 2 of that recording headlessly and reproduces the recorded digest byte for byte.
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
-- **Coming soon:** play from any fight of your own recorded runs.
-- **Coming soon:** play from a run at a floor, not only at a fight.
-- **Coming soon:** a run browser: featured runs, recent runs and your own, shown in the game's own run-history language, and never a run your game version cannot reproduce.
 - **Coming soon:** a settings screen for recording, and a control that shows how much space recordings take and deletes all of them.
+
+**Browse the runs and play from one.**
+The Compendium, which the game opens when no run is active, has a Runmobile button beside its own Run History.
+Two tabs: Community - the runs included with Runmobile, the featured ones and the recent ones, newest first - and My runs, your own recordings with a line under the list saying how many there are and what they take on this computer.
+Open a run and it lists every place the recording proves you can be stood: from a fight's recorded start, from a floor's first screen, "Continue: play from fight N" for the next fight you have not played from, or from run start with every choice shown.
+A run your game version cannot reproduce, and a multiplayer run, is not in the list at all - no tickbox and no greyed row - and a muted "{n} not shown" underneath says how many were hidden and that a run code still finds one.
+Your own finished runs are reachable a second way: the game's own run history carries a plate under its pane offering that run's last fight or last floor, and where it cannot offer them the rows stay in place with the reason on them - the recording has a gap in it, or it was made on another build, or a run is in progress.
 
 **One whole fight, no undo.**
 You play from the moment the fight began to the moment it ends.
