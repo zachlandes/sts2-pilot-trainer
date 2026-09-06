@@ -5,13 +5,21 @@
   TestSessionTimeout is here because a deadlocked test used to hang the suite
   indefinitely rather than fail it: nothing in dotnet test, the CI job or the local
   gate bounds a test run, so a stuck reader waits for as long as anybody lets it.
-  Fifteen minutes is three times the whole solution suite on a machine with the game
-  prepared, measured at 4m57s, and the game-free CI job is under a second of that.
   A run past this bound is not a slow machine, it is a hang, and a hang
   that fails is worth more than one nobody can interrupt.
+
+  The bound is three times the whole solution suite on a machine with the game
+  prepared, and the game-free CI job is a fraction of a second of that. It is
+  re-measured when the suite grows past it rather than being left to fire on
+  ordinary load: fifteen minutes was three times a suite measured at 4m57s, and by
+  the time the suite reached 10m12s that same bound was 1.5x and aborted a passing
+  run on a machine that happened to be building something else at the time. A bound
+  that fires on contention stops meaning "this is a hang", which is the only thing
+  it is for. Thirty minutes is three times 10m12s, measured across all four projects
+  on 2026-09-06. Raise it against a fresh measurement rather than removing it.
 -->
 <RunSettings>
   <RunConfiguration>
-    <TestSessionTimeout>900000</TestSessionTimeout>
+    <TestSessionTimeout>1800000</TestSessionTimeout>
   </RunConfiguration>
 </RunSettings>
