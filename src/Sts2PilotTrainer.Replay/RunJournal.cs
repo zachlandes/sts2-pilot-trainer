@@ -101,6 +101,31 @@ public sealed record RunJournal
         string.Concat(Refusals.Select(RenderRefusal));
 
     /// <summary>
+    /// The journal cut back to its last complete line, or null when it already ends on
+    /// one.
+    ///
+    /// An append the process did not survive leaves a fragment with no newline after
+    /// it. <see cref="Parse"/> drops that fragment, so the read succeeds while the file
+    /// on disk is still malformed - and appending onto it fuses the next entry to the
+    /// fragment into a line nothing can read. That line is the last one, so the session
+    /// that wrote it can still resume; the session after it cannot, because one more
+    /// decision leaves the unreadable line in the middle, where the truncation rule
+    /// does not apply and the whole journal is refused. A crash that cost one decision
+    /// would then cost every decision after it.
+    ///
+    /// So the fragment is cut back to the boundary the last finished append left.
+    /// Nothing before it is touched: the prefix is the recording, and this returns it
+    /// byte for byte.
+    /// </summary>
+    public static string? RepairTruncatedTail(string text)
+    {
+        if (text.EndsWith('\n')) return null;
+
+        var lastComplete = text.LastIndexOf('\n');
+        return lastComplete < 0 ? null : text[..(lastComplete + 1)];
+    }
+
+    /// <summary>
     /// Reads a journal back, refusing one this build cannot faithfully interpret.
     ///
     /// A truncated final line is the expected shape of a crash and is dropped rather

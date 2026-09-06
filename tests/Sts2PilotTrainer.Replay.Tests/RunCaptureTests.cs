@@ -391,6 +391,50 @@ public sealed class RunCaptureTests
         Assert.Equal(3, read.Entries[^1].Seq);
     }
 
+    /// <summary>
+    /// A second crash after the first does not cost the recording everything after it.
+    ///
+    /// The fragment a crash leaves behind is dropped by the reader but is still on the
+    /// file, and an append onto it fuses the next entry into a line nothing can read.
+    /// That line is last, so the session that wrote it resumes; one more decision puts
+    /// it in the middle, where the truncation rule does not apply and the whole journal
+    /// is refused - so the rest of the run goes unrecorded and no manifest is written.
+    /// This is that sequence: truncate, repair, append twice, and read the file back.
+    /// </summary>
+    [Fact]
+    public void AnEntryAppendedAfterACrashDoesNotFuseOntoTheLineItCutShort()
+    {
+        var whole = Played().Journal.Render();
+        var truncated = whole[..(whole.Length - 30)];
+        var prefix = RunJournal.RepairTruncatedTail(truncated);
+
+        Assert.NotNull(prefix);
+        Assert.Equal(truncated[..prefix!.Length], prefix);
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(prefix), Digest(3));
+        var appended = prefix +
+            RunJournal.RenderEntry(resumed.Record(
+                ActionVerb.PlayCard, Args(("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "0")),
+                InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(4))) +
+            RunJournal.RenderEntry(resumed.Record(
+                ActionVerb.EndTurn, Args(), InFight(2, turn: 3, enemyHp: 30, hp: 58), Digest(5)));
+
+        // Every entry reads, including the one that is no longer last, and the prefix
+        // the crash left behind is byte for byte what it was.
+        var read = RunJournal.Parse(appended);
+
+        Assert.Equal([-1, 0, 1, 2, 3, 4, 5], read.Entries.Select(entry => entry.Seq));
+        Assert.StartsWith(prefix, appended, StringComparison.Ordinal);
+    }
+
+    /// <summary>A journal that already ends on a complete line is left exactly as it
+    /// is: there is nothing a crash cut short.</summary>
+    [Fact]
+    public void AJournalEndingOnACompleteLineNeedsNoRepair()
+    {
+        Assert.Null(RunJournal.RepairTruncatedTail(Played().Journal.Render()));
+    }
+
     [Fact]
     public void AJournalThisBuildCannotReadIsRefusedRatherThanReadPartially()
     {
