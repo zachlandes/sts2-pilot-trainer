@@ -176,7 +176,17 @@ internal static class RecordedFightRun
     /// frames. Every failure ends the attempt and says why on screen rather than
     /// leaving a half-built run behind.
     /// </summary>
-    internal static async Task Start(ReplayManifest recording)
+    internal static Task Start(ReplayManifest recording) =>
+        Start(recording, RecordedFightPlan.For(recording));
+
+    /// <inheritdoc cref="Start(ReplayManifest)"/>
+    /// <param name="plan">Which boundary of the recording to stand the player at. The
+    /// library's rows are the reason this is a parameter: a run has as many places to
+    /// be stood as its recording proves, and every one of them is this same journey
+    /// with a different destination. There is no second playback path, which is what
+    /// keeps the transport, the deviation lock and the write isolation the same
+    /// wherever a player entered from.</param>
+    internal static async Task Start(ReplayManifest recording, IBoundaryPlan plan)
     {
         if (Phase != JourneyPhase.None)
         {
@@ -193,7 +203,7 @@ internal static class RecordedFightRun
         try
         {
             var creator = RecordingIdentity.Creator(recording);
-            entry = RecordedFightEntry.PrepareInRunningGame(recording, TravelOnTheGamesMapScreen);
+            entry = RecordedFightEntry.PrepareInRunningGame(recording, plan, TravelOnTheGamesMapScreen);
             _entry = entry;
 
             // Awaiting the game's own start-run task is what puts the run on screen and

@@ -658,12 +658,54 @@ And the popup's body scrolls when the evidence is longer than the panel, which i
 unmet rows are ordered first: what a player has to act on is above the fold, and the
 rows that already passed are below it.
 
-## Three more surfaces, and the hook each one needs
+## The run library
+
+The third module, and the only one with a surface a player browses. What it offers and
+what it refuses is `Sts2PilotTrainer.Trainer`'s - `RunBrowser`, `RunView`,
+`RunHistoryPlate` and `LibraryCopy` - and every one of those is pure and tested without
+a game. What runs inside the client is the two patches below plus one drawing class.
+
+**Two hooks, and each is the honest one for its question.** `CompendiumCard` follows
+`NCompendiumSubmenu._Ready`, which is where the row is built and where every focus
+neighbour is assigned index by index, so a button added anywhere else exists and is
+unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides
+per-visit visibility, so "is there a run to show" is asked each time rather than once.
+`RunHistoryPlateHost` follows `NMapPointHistoryEntry._Ready` and connects the `Released`
+that entry already emits and nothing in the game listens to. One patch there rather than
+two: the entry carries both its own `FloorNum` and the `RunHistory` it belongs to, so
+nothing has to follow the screen's own selection to know which run a press is about.
+
+**Which recording is this run's is matched on four values, and ambiguity answers none.**
+The game's history and a recording both carry a seed, a character, an ascension and a
+build, and both mean them the same way. Two runs a player started on the same seed with
+the same character at the same ascension on the same build are indistinguishable, and the
+honest answer is no recording rather than the first of them - a plate offering the wrong
+run's fights would stand somebody in a fight they never had.
+
+**The row column is duplicated from the popup's own second ribbon, and gives up its
+hotkeys immediately.** `NHotkeyManager` is a stack, so five rows all binding confirm
+would mean the key pressing whichever was pushed last rather than the one a player is
+looking at. Each duplicate is disconnected as it is added; the keys stay with the two
+ribbons and the rows are reached by focus. `LibraryScreen` measures every position from
+the game's own nodes - the column starts under the popup's body label and steps by a
+row's own height - so a build that changes the popup's layout changes this with it.
+
+**What the accepted design draws and this does not.** The browser's parchment tabs, the
+run strip, the deck tiles, the relic row and the portrait; and the run-history plate hung
+flat under the game's pane. Those are scene work against furniture this mod has no path
+to instantiate or measure, so the same headings, the same rows, the same refusals and the
+same sentences are shown in the game's own modal instead, and the run strip's floor
+selection is a row (`LibraryCopy.ChooseAFloor`) rather than a strip. The vocabulary, the
+offers and the rules are the design's exactly; only the furniture is smaller. Changing
+that is a change to `LibraryScreen` and `RunBrowserScreen` and to nothing behind them.
+
+## Two more surfaces, and the hook each one needs
 
 Read out of v0.111.0 in a scratch decompile, ahead of building anything on them.
 Mechanism only: node paths and the lifecycle method a `[HarmonyPatch]` postfix would
 follow, in the shape the mode card already uses. Nothing here is a decision about what
-to draw.
+to draw. The Compendium and run-history hooks below are the ones the run library now
+uses; the settings screen's is still unbuilt.
 
 **A card in the Compendium.** `NCompendiumSubmenu._Ready` is the hook. It resolves
 every entry by Godot unique name: a top row of four `NShortSubmenuButton`s

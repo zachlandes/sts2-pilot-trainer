@@ -15,12 +15,28 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 public sealed class RunmobileModuleTests
 {
     [Fact]
-    public void TheShellCarriesTheCombatTrainerAndTheRecorder()
+    public void TheShellCarriesItsThreeFeatures()
     {
         Assert.Equal(
-            [CombatTrainerModule.Instance, (IRunmobileModule)RecorderModule.Instance],
+            [CombatTrainerModule.Instance, RecorderModule.Instance, (IRunmobileModule)RunLibraryModule.Instance],
             RunmobileMod.Modules);
-        Assert.Equal(["Combat Trainer", "Recorder"], RunmobileMod.Modules.Select(module => module.Name));
+        Assert.Equal(
+            ["Combat Trainer", "Recorder", "Run library"],
+            RunmobileMod.Modules.Select(module => module.Name));
+    }
+
+    /// <summary>
+    /// The library's way in is the Compendium, not the singleplayer menu. A second card
+    /// there would offer to browse from the screen that starts runs, and
+    /// <c>ModeCard</c> refuses to draw two cards anyway - so a module contributing one
+    /// would take the Combat Trainer's card down with it.
+    /// </summary>
+    [Fact]
+    public void TheLibraryContributesNoSingleplayerCard()
+    {
+        Assert.Empty(RunLibraryModule.Instance.MenuCards);
+        Assert.Single(RunmobileMod.MenuCardsFrom(
+            [CombatTrainerModule.Instance, RunLibraryModule.Instance]));
     }
 
     [GameFact]
@@ -40,6 +56,8 @@ public sealed class RunmobileModuleTests
                 (Type: type, Owner: CombatTrainerModule.Instance.Name)))
             .Concat(RunRecorder.PatchClasses.Select(type =>
                 (Type: type, Owner: RecorderModule.Instance.Name)))
+            .Concat(RunLibraryModule.PatchClasses.Select(type =>
+                (Type: type, Owner: RunLibraryModule.Instance.Name)))
             .GroupBy(entry => entry.Type)
             .ToDictionary(group => group.Key, group => group.Select(entry => entry.Owner).ToList());
 
@@ -54,6 +72,9 @@ public sealed class RunmobileModuleTests
         Assert.All(
             RunRecorder.PatchClasses,
             type => Assert.Equal("Recorder", Assert.Single(ownership[type])));
+        Assert.All(
+            RunLibraryModule.PatchClasses,
+            type => Assert.Equal("Run library", Assert.Single(ownership[type])));
     }
 
     [GameFact]

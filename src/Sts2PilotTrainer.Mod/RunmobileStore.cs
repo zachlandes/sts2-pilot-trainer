@@ -228,6 +228,18 @@ internal static class RunmobileStore
     }
 
     /// <summary>
+    /// How many bytes one entry occupies, or zero when it is not there.
+    ///
+    /// A reading and never a decision: the library's footer says what the player's own
+    /// runs cost on this computer, and nothing here acts on the number.
+    /// </summary>
+    internal static long SizeOf(string relativePath)
+    {
+        var path = PathOf(relativePath);
+        return File.Exists(path) ? new FileInfo(path).Length : 0L;
+    }
+
+    /// <summary>
     /// Where this store lives, as a <c>user://</c> path: the game's own profile scope,
     /// re-rooted under <see cref="UserPath"/>.
     /// </summary>
