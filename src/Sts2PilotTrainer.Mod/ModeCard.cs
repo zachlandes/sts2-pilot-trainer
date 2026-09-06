@@ -52,12 +52,11 @@ internal static class ModeCard
     {
         try
         {
-            // The first moment there is demonstrably a running game to read, and the
-            // shell's own duties are done here rather than behind a card: a player who
+            // The shell's own duty, done here rather than behind a card: a player who
             // asked for their recordings to be removed is answered on a build where
-            // every module declined. Mod loading is not this moment - it runs before
-            // the game has a model database at all.
-            var adopted = RunmobileMod.EnsureAdopted();
+            // every module declined and there is no card to draw. It needs a chosen
+            // save profile and nothing else, which mod loading does not have.
+            RecordingRetention.ApplyOnce();
 
             var cards = RunmobileMod.MenuCards;
             if (cards.Count == 0) return;
@@ -74,7 +73,10 @@ internal static class ModeCard
 
             var surface = cards[0];
             if (__instance.GetNodeOrNull<NSubmenuButton>(surface.NodeName) is not null) return;
-            if (!adopted) return;
+
+            // The first moment there is demonstrably a running game to read. Mod
+            // loading is not: it runs before the game has a model database at all.
+            if (!RunmobileMod.EnsureAdopted()) return;
 
             var source = __instance.GetNodeOrNull<NSubmenuButton>(SourceCardPath);
             if (source is null)

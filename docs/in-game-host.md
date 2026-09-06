@@ -752,6 +752,6 @@ So a build where the Combat Trainer and the recorder both decline, and a build t
 The policy is applied once per save profile rather than once per process: the store is resolved per operation and two profiles do not share a library, so a player who switches profile has their second profile's `settings.json` honoured against their second profile's recordings.
 It cannot be mod start: the game has no chosen save profile then, so the store cannot yet say whose files these are.
 
-One consequence, stated rather than hidden: a run the player saved and has not finished is a recording like any other, so a cap small enough to reach it removes the journal of a run still on the game's Continue.
-Continuing that run afterwards starts a journal that did not witness the run's start, and the recorder refuses such a recording rather than repairing it.
-The default puts that out of reach of anybody who has not asked for it.
+The one recording retention never names is the run the game can currently Continue, and neither a cap nor a purge removes its journal.
+A run whose journal went missing under it is one the recorder picks up again at its next room and records as a run it watched from the start, which is a claim about what was observed that nobody established - and that is worse than a purge which leaves one file, so the file stays and the log says it was left.
+Which run that is comes from the game: `ContinuableRun` asks `SaveManager` whether there is a run save and reads the run's start time out of it, matching the recording by the same start time `RecordingLibrary.Name` writes into its name, and refuses where the game has a run save it cannot read rather than guessing.

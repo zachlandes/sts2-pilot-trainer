@@ -36,12 +36,14 @@ namespace Sts2PilotTrainer.Mod;
 /// history, another mod's files and a file a player put in the recordings directory
 /// themselves are all outside what this can name.</para>
 ///
-/// <para>A consequence, stated rather than hidden: a run the player saved and has not
-/// finished is a recording like any other, so a cap small enough to reach it removes
-/// the journal of a run still on the game's Continue. Continuing that run afterwards
-/// starts a journal that did not witness the run's start, and the recorder refuses such
-/// a recording rather than publishing it. The default keeps fifty runs, which puts that
-/// out of reach of anybody who has not asked for it.</para>
+/// <para><b>The run the game can currently Continue is never named.</b> Neither a cap
+/// nor a purge removes its journal, because a run whose journal went missing under it
+/// is one the recorder would pick up again at its next room and record as a run it had
+/// watched from the start - a claim about what was observed that nobody established.
+/// One file left where a player asked for everything to go is the smaller wrong, and
+/// the log says it was left. Which run that is comes from
+/// <see cref="ContinuableRun"/>, which asks the game and refuses where it cannot
+/// answer.</para>
 /// </summary>
 internal static class RecordingRetention
 {
@@ -71,7 +73,7 @@ internal static class RecordingRetention
             {
                 root = RunmobileStore.Root;
                 if (Applied.Contains(root)) return;
-                Apply(RunmobileSettings.Read());
+                Apply(RunmobileSettings.Read(), ContinuableRun.StartedUtc());
             }
             catch (Exception ex)
             {
@@ -89,6 +91,10 @@ internal static class RecordingRetention
     /// Removes what <paramref name="settings"/> says to remove, and returns how many
     /// runs went.
     ///
+    /// The recording of the run this game can continue is not among them, whatever
+    /// <paramref name="continuableRunStartedUtc"/> says is continuable; null says
+    /// there is no such run.
+    ///
     /// The count is of runs this call removed a file of, not of runs the library
     /// named: a recording that was already gone by the time the delete reached it - a
     /// second process on the same profile, or a player emptying the directory by hand
@@ -98,11 +104,14 @@ internal static class RecordingRetention
     /// stopped part way through finishes the job at the next launch, which is the
     /// direction a player who asked for everything to go wants it to fail in.
     /// </summary>
-    internal static int Apply(RunmobileSettings settings)
+    internal static int Apply(RunmobileSettings settings, DateTime? continuableRunStartedUtc)
     {
         var keep = settings.PurgeMyRuns ? 0 : settings.KeepRecentRuns;
-        var removing = RecordingLibrary.Cull(
+        var named = RecordingLibrary.Cull(
             RunmobileStore.ListFileNames(RunRecorder.RecordingsDirectory), keep);
+        var removing = continuableRunStartedUtc is { } continuable
+            ? named.Where(recording => recording.StartedUtc != continuable).ToList()
+            : named;
 
         var removed = 0;
         foreach (var recording in removing)
@@ -118,7 +127,7 @@ internal static class RecordingRetention
 
         if (settings.PurgeMyRuns) RunmobileSettings.ClearPurgeRequest();
 
-        Announce(settings, removed);
+        Announce(settings, removed, named.Count - removing.Count);
         return removed;
     }
 
@@ -129,14 +138,18 @@ internal static class RecordingRetention
     /// nothing to remove - somebody asked for an act and deserves to know it happened,
     /// where a policy that had nothing to do is not news.
     /// </summary>
-    private static void Announce(RunmobileSettings settings, int removed)
+    private static void Announce(RunmobileSettings settings, int removed, int keptContinuable)
     {
         var count = removed.ToString(CultureInfo.InvariantCulture);
+        var kept = keptContinuable > 0
+            ? " The run you can still continue was left, so continuing it stays a recording of a run this " +
+              "mod watched from the start."
+            : string.Empty;
         if (settings.PurgeMyRuns)
         {
             Log.Info(
                 $"[{RunmobileMod.ModId}] purged your recorded runs: {count} removed. purge_my_runs is back " +
-                "off in settings.json.", 2);
+                $"off in settings.json.{kept}", 2);
             return;
         }
 
@@ -145,7 +158,7 @@ internal static class RecordingRetention
         Log.Info(
             $"[{RunmobileMod.ModId}] keeping your " +
             $"{settings.KeepRecentRuns.ToString(CultureInfo.InvariantCulture)} most recent runs: {count} " +
-            "older one(s) removed.", 2);
+            $"older one(s) removed.{kept}", 2);
     }
 
     /// <summary>Lets a test run more than one policy against one store. Nothing in the

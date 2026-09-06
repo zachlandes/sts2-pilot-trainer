@@ -28,12 +28,14 @@ public sealed class RecordingRetentionTests : IDisposable
 
         Directory.CreateDirectory(_root);
         RunmobileStore.UseRootForTesting(_root);
+        ContinuableRun.UseReaderForTesting(() => null);
         RecordingRetention.ForgetForTesting();
     }
 
     public void Dispose()
     {
         RecordingRetention.ForgetForTesting();
+        ContinuableRun.UseReaderForTesting(null);
         RunmobileStore.UseRootForTesting(null);
         var sandbox = _root[.._root.IndexOf("Runmobile", StringComparison.Ordinal)];
         if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
@@ -46,7 +48,7 @@ public sealed class RecordingRetentionTests : IDisposable
         Record(Newer);
         Record(Newest);
 
-        Assert.Equal(2, RecordingRetention.Apply(Settings(keep: 1)));
+        Assert.Equal(2, RecordingRetention.Apply(Settings(keep: 1), NoContinuableRun));
 
         Assert.Equal(
             [$"{Newest}.journal.jsonl", $"{Newest}.replay.json"], RunmobileStore.ListFileNames(Recordings));
@@ -58,7 +60,7 @@ public sealed class RecordingRetentionTests : IDisposable
         Record(Older);
         Record(Newest);
 
-        Assert.Equal(0, RecordingRetention.Apply(Settings(keep: 50)));
+        Assert.Equal(0, RecordingRetention.Apply(Settings(keep: 50), NoContinuableRun));
         Assert.Equal(4, RunmobileStore.ListFileNames(Recordings).Count);
     }
 
@@ -69,7 +71,7 @@ public sealed class RecordingRetentionTests : IDisposable
     {
         Record(Older);
 
-        Assert.Equal(0, RecordingRetention.Apply(Settings(keep: RunmobileSettings.KeepEveryRun)));
+        Assert.Equal(0, RecordingRetention.Apply(Settings(keep: RunmobileSettings.KeepEveryRun), NoContinuableRun));
         Assert.Equal(2, RunmobileStore.ListFileNames(Recordings).Count);
     }
 
@@ -80,7 +82,7 @@ public sealed class RecordingRetentionTests : IDisposable
         Record(Newer);
         Record(Newest);
 
-        Assert.Equal(3, RecordingRetention.Apply(Settings(keep: 50, purge: true)));
+        Assert.Equal(3, RecordingRetention.Apply(Settings(keep: 50, purge: true), NoContinuableRun));
         Assert.Empty(RunmobileStore.ListFileNames(Recordings));
     }
 
@@ -94,12 +96,12 @@ public sealed class RecordingRetentionTests : IDisposable
         WriteSettings(keep: 50, purge: true);
         Record(Older);
 
-        RecordingRetention.Apply(RunmobileSettings.Read());
+        RecordingRetention.Apply(RunmobileSettings.Read(), NoContinuableRun);
         Assert.False(RunmobileSettings.Read().PurgeMyRuns);
         Assert.Equal(50, RunmobileSettings.Read().KeepRecentRuns);
 
         Record(Newer);
-        Assert.Equal(0, RecordingRetention.Apply(RunmobileSettings.Read()));
+        Assert.Equal(0, RecordingRetention.Apply(RunmobileSettings.Read(), NoContinuableRun));
         Assert.Equal(2, RunmobileStore.ListFileNames(Recordings).Count);
     }
 
@@ -116,7 +118,7 @@ public sealed class RecordingRetentionTests : IDisposable
         RunmobileStore.Write($"{Recordings}/navegreed-OJ-6QXhNgdg.replay.json", "{}");
         RunmobileStore.Write(RunmobileSettings.FileName, "{}");
 
-        RecordingRetention.Apply(Settings(keep: 0, purge: true));
+        RecordingRetention.Apply(Settings(keep: 0, purge: true), NoContinuableRun);
 
         Assert.Equal(
             ["navegreed-OJ-6QXhNgdg.replay.json", "notes.txt"], RunmobileStore.ListFileNames(Recordings));
@@ -126,7 +128,7 @@ public sealed class RecordingRetentionTests : IDisposable
     [Fact]
     public void APolicyWithNothingRecordedYetIsNotAFailure()
     {
-        Assert.Equal(0, RecordingRetention.Apply(Settings(keep: 0)));
+        Assert.Equal(0, RecordingRetention.Apply(Settings(keep: 0), NoContinuableRun));
     }
 
     /// <summary>A run whose game stopped before the manifest was written is a run all
@@ -137,7 +139,7 @@ public sealed class RecordingRetentionTests : IDisposable
         RunmobileStore.Write($"{Recordings}/{Older}{RunJournal.FileExtension}", "{}");
         Record(Newest);
 
-        Assert.Equal(1, RecordingRetention.Apply(Settings(keep: 1)));
+        Assert.Equal(1, RecordingRetention.Apply(Settings(keep: 1), NoContinuableRun));
         Assert.Equal(
             [$"{Newest}.journal.jsonl", $"{Newest}.replay.json"], RunmobileStore.ListFileNames(Recordings));
     }
@@ -203,7 +205,7 @@ public sealed class RecordingRetentionTests : IDisposable
             $$"""{"schema":"{{RunmobileSettings.Schema}}","keep_recent_runs":-1,"purge_my_runs":true}""");
         Record(Older);
 
-        RecordingRetention.Apply(RunmobileSettings.Read());
+        RecordingRetention.Apply(RunmobileSettings.Read(), NoContinuableRun);
 
         var written = JsonNode.Parse(RunmobileStore.Read(RunmobileSettings.FileName)!)!.AsObject();
         Assert.Equal(-1, (int)written["keep_recent_runs"]!);
@@ -246,6 +248,65 @@ public sealed class RecordingRetentionTests : IDisposable
         Assert.Equal(
             [$"{Newest}.journal.jsonl", $"{Newest}.replay.json"], RunmobileStore.ListFileNames(Recordings));
     }
+
+    /// <summary>
+    /// The run a player can still Continue keeps its journal through a purge. A
+    /// recording removed under a live run is one the recorder would pick up again at
+    /// the next room and publish as a run it watched from the start, and no claim
+    /// about what was observed is worth one fewer file on disk.
+    /// </summary>
+    [Fact]
+    public void APurgeLeavesTheRunTheGameCanStillContinue()
+    {
+        RunmobileStore.Write($"{Recordings}/{Newest}{RunJournal.FileExtension}", "{}");
+        Record(Older);
+
+        Assert.Equal(1, RecordingRetention.Apply(Settings(keep: 0, purge: true), StartOf(Newest)));
+
+        Assert.Equal([$"{Newest}.journal.jsonl"], RunmobileStore.ListFileNames(Recordings));
+    }
+
+    /// <summary>The same run survives a cap that would otherwise reach it, so a policy
+    /// cannot do quietly what a purge is refused.</summary>
+    [Fact]
+    public void APolicyLeavesTheRunTheGameCanStillContinue()
+    {
+        RunmobileStore.Write($"{Recordings}/{Older}{RunJournal.FileExtension}", "{}");
+        Record(Newest);
+
+        Assert.Equal(0, RecordingRetention.Apply(Settings(keep: 1), StartOf(Older)));
+
+        Assert.Equal(
+            [$"{Newest}.journal.jsonl", $"{Newest}.replay.json", $"{Older}.journal.jsonl"],
+            RunmobileStore.ListFileNames(Recordings));
+    }
+
+    /// <summary>
+    /// A game that has a run save it cannot read is one this mod will not delete
+    /// against: refusing costs the player a launch, and guessing costs them the run
+    /// they can still continue. Nothing is latched either, so the next visit retries.
+    /// </summary>
+    [Fact]
+    public void NothingIsRemovedWhereTheGameCannotSayWhichRunItCanContinue()
+    {
+        WriteSettings(keep: 0, purge: true);
+        Record(Older);
+        ContinuableRun.UseReaderForTesting(
+            () => throw new InvalidOperationException("this game cannot say"));
+
+        RecordingRetention.ApplyOnce();
+        Assert.Equal(2, RunmobileStore.ListFileNames(Recordings).Count);
+        Assert.True(RunmobileSettings.Read().PurgeMyRuns);
+
+        ContinuableRun.UseReaderForTesting(() => null);
+        RecordingRetention.ApplyOnce();
+        Assert.Empty(RunmobileStore.ListFileNames(Recordings));
+    }
+
+    private static DateTime StartOf(string runId) => RecordingLibrary.StartedUtc(runId)!.Value;
+
+    private static readonly DateTime? NoContinuableRun = null;
+
 
     private static void WriteSettings(int keep, bool purge = false) =>
         RunmobileStore.Write(
