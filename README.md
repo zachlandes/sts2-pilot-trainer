@@ -59,7 +59,8 @@ Recording is on by default while the mod is unreleased; [docs/in-game-host.md](d
 
 **One whole fight, no undo.**
 You play from the moment the fight began to the moment it ends.
-There is no taking a turn back and nothing to peek at.
+There is no taking a turn back.
+Whether you see any of their line before you play is your choice, and until that choice exists you see none of it.
 You learn the fight, not the shuffle.
 
 **Playing from a recording touches nothing.**
@@ -89,7 +90,9 @@ Nothing here is a claim about anybody's craft: each row is what the mod does and
 | [RunReplays](https://steamcommunity.com/sharedfiles/filedetails/?id=3759973128) (53) | Record every decision of a run and replay it by driving the game's screens; load to a floor. | Replays through the engine and checks the result at every boundary; nothing is compared on trust. A version mismatch is a sentence before anything starts. |
 | [STS2Dojo](https://steamcommunity.com/sharedfiles/filedetails/?id=3758840693) (21) | Rebuild one fight from your run-history file and a seed, as a standalone practice combat. | The fight is the one that happened, reached by replaying the run's decisions, and the comparison is against the recorded fight. |
 | [Training Ground](https://steamcommunity.com/sharedfiles/filedetails/?id=3772723979) (277) | Build any fight you want and practise it; nothing written to your save. | A different job: Training Ground builds a situation, Runmobile puts you in the one a real run produced. They coexist. |
-| OP.GG run history (2.7 million runs) | A browsable log of every finished run its desktop app uploads. | Those pages show the deck a good player ended with. Runmobile lets you play from the fight they played. |
+
+Run-history sites are a different thing again: [OP.GG](https://op.gg) held 2.7 million runs on 2026-09-06, and its pages show you the deck a good player ended with.
+Runmobile lets you play from the fight they played.
 
 ## Works on
 
