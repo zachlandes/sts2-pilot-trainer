@@ -119,7 +119,14 @@ public sealed class HarmonyRosterTests
         {
             patched.AddRange(RunmobileMod.InstallShellPatches(harmony));
 
-            Assert.True(HarmonyRoster.Read().NamesTheHost);
+            var roster = HarmonyRoster.Read();
+
+            Assert.NotEmpty(patched);
+            Assert.All(patched, method => Assert.Contains(
+                roster.Members,
+                entry => entry.DeclaringType == method.DeclaringType?.FullName
+                    && entry.Member.StartsWith($"{method.Name}(", StringComparison.Ordinal)
+                    && entry.Owners.Contains(PatchRoster.HostOwnerId)));
         }
         finally
         {
