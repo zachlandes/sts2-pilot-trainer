@@ -44,8 +44,10 @@ From inside the fight, one control takes you back to its proven start or straigh
 A lost fight is not compared, because there is no completed line to set beside the recording's; the panel says so.
 
 **Your own runs, recorded.**
-Every run you play is recorded: an ordered history of every decision from run start, written as you play so a crash keeps what happened.
+Every singleplayer run you play is recorded: an ordered history of every decision from run start, written as you play so a crash keeps what happened.
 It stays on your machine, under the mod's own directory, and carries no Steam id, machine path or profile id.
+A multiplayer game gets nothing at all from this mod - nothing recorded and nothing drawn, not even an indicator saying a run is not being recorded, because one of the people in that game never installed it.
+A run you used the game's own console in is still recorded and still kept on your machine; the recording says which it is, and one that says so is never publishable, because what a command did to the run is not among the decisions the history holds.
 Two runs played by a person on this build have been replayed through the real engine.
 `native-9F8CY60C5BK7-20260906-005737` replays with zero boundary mismatches, and does not pass the publication gate: its run is short enough to have no card reward, no marked card and no event, so three required controls are not applicable.
 `native-3LACFJ5NJ371-20260906-015901` replays with zero boundary mismatches and passes the gate `PUBLISHABLE` with all ten controls applied.
