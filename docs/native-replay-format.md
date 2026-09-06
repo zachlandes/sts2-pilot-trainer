@@ -187,12 +187,12 @@ requires the comparison to refuse it.
 `floor-snapshot` reaches an arrival through `FloorEntryPlan`, which requires the
 recording to carry a checkpoint there naming `run.total_floor` and `run.map_coord`.
 That is the same requirement `enter-fight --floor` already has and refuses without, and
-the committed native recordings do not meet it: their floor-entry checkpoints carry the
-floor and not the coordinate.
-So the cache is materialisable today for the whole-act fixture and for any recording
-whose arrivals are observed that fully.
-Widening it is a question about what a recorder captures at an arrival, not about this
-cache.
+every committed recording meets it: the recorder samples `run.map_coord`, and where a
+recording predates that or was read off a video, `FloorArrival` derives the arrival from
+the map move the boundary names rather than leaving the floor unenterable.
+So the cache is materialisable today for the whole-act fixture, for the native
+recordings and for the shipped video reconstruction; which of their arrivals are
+*eligible* is the live-fight split above, not this requirement.
 
 ### What this does not establish
 

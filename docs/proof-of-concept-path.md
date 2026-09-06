@@ -396,9 +396,9 @@ src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-whole-act.replay.json` repr
 a whole act through the real engine, and `./scripts/arbiter enter-fight
 src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-whole-act.replay.json --floor 5`
 stands the run at that floor's arrival with the digest that boundary records.
-The shipped video reconstruction records no map coordinate anywhere, so its floor
-boundaries are declared but not enterable and `--floor` refuses on it; `--fight` works
-on both.
+The shipped video reconstruction observes no map coordinate - no video shows one - and
+its arrivals are derived from the map moves its floor boundaries name, so `--floor` and
+`--fight` both work on it too.
 
 ### S7 - One playback transport, in the retail client - done
 
