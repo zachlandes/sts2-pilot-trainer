@@ -782,6 +782,53 @@ public class ManifestValidatorTests
     }
 
     /// <summary>
+    /// The shape a recording written before the recorder sampled where the run stands
+    /// has: a floor entry, and a checkpoint at it naming the floor and not the
+    /// coordinate. Deriving the arrival is that recording's one repair, and what it
+    /// writes is the coordinate the recorded map move moved to - never a value nobody
+    /// derived. The reading already there is kept beside it.
+    /// </summary>
+    [Fact]
+    public void DerivingAnArrivalRepairsACheckpointNamingOnlyTheFloor()
+    {
+        var recorded = WalkedHistory(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        }) with
+        {
+            Checkpoints =
+            [
+                new Checkpoint
+                {
+                    Id = "floor-2-entry",
+                    AfterSeq = 1,
+                    Kind = "floor_entry",
+                    Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+                    {
+                        ["run.total_floor"] = Fact<string>.Observed(
+                            "2", FactEvidence.AtVideoTime(75600, "floor counter")),
+                    },
+                },
+            ],
+        };
+        Assert.False(ManifestValidator.Validate(recorded).IsValid);
+
+        var repaired = FloorArrival.WithArrivalCheckpoints(recorded);
+
+        var result = ManifestValidator.Validate(repaired);
+        Assert.True(result.IsValid, result.Describe());
+        Assert.Equal(
+            "r1c3",
+            repaired.Checkpoints.Single(checkpoint => checkpoint.Id == "floor-2-arrival")
+                .Expect["run.map_coord"].Value);
+        Assert.Contains(repaired.Checkpoints, checkpoint => checkpoint.Id == "floor-2-entry");
+    }
+
+    /// <summary>
     /// The verdict the publication gate reads for its declared-boundaries condition.
     ///
     /// The file on disk carries no trace, so the cross-checks sit idle there; the copy

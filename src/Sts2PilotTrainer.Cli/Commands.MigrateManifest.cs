@@ -72,9 +72,20 @@ internal static partial class Commands
     /// declares has to agree with what this build derived: a disagreement is either
     /// drift in the game or a manifest describing a different run, and quietly
     /// overwriting the older digest would erase the evidence of it.
+    ///
+    /// The arrival every floor entry needs is derived before the replay rather than
+    /// only after it. A recording written before the recorder sampled where the run
+    /// stood declares floor entries whose checkpoints name the floor and not the
+    /// coordinate, and the replay validates what it is handed - so this one command,
+    /// the only repair such a recording has, refused exactly the manifests that need
+    /// it. Nothing after this is relaxed: the replay validates the repaired history,
+    /// and a floor entry naming no map move is refused there as it was before, because
+    /// <see cref="FloorArrival"/> derives an arrival and never invents one.
     /// </summary>
     private static ReplayManifest WithDerivedBoundaries(ReplayManifest manifest)
     {
+        manifest = FloorArrival.WithArrivalCheckpoints(manifest);
+
         var outcome = Arbiter.Run(manifest);
         var report = outcome.Report;
 

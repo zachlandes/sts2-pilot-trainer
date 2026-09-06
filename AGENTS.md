@@ -98,8 +98,10 @@ trace to ask: the action it names is the map move that arrived, and a checkpoint
 names `run.total_floor` and `run.map_coord` for the floor the boundary names, resolved
 the way `FloorEntryPlan.For` resolves several checkpoints at one action.
 `FloorArrival` is the one owner of that arrival - the validator re-derives through it
-and `migrate-manifest --derive-boundaries` writes through it, so the deriver's own
-output validates. A derived arrival is inferred and says so, and is admissible only
+and `migrate-manifest --derive-boundaries` writes through it before it replays as well
+as after, so the deriver's own output validates and a recording written before the
+recorder sampled the coordinate has one repair rather than none.
+A derived arrival is inferred and says so, and is admissible only
 because this validator can re-derive it from the recorded map move.
 The file a recorder or a stranger hands over carries no trace, so `gate` asks the
 validator again of the verified copy its own replay wrote, as the `declared-boundaries`
