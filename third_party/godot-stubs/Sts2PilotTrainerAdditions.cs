@@ -305,7 +305,24 @@ public partial class Control
     }
 
     public void AddThemeFontOverride(StringName name, Font font) { }
-    public void AddThemeColorOverride(StringName name, Color color) { }
+
+    private readonly Dictionary<string, Color> _colorOverrides = [];
+
+    public void AddThemeColorOverride(StringName name, Color color) => _colorOverrides[name.ToString()] = color;
+
+    public void RemoveThemeColorOverride(StringName name) => _colorOverrides.Remove(name.ToString());
+
+    /// <summary>
+    /// What a control's colour override for one theme entry was set to, or null where
+    /// none is set.
+    ///
+    /// The recorder's presence row carries no colour of its own in its ordinary state -
+    /// it inherits the overlay's - and asserting that means telling "no override" apart
+    /// from "an override that happens to match", the same way <see cref="ThemeStylebox"/>
+    /// lets a game-free test read back a stylebox override.
+    /// </summary>
+    public Color? ThemeColorOverride(string name) =>
+        _colorOverrides.TryGetValue(name, out var color) ? color : null;
 
     private readonly Dictionary<string, StyleBox> _styleboxes = [];
 
