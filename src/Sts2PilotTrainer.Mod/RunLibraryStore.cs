@@ -58,7 +58,6 @@ internal static class RunLibraryStore
                 var json = RunmobileStore.Read(entry);
                 if (json is null) continue;
                 recordings.Add(new StoredRecording(
-                    fileName,
                     ManifestJson.Deserialize(json),
                     LastWritten(entry),
                     RunmobileStore.SizeOf(entry)));
@@ -147,7 +146,7 @@ internal static class RunLibraryStore
     }
 }
 
-/// <summary>One recording on this computer: the file it is, what it says, and what it
-/// costs.</summary>
+/// <summary>One recording on this computer: what it says, when its file was last
+/// written, and what it costs.</summary>
 internal sealed record StoredRecording(
-    string FileName, ReplayManifest Recording, DateTimeOffset? LastWritten, long Bytes);
+    ReplayManifest Recording, DateTimeOffset? LastWritten, long Bytes);

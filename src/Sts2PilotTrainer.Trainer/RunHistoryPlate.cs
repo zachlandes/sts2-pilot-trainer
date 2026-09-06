@@ -88,11 +88,6 @@ public sealed record RunHistoryPlate(
     IReadOnlyList<PlateRow> Rows,
     string? Reason)
 {
-    /// <summary>Whether anything at all is offered. A plate with nothing pressable is
-    /// still drawn; this is what the drawing asks to decide whether to grab
-    /// focus.</summary>
-    public bool AnyEnabled => Rows.Any(row => row.Enabled);
-
     /// <summary>
     /// The plate for one run of the player's history, or null when there is nothing to
     /// draw.

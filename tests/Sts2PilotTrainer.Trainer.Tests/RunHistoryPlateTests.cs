@@ -87,7 +87,6 @@ public sealed class RunHistoryPlateTests
         Assert.Equal(reason, plate.Reason);
         Assert.Equal(3, plate.Rows.Count);
         Assert.All(plate.Rows, row => Assert.False(row.Enabled));
-        Assert.False(plate.AnyEnabled);
     }
 
     public static TheoryData<RunHistoryFacts, PlateMark, string, string> RefusedStates() => new()

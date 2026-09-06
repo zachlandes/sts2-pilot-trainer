@@ -55,9 +55,6 @@ internal static class LibraryScreen
     /// the text is then set directly.</summary>
     private static LocString PlaceholderConfirm => new("main_menu_ui", "GENERIC_POPUP.confirm");
 
-    /// <inheritdoc cref="PlaceholderConfirm"/>
-    private static LocString PlaceholderCancel => new("main_menu_ui", "GENERIC_POPUP.cancel");
-
     /// <summary>The smallest the body is allowed to become. A body nobody can read is
     /// not a list.</summary>
     private const int MinimumBodyFontSize = 17;
@@ -69,17 +66,16 @@ internal static class LibraryScreen
     /// <summary>
     /// Shows one screen, replacing whatever this module had up.
     ///
-    /// <paramref name="confirm"/> is the screen's affirmative ribbon, which the game's
-    /// own popup puts on the right and closes on. A screen with nothing to affirm
-    /// passes null and gets one ribbon, which is what the eligibility screen does when
-    /// it has no fight to offer.
+    /// One ribbon and a column of rows. There is no affirmative ribbon here because
+    /// there is nothing on this surface to affirm: every offer is a row, and a screen
+    /// with a second ribbon meaning "the one you highlighted" would be a second way to
+    /// press the thing already under the cursor.
     /// </summary>
     internal static void Show(
         string title,
         string body,
         IReadOnlyList<ScreenRow> rows,
         string backLabel,
-        (string Label, Action Press)? confirm = null,
         Action<string>? codeSubmitted = null,
         string codePlaceholder = "")
     {
@@ -102,19 +98,9 @@ internal static class LibraryScreen
             label.ScrollActive = true;
             content.SetText(title, body);
 
-            if (confirm is { } affirmative)
-            {
-                content.InitYesButton(PlaceholderConfirm, _ => affirmative.Press());
-                content.YesButton.SetText(affirmative.Label);
-                content.InitNoButton(PlaceholderCancel, _ => NModalContainer.Instance?.Clear());
-                content.NoButton.SetText(backLabel);
-            }
-            else
-            {
-                content.InitYesButton(PlaceholderConfirm, _ => { });
-                content.HideNoButton();
-                content.YesButton.SetText(backLabel);
-            }
+            content.InitYesButton(PlaceholderConfirm, _ => { });
+            content.HideNoButton();
+            content.YesButton.SetText(backLabel);
 
             var field = codeSubmitted is null ? null : AddCodeField(content, codePlaceholder, codeSubmitted);
             var first = AddRows(content, rows, field is null ? 0f : 1f);

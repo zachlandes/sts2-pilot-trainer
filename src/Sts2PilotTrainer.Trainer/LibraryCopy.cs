@@ -74,10 +74,6 @@ public static class LibraryCopy
         "Recorded on a build your game can't play, or as a multiplayer run. They come back when a verdict " +
         $"for {thisBuild} arrives; a run code still finds one.";
 
-    /// <summary>Opens the selected run's own view, where every place to stand is
-    /// offered.</summary>
-    public const string OpenTheRun = "Open the run";
-
     /// <summary>
     /// What the run-code field says before anything is typed in it.
     ///
