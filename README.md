@@ -50,7 +50,9 @@ Every run you play is recorded: an ordered history of every decision from run st
 It stays on your machine, under the mod's own directory, and carries no Steam id, machine path or profile id.
 Two runs played by a person on this build have been replayed through the real engine.
 `native-9F8CY60C5BK7-20260906-005737` replays with zero boundary mismatches, and does not pass the publication gate: its run is short enough to have no card reward, no marked card and no event, so three required controls are not applicable.
-`native-3LACFJ5NJ371-20260906-015901` replays with zero boundary mismatches, passes the gate `PUBLISHABLE` with all ten controls applied, and playing from its fight 2 reproduces the recorded digest byte for byte.
+`native-3LACFJ5NJ371-20260906-015901` replays with zero boundary mismatches and passes the gate `PUBLISHABLE` with all ten controls applied.
+That is the native standard: a recording made inside the game is never asked the four conditions that need a video, game-mode, seed-topology, baselib-path and evidence-binding.
+The arbiter enters fight 2 of that recording headlessly and reproduces the recorded digest byte for byte.
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
 - **Coming soon:** play from any fight of your own recorded runs.
 - **Coming soon:** play from a run at a floor, not only at a fight.
@@ -76,7 +78,6 @@ No black screen.
 **Nothing is a saved snapshot.**
 A recording is the run's decisions, and to open a fight Runmobile hands them to the real game in order until it reaches that fight, then checks that the fight it arrived in is the recorded one, hidden state included: draw order and the position of every random stream.
 A fight that does not match is refused rather than played.
-- **Coming soon:** instant entry into a fight deep in a run, from a cache that is checked against the recording every time it is used and thrown away the moment it disagrees.
 
 ## Compared with other mods
 
@@ -99,7 +100,7 @@ Runmobile lets you play from the fight they played.
 - Slay the Spire 2 `v0.111.0`, the build the featured recording and both recorded runs were made on.
 - No dependencies. The mod is DLL-only, declares `affects_gameplay: false`, and needs no BaseLib.
 - Playing from a recording asks you to run with only Runmobile enabled, and says so in a sentence if another mod is active, because another mod's behaviour cannot be established from the game's content hash.
-- Recording your own runs works with other mods loaded; the recording notes which mods were active.
+- Recording your own runs works with other mods loaded; the recording notes which mods were active. A run recorded with a gameplay-affecting or unidentified mod loaded is recorded, and refused when you later play from it.
 - Each recording is keyed to the build it was made on. When the game updates, the featured runs are re-verified on the new build and the ones that no longer reproduce are retired; your own new recordings are on the new build because you played them there.
 
 ## Install
