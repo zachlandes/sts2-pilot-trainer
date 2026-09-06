@@ -892,6 +892,7 @@ internal sealed class RunRecorder : IDisposable
             if (!CloseStrandedFightStep(verb, before, previousFinished)) return;
 
             Refuse(unresolved);
+            _capture.Fight?.MarkIncomplete(unresolved);
         },
         completeStep: CloseFightStep,
         discardOpenStep: () => _openFightStep = null,
@@ -922,9 +923,11 @@ internal sealed class RunRecorder : IDisposable
         _openFightStep = null;
         if (!previousActionFinished)
         {
-            Refuse(
+            var reason =
                 $"A '{verb}' began while the '{stranded.Verb}' before it had not been sampled afterwards, so " +
-                "the recording cannot say what each of them did.");
+                "the recording cannot say what each of them did.";
+            Refuse(reason);
+            _capture.Fight?.MarkIncomplete(reason);
             return false;
         }
 
@@ -1183,8 +1186,6 @@ internal sealed class RunRecorder : IDisposable
         ActionVerb.DiscardPotion,
     ];
 
-    /// <summary>Every patch class this module installs, listed rather than discovered:
-    /// <c>PatchAll</c> over the assembly would install the Combat Trainer's too.</summary>
     /// <summary>
     /// The private funnel every declined reward set passes through.
     ///
@@ -1195,6 +1196,8 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     internal const string SkipRewardsSetMember = "SkipRewardsSet";
 
+    /// <summary>Every patch class this module installs, listed rather than discovered:
+    /// <c>PatchAll</c> over the assembly would install the Combat Trainer's too.</summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
         typeof(NewRun), typeof(ContinuedRun), typeof(RunOver), typeof(RunTeardown),
@@ -1583,7 +1586,14 @@ internal sealed class RunRecorder : IDisposable
                     if (index < 0) continue;
 
                     var id = IdOf(__instance);
-                    if (id is null) break;
+                    if (id is null)
+                    {
+                        Active?.Refuse(
+                            $"A {__instance.GetType().Name} was bought off the {kind} shelf at position " +
+                            $"{Number(index)} and this build did not give the recorder its id, so the recording " +
+                            "cannot say what was bought.");
+                        return;
+                    }
 
                     _decision = new Decision(
                         nameof(ActionVerb.ShopPurchase),

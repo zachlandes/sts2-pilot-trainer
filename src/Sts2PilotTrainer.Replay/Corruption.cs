@@ -475,8 +475,6 @@ public static class Corruption
         return manifest with { RunId = manifest.RunId + "+take-a-different-card", Actions = actions };
     }
 
-    /// <summary>Enchants a different copy of the same card - the subtlest corruption
-    /// this history admits, because the two copies are indistinguishable on screen.</summary>
     /// <summary>
     /// Whether picking a different identical copy on this screen can change the run.
     ///
@@ -545,6 +543,8 @@ public static class Corruption
 
     private const string EnchantingEventOption = "2";
 
+    /// <summary>Enchants a different copy of the same card - the subtlest corruption
+    /// this history admits, because the two copies are indistinguishable on screen.</summary>
     private static ReplayManifest EnchantADifferentCard(ReplayManifest manifest)
     {
         var actions = manifest.Actions.ToList();
