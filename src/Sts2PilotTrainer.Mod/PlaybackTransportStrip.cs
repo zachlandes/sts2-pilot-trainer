@@ -575,8 +575,6 @@ internal sealed class PlaybackTransportStrip
         _note.Visible = surface.Note;
         if (!_note.Visible) return;
 
-        _noteText.Text = state.Note;
-
         // The sentence is longer than the tag is wide, so it wraps, and the panel is
         // sized to the wrapped text rather than to one line. Sizing it to a line is
         // what cut the sentence off after "what was cho" in the client.
@@ -591,7 +589,26 @@ internal sealed class PlaybackTransportStrip
         Clear(_notePlate);
         Place(_notePlate, 0, 0, width, noteHeight);
         PlatePolygon(_notePlate, width, noteHeight);
-        Place(_noteText, inset, 0, textWidth, noteHeight);
+        Sentence(_noteText, state.Note, inset, 0, textWidth, noteHeight);
+    }
+
+    /// <summary>
+    /// Puts a wrapping sentence in its box: the width first, then the words, then the
+    /// box.
+    ///
+    /// The order is the whole of it and was measured in the client. A wrapping label
+    /// given its text while its width is still nothing wraps one character per line
+    /// and grows to that height - 108 characters made it 1986 units tall - and the
+    /// size set afterwards is clamped up to that stale minimum, so the sentence sat
+    /// centred a thousand units below its plate and the plate drew empty. The note
+    /// is the case that showed it, because it now arrives on a tag already up rather
+    /// than on the first paint, where no layout had run yet.
+    /// </summary>
+    private static void Sentence(Label label, string text, float x, float y, float width, float height)
+    {
+        Place(label, x, y, width, height);
+        label.Text = text;
+        Place(label, x, y, width, height);
     }
 
     /// <summary>
@@ -1064,7 +1081,6 @@ internal sealed class PlaybackTransportStrip
         }
 
         _tipTitle.Text = title;
-        _tipBody.Text = body;
         _tip.Visible = true;
 
         // Sized to the body once it has wrapped, not to the newlines in it: at this
@@ -1087,7 +1103,7 @@ internal sealed class PlaybackTransportStrip
         Place(_tipPlate, 0, 0, width, height);
         PlatePolygon(_tipPlate, width, height);
         Place(_tipTitle, inset, 6 * _unit, width - (2 * inset), 18 * _unit);
-        Place(_tipBody, inset, bodyTop, width - (2 * inset), bodyHeight);
+        Sentence(_tipBody, body, inset, bodyTop, width - (2 * inset), bodyHeight);
     }
 
     private void HideTooltip()

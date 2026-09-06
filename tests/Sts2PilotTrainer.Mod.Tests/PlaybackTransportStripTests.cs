@@ -1022,6 +1022,25 @@ public sealed class PlaybackTransportStripTests
         Assert.False(Find<Button>(strip.Menu, "MenuRow0").Disabled);
     }
 
+    /// <summary>
+    /// The once-per-run note arrives on a tag that is already up, at the reveal,
+    /// rather than on the first paint: the sentence has to be on the plate then.
+    /// </summary>
+    [Fact]
+    public void TheNoteArrivingAtTheRevealCarriesItsSentence()
+    {
+        var strip = Build(Considering(Blessing, 1));
+        Assert.False(Find<Control>(strip.Root, "Note").Visible);
+
+        strip.Apply(Revealing(Blessing, 1, noteShown: false));
+
+        var note = Find<Control>(strip.Root, "Note");
+        var text = Label(strip, "NoteText");
+        Assert.True(note.Visible);
+        Assert.StartsWith("NaveGreed's choices are shown as recorded", text.Text, StringComparison.Ordinal);
+        Assert.True(text.Size.X > 0 && text.Size.Y > 0);
+    }
+
     private static PlaybackTransport Considering(PrefightChoice choice, int number) =>
         For(JourneyPhase.Watching, next: choice, stepsTaken: number - 1, revealed: false, arrived: true);
 
