@@ -3,9 +3,9 @@
 **Play from the fight a top player played, and see how your fight compared.**
 
 A free, open-source mod for Slay the Spire 2.
-It ships with one recorded run from a featured creator: play from that run's first fight, from the moment it began, with the same deck, relics, health, enemies and opening hand.
+It ships with one run reconstructed from a top player's public video: play from that run's first fight, from the moment it began, with the same deck, relics, health, enemies and opening hand.
 When the fight ends, your fight is shown beside theirs, turn by turn, with no grade and no score.
-Playing from a recording, yours or anyone else's, writes nothing to your saves, your stats or your run history, win or lose.
+Playing from a recording writes nothing to your saves, your stats or your run history, win or lose.
 Recording your own runs changes nothing about them: they save and count exactly as they always did.
 Works on Slay the Spire 2 `v0.111.0`, with no other mod required.
 
@@ -26,7 +26,7 @@ A recorded fight takes five minutes and repeats exactly.
 ## What you can do
 
 **Play the fight a top player played, then see how yours compared.**
-Runmobile ships with a recorded run from a featured creator.
+Runmobile ships with one run this project reconstructed from a top player's public video.
 Open it and the game walks that player's decisions before the fight on its own screens, with playback controls: step one decision at a time, play them through at half to double speed, or look back at one already made.
 Then the fight is yours.
 When it ends, the result panel shows the two fights side by side: summary figures, the cards and potions each of you played by turn, and a chart of health lost each turn.
@@ -49,7 +49,8 @@ It stays on your machine, under the mod's own directory, and carries no Steam id
 Two runs played by a person on this build have been replayed through the real engine.
 `native-9F8CY60C5BK7-20260906-005737` replays with zero boundary mismatches, and does not pass the publication gate: its run is short enough to have no card reward, no marked card and no event, so three required controls are not applicable.
 `native-3LACFJ5NJ371-20260906-015901` replays with zero boundary mismatches and passes the gate `PUBLISHABLE` with all ten controls applied.
-That is the native standard: a recording made inside the game is never asked the four conditions that need a video, game-mode, seed-topology, baselib-path and evidence-binding.
+Three of the gate's conditions need a video, game-mode, seed-topology and evidence-binding, and a recording made inside the game is never asked them.
+A fourth, baselib-path, is not asked either, and a weaker check stands in for it: the loaded mods' own declaration that they do not affect gameplay, which the gate's artifact says out loud.
 The arbiter enters fight 2 of that recording headlessly and reproduces the recorded digest byte for byte.
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
 - **Coming soon:** play from any fight of your own recorded runs.
@@ -98,7 +99,7 @@ Runmobile lets you play from the fight they played.
 - Slay the Spire 2 `v0.111.0`, the build the featured recording and both recorded runs were made on.
 - No dependencies. The mod is DLL-only, declares `affects_gameplay: false`, and needs no BaseLib.
 - Playing from a recording asks you to run with only Runmobile enabled, and says so in a sentence if another mod is active, because another mod's behaviour cannot be established from the game's content hash.
-- Recording your own runs works with other mods loaded; the recording notes which mods were active. A run recorded with a gameplay-affecting or unidentified mod loaded is recorded, and refused when you later play from it.
+- Recording your own runs works with other mods loaded; the recording notes which mods were active. A run recorded with a gameplay-affecting, undeclared or unidentified mod loaded is recorded, and refused when you later play from it.
 - Each recording is keyed to the build it was made on. When the game updates, the featured runs are re-verified on the new build and the ones that no longer reproduce are retired; your own new recordings are on the new build because you played them there.
 
 ## Install
