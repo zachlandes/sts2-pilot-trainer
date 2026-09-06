@@ -57,9 +57,15 @@ public sealed record ModEnvironment
     /// so: nothing running inside a player's game is in a position to audit the mods
     /// beside it. That is exactly why <c>EnvironmentPreflight</c> judges a native
     /// recording by a rule over those declarations instead of against a fixed list of
-    /// audited names - and why the count is recorded beside the list rather than read
-    /// off it, so "we identified three of three" stays distinguishable from "we
-    /// identified three".
+    /// audited names.
+    ///
+    /// <see cref="ReportedCount"/> here is the length of the list beside it, so it does
+    /// not corroborate that list and must not be read as doing so. It can only mean
+    /// something where the count and the list have separate sources - a video whose
+    /// overlay reported a number somebody then tried to name every entry of, where "we
+    /// identified three of three" and "we identified three" are different claims. A
+    /// recorder identifies every mod it counts, both from the game's own loaded set, so
+    /// for a native recording the two agree by construction.
     /// </summary>
     public static ModEnvironment AsRecorded(IReadOnlyList<LocalMod> discovered)
     {

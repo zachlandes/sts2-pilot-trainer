@@ -146,13 +146,34 @@ internal sealed class PlayerFightObserver : IDisposable
             switch (action)
             {
                 case PlayCardAction play:
-                    opened = Begin(nameof(ActionVerb.PlayCard), PlayCardArgs(play), previousFinished);
+                    if (PlayCardArgs(play) is not { } playArgs)
+                    {
+                        _sink.MarkIncomplete(
+                            $"A {play.CardModelId} was played and the hand this recorder can see does not hold " +
+                            "it, so the recording cannot say which position it came from.");
+                        break;
+                    }
+
+                    opened = Begin(nameof(ActionVerb.PlayCard), playArgs, previousFinished);
                     break;
                 case UsePotionAction potion:
-                    opened = Begin(nameof(ActionVerb.UsePotion), PotionArgs(potion.PotionIndex), previousFinished);
+                    if (PotionArgs(potion.PotionIndex) is not { } useArgs)
+                    {
+                        _sink.MarkIncomplete(UnreadablePotion(potion.PotionIndex, "drunk"));
+                        break;
+                    }
+
+                    opened = Begin(nameof(ActionVerb.UsePotion), useArgs, previousFinished);
                     break;
                 case DiscardPotionGameAction discard:
-                    opened = Begin(nameof(ActionVerb.DiscardPotion), PotionArgs(SlotOf(discard)), previousFinished);
+                    var discarded = SlotOf(discard);
+                    if (PotionArgs(discarded) is not { } discardArgs)
+                    {
+                        _sink.MarkIncomplete(UnreadablePotion(discarded, "discarded"));
+                        break;
+                    }
+
+                    opened = Begin(nameof(ActionVerb.DiscardPotion), discardArgs, previousFinished);
                     break;
                 case EndPlayerTurnAction:
                     opened = Begin(nameof(ActionVerb.EndTurn), Empty, previousFinished);
@@ -392,25 +413,28 @@ internal sealed class PlayerFightObserver : IDisposable
     /// plays the card at that position and refuses when its id disagrees, which is the
     /// sharpest refusal in the whole driver. It is read while the action is only
     /// enqueued, which is the last moment the card is still in hand.
+    ///
+    /// Null when it cannot be read, and the caller then breaks the recording rather
+    /// than opening the step: the format requires the index, and a play recorded
+    /// without one is a decision nobody can replay wearing the shape of one somebody
+    /// made from no position at all.
     /// </summary>
-    private IReadOnlyDictionary<string, string> PlayCardArgs(PlayCardAction play)
+    private IReadOnlyDictionary<string, string>? PlayCardArgs(PlayCardAction play)
     {
         var card = play.NetCombatCard.ToCardModelOrNull();
+        if (HandIndexOf(card) is not { } handIndex) return null;
+
         var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["card_id"] = play.CardModelId.ToString(),
+            ["hand_index"] = handIndex.ToString(CultureInfo.InvariantCulture),
         };
 
-        if (HandIndexOf(card) is { } handIndex)
+        if (Corruption.NominateSubstitute(Hand(), handIndex) is { } substitute)
         {
-            args["hand_index"] = handIndex.ToString(CultureInfo.InvariantCulture);
-
-            if (Corruption.NominateSubstitute(Hand(), handIndex) is { } substitute)
-            {
-                args[Corruption.SubstituteCardId] = substitute.CardId;
-                args[Corruption.SubstituteHandIndex] =
-                    substitute.HandIndex.ToString(CultureInfo.InvariantCulture);
-            }
+            args[Corruption.SubstituteCardId] = substitute.CardId;
+            args[Corruption.SubstituteHandIndex] =
+                substitute.HandIndex.ToString(CultureInfo.InvariantCulture);
         }
 
         // The same index the driver resolves a recorded target by: position among the
@@ -453,20 +477,24 @@ internal sealed class PlayerFightObserver : IDisposable
     /// Read while the potion is still on the belt, for the same reason the hand index
     /// is read while the card is still in hand: afterwards the slot is empty and the
     /// only honest answer would be the position of nothing.
+    ///
+    /// Null when the slot holds nothing this recorder can see, and the caller then
+    /// breaks the recording, the way the recorder's own out-of-fight potion patches do.
     /// </summary>
-    private IReadOnlyDictionary<string, string> PotionArgs(uint slot)
+    private IReadOnlyDictionary<string, string>? PotionArgs(uint slot)
     {
-        var args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        if (slot >= _player.PotionSlots.Count || _player.PotionSlots[(int)slot] is not { } potion) return null;
+
+        return new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
+            ["potion_id"] = potion.Id.ToString(),
             ["slot_index"] = slot.ToString(CultureInfo.InvariantCulture),
         };
-        if (slot < _player.PotionSlots.Count && _player.PotionSlots[(int)slot] is { } potion)
-        {
-            args["potion_id"] = potion.Id.ToString();
-        }
-
-        return args;
     }
+
+    private static string UnreadablePotion(uint slot, string what) =>
+        $"A potion was {what} from slot {slot.ToString(CultureInfo.InvariantCulture)}, which holds nothing " +
+        "this recorder can see, so the recording cannot say which potion it was.";
 
     /// <summary>
     /// Where in the hand the card being played is, or null when the hand no longer
