@@ -93,7 +93,7 @@ public sealed class LiveRunSessionTests
         finally
         {
             EndTheRun();
-            ForgetTheHeadlessEngine();
+            HeadlessEngine.Forget();
         }
     }
 
@@ -107,27 +107,6 @@ public sealed class LiveRunSessionTests
         var cleanUp = manager.GetMethod("CleanUp", BindingFlags.Public | BindingFlags.Instance)!;
         cleanUp.Invoke(instance, cleanUp.GetParameters().Select(_ => Type.Missing).ToArray());
     }
-
-    /// <summary>
-    /// Puts <see cref="EngineHost"/> back to the process it was called in.
-    ///
-    /// Starting the headless engine is how a run is started at all, and it is also
-    /// what <c>AdoptRunningGame</c> refuses on: a process that has started its own
-    /// engine has no running game to adopt, and <c>ModHostBoundaryTests</c> asks that
-    /// question of this same process. So the flags are put back rather than left for
-    /// whichever test happens to run next. The engine itself stays initialised, which
-    /// is what makes a second start a no-op.
-    /// </summary>
-    private static void ForgetTheHeadlessEngine()
-    {
-        Field("_started").SetValue(null, false);
-        Field("<Origin>k__BackingField").SetValue(null, EngineOrigin.None);
-        Field("<Startup>k__BackingField").SetValue(null, null);
-    }
-
-    private static FieldInfo Field(string name) =>
-        typeof(EngineHost).GetField(name, BindingFlags.NonPublic | BindingFlags.Static)
-        ?? throw new InvalidOperationException($"EngineHost has no {name}; this reset is out of date.");
 
     private static Type GameType(string name)
     {

@@ -30,6 +30,7 @@ public sealed class ModHostBoundaryTests
     public void AdoptionRefusesDuplicateGameAssembliesBeforeReadingTheirState()
     {
         _ = EngineHost.StartupPhase();
+        HeadlessEngine.Forget();
         var gamePath = Path.Combine(Arbiter.RepoRoot, "build", "lib", "sts2.dll");
         var duplicateContext = ExerciseDuplicateAssemblyRefusal(gamePath);
 
@@ -40,10 +41,18 @@ public sealed class ModHostBoundaryTests
         }
     }
 
+    /// <summary>
+    /// The refusal these two adoption tests are about is the game's own startup phase,
+    /// so the one refusal that would answer ahead of it is taken off this process
+    /// first: a headless engine started by any earlier test in this assembly makes
+    /// <c>AdoptRunningGame</c> refuse for that instead, and the test would then be
+    /// asserting whichever test ran before it rather than the host.
+    /// </summary>
     [GameFact]
     public void AdoptionRefusesUntilEssentialInitializationHasFinished()
     {
         _ = EngineHost.StartupPhase();
+        HeadlessEngine.Forget();
         var gameAssembly = AppDomain.CurrentDomain.GetAssemblies()
             .Single(assembly => assembly.GetName().Name == "sts2");
         var initialization = gameAssembly.GetType("MegaCrit.Sts2.Core.Helpers.OneTimeInitialization")!;
