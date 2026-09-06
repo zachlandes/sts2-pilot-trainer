@@ -125,9 +125,15 @@ internal static class ProfileWriteBarrier
         // dismissed can show again later in the same journey. It is bounded -
         // SeenFtue reads FtueCompleted as loaded from the player's own progress
         // file, and the barrier only stops additions to it, so a tutorial they
-        // dismissed in ordinary play never reappears. The fix is to honour the mark
-        // in memory while suppressing only the file write, left to a separate change
-        // because it is a new mechanism rather than a named write.
+        // dismissed in ordinary play never reappears. The fix has to answer SeenFtue
+        // true for the duration of a trainer run without writing or leaving a mark in
+        // the player's stored Progress: a run-scoped overlay dropped when the run
+        // ends. Marking it in the real Progress object would not do, because that
+        // mark survives the run, and the next ordinary write after the barrier lowers
+        // - NGame.Quit calling SaveProgressFile - would persist a tutorial mark made
+        // inside somebody else's run, the same measured sequence the seen-marks above
+        // record. That is why it is a new mechanism rather than a named write, and it
+        // is left to a separate change.
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "MarkFtueAsComplete"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "SetFtuesEnabled"),
         ("MegaCrit.Sts2.Core.Saves.SaveManager", "ResetFtues"),
