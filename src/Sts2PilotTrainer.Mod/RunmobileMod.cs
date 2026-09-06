@@ -150,18 +150,12 @@ public static class RunmobileMod
         }
     }
 
-    internal static IReadOnlyList<System.Reflection.MethodBase> InstallShellPatches(Harmony harmony)
+    internal static void InstallShellPatches(Harmony harmony)
     {
-        var patched = new List<System.Reflection.MethodBase>();
         foreach (var patchClass in ShellPatchClasses)
         {
-            // Harmony returns null for a patch class that declares its targets per
-            // method rather than on the class. This list is a diagnostic convenience
-            // and must never be the reason the mod fails to load.
-            patched.AddRange(harmony.CreateClassProcessor(patchClass).Patch() ?? []);
+            harmony.CreateClassProcessor(patchClass).Patch();
         }
-
-        return patched;
     }
 
     /// <summary>

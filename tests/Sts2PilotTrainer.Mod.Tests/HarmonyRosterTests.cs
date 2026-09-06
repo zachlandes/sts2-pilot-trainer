@@ -113,11 +113,17 @@ public sealed class HarmonyRosterTests
         _ = EngineHost.StartupPhase();
         var harmony = new Harmony(PatchRoster.HostOwnerId);
 
+        // Everything this project installs shares that id, so what this instance had
+        // patched before the shell went on - the yield suppression patch, once
+        // anything has tripped its one-shot latch - is not this test's to assert on
+        // or to take off again.
+        var alreadyPatched = harmony.GetPatchedMethods().ToList();
         var patched = new List<System.Reflection.MethodBase>();
 
         try
         {
-            patched.AddRange(RunmobileMod.InstallShellPatches(harmony));
+            RunmobileMod.InstallShellPatches(harmony);
+            patched.AddRange(harmony.GetPatchedMethods().Except(alreadyPatched));
 
             var roster = HarmonyRoster.Read();
 
@@ -130,8 +136,8 @@ public sealed class HarmonyRosterTests
         }
         finally
         {
-            // Everything this project installs shares that id, so unpatching by id
-            // would take the yield-suppression patch off with it - and its one-shot
+            // Unpatched one at a time rather than by id: UnpatchAll on the shared id
+            // would take the yield-suppression patch off with it, and its one-shot
             // latch means nothing would put it back.
             foreach (var method in patched)
             {
