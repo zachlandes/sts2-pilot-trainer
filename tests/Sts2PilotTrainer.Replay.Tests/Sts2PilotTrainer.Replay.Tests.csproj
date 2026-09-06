@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Pure tests: no game assembly, no filesystem beyond a temp directory. These run
-       anywhere, including on a machine that does not own Slay the Spire 2. -->
+  <!-- Pure tests: no game assembly, and no filesystem beyond a temp directory and this
+       repository's own sources. These run anywhere, including on a machine that does
+       not own Slay the Spire 2. -->
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <RootNamespace>Sts2PilotTrainer.Replay.Tests</RootNamespace>
@@ -15,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Sts2PilotTrainer.Replay/Sts2PilotTrainer.Replay.csproj" />
+    <ProjectReference Include="../../tools/Sts2PilotTrainer.FormatReference/Sts2PilotTrainer.FormatReference.csproj" />
   </ItemGroup>
 
   <ItemGroup>

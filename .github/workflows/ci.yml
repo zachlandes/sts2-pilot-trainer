@@ -43,5 +43,12 @@ jobs:
       - name: Assert the expected skips
         run: ./scripts/assert-expected-skips.sh
 
+      # docs/manifest-format.md is generated from the validator's per-verb argument
+      # rules and the engine-command table. This regenerates it and fails when the
+      # committed copy is not what those declarations produce, so the one document
+      # that describes the format cannot quietly stop describing it.
+      - name: Assert the format reference
+        run: ./scripts/format-reference.sh --check
+
       - name: Format
         run: dotnet format sts2-pilot-trainer.domain.slnf --verify-no-changes --verbosity minimal
