@@ -289,6 +289,9 @@ internal static class RecordedPatchRoster
         [
             Member("MegaCrit.Sts2.Core.Saving.ProgressSaveManager", "SaveProgressFile()"),
             Member("MegaCrit.Sts2.Core.Run.RunManager", "StartNewSingleplayerRun(RunSetup, Boolean)"),
+            Member(
+                "System.Runtime.CompilerServices.YieldAwaitable+YieldAwaiter",
+                "get_IsCompleted()"),
         ],
     };
 
