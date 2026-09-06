@@ -1,0 +1,192 @@
+using System.Reflection;
+using HarmonyLib;
+using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Mod;
+using Sts2PilotTrainer.Replay;
+
+namespace Sts2PilotTrainer.Arbiter.Tests;
+
+/// <summary>
+/// What Runmobile does in a game it is not for, and what it watches for a run the
+/// console was used in.
+///
+/// Both are readings rather than assumptions, and both are checked by driving the
+/// state the game's own members put this process in. A test process has no run, so the
+/// reading answers "no run in progress" and the latch is what a multiplayer session is
+/// driven with - which is exactly what the two patches on the game's multiplayer setup
+/// do in the client.
+///
+/// The latch is process-wide, so these run on their own rather than beside a test that
+/// asks the shell for its cards.
+/// </summary>
+[Collection(nameof(GameSessionWatchTests))]
+[CollectionDefinition(nameof(GameSessionWatchTests), DisableParallelization = true)]
+public sealed class GameSessionWatchTests : IDisposable
+{
+    public void Dispose() => GameSessionWatch.SessionTornDown();
+
+    /// <summary>The passing half: an ordinary client, before any run, is one this mod
+    /// may draw its card in.</summary>
+    [GameFact]
+    public void OutsideAMultiplayerGameTheModDrawsWhatItsModulesContribute()
+    {
+        _ = EngineHost.StartupPhase();
+
+        Assert.Equal(RunSessionKind.NoRunInProgress, GameSessionWatch.Observed);
+        Assert.True(GameSessionWatch.MaySpeak);
+        Assert.Equal(RunmobileMod.MenuCardsFrom(RunmobileMod.Modules), RunmobileMod.MenuCards);
+        Assert.NotEmpty(RunmobileMod.MenuCards);
+    }
+
+    /// <summary>
+    /// In a multiplayer game the mod contributes no surface at all.
+    ///
+    /// Not "no card for the recorder", which has none anyway: every module's surface
+    /// goes, because what is suppressed is this mod drawing in a game somebody else is
+    /// also playing - an indicator saying a run is not being recorded included. The
+    /// recorder's own refusal is the test below and is a separate rule.
+    /// </summary>
+    [GameFact]
+    public void AMultiplayerGameGetsNoModSurfaceAtAll()
+    {
+        _ = EngineHost.StartupPhase();
+        GameSessionWatch.MultiplayerSessionSetUp();
+
+        Assert.Equal(RunSessionKind.NetworkedMultiplayer, GameSessionWatch.Observed);
+        Assert.False(GameSessionWatch.MaySpeak);
+        Assert.Empty(RunmobileMod.MenuCards);
+
+        // And the modules are untouched: they are enabled and they still contribute.
+        // It is the shell that is not asking them.
+        Assert.NotEmpty(RunmobileMod.MenuCardsFrom(RunmobileMod.Modules));
+    }
+
+    /// <summary>And a multiplayer game produces no recording, publishable or
+    /// otherwise.</summary>
+    [GameFact]
+    public void AMultiplayerGameIsNotRecorded()
+    {
+        _ = EngineHost.StartupPhase();
+        Assert.Null(RunRecorder.Active);
+        GameSessionWatch.MultiplayerSessionSetUp();
+
+        RunRecorder.NoticeRun();
+
+        Assert.Null(RunRecorder.Active);
+    }
+
+    /// <summary>
+    /// The suppression ends with the run it was about.
+    ///
+    /// A client that played a multiplayer game and then started a singleplayer one is
+    /// in a singleplayer game, and a suppression nothing lifts would be a mod that went
+    /// quiet for the rest of the session - a different bug from the one it prevents.
+    /// </summary>
+    [GameFact]
+    public void TheSuppressionEndsWithTheMultiplayerRun()
+    {
+        _ = EngineHost.StartupPhase();
+        GameSessionWatch.MultiplayerSessionSetUp();
+        Assert.False(GameSessionWatch.MaySpeak);
+
+        GameSessionWatch.SessionTornDown();
+
+        Assert.Equal(RunSessionKind.NoRunInProgress, GameSessionWatch.Observed);
+        Assert.True(GameSessionWatch.MaySpeak);
+    }
+
+    /// <summary>
+    /// Every member the multiplayer watch attaches to is on this build.
+    ///
+    /// The shell installs these however the modules answer, and unlike
+    /// <see cref="RecorderModule"/> it has no refusal to fall back on: a patch that
+    /// resolved to nothing would leave a multiplayer game undetected and this mod
+    /// drawing in it. So the members are asserted rather than assumed, and the watch is
+    /// asserted to be the shell's rather than a module's.
+    /// </summary>
+    [GameFact]
+    public void EveryMemberTheMultiplayerWatchAttachesToExistsOnThisBuild()
+    {
+        _ = EngineHost.StartupPhase();
+
+        var targets = GameSessionWatch.PatchClasses
+            .SelectMany(patchClass =>
+                patchClass.GetCustomAttributes(typeof(HarmonyPatch), inherit: false).OfType<HarmonyPatch>())
+            .Select(attribute => attribute.info)
+            .ToList();
+
+        Assert.Equal(3, targets.Count);
+        Assert.All(targets, target => Assert.NotNull(
+            AccessTools.Method(target.declaringType!, target.methodName!, target.argumentTypes)));
+
+        Assert.All(
+            GameSessionWatch.PatchClasses,
+            type => Assert.Contains(type, RunmobileMod.ShellPatchClasses));
+    }
+
+    /// <summary>
+    /// The console funnel this build has, and the two entries that reach it.
+    ///
+    /// <c>ProcessCommand(string)</c> is what a command typed on this client goes
+    /// through and <c>ProcessNetCommand</c> is what a peer's goes through; both reach
+    /// the three-argument overload, which is why one patch covers both. Asserted
+    /// because a build that split them would leave a console command unseen while the
+    /// patch still attached to something.
+    /// </summary>
+    [GameFact]
+    public void TheConsolePatchWatchesTheFunnelEveryCommandReaches()
+    {
+        _ = EngineHost.StartupPhase();
+        var console = GameType("MegaCrit.Sts2.Core.DevConsole.DevConsole");
+
+        Assert.NotNull(AccessTools.Method(
+            console, RunRecorder.ProcessConsoleCommandMember, RunRecorder.ProcessConsoleCommandArguments));
+        Assert.NotNull(AccessTools.Method(
+            console, RunRecorder.ProcessConsoleCommandMember, [typeof(string)]));
+        Assert.NotNull(AccessTools.Method(console, "ProcessNetCommand"));
+
+        Assert.Contains(
+            RunRecorder.PatchClasses
+                .SelectMany(patchClass =>
+                    patchClass.GetCustomAttributes(typeof(HarmonyPatch), inherit: false).OfType<HarmonyPatch>())
+                .Select(attribute => attribute.info),
+            info => info.declaringType == console &&
+                    info.methodName == RunRecorder.ProcessConsoleCommandMember &&
+                    info.argumentTypes is { } arguments &&
+                    arguments.SequenceEqual(RunRecorder.ProcessConsoleCommandArguments));
+    }
+
+    /// <summary>
+    /// Why the queue is not the seam, kept as a fact about this build rather than as
+    /// prose.
+    ///
+    /// A console command reaches the action queue as <c>ConsoleCmdGameAction</c> - one
+    /// of the eleven types in the game's own generated <c>INetActionSubtypes</c> list -
+    /// and only in a networked game: in singleplayer <c>DevConsole.ProcessCommand</c>
+    /// takes its local branch and builds none. Singleplayer is the only kind of run
+    /// this recorder records, so a watch on the queue would see a console command in
+    /// exactly the runs that are never recorded and in none of the runs that are.
+    ///
+    /// Asserted so that a build which changes the arrangement is noticed rather than
+    /// silently missed: the generated list is where a console command would appear on
+    /// the queue, and it is still eleven types with the console among them.
+    /// </summary>
+    [GameFact]
+    public void TheConsoleReachesTheQueueOnlyAsANetworkedActionOnThisBuild()
+    {
+        _ = EngineHost.StartupPhase();
+        var subtypes = GameType("MegaCrit.Sts2.Core.GameActions.Multiplayer.INetActionSubtypes");
+
+        var all = (System.Collections.IEnumerable)subtypes
+            .GetProperty("All", BindingFlags.Public | BindingFlags.Static)!
+            .GetValue(null)!;
+
+        Assert.Equal(11, all.Cast<Type>().Count());
+        Assert.Contains(
+            GameType("MegaCrit.Sts2.Core.DevConsole.NetConsoleCmdGameAction"), all.Cast<Type>());
+    }
+
+    private static Type GameType(string typeName) => AppDomain.CurrentDomain.GetAssemblies()
+        .Single(assembly => assembly.GetName().Name == "sts2")
+        .GetType(typeName)!;
+}

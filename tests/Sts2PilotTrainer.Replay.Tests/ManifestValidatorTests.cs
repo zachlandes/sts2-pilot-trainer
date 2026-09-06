@@ -1878,4 +1878,36 @@ public class ExactUnlockValidatorTests
             },
         });
     }
+    /// <summary>
+    /// A recording made before the recorder could read whether the console was used
+    /// says nothing, and saying nothing is not a claim.
+    ///
+    /// Absent is accepted, because that is the standard those recordings were made and
+    /// gated under and reading absence as "complete" would be the validator inventing a
+    /// reading nobody took. A stated value has to be one of the two the format names.
+    /// </summary>
+    [Fact]
+    public void ANativeRecordingMayStateNoIntegrityAndMayNotStateAnUnknownOne()
+    {
+        var manifest = Fixtures.NativeManifest();
+
+        Assert.True(ManifestValidator.Validate(WithIntegrity(manifest, null)).IsValid);
+        Assert.True(ManifestValidator.Validate(
+            WithIntegrity(manifest, NativeSource.CompleteIntegrity)).IsValid);
+
+        var invented = ManifestValidator.Validate(WithIntegrity(manifest, "probably-fine"));
+        Assert.False(invented.IsValid);
+        Assert.Contains(invented.Problems, problem =>
+            problem.Contains("source.native.integrity 'probably-fine' is not one of", StringComparison.Ordinal));
+    }
+
+    private static ReplayManifest WithIntegrity(ReplayManifest manifest, string? integrity) =>
+        manifest with
+        {
+            Source = manifest.Source with
+            {
+                Native = manifest.Source.Native! with { Integrity = integrity },
+            },
+        };
+
 }

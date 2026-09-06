@@ -64,6 +64,21 @@ public sealed record RunJournal
     /// </summary>
     public IReadOnlyList<string> Refusals { get; init; } = [];
 
+    /// <summary>
+    /// Every console command the sessions that wrote this journal saw, in the order
+    /// they saw them.
+    ///
+    /// On the file for the same reason the refusals are: what the console did to the
+    /// run is not among the decisions this journal holds, so no later reading of the
+    /// live game could recover it. A session that resumed without it would publish a
+    /// run the console had been used in, with every value in the recording true.
+    ///
+    /// A journal carrying one of these lines is refused by a build older than the one
+    /// that introduced them, which is the right way round: an older build cannot tell
+    /// that this run is unpublishable, and refusing to read it is how it says so.
+    /// </summary>
+    public IReadOnlyList<string> ConsoleCommands { get; init; } = [];
+
     /// <summary>The reading taken before any decision.</summary>
     public RunJournalEntry Opening => Entries[0];
 
@@ -93,12 +108,18 @@ public sealed record RunJournal
     public static string RenderRefusal(string reason) =>
         JsonSerializer.Serialize(new JournalRefusal { Reason = reason }, Compact) + "\n";
 
+    /// <summary>One console command, as the line appended for it. Appended the moment
+    /// it is seen, for the same reason a refusal is.</summary>
+    public static string RenderConsoleCommand(string command) =>
+        JsonSerializer.Serialize(new JournalConsoleCommand { Command = command }, Compact) + "\n";
+
     /// <summary>The whole journal as it would be on disk. For a caller writing one in
     /// a single pass; a recorder appends instead.</summary>
     public string Render() =>
         RenderHeader() +
         string.Concat(Entries.Select(RenderEntry)) +
-        string.Concat(Refusals.Select(RenderRefusal));
+        string.Concat(Refusals.Select(RenderRefusal)) +
+        string.Concat(ConsoleCommands.Select(RenderConsoleCommand));
 
     /// <summary>
     /// The journal brought back to a boundary an append may follow, or null when it is
@@ -148,15 +169,23 @@ public sealed record RunJournal
     /// some shape, and on that shape one of them would be destroying what the other
     /// kept.
     /// </summary>
-    private static Exception? ReadRecord(string line, out RunJournalEntry? entry, out string? refusal)
+    private static Exception? ReadRecord(
+        string line, out RunJournalEntry? entry, out string? refusal, out string? consoleCommand)
     {
         entry = null;
         refusal = null;
+        consoleCommand = null;
         try
         {
             if (JsonSerializer.Deserialize<JournalRefusal>(line, Compact) is { Reason: not null } read)
             {
                 refusal = read.Reason;
+                return null;
+            }
+
+            if (JsonSerializer.Deserialize<JournalConsoleCommand>(line, Compact) is { Command: not null } console)
+            {
+                consoleCommand = console.Command;
                 return null;
             }
 
@@ -174,7 +203,7 @@ public sealed record RunJournal
     }
 
     private static bool ReadsAsARecord(string line) =>
-        line.Trim().Length > 0 && ReadRecord(line, out _, out _) is null;
+        line.Trim().Length > 0 && ReadRecord(line, out _, out _, out _) is null;
 
     /// <summary>
     /// Reads a journal back, refusing one this build cannot faithfully interpret.
@@ -210,9 +239,10 @@ public sealed record RunJournal
 
         var entries = new List<RunJournalEntry>();
         var refusals = new List<string>();
+        var consoleCommands = new List<string>();
         for (var index = 1; index < lines.Count; index++)
         {
-            if (ReadRecord(lines[index], out var entry, out var refusal) is { } unreadable)
+            if (ReadRecord(lines[index], out var entry, out var refusal, out var command) is { } unreadable)
             {
                 // The last line of a file a crash interrupted. Everything before it
                 // finished being written and is a real recording of what happened.
@@ -221,6 +251,7 @@ public sealed record RunJournal
             }
 
             if (refusal is not null) refusals.Add(refusal);
+            else if (command is not null) consoleCommands.Add(command);
             else entries.Add(entry!);
         }
 
@@ -233,6 +264,7 @@ public sealed record RunJournal
             WitnessedRunStart = header.WitnessedRunStart,
             Entries = entries,
             Refusals = refusals,
+            ConsoleCommands = consoleCommands,
         };
         journal.RequireReadable();
         return journal;
@@ -315,6 +347,14 @@ public sealed record RunJournal
     {
         [JsonPropertyName("refusal")]
         public string? Reason { get; init; }
+    }
+
+    /// <summary>A console-command line, told apart from the other two shapes the same
+    /// way: one property none of them has.</summary>
+    private sealed record JournalConsoleCommand
+    {
+        [JsonPropertyName("console_command")]
+        public string? Command { get; init; }
     }
 }
 

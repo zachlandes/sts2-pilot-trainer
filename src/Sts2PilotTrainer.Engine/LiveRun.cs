@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
 
@@ -154,6 +155,58 @@ public static class LiveRun
 
     /// <summary>Whether a fight is open at all, however far into opening it is.</summary>
     public static bool InCombat => CombatManager.Instance is { IsInProgress: true };
+
+    /// <summary>
+    /// What kind of game this client is playing right now, read out of the game's own
+    /// networking and player list.
+    ///
+    /// The one reader of that question on v0.111.0, and it is read rather than
+    /// inferred from which setup member the game called: the recorder watches
+    /// <c>SetUpNewSingleplayer</c> and <c>SetUpSavedSingleplayer</c>, and a member
+    /// whose name says "singleplayer" is a claim about what that member is for, not a
+    /// reading of what this session became. The two facts read here are the ones the
+    /// engine dispatches on itself - <c>NetService.Type</c>, which
+    /// <c>RunManager.IsSingleplayerOrFakeMultiplayer</c> reads, and the run's player
+    /// count, which is what tells that property's two halves apart.
+    ///
+    /// It never throws. The callers are a menu being built and a run starting, and a
+    /// reading that could not be taken is <see cref="RunSessionKind.Unreadable"/>,
+    /// which is refused exactly like a multiplayer answer: a run nothing established
+    /// anything about is not a singleplayer run.
+    /// </summary>
+    public static RunSessionKind ReadSession()
+    {
+        try
+        {
+            if (RunManager.Instance is not { } manager) return RunSessionKind.NoRunInProgress;
+            if (!manager.IsInProgress) return RunSessionKind.NoRunInProgress;
+            if (manager.NetService is not { } net) return RunSessionKind.Unreadable;
+
+            return net.Type switch
+            {
+                NetGameType.Host or NetGameType.Client => RunSessionKind.NetworkedMultiplayer,
+                NetGameType.Replay => RunSessionKind.Spectated,
+
+                // The game's own "fake multiplayer": no network game, and more than
+                // one player sharing this client. Its history holds decisions this
+                // client's player did not make.
+                NetGameType.Singleplayer => LocalEnvironment.StartedRunState()?.Players.Count switch
+                {
+                    1 => RunSessionKind.Singleplayer,
+                    > 1 => RunSessionKind.LocalMultiplayer,
+                    _ => RunSessionKind.Unreadable,
+                },
+
+                _ => RunSessionKind.Unreadable,
+            };
+        }
+        catch (Exception)
+        {
+            // A run the game is still building answers by throwing, and that is a
+            // "could not read" like any other rather than a singleplayer run.
+            return RunSessionKind.Unreadable;
+        }
+    }
 
     /// <summary>
     /// Whether the fight has finished opening and is the player's to act in.
