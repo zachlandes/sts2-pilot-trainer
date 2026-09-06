@@ -32,7 +32,6 @@ public static class ManifestFormatReference
         var nonEmpty = ValidatorSource.ReadNonEmptyArguments(repositoryRoot);
         var enumerated = ValidatorSource.ReadEnumeratedArguments(repositoryRoot);
         var shopKinds = ValidatorSource.ReadShopPurchaseKinds(repositoryRoot);
-        var shopRefusable = ValidatorSource.ReadShopRefusableArguments(repositoryRoot);
         var controls = ControlArguments();
         var commands = mapped.ToDictionary(row => row.Verb, StringComparer.Ordinal);
 
@@ -45,7 +44,7 @@ public static class ManifestFormatReference
             Verb(page, rule, commands[rule.Verb], nonEmpty, enumerated, controls);
             if (rule.Verb == nameof(ActionVerb.ShopPurchase))
             {
-                ShopKinds(page, shopKinds, shopRefusable);
+                ShopKinds(page, shopKinds);
             }
         }
 
@@ -161,22 +160,17 @@ public static class ManifestFormatReference
     }
 
     private static void ShopKinds(
-        StringBuilder page,
-        IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> kinds,
-        IReadOnlyList<string> refusable)
+        StringBuilder page, IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> kinds)
     {
         page.AppendLine("What a purchase must name depends on what it bought.");
         page.AppendLine("An argument a kind does not have is refused as firmly as a missing one.");
         page.AppendLine();
-        page.AppendLine("| `kind` | Also required | Refused |");
-        page.AppendLine("|---|---|---|");
+        page.AppendLine("| `kind` | Also required |");
+        page.AppendLine("|---|---|");
 
         foreach (var (kind, required) in kinds)
         {
-            var refused = refusable.Where(name => !required.Contains(name, StringComparer.Ordinal)).ToList();
-            page.AppendLine(
-                $"| `{kind}` | {(required.Count == 0 ? "nothing" : Code(required))} " +
-                $"| {(refused.Count == 0 ? "nothing" : Code(refused))} |");
+            page.AppendLine($"| `{kind}` | {(required.Count == 0 ? "nothing" : Code(required))} |");
         }
 
         page.AppendLine();

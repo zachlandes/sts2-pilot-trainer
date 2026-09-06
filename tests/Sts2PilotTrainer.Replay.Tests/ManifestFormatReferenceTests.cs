@@ -264,60 +264,6 @@ public class ManifestFormatReferenceTests
         Directory.Delete(root, recursive: true);
     }
 
-    /// <summary>
-    /// An argument no kind requires and every kind is refused for carrying reaches the
-    /// per-kind table, because that table subtracts from the list the validator refuses
-    /// rather than from the union of what the kinds happen to require.
-    /// </summary>
-    [Fact]
-    public void AnArgumentNoShopKindRequiresIsStillPublishedAsRefused()
-    {
-        var root = TreeWhere(
-            ValidatorSource.RelativePath,
-            source => source.Replace(
-                "new[] { \"card_id\", \"relic_id\", \"potion_id\", \"option_index\" }",
-                "new[] { \"card_id\", \"relic_id\", \"potion_id\", \"option_index\", \"stock_index\" }",
-                StringComparison.Ordinal));
-
-        var rows = ShopRows(ManifestFormatReference.Render(root));
-        Assert.Equal(ValidatorSource.ReadShopPurchaseKinds(Root).Count, rows.Count);
-        Assert.All(rows, row => Assert.Contains("`stock_index`", row.Refused, StringComparison.Ordinal));
-        Directory.Delete(root, recursive: true);
-    }
-
-    /// <summary>
-    /// A validator that no longer writes that list down is refused rather than having the
-    /// list guessed at from what the kinds require.
-    /// </summary>
-    [Fact]
-    public void AShopRefusalListThisReaderCannotReadIsRefused()
-    {
-        var root = TreeWhere(
-            ValidatorSource.RelativePath,
-            source => source.Replace(
-                "new[] { \"card_id\", \"relic_id\", \"potion_id\", \"option_index\" }",
-                "RefusableArgumentsNobodyHasWrittenYet()",
-                StringComparison.Ordinal));
-
-        var refusal = Assert.Throws<SourceRefusal>(() => ManifestFormatReference.Render(root));
-        Assert.Contains(
-            "iterates no written-down list of arguments a purchase may be refused for carrying",
-            refusal.Message,
-            StringComparison.Ordinal);
-        Directory.Delete(root, recursive: true);
-    }
-
-    /// <summary>The per-kind rows of the generated reference's shop table, by kind.</summary>
-    private static IReadOnlyList<(string Kind, string Required, string Refused)> ShopRows(string page)
-    {
-        var kinds = ValidatorSource.ReadShopPurchaseKinds(Root).Select(kind => kind.Kind).ToHashSet(StringComparer.Ordinal);
-        return page.Split(Environment.NewLine)
-            .Select(line => line.Split('|', StringSplitOptions.TrimEntries))
-            .Where(cells => cells.Length == 5 && kinds.Contains(cells[1].Trim('`'), StringComparer.Ordinal))
-            .Select(cells => (cells[1].Trim('`'), cells[2], cells[3]))
-            .ToList();
-    }
-
     private static IReadOnlyList<string> Spelled(
         IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> kinds) =>
         kinds.Select(kind => $"{kind.Kind}: {string.Join(", ", kind.Required)}").ToList();
