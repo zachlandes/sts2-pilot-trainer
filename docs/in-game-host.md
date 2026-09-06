@@ -57,6 +57,11 @@ Two accounts on one machine, and two profiles on one account, therefore do not s
 Those identifiers are local path scoping and nothing else: no platform directory, account id or profile number belongs in an exported manifest, an upload or a shared recording's identity.
 
 `RunmobileStore` is the only thing in the mod that writes at all: it takes the root from the game's own `ProjectSettings.GlobalizePath`, requires that root to resolve inside `user://` by the same containment rule, so a `Runmobile` directory that is a symlink elsewhere is refused rather than followed out of the ledger's reach, checks every path against that root with `PathContainment.RequireContained`, refuses any path with a `Steam`, `steamapps` or `Slay the Spire 2` component, and writes a whole file through a temporary sibling and a move so a crash leaves the previous file rather than half of a new one.
+Removing is a write and goes through the same gate: `RunmobileStore.Remove` names one file at a time and refuses a directory, so the one operation here that cannot be undone can never reach the store's own root.
+Which files it is asked for is `RecordingRetention`'s, deliberately somewhere else - see "Keeping runs, and removing them" below.
+One call in the mod reaches a game API that can write inside the player's *save* directory, and it is `ContinuableRun`: `SaveManager.LoadRunSave` goes through `MigrationManager.LoadSave`, which renames a corrupt run save to a `.corrupt` path and leaves a `.pre-repair` sibling where it repairs JSON.
+It is safe here for a reason that is about *when* it is called rather than what it does, and that reason is written out in `ContinuableRun`'s own docstring; a second caller does not inherit it.
+
 `PrepareForWrite` is the containment gate rather than the atomic writer, because not every write is a whole file - the recorder appends to a journal - and the point is one place that decides where this mod may write, not one way of writing.
 Each component is judged by the name it actually has on disk, after the path itself is resolved, so neither a symlink into an installation nor an alias spelling on a case-insensitive volume gets past it.
 `Steam` is then matched exactly: the game's own user data has a lower-case `steam` platform level, which is where this store lives.
@@ -487,6 +492,11 @@ and every feature that reads the engine asks it for itself at the first moment i
 demonstrably has a running game - the singleplayer menu for the mode card, the recorder
 when a run has entered its first room. No feature's correctness rests on another having
 asked first, and a refusal is the caller's to act on: no mode card, and no recording.
+The singleplayer-menu postfix asks for adoption only where a module contributed a card
+it is about to draw, so on a build where every module declined it is never reached from
+there at all. The retention duty above it is: that runs first and unconditionally, so a
+purge is honoured on such a build, and on one where the adoption it does attempt is
+refused.
 
 **Godot does not load the game into the default load context.**
 A mod's sibling assemblies have to be resolved on the load context the mod itself was
@@ -685,6 +695,7 @@ It goes beside the recordings, at `<the store>/settings.json`; step 6 below says
 A file that is not there means recording is on.
 A file that is there and cannot be read - a schema this build does not know, a missing member, anything that is not this JSON - means recording is off, and `godot.log` says which file and why.
 That is the direction it fails in on purpose: the only thing this file can say is "off", so a recorder that carried on through a sentence it could not read would be recording without consent.
+The same file says how many runs are kept and how to remove them all; "Keeping runs, and removing them" below has both.
 
 1. `./scripts/protected-files.sh snapshot before.ledger`, so what the session changed can be measured rather than asserted.
 2. `./scripts/install-mod.sh`, then launch the game **through Steam** - `open "steam://rungameid/2868840"` or the library - because launched on its own the client cannot initialise Steam and stops on an error popup.
@@ -717,3 +728,37 @@ screen as they appeared in the shipped client,
 the recorded fight with its real output, and
 [demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has the fight
 played through and its comparison.
+
+### Keeping runs, and removing them
+
+The recorder writes two real files per run into the player's own user directory and nothing else ever removed one, so how many are kept is a setting and removing them all is something a player can ask for.
+Both live in the same `settings.json`, and both are the same operation with a different number - `RecordingRetention` applies the policy, `RecordingLibrary.Cull` decides which recordings it names:
+
+```json
+{"schema": "sts2-pilot-trainer/runmobile-settings/v1", "keep_recent_runs": 50, "purge_my_runs": false}
+```
+
+`keep_recent_runs` is a standing policy and defaults to 50, which is roughly the size of a screenshot folder.
+Older runs go the next time the player reaches the singleplayer menu with a save profile chosen, and the count is of runs rather than of files: a run's journal and its manifest go together or not at all.
+Zero keeps none.
+A negative number is refused with a logged sentence naming the file and the value, and the default is applied instead: a player who wants more keeps writes a larger number, and there is no way to ask the file for unbounded growth.
+Removing nothing survives only as an internal answer for a settings file this build cannot read - a sentence nobody could read is not somebody asking for their runs to be deleted, so recording off and deleting nothing fail in the same direction.
+
+`purge_my_runs` is the one-shot act: every recorded run is removed, and then the mod writes the member back to `false` so a purge is something a player did rather than a state they are left in.
+It is the only member of that file the mod ever writes: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
+`godot.log` carries the receipt either way - `purged your recorded runs: N removed` for the act, `keeping your 50 most recent runs: N older one(s) removed` for the policy.
+
+Three properties hold, and each is asserted rather than described.
+Every file removed came back from `RecordingLibrary` as part of a recording written under the name this build writes, so a player's own file in that directory, a manifest they copied in, and this mod's `settings.json` all survive a purge.
+Every removal goes through `RunmobileStore.Remove`, which refuses a path outside the store, a path inside a game installation and a directory, exactly as a write does.
+And the moment is the singleplayer menu: the shell's own patch asks for retention first and unconditionally, ahead of any question about which modules contributed a card and ahead of the adoption it attempts only where there is a card to draw, because keeping and removing a player's files is the shell's duty.
+`RunmobileMod.EnsureAdopted` asks for it again, so the recorder's own first adopted moment is covered too, and asking twice costs nothing: it is applied once per save profile whoever asks.
+No journal is being appended to when it runs - the recorder opens one only after passing that same adoption gate, and it has let go of the run it was recording before the singleplayer menu can be reached again - so a removal can never race a journal.
+Retention runs whether or not the adoption succeeded, and where adoption is never attempted at all: its condition is the store's, a chosen save profile, and not the engine layer's verdict on whether this game can be read.
+So a build where the Combat Trainer and the recorder both decline, and a build the engine layer refuses to adopt, both still honour a purge and still enforce `keep_recent_runs`.
+The policy is applied once per save profile rather than once per process: the store is resolved per operation and two profiles do not share a library, so a player who switches profile has their second profile's `settings.json` honoured against their second profile's recordings.
+It cannot be mod start: the game has no chosen save profile then, so the store cannot yet say whose files these are.
+
+The one recording retention never names is the run the game can currently Continue, and neither a cap nor a purge removes its journal.
+A run whose journal went missing under it is one the recorder picks up again at its next room and records as a run it watched from the start, which is a claim about what was observed that nobody established - and that is worse than a purge which leaves one file, so the file stays and the log says it was left.
+Which run that is comes from the game: `ContinuableRun` asks `SaveManager` whether there is a run save and reads the run's start time out of it, matching the recording by the same start time `RecordingLibrary.Name` writes into its name, and refuses where the game has a run save it cannot read rather than guessing.

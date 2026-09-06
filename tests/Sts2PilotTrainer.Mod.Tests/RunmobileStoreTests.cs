@@ -219,4 +219,74 @@ public sealed class RunmobileStoreTests : IDisposable
         Assert.Null(RunmobileStore.Read("nothing.json"));
         Assert.False(RunmobileStore.Exists("nothing.json"));
     }
+
+    [Fact]
+    public void ADirectoryIsListedByFileNameInAStableOrder()
+    {
+        RunmobileStore.Write("recordings/b.replay.json", "{}");
+        RunmobileStore.Write("recordings/a.replay.json", "{}");
+
+        Assert.Equal(["a.replay.json", "b.replay.json"], RunmobileStore.ListFileNames("recordings"));
+    }
+
+    [Fact]
+    public void ListingADirectoryThatIsNotThereYetIsEmptyRatherThanAFailure()
+    {
+        Assert.Empty(RunmobileStore.ListFileNames("recordings"));
+    }
+
+    /// <summary>Listing is a read of the store and goes through the same gate a write
+    /// does, so it cannot be the way to enumerate somebody else's directory.</summary>
+    [Fact]
+    public void ListingOutsideTheStoreIsRefused()
+    {
+        Assert.Throws<PathContainmentException>(() => RunmobileStore.ListFileNames("../.."));
+    }
+
+    [Fact]
+    public void RemovingAnEntryTakesItOffTheDisk()
+    {
+        RunmobileStore.Write("recordings/one.replay.json", "{}");
+
+        Assert.True(RunmobileStore.Remove("recordings/one.replay.json"));
+        Assert.False(RunmobileStore.Exists("recordings/one.replay.json"));
+    }
+
+    [Fact]
+    public void RemovingAnEntryThatIsNotThereRemovesNothingAndSaysSo()
+    {
+        Assert.False(RunmobileStore.Remove("recordings/gone.replay.json"));
+    }
+
+    /// <summary>
+    /// The refusals a write gets, on the one operation that cannot be undone. Asserted
+    /// with a real file on the other end of each path, so a rule that refused after
+    /// deleting would be visible here rather than in a player's user directory.
+    /// </summary>
+    [Fact]
+    public void RemovingOutsideTheStoreIsRefusedBeforeAnythingIsDeleted()
+    {
+        var outside = Path.Combine(Path.GetDirectoryName(_root)!, "theirs.json");
+        File.WriteAllText(outside, "not ours");
+
+        Assert.Throws<PathContainmentException>(() => RunmobileStore.Remove("../theirs.json"));
+        Assert.Throws<PathContainmentException>(() => RunmobileStore.Remove(outside));
+
+        Assert.True(File.Exists(outside));
+    }
+
+    /// <summary>
+    /// A directory is not a file this store wrote. A removal that took one would be a
+    /// removal whose blast radius is everything under it, including the store's own
+    /// root.
+    /// </summary>
+    [Fact]
+    public void RemovingADirectoryIsRefused()
+    {
+        RunmobileStore.Write("recordings/one.replay.json", "{}");
+
+        Assert.Throws<InvalidOperationException>(() => RunmobileStore.Remove("recordings"));
+        Assert.Throws<PathContainmentException>(() => RunmobileStore.Remove("."));
+        Assert.True(RunmobileStore.Exists("recordings/one.replay.json"));
+    }
 }

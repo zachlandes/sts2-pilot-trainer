@@ -1,4 +1,3 @@
-using System.Globalization;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
@@ -178,19 +177,4 @@ public static class LiveRun
 
     /// <summary>The same question about the run this game is in the middle of.</summary>
     public static bool ReadyForThePlayer() => State is { } run && ReadyForThePlayer(run);
-
-    /// <summary>
-    /// How a recording made here is named.
-    ///
-    /// The seed and the moment the run began, and nothing else. It has to be unique
-    /// among a player's recordings - two runs on one seed are two recordings - and it
-    /// must carry nothing about who made it: no account, no machine, no profile. A
-    /// timestamp says when a run was played, which the manifest's own build date
-    /// already implies, and says nothing about whose it was.
-    /// </summary>
-    public static string NameRecording(string seed, DateTimeOffset startedUtc) =>
-        $"native-{Sanitise(seed)}-{startedUtc.UtcDateTime.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture)}";
-
-    private static string Sanitise(string seed) =>
-        new string([.. seed.Where(char.IsLetterOrDigit)]) is { Length: > 0 } cleaned ? cleaned : "unseeded";
 }

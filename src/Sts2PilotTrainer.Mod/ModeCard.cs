@@ -52,6 +52,12 @@ internal static class ModeCard
     {
         try
         {
+            // The shell's own duty, done here rather than behind a card: a player who
+            // asked for their recordings to be removed is answered on a build where
+            // every module declined and there is no card to draw. It needs a chosen
+            // save profile and nothing else, which mod loading does not have.
+            RecordingRetention.ApplyOnce();
+
             var cards = RunmobileMod.MenuCards;
             if (cards.Count == 0) return;
             if (cards.Count > 1)

@@ -49,6 +49,14 @@ namespace Sts2PilotTrainer.Mod;
 /// appends to a journal and flushes it at room and fight boundaries, which is a
 /// different write mode and the same one place to check where it may write.
 ///
+/// <para><b>Removing is a write and goes through the same gate.</b> A player owns the
+/// disk their recordings are on, so the store can be asked to take one back off it -
+/// through <see cref="Remove"/>, which names one file at a time and refuses a
+/// directory. Nothing here decides <em>which</em> files: that is
+/// <c>RecordingRetention</c>'s, and it is deliberately somewhere else, because the one
+/// operation in this mod that cannot be undone should not also be the one that picks
+/// its own targets.</para>
+///
 /// It is not <see cref="ProfileWriteBarrier"/> and does not replace it. The barrier
 /// suppresses the <em>game's</em> writes while a trainer run is live and has nothing
 /// to say about this mod's own files; this store is where those files go. Together
@@ -144,6 +152,52 @@ internal static class RunmobileStore
 
     /// <summary>Whether an entry exists. Same refusals.</summary>
     internal static bool Exists(string relativePath) => File.Exists(PathOf(relativePath));
+
+    /// <summary>
+    /// The names of the files directly inside one of the store's own directories, in a
+    /// stable order, or nothing when that directory is not there yet.
+    ///
+    /// Names rather than paths, so a caller deciding what to do with them has to come
+    /// back through <see cref="PathOf"/> to name one - which is the containment check
+    /// again. Files only: the store has no nested libraries and a caller that listed a
+    /// directory here would be a caller preparing to walk out of one.
+    /// </summary>
+    internal static IReadOnlyList<string> ListFileNames(string relativeDirectory)
+    {
+        var path = PathOf(relativeDirectory);
+        return Directory.Exists(path)
+            ? [
+                .. Directory.EnumerateFiles(path)
+                    .Select(Path.GetFileName)
+                    .OfType<string>()
+                    .Order(StringComparer.Ordinal),
+            ]
+            : [];
+    }
+
+    /// <summary>
+    /// Removes one entry, and says whether there was one to remove.
+    ///
+    /// A deletion is a write and goes through the same gate every other write does: a
+    /// traversal, an absolute path and a path inside a game installation are all
+    /// refused before anything is opened. It is the one write here that cannot be
+    /// undone, which is why it names a file and never a directory - a store that could
+    /// be asked to remove a directory is one that can be asked to remove its own root,
+    /// and the blast radius of a mistake stops being one file.
+    /// </summary>
+    internal static bool Remove(string relativePath)
+    {
+        var path = PathOf(relativePath);
+        if (Directory.Exists(path))
+        {
+            throw new InvalidOperationException(
+                $"'{relativePath}' is a directory. This store removes files it wrote, one at a time.");
+        }
+
+        if (!File.Exists(path)) return false;
+        File.Delete(path);
+        return true;
+    }
 
     /// <summary>
     /// Where this store lives, as a <c>user://</c> path: the game's own profile scope,

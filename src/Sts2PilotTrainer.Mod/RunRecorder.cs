@@ -231,7 +231,7 @@ internal sealed class RunRecorder : IDisposable
             }
 
             var startedUtc = LiveRun.RunStartedUtc();
-            var runId = LiveRun.NameRecording(run.Rng.StringSeed, startedUtc);
+            var runId = RecordingLibrary.Name(run.Rng.StringSeed, startedUtc);
             var journalPath = $"{RecordingsDirectory}/{runId}{RunJournal.FileExtension}";
             var (sample, digest) = LiveRun.Read();
             var clock = LiveRun.RunClockMs();
@@ -1064,7 +1064,7 @@ internal sealed class RunRecorder : IDisposable
         _capture.Finish(outcome);
 
         var manifest = _capture.ToManifest();
-        var path = $"{RecordingsDirectory}/{_capture.RunId}.replay.json";
+        var path = $"{RecordingsDirectory}/{_capture.RunId}{RecordingLibrary.ManifestExtension}";
         RunmobileStore.Write(path, ManifestJson.Serialize(manifest) + "\n");
 
         var problems = ManifestValidator.Validate(manifest);
