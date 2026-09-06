@@ -250,6 +250,26 @@ public sealed class RunmobileSettingsTests : IDisposable
     }
 
     /// <summary>
+    /// A file that will not deserialize is not written into either, whatever its schema
+    /// says. <see cref="RunmobileSettings.Read"/> refuses it, and the writer asks the
+    /// same reader rather than keeping a second set of rules: a document that is
+    /// unreadable to the settings row may not be writable by the control beside it.
+    /// Before this, a valid schema over a member of the wrong type let a purge request
+    /// be written into a file this build had just declared it could not read.
+    /// </summary>
+    [Fact]
+    public void AFileWhoseMembersDoNotReadIsNotWrittenIntoEither()
+    {
+        var content = $$"""{"schema":"{{RunmobileSettings.Schema}}","keep_recent_runs":"fifty"}""";
+        RunmobileStore.Write(RunmobileSettings.FileName, content);
+
+        Assert.False(RunmobileSettings.Read().Readable);
+        Assert.ThrowsAny<Exception>(RunmobileSettings.RequestPurge);
+        Assert.ThrowsAny<Exception>(() => RunmobileSettings.SetKeepRecentRuns(12));
+        Assert.Equal(content, RunmobileStore.Read(RunmobileSettings.FileName));
+    }
+
+    /// <summary>
     /// A file declaring a schema this build does not read is not written into either.
     /// <see cref="RunmobileSettings.Read"/> already refuses it, and editing one member
     /// of it would put this build's meaning of <c>keep_recent_runs</c> or

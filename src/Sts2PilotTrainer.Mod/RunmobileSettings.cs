@@ -238,12 +238,15 @@ internal sealed record RunmobileSettings
     /// nothing yet gets the defaults with this one member set, because there has to be
     /// somewhere to put the answer.
     ///
-    /// A file this build cannot read is refused, on the same grounds <see cref="Read"/>
-    /// refuses it and including a schema it does not recognise. Overwriting it would be
-    /// this mod discarding something a player wrote in order to store something they
-    /// meant to add to it; editing one member of it would be worse, because a
-    /// <c>keep_recent_runs</c> written with this build's meaning into a document written
-    /// by a build with another is a sentence neither of them said.
+    /// A file this build cannot read is refused, and <see cref="Read"/> is what decides
+    /// that rather than a second set of rules here: one reader means a document can
+    /// never be unreadable to the row and writable by the control beside it. Overwriting
+    /// it would be this mod discarding something a player wrote in order to store
+    /// something they meant to add to it; editing one member of it would be worse,
+    /// because a <c>keep_recent_runs</c> written with this build's meaning into a
+    /// document written by a build with another is a sentence neither of them said.
+    /// An absent file is not an unreadable one and still gets the defaults with this
+    /// one member set, because there has to be somewhere to put the answer.
     /// </summary>
     private static void Set(string member, JsonNode value)
     {
@@ -261,18 +264,14 @@ internal sealed record RunmobileSettings
         }
         else
         {
-            settings = JsonNode.Parse(json) as JsonObject
-                ?? throw new ManifestException(
-                    $"{FileName} is not a settings object, so Runmobile will not write over it.");
-
-            if (settings["schema"] is not JsonValue declared
-                || !declared.TryGetValue<string>(out var schema)
-                || !string.Equals(schema, Schema, StringComparison.Ordinal))
+            if (!Read().Readable)
             {
                 throw new ManifestException(
-                    $"{FileName} does not declare schema '{Schema}', which is the one this build reads, so " +
-                    "Runmobile will not write into it.");
+                    $"{FileName} is not a settings file this build can read, so Runmobile will not write " +
+                    "into it.");
             }
+
+            settings = JsonNode.Parse(json)!.AsObject();
         }
 
         settings[member] = value;

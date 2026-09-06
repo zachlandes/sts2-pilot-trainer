@@ -147,24 +147,34 @@ public sealed class MyRunsSettingsRowTests
     }
 
     /// <summary>
-    /// A settings file this build cannot read refuses both ends of the stepper, and a
-    /// press writes nothing: the numeral over it is the default in force, and moving it
-    /// would put this build's meaning of a member into a document it refuses to read.
+    /// A settings file this build cannot read refuses every control that would write
+    /// into it - both ends of the stepper and the removal, which records its request in
+    /// that same file - and a press on any of them raises nothing. The second line is
+    /// what says why, so none of the three is a dead control without a reason.
     /// </summary>
     [Fact]
-    public void AnUnreadableSettingsFileRefusesBothStepperControlsAndWritesNothing()
+    public void AnUnreadableSettingsFileRefusesEveryControlAndSaysWhy()
     {
         var reported = new List<int>();
+        var asked = 0;
         var row = Build(
             new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 50, SettingsReadable: false),
-            keepChanged: reported.Add);
+            keepChanged: reported.Add,
+            removePressed: () => asked++);
 
         Assert.True(row.Fewer.Disabled);
         Assert.True(row.More.Disabled);
+        Assert.True(row.Remove.Disabled);
+        Assert.Equal(
+            "settings.json could not be read, so no runs are removed automatically until it is · " +
+            "user://Runmobile/recordings",
+            Label(row, "Detail").Text);
 
         row.Fewer.EmitPressed();
         row.More.EmitPressed();
+        row.Remove.EmitPressed();
         Assert.Empty(reported);
+        Assert.Equal(0, asked);
     }
 
     /// <summary>

@@ -18,18 +18,19 @@ namespace Sts2PilotTrainer.Trainer;
 /// <param name="Keep">How many of the newest runs the policy in effect keeps. The
 /// player's own number where their file could be read, not a control position: a file
 /// may say zero, which is a standing purge, and the numeral says so even though the
-/// control cannot be moved there. Where it could not be read this is the default in
-/// effect instead, and <paramref name="SettingsReadable"/> is what says which of the
-/// two a reader is looking at.</param>
+/// control cannot be moved there. Where it could not be read this is the default shown
+/// in its place, and <paramref name="SettingsReadable"/> is what says which of the two
+/// a reader is looking at.</param>
 /// <param name="RemovedJustNow">How many runs the purge this screen ran removed, or
 /// null when it has not run one. Zero is a real answer and is not null: somebody
 /// pressed Remove and deserves the receipt whether or not there was anything to
 /// take.</param>
 /// <param name="SettingsReadable">Whether the policy above is the player's own
-/// sentence or the default standing in for one this build could not read. Carried as
+/// sentence or the default shown in place of one this build could not read. Carried as
 /// a fact rather than left to be inferred from the number, because "the file says
-/// fifty" and "nobody could read the file, so fifty is what is in force" are two
-/// different things to tell a player and only one of them may be written to.</param>
+/// fifty" and "nobody could read the file, so no policy is in force at all" are two
+/// different things to tell a player, and neither this row nor anything behind it may
+/// write into the second one.</param>
 public sealed record MyRunsFacts(
     int Runs, long Bytes, int Keep, int? RemovedJustNow = null, bool SettingsReadable = true);
 
@@ -67,8 +68,11 @@ public sealed record MyRunsFacts(
 /// meaning into a document whose schema it refuses.</param>
 /// <param name="RemoveLabel">The destructive control's label.</param>
 /// <param name="RemovePressable">Whether it may be pressed. False with nothing to
-/// remove: a control that would do nothing is drawn refused rather than hidden, so the
-/// row keeps its shape as the number changes.</param>
+/// remove, and false over a settings file this build could not read: the removal
+/// records the request in that file before it takes anything, so an act that cannot be
+/// recorded is one that must not be offered. A refused control is drawn rather than
+/// hidden, so the row keeps its shape as the number changes, and the second line is
+/// what says why.</param>
 /// <param name="Confirm">What the game's own popup asks before anything goes.</param>
 public sealed record MyRunsRow(
     string Reading,
@@ -105,7 +109,7 @@ public sealed record MyRunsRow(
             KeepNumeral: facts.Keep.ToString(CultureInfo.InvariantCulture),
             KeepPressable: facts.SettingsReadable,
             RemoveLabel: "Remove all my runs",
-            RemovePressable: facts.Runs > 0,
+            RemovePressable: facts.Runs > 0 && facts.SettingsReadable,
             Confirm: new MyRunsConfirm(
                 Title: "Remove all your runs?",
                 Body: $"{runs}, {size}, recorded by Runmobile. Your saves, profile and run history are not " +
@@ -150,12 +154,14 @@ public sealed record MyRunsRow(
     ///
     /// One of four, in a stated order. A receipt beats everything because the removal
     /// already happened and the rest is about the next main menu. A settings file this
-    /// build could not read beats the warning below it, because the number above is
-    /// then the default standing in rather than anything the player wrote, and no
-    /// warning may be issued from a policy nobody could read. A warning beats the plain
-    /// line because a policy that is about to take runs away is the thing a player on
-    /// this screen needs to read. The directory is on all four, because "on this
-    /// computer" is the claim the whole row exists to make.
+    /// build could not read beats the warning below it, and says what is actually true
+    /// under it: an unreadable file leaves no policy in force at all, so no run is
+    /// removed of this mod's own accord until somebody puts the file right. The number
+    /// above is the default shown in its place and nothing may be inferred from it - a
+    /// warning issued from it would name runs that are not going anywhere. A warning
+    /// beats the plain line because a policy that is about to take runs away is the
+    /// thing a player on this screen needs to read. The directory is on all four,
+    /// because "on this computer" is the claim the whole row exists to make.
     /// </summary>
     private static string DetailLine(MyRunsFacts facts)
     {
@@ -166,7 +172,8 @@ public sealed record MyRunsRow(
 
         if (!facts.SettingsReadable)
         {
-            return $"settings.json could not be read, so this is the usual policy · {Directory}";
+            return "settings.json could not be read, so no runs are removed automatically until it is · " +
+                   Directory;
         }
 
         var pending = Pending(facts.Runs, facts.Keep);

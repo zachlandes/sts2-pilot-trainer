@@ -129,46 +129,41 @@ public sealed class MyRunsRowTests
     }
 
     /// <summary>
-    /// A settings file this build could not read says so, and the number beside it is
-    /// the default in force rather than the player's sentence. No warning is issued
-    /// from it either: how many runs a policy nobody could read would take is not
-    /// something to tell a player.
+    /// A settings file this build could not read says what is actually true under it:
+    /// an unreadable file leaves no policy in force, so nothing is removed of this mod's
+    /// own accord until somebody puts the file right. The numeral beside it is the
+    /// default shown in place of the player's sentence, and no warning is issued from
+    /// it - runs it named would not be going anywhere.
     /// </summary>
     [Fact]
-    public void AnUnreadableSettingsFileSaysSoAndWarnsAboutNothing()
+    public void AnUnreadableSettingsFileSaysNothingIsBeingRemoved()
     {
         var row = MyRunsRow.For(
             new MyRunsFacts(Runs: 12, Bytes: 6 * Mb, Keep: 50, SettingsReadable: false));
 
         Assert.Equal("50", row.KeepNumeral);
         Assert.Equal(
-            "settings.json could not be read, so this is the usual policy · user://Runmobile/recordings",
+            "settings.json could not be read, so no runs are removed automatically until it is · " +
+            "user://Runmobile/recordings",
             row.Detail);
     }
 
     /// <summary>
-    /// Neither end of the stepper may be pressed over a file this build refuses: a
-    /// press would write this build's meaning of a member into a document written under
-    /// a schema it does not read.
+    /// Every control that would write into the settings file is refused over one this
+    /// build cannot read - the stepper, and the removal too, because the removal records
+    /// the request in that same file before it takes anything. An act that cannot be
+    /// recorded is one that must not be offered.
     /// </summary>
     [Fact]
-    public void AnUnreadableSettingsFileRefusesThePolicyControls()
+    public void AnUnreadableSettingsFileRefusesEveryControlThatWouldWriteToIt()
     {
-        Assert.False(
-            MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: Mb, Keep: 50, SettingsReadable: false))
-                .KeepPressable);
-        Assert.True(MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: Mb, Keep: 50)).KeepPressable);
-    }
+        var refused = MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: Mb, Keep: 50, SettingsReadable: false));
+        Assert.False(refused.KeepPressable);
+        Assert.False(refused.RemovePressable);
 
-    /// <summary>The receipt still beats it: the removal already happened, and what the
-    /// row cannot read about the standing policy is the smaller news.</summary>
-    [Fact]
-    public void AReceiptIsStillWhatAnUnreadableFileShows()
-    {
-        var row = MyRunsRow.For(
-            new MyRunsFacts(Runs: 0, Bytes: 0, Keep: 50, RemovedJustNow: 3, SettingsReadable: false));
-
-        Assert.Equal("3 runs removed just now · user://Runmobile/recordings", row.Detail);
+        var offered = MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: Mb, Keep: 50));
+        Assert.True(offered.KeepPressable);
+        Assert.True(offered.RemovePressable);
     }
 
     /// <summary>
