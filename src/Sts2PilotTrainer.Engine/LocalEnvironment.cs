@@ -80,8 +80,11 @@ public static class LocalEnvironment
         // thrown: the screen that exists to say why a recording cannot be replayed
         // would otherwise crash instead of rendering it. The refusal itself stays at
         // run construction, where a state that cannot be built would otherwise become
-        // a run nobody asked for.
-        var state = UnbuildableState(progress) is null ? ResolveUnlockState(progress) : null;
+        // a run nobody asked for. The sentence travels with the reading rather than
+        // being used as a boolean here: everything downstream of an unbuildable state
+        // is unanswerable, and a reader holding only the absence has to guess why.
+        var shortfall = UnbuildableState(progress);
+        var state = shortfall is null ? ResolveUnlockState(progress) : null;
         var inventory = ReadUnlockInventory(progress, state);
 
         return new LocalPrerequisites
@@ -92,6 +95,7 @@ public static class LocalEnvironment
             Mods = ReadMods(),
             Unlocks = inventory,
             LockedActs = state is null ? null : LockedActs(expected.Acts.Value, state),
+            UnlockStateShortfall = shortfall,
             ProfileAscensionCeiling = inventory.FromPlayerProfile
                 ? ReadProfileAscensionCeiling(expected.Character.Value)
                 : null,

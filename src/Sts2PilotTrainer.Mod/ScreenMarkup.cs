@@ -1,4 +1,5 @@
 using System.Text;
+using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
@@ -19,6 +20,14 @@ internal static class ScreenMarkup
     /// something to go and play, not an error.</summary>
     private const string NotMetColor = "#e0755a";
 
+    /// <summary>
+    /// Requirement this build cannot supply. Cool and flat, because the warm colour
+    /// above is an invitation and there is nothing here to accept: no play unlocks
+    /// content a build does not ship. Still a row's weight rather than the supporting
+    /// dimness, since it is a requirement and not a footnote.
+    /// </summary>
+    private const string UnavailableColor = "#8496a6";
+
     /// <summary>Supporting text - the subtitle, the engine's sentences, the profile
     /// note. Dimmer than a row so the rows read first.</summary>
     private const string SupportingColor = "#b6a892";
@@ -35,9 +44,10 @@ internal static class ScreenMarkup
         if (screen.Rows.Count > 0) Blank(body);
         foreach (var row in screen.Rows)
         {
-            Line(body, Colored(row.Met ? MetColor : NotMetColor, row.Label));
-            // A note under a green row is scope, under a red one it is what to do.
-            // Both are the engine's own sentence and neither is rewritten here.
+            Line(body, Colored(RowColor(row.State), row.Label));
+            // A note under a green row is scope, under a warm one it is what to do,
+            // and under a cool one it is why there is nothing to do. All three are the
+            // engine's own sentence and none is rewritten here.
             if (row.Note is { Length: > 0 } note) Line(body, Dim(note));
         }
 
@@ -63,6 +73,21 @@ internal static class ScreenMarkup
 
         return body.ToString();
     }
+
+    /// <summary>
+    /// The colour one row is drawn in, over the gate's own three outcomes.
+    ///
+    /// Named one by one rather than defaulted, so a fourth outcome added to the gate
+    /// refuses here instead of being drawn as one of these three. A row in the wrong
+    /// colour is a claim about somebody's game that nobody made.
+    /// </summary>
+    private static string RowColor(PreflightOutcome state) => state switch
+    {
+        PreflightOutcome.Met => MetColor,
+        PreflightOutcome.NotMet => NotMetColor,
+        PreflightOutcome.Unavailable => UnavailableColor,
+        _ => throw new ArgumentOutOfRangeException(nameof(state), state, "This screen has no colour for it."),
+    };
 
     private static void Line(StringBuilder body, string text) => body.Append(text).Append('\n');
 

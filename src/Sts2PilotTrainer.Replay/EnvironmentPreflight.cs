@@ -50,6 +50,22 @@ public static class EnvironmentPreflight
         "progress, your unlocks or your installed build, and there is no supported flag that would.";
 
     /// <summary>
+    /// What is said instead where the shortfall is the build's rather than the
+    /// player's, and the counterpart to <see cref="UnlockRemediation"/> rather than a
+    /// variation on it.
+    ///
+    /// The distinction is the whole point of having two sentences. Playing the game
+    /// unlocks content the build ships; nothing at all adds content it does not. So a
+    /// build shortfall told to go and play is an instruction that can never come true,
+    /// given to somebody whose game is working perfectly. This states the fact and
+    /// stops, which is what a <see cref="PreflightOutcome.Unavailable"/> field is for.
+    /// </summary>
+    public const string ContentNotShipped =
+        "Nothing you unlock in the game adds content this build does not ship, so this recording needs the " +
+        "build that has it. This tool never writes to your save, your progress, your unlocks or your " +
+        "installed build.";
+
+    /// <summary>
     /// Everything checkable before a run exists: the build, the content, and the
     /// player prerequisites the run's generation will read.
     /// </summary>
@@ -172,9 +188,11 @@ public static class EnvironmentPreflight
 
         if (!requirement.IsComplete)
         {
+            // Unavailable rather than unmet: an unrecognised requirement is not
+            // something the person in front of the game can go and satisfy.
             yield return new PreflightField(
                 "unlocks_requirement", string.Join(" or ", UnlockRequirement.Completenesses),
-                requirement.Completeness, false,
+                requirement.Completeness, PreflightOutcome.Unavailable,
                 $"The manifest asks for unlock completeness '{requirement.Completeness}', which this arbiter " +
                 $"cannot check. The expressible requirements are " +
                 $"{string.Join(" and ", UnlockRequirement.Completenesses)}, because something can check each: " +
@@ -219,6 +237,11 @@ public static class EnvironmentPreflight
     /// A reading that could not enumerate what the build ships leaves
     /// <see cref="UnlockInventory.ShippedIds"/> absent, and every id list then refuses
     /// here as unchecked. That is the honest answer rather than a silent pass.
+    ///
+    /// Every failing field here is <see cref="PreflightOutcome.Unavailable"/> and not
+    /// one of them offers a remediation, because there is none to offer: an id this
+    /// build does not ship is not content anybody's play unlocks, and an enumeration
+    /// this reader could not take is not a shortfall in the player's game at all.
     /// </summary>
     private static IEnumerable<PreflightField> EvaluateExactUnlocks(
         UnlockRequirement requirement, LocalPrerequisites actual)
@@ -226,7 +249,8 @@ public static class EnvironmentPreflight
         if (requirement.Inventory is not { } inventory)
         {
             yield return new PreflightField(
-                "unlocks_requirement", UnlockRequirement.ExactCompleteness, "no inventory", false,
+                "unlocks_requirement", UnlockRequirement.ExactCompleteness, "no inventory",
+                PreflightOutcome.Unavailable,
                 "The manifest asks for unlock completeness 'exact' and names no inventory, so there is nothing " +
                 "to check this environment against. An exact requirement is exactly the state it names.");
             yield break;
@@ -241,7 +265,8 @@ public static class EnvironmentPreflight
                 !shipped.TryGetValue(name, out var available))
             {
                 yield return new PreflightField(
-                    $"unlocks_{name}", ids.Count.ToString(CultureInfo.InvariantCulture), "not enumerated", false,
+                    $"unlocks_{name}", ids.Count.ToString(CultureInfo.InvariantCulture), "not enumerated",
+                    PreflightOutcome.Unavailable,
                     $"The recording names {ids.Count.ToString(CultureInfo.InvariantCulture)} {name} and this " +
                     "environment did not enumerate what it ships, so the requirement was not checked. An " +
                     "unchecked requirement reported as met is the answer this project exists to prevent.");
@@ -253,17 +278,23 @@ public static class EnvironmentPreflight
                 ? string.Empty
                 : $" Missing, for example: {string.Join(", ", missing.Take(MissingSampleLimit))}.";
 
+            // How many of the ids the recording names this build has, not how many it
+            // ships in total. The same shape the completeness arm reports - what this
+            // environment has, of what is needed - so one row template says both
+            // honestly; "85 of 56" is a true pair of numbers and not a sentence.
+            // What this build ships in total is ./scripts/arbiter preflight
+            // --shipped-ids, which is where a whole enumeration belongs.
             yield return new PreflightField(
                 $"unlocks_{name}",
                 ids.Count.ToString(CultureInfo.InvariantCulture),
-                available.Count.ToString(CultureInfo.InvariantCulture),
-                missing.Count == 0,
+                (ids.Count - missing.Count).ToString(CultureInfo.InvariantCulture),
+                missing.Count == 0 ? PreflightOutcome.Met : PreflightOutcome.Unavailable,
                 missing.Count == 0
                     ? null
                     : $"This build does not ship {missing.Count.ToString(CultureInfo.InvariantCulture)} of the " +
                       $"{ids.Count.ToString(CultureInfo.InvariantCulture)} {name} the recording was played " +
                       $"with, so the unlock state it was generated against cannot be built here and the same " +
-                      $"seed produces a different run.{sample} {UnlockRemediation}");
+                      $"seed produces a different run.{sample} {ContentNotShipped}");
         }
 
         // Reported rather than compared: the state is constructed from the recording's
@@ -282,6 +313,12 @@ public static class EnvironmentPreflight
     /// Asked of the game, act by act, rather than inferred from the category counts:
     /// a shortfall of one act is invisible in a total, and it is the one shortfall
     /// that changes every fight in the run.
+    ///
+    /// Two failures, and they are not the same failure. An act the game reports locked
+    /// is a prerequisite somebody can go and meet. A state that could not be built at
+    /// all leaves the question unasked, and no amount of playing answers it - so it is
+    /// <see cref="PreflightOutcome.Unavailable"/> and it names the reading's own
+    /// shortfall rather than pointing at a row it assumes is above it.
     /// </summary>
     private static PreflightField EvaluateActUnlocks(
         EnvironmentIdentity expected, LocalPrerequisites actual)
@@ -289,12 +326,14 @@ public static class EnvironmentPreflight
         var wanted = string.Join(", ", expected.Acts.Value);
         if (actual.LockedActs is not { } locked)
         {
+            var cause = actual.UnlockStateShortfall is { Length: > 0 } shortfall
+                ? $" {shortfall}"
+                : string.Empty;
             return new PreflightField(
-                "acts_unlocked", wanted, "not checked", false,
+                "acts_unlocked", wanted, "not checked", PreflightOutcome.Unavailable,
                 "The unlock state a run here would be generated against could not be built, so the game was " +
-                "never asked which of these acts it leaves locked. An unchecked requirement reported as met " +
-                "is the answer this project exists to prevent; the requirement this environment cannot meet " +
-                "is reported above.");
+                $"never asked which of these acts it leaves locked.{cause} An unchecked requirement reported " +
+                $"as met is the answer this project exists to prevent. {ContentNotShipped}");
         }
 
         if (locked.Count == 0)

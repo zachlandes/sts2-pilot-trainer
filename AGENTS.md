@@ -122,8 +122,8 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, 133 of
-`Sts2PilotTrainer.Arbiter.Tests`' 183 tests skip and the job still reports success.
+**What CI cannot run is recorded by name.** On a runner without the game, 135 of
+`Sts2PilotTrainer.Arbiter.Tests`' 201 tests skip and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts that skipped set against
 `scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
 one, or deleting one fails CI until the list is regenerated with `--update` in the
@@ -136,7 +136,10 @@ Both change every fight in a run while leaving the map identical.
 The document also owns the distinction between a runtime reading and an explicitly supplied headless progress model.
 `LocalEnvironment` owns the v0.111.0 adapter, `EnvironmentPreflight` owns the game-free rules, and neither path writes.
 What a mod *says* about itself and what it *did* are two readings, not one: `HarmonyRoster` takes the second from Harmony's own registry, the recorder captures it into `environment.mods.patch_roster`, and the preflight judges it beside the declaration rule rather than in place of it.
-Every prerequisite it refuses is remediated by playing the game.
+**A refused prerequisite is an errand or a statement, and `PreflightField.Outcome` is where that is decided once.**
+Most are errands - `NotMet`, carrying `UnlockRemediation`, remediated by playing the game.
+A native recording's `exact` unlock state names ids this build either ships or does not, and a build that does not is `Unavailable`, carrying `ContentNotShipped`: no play adds content a build has not got, so an errand there is an instruction that can never be carried out.
+Every surface projects that outcome and none re-derives it - the command line's third mark, the eligibility screen's third row state and its headline without "yet" - and where the state could not be built at all, `LocalPrerequisites.UnlockStateShortfall` carries the engine's own reason beside the null `LockedActs` rather than leaving the absence to be read as a locked act.
 Do not add a path that edits a save, a profile, an unlock, a build or a game mode.
 
 **Read [docs/comparison-direction.md](docs/comparison-direction.md) before changing

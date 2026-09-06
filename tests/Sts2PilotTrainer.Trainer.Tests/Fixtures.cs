@@ -68,6 +68,55 @@ internal static class Fixtures
         };
     }
 
+    /// <summary>
+    /// A reading taken under an unlock state this build cannot build: the exact state
+    /// a native recording names an id for that is not in this install.
+    ///
+    /// The whole state is unanswerable from there, which is why the categories are
+    /// empty and the act question was never asked. What
+    /// <c>LocalEnvironment.ReadPrerequisites</c> produces for a recording this build
+    /// cannot reproduce.
+    /// </summary>
+    internal static LocalPrerequisites UnbuildablePrerequisites() =>
+        Prerequisites() with
+        {
+            Unlocks = new UnlockInventory
+            {
+                Origin = "the recorded player's own unlock state, captured by the recorder and supplied to this run",
+                FromPlayerProfile = false,
+                Categories = [],
+                ShippedIds = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                {
+                    ["epochs"] = ["EPOCH.ONE"],
+                    ["encounters_seen"] = ["ENCOUNTER.ONE"],
+                },
+            },
+            LockedActs = null,
+            UnlockStateShortfall =
+                "This build does not ship 1 of the 2 epoch id(s) the recording was played with, so the unlock " +
+                "state it was generated against cannot be built here.",
+            ProfileAscensionCeiling = null,
+        };
+
+    /// <summary>The same run as a recording this project's own recorder made: its
+    /// unlock requirement is the state itself rather than a claim of completeness,
+    /// which is the only requirement a build can fail to be able to satisfy at
+    /// all.</summary>
+    internal static EnvironmentIdentity ExactIdentity(
+        IReadOnlyList<string>? epochs = null, IReadOnlyList<string>? encounters = null) => Identity() with
+    {
+        Unlocks = Fact<UnlockRequirement>.Captured(
+            UnlockRequirement.Exact(
+                "read out of the running game by the recorder at run start",
+                new UnlockStateInventory
+                {
+                    Epochs = epochs ?? ["EPOCH.ONE", "EPOCH.TWO"],
+                    EncountersSeen = encounters ?? ["ENCOUNTER.ONE"],
+                    Runs = 11,
+                }),
+            FactEvidence.AtActionOrdinal(0)),
+    };
+
     internal static LocalRunReading Run(string? seed = null, int ascension = 10, string? character = null) =>
         new()
         {
@@ -130,9 +179,10 @@ internal static class Fixtures
     internal static EligibilityScreen Screen(
         LocalPrerequisites? prerequisites = null,
         LocalRunReading? run = null,
-        bool fightOffered = false)
+        bool fightOffered = false,
+        EnvironmentIdentity? identity = null)
     {
-        var recording = Recording();
+        var recording = Recording(identity);
         return EligibilityScreen.For(
             recording,
             EnvironmentPreflight.LiveGame(recording.Environment, prerequisites ?? Prerequisites(), run),

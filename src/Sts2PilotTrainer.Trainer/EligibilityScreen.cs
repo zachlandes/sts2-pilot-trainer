@@ -4,23 +4,28 @@ using Sts2PilotTrainer.Replay;
 namespace Sts2PilotTrainer.Trainer;
 
 /// <summary>
-/// Whether one row's requirement is met. Two states, because a row that a player
-/// can act on has to say yes or no; anything a gate could not measure is not a row,
-/// it is a refusal.
+/// One line of the eligibility screen: what is required, what this game answered,
+/// and - when it did not answer yes - the engine's own sentence, verbatim.
+///
+/// The state is the gate's own <see cref="PreflightOutcome"/> and not a second
+/// vocabulary beside it. A row is a projection of one rule's verdict, so a row that
+/// could disagree with the rule it draws is the whole class of defect this screen is
+/// written to make impossible - and a third row state invented here, mapped from a
+/// bool, would be exactly that.
 /// </summary>
-public enum RequirementState
+public sealed record EligibilityRow(string Label, PreflightOutcome State, string? Note = null)
 {
-    Met,
-    NotMet,
-}
+    public bool Met => State == PreflightOutcome.Met;
 
-/// <summary>
-/// One line of the eligibility screen: what is required, whether this game has it,
-/// and - when it does not - the engine's own sentence about what to do, verbatim.
-/// </summary>
-public sealed record EligibilityRow(string Label, RequirementState State, string? Note = null)
-{
-    public bool Met => State == RequirementState.Met;
+    /// <summary>
+    /// Whether this row is something the player can go and do.
+    ///
+    /// The distinction the screen is drawn from. A locked act and a missing ascension
+    /// are errands; a build that does not ship the content the recording names is a
+    /// statement, and drawing the two the same way told somebody to go and unlock
+    /// content that does not exist in their game.
+    /// </summary>
+    public bool Actionable => State == PreflightOutcome.NotMet;
 }
 
 /// <summary>
@@ -33,6 +38,12 @@ public sealed record EligibilityRow(string Label, RequirementState State, string
 /// is that field's own diagnostic passed through unchanged. A refusal the screen
 /// has no row for is still shown - as its sentence - because a gate that failed and
 /// said nothing is the failure mode this project exists to prevent.
+///
+/// A row therefore has three states and not two, because a gate has three. Met, an
+/// errand, and a plain statement that this build cannot supply what the recording
+/// names: the third is the one a player cannot act on, and collapsing it into the
+/// second is how a screen ends up telling somebody to go and unlock content that is
+/// not in their game.
 ///
 /// Which reading it is handed decides what every row is about, and the caller owns
 /// that choice rather than this file. A host that constructs the run hands it the
@@ -80,9 +91,20 @@ public sealed record EligibilityScreen(
     private const string AscensionField = "ascension_unlocked";
     private const string UnlockCategoryPrefix = "unlocks_";
 
-    /// <summary>The one unlock field that is about the manifest's request rather than
-    /// about a category of content, so it has no "n of m" row to live in.</summary>
+    /// <summary>
+    /// The two unlock fields that are not a category of content, so neither has an
+    /// "n of m" row to live in.
+    ///
+    /// The requirement names what the manifest asked for. The run count is a value an
+    /// exact state is built from and is reported rather than compared - nothing about
+    /// this installation has to match it - so a row for it says "Runs: supplied to the
+    /// run of 11", which is not a requirement and not a sentence. The report keeps
+    /// both; the screen states requirements only.
+    /// </summary>
     private const string UnlockRequirementField = "unlocks_requirement";
+
+    /// <inheritdoc cref="UnlockRequirementField"/>
+    private const string UnlockRunsField = "unlocks_runs";
 
     public static EligibilityScreen For(
         ReplayManifest recording, LivePreflight preflight, bool fightOffered = false)
@@ -103,13 +125,11 @@ public sealed record EligibilityScreen(
         foreach (var field in fields)
         {
             if (!field.Field.StartsWith(UnlockCategoryPrefix, StringComparison.Ordinal)) continue;
-            if (field.Field == UnlockRequirementField) continue;
+            if (field.Field is UnlockRequirementField or UnlockRunsField) continue;
             claimed.Add(field.Field);
             var category = CategoryLabel(field.Field[UnlockCategoryPrefix.Length..]);
             rows.Add(new EligibilityRow(
-                $"{category}: {field.Actual} of {field.Expected}",
-                field.Matches ? RequirementState.Met : RequirementState.NotMet,
-                field.Diagnostic));
+                $"{category}: {field.Actual} of {field.Expected}", field.Outcome, field.Diagnostic));
         }
 
         AddActRows(rows, claimed, fields, expected, preflight.Reading);
@@ -124,18 +144,23 @@ public sealed record EligibilityScreen(
             .OfType<string>()
             .ToList();
 
-        // Unmet rows first, in the order the gates asked them; met rows keep their
-        // order behind. The screen is read by somebody who wants to know what to go
-        // and play, and the thing they have to act on should not be below whatever
-        // already passed. Nothing is hidden and no row changes: a row that carries a
-        // qualifier still carries it, wherever it lands.
-        List<EligibilityRow> ordered = [.. rows.Where(row => !row.Met), .. rows.Where(row => row.Met)];
+        // Three tiers, in the order the gates asked them within each. What this build
+        // cannot supply comes first, because it decides the answer and reading a list
+        // of errands above it would waste somebody's evening; then the errands; then
+        // what already passed. Nothing is hidden and no row changes: a row that
+        // carries a qualifier still carries it, wherever it lands.
+        List<EligibilityRow> ordered =
+        [
+            .. rows.Where(row => row.State == PreflightOutcome.Unavailable),
+            .. rows.Where(row => row.Actionable),
+            .. rows.Where(row => row.Met),
+        ];
 
         return new EligibilityScreen(
             Title: TrainerCopy.Name,
             Subtitle: RecordingIdentity.Subtitle(recording),
             RecordingLine: TrainerCopy.RecordingLine(expected.BuildVersion.Value, expected.BuildDateUtc.Value),
-            Headline: preflight.Matches ? TrainerCopy.PassHeadline : TrainerCopy.FailHeadline,
+            Headline: HeadlineFor(preflight),
             Eligible: preflight.Matches,
             Rows: ordered,
             Refusals: refusals,
@@ -148,6 +173,24 @@ public sealed record EligibilityScreen(
         {
             FightOffered = fightOffered,
         };
+    }
+
+    /// <summary>
+    /// The one sentence above the rows, and which of the three it is.
+    ///
+    /// A single unavailable field decides it, however many errands sit beside it: the
+    /// player could run every one of those errands and this build would still not be
+    /// able to play the recording, so the headline that says "yet" would be a promise
+    /// nothing can keep. The fields are asked rather than the rows, because a gate
+    /// this screen has no row shape for is still a gate that failed.
+    /// </summary>
+    private static string HeadlineFor(LivePreflight preflight)
+    {
+        if (preflight.Matches) return TrainerCopy.PassHeadline;
+
+        return preflight.Fields.Any(field => field.Outcome == PreflightOutcome.Unavailable)
+            ? TrainerCopy.UnavailableHeadline
+            : TrainerCopy.FailHeadline;
     }
 
     private static void AddRow(
@@ -167,7 +210,7 @@ public sealed record EligibilityScreen(
         claimed.Add(fieldName);
         rows.Add(new EligibilityRow(
             label(field),
-            field.Matches ? RequirementState.Met : RequirementState.NotMet,
+            field.Outcome,
             note is null ? field.Diagnostic : note(field) ?? field.Diagnostic));
     }
 
@@ -179,6 +222,13 @@ public sealed record EligibilityScreen(
     /// one generates different content from the same seed behind an identical map.
     /// Which of them this environment is missing comes from the same reading the
     /// gate judged, never from parsing the gate's own sentence back apart.
+    ///
+    /// Splitting the gate's one verdict into rows is a projection and stays one: the
+    /// gate decides whether the acts were asked about at all, and the reading is
+    /// consulted only where it says they were. Turning the unasked case into a locked
+    /// act - which is what a missing answer read as "locked" amounts to - is a claim
+    /// nobody measured, and it is the claim that sent a player off to unlock an act
+    /// their build does not ship.
     /// </summary>
     private static void AddActRows(
         List<EligibilityRow> rows,
@@ -191,13 +241,30 @@ public sealed record EligibilityScreen(
         if (field is null) return;
 
         claimed.Add(ActsField);
+        var asked = field.Outcome != PreflightOutcome.Unavailable ? reading.LockedActs : null;
+
+        // Said once where it is about the state rather than about an act. A locked act
+        // is a fact about that act and its row carries the sentence; a question that
+        // was never asked is one fact about the whole reading, and repeating it under
+        // every act would print the same paragraph three times to say it.
+        var explained = false;
         foreach (var act in expected.Acts.Value)
         {
-            var locked = reading.LockedActs?.Contains(act, StringComparer.Ordinal) ?? true;
-            rows.Add(new EligibilityRow(
-                $"Act: {ModelIdNames.Display(act)} unlocked",
-                locked ? RequirementState.NotMet : RequirementState.Met,
-                locked ? field.Diagnostic : null));
+            var state = asked is not { } locked
+                ? PreflightOutcome.Unavailable
+                : locked.Contains(act, StringComparer.Ordinal)
+                    ? PreflightOutcome.NotMet
+                    : PreflightOutcome.Met;
+
+            var note = state switch
+            {
+                PreflightOutcome.Met => null,
+                PreflightOutcome.NotMet => field.Diagnostic,
+                _ => explained ? null : field.Diagnostic,
+            };
+
+            explained |= state == PreflightOutcome.Unavailable;
+            rows.Add(new EligibilityRow($"Act: {ModelIdNames.Display(act)} unlocked", state, note));
         }
     }
 

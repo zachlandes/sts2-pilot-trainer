@@ -187,11 +187,29 @@ internal static partial class Commands
             ? PlayerProgress.Parse(asked)
             : defaultProgress ?? PlayerProgress.AllUnlocked;
 
+    /// <summary>
+    /// One line per rule, with its verdict in the first column.
+    ///
+    /// Three marks because there are three verdicts, all the same width so the rows
+    /// stay a column. <c>FAIL</c> is a shortfall somebody can go and fix; <c>MISS</c>
+    /// is one nobody can - this build does not ship what the recording names, or the
+    /// question could not be asked because of that - and the sentence under it says
+    /// which. Printing both as FAIL is what let a refusal carry an instruction that
+    /// could never be carried out, so a fourth outcome refuses here rather than
+    /// borrowing one of these three marks.
+    /// </summary>
     private static void PrintFields(PreflightResult result)
     {
         foreach (var field in result.Fields)
         {
-            var mark = field.Matches ? "ok  " : "FAIL";
+            var mark = field.Outcome switch
+            {
+                PreflightOutcome.Met => "ok  ",
+                PreflightOutcome.NotMet => "FAIL",
+                PreflightOutcome.Unavailable => "MISS",
+                _ => throw new ManifestException($"This report has no mark for outcome '{field.Outcome}'."),
+            };
+
             Console.WriteLine($"  {mark} {field.Field,-22} manifest={field.Expected,-30} local={field.Actual}");
             if (!field.Matches) Console.WriteLine($"       {field.Diagnostic}");
         }
