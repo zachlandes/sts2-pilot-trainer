@@ -63,18 +63,23 @@ public sealed record RunProgress
     /// The fight "Continue" offers, or null when the recording has none left.
     ///
     /// The first fight after the last one played, which is the design's own
-    /// definition, and fight 1 for a recording nobody has played from. It deliberately
-    /// does not fill gaps: a player who skipped ahead to fight 5 asked to be at
-    /// fight 5, and offering them fight 2 next would be the surface disagreeing with
-    /// what they did. Past the last fight there is nothing to continue to and this
-    /// answers null rather than naming a fight the recording does not have.
+    /// definition, and the recording's first fight for one nobody has played from. It
+    /// deliberately does not fill gaps: a player who skipped ahead to fight 5 asked to
+    /// be at fight 5, and offering them fight 2 next would be the surface disagreeing
+    /// with what they did.
+    ///
+    /// <para><paramref name="fights"/> is the recording's proved fight ordinals rather
+    /// than how many of them there are. A fight the recording stopped inside has no
+    /// combat-start boundary and still spends an ordinal, so the proved set can have a
+    /// hole in it - and counting instead of reading would let this name a fight nothing
+    /// proves, which the entry would then refuse. Past the last proved fight there is
+    /// nothing to continue to and this answers null.</para>
     /// </summary>
-    public int? ContinueAt(string runId, int fightCount)
+    public int? ContinueAt(string runId, IReadOnlyList<int> fights)
     {
-        if (fightCount <= 0) return null;
         var played = PlayedFrom(runId);
-        var next = played.Count == 0 ? 1 : played[^1] + 1;
-        return next <= fightCount ? next : null;
+        var after = played.Count == 0 ? 0 : played[^1];
+        return fights.Where(fight => fight > after).Cast<int?>().FirstOrDefault();
     }
 
     /// <summary>

@@ -13,20 +13,19 @@ namespace Sts2PilotTrainer.Trainer;
 /// actions say a fight happened and the absence of a combat-start boundary says it
 /// never finished, which is the difference between "there was no fight here" and
 /// "there is no finished line to compare yours against".</param>
-/// <param name="IsRunStart">Whether this is where the run begins. It is a place to
-/// stand and it is the same place "Start the run over" already puts a player, which
-/// is why the floor row is refused rather than offered twice.</param>
+/// <param name="IsRunStart">Whether this is where the run begins. A run is not
+/// arrived at where it starts, so no floor entry proves it and there is no boundary
+/// to stand somebody at - which is why the floor row here is refused rather than
+/// offered.</param>
 public sealed record RunViewPosition(int Floor, int? Fight, bool Unfinished, bool IsRunStart);
 
-/// <summary>Which of the four offers a row is. Named rather than matched on its
-/// label, so the drawing never has to read a sentence to know what pressing it
-/// does.</summary>
+/// <summary>Which offer a row is. Named rather than matched on its label, so the
+/// drawing never has to read a sentence to know what pressing it does.</summary>
 public enum RunViewRowKind
 {
     PlayFromFight,
     PlayFromFloor,
     Continue,
-    StartOver,
 }
 
 /// <summary>
@@ -48,7 +47,7 @@ public sealed record RunViewRow(
 
 /// <summary>
 /// One run, opened: every place the recording proves a player can be stood, and the
-/// four ways in.
+/// ways in.
 ///
 /// It computes nothing about the run and judges nothing about how it was played.
 /// Which places exist is <see cref="ReplayManifest.Boundaries"/>' answer - the same
@@ -58,8 +57,8 @@ public sealed record RunViewRow(
 /// thing on this screen that is about the person rather than the run.
 ///
 /// <para>Every way in is the one entering verb. "Play from this fight", "Play from
-/// this floor", "Continue: play from fight N" and "Start the run over" are four
-/// boundaries of the same journey, not four features.</para>
+/// this floor" and "Continue: play from fight N" are three boundaries of the same
+/// journey, not three features.</para>
 /// </summary>
 public sealed record RunView(
     string RunId,
@@ -90,7 +89,7 @@ public sealed record RunView(
             recording.RunId,
             positions,
             selected,
-            RowsFor(recording, progress, selected, fights.Count),
+            RowsFor(recording, progress, selected, fights),
             played,
             fights.Count,
             LibraryCopy.FloorIsYours);
@@ -127,7 +126,7 @@ public sealed record RunView(
                 var fight = recording.Boundaries
                     .Where(boundary =>
                         boundary.IsCombatStart &&
-                        boundary.AfterSeq > entry.AfterSeq && boundary.AfterSeq <= until)
+                        boundary.AfterSeq >= entry.AfterSeq && boundary.AfterSeq < until)
                     .Select(boundary => boundary.Fight)
                     .OfType<int>()
                     .Order()
@@ -146,17 +145,22 @@ public sealed record RunView(
     /// Whether the recording fought between two points in its own history without ever
     /// reaching a boundary there.
     ///
+    /// The window is the floor's own, half-open at its far end: a floor entry and the
+    /// combat it opens carry the same <c>after_seq</c>, so a floor holds what happens
+    /// from its own entry up to the next floor's.
+    ///
     /// The combat verbs are <c>RecordedFightPlan</c>'s list rather than a second one:
     /// which actions happen inside a fight is one question with one owner, and a copy
     /// of it here would be a copy to keep in step.
     /// </summary>
     private static bool FoughtBetween(ReplayManifest recording, int afterSeq, int until) =>
         recording.Actions.Any(action =>
-            action.Seq > afterSeq && action.Seq <= until &&
+            action.Seq >= afterSeq && action.Seq < until &&
             RecordedFightPlan.IsCombatVerb(action.Verb));
 
     private static IReadOnlyList<RunViewRow> RowsFor(
-        ReplayManifest recording, RunProgress progress, RunViewPosition? selected, int fightCount)
+        ReplayManifest recording, RunProgress progress, RunViewPosition? selected,
+        IReadOnlyList<int> fights)
     {
         var rows = new List<RunViewRow>
         {
@@ -167,7 +171,7 @@ public sealed record RunView(
         // Absent rather than refused when the recording has nothing left to continue
         // to. There is no boundary behind it, and a row offering a fight the recording
         // does not have would be an offer nothing could honour.
-        if (progress.ContinueAt(recording.RunId, fightCount) is { } next)
+        if (progress.ContinueAt(recording.RunId, fights) is { } next)
         {
             rows.Add(new RunViewRow(
                 RunViewRowKind.Continue,
@@ -176,12 +180,6 @@ public sealed record RunView(
                 Enabled: true,
                 Fight: next));
         }
-
-        rows.Add(new RunViewRow(
-            RunViewRowKind.StartOver,
-            LibraryCopy.StartTheRunOver,
-            LibraryCopy.StartTheRunOverNote,
-            Enabled: true));
 
         return rows;
     }

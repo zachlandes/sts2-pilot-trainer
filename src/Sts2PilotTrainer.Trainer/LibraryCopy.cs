@@ -66,9 +66,6 @@ public static class LibraryCopy
     public static string NotShown(int count) =>
         $"{count.ToString(CultureInfo.InvariantCulture)} not shown";
 
-    /// <summary>The numeral's tooltip title.</summary>
-    public const string NotShownTooltipTitle = "Not shown";
-
     /// <inheritdoc cref="NotShown"/>
     public static string NotShownTooltip(string thisBuild) =>
         "Recorded on a build your game can't play, or as a multiplayer run. They come back when a verdict " +
@@ -88,7 +85,7 @@ public static class LibraryCopy
 
     /// <summary>What the player's own runs occupy, under the My runs list.</summary>
     public static string MyRunsFooter(int runs, string size) =>
-        $"{runs.ToString(CultureInfo.InvariantCulture)} runs · {size} on this computer";
+        $"{runs.ToString(CultureInfo.InvariantCulture)} runs, {size} on this computer";
 
     /// <summary>Where the count and the size are acted on. The footer carries no
     /// control of its own: removing runs is a setting, and two places to do it would
@@ -175,12 +172,6 @@ public static class LibraryCopy
               ordinal.ToString(CultureInfo.InvariantCulture)
             : $"Floor {floor.ToString(CultureInfo.InvariantCulture)}";
 
-    /// <summary>Plays the whole recording from its beginning.</summary>
-    public const string StartTheRunOver = "Start the run over";
-
-    /// <inheritdoc cref="StartTheRunOver"/>
-    public const string StartTheRunOverNote = "from run start, every choice shown";
-
     /// <summary>Why a floor offers no fight to play from.</summary>
     public const string NoFightOnThisFloor = "no fight starts on this floor";
 
@@ -188,8 +179,9 @@ public static class LibraryCopy
     /// finished recorded line for a player's own to be set beside.</summary>
     public const string FightNotFinished = "the recording does not reach the end of this fight";
 
-    /// <summary>Why the run's first floor is not a floor to play from: it is where
-    /// starting the run over already puts you.</summary>
+    /// <summary>Why the run's first floor is not a floor to play from: a run is not
+    /// arrived at where it begins, so there is no floor entry to stand anybody
+    /// at.</summary>
     public const string RunStartsHere = "the run starts here";
 
     /// <summary>Said on the floor rows, and only there. From a floor entry nothing is
@@ -200,7 +192,7 @@ public static class LibraryCopy
     // ── The run-history plate ──────────────────────────────────────────────
 
     /// <summary>A recorded run, whole, with nothing standing in its way.</summary>
-    public const string PlateRecorded = "Recorded · not saved, not counted";
+    public const string PlateRecorded = "Recorded, not saved, not counted";
 
     /// <summary>A recorded run the recorder lost sight of part way through.</summary>
     public const string PlateRecordedWithAGap = "Recorded, with a gap";

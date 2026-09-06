@@ -23,15 +23,19 @@ public sealed class RunBrowserTests
         DateTimeOffset? recorded = null) =>
         new(
             id, origin, "NaveGreed", "CHARACTER.IRONCLAD", 10, build, "SEED",
-            FightCount: 6, FloorCount: 12, Outcome: "won", multiplayer, verdict,
+            Fights: [1, 2, 3, 4, 5, 6], FloorCount: 12, Outcome: "won", multiplayer, verdict,
             FightsPlayed: [], recorded);
+
+    /// <summary>Every run actually drawn, in the order the groups draw them.</summary>
+    private static IReadOnlyList<LibraryRun> Listed(RunBrowser browser) =>
+        [.. browser.Groups.SelectMany(group => group.Runs)];
 
     [Fact]
     public void EveryRunWithAPassingVerdictIsInTheList()
     {
         var browser = RunBrowser.For(LibraryTab.Community, [Run("a"), Run("b")], Build);
 
-        Assert.Equal(["a", "b"], browser.Listed.Select(run => run.RunId).Order());
+        Assert.Equal(["a", "b"], Listed(browser).Select(run => run.RunId).Order());
         Assert.Equal(0, browser.NotShown);
         Assert.Null(browser.NotShownLabel);
     }
@@ -51,7 +55,7 @@ public sealed class RunBrowserTests
             [Run("shown"), Run("hidden", verdict: verdict, multiplayer: multiplayer)],
             Build);
 
-        Assert.Equal(["shown"], browser.Listed.Select(run => run.RunId));
+        Assert.Equal(["shown"], Listed(browser).Select(run => run.RunId));
         Assert.Equal(1, browser.NotShown);
         Assert.Equal("1 not shown", browser.NotShownLabel);
         Assert.Contains(Build, browser.NotShownTooltipBody, StringComparison.Ordinal);
@@ -66,7 +70,7 @@ public sealed class RunBrowserTests
     {
         var browser = RunBrowser.For(LibraryTab.Community, [Run("quiet", multiplayer: null)], Build);
 
-        Assert.Single(browser.Listed);
+        Assert.Single(Listed(browser));
     }
 
     [Fact]
@@ -76,10 +80,10 @@ public sealed class RunBrowserTests
 
         Assert.Equal(
             ["theirs"],
-            RunBrowser.For(LibraryTab.Community, runs, Build).Listed.Select(run => run.RunId));
+            Listed(RunBrowser.For(LibraryTab.Community, runs, Build)).Select(run => run.RunId));
         Assert.Equal(
             ["mine"],
-            RunBrowser.For(LibraryTab.MyRuns, runs, Build).Listed.Select(run => run.RunId));
+            Listed(RunBrowser.For(LibraryTab.MyRuns, runs, Build)).Select(run => run.RunId));
     }
 
     [Fact]
@@ -104,7 +108,7 @@ public sealed class RunBrowserTests
 
         var group = Assert.Single(browser.Groups);
         Assert.Null(group.Heading);
-        Assert.Equal("1 runs · 3 MB on this computer", browser.Footer);
+        Assert.Equal("1 runs, 3 MB on this computer", browser.Footer);
         Assert.Equal(LibraryCopy.MyRunsFooterAction, browser.FooterAction);
     }
 
@@ -127,7 +131,7 @@ public sealed class RunBrowserTests
 
         var browser = RunBrowser.For(LibraryTab.Community, [older, undated, newer], Build);
 
-        Assert.Equal(["newer", "older", "undated"], browser.Listed.Select(run => run.RunId));
+        Assert.Equal(["newer", "older", "undated"], Listed(browser).Select(run => run.RunId));
     }
 
     /// <summary>The shipped set and the curated set arrive in an order somebody chose,
@@ -145,7 +149,7 @@ public sealed class RunBrowserTests
             ],
             Build);
 
-        Assert.Equal(["second", "first"], browser.Listed.Select(run => run.RunId));
+        Assert.Equal(["second", "first"], Listed(browser).Select(run => run.RunId));
     }
 
     [Fact]
@@ -214,14 +218,18 @@ public sealed class RunBrowserTests
 
     /// <summary>
     /// The pips under a run's fight count are how many of its fights this player has
-    /// stood in, and a stale ordinal from a longer recording does not inflate them.
+    /// stood in. Counted against the ordinals the recording proves rather than against
+    /// how many there are, so neither a stale ordinal from a longer recording nor one
+    /// the recording spent on a fight it stopped inside puts a pip under a fight
+    /// nothing offers.
     /// </summary>
     [Fact]
     public void ThePipsCountOnlyFightsThisRecordingHas()
     {
-        var run = Run("a") with { FightsPlayed = [1, 3, 99] };
+        var run = Run("a") with { Fights = [1, 2, 4], FightsPlayed = [1, 3, 99] };
 
-        Assert.Equal(2, run.PlayedCount);
+        Assert.Equal(1, run.PlayedCount);
+        Assert.Equal(3, run.FightCount);
     }
 
     [Fact]

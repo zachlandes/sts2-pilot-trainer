@@ -31,14 +31,10 @@ public sealed record RunBrowser(
     IReadOnlyList<BrowserGroup> Groups,
     int NotShown,
     string? NotShownLabel,
-    string NotShownTooltipTitle,
     string NotShownTooltipBody,
     string? Footer,
     string? FooterAction)
 {
-    /// <summary>Every run actually drawn, in the order they are drawn.</summary>
-    public IReadOnlyList<LibraryRun> Listed => [.. Groups.SelectMany(group => group.Runs)];
-
     /// <summary>
     /// The browser for one tab.
     ///
@@ -74,7 +70,6 @@ public sealed record RunBrowser(
             groups,
             hidden,
             hidden > 0 ? LibraryCopy.NotShown(hidden) : null,
-            LibraryCopy.NotShownTooltipTitle,
             LibraryCopy.NotShownTooltip(thisBuild),
             mine && myRunsBytes is { } bytes
                 ? LibraryCopy.MyRunsFooter(listed.Count, LibraryCopy.Size(bytes))

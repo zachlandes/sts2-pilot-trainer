@@ -79,10 +79,7 @@ public sealed class RunViewTests
 
         Assert.All(view.Rows, row => Assert.True(row.Enabled));
         Assert.Equal(
-            [
-                RunViewRowKind.PlayFromFight, RunViewRowKind.PlayFromFloor,
-                RunViewRowKind.Continue, RunViewRowKind.StartOver,
-            ],
+            [RunViewRowKind.PlayFromFight, RunViewRowKind.PlayFromFloor, RunViewRowKind.Continue],
             view.Rows.Select(row => row.Kind));
         Assert.Equal(1, view.Rows[0].Fight);
     }
@@ -118,17 +115,69 @@ public sealed class RunViewTests
         Assert.Equal(LibraryCopy.FightNotFinished, row.Reason);
     }
 
-    /// <summary>Standing at the run's start and starting the run over are one place, so
-    /// only one of them is offered.</summary>
+    /// <summary>A run is not arrived at where it begins, so no floor entry proves it
+    /// and there is nowhere for the floor row to stand anybody.</summary>
     [Fact]
-    public void TheRunsFirstFloorRefusesTheFloorRowBecauseStartingOverIsTheSamePlace()
+    public void TheRunsFirstFloorRefusesTheFloorRowBecauseTheRunStartsThere()
     {
         var view = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 1);
 
         var floor = view.Rows.Single(entry => entry.Kind == RunViewRowKind.PlayFromFloor);
         Assert.False(floor.Enabled);
         Assert.Equal(LibraryCopy.RunStartsHere, floor.Reason);
-        Assert.True(view.Rows.Single(entry => entry.Kind == RunViewRowKind.StartOver).Enabled);
+    }
+
+    /// <summary>
+    /// The pairing every real recording has: a floor entry and the combat it opens
+    /// carry the same <c>after_seq</c>, because entering the room is the action that
+    /// starts the fight. A window that excluded the floor's own seq handed every fight
+    /// to the floor before the one it happened on - the run-start row offered fight 1,
+    /// and pressing "Play from this fight" on floor 2 stood a player in a fight on
+    /// another floor than the row named.
+    /// </summary>
+    [Fact]
+    public void AFightBelongsToTheFloorWhoseEntryCarriesTheSameSeq()
+    {
+        var recording = Recording(
+        [
+            ReplayBoundary.CombatStart(fight: 1, afterSeq: 1, Digest("fight-1")),
+            ReplayBoundary.FloorEntry(floor: 2, afterSeq: 1, Digest("floor-2")),
+            ReplayBoundary.CombatStart(fight: 2, afterSeq: 14, Digest("fight-2")),
+            ReplayBoundary.FloorEntry(floor: 3, afterSeq: 14, Digest("floor-3")),
+            ReplayBoundary.FloorEntry(floor: 4, afterSeq: 28, Digest("floor-4")),
+            ReplayBoundary.CombatStart(fight: 3, afterSeq: 32, Digest("fight-3")),
+            ReplayBoundary.FloorEntry(floor: 5, afterSeq: 32, Digest("floor-5")),
+        ]);
+
+        var positions = RunView.PositionsIn(recording);
+
+        Assert.Equal([1, 2, 3, 4, 5], positions.Select(position => position.Floor));
+        Assert.Equal([null, 1, 2, null, 3], positions.Select(position => position.Fight));
+        Assert.True(positions[0].IsRunStart);
+        Assert.False(positions[3].Unfinished);
+    }
+
+    /// <summary>
+    /// Continue names a fight a boundary proves, never the next number. A fight the
+    /// recording stopped inside spends an ordinal and proves nothing, so counting the
+    /// proved fights would have named one <c>RecordedFightPlan.For</c> then refuses.
+    /// </summary>
+    [Fact]
+    public void ContinueSkipsAnOrdinalNoBoundaryProves()
+    {
+        var recording = Recording(
+        [
+            ReplayBoundary.CombatStart(fight: 1, afterSeq: 5, Digest("one")),
+            ReplayBoundary.CombatStart(fight: 2, afterSeq: 9, Digest("two")),
+            ReplayBoundary.CombatStart(fight: 4, afterSeq: 20, Digest("four")),
+        ]);
+
+        var view = RunView.For(
+            recording, RunProgress.Empty.WithFightPlayed(Run, 1).WithFightPlayed(Run, 2));
+
+        var row = view.Rows.Single(entry => entry.Kind == RunViewRowKind.Continue);
+        Assert.Equal(4, row.Fight);
+        Assert.Equal(LibraryCopy.ContinueAtFight(4), row.Label);
     }
 
     [Fact]

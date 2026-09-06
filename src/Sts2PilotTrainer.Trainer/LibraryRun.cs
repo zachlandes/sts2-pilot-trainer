@@ -69,7 +69,7 @@ public sealed record LibraryRun(
     int Ascension,
     string RecordedBuild,
     string Seed,
-    int FightCount,
+    IReadOnlyList<int> Fights,
     int FloorCount,
     string? Outcome,
     bool? Multiplayer,
@@ -94,9 +94,20 @@ public sealed record LibraryRun(
     /// </summary>
     public bool Listed => Verdict == RunVerdict.Passed && Multiplayer != true;
 
-    /// <summary>How many of this run's fights this player has already played from.
-    /// The pips under the fight count.</summary>
-    public int PlayedCount => FightsPlayed.Count(fight => fight >= 1 && fight <= FightCount);
+    /// <summary>How many fights this run's recording proves a player can be stood at
+    /// the start of. The denominator under the row.</summary>
+    public int FightCount => Fights.Count;
+
+    /// <summary>
+    /// How many of this run's fights this player has already played from. The pips
+    /// under the fight count.
+    ///
+    /// Counted against the ordinals the recording proves rather than against how many
+    /// there are: a fight the recording stopped inside spends an ordinal and proves no
+    /// boundary, so the proved set can have a hole in it and a range test would put a
+    /// pip under a fight nothing offers.
+    /// </summary>
+    public int PlayedCount => FightsPlayed.Count(Fights.Contains);
 
     /// <summary>
     /// One run, read out of its recording.
@@ -121,7 +132,7 @@ public sealed record LibraryRun(
             recording.Environment.Ascension.Value,
             recording.Environment.BuildVersion.Value,
             recording.Environment.Seed.Value,
-            FightsIn(recording),
+            ProvedFights(recording),
             FloorsIn(recording),
             recording.Source.Native?.Outcome,
             multiplayer,
@@ -154,8 +165,6 @@ public sealed record LibraryRun(
             .Distinct()
             .Order(),
     ];
-
-    private static int FightsIn(ReplayManifest recording) => ProvedFights(recording).Count;
 
     private static int FloorsIn(ReplayManifest recording) => ProvedFloors(recording).Count;
 }

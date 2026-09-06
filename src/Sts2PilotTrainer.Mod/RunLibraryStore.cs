@@ -30,22 +30,6 @@ internal static class RunLibraryStore
     internal static string RecordingsDirectory => RunRecorder.RecordingsDirectory;
 
     /// <summary>
-    /// The file names under the recorder's directory that are finished recordings,
-    /// newest run first.
-    ///
-    /// A run still being played has a journal and no manifest, and is not a run anybody
-    /// can play from yet. Which files belong to which recording is
-    /// <see cref="RecordingLibrary.Index"/>'s, so nothing here parses a name.
-    /// </summary>
-    internal static IReadOnlyList<string> ManifestFileNames() =>
-        [
-            .. RecordingLibrary.Index(RunmobileStore.ListFileNames(RecordingsDirectory))
-                .SelectMany(recording => recording.FileNames)
-                .Where(name =>
-                    name.EndsWith(RecordingLibrary.ManifestExtension, StringComparison.Ordinal)),
-        ];
-
-    /// <summary>
     /// Every recording of the player's own that this build can read, newest run first,
     /// with when its run began.
     ///
@@ -70,8 +54,7 @@ internal static class RunLibraryStore
                 if (json is null) continue;
                 recordings.Add(new StoredRecording(
                     ManifestJson.Deserialize(json),
-                    new DateTimeOffset(indexed.StartedUtc, TimeSpan.Zero),
-                    RunmobileStore.SizeOf(entry)));
+                    new DateTimeOffset(indexed.StartedUtc, TimeSpan.Zero)));
             }
             catch (Exception ex)
             {
@@ -153,7 +136,6 @@ internal static class RunLibraryStore
 
 }
 
-/// <summary>One recording on this computer: what it says, when its run began, and what
-/// it costs.</summary>
-internal sealed record StoredRecording(
-    ReplayManifest Recording, DateTimeOffset? Started, long Bytes);
+/// <summary>One recording on this computer: what it says, and when its run
+/// began.</summary>
+internal sealed record StoredRecording(ReplayManifest Recording, DateTimeOffset? Started);

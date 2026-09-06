@@ -690,6 +690,22 @@ ribbons and the rows are reached by focus. `LibraryScreen` measures every positi
 the game's own nodes - the column starts under the popup's body label and steps by a
 row's own height - so a build that changes the popup's layout changes this with it.
 
+**The plate's marks are derived and not drawn.** `RunHistoryPlate` answers a `PlateMark`
+for every state - the record mark, the record mark muted, the warning mark - and nothing
+inside the client puts one on screen.
+Two separate reasons, and both are furniture rather than a decision about what a player
+is owed.
+The design's record mark belongs at a *run* row's end, and the game builds one
+`NMapPointHistoryEntry` per map point of the one run it is showing, so this patch has no
+per-run row to hang it on.
+The plate itself is the game's own popup, whose head is a plain string; a mark beside it
+would be a positioned control carrying art `TransportGlyphArt` does not have, because
+that family is the transport's and no record mark is in it.
+What holds the states apart meanwhile is that each one says what it is in words -
+"Recorded, not saved, not counted", "Recorded, with a gap", "Recorded on {build}".
+Drawing the marks is a change to `LibraryScreen` and `TransportGlyphArt` and to nothing
+behind either.
+
 **What the accepted design draws and this does not.** The browser's parchment tabs, the
 run strip, the deck tiles, the relic row and the portrait; and the run-history plate hung
 flat under the game's pane. Those are scene work against furniture this mod has no path

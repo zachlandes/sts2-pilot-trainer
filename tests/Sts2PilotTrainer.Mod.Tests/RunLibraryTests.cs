@@ -44,23 +44,26 @@ public sealed class RunLibraryStoreTests : IDisposable
     public void AnEmptyStoreHoldsNoRecordingsAndNoProgress()
     {
         Assert.Empty(RunLibraryStore.MyRecordings());
-        Assert.Empty(RunLibraryStore.ManifestFileNames());
         Assert.Equal(0, RunLibraryStore.MyRunsBytes());
         Assert.Empty(RunLibraryStore.ReadProgress().FightsPlayed);
     }
 
-    /// <summary>A journal is a run still being played. There is nothing to play from
-    /// until the manifest is written, so it is not in the list.</summary>
+    /// <summary>
+    /// A journal is a run still being played. There is nothing to play from until the
+    /// manifest is written, so it is not in the list - and it is still counted, because
+    /// the footer's number is a size of exactly what removing the player's runs would
+    /// remove.
+    /// </summary>
     [GameFact]
-    public void OnlyFinishedRecordingsAreListedAndAllOfThemAreSized()
+    public void OnlyFinishedRecordingsAreListedAndAllOfTheirFilesAreCounted()
     {
-        Write("native-a-20260906-120000.replay.json", ManifestJson.Serialize(Recording("native-a")));
+        var manifest = ManifestJson.Serialize(Recording("native-a"));
+        Write("native-a-20260906-120000.replay.json", manifest);
         Write("native-b-20260906-130000.journal.jsonl", "{}");
 
-        Assert.Equal(["native-a-20260906-120000.replay.json"], RunLibraryStore.ManifestFileNames());
         var recording = Assert.Single(RunLibraryStore.MyRecordings());
         Assert.Equal("native-a", recording.Recording.RunId);
-        Assert.True(RunLibraryStore.MyRunsBytes() > recording.Bytes);
+        Assert.True(RunLibraryStore.MyRunsBytes() > manifest.Length);
     }
 
     /// <summary>
@@ -92,7 +95,6 @@ public sealed class RunLibraryStoreTests : IDisposable
     {
         Write("my-notes.replay.json", ManifestJson.Serialize(Recording("my-notes")));
 
-        Assert.Empty(RunLibraryStore.ManifestFileNames());
         Assert.Empty(RunLibraryStore.MyRecordings());
         Assert.Equal(0, RunLibraryStore.MyRunsBytes());
     }

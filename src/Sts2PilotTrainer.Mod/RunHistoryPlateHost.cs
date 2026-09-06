@@ -34,6 +34,19 @@ namespace Sts2PilotTrainer.Mod;
 /// against furniture it cannot measure, so the same head, the same rows and the same
 /// reason are shown in the game's own modal instead. Every sentence and every rule is
 /// <see cref="RunHistoryPlate"/>'s.</para>
+///
+/// <para><b>The marks are derived and not drawn, and that is a gap rather than a
+/// decision.</b> <see cref="RunHistoryPlate.Mark"/> answers for every state and nothing
+/// here puts a glyph on screen, for two separate reasons. The design's record mark
+/// belongs at a <em>run</em> row's end and the game builds one
+/// <c>NMapPointHistoryEntry</c> per map point of one run, so this patch has no per-run
+/// row to hang it on. And the plate is drawn in the game's own popup, whose head is a
+/// plain string: a mark beside it would be a positioned control carrying art the mod's
+/// glyph family does not have - it is the transport's set, and no record mark is in it.
+/// Both are the same furniture-and-art gap the modal already stands in for, and the
+/// states stay distinguishable because every one of them says what it is in words.
+/// Drawing them is a change to <see cref="LibraryScreen"/> and to
+/// <c>TransportGlyphArt</c>, and to nothing behind either.</para>
 /// </summary>
 internal static class RunHistoryPlateHost
 {

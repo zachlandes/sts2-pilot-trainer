@@ -199,7 +199,6 @@ internal static class RunBrowserScreen
         {
             RunViewRowKind.PlayFromFloor when floor is { } atFloor =>
                 (IBoundaryPlan)FloorEntryPlan.For(recording, atFloor),
-            RunViewRowKind.StartOver => RecordedFightPlan.For(recording, fight: 1),
             _ when fight is { } atFight => RecordedFightPlan.For(recording, atFight),
             _ => throw new InvalidOperationException(
                 $"That row names no boundary of '{runId}', so there is nowhere to stand."),

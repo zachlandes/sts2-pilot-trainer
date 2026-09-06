@@ -15,10 +15,14 @@ public sealed class RunProgressTests
 {
     private const string Run = "native-SEED-20260906-120000";
 
+    /// <summary>A recording whose fights all finished, so every ordinal up to
+    /// <paramref name="count"/> has a combat-start boundary behind it.</summary>
+    private static IReadOnlyList<int> Fights(int count) => [.. Enumerable.Range(1, count)];
+
     [Fact]
     public void APlayerWhoHasPlayedNothingContinuesAtTheFirstFight()
     {
-        Assert.Equal(1, RunProgress.Empty.ContinueAt(Run, fightCount: 6));
+        Assert.Equal(1, RunProgress.Empty.ContinueAt(Run, Fights(6)));
         Assert.Empty(RunProgress.Empty.PlayedFrom(Run));
     }
 
@@ -27,7 +31,7 @@ public sealed class RunProgressTests
     {
         var progress = RunProgress.Empty.WithFightPlayed(Run, 1).WithFightPlayed(Run, 2);
 
-        Assert.Equal(3, progress.ContinueAt(Run, fightCount: 6));
+        Assert.Equal(3, progress.ContinueAt(Run, Fights(6)));
     }
 
     /// <summary>
@@ -39,7 +43,7 @@ public sealed class RunProgressTests
     {
         var progress = RunProgress.Empty.WithFightPlayed(Run, 5);
 
-        Assert.Equal(6, progress.ContinueAt(Run, fightCount: 8));
+        Assert.Equal(6, progress.ContinueAt(Run, Fights(8)));
         Assert.Equal([5], progress.PlayedFrom(Run));
     }
 
@@ -48,8 +52,8 @@ public sealed class RunProgressTests
     {
         var progress = RunProgress.Empty.WithFightPlayed(Run, 3);
 
-        Assert.Null(progress.ContinueAt(Run, fightCount: 3));
-        Assert.Null(RunProgress.Empty.ContinueAt(Run, fightCount: 0));
+        Assert.Null(progress.ContinueAt(Run, Fights(3)));
+        Assert.Null(RunProgress.Empty.ContinueAt(Run, Fights(0)));
     }
 
     [Fact]
@@ -57,7 +61,21 @@ public sealed class RunProgressTests
     {
         var progress = RunProgress.Empty.WithFightPlayed(Run, 4);
 
-        Assert.Equal(1, progress.ContinueAt("some-other-run", fightCount: 9));
+        Assert.Equal(1, progress.ContinueAt("some-other-run", Fights(9)));
+    }
+
+    /// <summary>
+    /// A fight the recording stopped inside spends an ordinal and proves no boundary,
+    /// so the proved set has a hole in it. Continue names the next fight something
+    /// proves rather than the next number, which is a fight the entry would refuse.
+    /// </summary>
+    [Fact]
+    public void ContinueNamesAProvedFightRatherThanTheNextNumber()
+    {
+        var progress = RunProgress.Empty.WithFightPlayed(Run, 1).WithFightPlayed(Run, 2);
+
+        Assert.Equal(4, progress.ContinueAt(Run, [1, 2, 4]));
+        Assert.Null(progress.ContinueAt(Run, [1, 2]));
     }
 
     [Fact]
