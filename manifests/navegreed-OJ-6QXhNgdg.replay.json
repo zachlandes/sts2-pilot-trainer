@@ -1036,6 +1036,27 @@
       "note": "Everything the video shows at the moment the first combat begins, before any card is played."
     },
     {
+      "id": "floor-2-arrival",
+      "after_seq": 1,
+      "kind": "floor_entry",
+      "expect": {
+        "run.total_floor": {
+          "Value": "2",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 1 and the floor its boundary names"
+          }
+        },
+        "run.map_coord": {
+          "Value": "r1c3",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 1 and the floor its boundary names"
+          }
+        }
+      }
+    },
+    {
       "id": "after-hellraiser",
       "after_seq": 2,
       "kind": "mid_turn",
@@ -1424,6 +1445,27 @@
       "note": "The first fight's loot, once every counter has settled. Read from the map screen the player returns to rather than from the loot window, where gold is still counting up."
     },
     {
+      "id": "floor-3-arrival",
+      "after_seq": 14,
+      "kind": "floor_entry",
+      "expect": {
+        "run.total_floor": {
+          "Value": "3",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 14 and the floor its boundary names"
+          }
+        },
+        "run.map_coord": {
+          "Value": "r2c4",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 14 and the floor its boundary names"
+          }
+        }
+      }
+    },
+    {
       "id": "floor3-enchantment-done",
       "after_seq": 17,
       "kind": "mid_turn",
@@ -1598,6 +1640,27 @@
         }
       },
       "note": "Everything the video shows as the second transcribed fight begins. The enchanted Defend in the opening hand is what settles which of three identical Defends the event enchanted."
+    },
+    {
+      "id": "floor-4-arrival",
+      "after_seq": 18,
+      "kind": "floor_entry",
+      "expect": {
+        "run.total_floor": {
+          "Value": "4",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 18 and the floor its boundary names"
+          }
+        },
+        "run.map_coord": {
+          "Value": "r3c3",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 18 and the floor its boundary names"
+          }
+        }
+      }
     },
     {
       "id": "floor4-turn2-start",
@@ -2020,6 +2083,27 @@
         }
       },
       "note": "The boundary this history exists to reach: the two-enemy fight the 209-215 s window is inside, at its combat start. Everything a video can show about it is here - which is not everything there is. Each slug carries one status badge reading 5, drawn as an icon with no text, and the recording never hovers it. The count is legible and the power's identity is not, so combat.enemy.N.powers is deliberately absent from this checkpoint rather than filled in from the engine."
+    },
+    {
+      "id": "floor-5-arrival",
+      "after_seq": 37,
+      "kind": "floor_entry",
+      "expect": {
+        "run.total_floor": {
+          "Value": "5",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 37 and the floor its boundary names"
+          }
+        },
+        "run.map_coord": {
+          "Value": "r4c3",
+          "Source": "Inferred",
+          "Evidence": {
+            "note": "derived from the map move at action 37 and the floor its boundary names"
+          }
+        }
+      }
     },
     {
       "id": "floor5-turn2-start",

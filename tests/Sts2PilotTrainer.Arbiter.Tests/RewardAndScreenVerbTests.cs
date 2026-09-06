@@ -249,28 +249,49 @@ public class RewardAndScreenVerbTests
         var position = actions.Select((action, index) => (action.Seq, index))
             .ToDictionary(pair => pair.Seq, pair => pair.index);
 
+        // A variant that drops an action renumbers every action after it, so a seq
+        // that still exists can name a different decision than the one the manifest's
+        // checkpoints and boundaries were written about. Matching the decision rather
+        // than the number is what tells those two apart.
+        bool StillNamesTheSameDecision(int seq) =>
+            position.ContainsKey(seq) &&
+            manifest.Actions.FirstOrDefault(action => action.Seq == seq) is { } before &&
+            actions.First(action => action.Seq == seq) is { } after &&
+            after.Verb == before.Verb &&
+            after.Args.Count == before.Args.Count &&
+            after.Args.All(arg =>
+                before.Args.TryGetValue(arg.Key, out var was) &&
+                string.Equals(was, arg.Value, StringComparison.Ordinal));
+
         var checkpoints = manifest.Checkpoints
-            .Where(checkpoint => position.ContainsKey(checkpoint.AfterSeq))
+            .Where(checkpoint => StillNamesTheSameDecision(checkpoint.AfterSeq))
             .Select(checkpoint => checkpoint with
             {
                 Expect = checkpoint.Expect.ToDictionary(
                     pair => pair.Key,
-                    pair => pair.Value with
-                    {
-                        Evidence = FactEvidence.AtVideoTime(
-                            ActionTime(position[checkpoint.AfterSeq]) + 100, "test variant"),
-                    },
+                    // Only a reading taken off the video is put back on the ladder. A
+                    // floor arrival is derived from the map move rather than watched,
+                    // and its evidence is the reasoning that derived it - handing it a
+                    // timestamp would claim somebody read it at a moment nobody did.
+                    pair => pair.Value.Evidence?.VideoTimeMs is null
+                        ? pair.Value
+                        : pair.Value with
+                        {
+                            Evidence = FactEvidence.AtVideoTime(
+                                ActionTime(position[checkpoint.AfterSeq]) + 100, "test variant"),
+                        },
                     StringComparer.Ordinal),
             })
             .ToList();
 
         // Boundaries are dropped the same way checkpoints are, and for the same
         // reason: a boundary names a place in the history, and a variant that removed
-        // the action it names has no such place. Keeping one would fail every test
-        // here at ingestion for a reason that has nothing to do with the verb under
-        // test.
+        // or moved the action it names has no such place. Keeping one would fail every
+        // test here at ingestion for a reason that has nothing to do with the verb
+        // under test.
         var boundaries = manifest.Boundaries
-            .Where(boundary => boundary.AfterSeq == -1 || position.ContainsKey(boundary.AfterSeq))
+            .Where(boundary =>
+                boundary.AfterSeq == -1 || StillNamesTheSameDecision(boundary.AfterSeq))
             .ToList();
 
         var path = Path.Combine(TempDir(), "verbs.json");

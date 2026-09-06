@@ -1202,7 +1202,7 @@ Path-specific mode parity: ESTABLISHED for this history over every single modifi
 report: build/evidence/mode-discrimination.json
 manifest : navegreed-OJ-6QXhNgdg
 
-  pass  publication-source Publication evidence comes from a VOD, never an engine-generated fixture.
+  pass  publication-source Publication evidence comes from a VOD or from this project's own recorder, never an engine-generated fixture.
   pass  provenance       The recording is of the run it claims, from that run's start.
   pass  environment      The declared build and content hash match this machine, and the declared mode is supported.
   pass  game-mode        Engine evidence establishes the source mode or path-specific parity for every viable mode.
@@ -1211,6 +1211,7 @@ manifest : navegreed-OJ-6QXhNgdg
   pass  evidence-binding Mode and BaseLib evidence bind to one build and reconstructed history.
   pass  reproduction     The reconstructed history replays through the real engine and matches every observed value.
   pass  covered-fight    The reproduced history covers a whole fight, from its combat start to the end of that fight.
+  pass  declared-boundaries Every boundary the recording declares is one the verified history reaches, at the action it names.
   pass  combat-boundary  The manifest's combat-start snapshot digest matches a fresh real-engine derivation.
   pass  determinism      Fresh processes produce byte-identical canonical state.
   pass  rejection        Every required corruption applies, and corrupted and incomplete histories are refused.

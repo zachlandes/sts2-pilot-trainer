@@ -29,6 +29,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "1",
               "run.is_game_over": "false",
+              "run.map_coord": "r0c3",
               "run.total_floor": "1"
             },
             "after": {
@@ -60,6 +61,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             }
           },
@@ -99,6 +101,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             },
             "after": {
@@ -130,6 +133,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             }
           },
@@ -171,6 +175,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             },
             "after": {
@@ -202,6 +207,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             }
           },
@@ -238,6 +244,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             },
             "after": {
@@ -269,6 +276,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             }
           },
@@ -308,6 +316,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             },
             "after": {
@@ -339,6 +348,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             }
           },
@@ -378,6 +388,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             },
             "after": {
@@ -409,6 +420,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             }
           },
@@ -445,6 +457,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             },
             "after": {
@@ -476,6 +489,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             }
           },
@@ -515,6 +529,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             },
             "after": {
@@ -546,6 +561,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             }
           },
@@ -582,6 +598,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             },
             "after": {
@@ -613,6 +630,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             }
           },
@@ -652,6 +670,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             },
             "after": {
@@ -674,6 +693,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "2",
               "run.is_game_over": "false",
+              "run.map_coord": "r1c3",
               "run.total_floor": "2"
             }
           }
@@ -714,6 +734,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "3",
               "run.is_game_over": "false",
+              "run.map_coord": "r2c4",
               "run.total_floor": "3"
             },
             "after": {
@@ -754,6 +775,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -803,6 +825,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -843,6 +866,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -891,6 +915,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -931,6 +956,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -979,6 +1005,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1019,6 +1046,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1064,6 +1092,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1104,6 +1133,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1153,6 +1183,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1193,6 +1224,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1242,6 +1274,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1273,6 +1306,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1309,6 +1343,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1340,6 +1375,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1379,6 +1415,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1410,6 +1447,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1449,6 +1487,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1480,6 +1519,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1516,6 +1556,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1547,6 +1588,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1586,6 +1628,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1617,6 +1660,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1656,6 +1700,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1687,6 +1732,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1726,6 +1772,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1757,6 +1804,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1793,6 +1841,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1824,6 +1873,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1863,6 +1913,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1894,6 +1945,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           },
@@ -1933,6 +1985,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             },
             "after": {
@@ -1955,6 +2008,7 @@
               "player.relics": "RELIC.BURNING_BLOOD|RELIC.LEAFY_POULTICE",
               "run.act_floor": "4",
               "run.is_game_over": "false",
+              "run.map_coord": "r3c3",
               "run.total_floor": "4"
             }
           }

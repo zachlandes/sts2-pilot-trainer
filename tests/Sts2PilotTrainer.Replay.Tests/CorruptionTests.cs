@@ -235,6 +235,37 @@ public class CorruptionTests
     }
 
     /// <summary>
+    /// A control that walks somewhere else leaves a history the validator still reads.
+    ///
+    /// The arrival a floor_entry is proved by is derived from the map move, so a
+    /// control that rewrites the move has to leave the derivation reading the move it
+    /// now makes. One that did not would be refused as a malformed manifest before the
+    /// engine saw it, and a control the arbiter never replays proves nothing.
+    /// </summary>
+    [Fact]
+    public void WalkingToADifferentNodeRederivesTheArrivalItArrivesAt()
+    {
+        var before = FloorArrival.WithArrivalCheckpoints(Playable() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+        Assert.True(ManifestValidator.Validate(before).IsValid, ManifestValidator.Validate(before).Describe());
+
+        var after = Corruption.All.Single(control => control.Name == "move-to-a-different-node").Apply(before);
+
+        var result = ManifestValidator.Validate(after);
+        Assert.True(result.IsValid, result.Describe());
+        Assert.Equal(
+            "r1c1",
+            after.Checkpoints.Single(checkpoint => checkpoint.Id == "floor-2-arrival")
+                .Expect["run.map_coord"].Value);
+    }
+
+    /// <summary>
     /// Every kind of decision the driver can apply has a control aimed at it. A verb
     /// that nothing corrupts is a verb whose rejection has never been demonstrated,
     /// and this is what stops the next verb from arriving without one.

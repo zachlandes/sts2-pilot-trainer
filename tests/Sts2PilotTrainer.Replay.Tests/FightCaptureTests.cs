@@ -13,6 +13,29 @@ public sealed class FightCaptureTests
     private const string Digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
     /// <summary>
+    /// A recorder that sampled where the run stood on the map is one whose floor
+    /// arrivals a player can be stood on: <see cref="FloorEntryPlan.RequiredBoundaryFields"/>
+    /// is what entering a floor demands of a recording, and a filter that dropped
+    /// either field would write recordings nobody could enter a floor of.
+    /// </summary>
+    [Fact]
+    public void SamplingKeepsEveryFieldAFloorArrivalIsProvedBy()
+    {
+        var sample = ReplayTrace.Sample(new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["run.total_floor"] = "2",
+            ["run.map_coord"] = "r1c3",
+            ["run.act_index"] = "0",
+        });
+
+        Assert.All(
+            FloorEntryPlan.RequiredBoundaryFields,
+            field => Assert.True(sample.ContainsKey(field), field));
+        Assert.Equal("r1c3", sample["run.map_coord"]);
+        Assert.False(sample.ContainsKey("run.act_index"));
+    }
+
+    /// <summary>
     /// The combat-start boundary is a step in the trace and is nobody's action, so
     /// "has anything been played" cannot be answered by counting steps.
     /// </summary>

@@ -249,11 +249,12 @@ engine-produced combat-start snapshot digest - with the profile unchanged either
 it arrived on that floor; without either it is the first fight.
 A floor arrival is proved by where the run stands, so `--floor` needs a checkpoint at
 that arrival naming `run.total_floor` and `run.map_coord`.
-The shipped video reconstruction above records no map coordinate anywhere - it was read
-off footage of fights - so its floor boundaries are declared but not enterable, and
-`--floor` refuses on it.
-The committed engine-generated whole-act history does carry them, and is what `--floor`
-is demonstrated on:
+No video shows a map coordinate, so where a reconstruction records none the arrival is
+derived from the map move its boundary names - the row and column that move carries are
+the coordinate - and marked as inferred for that reason.
+The shipped video reconstruction above carries one at each of its floor entries and
+`--floor` enters them; the committed engine-generated whole-act history carries them as
+engine-produced values, and is what `--floor` is demonstrated on:
 
 ```bash
 ./scripts/arbiter enter-fight src/Sts2PilotTrainer.Replay/Fixtures/synthetic-v0111-whole-act.replay.json --floor 5
@@ -279,6 +280,10 @@ retail's branch under this host. `validate` and
 reading somebody's evidence never edits it.
 It rewrites the manifest in place, or writes to `--out <path>`, which is written even when the input was already in this format, so a script that migrates and then reads its output never meets a missing file.
 `--derive-boundaries` additionally replays the run through the real engine and writes in every boundary the history passes - each fight's start, each floor's arrival and each turn - with the digest that replay produced, refusing if the history does not reproduce.
+It also writes the arrival checkpoint each floor entry needs, derived from the map move
+that boundary names, and does so before the replay as well as after - which is the one
+repair a recording written before the recorder sampled the coordinate has.
+A floor entry naming no map move is refused rather than repaired into existence.
 Like every command here that writes, it refuses a destination outside this repository.
 
 The full walkthrough, with commands and their real output, is in

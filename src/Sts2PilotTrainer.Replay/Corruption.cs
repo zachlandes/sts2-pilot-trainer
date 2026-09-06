@@ -625,7 +625,8 @@ public static class Corruption
             Args = WithArg(WithoutControls(move.Args), "column", move.Args[AlternativeColumn]),
             Note = "changed by a negative control: a different node on the same row",
         };
-        return manifest with { RunId = manifest.RunId + "+move-to-a-different-node", Actions = actions };
+        return FloorArrival.WithRederivedArrivals(
+            manifest with { RunId = manifest.RunId + "+move-to-a-different-node", Actions = actions });
     }
 
     /// <summary>

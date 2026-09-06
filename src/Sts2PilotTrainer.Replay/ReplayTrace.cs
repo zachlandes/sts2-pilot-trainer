@@ -56,6 +56,10 @@ public sealed record ReplayTrace
         "player.potions",
         "run.act_floor",
         "run.total_floor",
+        // Where on the map the run stands. A floor arrival is proved by the coordinate
+        // as well as the floor, so a recorder that sampled only the floor wrote
+        // recordings nobody could be stood on a floor of.
+        "run.map_coord",
         "run.is_game_over",
     ];
 
