@@ -662,6 +662,16 @@ floor identity a "play this fight" action would need - alongside its private
 ### Producing a recording, and checking it
 
 The recorder needs no setting up: it is on unless `settings.json` in the store says otherwise, and it attaches to every run the player starts or continues.
+There is no screen for that setting yet, so the file is the whole of the surface and it has to be written in full - the schema member included, because a file missing it is one this build cannot read:
+
+```json
+{"schema": "sts2-pilot-trainer/runmobile-settings/v1", "record_my_runs": false}
+```
+
+It goes beside the recordings, at `<the store>/settings.json`; step 6 below says where the store is.
+A file that is not there means recording is on.
+A file that is there and cannot be read - a schema this build does not know, a missing member, anything that is not this JSON - means recording is off, and `godot.log` says which file and why.
+That is the direction it fails in on purpose: the only thing this file can say is "off", so a recorder that carried on through a sentence it could not read would be recording without consent.
 
 1. `./scripts/protected-files.sh snapshot before.ledger`, so what the session changed can be measured rather than asserted.
 2. `./scripts/install-mod.sh`, then launch the game **through Steam** - `open "steam://rungameid/2868840"` or the library - because launched on its own the client cannot initialise Steam and stops on an error popup.

@@ -8,8 +8,8 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 ///
 /// There is no screen for it yet, so the file is the whole of the surface and its
 /// rules are the whole of the behaviour: an absent file is the default, a file this
-/// build cannot read is reported rather than guessed at, and what the player wrote is
-/// what happens.
+/// build cannot read means do not record rather than being guessed at, and what the
+/// player wrote is what happens.
 /// </summary>
 public sealed class RunmobileSettingsTests : IDisposable
 {
@@ -54,26 +54,38 @@ public sealed class RunmobileSettingsTests : IDisposable
     /// <summary>
     /// A settings file this build cannot read is not one it may guess at: a newer
     /// writer's <c>record_my_runs</c> could mean something this build does not know
-    /// about. It carries on with the defaults and says so rather than refusing to run,
-    /// because a recorder that stopped because of a settings file would be a worse
-    /// answer than one that told you it could not read it.
+    /// about. It records nothing and says so, because the only thing this file can
+    /// say is "off" and a recorder that recorded through a sentence it could not read
+    /// would be recording without consent.
     /// </summary>
     [Fact]
-    public void ASettingsFileFromAnotherBuildIsReportedRatherThanRead()
+    public void ASettingsFileFromAnotherBuildStopsTheRecorderRatherThanBeingRead()
     {
         RunmobileStore.Write(
             RunmobileSettings.FileName,
             """{"schema":"somebody-elses/settings/v9","record_my_runs":false}""");
 
-        Assert.True(RunmobileSettings.Read().RecordMyRuns);
+        Assert.False(RunmobileSettings.Read().RecordMyRuns);
+    }
+
+    /// <summary>
+    /// And so does the file a player writes by hand from the documentation without the
+    /// schema member, which is the shape this rule exists for.
+    /// </summary>
+    [Fact]
+    public void SoDoesOneMissingTheSchemaMember()
+    {
+        RunmobileStore.Write(RunmobileSettings.FileName, """{"record_my_runs":false}""");
+
+        Assert.False(RunmobileSettings.Read().RecordMyRuns);
     }
 
     [Fact]
-    public void SoIsOneThatIsNotJsonAtAll()
+    public void SoDoesOneThatIsNotJsonAtAll()
     {
         RunmobileStore.Write(RunmobileSettings.FileName, "record_my_runs = false");
 
-        Assert.True(RunmobileSettings.Read().RecordMyRuns);
+        Assert.False(RunmobileSettings.Read().RecordMyRuns);
     }
 
     /// <summary>The setting is in the store, like everything else this mod writes, so

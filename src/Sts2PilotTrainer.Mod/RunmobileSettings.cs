@@ -20,7 +20,8 @@ namespace Sts2PilotTrainer.Mod;
 /// It carries a schema string and refuses an unrecognised one, like every other file
 /// under <see cref="RunmobileStore"/>. A settings file this build cannot read is not
 /// a settings file it may guess at - a newer writer's <c>record_my_runs</c> could mean
-/// something this build does not know about.
+/// something this build does not know about - and the direction it fails in is off,
+/// because a file that is there is somebody having tried to say something.
 /// </summary>
 internal sealed record RunmobileSettings
 {
@@ -38,22 +39,39 @@ internal sealed record RunmobileSettings
     /// <summary>What a player who has never touched the file gets.</summary>
     internal static RunmobileSettings Default => new() { SchemaId = Schema, RecordMyRuns = true };
 
+    /// <summary>What a player whose file this build cannot read gets.</summary>
+    private static RunmobileSettings DoNotRecord => new() { SchemaId = Schema, RecordMyRuns = false };
+
     /// <summary>
     /// The settings this session runs under.
     ///
     /// An absent file is the default rather than a failure: nothing has been decided
-    /// yet, and refusing to run because a player has never opened a settings screen
-    /// would be a strange thing to do. A file that is there and unreadable is a
-    /// different case - somebody wrote something - so it is reported and the default
-    /// is used, because a recorder that silently ignored an "off" would be worse than
-    /// one that said it could not read it.
+    /// yet, and refusing to record because a player has never opened a settings screen
+    /// would be a strange thing to do. A file that is there and unreadable is the
+    /// opposite case and answers the opposite way - somebody wrote something, the one
+    /// thing they can write is an "off", and a recorder that recorded through a
+    /// sentence it could not read would be recording without consent. It says so in
+    /// the log either way.
     /// </summary>
     internal static RunmobileSettings Read()
     {
+        string? json;
         try
         {
-            if (RunmobileStore.Read(FileName) is not { } json) return Default;
+            json = RunmobileStore.Read(FileName);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not open {FileName}, so this session records nothing: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            return DoNotRecord;
+        }
 
+        if (json is null) return Default;
+
+        try
+        {
             var settings = ManifestJson.DeserializeRequired<RunmobileSettings>(json, "Runmobile settings");
             if (!string.Equals(settings.SchemaId, Schema, StringComparison.Ordinal))
             {
@@ -67,9 +85,9 @@ internal sealed record RunmobileSettings
         catch (Exception ex)
         {
             Log.Error(
-                $"[{RunmobileMod.ModId}] could not read {FileName}, carrying on with the defaults: " +
+                $"[{RunmobileMod.ModId}] could not read {FileName}, so this session records nothing: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
-            return Default;
+            return DoNotRecord;
         }
     }
 }

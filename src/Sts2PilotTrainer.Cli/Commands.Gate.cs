@@ -34,26 +34,30 @@ internal static partial class Commands
         var baseLibPath = Args.Value(args, "--baselib") ?? "build/parity/BaseLib.dll";
 
         // Which conditions apply is decided by where the recording came from, and only
-        // that. Two of them read a public video - the map it shows and the mode it
-        // implies - and a recording this project's own recorder made inside the
-        // player's game has no video for either to read. A third, the binding between
-        // the mode and BaseLib reports, is absent for the same reason once removed:
-        // the mode-discrimination probe returns without writing a report unless the
-        // source is a VOD, so there is no mode report for a native recording to bind
-        // to. All three are absent for that kind rather than passed vacuously: a
-        // condition reported as met is a claim somebody checked something.
+        // that. Four of them are absent for a recording this project's own recorder
+        // made inside the player's game, and they are absent for three different
+        // reasons, which are worth keeping apart because one of them is a weakness.
         //
-        // baselib-path is not one of them and runs for both kinds. Its probe replays
-        // the recorded history through the real engine against BaseLib.dll and reads
-        // no video observation, and a mod's own declaration that it does not affect
-        // gameplay is a self-report rather than a measurement.
+        // Two read a public video - the map a seed has to reproduce, and the mode an
+        // overlay implies - and there is no video. A third, the binding between the
+        // mode and BaseLib reports, needs a mode report, and the mode-discrimination
+        // probe writes none unless the source is a VOD.
         //
-        // Nothing weaker stands in for what is absent. What a video reading infers
-        // about the mode, the seed's map and the player's unlocks, a recorder read out
-        // of the running game and wrote down as captured facts, and the validator
-        // refuses a native recording whose start nobody witnessed or whose watch has a
-        // hole in it - which are the two things no replay could establish afterwards.
-        // Every engine condition below is the same for both kinds.
+        // The fourth, baselib-path, is different and is a weaker standard rather than
+        // an inapplicable one. Its probe measures reachability by replaying the history
+        // against BaseLib.dll and refuses any manifest that is not a VOD, so there is
+        // no measurement to be had here yet. What stands in its place for a native
+        // recording is the mod's own declaration that it does not affect gameplay,
+        // which EnvironmentPreflight reads off the loaded mod set. That is a
+        // self-report, not an engine measurement, and it is what a native gate rests on
+        // until the probe can replay a recorded history.
+        //
+        // Nothing else weaker stands in. What a video reading infers about the mode,
+        // the seed's map and the player's unlocks, a recorder read out of the running
+        // game and wrote down as captured facts, and the validator refuses a native
+        // recording whose start nobody witnessed or whose watch has a hole in it -
+        // which are the two things no replay could establish afterwards. Every engine
+        // condition below is the same for both kinds.
         var isNative = manifest.Source.Kind == "native";
         var conditions = new List<Condition>
         {
@@ -77,11 +81,10 @@ internal static partial class Commands
 
             if (environment.Passed)
             {
-                var modeReportPath = Path.Combine(outDir, "mode-discrimination.json");
-                Condition? modeCondition = null;
                 if (!isNative)
                 {
-                    modeCondition = Check("game-mode",
+                    var modeReportPath = Path.Combine(outDir, "mode-discrimination.json");
+                    var modeCondition = Check("game-mode",
                         "Engine evidence establishes the source mode or path-specific parity for every viable mode.",
                         SelfProcess.Run(
                             "mode-discrimination", manifestPath,
@@ -103,18 +106,15 @@ internal static partial class Commands
                             System.Globalization.CultureInfo.InvariantCulture),
                         "--game-mode", manifest.Environment.GameMode.Value,
                         "--out", outDir)));
-                }
 
-                var baseLibReportPath = Path.Combine(outDir, "baselib-reachability.json");
-                var baseLibCondition = Check("baselib-path",
-                    "The measured BaseLib behavior branch is unreachable in this exact reconstructed history.",
-                    SelfProcess.Run(
-                        "baselib-reachability", manifestPath, baseLibPath,
-                        "--out", baseLibReportPath));
-                conditions.Add(baseLibCondition);
+                    var baseLibReportPath = Path.Combine(outDir, "baselib-reachability.json");
+                    var baseLibCondition = Check("baselib-path",
+                        "The measured BaseLib behavior branch is unreachable in this exact reconstructed history.",
+                        SelfProcess.Run(
+                            "baselib-reachability", manifestPath, baseLibPath,
+                            "--out", baseLibReportPath));
+                    conditions.Add(baseLibCondition);
 
-                if (modeCondition is not null)
-                {
                     conditions.Add(modeCondition.Passed && baseLibCondition.Passed
                         ? CrossBindEvidence(modeReportPath, baseLibReportPath)
                         : new Condition(
@@ -193,14 +193,18 @@ internal static partial class Commands
                     "mod list. Each is a useful filter and none is evidence." +
                     (isNative
                         ? " This recording was made by this project's own recorder inside the player's game, " +
-                          "so the two conditions that read a public video are absent rather than met - there " +
-                          "is no video whose map a seed could reproduce or whose overlay could imply a mode - " +
-                          "and so is the binding between the mode and BaseLib reports, which needs the mode " +
-                          "report a video produces. The BaseLib condition is not among them and was applied: " +
-                          "it replays this history through the real engine and reads no video. What the " +
-                          "absent conditions establish for a video, the recorder read out of the running game " +
-                          "and recorded as captured facts, and the provenance condition refuses a recording " +
-                          "whose start nobody witnessed or whose watch has a hole in it."
+                          "so four conditions were not asked. Two read a public video and there is none: no " +
+                          "map a seed could be made to reproduce, and no overlay that could imply a mode. The " +
+                          "third, the binding between the mode and BaseLib reports, needs a mode report that " +
+                          "only a VOD produces. The fourth, baselib-path, was NOT EVALUATED because its probe " +
+                          "measures reachability by replaying a VOD manifest and refuses any other kind, so no " +
+                          "measurement of BaseLib's affected branch exists for this recording. What stood in " +
+                          "its place is WEAKER: the environment check accepted every loaded mod's own " +
+                          "declaration that it does not affect gameplay, which is a self-report rather than an " +
+                          "engine measurement. What the other three establish for a video, the recorder read " +
+                          "out of the running game and recorded as captured facts, and the provenance " +
+                          "condition refuses a recording whose start nobody witnessed or whose watch has a " +
+                          "hole in it."
                         : string.Empty),
                 conditions = conditions.Select(c => new
                 {
@@ -217,10 +221,11 @@ internal static partial class Commands
     /// <summary>
     /// The conditions nothing got as far as computing, reported as failures.
     ///
-    /// The video-only three are listed only for a kind that has them: a native
-    /// recording that fell over at its environment check has not failed a seed-topology
-    /// condition, because there is no video whose map a seed could reproduce.
-    /// baselib-path is not one of them and is listed for both kinds.
+    /// The four a native recording never asks are listed only for a kind that asks
+    /// them: a native recording that fell over at its environment check has not failed
+    /// a seed-topology condition, because there is no video whose map a seed could
+    /// reproduce, and it has not failed baselib-path, because the probe would refuse
+    /// its manifest.
     /// </summary>
     private static void AddSkippedEngineConditions(List<Condition> conditions, bool isNative)
     {
@@ -233,17 +238,12 @@ internal static partial class Commands
                     false),
                 new Condition("seed-topology",
                     "The manifest seed independently reproduces the map observed in the same VOD.", false),
+                new Condition("baselib-path",
+                    "The measured BaseLib behavior branch is unreachable in this exact reconstructed history.",
+                    false),
+                new Condition("evidence-binding",
+                    "Mode and BaseLib evidence bind to one build and reconstructed history.", false),
             ]);
-        }
-
-        conditions.Add(new Condition("baselib-path",
-            "The measured BaseLib behavior branch is unreachable in this exact reconstructed history.",
-            false));
-
-        if (!isNative)
-        {
-            conditions.Add(new Condition("evidence-binding",
-                "Mode and BaseLib evidence bind to one build and reconstructed history.", false));
         }
 
         conditions.AddRange(

@@ -473,12 +473,15 @@ same kind, without a video and without a transcriber.
   time, and the run's identity including the exact unlock state it was generated
   against, read out of the run itself rather than out of a profile that can change
   while it is being played. That is what makes S6's `exact` arm live.
-- `gate` gains a native arm. The two conditions that read a public video are absent
-  for a recording made inside the player's own game rather than reported as met, and so
-  is the binding between the mode and BaseLib reports, which needs a mode report only a
-  VOD produces; the artifact records why. Every condition that replays the history
-  through the real engine applies to both kinds, `baselib-path` included - its probe
-  replays the recorded history against BaseLib.dll and reads no video.
+- `gate` gains a native arm. Four conditions are absent for a recording made inside the
+  player's own game rather than reported as met, and the artifact records why for each.
+  Two read a public video; the third binds the mode and BaseLib reports and needs a mode
+  report only a VOD produces. The fourth, `baselib-path`, is the one that is a weaker
+  standard rather than an inapplicable one: its probe measures reachability by replaying
+  a VOD manifest and refuses any other kind, so a native run rests on the loaded mods'
+  own declaration that they do not affect gameplay - a self-report, said out loud in the
+  artifact. Teaching the probe to replay a recorded history is its own work. Every
+  condition that replays the history through the real engine applies to both kinds.
 
 **Runnable now:** the whole pure half. `dotnet test` exercises the capture, the
 journal, the continuity rule and the validator's acceptance of what the recorder

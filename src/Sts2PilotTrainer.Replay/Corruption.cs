@@ -129,8 +129,9 @@ public static class Corruption
             "anything a frame of the event screen shows.",
             EnchantADifferentCard)
         {
-            Requires = "a card marked on a screen - upgraded or enchanted, not removed - nominating another " +
-                       "copy of the same card",
+            Requires = "a card marked on a screen an option established to mark rather than remove opened - " +
+                       "the rest site's SMITH, or the Waterlogged Scriptorium's enchantment - nominating " +
+                       "another copy of the same card",
             AppliesTo = manifest => manifest.Actions.Any(
                 a => a.Verb == ActionVerb.SelectCardFromScreen &&
                      a.Args.ContainsKey(AlternativeOptionIndex) &&
@@ -424,10 +425,14 @@ public static class Corruption
     /// could tell them apart. A real recording nominated a shop removal and this
     /// control reported a failure that was its own nomination's, not the arbiter's.
     ///
-    /// Answered from a list of the openers whose screen marks the card rather than by
-    /// excluding the one removal opener seen so far: an opener not on the list is
-    /// declined, so a screen this project has not established the meaning of costs a
-    /// nomination rather than a false failure.
+    /// Answered from the specific option that opened the screen, not from the verb that
+    /// carried it: the same verb opens a screen that upgrades and a screen that purges,
+    /// and only the option says which. An option nobody has established is declined, and
+    /// declining is the cheap direction - a declined control leaves the run short of the
+    /// ten the gate requires and the recording is refused loudly for coverage with its
+    /// evidence artifact intact, where an option wrongly admitted corrupts a history
+    /// into an identical one and the gate then refuses a legitimate recording for a
+    /// reason that is not its fault.
     /// </summary>
     private static bool ChangesTheCardRatherThanRemovingIt(
         IReadOnlyList<ActionRecord> actions, ActionRecord pick)
@@ -445,22 +450,37 @@ public static class Corruption
             var earlier = actions[before];
             if (earlier.Verb == ActionVerb.SelectCardFromScreen) continue;
 
-            return OpenersWhoseScreenMarksTheCard.Contains(earlier.Verb);
+            return MarksTheCardItsScreenPicks(earlier);
         }
 
         return false;
     }
 
-    /// <summary>The decisions whose card screen marks the card it picks - a rest site's
-    /// upgrade and an event's enchantment, including the opening blessing's. A shop's
-    /// card removal, and any screen opened from inside a fight, are not among them.
+    /// <summary>
+    /// Whether this decision's card screen marks the card it picks.
+    ///
+    /// Two options are established from the game and nothing else is. The rest site's
+    /// <c>SMITH</c> upgrades the chosen card - the engine's own option id, which
+    /// <c>SyntheticFixtureGenerator</c> drives a real rest site with. The Waterlogged
+    /// Scriptorium's third option enchants two chosen cards, which the shipped
+    /// reconstruction demonstrates: the deck two floors later holds the marked copy
+    /// among unchanged ones.
     /// </summary>
-    private static readonly ActionVerb[] OpenersWhoseScreenMarksTheCard =
-    [
-        ActionVerb.ChooseNeowBlessing,
-        ActionVerb.ChooseEventOption,
-        ActionVerb.ChooseRestSiteOption,
-    ];
+    private static bool MarksTheCardItsScreenPicks(ActionRecord opener) => opener.Verb switch
+    {
+        ActionVerb.ChooseRestSiteOption =>
+            string.Equals(Argument(opener, "option_id"), RestSiteSmith, StringComparison.Ordinal),
+        ActionVerb.ChooseEventOption =>
+            string.Equals(Argument(opener, "event_id"), EnchantingEvent, StringComparison.Ordinal) &&
+            string.Equals(Argument(opener, "option_index"), EnchantingEventOption, StringComparison.Ordinal),
+        _ => false,
+    };
+
+    private const string RestSiteSmith = "SMITH";
+
+    private const string EnchantingEvent = "EVENT.WATERLOGGED_SCRIPTORIUM";
+
+    private const string EnchantingEventOption = "2";
 
     private static ReplayManifest EnchantADifferentCard(ReplayManifest manifest)
     {
@@ -470,10 +490,12 @@ public static class Corruption
                        a.Args.ContainsKey(AlternativeOptionIndex) &&
                        ChangesTheCardRatherThanRemovingIt(actions, a))
             ?? throw new ManifestException(
-                "enchant-a-different-card needs a SelectCardFromScreen that marks the card it picks - an " +
-                "upgrade or an enchantment - nominating another copy of the same card through " +
+                "enchant-a-different-card needs a SelectCardFromScreen opened by an option established to " +
+                $"mark the card it picks - the rest site's {RestSiteSmith}, or {EnchantingEvent} option " +
+                $"{EnchantingEventOption} - nominating another copy of the same card through " +
                 $"'{AlternativeOptionIndex}'. A screen that removes the card cannot serve: whichever " +
-                "identical copy goes, the deck left behind is the same one.");
+                "identical copy goes, the deck left behind is the same one, and an option nobody has " +
+                "established either way is declined rather than guessed at.");
 
         actions[actions.IndexOf(pick)] = pick with
         {
