@@ -158,7 +158,8 @@ public sealed class HarmonyRosterTests
 
         Assert.Contains(
             HarmonyRoster.Read().Members,
-            entry => entry.Member == "get_IsCompleted()"
+            entry => entry.DeclaringType == "System.Runtime.CompilerServices.YieldAwaitable+YieldAwaiter"
+                && entry.Member == "get_IsCompleted()"
                 && entry.Owners.Contains(PatchRoster.HostOwnerId));
     }
 

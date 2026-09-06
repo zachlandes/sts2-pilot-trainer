@@ -745,7 +745,7 @@ public class EnvironmentPreflightTests
 
         Assert.True(Field(result, "patched_members").Matches, Describe(result));
         Assert.Contains(
-            "all patched by Runmobile alone",
+            "member(s) at run start, all patched by Runmobile alone",
             Field(result, "patched_members").Actual,
             StringComparison.Ordinal);
     }

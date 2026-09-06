@@ -149,6 +149,11 @@ A roster naming none of Runmobile's own patches is a broken reading rather than 
 The shell installs the profile write barrier and its screen patches before it reports itself started, and only a started shell records, so a roster that saw none of those saw nothing — and what it says about anybody else's patches is worth nothing either.
 This is the "did our patches apply, or silently fail after a rename" question, as a verdict rather than a log line.
 
+It is one reading, taken at run start, and the row says so.
+A mod that patches lazily on first use rather than at initialization is installed after the reading and is outside it, so a run played under its prefix can still read back as patched by Runmobile alone.
+That shape is not hypothetical: this project's own `YieldSuppression` is a one-shot latch tripped on the first end turn.
+Closing it would take a second reading at run end and a comparison between the two, and this does not do that.
+
 An absent roster is neither.
 Only a recorder can take this reading, so a manifest reconstructed from a video never carries one and draws no row at all, and a recording made before the recorder took it has nobody to blame for the gap.
 That row is emitted saying it was not read, and it passes: the roster strengthens the declaration rule beside it rather than replacing it, and refusing an absence would void evidence for a reading nobody could have taken while judging it exactly as well as before.

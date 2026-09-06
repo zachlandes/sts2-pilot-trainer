@@ -541,6 +541,13 @@ public static class EnvironmentPreflight
     /// did not see those did not see anything, and a pass from it would be a claim
     /// nobody established.
     ///
+    /// One reading, taken at run start. A mod that patches lazily on first use rather
+    /// than at initialization installs after it and is outside it - this project's own
+    /// <c>YieldSuppression</c> is exactly that shape, a one-shot latch tripped on the
+    /// first end turn - so the row says what was patched when the run began and not
+    /// what was patched for the whole of it. Closing that would take a second reading
+    /// at run end and a comparison between the two, which this does not do.
+    ///
     /// Absent is neither. Only a recorder can take this reading, so a manifest
     /// reconstructed from a video never has one, and a recording made before the
     /// recorder took it has no one to blame for the gap. The row is emitted saying so
@@ -558,7 +565,7 @@ public static class EnvironmentPreflight
         {
             yield return new PreflightField(
                 "patched_members",
-                $"every patched member owned by {HostModName}",
+                $"every member patched at run start owned by {HostModName}",
                 "not read: this recording predates the recorder reading what was patched",
                 true);
             yield break;
@@ -569,10 +576,10 @@ public static class EnvironmentPreflight
 
         yield return new PreflightField(
             "patched_members",
-            $"every patched member owned by {HostModName}",
+            $"every member patched at run start owned by {HostModName}",
             matches
-                ? $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s), all patched by " +
-                  $"{HostModName} alone"
+                ? $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s) at run start, all " +
+                  $"patched by {HostModName} alone"
                 : !roster.NamesTheHost
                     ? $"{roster.Members.Count.ToString(CultureInfo.InvariantCulture)} member(s), none of them " +
                       $"patched by {HostModName}"
