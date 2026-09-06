@@ -86,6 +86,13 @@ the one place a boundary becomes a plan whichever spelling asked for it, so a
 coordinate has one reader and each spelling refuses in its own words. Do not read one
 anywhere else; an ordinal counted across the list would mean a different thing per
 kind.
+Where a manifest carries a verified whole-run trace, every declared boundary of every
+kind is cross-checked against it - a fight the trace holds and finishes, a floor it
+arrives on, a turn that fight takes, each at the action the trace says.
+`ManifestValidator` reads those off `RunCoverage`, which is what the derive path builds
+its boundaries from, so the guard and the deriver cannot disagree about one history.
+A coordinate checked for shape alone passes publication and is refused later, in front
+of a player. Do not add a boundary kind without its cross-check.
 
 **Real-engine reproduction is the publication standard.** `gate` is where it is
 written down and computed. No condition may be satisfied by a cheaper proxy - not

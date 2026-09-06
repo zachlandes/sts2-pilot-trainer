@@ -611,6 +611,24 @@ public static partial class ManifestValidator
     /// <see cref="RecordedFights.From"/> cuts only finished fights, so both directions
     /// of the rule are asked of the same set.
     ///
+    /// Every declared floor_entry and turn_start is cross-checked against that same
+    /// trace, for the same reason and against the same reading: a floor_entry must
+    /// name a floor the trace arrives on, at the action it arrives after, and a
+    /// turn_start must name a turn the trace's own fight takes, at the action that
+    /// started it. Without this the coordinate is checked for shape only, and a
+    /// manifest naming a floor the run never stood on passes publication and is
+    /// refused later, in front of a player, as an aborted entry. It matters most for a
+    /// manifest this project did not derive - a recorder's, or a community submission
+    /// - and it matters more now a floor arrival can be restored from a cache rather
+    /// than walked. The rule is read off <see cref="RunCoverage"/>, which is what the
+    /// derive path builds its boundaries from, so the guard and the deriver cannot
+    /// disagree about the same history.
+    ///
+    /// Only the declared direction is asked of these two. Unlike a fight, a floor or a
+    /// turn with no boundary offers nothing a recording owes anybody: a host enters
+    /// fights, and the other two are places it may also stand somebody, not places it
+    /// must be able to.
+    ///
     /// A generated fixture may declare boundaries and is not required to. The rule
     /// that it may not was written when a boundary meant a publication claim; it does
     /// not - what may be published is the gate's question, and the gate refuses a
@@ -730,7 +748,11 @@ public static partial class ManifestValidator
 
         if (manifest.Verification is not { Status: VerificationStatus.Verified, Trace: { } trace }) return;
 
-        var coveredFights = RunCoverage.Of(trace).Fights;
+        // One reading of the history for all three kinds. The derive path builds its
+        // boundaries from this same coverage, so a boundary this refuses is one that
+        // path could not have produced.
+        var coverage = RunCoverage.Of(trace);
+        var coveredFights = coverage.Fights;
         foreach (var boundary in boundaries.Where(boundary => boundary.IsCombatStart))
         {
             var fight = coveredFights.FirstOrDefault(fight => fight.Fight == boundary.Fight);
@@ -768,6 +790,82 @@ public static partial class ManifestValidator
                     $"{fight.Fight.ToString(CultureInfo.InvariantCulture)} and boundaries declares no " +
                     "combat_start for it, so a fight the recording really contains has nowhere to be entered " +
                     "from. Derive it by replaying the run.");
+            }
+        }
+
+        // A declared coordinate that names nothing in the trace is only ever caught
+        // here. The shape rules above read the declaration alone, so they pass a floor
+        // this run never stood on and a turn this fight never took.
+        foreach (var boundary in boundaries.Where(boundary =>
+                     boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.Floor is > 0))
+        {
+            var floor = coverage.Floors.FirstOrDefault(floor => floor.Floor == boundary.Floor);
+            if (floor is null)
+            {
+                problems.Add(
+                    $"boundaries declares {boundary.Describe()}, but this history's verified trace never " +
+                    "reaches that floor. A floor_entry cannot name an arrival the recording does not contain.");
+            }
+            else if (floor.EnteredAfterSeq < 0)
+            {
+                problems.Add(
+                    $"boundaries declares {boundary.Describe()}, and this history's verified trace starts on " +
+                    "that floor rather than arriving on it. A floor entry is the map move that entered the " +
+                    "floor, so the floor a run opens on names a place no plan could reach.");
+            }
+            else if (boundary.AfterSeq != floor.EnteredAfterSeq)
+            {
+                problems.Add(
+                    $"this history's verified trace enters floor " +
+                    $"{floor.Floor.ToString(CultureInfo.InvariantCulture)} after action " +
+                    $"{floor.EnteredAfterSeq.ToString(CultureInfo.InvariantCulture)}, but its floor_entry " +
+                    $"boundary names action {boundary.AfterSeq.ToString(CultureInfo.InvariantCulture)}. A " +
+                    "floor cannot point to another arrival's boundary.");
+            }
+        }
+
+        foreach (var boundary in boundaries.Where(boundary =>
+                     boundary.Kind == ReplayBoundary.TurnStartKind &&
+                     boundary.Fight is > 0 && boundary.Turn is > 0))
+        {
+            var fight = coveredFights.FirstOrDefault(fight => fight.Fight == boundary.Fight);
+            if (fight is null)
+            {
+                problems.Add(
+                    $"boundaries declares {boundary.Describe()}, but this history's verified trace holds no " +
+                    "fight with that ordinal. A turn_start cannot name a turn of a fight the recording does " +
+                    "not contain.");
+                continue;
+            }
+
+            if (!fight.Finished)
+            {
+                problems.Add(
+                    $"boundaries declares {boundary.Describe()}, and this history's verified trace never " +
+                    "finishes that fight. A boundary is a place a player can be stood and have their line " +
+                    "compared against the recording's completed one, and a fight the recording stops in the " +
+                    "middle of has no such line, so declaring a turn of it names a place nobody could enter.");
+                continue;
+            }
+
+            var turn = fight.Turns.FirstOrDefault(turn => turn.Turn == boundary.Turn);
+            if (turn is null)
+            {
+                problems.Add(
+                    $"boundaries declares {boundary.Describe()}, and this history's verified trace never " +
+                    $"reaches turn {boundary.Turn.GetValueOrDefault().ToString(CultureInfo.InvariantCulture)} " +
+                    $"of fight {fight.Fight.ToString(CultureInfo.InvariantCulture)}. A turn_start cannot name " +
+                    "a turn the recorded fight does not take.");
+            }
+            else if (boundary.AfterSeq != turn.StartedAfterSeq)
+            {
+                problems.Add(
+                    $"this history's verified trace starts turn " +
+                    $"{turn.Turn.ToString(CultureInfo.InvariantCulture)} of fight " +
+                    $"{fight.Fight.ToString(CultureInfo.InvariantCulture)} after action " +
+                    $"{turn.StartedAfterSeq.ToString(CultureInfo.InvariantCulture)}, but its turn_start " +
+                    $"boundary names action {boundary.AfterSeq.ToString(CultureInfo.InvariantCulture)}. A " +
+                    "turn number cannot point to another turn's boundary.");
             }
         }
     }

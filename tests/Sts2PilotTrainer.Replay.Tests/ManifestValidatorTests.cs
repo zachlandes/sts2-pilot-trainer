@@ -428,6 +428,219 @@ public class ManifestValidatorTests
         Assert.True(result.IsValid, result.Describe());
     }
 
+    [Fact]
+    public void AcceptsBoundariesTheVerifiedTraceReallyReaches()
+    {
+        var manifest = WithVerifiedFloorAndTurnTrace(
+            Fixtures.ValidManifest() with { Boundaries = WalkedBoundaries });
+
+        var result = ManifestValidator.Validate(manifest);
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    /// <summary>
+    /// The one this exists for. A floor entry the run never arrives on used to be
+    /// checked for shape only, so it passed validate and gate and was refused later as
+    /// an aborted entry, in front of a player - and it is now a floor a host may
+    /// restore from a cache rather than walk to.
+    /// </summary>
+    [Fact]
+    public void RejectsAFloorEntryForAFloorTheRecordingNeverReaches()
+    {
+        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                .. WalkedBoundaries,
+                ReplayBoundary.FloorEntry(7, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("arrival on floor 7", StringComparison.Ordinal) &&
+            problem.Contains("never reaches that floor", StringComparison.Ordinal));
+    }
+
+    /// <summary>The floor a run opens on is not arrived at, so no map move enters it
+    /// and no plan could put anybody there. It is the one floor the trace holds that
+    /// is not a boundary.</summary>
+    [Fact]
+    public void RejectsAFloorEntryOnTheFloorTheRunStartsOn()
+    {
+        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                .. WalkedBoundaries,
+                ReplayBoundary.FloorEntry(1, -1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("arrival on floor 1", StringComparison.Ordinal) &&
+            problem.Contains("starts on that floor rather than arriving on it", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsAFloorEntryAtAnActionOtherThanTheArrival()
+    {
+        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("enters floor 2 after action 0", StringComparison.Ordinal) &&
+            problem.Contains("names action 1", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsATurnStartForAFightTheRecordingDoesNotHold()
+    {
+        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                .. WalkedBoundaries,
+                ReplayBoundary.TurnStart(2, 1, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("turn 1 of fight 2", StringComparison.Ordinal) &&
+            problem.Contains("holds no fight with that ordinal", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsATurnStartForATurnTheFightNeverReaches()
+    {
+        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                .. WalkedBoundaries,
+                ReplayBoundary.TurnStart(1, 5, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("turn 5 of fight 1", StringComparison.Ordinal) &&
+            problem.Contains("never reaches turn 5 of fight 1", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsATurnStartAtAnActionOtherThanTheTurnItNames()
+    {
+        var manifest = WithVerifiedFloorAndTurnTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 0, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.TurnStart(1, 2, 0, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        });
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("starts turn 2 of fight 1 after action 1", StringComparison.Ordinal) &&
+            problem.Contains("names action 0", StringComparison.Ordinal));
+    }
+
+    /// <summary>Same rule the combat_start check applies, asked of a turn: a fight the
+    /// recording stops in the middle of has no completed line to compare against, so a
+    /// turn of it is a place nobody could be stood either.</summary>
+    [Fact]
+    public void RejectsATurnStartInAFightTheRecordingNeverFinishes()
+    {
+        var manifest = WithVerifiedTrace(Fixtures.ValidManifest() with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(2, 0, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.FloorEntry(3, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.TurnStart(1, 1, 0, Fact<string>.Engine(Fixtures.Digest)),
+                ReplayBoundary.TurnStart(2, 1, 1, Fact<string>.Engine(Fixtures.Digest)),
+            ],
+        },
+            RunStep(-1, floor: 1, outcome: "none"),
+            RunStep(0, floor: 2, outcome: "in_progress", turn: 1),
+            RunStep(0, floor: 2, outcome: "victory"),
+            RunStep(1, floor: 3, outcome: "in_progress", turn: 1));
+
+        var result = ManifestValidator.Validate(manifest);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("turn 1 of fight 2", StringComparison.Ordinal) &&
+            problem.Contains("never finishes that fight", StringComparison.Ordinal));
+    }
+
+    /// <summary>Every boundary the trace below really reaches, which is what the
+    /// derive path would produce from it.</summary>
+    private static readonly ReplayBoundary[] WalkedBoundaries =
+    [
+        ReplayBoundary.CombatStart(1, 0, Fact<string>.Engine(Fixtures.Digest)),
+        ReplayBoundary.FloorEntry(2, 0, Fact<string>.Engine(Fixtures.Digest)),
+        ReplayBoundary.TurnStart(1, 1, 0, Fact<string>.Engine(Fixtures.Digest)),
+        ReplayBoundary.TurnStart(1, 2, 1, Fact<string>.Engine(Fixtures.Digest)),
+    ];
+
+    /// <summary>A verified result whose trace starts on floor 1, moves to floor 2 and
+    /// wins a two-turn fight there.</summary>
+    private static ReplayManifest WithVerifiedFloorAndTurnTrace(ReplayManifest manifest) =>
+        WithVerifiedTrace(manifest,
+            RunStep(-1, floor: 1, outcome: "none"),
+            RunStep(0, floor: 2, outcome: "in_progress", turn: 1),
+            RunStep(1, floor: 2, outcome: "in_progress", turn: 2),
+            RunStep(1, floor: 2, outcome: "victory"));
+
+    /// <summary>A step carrying the floor and turn as well as the outcome. Only the
+    /// after side is set: coverage reads the sample after each action, and a before
+    /// side written here would say something no rule under test asks.</summary>
+    private static ReplayStep RunStep(int seq, int floor, string outcome, int? turn = null)
+    {
+        var after = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["combat.outcome"] = outcome,
+            ["run.total_floor"] = Number(floor),
+        };
+        if (turn is { } number) after["combat.turn"] = Number(number);
+
+        return new ReplayStep
+        {
+            Seq = seq,
+            Verb = "PlayCard",
+            Before = new Dictionary<string, string>(StringComparer.Ordinal),
+            After = after,
+        };
+    }
+
+    private static string Number(int value) =>
+        value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
     /// <summary>A verified result whose trace won two fights and stopped inside a
     /// third, the shape of a recording that ends mid-fight.</summary>
     private static ReplayManifest WithTwoFinishedFightsAndAnUnfinishedThird(ReplayManifest manifest) =>
