@@ -319,7 +319,7 @@ Without that the break lives only in the session that decided on it: quit and co
 A reward kind the format has no verb for, a card reward answered with one of its alternatives, a screen whose offered list this build no longer exposes, an engine that did not settle: each marks the recording broken with a sentence rather than writing a value it guessed.
 The recording is still written, because it is what happened; what it is not is publishable, and the validator and `./scripts/arbiter gate` are what say so.
 
-**An integrity claim is a reading, and three of them were assumptions before review caught them.**
+**An integrity claim is a reading, and four of them were assumptions before review caught them.**
 `AGENTS.md`'s recorder invariant states the rule; these are what it is made of, because a rule with no instances is one nobody can check themselves against.
 
 - **A verdict about controls that were never applied.** `gate`'s `rejection` condition runs `negative-controls --require-all-controls`, and three of the ten controls damage a decision only where the history nominates the alternative they take. The recorder wrote none of them, so no native recording could ever pass - and two of the three that did apply were satisfied by the driver refusing on argument shape rather than on the run diverging, which is a control counted as rejected having demonstrated nothing. The recorder derives all four nominations now, from what the decision itself offered, and omits one where the decision genuinely had no alternative.
