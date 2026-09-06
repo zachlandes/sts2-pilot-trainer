@@ -267,41 +267,15 @@ internal static partial class Commands
     /// <summary>
     /// Which boundary of the recording to walk to.
     ///
-    /// The recording's first fight unless asked otherwise, because that is what this
-    /// command was for when there was one boundary. A fight and a floor are different
-    /// destinations rather than two ways of saying one, so asking for both is refused.
+    /// This command's readable spelling, read by the same <see cref="BoundarySelector"/>
+    /// that reads <c>combat-snapshot --boundary</c>'s: what a coordinate means, and what
+    /// asking for a fight and a floor at once means, are that type's to say in either
+    /// spelling.
     /// </summary>
-    private static IBoundaryPlan PlanFor(ReplayManifest recording, string[] args)
-    {
-        var fight = Args.Value(args, "--fight");
-        var floor = Args.Value(args, "--floor");
-
-        if (fight is not null && floor is not null)
-        {
-            throw new ManifestException(
-                "enter-fight takes --fight or --floor, not both. They are different places to be stood.");
-        }
-
-        var selector = floor is not null
-            ? new BoundarySelector
-            {
-                Kind = ReplayBoundary.FloorEntryKind,
-                Floor = Ordinal(floor, "--floor"),
-            }
-            : fight is null
-                ? BoundarySelector.FirstFight
-                : new BoundarySelector
-                {
-                    Kind = ReplayBoundary.CombatStartKind,
-                    Fight = Ordinal(fight, "--fight"),
-                };
-
-        return selector.PlanFor(recording);
-    }
-
-    private static int Ordinal(string value, string option) =>
-        BoundarySelector.PositiveOrdinal(value)
-            ?? throw new ManifestException($"{option} takes a whole number from 1, not '{value}'.");
+    private static IBoundaryPlan PlanFor(ReplayManifest recording, string[] args) =>
+        BoundarySelector
+            .ParseFightOrFloor(Args.Value(args, "--fight"), Args.Value(args, "--floor"))
+            .PlanFor(recording);
 
     /// <summary>
     /// Plays the recording's own fight through the player-side capture and compares

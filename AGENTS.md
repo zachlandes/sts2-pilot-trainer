@@ -76,12 +76,15 @@ host dispatches on them. Every boundary's digest is engine-produced or captured 
 a live game - no video shows draw order or a random stream's position. Reading an
 older manifest is `ManifestJson`'s job and happens in memory; rewriting one on disk
 happens only in `./scripts/arbiter migrate-manifest`, so reading somebody's evidence
-never edits it. Which boundary a command means is written the kind's own way -
-`combat_start:2`, `floor_entry:5`, `turn_start:2.3` for the commands that take
-`--boundary`, `--fight n` or `--floor n` for `enter-fight` - and `BoundarySelector` is
-the one reader of a coordinate and the one place a boundary becomes a plan, whichever
-spelling asked for it; an ordinal counted across the list would mean a different thing
-per kind.
+never edits it. A boundary is named in two spellings on purpose and
+`BoundarySelector` owns both: the kind's own way - `combat_start:2`, `floor_entry:5`,
+`turn_start:2.3` - for the commands that take `--boundary`, and `enter-fight`'s
+readable `--fight n` or `--floor n`, which was named that way in its own specification
+and stays. `Parse` reads the first, `ParseFightOrFloor` the second, and `PlanFor` is
+the one place a boundary becomes a plan whichever spelling asked for it, so a
+coordinate has one reader and each spelling refuses in its own words. Do not read one
+anywhere else; an ordinal counted across the list would mean a different thing per
+kind.
 
 **Real-engine reproduction is the publication standard.** `gate` is where it is
 written down and computed. No condition may be satisfied by a cheaper proxy - not
