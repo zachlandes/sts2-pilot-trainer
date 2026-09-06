@@ -69,6 +69,7 @@ public sealed class RunCapture
     private readonly Dictionary<int, string> _digests = [];
     private readonly Dictionary<int, int?> _clocks = [];
     private readonly List<string> _refusals = [];
+    private readonly List<string> _consoleCommands = [];
 
     private FightCapture? _fight;
 
@@ -108,6 +109,24 @@ public sealed class RunCapture
 
     /// <summary>One of <see cref="NativeSource.Continuities"/>.</summary>
     public string Continuity { get; private set; }
+
+    /// <summary>
+    /// One of <see cref="NativeSource.Integrities"/>: whether anything happened in
+    /// this run that puts it outside the game's own rules.
+    ///
+    /// Separate from <see cref="Continuity"/> and from <see cref="State"/> because it
+    /// is a different fact about a different thing. Continuity says whether the
+    /// recorder watched the whole run; this says whether the run it watched was
+    /// played by the game's rules. A run that used the console is recorded to its
+    /// end, keeps every decision it made and is never publishable, so nothing here
+    /// stops.
+    /// </summary>
+    public string Integrity { get; private set; } = NativeSource.CompleteIntegrity;
+
+    /// <summary>Every console command this recording saw, in the order it saw them.
+    /// Kept for the player looking at their own recording; the manifest states only
+    /// <see cref="Integrity"/>.</summary>
+    public IReadOnlyList<string> ConsoleCommands => _consoleCommands;
 
     public RunCaptureState State { get; private set; } = RunCaptureState.Recording;
 
@@ -166,6 +185,7 @@ public sealed class RunCapture
         WitnessedRunStart = WitnessedRunStart,
         Entries = [Opening, .. _entries],
         Refusals = _refusals.ToList(),
+        ConsoleCommands = _consoleCommands.ToList(),
     };
 
     /// <summary>
@@ -262,6 +282,12 @@ public sealed class RunCapture
         // so a session that recorded on past its own break would otherwise resume as
         // continuous.
         foreach (var reason in journal.Refusals) capture.Break(reason);
+
+        // Same reasoning, for the same reason: a console command an earlier session
+        // saw is a fact about this run that no later reading of the live game could
+        // recover, and a session that resumed without it would publish a run the
+        // console had been used in.
+        foreach (var command in journal.ConsoleCommands) capture.MarkNonStandard(command);
 
         var last = capture._entries.Count > 0 ? capture._entries[^1] : journal.Opening;
         if (!string.Equals(last.Digest, liveDigest, StringComparison.Ordinal))
@@ -376,6 +402,32 @@ public sealed class RunCapture
     }
 
     /// <summary>
+    /// The developer console was used in this run.
+    ///
+    /// The run is kept, whole, and recorded to its end: it is what the player played
+    /// and it is theirs. What it is not is publishable, and
+    /// <see cref="Integrity"/> is what says so - the state a console command left
+    /// behind is not among the decisions this history holds, so replaying the history
+    /// reconstructs a different run while every value in it is individually true.
+    ///
+    /// It marks and never stops, which is the difference between this and
+    /// <see cref="MarkBroken"/>: a broken watch is a recording that cannot account for
+    /// the run, and this is a complete account of a run nobody may publish.
+    /// </summary>
+    /// <param name="command">The command as the player typed it, kept for them to
+    /// read back. Never interpreted: which of the game's commands change a run is not
+    /// a judgement this class is in a position to make, and one that changed nothing
+    /// still means somebody had the console open in a run being recorded.</param>
+    /// <returns>The journal line to append for it, so the mark survives this session
+    /// the same way a decision does.</returns>
+    public string MarkNonStandard(string command)
+    {
+        _consoleCommands.Add(command);
+        Integrity = NativeSource.NonStandardIntegrity;
+        return RunJournal.RenderConsoleCommand(command);
+    }
+
+    /// <summary>
     /// This recording, as a manifest.
     ///
     /// Only once the run has ended, because a manifest says how it ended and that is
@@ -418,6 +470,7 @@ public sealed class RunCapture
                         WitnessedRunStart, FactEvidence.AtActionOrdinal(-1, Opening.RunClockMs)),
                     Continuity = Continuity,
                     Outcome = Outcome,
+                    Integrity = Integrity,
                 },
             },
             Actions = _actions.ToList(),

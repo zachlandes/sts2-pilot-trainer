@@ -364,6 +364,107 @@ public sealed class RunCaptureTests
         Assert.Equal(RunJournal.RenderRefusal("the engine never settled"), line);
     }
 
+    /// <summary>
+    /// A run nobody touched the console in says so, and is publishable.
+    ///
+    /// The passing half of the pair below. Without it, a capture that marked every run
+    /// non-standard would pass every refusal test here.
+    /// </summary>
+    [Fact]
+    public void ARunPlayedByTheGamesOwnRulesIsCompleteAndPublishable()
+    {
+        var capture = Played();
+        capture.Finish("won");
+
+        var manifest = capture.ToManifest();
+
+        Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
+        Assert.Empty(capture.ConsoleCommands);
+        Assert.Equal(NativeSource.CompleteIntegrity, manifest.Source.Native!.Integrity);
+        Assert.True(ManifestValidator.Validate(manifest).IsValid);
+    }
+
+    /// <summary>
+    /// A run the console was used in is recorded to its end, kept whole, and refused
+    /// for publication.
+    ///
+    /// The three claims are separate and all three matter. It is not truncated, because
+    /// the player played it; it is not marked broken, because the recorder watched all
+    /// of it; and it is not valid, because what the console did is not among the
+    /// decisions the history holds and replaying them reconstructs a different run.
+    /// </summary>
+    [Fact]
+    public void ARunTheConsoleWasUsedInIsKeptWholeAndRefusedForPublication()
+    {
+        var capture = RunCapture.Begin(Start());
+        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
+        capture.MarkNonStandard("gold 999");
+        capture.Record(ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")), Floor(2), Digest(1));
+        capture.Finish("won");
+
+        var manifest = capture.ToManifest();
+
+        // Recorded to its end: the decision after the command is in the history.
+        Assert.Equal([0, 1], manifest.Actions.Select(action => action.Seq));
+
+        // And the watch is not what is wrong with it.
+        Assert.Equal(RunCaptureState.Finished, capture.State);
+        Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+        Assert.Null(capture.Refusal);
+
+        Assert.Equal(NativeSource.NonStandardIntegrity, manifest.Source.Native!.Integrity);
+        Assert.Equal(["gold 999"], capture.ConsoleCommands);
+
+        var result = ManifestValidator.Validate(manifest);
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("integrity is 'non-standard'", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The mark is a journal line, so the session after a crash is told about it.
+    ///
+    /// The same reasoning a refusal line carries: a console command only the running
+    /// session knows about is one a crash takes with it, and the session that resumed
+    /// would publish a run the console had been used in with every value in the
+    /// recording true.
+    /// </summary>
+    [Fact]
+    public void AConsoleCommandSurvivesIntoTheSessionThatResumesTheRun()
+    {
+        var capture = Played();
+        var line = capture.MarkNonStandard("kill all");
+
+        Assert.Equal(RunJournal.RenderConsoleCommand("kill all"), line);
+
+        var read = RunJournal.Parse(capture.Journal.Render());
+        Assert.Equal(["kill all"], read.ConsoleCommands);
+
+        // Every decision is still there, and the resumed capture is non-standard
+        // without having seen the command itself.
+        Assert.Equal(6, read.Entries.Count);
+        var resumed = RunCapture.Resume(read, Digest(4));
+        Assert.Equal(NativeSource.NonStandardIntegrity, resumed.Integrity);
+        Assert.Equal(["kill all"], resumed.ConsoleCommands);
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+    }
+
+    /// <summary>Marking twice says so twice and means the same thing once: it is a
+    /// statement about the run, not a counter anything acts on.</summary>
+    [Fact]
+    public void ASecondConsoleCommandDoesNotChangeWhatTheRecordingSays()
+    {
+        var capture = Played();
+        capture.MarkNonStandard("gold 999");
+        capture.MarkNonStandard("relic add RELIC.BURNING_BLOOD");
+        capture.Finish("abandoned");
+
+        Assert.Equal(NativeSource.NonStandardIntegrity, capture.Integrity);
+        Assert.Equal(["gold 999", "relic add RELIC.BURNING_BLOOD"], capture.ConsoleCommands);
+        Assert.Equal(
+            NativeSource.NonStandardIntegrity, capture.ToManifest().Source.Native!.Integrity);
+    }
+
     [Fact]
     public void AJournalRoundTripsThroughItsOwnFileFormat()
     {

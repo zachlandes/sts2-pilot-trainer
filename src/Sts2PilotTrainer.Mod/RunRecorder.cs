@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.DevConsole;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -60,6 +61,13 @@ internal sealed class RunRecorder : IDisposable
 
     private static readonly Lock Gate = new();
 
+    /// <summary>Console commands seen while a run existed and this recorder had not
+    /// attached to it yet. Drained into the capture at attach, because a command used
+    /// in that stretch is in the run's history and nothing later could recover it.
+    /// A static list of a framework type, so this type still lays out before the
+    /// sibling assemblies are resolvable - see docs/in-game-host.md.</summary>
+    private static readonly List<string> ConsoleBeforeAttach = [];
+
     private readonly RunCapture _capture;
     private readonly string _journalPath;
     private readonly Queue<PendingDecision> _pending = new();
@@ -117,6 +125,24 @@ internal sealed class RunRecorder : IDisposable
 
             if (!RunmobileSettings.Read().RecordMyRuns) return;
 
+            // A run this recorder may not record is one no console command of it needs
+            // keeping either. Cleared at the start of a run rather than only at the end
+            // of one, so a command typed at the main menu is never carried into the run
+            // that follows it.
+            lock (Gate) ConsoleBeforeAttach.Clear();
+
+            // Asked here as well as at attach, so a multiplayer session is refused
+            // before this starts waiting sixty seconds for a run it will not record.
+            // The reading at attach is the one that decides; this one only saves the
+            // wait, because a run that has not been built yet reads as no run at all.
+            var kind = GameSessionWatch.Observed;
+            if (RunSession.IsMultiplayer(kind))
+            {
+                Log.Info(
+                    $"[{RunmobileMod.ModId}] not recording: this is {RunSession.Describe(kind)}", 2);
+                return;
+            }
+
             _ = AttachWhenReady();
         }
         catch (Exception ex)
@@ -158,11 +184,67 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     internal static void RunTornDown()
     {
+        lock (Gate) ConsoleBeforeAttach.Clear();
+
         var recorder = Active;
         if (recorder is null) return;
 
         Active = null;
         recorder.Dispose();
+    }
+
+    /// <summary>
+    /// The developer console was used.
+    ///
+    /// Installing this mod turns the game's full console on for the player
+    /// (<c>NDevConsole</c> reads <c>ModManager.IsRunningModded()</c> when it decides
+    /// whether to register the debug commands), so this is a reachable state in an
+    /// ordinary modded session rather than a developer-only one. What a command did to
+    /// the run is not among the decisions the history holds, so the run is recorded to
+    /// its end, kept, and never publishable.
+    ///
+    /// Taken whether or not a recording is live, because the two cases are different
+    /// and neither is "nothing happened": with a recording, the mark goes on it now;
+    /// without one, the command is held until a recording of this run exists, and
+    /// dropped when the run does.
+    /// </summary>
+    internal static void ConsoleCommandUsed(string command)
+    {
+        try
+        {
+            if (Active is { } recorder)
+            {
+                recorder.NoticeConsoleCommand(command);
+                return;
+            }
+
+            // No recording yet. Whether one of this run ever exists is the attach's
+            // question; if it does, this is part of what it holds.
+            if (LiveRun.State is null) return;
+            lock (Gate) ConsoleBeforeAttach.Add(command);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not mark this recording as one the console was used in: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    /// <summary>
+    /// Marks this recording as one the console was used in, and writes the mark to the
+    /// journal before anything else happens.
+    ///
+    /// Appended the moment it is seen, for the same reason a refusal is: a mark only
+    /// the running session knows about is one a crash takes with it, and the session
+    /// after it would publish a run the console had been used in.
+    /// </summary>
+    private void NoticeConsoleCommand(string command)
+    {
+        Append(_journalPath, _capture.MarkNonStandard(command));
+        Log.Warn(
+            $"[{RunmobileMod.ModId}] the console was used in this run, so its recording is kept and is not " +
+            "publishable", 2);
     }
 
     /// <summary>
@@ -214,6 +296,21 @@ internal sealed class RunRecorder : IDisposable
 
             if (Active is not null || ProfileWriteBarrier.IsActive) return;
             if (LiveRun.State is not { } run) return;
+
+            // The reading that decides, taken here because this is the first moment
+            // there is demonstrably a run to read: its networking and its player list
+            // both exist, and neither of them is what the member the game called was
+            // named. Anything but a singleplayer run is refused - the MVP records,
+            // replays and enters those only, and a history of a run more than one
+            // person made holds decisions this client never got to see.
+            var session = GameSessionWatch.Observed;
+            if (!RunSession.MayBeRecorded(session))
+            {
+                Log.Info(
+                    $"[{RunmobileMod.ModId}] not recording this run: it is {RunSession.Describe(session)}, and " +
+                    "this build records singleplayer runs only.", 2);
+                return;
+            }
 
             // Asked here rather than assumed: until the engine layer has taken this
             // client, the identity below is read out of the prepared copy on disk
@@ -286,6 +383,19 @@ internal sealed class RunRecorder : IDisposable
             }
 
             var recorder = new RunRecorder(capture, journalPath);
+
+            // A console command used between the run starting and this attaching is in
+            // this run's history and nothing later could recover it, so it is applied
+            // here rather than dropped. Before Active is published, so the mark is on
+            // the file before the first decision that follows it.
+            List<string> early;
+            lock (Gate)
+            {
+                early = ConsoleBeforeAttach.ToList();
+                ConsoleBeforeAttach.Clear();
+            }
+
+            foreach (var command in early) recorder.NoticeConsoleCommand(command);
 
             // A journal whose last decision left a fight live resumes with that fight
             // still live, and nothing else here would ever ask: the question is asked
@@ -1072,7 +1182,7 @@ internal sealed class RunRecorder : IDisposable
             $"[{RunmobileMod.ModId}] recorded {_capture.RunId}: {outcome}, " +
             $"{manifest.Actions.Count.ToString(CultureInfo.InvariantCulture)} decision(s), " +
             $"{manifest.Boundaries.Count.ToString(CultureInfo.InvariantCulture)} boundary/boundaries, " +
-            $"continuity {_capture.Continuity}, written to {path}", 2);
+            $"continuity {_capture.Continuity}, integrity {_capture.Integrity}, written to {path}", 2);
 
         if (!problems.IsValid)
         {
@@ -1225,6 +1335,31 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     internal const string SkipRewardsSetMember = "SkipRewardsSet";
 
+    /// <summary>
+    /// The private funnel every console command passes through, whichever way it was
+    /// entered.
+    ///
+    /// The game has two public entries - <c>ProcessCommand(string)</c> for a command
+    /// typed on this client and <c>ProcessNetCommand</c> for one a peer sent - and
+    /// both reach this three-argument overload. Watching it rather than either entry
+    /// is what makes one patch cover both, and the same reason <c>SkipRewardsSet</c>
+    /// is watched rather than the call the driver makes.
+    ///
+    /// It is deliberately not the queue. A console command reaches the action queue as
+    /// <c>ConsoleCmdGameAction</c> - one of the eleven types in the game's own
+    /// generated <c>INetActionSubtypes</c> list - only in a networked game: in
+    /// singleplayer <c>DevConsole.ProcessCommand</c> takes the local branch and never
+    /// builds one, and singleplayer is the only kind of run this recorder records. A
+    /// watch on the queue would therefore have seen a console command in exactly the
+    /// runs that are never recorded and none of the runs that are.
+    /// </summary>
+    internal const string ProcessConsoleCommandMember = "ProcessCommand";
+
+    /// <summary>The three-argument overload's parameters, because
+    /// <c>DevConsole</c> has a one-argument <c>ProcessCommand</c> beside it and a
+    /// lookup by name alone is ambiguous.</summary>
+    internal static Type[] ProcessConsoleCommandArguments => [typeof(Player), typeof(string), typeof(string[])];
+
     /// <summary>Every patch class this module installs, listed rather than discovered:
     /// <c>PatchAll</c> over the assembly would install the Combat Trainer's too.</summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } =
@@ -1234,7 +1369,39 @@ internal sealed class RunRecorder : IDisposable
         typeof(RestSiteOptionTaken), typeof(ChestRelicTaken), typeof(ChestRelicSkipped),
         typeof(ActAdvanced), typeof(ShopPurchased), typeof(ShopCardRemovalPurchased),
         typeof(CardRewardScreen), typeof(PotionUsed), typeof(PotionDiscarded),
+        typeof(ConsoleCommand),
     ];
+
+    /// <summary>
+    /// Every console command the game accepted, in a run or out of one.
+    ///
+    /// A postfix on the console's own funnel, reading the answer the console gave. Only
+    /// a command it accepted counts: a typo is not a console command in the run's
+    /// history, and the game's own <c>CmdResult.success</c> is what tells them apart -
+    /// which is a reading rather than a judgement about which command names are real.
+    ///
+    /// Every accepted command counts, including the ones that only print something.
+    /// Which of the game's commands change a run is not a judgement this mod is in a
+    /// position to make, and the captain's ruling is about the console having been used
+    /// at all. A run this was wrong about is one that stays on the player's disk and is
+    /// refused for publication, which is the cheap direction to be wrong in.
+    ///
+    /// It reads and returns, like every patch here: the command runs exactly as the
+    /// game wrote it and the recording is what changes.
+    /// </summary>
+    [HarmonyPatch(typeof(DevConsole), ProcessConsoleCommandMember,
+        [typeof(Player), typeof(string), typeof(string[])])]
+    internal static class ConsoleCommand
+    {
+        [HarmonyPostfix]
+        internal static void After(string cmdName, string[] args, CmdResult __result)
+        {
+            if (!__result.success) return;
+
+            var typed = args is { Length: > 0 } ? $"{cmdName} {string.Join(" ", args)}" : cmdName;
+            ConsoleCommandUsed(typed);
+        }
+    }
 
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.SetUpNewSingleplayer))]
     internal static class NewRun
