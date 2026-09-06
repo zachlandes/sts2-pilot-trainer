@@ -2,7 +2,8 @@
 
 A deterministic replay arbiter for Slay the Spire 2: reconstruct a run from a video,
 replay it through the real game engine, and check the result against what the video
-shows. Intended to become an open-source mod. See [README.md](README.md).
+shows. `Runmobile` is the mod a player installs to play from a reconstructed run; it is
+not released yet. See [README.md](README.md).
 
 ## Build / test / run
 

@@ -447,7 +447,7 @@ fight, collapsed to a chip.
 [demo/PLAYBACK-TRANSPORT.md](../demo/PLAYBACK-TRANSPORT.md) has it with the
 screenshots.
 
-### S8 - The recorder, in the player's own game - built, not yet proved by play
+### S8 - The recorder, in the player's own game - proved by play
 
 S1 through S7 close the loop over somebody else's recording, transcribed from a video
 by hand. This is the other direction: the player's own runs become recordings of the
@@ -488,13 +488,20 @@ journal, the continuity rule and the validator's acceptance of what the recorder
 produces without the game, and the game-dependent tests pin every member each reading
 goes through and every method the recorder patches.
 
-**Not yet proved:** a recording produced by play. The client loads the mod and reports
-`Recorder installed`, and nothing beyond that has been shown - no run has been recorded
-by a person, so no recording has been through `gate`, and the settle rule, the argument
-readings and the boundary digests have not been checked against a replay of a real
-one. The completion bar is unchanged and unmet: a recording produced by play, not by an
-agent, `PUBLISHABLE` on the machine that made it. [The in-game
-host](in-game-host.md#producing-a-recording-and-checking-it) has the steps.
+**Proved by play.** Two runs a person played on this build are committed under
+`manifests/` and both reproduce every boundary they captured.
+`native-3LACFJ5NJ371-20260906-015901` meets the completion bar: `PUBLISHABLE`, with all
+ten negative controls applicable and applied.
+`native-9F8CY60C5BK7-20260906-005737` reproduces and is still refused, for a reason
+about the run rather than the recorder - it is short enough to have no card reward, no
+marked card and no event, so three of the ten controls have nothing in its history to
+damage.
+The arbiter also enters the longer run's second fight from its history alone and
+arrives at the digest the recorder captured there.
+`NativeEvidenceTests` runs those three commands and asserts those results, so they are
+not only somebody's terminal. [The in-game
+host](in-game-host.md#producing-a-recording-and-checking-it) has the steps for
+producing a recording and checking it.
 
 ## Known limits that no slice above removes
 
