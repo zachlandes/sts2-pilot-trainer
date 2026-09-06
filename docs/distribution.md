@@ -44,7 +44,7 @@ Everything in this repository that could not go inside that archive — the prep
 See [dependencies](dependencies.md).
 
 **One version, and it is the mod manifest's.**
-`src/Sts2PilotTrainer.Mod/Runmobile.json`'s `version` field is the only place a version is written down.
+`src/Sts2PilotTrainer.Mod/Runmobile.json`'s `version` field is the only version declaration for the assemblies the mod ships.
 `Directory.Build.props` reads it and stamps every assembly here from it, so a release is one edit to one field and nothing can be left behind.
 This matters past tidiness because a native recording names the build twice - once in its mod set, as the mod the game reported loaded, and once as `source.native.recorder_version` - and a reader deciding whether a recording is browsable and reproducible on their own patch is reading those strings.
 They disagreed: nothing declared a version, so the assemblies carried .NET's default `1.0.0.0` and every recording written before this said `runmobile-recorder/1.0.0.0` beside a mod set saying `Runmobile 0.1.0`.

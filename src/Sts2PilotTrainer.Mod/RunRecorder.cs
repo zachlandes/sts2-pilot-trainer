@@ -334,7 +334,8 @@ internal sealed class RunRecorder : IDisposable
 
     /// <summary>Which build of the recorder is writing, so a defect found in one is
     /// traceable to everything it wrote. The same answer the mod set in the same
-    /// recording gives, because both come from <see cref="RunmobileVersion"/>.</summary>
+    /// recording gives, because <see cref="RunmobileVersion"/> reports the stamp every
+    /// assembly here takes from the manifest the game reads that mod set out of.</summary>
     internal static string RecorderVersion => RunmobileVersion.Recorder;
 
     // ── Decisions ────────────────────────────────────────────────────────────────
