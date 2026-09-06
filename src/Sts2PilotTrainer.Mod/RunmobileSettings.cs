@@ -60,8 +60,8 @@ internal sealed record RunmobileSettings
     /// <summary>
     /// How many of the player's most recent recorded runs are kept.
     ///
-    /// Older ones are removed the next time this mod has a game to read, and the count
-    /// is of runs rather than of files: a run's journal and its manifest go together or
+    /// Older ones are removed the next time the player reaches the singleplayer menu
+    /// with a save profile chosen, and the count is of runs rather than of files: a run's journal and its manifest go together or
     /// not at all. Zero keeps none, which is a standing purge rather than the one-shot
     /// one below; a negative number is refused and the default applied instead, so a
     /// player who wants more keeps writes a larger number rather than an opt-out of
@@ -74,8 +74,8 @@ internal sealed record RunmobileSettings
     /// Remove every run this mod has recorded, once.
     ///
     /// The player's control over their own disk, and the one member of this file the
-    /// mod writes back: it acts at the next moment the mod has a game to read, and is
-    /// then set to false in the file, so it is a thing a player does rather than a
+    /// mod writes back: it acts at the next singleplayer menu with a save profile
+    /// chosen, and is then set to false in the file, so it is a thing a player does rather than a
     /// state they are left in. It removes the recordings and nothing else - not a save,
     /// not a profile, not run history, and not a file in this mod's own store that no
     /// recording is made of.

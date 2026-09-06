@@ -738,7 +738,7 @@ Both live in the same `settings.json`, and both are the same operation with a di
 ```
 
 `keep_recent_runs` is a standing policy and defaults to 50, which is roughly the size of a screenshot folder.
-Older runs go the next time the mod has a game to read, and the count is of runs rather than of files: a run's journal and its manifest go together or not at all.
+Older runs go the next time the player reaches the singleplayer menu with a save profile chosen, and the count is of runs rather than of files: a run's journal and its manifest go together or not at all.
 Zero keeps none.
 A negative number is refused with a logged sentence naming the file and the value, and the default is applied instead: a player who wants more keeps writes a larger number, and there is no way to ask the file for unbounded growth.
 Removing nothing survives only as an internal answer for a settings file this build cannot read - a sentence nobody could read is not somebody asking for their runs to be deleted, so recording off and deleting nothing fail in the same direction.
@@ -750,9 +750,10 @@ It is the only member of that file the mod ever writes: the file is edited in pl
 Three properties hold, and each is asserted rather than described.
 Every file removed came back from `RecordingLibrary` as part of a recording written under the name this build writes, so a player's own file in that directory, a manifest they copied in, and this mod's `settings.json` all survive a purge.
 Every removal goes through `RunmobileStore.Remove`, which refuses a path outside the store, a path inside a game installation and a directory, exactly as a write does.
-And the moment is `RunmobileMod.EnsureAdopted` - the mod's one "there is demonstrably a running game" gate, which the recorder passes before it opens a journal, so a removal can never race a journal being appended to: no journal is open when the singleplayer menu is reached, because the recorder lets go of a run before the player is back at it.
-It is asked from the shell's own singleplayer-menu patch, ahead of any question about which modules contributed a card, because keeping and removing a player's files is the shell's duty.
-Retention runs there whether or not the adoption itself succeeded: its condition is the store's, a chosen save profile, and not the engine layer's verdict on whether this game can be read.
+And the moment is the singleplayer menu: the shell's own patch asks for retention first and unconditionally, ahead of any question about which modules contributed a card and ahead of the adoption it attempts only where there is a card to draw, because keeping and removing a player's files is the shell's duty.
+`RunmobileMod.EnsureAdopted` asks for it again, so the recorder's own first adopted moment is covered too, and asking twice costs nothing: it is applied once per save profile whoever asks.
+No journal is being appended to when it runs - the recorder opens one only after passing that same adoption gate, and it has let go of the run it was recording before the singleplayer menu can be reached again - so a removal can never race a journal.
+Retention runs whether or not the adoption succeeded, and where adoption is never attempted at all: its condition is the store's, a chosen save profile, and not the engine layer's verdict on whether this game can be read.
 So a build where the Combat Trainer and the recorder both decline, and a build the engine layer refuses to adopt, both still honour a purge and still enforce `keep_recent_runs`.
 The policy is applied once per save profile rather than once per process: the store is resolved per operation and two profiles do not share a library, so a player who switches profile has their second profile's `settings.json` honoured against their second profile's recordings.
 It cannot be mod start: the game has no chosen save profile then, so the store cannot yet say whose files these are.

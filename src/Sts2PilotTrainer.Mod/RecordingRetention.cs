@@ -24,10 +24,13 @@ namespace Sts2PilotTrainer.Mod;
 /// resolved per operation and two profiles do not share a library, so a policy applied
 /// to one says nothing about the other - and it latches a profile only once it has
 /// actually run against it, so a call made before the store could answer is retried at
-/// the next one rather than swallowed. <see cref="RunmobileMod.EnsureAdopted"/> is where it is called
-/// from, and no journal is being appended to when it runs: the recorder opens one only
-/// after asking the same gate, and it has let go of the run it was recording before the
-/// singleplayer menu this is called from can be reached again.</para>
+/// the next one rather than swallowed. Two callers ask, and neither is behind an
+/// adoption verdict: the singleplayer-menu patch asks first and unconditionally, ahead
+/// of any question about which modules contributed a card, and
+/// <see cref="RunmobileMod.EnsureAdopted"/> asks again so the recorder's own first
+/// adopted moment is covered. No journal is being appended to when it runs: the
+/// recorder opens one only after passing that adoption gate, and it has let go of the
+/// run it was recording before the singleplayer menu can be reached again.</para>
 ///
 /// <para><b>It removes recordings, and nothing else.</b> Every file it names came back
 /// from <see cref="RecordingLibrary"/> as part of a recording this build recognises,
