@@ -2,7 +2,8 @@
 
 A deterministic replay arbiter for Slay the Spire 2: reconstruct a run from a video,
 replay it through the real game engine, and check the result against what the video
-shows. Intended to become an open-source mod. See [README.md](README.md).
+shows. `Runmobile` is the mod a player installs to play from a reconstructed run; it is
+not released yet. See [README.md](README.md).
 
 ## Build / test / run
 
@@ -102,8 +103,8 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, 119 of
-`Sts2PilotTrainer.Arbiter.Tests`' 169 tests skip and the job still reports success.
+**What CI cannot run is recorded by name.** On a runner without the game, 122 of
+`Sts2PilotTrainer.Arbiter.Tests`' 172 tests skip and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts that skipped set against
 `scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
 one, or deleting one fails CI until the list is regenerated with `--update` in the

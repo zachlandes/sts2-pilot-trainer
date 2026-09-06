@@ -1,9 +1,130 @@
-# sts2-pilot-trainer
+# Runmobile
 
-A deterministic replay arbiter for Slay the Spire 2.
+**Play from the fight a top player played, and see how your fight compared.**
 
+A free, open-source mod for Slay the Spire 2.
+It ships with one run reconstructed from a top player's public video: play from that run's first fight, from the moment it began, with the same deck, relics, health, enemies and opening hand.
+When the fight ends, your fight is shown beside theirs, turn by turn, with no grade and no score.
+Playing from a recording writes nothing to your saves, your stats or your run history, win or lose.
+Recording your own runs changes nothing about them: they save and count exactly as they always did.
+Works on Slay the Spire 2 `v0.111.0`, needs no other mod, and asks you to play from a recording with only Runmobile enabled.
+
+This repository is `sts2-pilot-trainer`: the mod a player installs is `Runmobile`, and the Combat Trainer is one feature inside it.
+Anything marked **Coming soon** below is planned for launch and not built yet.
+A feature stops being coming soon by deleting the tag, so this file stays current without losing the framing.
+
+## Why it exists
+
+The way this community teaches itself to climb ascensions is to watch a top player and second-guess them: pause at the card reward, decide what you would take, unpause, see what they did.
+Watching only lets you guess.
+You never find out whether your pick would have worked, because you can never be in that fight.
+Runmobile puts you in it.
+
+A run takes an hour and never repeats.
+A recorded fight takes five minutes and repeats exactly.
+
+## What you can do
+
+**Play the fight a top player played, then see how yours compared.**
+Runmobile ships with one run this project reconstructed from a top player's public video.
+Open it and the game walks that player's decisions before the fight on its own screens, with playback controls: step one decision at a time, play them through at half to double speed, or look back at one already made.
+Then the fight is yours.
+When it ends, the result panel shows the two fights side by side: summary figures, the cards and potions each of you played by turn, and a chart of health lost each turn.
+The two lines stay distinct by colour and marker and nothing scores either one.
+Built and shown in the retail client; [demo/PLAYBACK-TRANSPORT.md](demo/PLAYBACK-TRANSPORT.md) and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md) have the screenshots.
+Today that is the first fight of one featured run.
+- **Coming soon:** more featured runs, from more creators, named on the page.
+- **Coming soon:** every fight of a featured run, not only the first, with every screen between fights carried on the playback controls.
+- **Coming soon:** watch the creator's own fight played through, and peek at it mid-fight if you choose to.
+- **Coming soon:** continue the run past the fight, as them or as you.
+
+**Practise the fight you keep losing.**
+Play the same fight again from the same start, as many times as you like, and try the other line.
+From inside the fight, one control takes you back to its proven start or straight to the end of your attempt; both ask first.
+A lost fight is not compared, because there is no completed line to set beside the recording's; the panel says so.
+
+**Your own runs, recorded.**
+Every run you play is recorded: an ordered history of every decision from run start, written as you play so a crash keeps what happened.
+It stays on your machine, under the mod's own directory, and carries no Steam id, machine path or profile id.
+Two runs played by a person on this build have been replayed through the real engine.
+`native-9F8CY60C5BK7-20260906-005737` replays with zero boundary mismatches, and does not pass the publication gate: its run is short enough to have no card reward, no marked card and no event, so three required controls are not applicable.
+`native-3LACFJ5NJ371-20260906-015901` replays with zero boundary mismatches and passes the gate `PUBLISHABLE` with all ten controls applied.
+Three of the gate's conditions need a video, game-mode, seed-topology and evidence-binding, and a recording made inside the game is never asked them.
+A fourth, baselib-path, is not asked either, and a weaker check stands in for it: the loaded mods' own declaration that they do not affect gameplay, which the gate's artifact says out loud.
+The arbiter enters fight 2 of that recording headlessly and reproduces the recorded digest byte for byte.
+Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
+- **Coming soon:** play from any fight of your own recorded runs.
+- **Coming soon:** play from a run at a floor, not only at a fight.
+- **Coming soon:** a run browser: featured runs, recent runs and your own, shown in the game's own run-history language, and never a run your game version cannot reproduce.
+- **Coming soon:** a settings screen for recording, and a control that shows how much space recordings take and deletes all of them.
+
+**One whole fight, no undo.**
+You play from the moment the fight began to the moment it ends.
+There is no taking a turn back.
+Whether you see any of their line before you play is your choice, and until that choice exists you see none of it.
+You learn the fight, not the shuffle.
+
+**Playing from a recording touches nothing.**
+While you play from a recording the mod blocks every write the game would make to your progress file, your run save, your run history and your achievements, win or lose.
+That is measured, not asserted: a ledger of the game's files taken before a session and compared after, with the mod's own directory reported separately from everything that must not change.
+Your own runs are different on purpose: recording them changes nothing about how they save or count.
+
+**It tells you when it can't.**
+Before you play from a recording, Runmobile checks whether your install can reproduce it: game version, content, act variant, unlock state and which mods are active.
+Each thing that does not match is a sentence naming what the recording needs and what it found, and what to play to fix it where playing fixes it.
+No black screen.
+
+**Nothing is a saved snapshot.**
+A recording is the run's decisions, and to open a fight Runmobile hands them to the real game in order until it reaches that fight, then checks that the fight it arrived in is the recorded one, hidden state included: draw order and the position of every random stream.
+A fight that does not match is refused rather than played.
+
+## Compared with other mods
+
+Figures are Steam Workshop current subscribers or Nexus downloads on 2026-09-06, from the stores' own APIs and pages.
+Nothing here is a claim about anybody's craft: each row is what the mod does and what Runmobile does instead.
+
+| Mod | What it does | Runmobile |
+|---|---|---|
+| [Rewind](https://steamcommunity.com/sharedfiles/filedetails/?id=3747557762) (44,187) | Undo turns inside a fight; return to a room checkpoint. | One whole fight from its real start, no undo. The fight is re-derived through the real engine and refused if it is not the recorded one. |
+| [Hindsight](https://www.nexusmods.com/slaythespire2/mods/925) (670 Nexus downloads, not on the Workshop) | Re-enter your own finished run at a floor, from a save snapshot it took. | Plays from history, never a snapshot. Playing from a recording writes nothing to saves, stats or run history. |
+| [RunReplays](https://steamcommunity.com/sharedfiles/filedetails/?id=3759973128) (53) | Record every decision of a run and replay it by driving the game's screens; load to a floor. | Replays through the engine and checks the result at every boundary; nothing is compared on trust. A version mismatch is a sentence before anything starts. |
+| [STS2Dojo](https://steamcommunity.com/sharedfiles/filedetails/?id=3758840693) (21) | Rebuild one fight from your run-history file and a seed, as a standalone practice combat. | The fight is the one that happened, reached by replaying the run's decisions, and the comparison is against the recorded fight. |
+| [Training Ground](https://steamcommunity.com/sharedfiles/filedetails/?id=3772723979) (277) | Build any fight you want and practise it; nothing written to your save. | A different job: Training Ground builds a situation, Runmobile puts you in the one a real run produced. They coexist. |
+
+Run-history sites are a different thing again: [OP.GG](https://op.gg) held 2.7 million runs on 2026-09-06, and its pages show you the deck a good player ended with.
+Runmobile lets you play from the fight they played.
+
+## Works on
+
+- Slay the Spire 2 `v0.111.0`, the build the featured recording and both recorded runs were made on.
+- No dependencies. The mod is DLL-only, declares `affects_gameplay: false`, and needs no BaseLib.
+- Playing from a recording asks you to run with only Runmobile enabled, and says so in a sentence if another mod is active, because another mod's behaviour cannot be established from the game's content hash.
+- Recording your own runs works with other mods loaded; the recording notes which mods were active. A run recorded with a gameplay-affecting, undeclared or unidentified mod loaded is recorded, and refused when you later play from it.
+- Each recording is keyed to the build it was made on. When the game updates, the featured runs are re-verified on the new build and the ones that no longer reproduce are retired; your own new recordings are on the new build because you played them there.
+
+## Install
+
+- **Coming soon:** Steam Workshop, with a Nexus mirror.
+- Today, from source: `./scripts/install-mod.sh` builds the mod and puts it in the game's own mods directory; `--uninstall` removes it.
+  Launch the game through Steam, enable only Runmobile, and open Singleplayer.
+
+## How it works, in one breath
+
+A recorded run is the list of every decision made in it, from the first card pick on, with the run's identity: seed, build, ascension, acts and the unlock state it was generated against.
+To open a fight, Runmobile hands those decisions to the real game, in order, until it reaches that fight, checks that the state it arrived in is the recorded one, and hands the game to you.
+Nothing is reimplemented: every verb maps onto a method the retail client itself calls.
+The same machinery runs headlessly as a command-line arbiter that verifies a recording against what a video shows, and that is where the rest of this file goes.
+
+---
+
+# For contributors
+
+The rest of this file is the project as an engineering artifact: what has been established, how to run it, and how it is laid out.
+[AGENTS.md](AGENTS.md) holds the build and test commands and the invariants every change has to respect.
+
+The repository began as a deterministic replay arbiter.
 Given a video of somebody's run, it reconstructs the ordered history of what they did, replays it through the real shipped game engine, and checks the result against what the video actually shows.
-If everything agrees, the run's verified gameplay history has been reproduced exactly — including hidden gameplay state no video can show, like the position of every random-number stream and the order of the draw pile.
+If everything agrees, the run's verified gameplay history has been reproduced exactly, including hidden gameplay state no video can show, like the position of every random-number stream and the order of the draw pile.
 This does not identify an unobserved source configuration when multiple configurations reproduce that history; the report states that limit.
 If anything disagrees, it says which field, at which moment, and stops.
 
@@ -99,7 +220,7 @@ Under the renamed `Runmobile` artifact a later session repeated the fight itself
 See [docs/in-game-host.md](docs/in-game-host.md), [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md), and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md); [demo/PLAYBACK-TRANSPORT.md](demo/PLAYBACK-TRANSPORT.md) is the `Runmobile` session, and [docs/mod-ui-direction.md](docs/mod-ui-direction.md) owns what those surfaces are.
 
 The mod also records the player's own runs, on unless `settings.json` in its store says otherwise: every run played becomes a manifest of the same kind under `user://Runmobile/recordings/`, which `gate` judges by the same standard as one transcribed from a video.
-That is built and not yet proved by play - no recording made by a person has been through a gate - and [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) has the steps that would close it.
+[docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) has the steps for producing one and checking it.
 
 ```bash
 ./scripts/arbiter generate-synthetic-fixture --out build/evidence/alternate.replay.json --line alternate
