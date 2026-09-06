@@ -149,6 +149,48 @@ public static class ValidatorSource
             .ToList();
     }
 
+    /// <summary>
+    /// The arguments a shop purchase may be refused for carrying, whatever it bought.
+    ///
+    /// This is the set the per-kind table subtracts each kind's own required arguments
+    /// from, and the validator writes it down rather than deriving it, so a name in it
+    /// that no kind requires is refused for every kind and would be missing from the
+    /// table if the table derived the set from the kinds instead.
+    /// </summary>
+    public static IReadOnlyList<string> ReadShopRefusableArguments(string repositoryRoot)
+    {
+        var method = Method(repositoryRoot, ShopMethod);
+        var scope = new ConstantScope();
+
+        foreach (var loop in method.DescendantNodes().OfType<ForEachStatementSyntax>())
+        {
+            var elements = Leftmost(loop.Expression) switch
+            {
+                ImplicitArrayCreationExpressionSyntax implicitArray => implicitArray.Initializer.Expressions,
+                ArrayCreationExpressionSyntax { Initializer: { } initializer } => initializer.Expressions,
+                _ => default,
+            };
+
+            if (elements.Count > 0)
+            {
+                return elements.Select(element => scope.String(element)).ToList();
+            }
+        }
+
+        throw new SourceRefusal(
+            $"{RelativePath}: {ShopMethod} iterates no written-down list of arguments a purchase may be " +
+            "refused for carrying. Deriving that list from what the kinds require instead would publish a " +
+            "refusal set the validator does not use.");
+    }
+
+    /// <summary>What a chain of calls and member accesses is ultimately reading from.</summary>
+    private static ExpressionSyntax Leftmost(ExpressionSyntax expression) => expression switch
+    {
+        InvocationExpressionSyntax invocation => Leftmost(invocation.Expression),
+        MemberAccessExpressionSyntax member => Leftmost(member.Expression),
+        _ => expression,
+    };
+
     /// <summary>Argument names the validator refuses when present and blank.</summary>
     public static IReadOnlyList<string> ReadNonEmptyArguments(string repositoryRoot)
     {

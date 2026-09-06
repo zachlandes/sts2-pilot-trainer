@@ -32,6 +32,7 @@ public static class ManifestFormatReference
         var nonEmpty = ValidatorSource.ReadNonEmptyArguments(repositoryRoot);
         var enumerated = ValidatorSource.ReadEnumeratedArguments(repositoryRoot);
         var shopKinds = ValidatorSource.ReadShopPurchaseKinds(repositoryRoot);
+        var shopRefusable = ValidatorSource.ReadShopRefusableArguments(repositoryRoot);
         var controls = ControlArguments();
         var commands = mapped.ToDictionary(row => row.Verb, StringComparer.Ordinal);
 
@@ -44,7 +45,7 @@ public static class ManifestFormatReference
             Verb(page, rule, commands[rule.Verb], nonEmpty, enumerated, controls);
             if (rule.Verb == nameof(ActionVerb.ShopPurchase))
             {
-                ShopKinds(page, shopKinds);
+                ShopKinds(page, shopKinds, shopRefusable);
             }
         }
 
@@ -160,7 +161,9 @@ public static class ManifestFormatReference
     }
 
     private static void ShopKinds(
-        StringBuilder page, IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> kinds)
+        StringBuilder page,
+        IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> kinds,
+        IReadOnlyList<string> refusable)
     {
         page.AppendLine("What a purchase must name depends on what it bought.");
         page.AppendLine("An argument a kind does not have is refused as firmly as a missing one.");
@@ -168,10 +171,9 @@ public static class ManifestFormatReference
         page.AppendLine("| `kind` | Also required | Refused |");
         page.AppendLine("|---|---|---|");
 
-        var everything = kinds.SelectMany(kind => kind.Required).Distinct(StringComparer.Ordinal).ToList();
         foreach (var (kind, required) in kinds)
         {
-            var refused = everything.Where(name => !required.Contains(name, StringComparer.Ordinal)).ToList();
+            var refused = refusable.Where(name => !required.Contains(name, StringComparer.Ordinal)).ToList();
             page.AppendLine(
                 $"| `{kind}` | {(required.Count == 0 ? "nothing" : Code(required))} " +
                 $"| {(refused.Count == 0 ? "nothing" : Code(refused))} |");
@@ -223,7 +225,8 @@ public static class ManifestFormatReference
             .Where(group => group.Count() > 1)
             .Select(group =>
                 $"{group.Key} has {group.Count()} rows in the engine-command table. One verb runs one command, " +
-                "so this reference would have printed whichever row came first and said nothing about the rest."));
+                "so there is no answer to which one it runs, and keying the rows by verb would have died on the " +
+                "duplicate before this reference printed anything at all."));
 
         problems.AddRange(ruled.Except(commanded).Select(verb =>
             $"{verb} has argument rules and no engine command. A manifest using it would validate and then " +

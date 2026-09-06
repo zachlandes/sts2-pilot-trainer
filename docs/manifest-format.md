@@ -167,7 +167,7 @@ An argument a kind does not have is refused as firmly as a missing one.
 | `colorless_card` | `card_id`, `option_index` | `relic_id`, `potion_id` |
 | `relic` | `relic_id`, `option_index` | `card_id`, `potion_id` |
 | `potion` | `potion_id`, `option_index` | `card_id`, `relic_id` |
-| `card_removal` | nothing | `card_id`, `option_index`, `relic_id`, `potion_id` |
+| `card_removal` | nothing | `card_id`, `relic_id`, `potion_id`, `option_index` |
 
 ## `ProceedToNextAct`
 
