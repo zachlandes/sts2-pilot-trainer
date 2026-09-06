@@ -232,6 +232,27 @@ internal static class RecordingRetention
             $"older one(s) removed.{kept}", 2);
     }
 
+    /// <summary>
+    /// Lets the next singleplayer menu apply the standing policy again for the save
+    /// profile this game is running as.
+    ///
+    /// The latch above exists so a policy is applied once as a profile is entered, and
+    /// a policy the player has just changed has not been applied at all. Without this a
+    /// row that says runs will go at the next main menu is describing the next launch:
+    /// the latch is already closed for this profile and swallows the call.
+    ///
+    /// Nothing is removed here, which is the point of forgetting rather than applying:
+    /// a standing policy acts at the main menu, and a screen that deleted files as the
+    /// number moved would be performing the act it is describing.
+    ///
+    /// This profile only. Another profile's policy was applied against its own
+    /// recordings, and a write made while playing as this one says nothing about it.
+    /// </summary>
+    internal static void ReapplyPolicyAtNextMenu()
+    {
+        lock (Gate) Applied.Remove(RunmobileStore.Root);
+    }
+
     /// <summary>Lets a test run more than one policy against one store. Nothing in the
     /// mod calls it: a player's process applies each profile's policy once.</summary>
     internal static void ForgetForTesting()

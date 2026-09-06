@@ -49,13 +49,46 @@ internal static class MyRunsSettings
     ///
     /// The section that hosts it parents <see cref="MyRunsSettingsRow.Root"/> and gives
     /// it a width; everything else about the row is settled here.
+    ///
+    /// A disk that cannot be asked yet is a row, not an exception. The settings section
+    /// hangs off the main menu's own modding entry point, which a player reaches before
+    /// choosing a save profile, and the store throws until they have - so a build that
+    /// let that out would take the screen down with it. What the row says about it is
+    /// <see cref="MyRunsRow"/>'s, from a fact of its own rather than a count of zero:
+    /// no runs yet and cannot tell yet are different sentences.
     /// </summary>
     internal static MyRunsSettingsRow Build(float width, Font? font)
     {
-        var facts = RecordingRetention.OnDisk();
+        var facts = OnDisk();
         _row = MyRunsSettingsRow.Build(
             MyRunsRow.For(facts), facts.Keep, width, font, Retain, AskToRemove);
         return _row;
+    }
+
+    /// <summary>
+    /// What the disk holds, or the fact that it could not be asked.
+    ///
+    /// The store refuses before the game has chosen a save profile, because there is no
+    /// answer yet to whose runs these are.
+    /// </summary>
+    private static MyRunsFacts OnDisk()
+    {
+        try
+        {
+            return RecordingRetention.OnDisk();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not read what your runs take on this disk: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            return new MyRunsFacts(
+                Runs: 0,
+                Bytes: 0,
+                Keep: RunmobileSettings.DefaultKeepRecentRuns,
+                SettingsReadable: false,
+                StoreReadable: false);
+        }
     }
 
     /// <summary>
@@ -65,12 +98,18 @@ internal static class MyRunsSettings
     /// where <see cref="RecordingRetention.ApplyOnce"/> already applies it, and the row's
     /// second line says how many runs that will be - so the standing act is as visible
     /// as the immediate one without this screen quietly performing it.
+    ///
+    /// That is only true because the latch is forgotten with the write. The retention
+    /// owner applies a profile's policy once per process, and this profile's turn has
+    /// already been taken by the time a player can reach this control, so a row
+    /// promising the next main menu would otherwise be describing the next launch.
     /// </summary>
     private static void Retain(int keep)
     {
         try
         {
             RunmobileSettings.SetKeepRecentRuns(keep);
+            RecordingRetention.ReapplyPolicyAtNextMenu();
             Redraw(null);
         }
         catch (Exception ex)
@@ -170,7 +209,7 @@ internal static class MyRunsSettings
     {
         if (_row is not { } row) return;
 
-        var facts = RecordingRetention.OnDisk() with { RemovedJustNow = removedJustNow };
+        var facts = OnDisk() with { RemovedJustNow = removedJustNow };
         row.Apply(MyRunsRow.For(facts), facts.Keep);
     }
 }

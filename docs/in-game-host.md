@@ -779,6 +779,14 @@ A failure - the store not ready, a settings file this build will not write over,
 
 Pressing Remove is `RecordingRetention.PurgeNow`, which writes the request to the file first and removes second, so a game that stops in between finishes at the next main menu.
 It is not behind the once-per-profile latch and does not set one: that latch exists so a standing policy is applied once as a profile is entered, and this is a person pressing a control.
+
+Moving the policy removes nothing where it stands, and forgets that latch for the profile this game is running as - `RecordingRetention.ReapplyPolicyAtNextMenu`, which is the retention owner's because the latch is.
+This profile only: another profile's policy was applied against its own recordings and a write made while playing as this one says nothing about it.
+Without that the row's own second line would be describing the next launch rather than the next main menu, because this profile's turn at the latch is already taken by the time a player can reach the control.
+
+The store refuses until the game has chosen a save profile, and the settings section hangs off the main menu's own modding entry point, which is reachable before one is.
+`MyRunsSettings.Build` therefore catches and logs the way its other members do, and hands the derivation a `StoreReadable` fact of its own rather than a count of zero - no runs yet and cannot tell yet are different sentences.
+The row is then the one line that says the runs are read once a save profile is chosen, with every control refused, because each of them writes into a file this build cannot yet name.
 The confirmation is the game's own `NGenericPopup`, the one the eligibility screen uses, with the way out focused.
 
 Two deliberate departures from the design, both presentation rather than wording.

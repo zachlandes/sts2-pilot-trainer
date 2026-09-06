@@ -31,8 +31,18 @@ namespace Sts2PilotTrainer.Trainer;
 /// fifty" and "nobody could read the file, so no policy is in force at all" are two
 /// different things to tell a player, and neither this row nor anything behind it may
 /// write into the second one.</param>
+/// <param name="StoreReadable">Whether the disk could be asked at all. False before the
+/// game has chosen a save profile, because there is no answer to whose runs these are
+/// until it has. Its own fact rather than a count of zero: "no runs yet" and "cannot
+/// tell yet" are different sentences, and only one of them is safe to offer a removal
+/// beside.</param>
 public sealed record MyRunsFacts(
-    int Runs, long Bytes, int Keep, int? RemovedJustNow = null, bool SettingsReadable = true);
+    int Runs,
+    long Bytes,
+    int Keep,
+    int? RemovedJustNow = null,
+    bool SettingsReadable = true,
+    bool StoreReadable = true);
 
 /// <summary>
 /// The player's settings row about their own runs: keep, size, remove.
@@ -65,12 +75,14 @@ public sealed record MyRunsFacts(
 /// <param name="KeepPressable">Whether the policy may be moved. False where this build
 /// could not read the settings file: the numeral is then the default standing in for a
 /// sentence nobody could read, and a press would write a member this build's own
-/// meaning into a document whose schema it refuses.</param>
+/// meaning into a document whose schema it refuses. False too before the disk can be
+/// asked, because there is no file to write into until a save profile is chosen.</param>
 /// <param name="RemoveLabel">The destructive control's label.</param>
 /// <param name="RemovePressable">Whether it may be pressed. False with nothing to
-/// remove, and false over a settings file this build could not read: the removal
-/// records the request in that file before it takes anything, so an act that cannot be
-/// recorded is one that must not be offered. A refused control is drawn rather than
+/// remove, false over a settings file this build could not read - the removal records
+/// the request in that file before it takes anything, so an act that cannot be recorded
+/// is one that must not be offered - and false before the disk can be asked whose runs
+/// these are. A refused control is drawn rather than
 /// hidden, so the row keeps its shape as the number changes, and the second line is
 /// what says why.</param>
 /// <param name="Confirm">What the game's own popup asks before anything goes.</param>
@@ -92,6 +104,12 @@ public sealed record MyRunsRow(
     /// <summary>Where the runs are, in the words the row uses for it.</summary>
     private const string Directory = "user://Runmobile/recordings";
 
+    /// <summary>What the row reads before the game has said whose runs these are. The
+    /// whole row is that one line: a reading, a receipt and a policy all describe a
+    /// disk this build cannot yet name, and a second line under it would be describing
+    /// it too.</summary>
+    private const string Unreadable = "Your runs are read once you have chosen a save profile";
+
     /// <summary>
     /// The row, for what is true right now. Total and pure: every combination of the
     /// facts has an answer, including none of them.
@@ -103,13 +121,13 @@ public sealed record MyRunsRow(
         var size = Size(facts.Bytes);
         var runs = Runs(facts.Runs);
         return new MyRunsRow(
-            Reading: $"{runs} · {size}",
-            Detail: DetailLine(facts),
+            Reading: facts.StoreReadable ? $"{runs} · {size}" : Unreadable,
+            Detail: facts.StoreReadable ? DetailLine(facts) : string.Empty,
             KeepLabel: "Keep my runs",
             KeepNumeral: facts.Keep.ToString(CultureInfo.InvariantCulture),
-            KeepPressable: facts.SettingsReadable,
+            KeepPressable: facts.StoreReadable && facts.SettingsReadable,
             RemoveLabel: "Remove all my runs",
-            RemovePressable: facts.Runs > 0 && facts.SettingsReadable,
+            RemovePressable: facts.StoreReadable && facts.Runs > 0 && facts.SettingsReadable,
             Confirm: new MyRunsConfirm(
                 Title: "Remove all your runs?",
                 Body: $"{runs}, {size}, recorded by Runmobile. Your saves, profile and run history are not " +
