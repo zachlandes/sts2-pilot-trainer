@@ -1010,11 +1010,11 @@ public static partial class ManifestValidator
                 [
                     .. required,
                     "target_index",
-                    "negative_control_substitute_card_id",
-                    "negative_control_substitute_hand_index",
+                    Corruption.SubstituteCardId,
+                    Corruption.SubstituteHandIndex,
                 ];
                 nonNegativeIntegers =
-                ["hand_index", "target_index", "negative_control_substitute_hand_index"];
+                ["hand_index", "target_index", Corruption.SubstituteHandIndex];
                 break;
             case ActionVerb.EndTurn:
                 required = [];
@@ -1195,18 +1195,18 @@ public static partial class ManifestValidator
             }
         }
 
-        var hasSubstituteCard = action.Args.ContainsKey("negative_control_substitute_card_id");
-        var hasSubstituteIndex = action.Args.ContainsKey("negative_control_substitute_hand_index");
+        var hasSubstituteCard = action.Args.ContainsKey(Corruption.SubstituteCardId);
+        var hasSubstituteIndex = action.Args.ContainsKey(Corruption.SubstituteHandIndex);
         if (hasSubstituteCard != hasSubstituteIndex)
         {
             problems.Add(
                 $"actions[{action.Seq}] ({action.Verb}) negative-control substitute card and hand index must appear together.");
         }
-        if (action.Args.TryGetValue("negative_control_substitute_card_id", out var substituteCardId) &&
+        if (action.Args.TryGetValue(Corruption.SubstituteCardId, out var substituteCardId) &&
             string.IsNullOrWhiteSpace(substituteCardId))
         {
             problems.Add(
-                $"actions[{action.Seq}] ({action.Verb}) argument 'negative_control_substitute_card_id' is empty.");
+                $"actions[{action.Seq}] ({action.Verb}) argument '{Corruption.SubstituteCardId}' is empty.");
         }
     }
 

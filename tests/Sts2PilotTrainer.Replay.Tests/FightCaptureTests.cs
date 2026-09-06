@@ -137,6 +137,38 @@ public sealed class FightCaptureTests
         Assert.Equal(["POTION.BLOCK_POTION"], projection.Turns[1].ConsumablesUsed);
     }
 
+    /// <summary>
+    /// An argument the watcher could not resolve does not cost the player the fight
+    /// they just played.
+    ///
+    /// The recorder and the Combat Trainer watch the same actions through one observer,
+    /// and a hand index the observer cannot resolve means opposite things to them: the
+    /// recording is a history nobody can replay, while the comparison never reads that
+    /// argument and the line the player took is unaffected. So the answer belongs to
+    /// each sink, and this is the capture's: keep the step and carry on.
+    /// </summary>
+    [Fact]
+    public void AStepWhoseArgumentCouldNotBeResolvedIsKeptAndTheFightStillProjects()
+    {
+        var capture = FightCapture.Begin("player", Sample("in_progress", 1, 64, 42), Digest);
+        capture.BeginStepWithUnresolvedArgument(
+            "PlayCard", Args(("card_id", "CARD.BASH")), Sample("in_progress", 1, 64, 42),
+            previousActionFinished: false,
+            unresolved: "the hand this recorder can see does not hold it");
+        capture.CompleteStep(Sample("in_progress", 1, 64, 34));
+        capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 34));
+        capture.CompleteStep(Sample("victory", 1, 64, 0));
+
+        Assert.Equal(FightCaptureState.Completed, capture.State);
+        Assert.Null(capture.Refusal);
+        Assert.Equal(["combat_start", "PlayCard", "EndTurn"], capture.Trace.Steps.Select(step => step.Verb));
+
+        // And it kept what the watcher did resolve, without inventing what it did not.
+        Assert.Equal("CARD.BASH", capture.Trace.Steps[1].Args["card_id"]);
+        Assert.False(capture.Trace.Steps[1].Args.ContainsKey("hand_index"));
+        Assert.Equal("victory", capture.Project().Summary.Outcome);
+    }
+
     [Fact]
     public void ADefeatCompletesTheCaptureToo()
     {

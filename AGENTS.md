@@ -27,7 +27,7 @@ Run it on its own only when that is what you want, because the skip is silent in
 totals and the suite still reports green.
 Building first is what makes it run everything: nothing in the solution references
 `Sts2PilotTrainer.Cli`, so `dotnet test` never builds the arbiter the integration
-tests drive, and bootstrapping alone leaves 137 of them skipped.
+tests drive, and bootstrapping alone leaves 164 of them skipped.
 Every test run is bounded by `TestSessionTimeout` in `.runsettings`, wired in from
 `Directory.Build.props` so it applies however `dotnet test` was started. A run that
 exceeds it aborts with a non-zero exit rather than hanging: a deadlocked test used to
@@ -101,8 +101,8 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, 117 of
-`Sts2PilotTrainer.Arbiter.Tests`' 177 tests skip and the job still reports success.
+**What CI cannot run is recorded by name.** On a runner without the game, 119 of
+`Sts2PilotTrainer.Arbiter.Tests`' 167 tests skip and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts that skipped set against
 `scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
 one, or deleting one fails CI until the list is regenerated with `--update` in the
@@ -167,10 +167,18 @@ game into the default assembly load context. Two are about *when* rather than wh
 were live in a build whose tests were green: waiting a length of time is not waiting for
 the game to finish something, and returning to the main menu frees the popup that
 explains why you returned. The fifth stops the mod loading at all, before a line of its
-code runs: a field's type may *be* a sibling assembly's type and may not be a *generic
-type built over* one, in a nullable, a tuple, a delegate's type argument or a
-collection's element. It has fired three times, most recently through a green CI run, so
-run `ModAssemblyLoadOrderTests` on a new field rather than judging its shape.
+code runs: nothing about a type in `Runmobile` may require a sibling assembly in order
+to *load* it. The game enumerates this assembly's types to find the mod initializer, one
+phase before `SiblingAssemblies` has said where the siblings are, and loading a type
+resolves its base class, the interfaces it implements and enough of its instance fields
+to lay it out. Method bodies, method signatures, static fields and reference-typed
+fields are resolved later and are fine. The shapes are not the rule and naming them is
+how the rule was too narrow three times running - a generic built over a sibling type
+has done it, and so has a type implementing a sibling interface. Run
+`ModAssemblyLoadOrderTests` against a new type rather than judging its shape; it is the
+only thing here that reproduces the game's own condition. It has fired four times, twice
+through a green CI run. `DelegatingFightSampleSink` is how the mod reaches an interface
+it may not implement.
 `./scripts/install-mod.sh` is the one
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions, and remove the `CombatTrainer` directory the mod was installed under before the rename.
@@ -205,6 +213,17 @@ The run is generated against a supplied complete unlock state and can persist no
 `shouldSave: false` plus the mod's `ProfileWriteBarrier`, which is installed at mod
 start and inert unless a trainer run is live. Do not weaken either, and do not add a
 path that writes what the barrier suppresses.
+
+**A run a person plays is recorded by one owner, and refused rather than repaired.**
+`RunCapture` in `Sts2PilotTrainer.Replay` is the whole-run counterpart of `FightCapture` and delegates the inside of each fight to one, so there is one capture path.
+`RunRecorder` in the mod owns only what a pure class cannot: which game member is which decision, what its arguments are, and when the engine has settled enough to read.
+Inside a fight it hands over to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink`.
+The recorder refuses a run whose start it did not witness, marks `continuity = broken` when a resumed session's live state is not the state its journal last recorded, and never truncates.
+**Every integrity claim it makes is derived from what was observed, never from what a component assumes it observed.**
+Continuity, a witnessed start, the mod set a run was played under, the controls a verdict rests on: each of these is a claim about what happened, and a component that reports one it did not establish produces evidence nobody can check while every value in it is individually true.
+Four such claims were shipped on this branch and caught in review; [docs/in-game-host.md](docs/in-game-host.md) names them, so the rule is checkable rather than an abstraction.
+It writes an append-only `RunJournal` after every decision so a crash keeps the prefix, never raises `ProfileWriteBarrier` - the player's own run saves normally - and never writes a Steam id, a machine path, a profile id or hardware.
+Every write goes through `RunmobileStore`. [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
 
 **A fight a person plays is captured, never re-read.**
 `FightCapture` in `Sts2PilotTrainer.Replay` is the one owner of turning what the game's own action executor announces into the same `ReplayTrace` the headless arbiter produces; `PlayerFightObserver` in the mod only decides when a sample is taken.

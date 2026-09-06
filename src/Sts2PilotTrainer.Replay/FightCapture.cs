@@ -43,7 +43,7 @@ public enum FightCaptureState
 /// to <see cref="ReplayTrace.SampledFields"/>, which is what keeps every rule in this
 /// class testable on a machine that does not own the game.
 /// </summary>
-public sealed class FightCapture
+public sealed class FightCapture : IFightSampleSink
 {
     /// <summary>The verb of the step that marks where the capture began. It is the
     /// same moment the headless trace's combat start is: the sample after the action
@@ -206,6 +206,23 @@ public sealed class FightCapture
         _open = new OpenStep(verb, new SortedDictionary<string, string>(
             args.ToDictionary(arg => arg.Key, arg => arg.Value, StringComparer.Ordinal), StringComparer.Ordinal), sample);
     }
+
+    /// <summary>
+    /// An action whose argument the watcher could not resolve is kept anyway.
+    ///
+    /// The comparison is over what the fight did, and it reads that from the samples
+    /// either side of each action rather than from the arguments: the hand position a
+    /// card came from and the belt slot a potion came off are the manifest's business,
+    /// not this one's. Dropping the fight a player had just played, over a value
+    /// nothing here reads, would be a refusal about somebody else's contract.
+    /// </summary>
+    public void BeginStepWithUnresolvedArgument(
+        string verb,
+        IReadOnlyDictionary<string, string> resolved,
+        IReadOnlyDictionary<string, string> before,
+        bool previousActionFinished,
+        string unresolved) =>
+        BeginStep(verb, resolved, before, previousActionFinished);
 
     /// <summary>
     /// Records the state the open action left.

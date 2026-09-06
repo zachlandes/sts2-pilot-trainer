@@ -77,7 +77,7 @@ public class CorruptionTests
             Id = "combat-start",
             AfterSeq = 1,
             Kind = "combat_start",
-            Expect = Expect(native, 1, "3"),
+            Expect = Expect(native, 1, "3", PlayableHand),
         },
         new Checkpoint
         {
@@ -88,15 +88,48 @@ public class CorruptionTests
         },
     ];
 
-    private static IReadOnlyDictionary<string, Fact<string>> Expect(bool native, int afterSeq, string energy) =>
-        new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+    /// <summary>
+    /// The hand the fixture's fight is dealt, which its first two plays index into:
+    /// Hellraiser at 1, and the Defend at 4, which is 3 once the Hellraiser has gone.
+    /// reorder-plays verifies its pair against this rather than against an assumption
+    /// about what the hand does between two plays.
+    /// </summary>
+    private const string PlayableHand =
+        "CARD.STRIKE_IRONCLAD|CARD.HELLRAISER|CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.DEFEND_IRONCLAD";
+
+    private static IReadOnlyDictionary<string, Fact<string>> Expect(
+        bool native, int afterSeq, string energy, string? hand = null)
+    {
+        var expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
         {
-            ["combat.energy"] = native
-                ? Fact<string>.Captured(energy, FactEvidence.AtActionOrdinal(afterSeq))
-                : Fact<string>.Observed(energy, FactEvidence.AtVideoTime(PlayableTimes[afterSeq], "energy orb")),
+            ["combat.energy"] = Value(native, afterSeq, energy, "energy orb"),
         };
+        if (hand is not null) expect["combat.hand"] = Value(native, afterSeq, hand, "the hand");
+        return expect;
+    }
+
+    private static Fact<string> Value(bool native, int afterSeq, string value, string method) => native
+        ? Fact<string>.Captured(value, FactEvidence.AtActionOrdinal(afterSeq))
+        : Fact<string>.Observed(value, FactEvidence.AtVideoTime(PlayableTimes[afterSeq], method));
 
     private static IReadOnlyList<ReplayManifest> PlayableRecordings() => [Playable(), Playable(native: true)];
+
+    /// <summary>
+    /// The hand-beginning boundaries a history records, as the checkpoints a recorder
+    /// writes for them. reorder-plays reads these to decide which plays share a hand,
+    /// so a fixture that ends a turn has to say so the way a recording does.
+    /// </summary>
+    private static IReadOnlyList<Checkpoint> Boundaries(
+        params (int AfterSeq, string Kind, string? Hand)[] boundaries) =>
+    [
+        .. boundaries.Select(boundary => new Checkpoint
+        {
+            Id = $"{boundary.Kind}-{boundary.AfterSeq}",
+            AfterSeq = boundary.AfterSeq,
+            Kind = boundary.Kind,
+            Expect = Expect(native: false, boundary.AfterSeq, "3", boundary.Hand),
+        }),
+    ];
 
     private static ActionRecord At(int index, ActionRecord action) => action with
     {
@@ -285,6 +318,42 @@ public class CorruptionTests
         Assert.True(ManifestValidator.Validate(reordered).IsValid);
     }
 
+    /// <summary>
+    /// A history that nominated no substitute is one this control has nothing to do to.
+    ///
+    /// Its three nomination-driven siblings all say so in <c>AppliesTo</c>, so a history
+    /// that never nominated is skipped by name and
+    /// <c>negative-controls --require-all-controls</c> refuses. This one used to fall
+    /// back to a hardcoded Strike at hand index 0 and run anyway: the driver then
+    /// refused on card identity against whatever card actually sat there, the gate
+    /// counted the control as rejected, and nothing about a same-cost substitution had
+    /// been demonstrated. A control that cannot fail for the right reason is worse than
+    /// one that is honestly skipped.
+    /// </summary>
+    [Fact]
+    public void SubstitutingAppliesOnlyToAHistoryThatNominatedASubstitute()
+    {
+        var control = Corruption.All.Single(c => c.Name == "substitute-same-cost");
+        var manifest = Playable();
+        var unnominated = manifest with
+        {
+            Actions = [.. manifest.Actions.Select(action => action with
+            {
+                Args = action.Args
+                    .Where(pair => pair.Key != Corruption.SubstituteCardId &&
+                                   pair.Key != Corruption.SubstituteHandIndex)
+                    .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
+            })],
+        };
+
+        Assert.True(control.AppliesTo(manifest));
+        Assert.False(control.AppliesTo(unnominated));
+
+        // And reaching it anyway is a refusal rather than a guess.
+        var refusal = Assert.Throws<ManifestException>(() => control.Apply(unnominated));
+        Assert.Contains(Corruption.SubstituteCardId, refusal.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ReorderingKeepsBothPlaysLegalAtTheirOriginalHandPositions()
     {
@@ -298,4 +367,358 @@ public class CorruptionTests
         Assert.Equal("CARD.HELLRAISER", plays[1].Args["card_id"]);
         Assert.Equal("1", plays[1].Args["hand_index"]);
     }
+
+    /// <summary>
+    /// The reorder control swaps a pair whose order can matter, not the first hand it
+    /// finds.
+    ///
+    /// A turn whose first two plays are the same card at the same target is corrupted
+    /// into a byte-identical run. The arbiter then declines to reject it, correctly -
+    /// refusing would be the arbiter lying about a history that really is the same -
+    /// and the gate reports a failure that belongs to the control's own nomination. A
+    /// real recording did exactly that: its first two consecutive plays were both a
+    /// plain Strike. So that turn is passed over and the next one is asked.
+    /// </summary>
+    [Fact]
+    public void ReorderingSwapsAPairWhoseOrderCanMatterRatherThanTheFirstHand()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                // Same card, same target: swapping these two is the same history.
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(4, Fixtures.Action(4, ActionVerb.EndTurn)),
+                // The next turn opens with a pair worth swapping.
+                At(5, Fixtures.Action(5, ActionVerb.PlayCard,
+                    ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
+                At(6, Fixtures.Action(6, ActionVerb.PlayCard,
+                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "2"))),
+            ],
+            Checkpoints = Boundaries(
+                (1, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH"),
+                (4, "turn_start",
+                    "CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD")),
+        };
+
+        var reordered = Corruption.All.Single(control => control.Name == "reorder-plays").Apply(manifest);
+        var swapped = reordered.Actions
+            .Where(action => action.Note == "reordered by a negative control")
+            .Select(action => action.Args["card_id"])
+            .ToList();
+
+        Assert.Equal(2, swapped.Count);
+        Assert.Contains("CARD.BASH", swapped);
+        Assert.Contains("CARD.DEFEND_IRONCLAD", swapped);
+    }
+
+    /// <summary>
+    /// A history whose every adjacent pair is interchangeable is refused, not corrupted
+    /// into itself.
+    /// </summary>
+    [Fact]
+    public void ReorderingRefusesAHistoryWhereNoSwapCouldMatter()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+            ],
+            Checkpoints = Boundaries(
+                (1, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH")),
+        };
+
+        var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
+
+        // Not applicable rather than a throw out of the whole command: the coverage
+        // requirement is what refuses such a recording, with its artifact intact.
+        Assert.False(reorder.AppliesTo(manifest));
+
+        var refusal = Assert.Throws<ManifestException>(() => reorder.Apply(manifest));
+
+        Assert.Contains("differ in the card played", refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A screen that removes the card cannot serve the enchant control.
+    ///
+    /// Whichever identical copy goes, the deck left behind is the same list of the same
+    /// cards, so the corrupted run is the uncorrupted run and no arbiter could tell them
+    /// apart. A real recording nominated a shop removal and the control reported a
+    /// failure that was its own nomination's rather than the arbiter's.
+    /// </summary>
+    [Fact]
+    public void EnchantingADifferentCopyDoesNotApplyToAScreenThatRemovesTheCard()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.ShopPurchase, ("kind", ShopPurchaseKinds.CardRemoval))),
+                At(3, Fixtures.Action(3, ActionVerb.SelectCardFromScreen,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("option_index", "0"),
+                    (Corruption.AlternativeOptionIndex, "1"))),
+            ],
+        };
+
+        var enchant = Corruption.All.Single(control => control.Name == "enchant-a-different-card");
+
+        Assert.False(enchant.AppliesTo(manifest));
+    }
+
+    /// <summary>
+    /// The swapped pair comes out of one hand, so the corruption stays a reordering.
+    ///
+    /// The re-indexing arithmetic assumes both plays are drawn from the same hand. A
+    /// pair that straddles a fight boundary - or a turn boundary, since the hand is
+    /// discarded and redrawn at the end of a turn - produces a play of a card that hand
+    /// never held, which the driver refuses on card identity: a structural refusal
+    /// counted as a rejection while nothing about order was demonstrated. The pair is
+    /// checked against the hand each boundary's checkpoint recorded, so this history
+    /// carries the boundaries it reached and the hands they were dealt.
+    /// </summary>
+    [Fact]
+    public void ReorderingSwapsAPairFromOneHandRatherThanAcrossAFightOrTurnBoundary()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                // The first fight ends here, so the pair either side of this is not one
+                // hand even though the two plays differ.
+                At(4, Fixtures.Action(4, ActionVerb.ClaimReward, ("reward_type", "gold"))),
+                At(5, Fixtures.Action(5, ActionVerb.MapMove, ("act", "0"), ("row", "2"), ("column", "3"))),
+                At(6, Fixtures.Action(6, ActionVerb.PlayCard,
+                    ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
+                // And this turn ends here, so the pair either side of it is not one hand
+                // either - the hand is discarded and redrawn.
+                At(7, Fixtures.Action(7, ActionVerb.EndTurn)),
+                At(8, Fixtures.Action(8, ActionVerb.PlayCard,
+                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "2"))),
+                At(9, Fixtures.Action(9, ActionVerb.PlayCard,
+                    ("card_id", "CARD.HELLRAISER"), ("hand_index", "3"))),
+            ],
+            Checkpoints = Boundaries(
+                (1, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH"),
+                (5, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.HELLRAISER"),
+                (7, "turn_start",
+                    "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.BASH|" +
+                    "CARD.HELLRAISER")),
+        };
+
+        var reordered = Corruption.All.Single(control => control.Name == "reorder-plays").Apply(manifest);
+        var swapped = reordered.Actions
+            .Where(action => action.Note == "reordered by a negative control")
+            .Select(action => action.Args["card_id"])
+            .ToList();
+
+        Assert.Equal(2, swapped.Count);
+        Assert.Contains("CARD.DEFEND_IRONCLAD", swapped);
+        Assert.Contains("CARD.HELLRAISER", swapped);
+    }
+
+    /// <summary>
+    /// And a history whose only differing pair sits either side of an EndTurn is not
+    /// applicable rather than corrupted into an illegal one.
+    /// </summary>
+    [Fact]
+    public void ReorderingDoesNotApplyWhenEveryDifferingPairStraddlesATurn()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(3, Fixtures.Action(3, ActionVerb.EndTurn)),
+                At(4, Fixtures.Action(4, ActionVerb.PlayCard,
+                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "0"))),
+            ],
+            Checkpoints = Boundaries(
+                (1, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD"),
+                (3, "turn_start", "CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD")),
+        };
+
+        var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
+
+        Assert.False(reorder.AppliesTo(manifest));
+    }
+
+    /// <summary>
+    /// A recording that never observed a hand is not applicable either.
+    ///
+    /// The control does not fall back to reading the verbs between the plays: nothing
+    /// in an action entry says what the hand was, so a history with no hand-beginning
+    /// checkpoint has not established the one thing the swap depends on.
+    /// </summary>
+    [Fact]
+    public void ReorderingDoesNotApplyWhenNoCheckpointRecordedTheHand()
+    {
+        var manifest = Playable() with { Checkpoints = [] };
+
+        var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
+
+        Assert.False(reorder.AppliesTo(manifest));
+        Assert.Throws<ManifestException>(() => reorder.Apply(manifest));
+    }
+
+    /// <summary>
+    /// The hand is what the control needs, and a checkpoint that recorded one has it
+    /// whatever it is called.
+    ///
+    /// Both engine-generated fixtures label every checkpoint <c>synthetic-engine</c>
+    /// and carry <c>combat.hand</c> on the ones that observed a hand. Asking for a
+    /// checkpoint kind instead reported NOT APPLICABLE on both of them, which cost the
+    /// negative-control suite its two video-undetectable controls on the one history in
+    /// this repository the engine itself wrote.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReorderingAppliesToAnEngineFixtureWhoseCheckpointsAreNotNamedForBoundaries(bool wholeAct)
+    {
+        var manifest = wholeAct ? SyntheticReplayFixture.CreateWholeAct() : SyntheticReplayFixture.Create();
+        Assert.DoesNotContain(
+            manifest.Checkpoints,
+            checkpoint => checkpoint.Kind is ReplayBoundary.TurnStartKind or ReplayBoundary.CombatStartKind
+                or ReplayBoundary.FloorEntryKind);
+
+        var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
+
+        Assert.True(reorder.AppliesTo(manifest));
+        var swapped = reorder.Apply(manifest).Actions
+            .Where(action => action.Note == "reordered by a negative control")
+            .ToList();
+        Assert.Equal(2, swapped.Count);
+    }
+
+    /// <summary>
+    /// A card the run had marked is still the card the hand slot holds.
+    ///
+    /// A canonical hand entry carries what a card had become - <c>+1</c> for an upgrade,
+    /// <c>@</c> and an id for an enchantment - while the play that took it names the
+    /// model alone. Comparing the two spellings directly declined every pair that opened
+    /// with a card the run had smithed or enchanted, which is an ordinary shape in a run
+    /// that visited a rest site, and left such a recording short of a control it should
+    /// have had.
+    /// </summary>
+    [Theory]
+    [InlineData("CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.BASH")]
+    [InlineData("CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.BASH")]
+    public void ReorderingAcceptsAPairWhoseRecordedHandCarriesAMarkedCard(string dealt)
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
+                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "0"))),
+            ],
+            Checkpoints = Boundaries((1, "combat_start", dealt)),
+        };
+
+        var reordered = Corruption.All.Single(control => control.Name == "reorder-plays").Apply(manifest);
+        var plays = reordered.Actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
+
+        // The pair was accepted and the two plays came out in the other order.
+        Assert.All(plays, play => Assert.Equal("reordered by a negative control", play.Note));
+        Assert.Equal("CARD.DEFEND_IRONCLAD", plays[0].Args["card_id"]);
+        Assert.Equal("CARD.STRIKE_IRONCLAD", plays[1].Args["card_id"]);
+    }
+
+    /// <summary>
+    /// Nor does a pair a card screen rewrote the hand between.
+    ///
+    /// A play can open a grid over the hand, and the pick that answers it is recorded
+    /// as the next action with no boundary either side - so nothing about the turn, the
+    /// fight or the verbs in between says the hand changed. The second play's index was
+    /// recorded against what was left after the screen, and against the hand the turn
+    /// was dealt it names a different card. That is what the recorded hand catches and
+    /// every window over the actions missed.
+    /// </summary>
+    [Fact]
+    public void ReorderingDoesNotApplyWhenAScreenRewroteTheHandBetweenThePlays()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                // The screen that play opened takes the Defend out of the hand.
+                At(3, Fixtures.Action(3, ActionVerb.SelectCardFromScreen,
+                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("option_index", "0"))),
+                // Recorded at its index in what the screen left behind.
+                At(4, Fixtures.Action(4, ActionVerb.PlayCard,
+                    ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
+            ],
+            Checkpoints = Boundaries(
+                (1, "combat_start",
+                    "CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.CLEAVE|CARD.BASH")),
+        };
+
+        var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
+
+        Assert.False(reorder.AppliesTo(manifest));
+    }
+
+    /// <summary>
+    /// And a history whose only differing pair straddles a fight is not applicable
+    /// rather than corrupted into an illegal one.
+    /// </summary>
+    [Fact]
+    public void ReorderingDoesNotApplyWhenEveryDifferingPairStraddlesAFight()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(4, Fixtures.Action(4, ActionVerb.ClaimReward, ("reward_type", "gold"))),
+                At(5, Fixtures.Action(5, ActionVerb.MapMove, ("act", "0"), ("row", "2"), ("column", "3"))),
+                At(6, Fixtures.Action(6, ActionVerb.PlayCard,
+                    ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
+            ],
+            Checkpoints = Boundaries(
+                (1, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.BASH"),
+                (5, "combat_start", "CARD.STRIKE_IRONCLAD|CARD.BASH|CARD.HELLRAISER")),
+        };
+
+        var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
+
+        Assert.False(reorder.AppliesTo(manifest));
+    }
 }
+

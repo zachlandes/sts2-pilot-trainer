@@ -53,8 +53,10 @@ public static class Corruption
             "damage and block totals agree. The intermediate state and hidden pile order still depend on order.",
             ReorderPlays)
         {
-            Requires = "two card plays",
-            AppliesTo = manifest => manifest.Actions.Count(a => a.Verb == ActionVerb.PlayCard) >= 2,
+            Requires = "the first two plays after one of the recording's own checkpoints that recorded a " +
+                       "combat.hand, sitting where that hand says they sat, and differing in the card " +
+                       "played or the enemy it is aimed at",
+            AppliesTo = manifest => TryFindPlaysWhoseOrderCanMatter(manifest, out _),
         },
 
         new("substitute-same-cost",
@@ -65,8 +67,9 @@ public static class Corruption
             "video-only pipeline did not do.",
             SubstituteSameCost)
         {
-            Requires = "a card play",
-            AppliesTo = manifest => manifest.Actions.Any(a => a.Verb == ActionVerb.PlayCard),
+            Requires = "a card play nominating a card the same hand held at the same cost and targeting",
+            AppliesTo = manifest => manifest.Actions.Any(
+                a => a.Verb == ActionVerb.PlayCard && a.Args.ContainsKey(SubstituteCardId)),
         },
 
         new("omit-play",
@@ -127,9 +130,13 @@ public static class Corruption
             "anything a frame of the event screen shows.",
             EnchantADifferentCard)
         {
-            Requires = "a card picked off a screen nominating another copy of the same card",
+            Requires = "a card marked on a screen an option established to mark rather than remove opened - " +
+                       "the rest site's SMITH, or the Waterlogged Scriptorium's enchantment - nominating " +
+                       "another copy of the same card",
             AppliesTo = manifest => manifest.Actions.Any(
-                a => a.Verb == ActionVerb.SelectCardFromScreen && a.Args.ContainsKey(AlternativeOptionIndex)),
+                a => a.Verb == ActionVerb.SelectCardFromScreen &&
+                     a.Args.ContainsKey(AlternativeOptionIndex) &&
+                     ChangesTheCardRatherThanRemovingIt(manifest.Actions, a)),
         },
 
         new("choose-a-different-event-option",
@@ -171,23 +178,162 @@ public static class Corruption
         },
     ];
 
+    /// <summary>
+    /// The two plays this control swaps, chosen so that swapping them can matter.
+    ///
+    /// Two things have to hold, and both are read out of the recording rather than
+    /// worked out from a model of the game.
+    ///
+    /// The swap has to change something. A swap of two of the same card at the same
+    /// target is the same history written twice: the arbiter correctly declines to
+    /// reject it, and the control then reports a failure that belongs to its own
+    /// nomination. A real recording did exactly that - its first two plays were both a
+    /// plain Strike.
+    ///
+    /// And both plays have to have come out of one hand, because the swap re-indexes
+    /// them against a single one. Rather than predict what the hand does between two
+    /// plays, this checks the pair against the hand the recording <em>observed</em>: a
+    /// checkpoint whose <c>expect</c> carries <c>combat.hand</c> is one that observed
+    /// it. The candidate pair is therefore the first two plays after such a checkpoint,
+    /// with no later hand-carrying one between them, because that is the only place the
+    /// recorded hand is the hand both plays saw; anywhere later would mean replaying the
+    /// plays in between to work out what the hand had become, which is modelling again.
+    ///
+    /// A recorded hand is what this asks for, not a checkpoint kind. Keying it on the
+    /// kinds that begin a hand declined every engine-generated fixture in this
+    /// repository, whose checkpoints are all labelled <c>synthetic-engine</c> and carry
+    /// the hand all the same, and the control reported NOT APPLICABLE on histories it
+    /// can damage.
+    ///
+    /// The check itself: the first play's card must sit at its recorded index in that
+    /// hand, and the second's must sit at its recorded index in what is left once the
+    /// first card has gone - the same card by model id, since a hand entry also carries
+    /// what the card had become. A candidate that fails either is declined and the next
+    /// checkpoint is tried; a recording where none verifies reports NOT APPLICABLE, and
+    /// the gate refuses it honestly for coverage.
+    ///
+    /// Five earlier versions asked this of the actions instead - raw adjacency, the
+    /// same fight, the same turn, a list of verbs asserted to keep the hand - and each
+    /// left the next hole, because each was a guess about the game dressed as a
+    /// precondition. A card screen or a potion can rewrite the hand mid-turn without
+    /// any boundary being crossed, and no verb list sees that. The recorded hand does.
+    /// </summary>
+    private static bool TryFindPlaysWhoseOrderCanMatter(ReplayManifest manifest, out Swap swap)
+    {
+        var handObserved = manifest.Checkpoints
+            .Where(checkpoint => checkpoint.Expect.ContainsKey("combat.hand"))
+            .OrderBy(checkpoint => checkpoint.AfterSeq)
+            .ToList();
+
+        var plays = manifest.Actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
+
+        foreach (var checkpoint in handObserved)
+        {
+            var dealt = checkpoint.Expect["combat.hand"];
+
+            var candidate = plays.Where(play => play.Seq > checkpoint.AfterSeq).Take(2).ToList();
+            if (candidate.Count < 2) continue;
+
+            var (first, second) = (candidate[0], candidate[1]);
+            if (handObserved.Any(other =>
+                    other.AfterSeq > checkpoint.AfterSeq && other.AfterSeq < second.Seq))
+            {
+                continue;
+            }
+
+            if (string.Equals(Argument(first, "card_id"), Argument(second, "card_id"), StringComparison.Ordinal) &&
+                string.Equals(Argument(first, "target_index"), Argument(second, "target_index"), StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var hand = dealt.Value.Split('|');
+            if (!HandIndex(first, hand.Length, out var firstIndex)) continue;
+            if (!IsTheCardPlayed(hand[firstIndex], first)) continue;
+
+            var left = hand.ToList();
+            left.RemoveAt(firstIndex);
+            if (!HandIndex(second, left.Count, out var secondIndex)) continue;
+            if (!IsTheCardPlayed(left[secondIndex], second)) continue;
+
+            swap = new Swap(first, second, hand, firstIndex, secondIndex);
+            return true;
+        }
+
+        swap = default;
+        return false;
+    }
+
+    /// <summary>A verified pair: the two plays, the hand the recording says they were
+    /// dealt, and where each sat in it.</summary>
+    private readonly record struct Swap(
+        ActionRecord First,
+        ActionRecord Second,
+        IReadOnlyList<string> Hand,
+        int FirstIndex,
+        int SecondIndexAfterFirstLeft);
+
+    /// <summary>
+    /// Whether the card in this hand slot is the card that play took.
+    ///
+    /// The two sides spell a card differently and both spellings are the recording's
+    /// own. A canonical hand entry carries what the card had become - its upgrade level
+    /// after a <c>+</c> and its enchantment after an <c>@</c> - while an action's
+    /// <c>card_id</c> is the model id alone, which is the spelling the driver checks a
+    /// play against. So both are read down to the model id and compared as equals: the
+    /// index is what pins the position, and this is the check that the position holds
+    /// the card the recording says was played. Comparing the two spellings directly
+    /// declined every pair that opened with an upgraded or enchanted card, silently.
+    /// </summary>
+    private static bool IsTheCardPlayed(string handEntry, ActionRecord play) =>
+        string.Equals(
+            ModelId(handEntry), ModelId(Argument(play, "card_id") ?? string.Empty), StringComparison.Ordinal);
+
+    private static string ModelId(string card)
+    {
+        var decoration = card.IndexOfAny(['+', '@']);
+        return decoration < 0 ? card : card[..decoration];
+    }
+
+    private static bool HandIndex(ActionRecord play, int count, out int index) =>
+        int.TryParse(
+            Argument(play, "hand_index"), System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture, out index) &&
+        index >= 0 && index < count;
+
+    private static string? Argument(ActionRecord action, string name) =>
+        action.Args.TryGetValue(name, out var value) ? value : null;
+
     private static ReplayManifest ReorderPlays(ReplayManifest manifest)
     {
         var actions = manifest.Actions.ToList();
-        var plays = actions.Where(a => a.Verb == ActionVerb.PlayCard).ToList();
-        if (plays.Count < 2) throw new ManifestException("reorder-plays needs at least two card plays.");
 
-        var first = plays[0];
-        var second = plays[1];
+        // Unreachable through the gate, which asks AppliesTo first and reports a
+        // control with nothing to damage as not applicable rather than running it.
+        if (!TryFindPlaysWhoseOrderCanMatter(manifest, out var swap))
+        {
+            throw new ManifestException(
+                "reorder-plays needs the first two plays after one of this recording's own checkpoints that " +
+                "recorded a combat.hand to differ in the card played or the enemy it is aimed at, and to " +
+                "sit where that recorded hand says they sat. No pair in this history does, so swapping any " +
+                "two of its plays produces either the same history or one the recording cannot show came " +
+                "out of a single hand, and would prove nothing about the arbiter.");
+        }
 
-        // Both cards are re-indexed to where they sit in the *original* hand, so that
-        // each play is individually legal and the driver's card-identity check passes.
-        // A corruption the driver catches on a bad index would prove nothing about
-        // whether the engine notices the reordering.
-        var firstIndex = int.Parse(first.Args["hand_index"], System.Globalization.CultureInfo.InvariantCulture);
-        var secondIndex = int.Parse(second.Args["hand_index"], System.Globalization.CultureInfo.InvariantCulture);
-        var secondInitialIndex = secondIndex + (firstIndex <= secondIndex ? 1 : 0);
-        var firstAfterSecondIndex = firstIndex - (secondInitialIndex < firstIndex ? 1 : 0);
+        var (first, second, hand, firstIndex, secondIndex) = swap;
+
+        // Where each card sat in the hand the recording observed, so that each play is
+        // individually legal and the driver's card-identity check passes. Read off that
+        // hand rather than computed: a corruption the driver catches on a bad index
+        // would prove nothing about whether the engine notices the reordering.
+        var afterFirstLeft = Enumerable.Range(0, hand.Count).ToList();
+        afterFirstLeft.RemoveAt(firstIndex);
+        var secondInitialIndex = afterFirstLeft[secondIndex];
+
+        var afterSecondLeft = Enumerable.Range(0, hand.Count).ToList();
+        afterSecondLeft.RemoveAt(secondInitialIndex);
+        var firstAfterSecondIndex = afterSecondLeft.IndexOf(firstIndex);
+
         var reordered = new List<ActionRecord>
         {
             MoveToSequence(second, first.Seq, first.Evidence) with
@@ -213,9 +359,13 @@ public static class Corruption
         var actions = manifest.Actions.ToList();
         var target = NominatedPlay(actions, "substitute-same-cost");
 
-        var substituteCard = target.Args.GetValueOrDefault(
-            "negative_control_substitute_card_id", "CARD.STRIKE_IRONCLAD");
-        var substituteIndex = target.Args.GetValueOrDefault("negative_control_substitute_hand_index", "0");
+        if (!target.Args.TryGetValue(SubstituteCardId, out var substituteCard) ||
+            !target.Args.TryGetValue(SubstituteHandIndex, out var substituteIndex))
+        {
+            throw new ManifestException(
+                "substitute-same-cost needs a card play nominating a different card the same hand held at the " +
+                $"same cost and targeting, through '{SubstituteCardId}' and '{SubstituteHandIndex}'.");
+        }
 
         // A substitution that puts back the card that was already there damages
         // nothing, and an arbiter that accepted it would be reported as having failed
@@ -227,7 +377,7 @@ public static class Corruption
             throw new ManifestException(
                 $"substitute-same-cost would replace action {target.Seq} with the card it already plays, so " +
                 "it would corrupt nothing. The manifest must mark a play with " +
-                "'negative_control_substitute_card_id' naming a genuinely different card of the same cost.");
+                $"'{SubstituteCardId}' naming a genuinely different card of the same cost.");
         }
 
         var args = target.Args
@@ -319,6 +469,74 @@ public static class Corruption
         return manifest with { RunId = manifest.RunId + "+take-a-different-card", Actions = actions };
     }
 
+    /// <summary>
+    /// Whether picking a different identical copy on this screen can change the run.
+    ///
+    /// It can when the pick <em>marks</em> the card - an upgrade or an enchantment -
+    /// because the deck then holds one changed copy among unchanged ones and which
+    /// position carries it is a different deck. It cannot when the pick <em>removes</em>
+    /// the card: the remaining deck is the same list of the same cards whichever
+    /// identical copy went, so the corrupted run is the uncorrupted run and no arbiter
+    /// could tell them apart. A real recording nominated a shop removal and this
+    /// control reported a failure that was its own nomination's, not the arbiter's.
+    ///
+    /// Answered from the specific option that opened the screen, not from the verb that
+    /// carried it: the same verb opens a screen that upgrades and a screen that purges,
+    /// and only the option says which. An option nobody has established is declined, and
+    /// declining is the cheap direction - a declined control leaves the run short of the
+    /// ten the gate requires and the recording is refused loudly for coverage with its
+    /// evidence artifact intact, where an option wrongly admitted corrupts a history
+    /// into an identical one and the gate then refuses a legitimate recording for a
+    /// reason that is not its fault.
+    /// </summary>
+    private static bool ChangesTheCardRatherThanRemovingIt(
+        IReadOnlyList<ActionRecord> actions, ActionRecord pick)
+    {
+        var index = -1;
+        for (var at = 0; at < actions.Count; at++)
+        {
+            if (!ReferenceEquals(actions[at], pick)) continue;
+            index = at;
+            break;
+        }
+
+        for (var before = index - 1; before >= 0; before--)
+        {
+            var earlier = actions[before];
+            if (earlier.Verb == ActionVerb.SelectCardFromScreen) continue;
+
+            return MarksTheCardItsScreenPicks(earlier);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether this decision's card screen marks the card it picks.
+    ///
+    /// Two options are established from the game and nothing else is. The rest site's
+    /// <c>SMITH</c> upgrades the chosen card - the engine's own option id, which
+    /// <c>SyntheticFixtureGenerator</c> drives a real rest site with. The Waterlogged
+    /// Scriptorium's third option enchants two chosen cards, which the shipped
+    /// reconstruction demonstrates: the deck two floors later holds the marked copy
+    /// among unchanged ones.
+    /// </summary>
+    private static bool MarksTheCardItsScreenPicks(ActionRecord opener) => opener.Verb switch
+    {
+        ActionVerb.ChooseRestSiteOption =>
+            string.Equals(Argument(opener, "option_id"), RestSiteSmith, StringComparison.Ordinal),
+        ActionVerb.ChooseEventOption =>
+            string.Equals(Argument(opener, "event_id"), EnchantingEvent, StringComparison.Ordinal) &&
+            string.Equals(Argument(opener, "option_index"), EnchantingEventOption, StringComparison.Ordinal),
+        _ => false,
+    };
+
+    private const string RestSiteSmith = "SMITH";
+
+    private const string EnchantingEvent = "EVENT.WATERLOGGED_SCRIPTORIUM";
+
+    private const string EnchantingEventOption = "2";
+
     /// <summary>Enchants a different copy of the same card - the subtlest corruption
     /// this history admits, because the two copies are indistinguishable on screen.</summary>
     private static ReplayManifest EnchantADifferentCard(ReplayManifest manifest)
@@ -326,10 +544,15 @@ public static class Corruption
         var actions = manifest.Actions.ToList();
         var pick = actions.FirstOrDefault(a =>
                        a.Verb == ActionVerb.SelectCardFromScreen &&
-                       a.Args.ContainsKey(AlternativeOptionIndex))
+                       a.Args.ContainsKey(AlternativeOptionIndex) &&
+                       ChangesTheCardRatherThanRemovingIt(actions, a))
             ?? throw new ManifestException(
-                "enchant-a-different-card needs a SelectCardFromScreen nominating another copy of the same " +
-                $"card through '{AlternativeOptionIndex}'.");
+                "enchant-a-different-card needs a SelectCardFromScreen opened by an option established to " +
+                $"mark the card it picks - the rest site's {RestSiteSmith}, or {EnchantingEvent} option " +
+                $"{EnchantingEventOption} - nominating another copy of the same card through " +
+                $"'{AlternativeOptionIndex}'. A screen that removes the card cannot serve: whichever " +
+                "identical copy goes, the deck left behind is the same one, and an option nobody has " +
+                "established either way is declined rather than guessed at.");
 
         actions[actions.IndexOf(pick)] = pick with
         {
@@ -405,6 +628,123 @@ public static class Corruption
         return manifest with { RunId = manifest.RunId + "+move-to-a-different-node", Actions = actions };
     }
 
+    /// <summary>
+    /// Which of the map nodes reachable from here a control should walk to instead, or
+    /// null where the node the player left offered nowhere else to go.
+    ///
+    /// The reachable columns are the caller's to read - from a game, from a video, from
+    /// a fixture - and choosing among them is the rule, so the rule lives here beside
+    /// the control that consumes it rather than inside whichever reader happened to
+    /// need it first. Nothing is invented: a nomination is another node the same
+    /// decision genuinely had, and where there was none the argument is omitted and the
+    /// control has nothing to do.
+    /// </summary>
+    public static int? NominateColumn(int takenColumn, IEnumerable<int> reachableColumns) =>
+        reachableColumns
+            .Where(column => column != takenColumn)
+            .Order()
+            .Cast<int?>()
+            .FirstOrDefault();
+
+    /// <summary>
+    /// Which other card a reward offered, as the id and position a control takes it by,
+    /// or null where the reward offered no other card.
+    ///
+    /// The id has to differ as well as the position: two copies of one card are two
+    /// positions naming the same card, and a nomination whose id equals the one taken
+    /// is refused by the validator because the control would then corrupt nothing.
+    /// </summary>
+    public static (string CardId, int OptionIndex)? NominateCard(
+        IReadOnlyList<string> offeredCardIds, int takenIndex)
+    {
+        if (takenIndex < 0 || takenIndex >= offeredCardIds.Count) return null;
+
+        var taken = offeredCardIds[takenIndex];
+        for (var index = 0; index < offeredCardIds.Count; index++)
+        {
+            if (index == takenIndex) continue;
+            if (string.Equals(offeredCardIds[index], taken, StringComparison.Ordinal)) continue;
+            return (offeredCardIds[index], index);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Which other copy of the picked card the same screen offered, or null where it
+    /// offered no second copy.
+    ///
+    /// The same card and not merely another position, because
+    /// <see cref="EnchantADifferentCard"/> moves <c>option_index</c> and leaves
+    /// <c>card_id</c> where it is: a nomination pointing at a different card makes
+    /// <c>ManifestCardSelector</c> refuse on card identity - two fields of the manifest
+    /// disagreeing, before the engine is consulted at all - so the control would be
+    /// counted as rejected without any divergence having been demonstrated. It is also
+    /// what makes this the corruption no frame of the event screen shows: two copies of
+    /// one card are indistinguishable, and two different cards are not.
+    ///
+    /// Unpicked as well, because the screen's answers are replayed together: nominating
+    /// a position another pick already claimed would have the replay choose one card
+    /// twice, which the same selector refuses.
+    /// </summary>
+    public static int? NominateScreenOption(
+        IReadOnlyList<string> offeredCardIds, int takenIndex, IEnumerable<int> chosenIndexes)
+    {
+        if (takenIndex < 0 || takenIndex >= offeredCardIds.Count) return null;
+
+        var chosen = chosenIndexes.ToHashSet();
+        var taken = offeredCardIds[takenIndex];
+        for (var index = 0; index < offeredCardIds.Count; index++)
+        {
+            if (index == takenIndex || chosen.Contains(index)) continue;
+            if (!string.Equals(offeredCardIds[index], taken, StringComparison.Ordinal)) continue;
+            return index;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Which other card in the hand a control should play in place of the one that was
+    /// played, as the id and position it takes it by, or null where the hand held no
+    /// alternative it could be swapped for.
+    ///
+    /// The same cost, because that is the whole of what
+    /// <see cref="SubstituteSameCost"/> claims: energy conservation and hand accounting
+    /// both balance, so nothing arithmetic on the footage can tell the two lines apart
+    /// and only the engine can. A substitute of another cost would be caught by
+    /// counting energy, and one this hand did not hold would be refused on card
+    /// identity - either way the control is counted as rejected for a reason that is
+    /// not the one it is named for.
+    ///
+    /// And the same targeting, because <see cref="SubstituteSameCost"/> keeps every
+    /// other argument of the play it rewrites, <c>target_index</c> included. A
+    /// substitute that disagrees produces a play the driver refuses on argument shape -
+    /// a target index on a card that aims at nothing, or a card that needs one and has
+    /// none - before the engine has replayed anything at all.
+    ///
+    /// A different card and not another copy at another position: the same card played
+    /// from elsewhere in the hand is a hand-index corruption, which is what a nomination
+    /// nobody made already produces.
+    /// </summary>
+    public static (string CardId, int HandIndex)? NominateSubstitute(
+        IReadOnlyList<(string CardId, int EnergyCost, bool TargetsAnEnemy)> hand, int playedIndex)
+    {
+        if (playedIndex < 0 || playedIndex >= hand.Count) return null;
+
+        var played = hand[playedIndex];
+        for (var index = 0; index < hand.Count; index++)
+        {
+            if (index == playedIndex) continue;
+            if (hand[index].EnergyCost != played.EnergyCost) continue;
+            if (hand[index].TargetsAnEnemy != played.TargetsAnEnemy) continue;
+            if (string.Equals(hand[index].CardId, played.CardId, StringComparison.Ordinal)) continue;
+            return (hand[index].CardId, index);
+        }
+
+        return null;
+    }
+
     /// <summary>Argument names a manifest uses to nominate the alternative a control
     /// should take. Kept here because the controls are the only readers.</summary>
     public const string AlternativeCardId = "negative_control_alternative_card_id";
@@ -412,6 +752,10 @@ public static class Corruption
     public const string AlternativeOptionIndex = "negative_control_alternative_option_index";
 
     public const string AlternativeColumn = "negative_control_alternative_column";
+
+    public const string SubstituteCardId = "negative_control_substitute_card_id";
+
+    public const string SubstituteHandIndex = "negative_control_substitute_hand_index";
 
     private static IReadOnlyDictionary<string, string> WithoutControls(
         IReadOnlyDictionary<string, string> args) =>
@@ -433,7 +777,7 @@ public static class Corruption
     public static ActionRecord NominatedPlay(IReadOnlyList<ActionRecord> actions, string control = "this control")
     {
         var plays = actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
-        return plays.LastOrDefault(action => action.Args.ContainsKey("negative_control_substitute_card_id"))
+        return plays.LastOrDefault(action => action.Args.ContainsKey(SubstituteCardId))
             ?? plays.LastOrDefault()
             ?? throw new ManifestException($"{control} needs a card play.");
     }
