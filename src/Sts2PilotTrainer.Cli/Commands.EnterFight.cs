@@ -274,10 +274,14 @@ internal static partial class Commands
                 profile_after = profileAfter,
                 profile_unchanged = profileUnchanged,
                 played,
-                entry_policy =
-                    "The run is constructed at the recording's identity against a supplied complete unlock " +
-                    "state, set up with saving off, and never written anywhere. The recording owns every " +
-                    "decision before the fight; the fight itself is nobody's yet.",
+                entry_policy = restoreFrom is null
+                    ? "The run is constructed at the recording's identity against a supplied complete unlock " +
+                      "state, set up with saving off, and never written anywhere. The recording owns every " +
+                      "decision before the fight; the fight itself is nobody's yet."
+                    : "The run is continued from the game's own save at this arrival, through the retail " +
+                      "continue path, and never written anywhere. Its identity and its unlock state came off " +
+                      "that save rather than from a model supplied here, and the save was cached only after a " +
+                      "restore reproduced the digest this recording declares. The fight itself is nobody's yet.",
             }, Json.Indented) + "\n");
 
         Console.WriteLine();

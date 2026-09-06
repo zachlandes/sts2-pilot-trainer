@@ -117,6 +117,10 @@ internal static partial class Commands
         Console.WriteLine();
         Console.WriteLine($"the game asked to save {Text(candidate.SavesTaken.Count)} time(s) on the way:");
         foreach (var save in candidate.SavesTaken) Console.WriteLine($"  {save}");
+        // The last of them, named rather than left to be counted off the list above: it
+        // is the one a snapshot keeps, and whether it is an arrival save at all is what
+        // the pre-finished room says.
+        Console.WriteLine($"the last of them, which is the one a snapshot keeps: {candidate.SaveKept}");
 
         if (candidate.Refusals.Count > 0)
         {
@@ -293,6 +297,7 @@ internal static partial class Commands
         replayed_act_room_set = candidate.ActRoomSet,
         restored_act_room_set = restored?.ActRoomSet,
         saves_taken = candidate.SavesTaken,
+        save_kept = candidate.SaveKept,
         save_pre_finished_room = candidate.SavePreFinishedRoom,
         save_sha256 = candidate.SaveSha256,
         save_byte_count = candidate.SaveByteCount,

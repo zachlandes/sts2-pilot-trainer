@@ -156,7 +156,7 @@ has, and a different canonical state - which is the most convincing shape a wron
 takes, and the reason the rule is a rule.
 `FloorEntrySnapshotEligibility` owns it and is pure, so it is tested where there is no game.
 
-Making those five pass by dropping a finished fight from the projection would be
+Making the ineligible arrivals pass by dropping a finished fight from the projection would be
 defensible on its own terms and is a **different change with its own migration**: it
 moves every boundary digest in every committed recording, including the ones a recorder
 captured inside a player's own client.

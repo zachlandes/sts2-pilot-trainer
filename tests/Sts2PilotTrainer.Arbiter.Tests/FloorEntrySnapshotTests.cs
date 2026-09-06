@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 

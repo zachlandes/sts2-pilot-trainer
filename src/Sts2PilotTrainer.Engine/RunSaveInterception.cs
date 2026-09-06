@@ -63,6 +63,10 @@ public static class RunSaveInterception
         var collector = _collector;
         if (collector is null) return;
 
+        // Nothing to serialize means nothing to collect. A save asked for with no run
+        // behind it is not a moment of a run, and skipping it cannot make a wrong
+        // snapshot pass: the state a skip would leave last is a state the restore then
+        // fails to reproduce, and the digest comparison is what catches it.
         var run = RunManager.Instance;
         var state = run?.DebugOnlyGetState();
         if (run is null || state is null) return;
