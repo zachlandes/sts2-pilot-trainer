@@ -11,7 +11,14 @@ namespace Sts2PilotTrainer.Replay;
 /// here is stamped from the <c>version</c> field of
 /// <c>src/Sts2PilotTrainer.Mod/Runmobile.json</c> by <c>Directory.Build.props</c>,
 /// so the manifest the player's game reads is the source and nothing declares a
-/// second one. Which assembly asks is therefore not a question this has to answer.
+/// second one.
+///
+/// The two strings are still read off two artifacts. <see cref="Current"/> reports
+/// the stamp of this assembly, Sts2PilotTrainer.Replay, while the mod set in a
+/// recording is what the game read out of Runmobile.dll's own manifest. They agree
+/// because every assembly is stamped from that one field in the same build, not
+/// because either observed the other, and <c>scripts/install-mod.sh</c> replaces the
+/// complete artifact so a half-upgraded set is not reachable.
 /// </summary>
 public static class RunmobileVersion
 {

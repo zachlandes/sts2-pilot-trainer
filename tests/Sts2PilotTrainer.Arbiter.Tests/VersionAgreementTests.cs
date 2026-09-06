@@ -12,13 +12,15 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// runmobile-recorder/1.0.0.0 while the mod set in the same file said Runmobile 0.1.0.
 /// Both were describing the same DLL.
 ///
-/// This half asks Replay, IO, the Bootstrap tool and this test assembly. Runmobile,
-/// Engine and Trainer are asked the same question by RecorderVersionTests in
-/// Sts2PilotTrainer.Mod.Tests, because this project is in the game-free solution
-/// filter and cannot reference the mod. Two assemblies are asked by neither.
-/// GodotStubs keeps GodotSharp's identity so the game assembly's references resolve,
-/// and Sts2PilotTrainer.Cli may not be referenced from the solution at all - nothing
-/// reads a version off it, so its own stamp carries nothing.
+/// This is the sweep that fails when a future project declares a version of its own:
+/// a stated invariant with no test that can fail is not an invariant. It asks every
+/// assembly that runs in CI - Replay, IO, Trainer, the Bootstrap tool and this test
+/// assembly. Runmobile and Engine are asked the same question by RecorderVersionTests
+/// in Sts2PilotTrainer.Mod.Tests, because they need the game assembly and this project
+/// is in the game-free solution filter. Between the two, everything shipped is asked
+/// except GodotStubs, which keeps GodotSharp's identity so the game assembly's
+/// references resolve. Nothing else is: Sts2PilotTrainer.Cli may not be referenced
+/// from the solution at all, and the remaining test assemblies are not shipped.
 ///
 /// These need no game: they read the manifest this repository ships and the version
 /// stamped into the assemblies loaded to run them.
@@ -32,6 +34,7 @@ public class VersionAgreementTests
         {
             typeof(RunmobileVersion).Assembly,
             typeof(Sts2PilotTrainer.IO.AtomicFile).Assembly,
+            typeof(Sts2PilotTrainer.Trainer.TrainerCopy).Assembly,
             typeof(Sts2PilotTrainer.Bootstrap.Program).Assembly,
             typeof(VersionAgreementTests).Assembly,
         };

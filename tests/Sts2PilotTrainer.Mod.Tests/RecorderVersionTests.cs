@@ -18,13 +18,12 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// These need no game: the version is decided at build time and read from the
 /// assembly, and the capture that carries it is pure.
 ///
-/// This half also asks the stamped version of the three assemblies only a project
-/// that references the mod can load - Runmobile, Engine and Trainer. Replay, IO, the
-/// Bootstrap tool and the test assembly are asked the same question by
-/// VersionAgreementTests in Sts2PilotTrainer.Arbiter.Tests, which is in the game-free
-/// solution filter and cannot reference the mod project. GodotStubs and
-/// Sts2PilotTrainer.Cli are asked by neither: the first keeps GodotSharp's identity,
-/// and nothing in the solution may reference the second, whose stamp nothing reads.
+/// This half also asks the stamped version of the two assemblies that need the game
+/// assembly, Runmobile and Engine, so it runs only where the game is prepared.
+/// Everything game-free - Replay, IO, Trainer, the Bootstrap tool and the test
+/// assembly - is asked by VersionAgreementTests in Sts2PilotTrainer.Arbiter.Tests,
+/// which runs in CI. The sweep is what fails when a future project declares a version
+/// of its own.
 /// </summary>
 public sealed class RecorderVersionTests
 {
@@ -35,13 +34,12 @@ public sealed class RecorderVersionTests
     }
 
     [Fact]
-    public void EveryAssemblyOnlyTheModCanLoadIsStampedWithThatSameVersion()
+    public void EveryAssemblyThatNeedsTheGameIsStampedWithThatSameVersion()
     {
         var ours = new[]
         {
             typeof(RunRecorder).Assembly,
             typeof(Sts2PilotTrainer.Engine.BaseLibReachabilityProbe).Assembly,
-            typeof(Sts2PilotTrainer.Trainer.TrainerCopy).Assembly,
         };
 
         Assert.All(ours, assembly => Assert.Equal(DeclaredByTheMod, RunmobileVersion.Of(assembly)));

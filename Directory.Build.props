@@ -31,10 +31,12 @@
   </PropertyGroup>
 
   <!-- A regex that fails to match returns the whole file, so the extraction says so
-       rather than stamping a JSON document into every assembly as its version. -->
+       rather than stamping a JSON document into every assembly as its version. This
+       catches a failed extraction and nothing else: what the version numbers are, and
+       whether one is a prerelease, is not a question the build gets to decide. -->
   <Target Name="RequireAReadableRunmobileVersion" BeforeTargets="BeforeBuild">
-    <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch($(RunmobileVersion), '^[0-9]+\.[0-9]+\.[0-9]+$'))"
-           Text="Could not read a version out of $(RunmobileManifestPath). Its &quot;version&quot; must be major.minor.patch; every assembly here takes its version from that one field." />
+    <Error Condition="'$(RunmobileVersion)' == '' or $([System.Text.RegularExpressions.Regex]::IsMatch($(RunmobileVersion), '[\s{}&quot;]'))"
+           Text="Could not read a version out of $(RunmobileManifestPath); what came back was not a version string. Every assembly here takes its version from that one &quot;version&quot; field." />
   </Target>
 
 </Project>
