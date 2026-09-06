@@ -1,0 +1,6498 @@
+{
+  "manifest_version": 5,
+  "run_id": "native-9F8CY60C5BK7-20260906-005737",
+  "environment": {
+    "build_version": {
+      "Value": "v0.111.0",
+      "Source": "Captured",
+      "Evidence": {
+        "action_ordinal": -1
+      }
+    },
+    "build_date_utc": {
+      "Value": "2026.08.14",
+      "Source": "Captured",
+      "Evidence": {
+        "action_ordinal": -1
+      }
+    },
+    "game_mode": {
+      "Value": "standard",
+      "Source": "Captured",
+      "Evidence": {
+        "action_ordinal": -1
+      }
+    },
+    "seed": {
+      "Value": "9F8CY60C5BK7",
+      "Source": "Captured",
+      "Evidence": {
+        "action_ordinal": -1
+      }
+    },
+    "content_hash": {
+      "Value": "1568834832",
+      "Source": "Captured",
+      "Evidence": {
+        "action_ordinal": -1
+      }
+    },
+    "ascension": {
+      "Value": 0,
+      "Source": "Captured",
+      "Evidence": {
+        "action_ordinal": -1
+      }
+    },
+    "unlocks": {
+      "Value": {
+        "completeness": "exact",
+        "basis": "Read out of the running game by the recorder at run start: the epochs unlocked, the encounters seen and the runs played are the three values the game's own unlock state is constructed from, so this is the state the run was actually generated against rather than an inference about it.",
+        "inventory": {
+          "epochs": [
+            "ACT2_B_EPOCH",
+            "ACT3_B_EPOCH",
+            "COLORLESS1_EPOCH",
+            "COLORLESS2_EPOCH",
+            "COLORLESS3_EPOCH",
+            "COLORLESS4_EPOCH",
+            "COLORLESS5_EPOCH",
+            "CUSTOM_AND_SEEDS_EPOCH",
+            "DAILY_RUN_EPOCH",
+            "DARV_EPOCH",
+            "DEFECT1_EPOCH",
+            "DEFECT2_EPOCH",
+            "DEFECT3_EPOCH",
+            "DEFECT4_EPOCH",
+            "DEFECT5_EPOCH",
+            "DEFECT6_EPOCH",
+            "DEFECT7_EPOCH",
+            "EVENT1_EPOCH",
+            "EVENT2_EPOCH",
+            "EVENT3_EPOCH",
+            "IRONCLAD2_EPOCH",
+            "IRONCLAD3_EPOCH",
+            "IRONCLAD4_EPOCH",
+            "IRONCLAD5_EPOCH",
+            "IRONCLAD6_EPOCH",
+            "IRONCLAD7_EPOCH",
+            "NECROBINDER1_EPOCH",
+            "NECROBINDER2_EPOCH",
+            "NECROBINDER3_EPOCH",
+            "NECROBINDER4_EPOCH",
+            "NECROBINDER5_EPOCH",
+            "NECROBINDER6_EPOCH",
+            "NECROBINDER7_EPOCH",
+            "NEOW_EPOCH",
+            "OROBAS_EPOCH",
+            "POTION1_EPOCH",
+            "POTION2_EPOCH",
+            "REGENT1_EPOCH",
+            "REGENT2_EPOCH",
+            "REGENT3_EPOCH",
+            "REGENT4_EPOCH",
+            "REGENT5_EPOCH",
+            "REGENT6_EPOCH",
+            "REGENT7_EPOCH",
+            "RELIC1_EPOCH",
+            "RELIC2_EPOCH",
+            "RELIC3_EPOCH",
+            "RELIC4_EPOCH",
+            "RELIC5_EPOCH",
+            "SILENT1_EPOCH",
+            "SILENT2_EPOCH",
+            "SILENT3_EPOCH",
+            "SILENT4_EPOCH",
+            "SILENT5_EPOCH",
+            "SILENT6_EPOCH",
+            "SILENT7_EPOCH",
+            "UNDERDOCKS_EPOCH"
+          ],
+          "encounters_seen": [
+            "ENCOUNTER.BOWLBUGS_WEAK",
+            "ENCOUNTER.BYGONE_EFFIGY_ELITE",
+            "ENCOUNTER.BYRDONIS_ELITE",
+            "ENCOUNTER.CEREMONIAL_BEAST_BOSS",
+            "ENCOUNTER.CHOMPERS_NORMAL",
+            "ENCOUNTER.CUBEX_CONSTRUCT_NORMAL",
+            "ENCOUNTER.DECIMILLIPEDE_ELITE",
+            "ENCOUNTER.DEVOTED_SCULPTOR_WEAK",
+            "ENCOUNTER.ENTOMANCER_ELITE",
+            "ENCOUNTER.EXOSKELETONS_NORMAL",
+            "ENCOUNTER.EXOSKELETONS_WEAK",
+            "ENCOUNTER.FABRICATOR_NORMAL",
+            "ENCOUNTER.FLYCONID_NORMAL",
+            "ENCOUNTER.FROG_KNIGHT_NORMAL",
+            "ENCOUNTER.FUZZY_WURM_CRAWLER_WEAK",
+            "ENCOUNTER.GREMLIN_MERC_NORMAL",
+            "ENCOUNTER.HAUNTED_SHIP_NORMAL",
+            "ENCOUNTER.HUNTER_KILLER_NORMAL",
+            "ENCOUNTER.INFESTED_PRISMS_ELITE",
+            "ENCOUNTER.INKLETS_NORMAL",
+            "ENCOUNTER.KAISER_CRAB_BOSS",
+            "ENCOUNTER.KNIGHTS_ELITE",
+            "ENCOUNTER.KNOWLEDGE_DEMON_BOSS",
+            "ENCOUNTER.LOUSE_PROGENITOR_NORMAL",
+            "ENCOUNTER.MAWLER_NORMAL",
+            "ENCOUNTER.MECHA_KNIGHT_ELITE",
+            "ENCOUNTER.NIBBITS_NORMAL",
+            "ENCOUNTER.NIBBITS_WEAK",
+            "ENCOUNTER.OWL_MAGISTRATE_NORMAL",
+            "ENCOUNTER.PHANTASMAL_GARDENERS_ELITE",
+            "ENCOUNTER.PHROG_PARASITE_ELITE",
+            "ENCOUNTER.QUEEN_BOSS",
+            "ENCOUNTER.RUBY_RAIDERS_NORMAL",
+            "ENCOUNTER.SCROLLS_OF_BITING_WEAK",
+            "ENCOUNTER.SEAPUNK_WEAK",
+            "ENCOUNTER.SEWER_CLAM_NORMAL",
+            "ENCOUNTER.SHRINKER_BEETLE_WEAK",
+            "ENCOUNTER.SKULKING_COLONY_ELITE",
+            "ENCOUNTER.SLIMED_BERSERKER_NORMAL",
+            "ENCOUNTER.SLIMES_WEAK",
+            "ENCOUNTER.SLUDGE_SPINNER_WEAK",
+            "ENCOUNTER.SLUMBERING_BEETLE_NORMAL",
+            "ENCOUNTER.SOUL_NEXUS_ELITE",
+            "ENCOUNTER.SPINY_TOAD_NORMAL",
+            "ENCOUNTER.TERROR_EEL_ELITE",
+            "ENCOUNTER.TEST_SUBJECT_BOSS",
+            "ENCOUNTER.THE_INSATIABLE_BOSS",
+            "ENCOUNTER.THE_KIN_BOSS",
+            "ENCOUNTER.THE_OBSCURA_NORMAL",
+            "ENCOUNTER.THIEVING_HOPPER_WEAK",
+            "ENCOUNTER.TOADPOLES_WEAK",
+            "ENCOUNTER.TUNNELER_WEAK",
+            "ENCOUNTER.TURRET_OPERATOR_WEAK",
+            "ENCOUNTER.VANTOM_BOSS",
+            "ENCOUNTER.VINE_SHAMBLER_NORMAL",
+            "ENCOUNTER.WATERFALL_GIANT_BOSS"
+          ],
+          "runs": 10
+        }
+      },
+      "Source": "Captured",
+      "Evidence": {
+        "action_ordinal": -1
+      }
+    },
+    "character": {
+      "Value": "CHARACTER.IRONCLAD",
+      "Source": "Captured",
+      "Evidence": {
+        "action_ordinal": -1
+      }
+    },
+    "mods": {
+      "Value": {
+        "name": "read from the game the run was played in",
+        "reported_count": 1,
+        "mods": [
+          {
+            "name": "Runmobile",
+            "role": "Runmobile 0.1.0, which this game reported as Loaded.",
+            "replay_risk": "This mod's own manifest declares that it does not affect gameplay. Read rather than judged: a recorder reads each mod's declaration and assesses none of them.",
+            "affects_gameplay": false
+          }
+        ]
+      },
+      "Source": "Captured",
+      "Evidence": {
+        "action_ordinal": -1
+      }
+    },
+    "acts": {
+      "Value": [
+        "ACT.OVERGROWTH",
+        "ACT.HIVE",
+        "ACT.GLORY"
+      ],
+      "Source": "Captured",
+      "Evidence": {
+        "action_ordinal": -1
+      }
+    }
+  },
+  "source": {
+    "kind": "native",
+    "native": {
+      "recorder_version": "runmobile-recorder/1.0.0.0",
+      "witnessed_run_start": {
+        "Value": true,
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": -1,
+          "run_clock_ms": 3000
+        }
+      },
+      "continuity": "continuous",
+      "outcome": "abandoned"
+    },
+    "extraction_method": "captured",
+    "coverage": "The whole run as it was played: 51 decision(s) from run start across 6 floor(s) and 4 fight(s), and the run ended abandoned."
+  },
+  "actions": [
+    {
+      "seq": 0,
+      "verb": "ChooseNeowBlessing",
+      "args": {
+        "option_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 0,
+        "run_clock_ms": 28000
+      }
+    },
+    {
+      "seq": 1,
+      "verb": "MapMove",
+      "args": {
+        "act": "0",
+        "column": "6",
+        "negative_control_alternative_column": "1",
+        "row": "1"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 1,
+        "run_clock_ms": 79000
+      }
+    },
+    {
+      "seq": 2,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "0",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 2,
+        "run_clock_ms": 104000
+      }
+    },
+    {
+      "seq": 3,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "1",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 3,
+        "run_clock_ms": 107000
+      }
+    },
+    {
+      "seq": 4,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 4,
+        "run_clock_ms": 109000
+      }
+    },
+    {
+      "seq": 5,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 5,
+        "run_clock_ms": 116000
+      }
+    },
+    {
+      "seq": 6,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "0",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 6,
+        "run_clock_ms": 138000
+      }
+    },
+    {
+      "seq": 7,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 7,
+        "run_clock_ms": 141000
+      }
+    },
+    {
+      "seq": 8,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 8,
+        "run_clock_ms": 149000
+      }
+    },
+    {
+      "seq": 9,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 9,
+        "run_clock_ms": 169000
+      }
+    },
+    {
+      "seq": 10,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 10,
+        "run_clock_ms": 172000
+      }
+    },
+    {
+      "seq": 11,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 11,
+        "run_clock_ms": 174000
+      }
+    },
+    {
+      "seq": 12,
+      "verb": "ClaimReward",
+      "args": {
+        "reward_type": "gold"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 12,
+        "run_clock_ms": 198000
+      }
+    },
+    {
+      "seq": 13,
+      "verb": "SkipRewards",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 13,
+        "run_clock_ms": 225000
+      }
+    },
+    {
+      "seq": 14,
+      "verb": "MapMove",
+      "args": {
+        "act": "0",
+        "column": "6",
+        "row": "2"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 14,
+        "run_clock_ms": 228000
+      }
+    },
+    {
+      "seq": 15,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 15,
+        "run_clock_ms": 253000
+      }
+    },
+    {
+      "seq": 16,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 16,
+        "run_clock_ms": 256000
+      }
+    },
+    {
+      "seq": 17,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 17,
+        "run_clock_ms": 259000
+      }
+    },
+    {
+      "seq": 18,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 18,
+        "run_clock_ms": 266000
+      }
+    },
+    {
+      "seq": 19,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "0",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 19,
+        "run_clock_ms": 286000
+      }
+    },
+    {
+      "seq": 20,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "3",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 20,
+        "run_clock_ms": 289000
+      }
+    },
+    {
+      "seq": 21,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 21,
+        "run_clock_ms": 297000
+      }
+    },
+    {
+      "seq": 22,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 22,
+        "run_clock_ms": 316000
+      }
+    },
+    {
+      "seq": 23,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "2",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 23,
+        "run_clock_ms": 318000
+      }
+    },
+    {
+      "seq": 24,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 24,
+        "run_clock_ms": 362000
+      }
+    },
+    {
+      "seq": 25,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "1",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 25,
+        "run_clock_ms": 380000
+      }
+    },
+    {
+      "seq": 26,
+      "verb": "ClaimReward",
+      "args": {
+        "reward_type": "gold"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 26,
+        "run_clock_ms": 393000
+      }
+    },
+    {
+      "seq": 27,
+      "verb": "SkipRewards",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 27,
+        "run_clock_ms": 434000
+      }
+    },
+    {
+      "seq": 28,
+      "verb": "MapMove",
+      "args": {
+        "act": "0",
+        "column": "6",
+        "negative_control_alternative_column": "5",
+        "row": "3"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 28,
+        "run_clock_ms": 435000
+      }
+    },
+    {
+      "seq": 29,
+      "verb": "ShopPurchase",
+      "args": {
+        "card_id": "CARD.TWIN_STRIKE",
+        "kind": "character_card",
+        "option_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 29,
+        "run_clock_ms": 479000
+      }
+    },
+    {
+      "seq": 30,
+      "verb": "ShopPurchase",
+      "args": {
+        "kind": "card_removal"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 30,
+        "run_clock_ms": 517000
+      }
+    },
+    {
+      "seq": 31,
+      "verb": "SelectCardFromScreen",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "negative_control_alternative_option_index": "1",
+        "option_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 31,
+        "run_clock_ms": 517000
+      }
+    },
+    {
+      "seq": 32,
+      "verb": "MapMove",
+      "args": {
+        "act": "0",
+        "column": "6",
+        "row": "4"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 32,
+        "run_clock_ms": 591000
+      }
+    },
+    {
+      "seq": 33,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "1",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 33,
+        "run_clock_ms": 617000
+      }
+    },
+    {
+      "seq": 34,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "3",
+        "target_index": "1"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 34,
+        "run_clock_ms": 620000
+      }
+    },
+    {
+      "seq": 35,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 35,
+        "run_clock_ms": 630000
+      }
+    },
+    {
+      "seq": 36,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.TWIN_STRIKE",
+        "hand_index": "4",
+        "negative_control_substitute_card_id": "CARD.STRIKE_IRONCLAD",
+        "negative_control_substitute_hand_index": "0",
+        "target_index": "1"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 36,
+        "run_clock_ms": 651000
+      }
+    },
+    {
+      "seq": 37,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "0",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 37,
+        "run_clock_ms": 654000
+      }
+    },
+    {
+      "seq": 38,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.DEFEND_IRONCLAD",
+        "hand_index": "1"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 38,
+        "run_clock_ms": 657000
+      }
+    },
+    {
+      "seq": 39,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 39,
+        "run_clock_ms": 664000
+      }
+    },
+    {
+      "seq": 40,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "0",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 40,
+        "run_clock_ms": 686000
+      }
+    },
+    {
+      "seq": 41,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "3",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 41,
+        "run_clock_ms": 689000
+      }
+    },
+    {
+      "seq": 42,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 42,
+        "run_clock_ms": 697000
+      }
+    },
+    {
+      "seq": 43,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.TWIN_STRIKE",
+        "hand_index": "1",
+        "negative_control_substitute_card_id": "CARD.STRIKE_IRONCLAD",
+        "negative_control_substitute_hand_index": "4",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 43,
+        "run_clock_ms": 717000
+      }
+    },
+    {
+      "seq": 44,
+      "verb": "ClaimReward",
+      "args": {
+        "reward_type": "gold"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 44,
+        "run_clock_ms": 729000
+      }
+    },
+    {
+      "seq": 45,
+      "verb": "SkipRewards",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 45,
+        "run_clock_ms": 756000
+      }
+    },
+    {
+      "seq": 46,
+      "verb": "MapMove",
+      "args": {
+        "act": "0",
+        "column": "6",
+        "negative_control_alternative_column": "5",
+        "row": "5"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 46,
+        "run_clock_ms": 759000
+      }
+    },
+    {
+      "seq": 47,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "0",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 47,
+        "run_clock_ms": 794000
+      }
+    },
+    {
+      "seq": 48,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "1",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 48,
+        "run_clock_ms": 797000
+      }
+    },
+    {
+      "seq": 49,
+      "verb": "PlayCard",
+      "args": {
+        "card_id": "CARD.STRIKE_IRONCLAD",
+        "hand_index": "1",
+        "target_index": "0"
+      },
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 49,
+        "run_clock_ms": 800000
+      }
+    },
+    {
+      "seq": 50,
+      "verb": "EndTurn",
+      "args": {},
+      "source": "Captured",
+      "evidence": {
+        "action_ordinal": 50,
+        "run_clock_ms": 808000
+      }
+    }
+  ],
+  "checkpoints": [
+    {
+      "id": "fight-1-start",
+      "after_seq": 1,
+      "kind": "combat_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.NIBBITS_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:12",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.NIBBIT",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "BUTT_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD+1|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.round": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.gold": {
+          "Value": "99",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "run.act_floor": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "run.total_floor": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        }
+      }
+    },
+    {
+      "id": "floor-2-entry",
+      "after_seq": 1,
+      "kind": "floor_entry",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.NIBBITS_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:12",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.NIBBIT",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "BUTT_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD+1|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.round": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.gold": {
+          "Value": "99",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "run.act_floor": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "run.total_floor": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-1-turn-1",
+      "after_seq": 1,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.NIBBITS_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:12",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.NIBBIT",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "BUTT_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD+1|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.round": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.gold": {
+          "Value": "99",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "run.act_floor": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        },
+        "run.total_floor": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 1,
+            "run_clock_ms": 79000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-1-turn-2",
+      "after_seq": 5,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.NIBBITS_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "22",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:6+Defend",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.NIBBIT",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "SLICE_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "68",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.round": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "combat.turn": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "player.gold": {
+          "Value": "99",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "player.hp": {
+          "Value": "68",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "run.act_floor": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        },
+        "run.total_floor": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 5,
+            "run_clock_ms": 116000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-1-turn-3",
+      "after_seq": 8,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.NIBBITS_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "10",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Buff",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "43",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.NIBBIT",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "HISS_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "62",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.round": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "combat.turn": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "player.gold": {
+          "Value": "99",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "player.hp": {
+          "Value": "62",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "run.act_floor": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        },
+        "run.total_floor": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 8,
+            "run_clock_ms": 149000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-2-start",
+      "after_seq": 14,
+      "kind": "combat_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SHRINKER_BEETLE_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "DebuffStrong",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.SHRINKER_BEETLE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "SHRINKER_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "68",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.round": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.gold": {
+          "Value": "111",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.hp": {
+          "Value": "68",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "run.act_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "run.total_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        }
+      }
+    },
+    {
+      "id": "floor-3-entry",
+      "after_seq": 14,
+      "kind": "floor_entry",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SHRINKER_BEETLE_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "DebuffStrong",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.SHRINKER_BEETLE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "SHRINKER_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "68",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.round": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.gold": {
+          "Value": "111",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.hp": {
+          "Value": "68",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "run.act_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "run.total_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-2-turn-1",
+      "after_seq": 14,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SHRINKER_BEETLE_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "DebuffStrong",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.SHRINKER_BEETLE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "SHRINKER_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "68",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.round": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.gold": {
+          "Value": "111",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.hp": {
+          "Value": "68",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "run.act_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        },
+        "run.total_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 14,
+            "run_clock_ms": 228000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-2-turn-2",
+      "after_seq": 18,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SHRINKER_BEETLE_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "19",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.SHRINKER_BEETLE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "CHOMP_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "68",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "POWER.SHRINK_POWER:-1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.round": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "combat.turn": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "player.gold": {
+          "Value": "111",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "player.hp": {
+          "Value": "68",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "run.act_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        },
+        "run.total_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 18,
+            "run_clock_ms": 266000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-2-turn-3",
+      "after_seq": 21,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SHRINKER_BEETLE_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "11",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.SHRINKER_BEETLE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "STOMP_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD+1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "61",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "POWER.SHRINK_POWER:-1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.round": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "combat.turn": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "player.gold": {
+          "Value": "111",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "player.hp": {
+          "Value": "61",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "run.act_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        },
+        "run.total_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 21,
+            "run_clock_ms": 297000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-2-turn-4",
+      "after_seq": 24,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SHRINKER_BEETLE_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "40",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.SHRINKER_BEETLE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "CHOMP_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "48",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "POWER.SHRINK_POWER:-1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.round": {
+          "Value": "4",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "combat.turn": {
+          "Value": "4",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "player.gold": {
+          "Value": "111",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "player.hp": {
+          "Value": "48",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "run.act_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        },
+        "run.total_floor": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 24,
+            "run_clock_ms": 362000
+          }
+        }
+      }
+    },
+    {
+      "id": "floor-4-entry",
+      "after_seq": 28,
+      "kind": "floor_entry",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "combat.energy": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "combat.hand": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "combat.outcome": {
+          "Value": "victory",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "54",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "combat.turn": {
+          "Value": "4",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "player.gold": {
+          "Value": "121",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "player.hp": {
+          "Value": "54",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "run.act_floor": {
+          "Value": "4",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        },
+        "run.total_floor": {
+          "Value": "4",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 28,
+            "run_clock_ms": 435000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-3-start",
+      "after_seq": 32,
+      "kind": "combat_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SLIMES_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:4",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.TWIG_SLIME_S",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "TACKLE_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.intent": {
+          "Value": "StatusCard",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.max_hp": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.max_hp_unscaled": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.model": {
+          "Value": "MONSTER.TWIG_SLIME_M",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.next_move": {
+          "Value": "STICKY_SHOT_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.hp": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.intent": {
+          "Value": "Attack:3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.max_hp": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.max_hp_unscaled": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.model": {
+          "Value": "MONSTER.LEAF_SLIME_S",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.next_move": {
+          "Value": "TACKLE_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.BASH|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "54",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.round": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH|CARD.TWIN_STRIKE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.gold": {
+          "Value": "21",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.hp": {
+          "Value": "54",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "run.act_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "run.total_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        }
+      }
+    },
+    {
+      "id": "floor-5-entry",
+      "after_seq": 32,
+      "kind": "floor_entry",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SLIMES_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:4",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.TWIG_SLIME_S",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "TACKLE_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.intent": {
+          "Value": "StatusCard",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.max_hp": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.max_hp_unscaled": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.model": {
+          "Value": "MONSTER.TWIG_SLIME_M",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.next_move": {
+          "Value": "STICKY_SHOT_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.hp": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.intent": {
+          "Value": "Attack:3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.max_hp": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.max_hp_unscaled": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.model": {
+          "Value": "MONSTER.LEAF_SLIME_S",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.next_move": {
+          "Value": "TACKLE_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.BASH|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "54",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.round": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH|CARD.TWIN_STRIKE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.gold": {
+          "Value": "21",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.hp": {
+          "Value": "54",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "run.act_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "run.total_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-3-turn-1",
+      "after_seq": 32,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SLIMES_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:4",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.TWIG_SLIME_S",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "TACKLE_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.intent": {
+          "Value": "StatusCard",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.max_hp": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.max_hp_unscaled": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.model": {
+          "Value": "MONSTER.TWIG_SLIME_M",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.next_move": {
+          "Value": "STICKY_SHOT_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.1.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.hp": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.intent": {
+          "Value": "Attack:3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.max_hp": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.max_hp_unscaled": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.model": {
+          "Value": "MONSTER.LEAF_SLIME_S",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.next_move": {
+          "Value": "TACKLE_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy.2.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.BASH|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "54",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.round": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH|CARD.TWIN_STRIKE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.gold": {
+          "Value": "21",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.hp": {
+          "Value": "54",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "run.act_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        },
+        "run.total_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 32,
+            "run_clock_ms": 591000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-3-turn-2",
+      "after_seq": 35,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SLIMES_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:11",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.TWIG_SLIME_M",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "POKEY_POUNCE_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.1.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.1.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "7",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.1.intent": {
+          "Value": "StatusCard",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.1.max_hp": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.1.max_hp_unscaled": {
+          "Value": "13",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.1.model": {
+          "Value": "MONSTER.LEAF_SLIME_S",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.1.next_move": {
+          "Value": "GOOP_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy.1.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.TWIN_STRIKE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "51",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.round": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "combat.turn": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH|CARD.TWIN_STRIKE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "player.gold": {
+          "Value": "21",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "player.hp": {
+          "Value": "51",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "run.act_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        },
+        "run.total_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 35,
+            "run_clock_ms": 630000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-3-turn-3",
+      "after_seq": 39,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SLIMES_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "22",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "StatusCard",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.TWIG_SLIME_M",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "STICKY_SHOT_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "48",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.round": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "combat.turn": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH|CARD.TWIN_STRIKE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "player.gold": {
+          "Value": "21",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "player.hp": {
+          "Value": "48",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "run.act_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        },
+        "run.total_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 39,
+            "run_clock_ms": 664000
+          }
+        }
+      }
+    },
+    {
+      "id": "fight-3-turn-4",
+      "after_seq": 42,
+      "kind": "turn_start",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.SLIMES_WEAK",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "10",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:11",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "28",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.TWIG_SLIME_M",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "POKEY_POUNCE_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.DEFEND_IRONCLAD|CARD.TWIN_STRIKE|CARD.SLIMED|CARD.BASH|CARD.STRIKE_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "48",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.round": {
+          "Value": "4",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "combat.turn": {
+          "Value": "4",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH|CARD.TWIN_STRIKE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "player.gold": {
+          "Value": "21",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "player.hp": {
+          "Value": "48",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "run.act_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        },
+        "run.total_floor": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 42,
+            "run_clock_ms": 697000
+          }
+        }
+      }
+    },
+    {
+      "id": "floor-6-entry",
+      "after_seq": 46,
+      "kind": "floor_entry",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.NIBBITS_NORMAL",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "46",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Attack:6+Defend",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "46",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "46",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.NIBBIT",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "SLICE_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.1.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.1.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "44",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.1.intent": {
+          "Value": "Buff",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.1.max_hp": {
+          "Value": "44",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.1.max_hp_unscaled": {
+          "Value": "44",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.1.model": {
+          "Value": "MONSTER.NIBBIT",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.1.next_move": {
+          "Value": "HISS_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy.1.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "54",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.round": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "combat.turn": {
+          "Value": "1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH|CARD.TWIN_STRIKE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "player.gold": {
+          "Value": "36",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "player.hp": {
+          "Value": "54",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "run.act_floor": {
+          "Value": "6",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        },
+        "run.total_floor": {
+          "Value": "6",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 46,
+            "run_clock_ms": 759000
+          }
+        }
+      }
+    },
+    {
+      "id": "run-end",
+      "after_seq": 50,
+      "kind": "run_end",
+      "expect": {
+        "combat.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.encounter": {
+          "Value": "ENCOUNTER.NIBBITS_NORMAL",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.0.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.0.block": {
+          "Value": "5",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.0.hp": {
+          "Value": "25",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.0.intent": {
+          "Value": "Buff",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.0.max_hp": {
+          "Value": "46",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.0.max_hp_unscaled": {
+          "Value": "46",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.0.model": {
+          "Value": "MONSTER.NIBBIT",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.0.next_move": {
+          "Value": "HISS_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.0.powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.1.alive": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.1.block": {
+          "Value": "0",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.1.hp": {
+          "Value": "44",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.1.intent": {
+          "Value": "Attack:14",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.1.max_hp": {
+          "Value": "44",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.1.max_hp_unscaled": {
+          "Value": "44",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.1.model": {
+          "Value": "MONSTER.NIBBIT",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.1.next_move": {
+          "Value": "BUTT_MOVE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy.1.powers": {
+          "Value": "POWER.STRENGTH_POWER:2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.enemy_count": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.energy": {
+          "Value": "3",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.hand": {
+          "Value": "CARD.TWIN_STRIKE|CARD.DEFEND_IRONCLAD|CARD.BASH|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD+1",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.in_progress": {
+          "Value": "true",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.outcome": {
+          "Value": "in_progress",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.player_hp": {
+          "Value": "48",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.player_powers": {
+          "Value": "",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.round": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "combat.turn": {
+          "Value": "2",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "player.deck": {
+          "Value": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD+1|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD+1|CARD.BASH|CARD.TWIN_STRIKE",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "player.gold": {
+          "Value": "36",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "player.hp": {
+          "Value": "48",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "player.max_hp": {
+          "Value": "80",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "player.potions": {
+          "Value": "empty|empty|empty",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "player.relics": {
+          "Value": "RELIC.BURNING_BLOOD|RELIC.NEOWS_TALISMAN",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "run.act_floor": {
+          "Value": "6",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "run.is_game_over": {
+          "Value": "false",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        },
+        "run.total_floor": {
+          "Value": "6",
+          "Source": "Captured",
+          "Evidence": {
+            "action_ordinal": 50,
+            "run_clock_ms": 808000
+          }
+        }
+      }
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "combat_start",
+      "after_seq": 1,
+      "fight": 1,
+      "digest": {
+        "Value": "sha256:0afa7094e25f2808a07238d5f01a40507f6bbf8ad95613e4ad35136cd2a5050f",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 1,
+          "run_clock_ms": 79000
+        }
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 1,
+      "floor": 2,
+      "digest": {
+        "Value": "sha256:0afa7094e25f2808a07238d5f01a40507f6bbf8ad95613e4ad35136cd2a5050f",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 1,
+          "run_clock_ms": 79000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 1,
+      "fight": 1,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:0afa7094e25f2808a07238d5f01a40507f6bbf8ad95613e4ad35136cd2a5050f",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 1,
+          "run_clock_ms": 79000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 5,
+      "fight": 1,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:9cffb0217e3aad3e5eb2ff160da26f2c9d41938df6ad2c6389ad4e0bc2f37121",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 5,
+          "run_clock_ms": 116000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 8,
+      "fight": 1,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:2b11ce416f836ff5889376834c9265d210379409c2e2c06db93fadb028968db2",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 8,
+          "run_clock_ms": 149000
+        }
+      }
+    },
+    {
+      "kind": "combat_start",
+      "after_seq": 14,
+      "fight": 2,
+      "digest": {
+        "Value": "sha256:e6d8228791997e327da065e60e27ff1ee900269ceb4f57e3150840cbae9bda7a",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 14,
+          "run_clock_ms": 228000
+        }
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 14,
+      "floor": 3,
+      "digest": {
+        "Value": "sha256:e6d8228791997e327da065e60e27ff1ee900269ceb4f57e3150840cbae9bda7a",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 14,
+          "run_clock_ms": 228000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 14,
+      "fight": 2,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:e6d8228791997e327da065e60e27ff1ee900269ceb4f57e3150840cbae9bda7a",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 14,
+          "run_clock_ms": 228000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 18,
+      "fight": 2,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:a66f53a5b568abe6643b36b13ac162296c529ca8e903807770599ac3475e6632",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 18,
+          "run_clock_ms": 266000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 21,
+      "fight": 2,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:1f39122f1678553ad5346d385ebe05392ad030e8ea796838de4379fa515f3f53",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 21,
+          "run_clock_ms": 297000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 24,
+      "fight": 2,
+      "turn": 4,
+      "digest": {
+        "Value": "sha256:2c5393703dd9cb480473f6de3d79f448e77e7cc38e19847a8a51f96e3c2d3741",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 24,
+          "run_clock_ms": 362000
+        }
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 28,
+      "floor": 4,
+      "digest": {
+        "Value": "sha256:dd0eebd906b01e7e96a897f30a7f25935e505b109fa50fc55ad1c2f2cb407336",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 28,
+          "run_clock_ms": 435000
+        }
+      }
+    },
+    {
+      "kind": "combat_start",
+      "after_seq": 32,
+      "fight": 3,
+      "digest": {
+        "Value": "sha256:3719e9b7649fdf25036b1d4d667f67a3c058c6d2da60297bb2133a2a7a341075",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 32,
+          "run_clock_ms": 591000
+        }
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 32,
+      "floor": 5,
+      "digest": {
+        "Value": "sha256:3719e9b7649fdf25036b1d4d667f67a3c058c6d2da60297bb2133a2a7a341075",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 32,
+          "run_clock_ms": 591000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 32,
+      "fight": 3,
+      "turn": 1,
+      "digest": {
+        "Value": "sha256:3719e9b7649fdf25036b1d4d667f67a3c058c6d2da60297bb2133a2a7a341075",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 32,
+          "run_clock_ms": 591000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 35,
+      "fight": 3,
+      "turn": 2,
+      "digest": {
+        "Value": "sha256:7f106b0104bb7c817e9955945c6f2976174f7255df42a174cf7a0c380a5d0dd0",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 35,
+          "run_clock_ms": 630000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 39,
+      "fight": 3,
+      "turn": 3,
+      "digest": {
+        "Value": "sha256:6f23aec97329ad0eeda24ce0fe570896bc49b3f5c16c9e72474f0816a1abecf2",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 39,
+          "run_clock_ms": 664000
+        }
+      }
+    },
+    {
+      "kind": "turn_start",
+      "after_seq": 42,
+      "fight": 3,
+      "turn": 4,
+      "digest": {
+        "Value": "sha256:a78f25c6a253930e0d7ab56d18719f976b4a3c7ef6ee8b9b8c213fe04eaea549",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 42,
+          "run_clock_ms": 697000
+        }
+      }
+    },
+    {
+      "kind": "floor_entry",
+      "after_seq": 46,
+      "floor": 6,
+      "digest": {
+        "Value": "sha256:ddb67770a6ae99d2f391f36863837bbb059231bdc6552687b3a187e5fa5e5e72",
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 46,
+          "run_clock_ms": 759000
+        }
+      }
+    }
+  ]
+}

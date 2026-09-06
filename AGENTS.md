@@ -101,8 +101,8 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, 115 of
-`Sts2PilotTrainer.Arbiter.Tests`' 163 tests skip and the job still reports success.
+**What CI cannot run is recorded by name.** On a runner without the game, 116 of
+`Sts2PilotTrainer.Arbiter.Tests`' 176 tests skip and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts that skipped set against
 `scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
 one, or deleting one fails CI until the list is regenerated with `--update` in the
@@ -147,7 +147,12 @@ same two questions for a recording made inside the player's own game.
 
 **Read [docs/headless-fidelity.md](docs/headless-fidelity.md) before changing what
 the host patches or stands in for.** Each patch has a stated reason and the set is
-deliberately small. `TestMode` in particular reaches further than its name suggests.
+deliberately small. `TestMode` in particular reaches further than its name suggests:
+at three sites it changes what the game *generates* rather than how it is drawn, and
+`HeadlessPatches.RestoreRetailBranches` runs each of those with the flag off so the
+engine's own retail branch decides. Adding a fourth is a sweep of the class, not a
+guess - a gameplay path that consumes randomness only when test mode is off leaves a
+run-persistent stream in the wrong place, silently, for the rest of the run.
 Three screens have no engine command at all - the loot a won fight offers, the chest a
 treasure room opens, and the card screens a reward or an enchantment opens - so the
 host drives the first two and answers the third from the manifest. None of them decides

@@ -61,15 +61,23 @@ public static partial class SyntheticFixtureGenerator
     /// at all that reaches the boss through a shop, a rest site, a treasure room and an
     /// elite without passing a question mark, which this journey will not enter; and of
     /// the acts that do, most kill a run played by a mechanical rule before its boss.
-    /// Twenty-four seeds were generated through the real engine, eight had such a path,
-    /// and this is the first of the two whose act the journey survives.
+    /// Of 275 seeds generated through the real engine, roughly two in five had such a
+    /// path and four of those survived the act. This is the first of the four.
     ///
     /// Both are properties of what this seed generates rather than assumptions about
     /// it: the route is planned before a step is taken and the journey refuses if no
     /// route exists, and the act transition at the end refuses if the boss was not
     /// beaten.
+    ///
+    /// It replaced E3R3E28JS9, which survived until the headless host started taking
+    /// the merchant's potion-cost draw the way retail takes it. That is a real change
+    /// to what the engine generates, so the shop this journey empties stocks different
+    /// things at different prices, the deck downstream of it is different, and the
+    /// mechanical line no longer beats the boss on that seed. The right response to a
+    /// generator that refuses is a seed it does not refuse, never a rule that lets it
+    /// through.
     /// </summary>
-    private const string WholeActSeed = "E3R3E28JS9";
+    private const string WholeActSeed = "67L571H38L";
 
     /// <summary>Rest, when the run has taken damage worth getting back.</summary>
     private const string RestSiteHeal = "HEAL";

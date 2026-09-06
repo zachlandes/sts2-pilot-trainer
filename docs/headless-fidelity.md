@@ -50,6 +50,7 @@ mechanism rather than an unsupported hook.
 | `PreloadManager.Load*Assets` | Texture, audio and animation preloading. There is no renderer to want them, and the loaders dereference stub properties while assembling their asset lists. |
 | `SaveManager.SaveRun`, `SaveProgressFile`, `SavePrefsFile`, `SaveProfileFile` | **The player's save directory is a read-only input.** The run is created with `shouldSave: false`, but the engine still reaches for the save subsystem on room entry. |
 | `LocManager.GetTable`, `LocString.GetFormattedText/GetRawText`, `LocTable.*` | Localization is stubbed with no data at all — see below. |
+| `MerchantPotionEntry.CalcCost`, `Cauldron.GenerateRewards`, `CallingBell.GenerateRewards` | **The opposite of the rest of this table.** These run with the headless flag turned off for the duration of the call, because the flag changes what the game *generates* at these three sites — see [three places the flag changes what the game generates](#three-places-the-flag-changes-what-the-game-generates). |
 
 ### Three screens the host has to stand in for
 
@@ -145,8 +146,28 @@ Executable boundary tests verify that a console process and duplicate game assem
 The removed source-reference scan is not treated as evidence that the mod avoids `EngineHost.Start`.
 See [the in-game host](in-game-host.md).
 
-That was found by reading the method, not by noticing a symptom. The remaining
-readers of the flag are in the presentation namespace or skip animation waits.
+That was found by reading the method, not by noticing a symptom.
+
+### Three places the flag changes what the game generates
+
+`ShouldApplyTutorialModifications` was not the only one, and the rest were found by sweeping the class rather than by chasing a symptom.
+All 393 reads of `TestMode` in `sts2.dll` v0.111.0 were enumerated; 273 are in the presentation, asset, modding, localization, platform, logging and multiplayer namespaces; of the 120 in gameplay code, 117 skip an animation wait, a scene node, a tween, an audio cue, a log line, a history or statistics write, or a test-only assertion, and none of those can move a random stream because the file they are in never touches one.
+Three do move one, and `HeadlessPatches.RestoreRetailBranches` puts each of them back by turning the flag off for the duration of that one call and letting the engine's own retail branch run.
+Nothing there reimplements a cost, a roll or a pool.
+
+| Restored | What test mode was doing | What it cost |
+|---|---|---|
+| `MerchantPotionEntry.CalcCost` | Skipping `PlayerRng.Shops.NextFloat(0.95, 1.05)`, which prices one potion slot | Three slots per merchant, so `player.rng.Shops` fell three draws behind the recording's from the first shop and stayed there |
+| `Cauldron.GenerateRewards` | Handing back five hard-coded potions instead of constructing rewards that populate themselves | The potions the run received, and `PlayerRng.Rewards`' position |
+| `CallingBell.GenerateRewards` | Handing back Anchor, Gremlin Horn and Mummified Hand instead of pulling one relic per rarity | The relics the run received, and the position of the run's own relic grab bag |
+
+The merchant one was live and measured.
+Two native recordings of whole runs, replayed against the engine, disagreed at eight of nineteen and eight of twenty-six boundaries — every disagreement from the shop's own floor entry onward, every recorded digest reproduced by `Shops+3` and by nothing else, and `replay` exiting 0 throughout.
+`ReplayTests.NativeRecordingReproducesEveryBoundaryItCaptured` replays both and asserts every captured boundary is reproduced; it is the only check here that can see a bias this host has, because a synthetic fixture's expected values were produced by this same host.
+The two relics are the same defect at a site no recording has reached yet.
+
+The card and relic merchant entries take the same price draw with no guard at all, which is why only the potion slots drifted.
+A name in that list that stops matching a future build is a startup **failure**, not a warning: a fidelity patch that silently stops applying is a host that reproduces nothing and says so nowhere.
 
 ### Localization: stubbed empty
 
