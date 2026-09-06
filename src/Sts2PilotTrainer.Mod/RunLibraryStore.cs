@@ -1,5 +1,6 @@
 using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -20,8 +21,10 @@ namespace Sts2PilotTrainer.Mod;
 /// failure mode this project exists to prevent is a surface that shows something
 /// plausible instead of refusing.</para>
 ///
-/// <para>The one write is the progress record, which holds fight ordinals and nothing
-/// else. See <see cref="RunProgress"/> for why it can never become a resume.</para>
+/// <para>Two writes and no others: the progress record, which holds fight ordinals and
+/// nothing else, and the verdict cache. See <see cref="RunProgress"/> for why the first
+/// can never become a resume, and <see cref="RunVerdictCache"/> for why the second is a
+/// hint about a menu button and never evidence about a run.</para>
 /// </summary>
 internal static class RunLibraryStore
 {
@@ -47,9 +50,7 @@ internal static class RunLibraryStore
         var recordings = new List<StoredRecording>();
         foreach (var indexed in RecordingLibrary.Index(RunmobileStore.ListFileNames(RecordingsDirectory)))
         {
-            var fileName = indexed.FileNames.FirstOrDefault(name =>
-                name.EndsWith(RecordingLibrary.ManifestExtension, StringComparison.Ordinal));
-            if (fileName is null) continue;
+            if (ManifestNameOf(indexed) is not { } fileName) continue;
 
             var entry = $"{RecordingsDirectory}/{fileName}";
             try
@@ -71,6 +72,54 @@ internal static class RunLibraryStore
         }
 
         return recordings;
+    }
+
+    /// <summary>
+    /// The run ids of every finished recording on this computer, newest run first.
+    ///
+    /// Read off the directory index and nothing else, so this deserializes no manifest
+    /// at all - which is what makes the Compendium's per-open question affordable. A run
+    /// still being played has a journal and no manifest and is not one of these.
+    /// </summary>
+    internal static IReadOnlyList<string> StoredRunIds() =>
+        [
+            .. RecordingLibrary.Index(RunmobileStore.ListFileNames(RecordingsDirectory))
+                .Where(recording => ManifestNameOf(recording) is not null)
+                .Select(recording => recording.RunId),
+        ];
+
+    /// <summary>
+    /// One recording of the player's own, by its run id, or null when this computer has
+    /// no readable recording of that run.
+    ///
+    /// One file read rather than the whole set: the id names the recording in the
+    /// directory index, so opening a run costs the manifest of that run and no other.
+    /// </summary>
+    internal static ReplayManifest? RecordingFor(string runId)
+    {
+        var indexed = RecordingLibrary.Index(RunmobileStore.ListFileNames(RecordingsDirectory))
+            .FirstOrDefault(recording => string.Equals(recording.RunId, runId, StringComparison.Ordinal));
+        if (indexed is null || ManifestNameOf(indexed) is not { } fileName) return null;
+
+        var entry = $"{RecordingsDirectory}/{fileName}";
+        try
+        {
+            var json = RunmobileStore.Read(entry);
+            if (json is null) return null;
+
+            // The recorder names a recording's files after the run they record, so the
+            // two agree. Where they do not, this is not that run: answering with it
+            // would stand somebody in a run they did not ask for.
+            var recording = ManifestJson.Deserialize(json);
+            return string.Equals(recording.RunId, runId, StringComparison.Ordinal) ? recording : null;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] skipping {entry}, which this build cannot read: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            return null;
+        }
     }
 
     /// <summary>
@@ -109,6 +158,62 @@ internal static class RunLibraryStore
             return RunProgress.Empty;
         }
     }
+
+    /// <summary>
+    /// What this game has judged about each recording, per build.
+    ///
+    /// A cache this build cannot read is forgotten rather than guessed at, the same
+    /// direction the progress record fails in: the cost is a menu button that waits
+    /// until the browser has been opened once. See <see cref="RunVerdictCache"/> for why
+    /// nothing a player reads about a run may come from it.
+    /// </summary>
+    internal static RunVerdictCache ReadVerdicts()
+    {
+        try
+        {
+            return RunVerdictCache.Read(RunmobileStore.Read(RunVerdictCache.FileName));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not read {RunVerdictCache.FileName}, so the Compendium " +
+                $"card waits for the browser: {ex.GetType().Name}: {ex.Message}", 2);
+            return RunVerdictCache.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Records the verdicts the browser reached this time it was opened, and says
+    /// whether anything changed.
+    ///
+    /// Only what was judged, because an entry is a record that a judgement happened.
+    /// Nothing here is load-bearing: losing this file costs a menu button one browser
+    /// open, so a write that fails is logged and swallowed.
+    /// </summary>
+    internal static bool RecordVerdicts(string build, IReadOnlyDictionary<string, RunVerdict> judged)
+    {
+        if (judged.Count == 0) return false;
+
+        try
+        {
+            var cache = ReadVerdicts();
+            var updated = cache.WithJudged(build, judged);
+            if (ReferenceEquals(updated, cache)) return false;
+            RunmobileStore.Write(RunVerdictCache.FileName, updated.Write());
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not record what this game judged: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            return false;
+        }
+    }
+
+    private static string? ManifestNameOf(RecordingFiles recording) =>
+        recording.FileNames.FirstOrDefault(name =>
+            name.EndsWith(RecordingLibrary.ManifestExtension, StringComparison.Ordinal));
 
     /// <summary>
     /// Records that this player has played from one fight of one recording, and says

@@ -116,22 +116,80 @@ public sealed class RunLibraryStoreTests : IDisposable
     }
 
     /// <summary>
-    /// The Compendium's cheap question and the list it opens are the same walk, so they
-    /// cannot disagree about which runs are listed. Asserted as an equivalence rather
-    /// than as a value, because what is at stake is that one answer never outruns the
-    /// other - not what this particular game's verdicts happen to be.
+    /// The Compendium's question reads no manifest. Proved by asking it about a
+    /// recording whose manifest this build cannot parse at all: a walk that opened the
+    /// file would have nothing to say about the run, and this answers from the run id in
+    /// the directory index and the verdict the browser remembered.
     /// </summary>
     [GameFact]
-    public void TheCheapCheckAnswersExactlyWhenTheListWouldHoldARow()
+    public void TheCheapCheckAnswersFromRememberedVerdictsRatherThanFromTheRecordings()
     {
-        Assert.Equal(RunLibrary.Runs().Any(run => run.Listed), RunLibrary.HasAnythingToShow());
+        Write("native-a-20260906-120000.replay.json", "{\"manifest_version\": 9999}");
+        Assert.Equal(["native-a-20260906-120000"], RunLibraryStore.StoredRunIds());
+        Assert.Empty(RunLibraryStore.MyRecordings());
 
-        Write("native-a-20260906-120000.replay.json", ManifestJson.Serialize(Recording("native-a")));
-        Write("native-b-20260906-130000.replay.json", ManifestJson.Serialize(Recording("native-b")));
+        var build = RunLibrary.ThisBuild();
+        Assert.Null(RunLibraryStore.ReadVerdicts().For("native-a-20260906-120000", build));
 
-        var runs = RunLibrary.Runs();
-        Assert.Contains(runs, run => run.RunId == "native-a");
-        Assert.Equal(runs.Any(run => run.Listed), RunLibrary.HasAnythingToShow());
+        Assert.True(RunLibraryStore.RecordVerdicts(
+            build, new Dictionary<string, RunVerdict>(StringComparer.Ordinal)
+            {
+                ["native-a-20260906-120000"] = RunVerdict.Passed,
+            }));
+
+        var remembered = RunLibraryStore.ReadVerdicts();
+        Assert.Equal(RunVerdict.Passed, remembered.For("native-a-20260906-120000", build));
+        Assert.Null(remembered.For("native-a-20260906-120000", "some-other-build"));
+        Assert.Contains(
+            RunLibraryStore.StoredRunIds(),
+            runId => remembered.For(runId, build) == RunVerdict.Passed);
+    }
+
+    /// <summary>A run still being played has a journal and no manifest, so it is not a
+    /// run the cheap question can count.</summary>
+    [GameFact]
+    public void ARunStillBeingPlayedIsNotOneOfTheStoredRunIds()
+    {
+        Write("native-b-20260906-130000.journal.jsonl", "{}");
+
+        Assert.Empty(RunLibraryStore.StoredRunIds());
+    }
+
+    /// <summary>
+    /// Opening a run reads that run's manifest and no other's. Proved by leaving an
+    /// unreadable recording beside it: a walk of the whole set would have logged and
+    /// skipped it, and resolving by id never opens it at all.
+    /// </summary>
+    [GameFact]
+    public void ARecordingIsResolvedByIdFromOneFile()
+    {
+        Write(
+            "native-a-20260906-120000.replay.json",
+            ManifestJson.Serialize(Recording("native-a-20260906-120000")));
+        Write("native-bad-20260906-130000.replay.json", "{\"manifest_version\": 9999}");
+
+        Assert.Equal(
+            "native-a-20260906-120000",
+            RunLibraryStore.RecordingFor("native-a-20260906-120000")?.RunId);
+        Assert.Null(RunLibraryStore.RecordingFor("native-bad-20260906-130000"));
+        Assert.Null(RunLibraryStore.RecordingFor("nobody"));
+    }
+
+    /// <summary>Only a judgement actually taken is written, so a browser opened twice
+    /// over an unchanged library does not rewrite the file.</summary>
+    [GameFact]
+    public void RememberingTheSameVerdictAgainChangesNothing()
+    {
+        var build = RunLibrary.ThisBuild();
+        var judged = new Dictionary<string, RunVerdict>(StringComparer.Ordinal)
+        {
+            ["native-a"] = RunVerdict.Failed,
+        };
+
+        Assert.True(RunLibraryStore.RecordVerdicts(build, judged));
+        Assert.False(RunLibraryStore.RecordVerdicts(build, judged));
+        Assert.False(RunLibraryStore.RecordVerdicts(
+            build, new Dictionary<string, RunVerdict>(StringComparer.Ordinal)));
     }
 
     [GameFact]
@@ -160,6 +218,8 @@ public sealed class RunLibraryStoreTests : IDisposable
 
     private void Write(string name, string content) =>
         RunmobileStore.Write($"{RunLibraryStore.RecordingsDirectory}/{name}", content);
+
+    internal static ReplayManifest BareRecording(string runId) => Recording(runId);
 
     private static ReplayManifest Recording(string runId) => new()
     {
@@ -204,6 +264,62 @@ public sealed class RunLibraryStoreTests : IDisposable
                 evidence),
         };
     }
+}
+
+/// <summary>
+/// What the run view's rows carry by the time the screen has them.
+///
+/// The design's second lines are derived by <c>RunView</c> and were, for a while,
+/// dropped on the way to the screen - four rows reading "Play from this fight", "Play
+/// from this floor", "Continue: play from fight N" and "Start the run over" with nothing
+/// saying where any of them goes. This is the seam that lost them.
+/// </summary>
+public sealed class RunViewRowMappingTests
+{
+    [Fact]
+    public void EveryRunViewRowReachesTheScreenCarryingItsSecondLine()
+    {
+        var view = RunView.For(Recording(), RunProgress.Empty);
+
+        var rows = RunBrowserScreen.EnteringRows(view, "native-a");
+
+        Assert.Equal(view.Rows.Select(row => row.Label), rows.Select(row => row.Label));
+        Assert.Equal(
+            [
+                LibraryCopy.PlayFromThisFightNote,
+                LibraryCopy.PlayFromThisFloorNote,
+                LibraryCopy.ContinueNote,
+                LibraryCopy.StartTheRunOverNote,
+            ],
+            rows.Select(row => row.Note));
+    }
+
+    /// <summary>A note says what a row does and a reason says why it is refused; a row
+    /// can carry both, and the refused first floor does.</summary>
+    [Fact]
+    public void ARefusedRowKeepsItsSecondLineBesideItsReason()
+    {
+        var view = RunView.For(Recording(), RunProgress.Empty, selectedFloor: 1);
+
+        var floor = RunBrowserScreen.EnteringRows(view, "native-a")
+            .Single(row => row.Label == LibraryCopy.PlayFromThisFloor);
+
+        Assert.False(floor.Enabled);
+        Assert.Equal(LibraryCopy.PlayFromThisFloorNote, floor.Note);
+        Assert.Equal(LibraryCopy.RunStartsHere, floor.Reason);
+    }
+
+    /// <summary>Floors 1 and 2, with a finished fight on floor 2, so every one of the
+    /// four ways in is drawn.</summary>
+    private static ReplayManifest Recording() =>
+        RunLibraryStoreTests.BareRecording("native-a") with
+        {
+            Boundaries =
+            [
+                ReplayBoundary.FloorEntry(floor: 2, afterSeq: 10, Fact<string>.Engine("floor-2")),
+                ReplayBoundary.CombatStart(fight: 1, afterSeq: 10, Fact<string>.Engine("fight-1")),
+            ],
+        };
 }
 
 /// <summary>

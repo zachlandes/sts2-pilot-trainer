@@ -22,25 +22,23 @@ namespace Sts2PilotTrainer.Mod;
 /// simply empty - which is what the browser draws when a group has nothing in it,
 /// rather than a placeholder saying so.</para>
 ///
-/// <para><b>Nothing is cached, and the cheap question does not build the list.</b> The
-/// library is re-read each time it is asked for, because the recorder writes into it
-/// while the game is running and a list built once would be a list that goes stale the
-/// moment a player finishes a run. It is not a few files: the retention default keeps
-/// fifty recordings, each hundreds of kilobytes, and each costs a deserialization and a
-/// preflight. So <see cref="HasAnythingToShow"/>, which the Compendium asks on every
-/// menu open, stops at the first listed run. In the ordinary case that is the shipped
-/// recording: one preflight, and not one of the player's own manifests read. It reaches
-/// them only when no shipped recording is playable on this build, which is the case
-/// where the answer genuinely depends on them.</para>
+/// <para><b>Two questions, and only one of them builds the list.</b> "Which runs are
+/// there" is <see cref="Runs"/>, and it is expensive on purpose: every recording is
+/// deserialized and judged live, every time it is asked, because the recorder writes
+/// into the library while the game is running and because a verdict is a reading of the
+/// whole environment rather than of the build alone. Nothing a player is shown about
+/// whether a run plays comes from anywhere else. "Is there anything at all" is
+/// <see cref="HasAnythingToShow"/>, which the Compendium asks on every menu open, and it
+/// reads no manifest: the shipped recordings are already in memory and are judged
+/// directly, and the player's own runs are answered from the run ids in the recorder's
+/// directory index and the verdicts <see cref="RunVerdictCache"/> remembers.</para>
 ///
-/// <para>It is one walk that stops early rather than a second walk of its own.
-/// <see cref="Gather"/> is the only place a <c>LibraryRun</c> is built from a recording,
-/// so the cheap question and the whole list cannot disagree about source order or about
-/// what a run is - there is nothing to keep in step. A lazy sequence would have been the
-/// obvious shape and is not available here: an iterator in this assembly is a
-/// compiler-written class whose fields include the element type, and <c>LibraryRun</c>
-/// lives in a sibling the game cannot resolve at the phase it enumerates these types,
-/// which <c>ModAssemblyLoadOrderTests</c> refuses.</para>
+/// <para>So what is cached is one hint about one menu button, and what is not cached is
+/// everything a player reads. A run with no remembered verdict for this build counts as
+/// not listed, which means the button waits until the browser has been opened once
+/// rather than guessing; the shipped recording normally answers before that ever
+/// matters. <see cref="RunVerdictCache"/> owns why a stale hint cannot become a false
+/// claim about a run.</para>
 /// </summary>
 internal static class RunLibrary
 {
@@ -50,22 +48,12 @@ internal static class RunLibrary
     /// The hidden ones are here on purpose: the numeral under the list counts them, and
     /// a run code finds them. A list filtered before it arrived could do neither.
     /// </summary>
-    internal static IReadOnlyList<LibraryRun> Runs() => Gather(stopAtFirstListed: false);
-
-    /// <summary>
-    /// The one walk of the two sources, optionally stopping the moment it has a listed
-    /// run.
-    ///
-    /// The shipped recordings come first, so a caller that only wants to know whether
-    /// anything is playable usually answers without reading a manifest off this
-    /// computer. Stopping early changes how far it gets and nothing about what it built
-    /// on the way, which is what makes the cheap answer and the list the same answer.
-    /// </summary>
-    private static IReadOnlyList<LibraryRun> Gather(bool stopAtFirstListed)
+    internal static IReadOnlyList<LibraryRun> Runs()
     {
         var build = ThisBuild();
         var progress = RunLibraryStore.ReadProgress();
         var runs = new List<LibraryRun>();
+        var judged = new Dictionary<string, RunVerdict>(StringComparer.Ordinal);
 
         foreach (var included in Included())
         {
@@ -74,20 +62,23 @@ internal static class RunLibrary
                 RunOrigin.Included,
                 RunVerdicts.For(included, build),
                 progress.PlayedFrom(included.RunId)));
-            if (stopAtFirstListed && runs[^1].Listed) return runs;
         }
 
         foreach (var stored in RunLibraryStore.MyRecordings())
         {
+            var verdict = RunVerdicts.For(stored.Recording, build);
+            judged[stored.Recording.RunId] = verdict;
             runs.Add(LibraryRun.From(
                 stored.Recording,
                 RunOrigin.Mine,
-                RunVerdicts.For(stored.Recording, build),
+                verdict,
                 progress.PlayedFrom(stored.Recording.RunId),
                 recorded: stored.Started));
-            if (stopAtFirstListed && runs[^1].Listed) return runs;
         }
 
+        // Only what was judged here, and only the player's own: the shipped recordings
+        // cost nothing to judge and the cheap question judges them itself.
+        RunLibraryStore.RecordVerdicts(build, judged);
         return runs;
     }
 
@@ -98,16 +89,30 @@ internal static class RunLibrary
     /// empty browser would be a promise the mod cannot keep on a game whose build no
     /// run in it was recorded on.
     ///
-    /// It stops at the first listed run rather than building the library, which is what
-    /// makes it cheap enough to ask on a menu open at all. It is the same walk
-    /// <see cref="Runs"/> makes, cut short - so it answers true exactly when the list
-    /// would hold a row, without a second reading of what "listed" means.
+    /// It reads no manifest, which is what makes it cheap enough to ask on a menu open
+    /// at all. The shipped recordings are in memory already and are judged the same way
+    /// the list judges them, so on an ordinary build they answer it outright. Only when
+    /// none of them is playable does it reach the player's own runs, and then it asks
+    /// the remembered verdicts rather than the recordings: a run this browser has never
+    /// judged on this build counts as not listed, so the button waits for one browser
+    /// open rather than deserializing fifty recordings to say no.
     /// </summary>
     internal static bool HasAnythingToShow()
     {
         try
         {
-            return Gather(stopAtFirstListed: true).Any(run => run.Listed);
+            var build = ThisBuild();
+            foreach (var included in Included())
+            {
+                if (LibraryRun.From(included, RunOrigin.Included, RunVerdicts.For(included, build)).Listed)
+                {
+                    return true;
+                }
+            }
+
+            var remembered = RunLibraryStore.ReadVerdicts();
+            return RunLibraryStore.StoredRunIds()
+                .Any(runId => remembered.For(runId, build) == RunVerdict.Passed);
         }
         catch (Exception ex)
         {
@@ -117,8 +122,9 @@ internal static class RunLibrary
         }
     }
 
-    /// <summary>The recording behind one row, or null when nothing here is that
-    /// run.</summary>
+    /// <summary>The recording behind one row, or null when nothing here is that run.
+    /// Resolved by id through the directory index, so pressing a row costs that
+    /// recording's manifest and no other's.</summary>
     internal static ReplayManifest? RecordingFor(string runId)
     {
         foreach (var included in Included())
@@ -126,10 +132,7 @@ internal static class RunLibrary
             if (string.Equals(included.RunId, runId, StringComparison.Ordinal)) return included;
         }
 
-        return RunLibraryStore.MyRecordings()
-            .FirstOrDefault(stored =>
-                string.Equals(stored.Recording.RunId, runId, StringComparison.Ordinal))
-            ?.Recording;
+        return RunLibraryStore.RecordingFor(runId);
     }
 
     /// <summary>

@@ -706,6 +706,26 @@ What holds the states apart meanwhile is that each one says what it is in words 
 Drawing the marks is a change to `LibraryScreen` and `TransportGlyphArt` and to nothing
 behind either.
 
+**The Compendium's question reads no manifest.** Whether the card appears is asked on
+every menu open, and answering it by building the library meant deserialising every
+recording on the player's disk and preflighting each one - fifty files at the retention
+default, on the game's own thread, exactly in the case where the answer is no.
+So `RunLibrary.HasAnythingToShow` judges the shipped recordings, which are in memory
+already and normally answer it outright, and otherwise reads the run ids out of the
+recorder's directory index and asks `RunVerdictCache` what this build last concluded
+about each.
+`RunLibrary.RecordingFor` resolves one run the same way: the id names the recording in
+the index, so pressing a row costs that recording's manifest and no other's, and a
+manifest whose own run id disagrees with its name answers nothing rather than answering
+with the wrong run.
+The cache is a hint about one menu button and never evidence about a run: `RunBrowser`'s
+list and the run-code lookup judge live through `RunVerdicts.For` every time they open,
+because a verdict is a reading of the whole environment and not of the build alone.
+A stale entry can show a button onto a list that turns out empty, or hide the button
+until the browser has been opened once, and neither is a false claim to a player about a
+run - that containment is the reason the file is allowed to exist.
+Only a judgement actually taken is written; nothing seeds it and nothing backfills it.
+
 **Two states the design names are derived and not reachable, for reasons outside this
 module.** The plate's console-command state - play rows offered, Submit refused, "A
 console command was used, so it can't be submitted." - is derived correctly by

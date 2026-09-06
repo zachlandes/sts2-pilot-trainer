@@ -53,9 +53,9 @@ public enum RunVerdict
 ///
 /// It is a reading of a recording plus what only a host can supply - which list the
 /// run is in, what this build's verdict on it is, and which of its fights this player
-/// has played from. Nothing here is computed from a recording twice: the fight count
-/// and the floor count come from the boundaries the recording actually proves, which
-/// is the same list the run view's rows come from.
+/// has played from. Nothing here is computed from a recording twice: the fights come
+/// from the boundaries the recording actually proves, which is the same list the run
+/// view's rows come from.
 ///
 /// <para><b>Two fields are three-valued on purpose.</b> <see cref="Multiplayer"/> is
 /// null when the recording does not say, because a recording written before the
@@ -75,9 +75,7 @@ public sealed record LibraryRun(
     string Character,
     int Ascension,
     string RecordedBuild,
-    string Seed,
     IReadOnlyList<int> Fights,
-    int FloorCount,
     string? Outcome,
     bool? Multiplayer,
     RunVerdict Verdict,
@@ -119,7 +117,7 @@ public sealed record LibraryRun(
     /// <summary>
     /// One run, read out of its recording.
     ///
-    /// The counts come from <see cref="ReplayManifest.Boundaries"/> rather than from
+    /// The fights come from <see cref="ReplayManifest.Boundaries"/> rather than from
     /// the action list, because a boundary is what a player can actually be stood at:
     /// a fight the recording stops inside is a fight that happened and is not a place
     /// to stand, and counting it would put a pip under a row nothing offers.
@@ -138,9 +136,7 @@ public sealed record LibraryRun(
             recording.Environment.Character.Value,
             recording.Environment.Ascension.Value,
             recording.Environment.BuildVersion.Value,
-            recording.Environment.Seed.Value,
             ProvedFights(recording),
-            FloorsIn(recording),
             recording.Source.Native?.Outcome,
             multiplayer,
             verdict,
@@ -172,6 +168,4 @@ public sealed record LibraryRun(
             .Distinct()
             .Order(),
     ];
-
-    private static int FloorsIn(ReplayManifest recording) => ProvedFloors(recording).Count;
 }

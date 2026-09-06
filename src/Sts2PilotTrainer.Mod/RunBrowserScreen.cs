@@ -106,17 +106,7 @@ internal static class RunBrowserScreen
             }
 
             var view = RunView.For(recording, RunLibraryStore.ReadProgress(), floor);
-            var rows = new List<ScreenRow>();
-            foreach (var row in view.Rows)
-            {
-                // Primitives only, for the load-order reason OpenTab records.
-                var id = runId;
-                var kind = (int)row.Kind;
-                var fight = row.Fight;
-                var atFloor = row.Floor;
-                rows.Add(new ScreenRow(
-                    row.Label, row.Enabled, () => Enter(id, kind, fight, atFloor), row.Reason));
-            }
+            var rows = new List<ScreenRow>(EnteringRows(view, runId));
 
             if (view.Positions.Count > 1)
             {
@@ -138,6 +128,33 @@ internal static class RunBrowserScreen
         {
             Refuse($"could not open '{runId}'", ex);
         }
+    }
+
+    /// <summary>
+    /// The run view's own rows, as the screen presses them.
+    ///
+    /// Each carries the design's second line as well as its label, because the note is
+    /// what tells a player where pressing goes - "the next fight not yet played", "from
+    /// run start, every choice shown, ending at fight 1" - and a row that only had its
+    /// label would be four offers a player has to guess between.
+    ///
+    /// Primitives only in what the lambdas capture, for the load-order reason OpenTab
+    /// records.
+    /// </summary>
+    internal static IReadOnlyList<ScreenRow> EnteringRows(RunView view, string runId)
+    {
+        var rows = new List<ScreenRow>();
+        foreach (var row in view.Rows)
+        {
+            var id = runId;
+            var kind = (int)row.Kind;
+            var fight = row.Fight;
+            var atFloor = row.Floor;
+            rows.Add(new ScreenRow(
+                row.Label, row.Enabled, () => Enter(id, kind, fight, atFloor), row.Note, row.Reason));
+        }
+
+        return rows;
     }
 
     /// <summary>The strip, as rows: every floor the recording proves, and the fight on

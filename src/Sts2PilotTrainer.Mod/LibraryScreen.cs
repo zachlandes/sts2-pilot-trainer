@@ -11,11 +11,15 @@ namespace Sts2PilotTrainer.Mod;
 /// One row on a library screen: what it says, whether it can be pressed, and what
 /// pressing it does.
 /// </summary>
+/// <param name="Note">The design's second line: what the row does, said under the
+/// label. A note and a reason are different sentences and a row can carry both - the
+/// note says where pressing it goes and the reason says why it cannot be pressed.</param>
 /// <param name="Reason">Said under the row when it is refused. The design's rule is
 /// that a refused row on this surface states its reason, unlike the transport's
 /// refused menu rows, because here the reason is a fact about the recording rather
 /// than a state that clears itself in seconds.</param>
-internal sealed record ScreenRow(string Label, bool Enabled, Action Press, string? Reason = null);
+internal sealed record ScreenRow(
+    string Label, bool Enabled, Action Press, string? Note = null, string? Reason = null);
 
 /// <summary>
 /// The one way this module puts anything on screen: the game's own modal popup, with
@@ -62,6 +66,22 @@ internal static class LibraryScreen
     /// <summary>How far apart rows sit, as a multiple of a row's own measured
     /// height.</summary>
     private const float RowStep = 1.12f;
+
+    /// <summary>The same, on a screen whose rows carry a second line: the note is drawn
+    /// in the gap, so the gap has to hold it.</summary>
+    private const float NotedRowStep = 1.55f;
+
+    /// <summary>How far under a row its second line sits, as a multiple of the row's own
+    /// height.</summary>
+    private const float NoteDrop = 0.92f;
+
+    /// <summary>The second line is supporting text and reads after the row, so it is
+    /// smaller and dimmer than the label the game drew.</summary>
+    private const int NoteFontSize = 15;
+
+    /// <summary>The one colour this surface says anything quiet in, the same one
+    /// <c>LibraryMarkup</c> dims with.</summary>
+    private static readonly Color NoteColour = new(0.714f, 0.659f, 0.573f);
 
     /// <summary>
     /// Shows one screen, replacing whatever this module had up.
@@ -158,8 +178,9 @@ internal static class LibraryScreen
 
         var prototype = content.NoButton;
         var label = content.BodyLabel();
+        var noted = rows.Any(row => row.Note is { Length: > 0 });
         var top = label.Position.Y + label.Size.Y + (prototype.Size.Y * RowStep * offsetSteps);
-        var step = prototype.Size.Y * RowStep;
+        var step = prototype.Size.Y * (noted ? NotedRowStep : RowStep);
         if (step <= 0f)
         {
             throw new InvalidOperationException(
@@ -204,11 +225,39 @@ internal static class LibraryScreen
                 button.FocusMode = Control.FocusModeEnum.None;
             }
 
+            if (row.Note is { Length: > 0 } note) AddNote(content, button, note);
+
             placed.Add(button);
         }
 
         JoinColumn(placed, content);
         return placed.FirstOrDefault(control => control.FocusMode != Control.FocusModeEnum.None);
+    }
+
+    /// <summary>
+    /// Draws a row's second line under it.
+    ///
+    /// Under rather than appended, because the design's rows are a label and a line
+    /// beneath it: a note run into the label with a dash would read as part of what the
+    /// row is called. It is a plain label wearing the game's font and takes no input, so
+    /// the row above it keeps the whole press and the whole focus.
+    /// </summary>
+    private static void AddNote(NVerticalPopup content, Control row, string note)
+    {
+        var label = new Label
+        {
+            Name = $"{row.Name}Note",
+            Text = note,
+            Position = new Vector2(row.Position.X, row.Position.Y + (row.Size.Y * NoteDrop)),
+            CustomMinimumSize = new Vector2(row.Size.X, 0f),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+
+        if (GameFont.Of(content.GetTree()?.Root) is { } font) label.AddThemeFontOverride("font", font);
+        label.AddThemeFontSizeOverride("font_size", NoteFontSize);
+        label.AddThemeColorOverride("font_color", NoteColour);
+        content.AddChild(label);
     }
 
     /// <summary>

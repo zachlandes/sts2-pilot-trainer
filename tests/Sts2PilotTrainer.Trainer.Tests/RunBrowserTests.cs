@@ -22,8 +22,8 @@ public sealed class RunBrowserTests
         string build = Build,
         DateTimeOffset? recorded = null) =>
         new(
-            id, origin, "NaveGreed", "CHARACTER.IRONCLAD", 10, build, "SEED",
-            Fights: [1, 2, 3, 4, 5, 6], FloorCount: 12, Outcome: "won", multiplayer, verdict,
+            id, origin, "NaveGreed", "CHARACTER.IRONCLAD", 10, build,
+            Fights: [1, 2, 3, 4, 5, 6], Outcome: "won", multiplayer, verdict,
             FightsPlayed: [], recorded);
 
     /// <summary>Every run actually drawn, in the order the groups draw them.</summary>
