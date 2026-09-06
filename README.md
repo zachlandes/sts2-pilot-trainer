@@ -1,10 +1,12 @@
 # Runmobile
 
-**Play any fight from any recorded run, yours or a top player's, and see how your fight compared.**
+**Play from the fight a top player played, and see how your fight compared.**
 
 A free, open-source mod for Slay the Spire 2.
-Pick a recorded run, pick a fight in it, and play it yourself from the moment it began: same deck, same relics, same health, same enemies, same opening hand.
+It ships with one recorded run from a featured creator: play from that run's first fight, from the moment it began, with the same deck, relics, health, enemies and opening hand.
 When the fight ends, your fight is shown beside theirs, turn by turn, with no grade and no score.
+**Coming soon:** play from any fight of any recorded run, your own recorded runs included.
+**Coming soon:** a run browser for choosing which run and which fight to play from.
 Playing from a recording, yours or anyone else's, writes nothing to your saves, your stats or your run history, win or lose.
 Recording your own runs changes nothing about them: they save and count exactly as they always did.
 Works on Slay the Spire 2 `v0.111.0`, with no other mod required.
@@ -46,7 +48,9 @@ A lost fight is not compared, because there is no completed line to set beside t
 **Your own runs, recorded.**
 Every run you play is recorded: an ordered history of every decision from run start, written as you play so a crash keeps what happened.
 It stays on your machine, under the mod's own directory, and carries no Steam id, machine path or profile id.
-Two runs played by a person on this build have been replayed through the real engine boundary for boundary, and every boundary reproduced.
+Two runs played by a person on this build have been replayed through the real engine.
+`native-9F8CY60C5BK7-20260906-005737` replays with zero boundary mismatches, and does not pass the publication gate: its run is short enough to have no card reward, no marked card and no event, so three required controls are not applicable.
+`native-3LACFJ5NJ371-20260906-015901` replays with zero boundary mismatches, passes the gate `PUBLISHABLE` with all ten controls applied, and playing from its fight 2 reproduces the recorded digest byte for byte.
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
 - **Coming soon:** play from any fight of your own recorded runs.
 - **Coming soon:** play from a run at a floor, not only at a fight.
@@ -76,16 +80,16 @@ A fight that does not match is refused rather than played.
 ## Compared with other mods
 
 Figures are Steam Workshop current subscribers or Nexus downloads on 2026-09-06, from the stores' own APIs and pages.
-Nothing here is a claim about anybody's craft; each row is what the mod does and what its own users reported on its public pages.
+Nothing here is a claim about anybody's craft: each row is what the mod does and what Runmobile does instead.
 
-| Mod | What it does | What its users reported | Runmobile |
-|---|---|---|---|
-| [Rewind](https://steamcommunity.com/workshop/browse/?appid=2868840&searchtext=rewind) (44,187) | Undo turns inside a fight; return to a room checkpoint. | A `?` node changed after rewinding into it, once from monster to shop and once from event to monster (Steam, 2026-06-22). | One whole fight from its real start, no undo. The fight is re-derived through the real engine and refused if it is not the recorded one. |
-| [Hindsight](https://www.nexusmods.com/slaythespire2/mods/925) (670 Nexus downloads, not on the Workshop) | Re-enter your own finished run at a floor, from a save snapshot it took. | Beating a boss inside a replay updated `progress.save` (Nexus, 2026-06-11); its snapshots overfilled Steam Cloud and could not be deleted (Nexus, 2026-07-24). | Plays from history, never a snapshot. Playing from a recording writes nothing to saves, stats or run history. |
-| [RunReplays](https://steamcommunity.com/sharedfiles/filedetails/?id=3759973128) (53) | Record every decision of a run and replay it by driving the game's screens; load to a floor. | Six of its seventeen public commenters reported it not working on their game version, mostly as a black screen or a silent failure; a sample replay merged into a player's stats (Nexus, 2026-04-11); last commit 2026-07-07, with two outside version-fix PRs unmerged since May and June. | Replays through the engine and checks the result at every boundary; nothing is compared on trust. A version mismatch is a sentence before anything starts. |
-| [STS2Dojo](https://steamcommunity.com/sharedfiles/filedetails/?id=3758840693) (21) | Rebuild one fight from your run-history file and a seed, as a standalone practice combat. | The share and save buttons failed on v0.109.0 for two months before anyone noticed (GitHub, 2026-07-21). | The fight is the one that happened, reached by replaying the run's decisions, and the comparison is against the recorded fight. |
-| [Training Ground](https://steamcommunity.com/sharedfiles/filedetails/?id=3772723979) (277) | Build any fight you want and practise it; nothing written to your save. | Only praise in its comments. | A different job: Training Ground builds a situation, Runmobile puts you in the one a real run produced. They coexist. |
-| OP.GG run history (2.7 million runs) | A browsable log of every finished run its desktop app uploads. | | Those pages show the deck a good player ended with. Runmobile lets you play the fight they played. |
+| Mod | What it does | Runmobile |
+|---|---|---|
+| Rewind (44,187) | Undo turns inside a fight; return to a room checkpoint. | One whole fight from its real start, no undo. The fight is re-derived through the real engine and refused if it is not the recorded one. |
+| [Hindsight](https://www.nexusmods.com/slaythespire2/mods/925) (670 Nexus downloads, not on the Workshop) | Re-enter your own finished run at a floor, from a save snapshot it took. | Plays from history, never a snapshot. Playing from a recording writes nothing to saves, stats or run history. |
+| [RunReplays](https://steamcommunity.com/sharedfiles/filedetails/?id=3759973128) (53) | Record every decision of a run and replay it by driving the game's screens; load to a floor. | Replays through the engine and checks the result at every boundary; nothing is compared on trust. A version mismatch is a sentence before anything starts. |
+| [STS2Dojo](https://steamcommunity.com/sharedfiles/filedetails/?id=3758840693) (21) | Rebuild one fight from your run-history file and a seed, as a standalone practice combat. | The fight is the one that happened, reached by replaying the run's decisions, and the comparison is against the recorded fight. |
+| [Training Ground](https://steamcommunity.com/sharedfiles/filedetails/?id=3772723979) (277) | Build any fight you want and practise it; nothing written to your save. | A different job: Training Ground builds a situation, Runmobile puts you in the one a real run produced. They coexist. |
+| OP.GG run history (2.7 million runs) | A browsable log of every finished run its desktop app uploads. | Those pages show the deck a good player ended with. Runmobile lets you play from the fight they played. |
 
 ## Works on
 
@@ -213,7 +217,7 @@ Under the renamed `Runmobile` artifact a later session repeated the fight itself
 See [docs/in-game-host.md](docs/in-game-host.md), [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md), and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md); [demo/PLAYBACK-TRANSPORT.md](demo/PLAYBACK-TRANSPORT.md) is the `Runmobile` session, and [docs/mod-ui-direction.md](docs/mod-ui-direction.md) owns what those surfaces are.
 
 The mod also records the player's own runs, on unless `settings.json` in its store says otherwise: every run played becomes a manifest of the same kind under `user://Runmobile/recordings/`, which `gate` judges by the same standard as one transcribed from a video.
-That is built and not yet proved by play - no recording made by a person has been through a gate - and [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) has the steps that would close it.
+[docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) has the steps for producing one and checking it.
 
 ```bash
 ./scripts/arbiter generate-synthetic-fixture --out build/evidence/alternate.replay.json --line alternate
