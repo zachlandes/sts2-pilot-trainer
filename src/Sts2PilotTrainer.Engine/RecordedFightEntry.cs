@@ -57,6 +57,11 @@ public sealed class RecordedFightEntry : IDisposable
     private readonly RunDriver _driver;
     private readonly PlayerProgress _progress;
 
+    /// <summary>Whether this run came off a save rather than out of the decisions that
+    /// produced it. Not a mode: nothing here behaves differently for it. It exists so
+    /// that what this entry reports about itself is what happened.</summary>
+    private bool _restored;
+
     private RecordedFightEntry(
         ReplayManifest manifest, IBoundaryPlan plan, GameSession session, PlayerProgress progress,
         Func<MapCoord, Task>? travelInRunningGame)
@@ -142,6 +147,43 @@ public sealed class RecordedFightEntry : IDisposable
             progress));
 
         entry._driver.EnterFirstRoom();
+        return entry;
+    }
+
+    /// <summary>
+    /// Stands at a floor arrival by restoring the game's own save from that arrival,
+    /// rather than by replaying the decisions that reached it.
+    ///
+    /// The second way into this type and deliberately not a second owner of what it
+    /// means to be standing at a recording's boundary. Everything that decides whether
+    /// the run is the recorded one is unchanged: the same environment gate, the same
+    /// reading-back of what the engine built, and the same
+    /// <see cref="VerifyBoundary"/> against what the recording observed and the digest
+    /// it declares. What differs is only how the run got here, and a run that got here
+    /// wrongly fails the same comparison a drifted replay does.
+    ///
+    /// Only a floor arrival, and only one where a fight is live. That scope is the whole
+    /// finding of the floor-entry measurement rather than caution: the game's own save
+    /// carries no combat, so an arrival with a finished fight still attached to the live
+    /// run restores into a state that is the same run and a different canonical state.
+    /// <see cref="FloorEntrySnapshotEligibility"/> owns the rule and
+    /// <see cref="FloorEntrySnapshot"/> is what refuses to cache one.
+    ///
+    /// The plan's decisions are not replayed and are not skipped either - they are
+    /// already made, by the run that produced the save. <see cref="StepsTaken"/> says
+    /// so, so a host that asked for another step is refused in the same words it would
+    /// be after walking them.
+    /// </summary>
+    public static RecordedFightEntry RestoreHeadless(
+        ReplayManifest manifest, FloorEntryPlan plan, string saveJson, PlayerProgress? supplied = null)
+    {
+        var progress = supplied ?? SuppliedProgressFor(manifest);
+        var entry = Prepare(
+            manifest, plan, progress, travelInRunningGame: null,
+            session => session.RestoreSavedRun(saveJson));
+
+        entry.StepsTaken = plan.PrefixActions.Count;
+        entry._restored = true;
         return entry;
     }
 
@@ -436,6 +478,10 @@ public sealed class RecordedFightEntry : IDisposable
                $"turn={(combat is null ? "-" : combat.TurnNumber.ToString(CultureInfo.InvariantCulture))}";
     }
 
+    /// <summary>Whether the game would save this run, read off the engine rather than
+    /// assumed from the route that built it.</summary>
+    public bool RunSaving => _session.RunSaving;
+
     /// <summary>The live run's canonical state, as the arbiter reads it.</summary>
     public CanonicalState LiveState() => CanonicalStateProjection.Project(_session.RunState);
 
@@ -586,9 +632,20 @@ public sealed class RecordedFightEntry : IDisposable
         return capture;
     }
 
-    /// <summary>Which progress model this run was generated against, named so a
-    /// report can say it rather than imply a reading of somebody's profile.</summary>
-    public string ProgressOrigin => LocalEnvironment.OriginOf(_progress);
+    /// <summary>
+    /// Where this run's unlock state came from, named so a report can say it rather than
+    /// imply a reading of somebody's profile.
+    ///
+    /// It has to distinguish the two ways in, because they are two different claims. A
+    /// walked entry generated the run against the progress model this entry was given,
+    /// and that model is what shaped its content. A restored one did not generate
+    /// anything: the unlock state came off the save, along with the rest of the run, and
+    /// reporting the model here would be reporting a reading nothing took.
+    /// </summary>
+    public string ProgressOrigin => _restored
+        ? "the run's own unlock state, restored from the game's save along with the rest of it. The progress " +
+          $"model this entry was gated on - {LocalEnvironment.OriginOf(_progress)} - generated nothing here"
+        : LocalEnvironment.OriginOf(_progress);
 
     /// <summary>
     /// The decisions a player can make while a fight is live.

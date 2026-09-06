@@ -48,9 +48,37 @@ mechanism rather than an unsupported hook.
 | `Cmd.Wait`, `TalkCmd.Play` | Animation sleeps and speech-bubble effects. Both block or throw with no scene tree. |
 | `RunManager.FadeIn/FadeOut/ClearScreens/UpdateRichPresence` | Screen transitions and platform presence. Pure presentation. |
 | `PreloadManager.Load*Assets` | Texture, audio and animation preloading. There is no renderer to want them, and the loaders dereference stub properties while assembling their asset lists. |
-| `SaveManager.SaveRun`, `SaveProgressFile`, `SavePrefsFile`, `SaveProfileFile` | **The player's save directory is a read-only input.** The run is created with `shouldSave: false`, but the engine still reaches for the save subsystem on room entry. |
+| `SaveManager.SaveProgressFile`, `SavePrefsFile`, `SaveProfileFile` | **The player's save directory is a read-only input.** The run is created with `shouldSave: false`, but the engine still reaches for the save subsystem on room entry. |
+| `SaveManager.SaveRun` | The same refusal with one addition — see [the run save, collected rather than dropped](#the-run-save-collected-rather-than-dropped). |
 | `LocManager.GetTable`, `LocString.GetFormattedText/GetRawText`, `LocTable.*` | Localization is stubbed with no data at all — see below. |
 | `MerchantPotionEntry.CalcCost`, `Cauldron.GenerateRewards`, `CallingBell.GenerateRewards` | **The opposite of the rest of this table.** These run with the headless flag turned off for the duration of the call, because the flag changes what the game *generates* at these three sites — see [three places the flag changes what the game generates](#three-places-the-flag-changes-what-the-game-generates). |
+
+### The run save, collected rather than dropped
+
+`SaveManager.SaveRun` is patched rather than neutralised, and the difference is one
+branch. Nothing is written where the game would write, in either case.
+
+With nothing collecting, the prefix returns a completed task and calls nothing — byte for
+byte the neutralize the other three savers get.
+With a collector installed, it first asks the game for the object it was about to save,
+through `RunManager.ToSave(preFinishedRoom)`, at the game's own call site, with the game's
+own argument, and hands it over.
+
+That is the only way to obtain the save the retail client takes at a floor arrival, which
+`RunManager.EnterMapPointInternal` writes after setting the map coordinate and before
+rolling the room type — so the game's own save is a floor-entry snapshot by construction.
+`RunSaveInterception` owns it and `docs/native-replay-format.md` owns what may be done
+with the result.
+
+One thing it does not reproduce: `SaveManager.SaveRun` is what reaches
+`RunSaveManager.SaveRun`, and it is the latter that consults `RunManager.Instance.ShouldSave` before writing.
+The prefix sits upstream of that gate, and every run in this host carries `shouldSave: false` anyway — a started run is created with it, and `GameSession.RestoreSavedRun` puts a run continued through the retail path back to it.
+What is collected is therefore what the game *asked* to save.
+For a snapshot produced from a replay that is the same object; reading a save a player's own client wrote is a different path.
+
+A missing `SaveRun` in a future build is a startup **failure**, as every name in this
+patch set is: a host that silently stopped intercepting it would write no save and
+collect none either, and both silences look like success.
 
 ### Three screens the host has to stand in for
 

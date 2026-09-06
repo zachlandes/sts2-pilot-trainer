@@ -1,7 +1,10 @@
+using System.Reflection;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Saves;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
@@ -26,6 +29,11 @@ public sealed class GameSession
 
     public RunState RunState => _runState
         ?? throw new EngineException("No run has been started in this session.");
+
+    /// <summary>Whether the game would save this run if it asked to. False on both
+    /// routes into a session, and read rather than asserted because "this host never
+    /// writes your run" is a claim and a claim wants a measurement.</summary>
+    public bool RunSaving => RunManager.Instance.ShouldSave;
 
     /// <summary>
     /// Starts a run exactly as the retail client would, at the given identity.
@@ -85,6 +93,107 @@ public sealed class GameSession
         RunManager.Instance.Launch();
 
         _runState = runState;
+    }
+
+    /// <summary>
+    /// Continues a run from a save the game itself wrote, exactly as the retail
+    /// continue-run path does.
+    ///
+    /// The sibling of <see cref="StartRun(string, string, int, string, IReadOnlyList{string}, PlayerProgress)"/>
+    /// and started through the client's own entry point for the same reason: the retail
+    /// path is <c>NMainMenu.OnContinueButtonPressedAsync</c> reading the save, then
+    /// <see cref="RunState.FromSerializable"/>, <c>RunManager.SetUpSavedSingleplayer</c>
+    /// - which is what reaches the private <c>InitializeSavedRun</c> - and then
+    /// <c>NGame.LoadRun</c>, whose engine half is <c>Launch</c>, <c>GenerateMap</c> and
+    /// <c>LoadIntoLatestMapCoord</c>. Its asset preloading and scene construction are
+    /// the game's own and are skipped here, as they are everywhere else in this project.
+    ///
+    /// <c>preFinishedRoom</c> is the load-bearing argument and it comes off the save.
+    /// <c>NGame.LoadRun</c> passes <c>AbstractRoom.FromSerializable(preFinishedRoom,
+    /// runState)</c>, and <c>EnterMapPointInternal</c> branches on it: a non-null room
+    /// is one the run had already finished, so the room type is not re-rolled and no
+    /// room is created. Passing null where the save carries a room re-rolls the room
+    /// type off the run's own stream and generates a different room - a run that loads
+    /// cleanly, reports the same seed and build, and is not the run. A save taken at a
+    /// floor arrival carries no room, and re-entering the coordinate is exactly how it
+    /// gets one.
+    ///
+    /// The retail continue path creates its run saving, so <see cref="StopSavingThisRun"/>
+    /// puts it back to <c>shouldSave: false</c> before the run is launched: both routes
+    /// into this session carry the same flag, and neither leans on the patched savers
+    /// alone.
+    ///
+    /// Nothing here is a source of truth. What may be restored, and the digest a
+    /// restored state has to reproduce before anybody is stood in it, are
+    /// <see cref="FloorEntrySnapshot"/>'s and <see cref="RecordedFightEntry"/>'s.
+    /// </summary>
+    public void RestoreSavedRun(string saveJson)
+    {
+        if (EngineHost.Origin == EngineOrigin.RunningGame)
+        {
+            throw new EngineException(
+                "This is a running retail client, and continuing a run there is the client's own path through " +
+                "its main menu rather than this one. Restoring a snapshot inside the client has not been " +
+                "measured; see docs/native-replay-format.md.");
+        }
+
+        if (_runState is not null)
+        {
+            throw new EngineException("This session already has a run. Start a fresh process for a fresh run.");
+        }
+
+        EngineHost.Start();
+
+        var read = JsonSerializationUtility.FromJson<SerializableRun>(saveJson);
+        var save = read.SaveData;
+        if (!read.Success || save is null)
+        {
+            throw new EngineException(
+                $"The game's own reader refused this save ({read.Status}): {read.ErrorMessage ?? "no detail"}. " +
+                "A run that cannot be read back is not a run that can be restored.");
+        }
+
+        var runState = RunState.FromSerializable(save);
+
+        // The same restoration StartRun makes, for the same reason and scoped the same
+        // way: the headless flag turns ShouldApplyTutorialModifications off, retail
+        // returns true for every standard run, and anything this run generates later
+        // would otherwise draw from a different sequence than the player's did.
+        RunManager.Instance.ForceDiscoveryOrderModifications = runState.GameMode == GameMode.Standard;
+
+        RunManager.Instance.SetUpSavedSingleplayer(runState, save).GetAwaiter().GetResult();
+        StopSavingThisRun();
+        RunManager.Instance.Launch();
+        RunManager.Instance.GenerateMap().GetAwaiter().GetResult();
+        RunManager.Instance.LoadIntoLatestMapCoord(
+            AbstractRoom.FromSerializable(save.PreFinishedRoom, runState)).GetAwaiter().GetResult();
+
+        _runState = runState;
+    }
+
+    /// <summary>
+    /// Puts a restored run back on the footing a started one is created with.
+    ///
+    /// <c>SetUpSavedSingleplayer</c> takes no <c>shouldSave</c> argument and hands
+    /// <c>true</c> to the shared initializer, because the retail client continues a run
+    /// in order to go on saving it. This host never does, and the flag is the first of
+    /// two defences rather than a detail - the second being the in-game host's profile
+    /// write barrier. A build whose setter this cannot reach is refused outright: a host
+    /// that silently could not turn saving off is the failure being guarded against.
+    /// </summary>
+    private static void StopSavingThisRun()
+    {
+        var setter = typeof(RunManager)
+            .GetProperty(
+                nameof(RunManager.ShouldSave),
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            ?.GetSetMethod(nonPublic: true)
+            ?? throw new EngineException(
+                "RunManager.ShouldSave has no setter this build exposes, so a run continued through the " +
+                "retail path cannot be put back to shouldSave: false. The player's save directory is a " +
+                "read-only input and this host will not restore a run it cannot stop the game saving.");
+
+        setter.Invoke(RunManager.Instance, [false]);
     }
 
     /// <summary>

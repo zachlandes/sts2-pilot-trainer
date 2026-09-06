@@ -248,10 +248,17 @@ internal static class HeadlessPatches
         // reaches for the save subsystem on room entry to persist progress. This host
         // must not write a save at all: the player's save directory is a read-only
         // input, and a headless run is not a run they played.
-        foreach (var saver in new[] { "SaveRun", "SaveProgressFile", "SavePrefsFile", "SaveProfile" })
+        foreach (var saver in new[] { "SaveProgressFile", "SavePrefsFile", "SaveProfile" })
         {
             Neutralize(harmony, assembly, "MegaCrit.Sts2.Core.Saves.SaveManager", saver, warnings);
         }
+
+        // SaveRun is the same refusal with one addition: with a collector installed it
+        // hands the game's own ToSave(preFinishedRoom) over instead of dropping it, which
+        // is the only way to obtain the save the retail client takes at a floor arrival.
+        // With none installed it calls nothing and writes nothing, exactly as the
+        // neutralize above does. See RunSaveInterception.
+        InterceptSaveRun(harmony, assembly, warnings);
 
         // Screen fades between rooms and acts. Pure vfx, and they dereference a
         // scene tree that does not exist here.
@@ -413,6 +420,74 @@ internal static class HeadlessPatches
                 warnings.Add($"headless patch {typeName}.{methodName}: {ex.GetType().Name}: {ex.Message}");
             }
         }
+    }
+
+    /// <summary>
+    /// Patches <c>SaveManager.SaveRun</c> so nothing is ever written and, when
+    /// something is collecting, the save the game was about to write is offered to it.
+    ///
+    /// A missing name here is a startup failure, as every name in this patch set is:
+    /// a host that silently stopped intercepting this method would write no save and
+    /// collect none either, and the only symptom would be a snapshot cache that never
+    /// materialises anything, for a reason nothing says out loud.
+    /// </summary>
+    private static void InterceptSaveRun(Harmony harmony, Assembly assembly, List<string> failures)
+    {
+        var type = assembly.GetType("MegaCrit.Sts2.Core.Saves.SaveManager");
+        var methods = type?
+            .GetMethods(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static |
+                BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(method => method.Name == "SaveRun")
+            .ToArray() ?? [];
+
+        if (methods.Length == 0)
+        {
+            failures.Add(
+                "headless patch: MegaCrit.Sts2.Core.Saves.SaveManager.SaveRun not found in this build. This " +
+                "host neither writes a save nor collects one without it, and both silences look like success.");
+            return;
+        }
+
+        foreach (var method in methods)
+        {
+            // Harmony rejects a __result parameter on a void method, so the prefix
+            // is chosen by return shape rather than one prefix covering both.
+            var prefixName = method.ReturnType == typeof(void)
+                ? nameof(CollectAndSkipVoidSaveRun)
+                : nameof(CollectAndSkipSaveRun);
+            var prefix = typeof(HeadlessPatches).GetMethod(
+                prefixName, BindingFlags.NonPublic | BindingFlags.Static)!;
+            try
+            {
+                harmony.Patch(method, prefix: new HarmonyMethod(prefix));
+            }
+            catch (Exception ex)
+            {
+                failures.Add($"headless patch SaveManager.SaveRun: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>Harmony prefix: offer the save to whatever is collecting, then skip the
+    /// original and hand back a finished task.</summary>
+    private static bool CollectAndSkipSaveRun(object[] __args, ref object? __result)
+    {
+        CollectAndSkipVoidSaveRun(__args);
+        __result = Task.CompletedTask;
+        return false;
+    }
+
+    /// <summary>Harmony prefix: the same collection for a void overload, which Harmony
+    /// will not hand a __result.</summary>
+    private static bool CollectAndSkipVoidSaveRun(object[] __args)
+    {
+        if (RunSaveInterception.Armed)
+        {
+            RunSaveInterception.Offer(__args.Length > 0 ? __args[0] : null);
+        }
+
+        return false;
     }
 
     /// <summary>Harmony prefix: skip the original and hand back a finished task.</summary>
