@@ -77,9 +77,14 @@ public sealed class ExactUnlockStateTests
     /// an identical map.
     ///
     /// Reported, not thrown. The preflight exists to tell somebody why a recording
-    /// cannot be replayed here, so it has to print its FAIL row and its refusal rather
-    /// than abort while reading: a reading that threw would print no rows at all and
-    /// leave the message on stderr, which is what the row assertions distinguish.
+    /// cannot be replayed here, so it has to print its row and its refusal rather than
+    /// abort while reading: a reading that threw would print no rows at all and leave
+    /// the message on stderr, which is what the row assertions distinguish.
+    ///
+    /// <c>MISS</c> and not <c>FAIL</c>, and the two marks are the point. A shortfall
+    /// somebody can go and fix carries the sentence that says how; this one carries the
+    /// sentence that says there is no how, because no play adds content a build does
+    /// not ship.
     /// </summary>
     [GameFact]
     public void AnIdThisBuildDoesNotShipIsReportedAsAShortfallRatherThanDropped()
@@ -89,16 +94,98 @@ public sealed class ExactUnlockStateTests
         var result = Arbiter.Run("preflight", manifest);
 
         Assert.False(result.Verified, result.All);
-        Assert.StartsWith("FAIL", Row(result.Output, "unlocks_epochs"), StringComparison.Ordinal);
+        Assert.StartsWith("MISS", Row(result.Output, "unlocks_epochs"), StringComparison.Ordinal);
         Assert.Contains("does not ship 1 of the", result.Output, StringComparison.Ordinal);
         Assert.Contains("EPOCH.THIS.BUILD.NEVER.HEARD.OF", result.Output, StringComparison.Ordinal);
+        Assert.Contains(EnvironmentPreflight.ContentNotShipped, result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain(EnvironmentPreflight.UnlockRemediation, result.Output, StringComparison.Ordinal);
         Assert.Contains(
             "environment does NOT match; refusing to replay", result.Output, StringComparison.Ordinal);
 
         // And the acts row says it was never asked, rather than reporting a state that
         // could not be built as one with nothing locked.
-        Assert.StartsWith("FAIL", Row(result.Output, "acts_unlocked"), StringComparison.Ordinal);
+        Assert.StartsWith("MISS", Row(result.Output, "acts_unlocked"), StringComparison.Ordinal);
         Assert.Contains("not checked", Row(result.Output, "acts_unlocked"), StringComparison.Ordinal);
+    }
+
+    // ── The round on a recording somebody actually played ──────────────────
+    //
+    // Everything above rewrites a synthetic history's unlock requirement, which
+    // proves the rule and not the path. These two read the state a recorder wrote out
+    // of a live game, check it against this build, and report - the whole exact-unlock
+    // path, over evidence that owes nothing to the code that judges it.
+
+    /// <summary>The longer of the two committed recordings a person played. Its
+    /// <c>environment.unlocks</c> is the state the recorder read at run start, which
+    /// is the only kind of requirement this path can be exercised on.</summary>
+    private static string NativeRecording =>
+        Path.Combine(Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json");
+
+    /// <summary>
+    /// The recorder's own recording, checked against the build it was made on: every
+    /// id it names is one this build ships, and the rows say so with the counts the
+    /// recording itself carries.
+    ///
+    /// The counts are read out of the manifest rather than written down here, because
+    /// a number typed into a test is a number that stops being about the recording the
+    /// moment somebody re-records the run.
+    /// </summary>
+    [GameFact]
+    public void ARecordersOwnExactStateIsCheckedAgainstThisBuildAndPasses()
+    {
+        var inventory = ManifestJson.Load(NativeRecording).Environment.Unlocks.Value.Inventory
+            ?? throw new InvalidOperationException("This recording names no unlock inventory to check.");
+
+        var result = Arbiter.Run("preflight", NativeRecording);
+
+        Assert.True(result.Verified, result.All);
+        Assert.Contains(
+            $"manifest={inventory.Epochs.Count}", Row(result.Output, "unlocks_epochs"), StringComparison.Ordinal);
+        Assert.StartsWith("ok", Row(result.Output, "unlocks_epochs"), StringComparison.Ordinal);
+        Assert.StartsWith("ok", Row(result.Output, "unlocks_encounters_seen"), StringComparison.Ordinal);
+        Assert.StartsWith("ok", Row(result.Output, "acts_unlocked"), StringComparison.Ordinal);
+        Assert.Contains("environment matches; replay may proceed", result.Output, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The same recording with one epoch this build has never heard of, which is the
+    /// shape a recording made on a later build arrives in.
+    ///
+    /// The failure has to be readable and it has to be honest about who can fix it:
+    /// the row names the id, the sentence says this build does not ship it, and
+    /// nothing in the whole report tells the player to go and unlock anything.
+    /// </summary>
+    [GameFact]
+    public void ARecordingNamingContentThisBuildLacksIsRefusedWithNoErrandToRun()
+    {
+        var inventory = ManifestJson.Load(NativeRecording).Environment.Unlocks.Value.Inventory
+            ?? throw new InvalidOperationException("This recording names no unlock inventory to check.");
+
+        var manifest = WithRewrittenInventory(
+            NativeRecording,
+            epochs: [.. inventory.Epochs, "EPOCH.FROM.A.LATER.BUILD"],
+            encounters: inventory.EncountersSeen,
+            runs: inventory.Runs,
+            name: "native-unshipped-epoch");
+
+        var result = Arbiter.Run("preflight", manifest);
+
+        Assert.False(result.Verified, result.All);
+        Assert.StartsWith("MISS", Row(result.Output, "unlocks_epochs"), StringComparison.Ordinal);
+        Assert.Contains("EPOCH.FROM.A.LATER.BUILD", result.Output, StringComparison.Ordinal);
+        Assert.StartsWith("MISS", Row(result.Output, "acts_unlocked"), StringComparison.Ordinal);
+        Assert.Contains(EnvironmentPreflight.ContentNotShipped, result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain(EnvironmentPreflight.UnlockRemediation, result.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "environment does NOT match; refusing to replay", result.Output, StringComparison.Ordinal);
+
+        // The act question is unanswerable here and says why in the reading's own
+        // words. That the cause travels with the reading rather than being inferred
+        // from the absence of an answer is the thing being checked: the sentence names
+        // the id, and only the engine that failed to build the state knows it.
+        var acts = Diagnostic(result.Output, "acts_unlocked");
+        Assert.Contains("never asked which of these acts", acts, StringComparison.Ordinal);
+        Assert.Contains("EPOCH.FROM.A.LATER.BUILD", acts, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -129,16 +216,32 @@ public sealed class ExactUnlockStateTests
         };
     }
 
-    /// <summary>One preflight row, by the field it reports on, with the pass mark it
-    /// was printed with kept at the front.</summary>
+    /// <summary>One preflight row, by the field it reports on, with the mark it was
+    /// printed with kept at the front - all three of them, so a row that changed
+    /// verdict is a changed assertion rather than a row this helper stops finding.</summary>
     private static string Row(string output, string field) =>
         output.Split('\n')
             .Select(line => line.Trim())
             .FirstOrDefault(line =>
                 (line.StartsWith("ok ", StringComparison.Ordinal) ||
-                 line.StartsWith("FAIL", StringComparison.Ordinal)) &&
+                 line.StartsWith("FAIL", StringComparison.Ordinal) ||
+                 line.StartsWith("MISS", StringComparison.Ordinal)) &&
                 line.Contains(field, StringComparison.Ordinal))
         ?? throw new InvalidOperationException($"The preflight printed no '{field}' row:\n{output}");
+
+    /// <summary>The sentence printed under one refused row, which the CLI indents
+    /// beneath it.</summary>
+    private static string Diagnostic(string output, string field)
+    {
+        var lines = output.Split('\n').Select(line => line.TrimEnd('\r')).ToList();
+        var row = lines.FindIndex(line => line.Contains($" {field} ", StringComparison.Ordinal));
+        if (row < 0 || row + 1 >= lines.Count)
+        {
+            throw new InvalidOperationException($"The preflight printed no '{field}' row:\n{output}");
+        }
+
+        return lines[row + 1].Trim();
+    }
 
     /// <summary>
     /// The reading names what this build ships, which is what an exact requirement is
@@ -209,6 +312,44 @@ public sealed class ExactUnlockStateTests
                         EncountersSeen = inventory["encounters_seen"],
                         Runs = runs,
                     })),
+            },
+        };
+
+        var path = Path.Combine(Scratch(), $"exact-{name}.replay.json");
+        ManifestJson.Save(rewritten, path);
+        return path;
+    }
+
+    /// <summary>
+    /// A recording that already carries an exact state, with different ids in it and
+    /// everything else - its provenance, its basis, its history - left alone.
+    ///
+    /// Written to scratch rather than over the recording, for the same reason as
+    /// above: a recording is somebody's evidence, and this is a question about what
+    /// this build does with it rather than an edit to it.
+    /// </summary>
+    private static string WithRewrittenInventory(
+        string source, IReadOnlyList<string> epochs, IReadOnlyList<string> encounters, int runs, string name)
+    {
+        var manifest = ManifestJson.Load(source);
+        var unlocks = manifest.Environment.Unlocks;
+        var requirement = unlocks.Value;
+        var rewritten = manifest with
+        {
+            Environment = manifest.Environment with
+            {
+                Unlocks = unlocks with
+                {
+                    Value = requirement with
+                    {
+                        Inventory = new UnlockStateInventory
+                        {
+                            Epochs = epochs,
+                            EncountersSeen = encounters,
+                            Runs = runs,
+                        },
+                    },
+                },
             },
         };
 

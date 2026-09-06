@@ -571,6 +571,15 @@ public class EnvironmentPreflightTests
         Assert.Equal(UnlockRequirement.ExactCompleteness, Field(result, "unlocks_requirement").Expected);
     }
 
+    /// <summary>
+    /// A build shortfall is unavailable rather than unmet, and it says so instead of
+    /// offering a remediation.
+    ///
+    /// The distinction is the whole reason the outcome has three values. Playing the
+    /// game unlocks content the build ships and nothing adds content it does not, so
+    /// the remediation sentence on this row would be an instruction that can never be
+    /// carried out, given to somebody whose game is working perfectly.
+    /// </summary>
     [Fact]
     public void AnExactRequirementRefusesABuildMissingAnIdItNames()
     {
@@ -578,24 +587,108 @@ public class EnvironmentPreflightTests
             Exact(), Enumerated(epochs: ["EPOCH.ONE"]), sourceKind: "native");
 
         Assert.False(result.Matches);
+        Assert.Equal(PreflightOutcome.Unavailable, Field(result, "unlocks_epochs").Outcome);
         Assert.Contains("Missing, for example: EPOCH.TWO", Diagnostic(result, "unlocks_epochs"),
             StringComparison.Ordinal);
-        Assert.Contains(EnvironmentPreflight.UnlockRemediation, Diagnostic(result, "unlocks_epochs"),
+        Assert.Contains(EnvironmentPreflight.ContentNotShipped, Diagnostic(result, "unlocks_epochs"),
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(EnvironmentPreflight.UnlockRemediation, Diagnostic(result, "unlocks_epochs"),
             StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The row counts the ids the recording named, not the ids this build happens to
+    /// ship in total.
+    ///
+    /// Both are true numbers and only one of them is an answer to the question. A
+    /// build with more encounters than the recording named would otherwise report
+    /// "85 of 56", which reads as a surplus where the requirement is a subset.
+    /// </summary>
+    [Fact]
+    public void AnExactRequirementCountsTheIdsItNamesRatherThanTheBuildsWholeCatalogue()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Exact(), Enumerated(epochs: ["EPOCH.ONE"]), sourceKind: "native");
+
+        var epochs = Field(result, "unlocks_epochs");
+        Assert.Equal("2", epochs.Expected);
+        Assert.Equal("1", epochs.Actual);
+    }
+
     /// <summary>A reader that could not enumerate what the build ships says so rather
-    /// than reporting a pass it did not establish. This is every real reading today -
-    /// nothing populates ShippedIds until the engine reader enumerates the build's
-    /// epoch and encounter ids, which lands with the recorder - so the refusal is the
-    /// documented dependency rather than the desired end state.</summary>
+    /// than reporting a pass it did not establish. Unavailable and not unmet: an
+    /// enumeration this reader failed to take is not a shortfall in anybody's game,
+    /// and there is nothing for a player to go and do about it.</summary>
     [Fact]
     public void AnExactRequirementRefusesAReadingThatEnumeratedNothing()
     {
         var result = EnvironmentPreflight.Prerequisites(Exact(), Local(), sourceKind: "native");
 
         Assert.False(result.Matches);
+        Assert.Equal(PreflightOutcome.Unavailable, Field(result, "unlocks_epochs").Outcome);
         Assert.Contains("did not enumerate what it ships", Diagnostic(result, "unlocks_epochs"),
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(EnvironmentPreflight.UnlockRemediation, Diagnostic(result, "unlocks_epochs"),
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A state that could not be built leaves the act question unasked, and the row
+    /// says so in the reading's own words rather than pointing at a row above it.
+    ///
+    /// The two failures of this gate are not the same failure. An act the game reports
+    /// locked is an errand; a question nobody asked is not, and reporting the second
+    /// as the first is what sent a player off to unlock an act their build does not
+    /// ship.
+    /// </summary>
+    [Fact]
+    public void AnActQuestionThatCouldNotBeAskedIsUnavailableAndNamesWhy()
+    {
+        var reading = Enumerated() with
+        {
+            LockedActs = null,
+            UnlockStateShortfall = "This build does not ship 1 of the 2 epoch id(s) the recording was played with.",
+        };
+
+        var result = EnvironmentPreflight.Prerequisites(Exact(), reading, sourceKind: "native");
+        var acts = Diagnostic(result, "acts_unlocked");
+
+        Assert.Equal(PreflightOutcome.Unavailable, Field(result, "acts_unlocked").Outcome);
+        Assert.Contains("does not ship 1 of the 2 epoch id(s)", acts, StringComparison.Ordinal);
+        Assert.Contains(EnvironmentPreflight.ContentNotShipped, acts, StringComparison.Ordinal);
+        Assert.DoesNotContain(EnvironmentPreflight.UnlockRemediation, acts, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Under an exact requirement the state is built from the recording's own ids and
+    /// supplied to the run, so the player's own unlocks never enter it: an act it
+    /// leaves locked is a shortfall no play can fix, and telling somebody to go and
+    /// unlock it is an instruction that can never be carried out.
+    /// </summary>
+    [Fact]
+    public void ALockedActUnderAnExactRequirementIsUnavailableRatherThanAnErrand()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Exact(), Enumerated() with { LockedActs = ["ACT.UNDERDOCKS"] }, sourceKind: "native");
+        var acts = Diagnostic(result, "acts_unlocked");
+
+        Assert.False(result.Matches);
+        Assert.Equal(PreflightOutcome.Unavailable, Field(result, "acts_unlocked").Outcome);
+        Assert.Contains("would take the other variant", acts, StringComparison.Ordinal);
+        Assert.Contains(EnvironmentPreflight.ContentNotShipped, acts, StringComparison.Ordinal);
+        Assert.DoesNotContain(EnvironmentPreflight.UnlockRemediation, acts, StringComparison.Ordinal);
+    }
+
+    /// <summary>And under a complete requirement, where the state really is this
+    /// installation's, a locked act stays an errand with the remediation on it.</summary>
+    [Fact]
+    public void ALockedActIsUnmetRatherThanUnavailable()
+    {
+        var result = EnvironmentPreflight.Prerequisites(
+            Environment(), Local() with { LockedActs = ["ACT.HIVE"] });
+
+        Assert.Equal(PreflightOutcome.NotMet, Field(result, "acts_unlocked").Outcome);
+        Assert.Contains(EnvironmentPreflight.UnlockRemediation, Diagnostic(result, "acts_unlocked"),
             StringComparison.Ordinal);
     }
 

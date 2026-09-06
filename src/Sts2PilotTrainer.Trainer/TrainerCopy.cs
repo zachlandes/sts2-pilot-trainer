@@ -263,6 +263,18 @@ public static class TrainerCopy
     public const string FailHeadline = "Your game cannot play this fight as recorded yet.";
 
     /// <summary>
+    /// The same verdict without the promise, for a shortfall nobody can fix.
+    ///
+    /// "Yet" is the load-bearing word above: it says the rows below are errands. Where
+    /// this build does not ship what the recording names, or could not be asked
+    /// because of that, there is no errand and the word would be a lie - the player's
+    /// game is working, and every hour they spent unlocking things would leave the
+    /// answer exactly where it is.
+    /// </summary>
+    public const string UnavailableHeadline =
+        "This build does not have what the recording needs, so it cannot play this fight.";
+
+    /// <summary>
     /// Says which profile the unlock rows were measured against.
     ///
     /// Load-bearing rather than decorative: the game forks a separate profile for

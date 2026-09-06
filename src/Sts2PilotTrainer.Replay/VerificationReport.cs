@@ -91,13 +91,116 @@ public sealed record PreflightResult(
     [property: JsonPropertyName("matches")] bool Matches,
     [property: JsonPropertyName("fields")] IReadOnlyList<PreflightField> Fields);
 
-public sealed record PreflightField(
-    [property: JsonPropertyName("field")] string Field,
-    [property: JsonPropertyName("expected")] string Expected,
-    [property: JsonPropertyName("actual")] string Actual,
-    [property: JsonPropertyName("matches")] bool Matches,
-    [property: JsonPropertyName("diagnostic")]
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Diagnostic = null);
+/// <summary>
+/// What one preflight rule decided, in the three answers a rule can honestly have.
+///
+/// The third exists because a bool has to lie about one of them. A shortfall a
+/// person can go and fix and a shortfall nobody can fix are both "false", and a
+/// reader that cannot tell them apart ends up telling somebody to go and unlock
+/// content their build does not contain - an instruction that can never come true,
+/// given about a game that is working correctly.
+///
+/// Numbered from one, so that zero means "the file did not say". A report written
+/// before this existed carries only <c>matches</c>, and the reader derives the
+/// outcome from that rather than taking a default that would read a recorded refusal
+/// back as a pass.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<PreflightOutcome>))]
+public enum PreflightOutcome
+{
+    /// <summary>This environment satisfies the rule.</summary>
+    Met = 1,
+
+    /// <summary>It does not, and meeting it is something somebody can do: unlock the
+    /// content by playing, install the build the recording names, disable a mod. The
+    /// diagnostic on such a field says what to do.</summary>
+    NotMet = 2,
+
+    /// <summary>
+    /// It does not, and nobody can make it: this build does not ship what the
+    /// recording names, or the question could not be asked because of that.
+    ///
+    /// A diagnostic here states the fact and stops. It must never instruct, because
+    /// every instruction it could give would be false.
+    /// </summary>
+    Unavailable = 3,
+}
+
+/// <summary>
+/// One rule's verdict, with the values it compared and - where it failed - the
+/// sentence that says why.
+///
+/// <see cref="Matches"/> is derived rather than stored, so the failing outcomes
+/// cannot drift apart from the pass/fail every caller already reads.
+/// </summary>
+public sealed record PreflightField
+{
+    public PreflightField(
+        string field, string expected, string actual, PreflightOutcome outcome, string? diagnostic = null)
+    {
+        Field = field;
+        Expected = expected;
+        Actual = actual;
+        Outcome = outcome;
+        Diagnostic = diagnostic;
+    }
+
+    /// <summary>
+    /// The pass-or-fail rules, which is most of them: a build version, a content
+    /// hash, a mod list, an ascension ceiling. Failing one of those is something
+    /// somebody can act on, so false is <see cref="PreflightOutcome.NotMet"/>.
+    ///
+    /// A rule whose failure nobody can act on names <see cref="PreflightOutcome"/>
+    /// explicitly instead. Those all live in <see cref="EnvironmentPreflight"/>'s
+    /// unlock rules: an exact requirement naming ids this build does not ship or that
+    /// nothing enumerated, and the act question that could not be asked because of
+    /// it.
+    /// </summary>
+    public PreflightField(string field, string expected, string actual, bool matches, string? diagnostic = null)
+        : this(field, expected, actual, matches ? PreflightOutcome.Met : PreflightOutcome.NotMet, diagnostic)
+    {
+    }
+
+    /// <summary>
+    /// Reading one back, including one written before the outcome existed.
+    ///
+    /// A report is somebody's evidence and older ones carry only <c>matches</c>, so an
+    /// absent outcome is derived from it rather than defaulted - defaulting would read
+    /// a recorded failure back as a pass, which is the one direction that must never
+    /// happen silently. Where both are present the outcome wins, because it is the
+    /// finer answer and <c>matches</c> is derived from it on the way out.
+    /// </summary>
+    [JsonConstructor]
+    public PreflightField(
+        string field, string expected, string actual, PreflightOutcome outcome, bool matches, string? diagnostic)
+        : this(
+            field, expected, actual,
+            Enum.IsDefined(outcome)
+                ? outcome
+                : matches ? PreflightOutcome.Met : PreflightOutcome.NotMet,
+            diagnostic)
+    {
+    }
+
+    [JsonPropertyName("field")]
+    public string Field { get; init; }
+
+    [JsonPropertyName("expected")]
+    public string Expected { get; init; }
+
+    [JsonPropertyName("actual")]
+    public string Actual { get; init; }
+
+    [JsonPropertyName("outcome")]
+    public PreflightOutcome Outcome { get; init; }
+
+    [JsonPropertyName("matches")]
+    public bool Matches => Outcome == PreflightOutcome.Met;
+
+    [JsonPropertyName("diagnostic")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Diagnostic { get; init; }
+}
 
 public sealed record CheckpointResult(
     [property: JsonPropertyName("id")] string Id,

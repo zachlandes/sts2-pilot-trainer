@@ -48,9 +48,30 @@ public sealed record LocalPrerequisites
     /// Null where the unlock state a run here would be generated against could not be
     /// built, so the game was never asked. That is not an empty list: nothing locked
     /// and nothing checked are different answers, and only one of them is a pass.
+    /// <see cref="UnlockStateShortfall"/> is why, and the two move together.
     /// </summary>
     [JsonPropertyName("locked_acts")]
     public required IReadOnlyList<string>? LockedActs { get; init; }
+
+    /// <summary>
+    /// Why the unlock state this reading was taken under cannot be built on this
+    /// build, or null where it can.
+    ///
+    /// The cause of the absence above, carried rather than left to be inferred. Only
+    /// a recording's own exact state can be unbuildable - the complete, empty and
+    /// profile states are this build's own - and when it is, everything downstream of
+    /// the state is unanswerable: no unlock categories to count, and no act to ask
+    /// about. A reader that saw only the absence would have to guess at the reason, and
+    /// the guess this replaces was that a missing answer meant a locked act.
+    ///
+    /// The engine's own sentence, and the same one run construction refuses with, so
+    /// a shortfall reported here and a state the engine declines to build are one
+    /// fact rather than two that can disagree. Non-null exactly when
+    /// <see cref="LockedActs"/> is null.
+    /// </summary>
+    [JsonPropertyName("unlock_state_shortfall")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UnlockStateShortfall { get; init; }
 
     /// <summary>
     /// The highest ascension this process's profile records for the character the
@@ -120,6 +141,11 @@ public sealed record UnlockInventory
     /// requirement then refuses as unchecked rather than passing: an unchecked
     /// requirement reported as met is the confident wrong answer this project exists
     /// to prevent.
+    ///
+    /// Both refusals are <see cref="PreflightOutcome.Unavailable"/> rather than unmet.
+    /// An id this build does not ship is not content anybody's play unlocks, and an
+    /// enumeration this reader failed to take is not a shortfall in the player's game
+    /// at all.
     /// </summary>
     [JsonPropertyName("shipped_ids")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

@@ -149,6 +149,82 @@ public class ManifestJsonTests
             migrated.Source.RunStart!.FirstObservedRunTimeSeconds.Value);
     }
 
+    // ── A verification report, written and read back ───────────────────────
+
+    /// <summary>
+    /// A preflight verdict survives the round trip with its outcome intact, the third
+    /// one included.
+    ///
+    /// A report is somebody's evidence and gets read again, so the finer answer has to
+    /// come back as itself: a shortfall this build cannot fix reading back as an
+    /// errand would put the false instruction into every later reader of the file.
+    /// </summary>
+    [Fact]
+    public void APreflightOutcomeSurvivesBeingWrittenAndReadBack()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Verification = new VerificationReport
+            {
+                ArbiterVersion = "test",
+                Status = VerificationStatus.Refused,
+                Preflight = new PreflightResult(false,
+                [
+                    new PreflightField("build_version", "v0.111.0", "v0.111.0", PreflightOutcome.Met),
+                    new PreflightField("ascension_unlocked", "10", "0", PreflightOutcome.NotMet, "go and play"),
+                    new PreflightField("unlocks_epochs", "57", "54", PreflightOutcome.Unavailable, "not shipped"),
+                ]),
+                Checkpoints = [],
+            },
+        };
+
+        var read = ManifestJson.Deserialize(ManifestJson.Serialize(manifest));
+        var fields = read.Verification!.Preflight.Fields;
+
+        Assert.Equal(
+            [PreflightOutcome.Met, PreflightOutcome.NotMet, PreflightOutcome.Unavailable],
+            fields.Select(field => field.Outcome));
+        Assert.Equal([true, false, false], fields.Select(field => field.Matches));
+    }
+
+    /// <summary>
+    /// A report written before the outcome existed carries only <c>matches</c>, and it
+    /// reads back as the answer it recorded rather than as the enum's default.
+    ///
+    /// The direction that matters is the failing one: a recorded refusal defaulting to
+    /// "met" would be an old report quietly turning into a pass.
+    /// </summary>
+    [Fact]
+    public void AReportWrittenBeforeTheOutcomeExistedKeepsItsVerdict()
+    {
+        var manifest = Fixtures.ValidManifest() with
+        {
+            Verification = new VerificationReport
+            {
+                ArbiterVersion = "test",
+                Status = VerificationStatus.Refused,
+                Preflight = new PreflightResult(false,
+                [
+                    new PreflightField("build_version", "v0.111.0", "v0.110.0", false, "different build"),
+                    new PreflightField("content_hash", "1", "1", true),
+                ]),
+                Checkpoints = [],
+            },
+        };
+
+        var document = System.Text.Json.Nodes.JsonNode.Parse(ManifestJson.Serialize(manifest))!.AsObject();
+        foreach (var field in document["verification"]!["preflight"]!["fields"]!.AsArray())
+        {
+            field!.AsObject().Remove("outcome");
+        }
+
+        var fields = ManifestJson.Deserialize(document.ToJsonString()).Verification!.Preflight.Fields;
+
+        Assert.Equal(PreflightOutcome.NotMet, fields[0].Outcome);
+        Assert.False(fields[0].Matches);
+        Assert.Equal(PreflightOutcome.Met, fields[1].Outcome);
+    }
+
     /// <summary>The version-4 shape of a manifest: version 4, one combat-start digest
     /// on the source, no boundary list.</summary>
     private static string VersionFour(ReplayManifest manifest)
