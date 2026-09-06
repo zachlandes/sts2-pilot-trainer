@@ -53,8 +53,9 @@ public static class Corruption
             "damage and block totals agree. The intermediate state and hidden pile order still depend on order.",
             ReorderPlays)
         {
-            Requires = "two consecutive plays out of the same hand whose order can matter - differing in the " +
-                       "card played or the enemy it is aimed at",
+            Requires = "two consecutive plays out of one hand - the same turn, since the hand is redrawn at " +
+                       "the end of one - whose order can matter, differing in the card played or the enemy " +
+                       "it is aimed at",
             AppliesTo = manifest => TryFindPlaysWhoseOrderCanMatter(manifest.Actions, out _),
         },
 
@@ -193,13 +194,19 @@ public static class Corruption
     /// aimed at different enemies: either changes the intermediate state, and the
     /// engine's own hidden order with it.
     ///
-    /// The pair also has to come out of one hand. The swap re-indexes both plays with
-    /// arithmetic over a single shared hand, so a pair that straddles a fight boundary
-    /// produces a history the driver refuses on card identity - a structural refusal,
-    /// which is not the state divergence this control exists to demonstrate. Raw
-    /// adjacency in the action list is too strong: one play per turn is an ordinary
-    /// line, and an <see cref="ActionVerb.EndTurn"/> between two plays keeps the hand.
-    /// So the requirement is that nothing between them leaves the fight.
+    /// The pair also has to come out of one hand, because that is what the swap's
+    /// arithmetic re-indexes against. A pair drawn from two different hands produces a
+    /// play of a card that hand never held, which the driver refuses on card identity -
+    /// a structural refusal, which is not the state divergence this control exists to
+    /// demonstrate.
+    ///
+    /// The hand is discarded and redrawn at end of turn: the shipped reconstruction
+    /// shows its hand indices restarting after every <see cref="ActionVerb.EndTurn"/>.
+    /// So the window is one turn, not one fight and not raw adjacency in the action
+    /// list, and it is written as a window rather than as a list of the sequences that
+    /// break it. Three earlier versions of this narrowed to the case last reported -
+    /// adjacency, then same-fight - and each left the next hole; the invariant is that
+    /// the two plays come out of one hand.
     /// </summary>
     private static bool TryFindPlaysWhoseOrderCanMatter(
         IReadOnlyList<ActionRecord> actions, out (ActionRecord First, ActionRecord Second) pair)
@@ -215,15 +222,15 @@ public static class Corruption
             var first = actions[plays[index]];
             var second = actions[plays[index + 1]];
 
-            var stayedInTheFight = true;
+            var sameHand = true;
             for (var between = plays[index] + 1; between < plays[index + 1]; between++)
             {
-                if (InsideAFight.Contains(actions[between].Verb)) continue;
-                stayedInTheFight = false;
+                if (KeepsTheHand.Contains(actions[between].Verb)) continue;
+                sameHand = false;
                 break;
             }
 
-            if (!stayedInTheFight) continue;
+            if (!sameHand) continue;
 
             if (!string.Equals(Argument(first, "card_id"), Argument(second, "card_id"), StringComparison.Ordinal) ||
                 !string.Equals(Argument(first, "target_index"), Argument(second, "target_index"), StringComparison.Ordinal))
@@ -237,13 +244,13 @@ public static class Corruption
         return false;
     }
 
-    /// <summary>The verbs a player can issue without leaving the fight they are in.
-    /// Anything else between two plays means the second play comes out of a hand the
-    /// first never saw.</summary>
-    private static readonly ActionVerb[] InsideAFight =
+    /// <summary>The verbs a player can issue without the hand in front of them being
+    /// replaced. Anything else between two plays - an <see cref="ActionVerb.EndTurn"/>
+    /// above all, which discards and redraws - means the second play comes out of a
+    /// hand the first never saw.</summary>
+    private static readonly ActionVerb[] KeepsTheHand =
     [
         ActionVerb.PlayCard,
-        ActionVerb.EndTurn,
         ActionVerb.UsePotion,
         ActionVerb.DiscardPotion,
         ActionVerb.SelectCardFromScreen,
@@ -261,10 +268,11 @@ public static class Corruption
         if (!TryFindPlaysWhoseOrderCanMatter(actions, out var pair))
         {
             throw new ManifestException(
-                "reorder-plays needs two consecutive plays out of the same hand whose order can matter - ones " +
-                "that differ in the card played or the enemy it is aimed at. No such pair is in this history, " +
-                "so swapping any two of its plays produces either the same history or an illegal one, and " +
-                "would prove nothing about the arbiter.");
+                "reorder-plays needs two consecutive plays out of one hand - the same turn, since the hand is " +
+                "discarded and redrawn at the end of one - whose order can matter, differing in the card " +
+                "played or the enemy it is aimed at. No such pair is in this history, so swapping any two of " +
+                "its plays produces either the same history or an illegal one, and would prove nothing about " +
+                "the arbiter.");
         }
 
         var (first, second) = pair;

@@ -17,7 +17,7 @@ namespace Sts2PilotTrainer.Replay.Tests;
 /// the evidence run somebody plays as well as on this fixture: an opening blessing, an
 /// event whose option opens a card screen holding a second copy of the card that gets
 /// picked, a map move from
-/// a node with a reachable sibling, two consecutive plays out of one fight's hand that
+/// a node with a reachable sibling, two consecutive plays out of one turn's hand that
 /// differ in the card played or the enemy it is aimed at, with one of them aimed at an
 /// enemy and one made from a hand holding another card of the same cost and targeting,
 /// a claimed reward, and a card reward that offered more than one card.
@@ -80,24 +80,31 @@ internal static class RecordedRun
             ("CARD.IMPERVIOUS", 2, false),
         ];
 
+        // Two plays in this turn, because the hand is redrawn at the end of one and
+        // reorder-plays needs a pair out of a single hand.
         capture.Record(
             ActionVerb.PlayCard,
             Play(hand, played: 1),
             InFight(2, enemyHp: 42),
             Digest(4));
-        capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 42, hp: 58), Digest(5));
+        capture.Record(
+            ActionVerb.PlayCard,
+            Play(hand, played: 2, targetIndex: 0),
+            InFight(2, enemyHp: 30),
+            Digest(5));
+        capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(6));
         capture.Record(
             ActionVerb.PlayCard,
             Play(hand, played: 0, targetIndex: 0),
             Won(2, hp: 58),
-            Digest(6));
+            Digest(7));
 
-        capture.Record(ActionVerb.ClaimReward, Args(("reward_type", "gold")), Won(2, hp: 58), Digest(7));
+        capture.Record(ActionVerb.ClaimReward, Args(("reward_type", "gold")), Won(2, hp: 58), Digest(8));
         capture.Record(
             ActionVerb.TakeCard,
             Reward(["CARD.POMMEL_STRIKE", "CARD.TREMBLE", "CARD.WHIRLWIND"], taken: 0),
             Won(2, hp: 58),
-            Digest(8));
+            Digest(9));
 
         return capture;
     }

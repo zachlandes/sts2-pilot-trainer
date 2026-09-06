@@ -442,14 +442,13 @@ public class CorruptionTests
     /// The swapped pair comes out of one hand, so the corruption stays a reordering.
     ///
     /// The re-indexing arithmetic assumes both plays are drawn from the same hand. A
-    /// pair that straddles a fight boundary produces a play of a card that fight's hand
-    /// never held, which the driver refuses on card identity - a structural refusal
-    /// counted as a rejection while nothing about order was demonstrated. An EndTurn
-    /// between two plays keeps the hand and is not a boundary: a line of one play per
-    /// turn is ordinary.
+    /// pair that straddles a fight boundary - or a turn boundary, since the hand is
+    /// discarded and redrawn at the end of a turn - produces a play of a card that hand
+    /// never held, which the driver refuses on card identity: a structural refusal
+    /// counted as a rejection while nothing about order was demonstrated.
     /// </summary>
     [Fact]
-    public void ReorderingSwapsAPairFromOneFightRatherThanAcrossAFightBoundary()
+    public void ReorderingSwapsAPairFromOneHandRatherThanAcrossAFightOrTurnBoundary()
     {
         var manifest = Playable() with
         {
@@ -467,9 +466,13 @@ public class CorruptionTests
                 At(5, Fixtures.Action(5, ActionVerb.MapMove, ("act", "0"), ("row", "2"), ("column", "3"))),
                 At(6, Fixtures.Action(6, ActionVerb.PlayCard,
                     ("card_id", "CARD.BASH"), ("hand_index", "1"), ("target_index", "0"))),
+                // And this turn ends here, so the pair either side of it is not one hand
+                // either - the hand is discarded and redrawn.
                 At(7, Fixtures.Action(7, ActionVerb.EndTurn)),
                 At(8, Fixtures.Action(8, ActionVerb.PlayCard,
                     ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "2"))),
+                At(9, Fixtures.Action(9, ActionVerb.PlayCard,
+                    ("card_id", "CARD.HELLRAISER"), ("hand_index", "3"))),
             ],
         };
 
@@ -480,8 +483,36 @@ public class CorruptionTests
             .ToList();
 
         Assert.Equal(2, swapped.Count);
-        Assert.Contains("CARD.BASH", swapped);
         Assert.Contains("CARD.DEFEND_IRONCLAD", swapped);
+        Assert.Contains("CARD.HELLRAISER", swapped);
+    }
+
+    /// <summary>
+    /// And a history whose only differing pair sits either side of an EndTurn is not
+    /// applicable rather than corrupted into an illegal one.
+    /// </summary>
+    [Fact]
+    public void ReorderingDoesNotApplyWhenEveryDifferingPairStraddlesATurn()
+    {
+        var manifest = Playable() with
+        {
+            Actions =
+            [
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
+                At(2, Fixtures.Action(2, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(3, Fixtures.Action(3, ActionVerb.PlayCard,
+                    ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
+                At(4, Fixtures.Action(4, ActionVerb.EndTurn)),
+                At(5, Fixtures.Action(5, ActionVerb.PlayCard,
+                    ("card_id", "CARD.DEFEND_IRONCLAD"), ("hand_index", "0"))),
+            ],
+        };
+
+        var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
+
+        Assert.False(reorder.AppliesTo(manifest));
     }
 
     /// <summary>
