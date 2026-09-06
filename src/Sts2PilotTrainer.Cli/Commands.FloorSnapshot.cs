@@ -51,6 +51,15 @@ internal static partial class Commands
                 "history, which is what combat-snapshot does.");
         }
 
+        // Named before anything is written, so a control nobody offers is refused with
+        // the list of the ones that exist rather than after a report path has been
+        // composed out of it.
+        if (control is not null && control != WrongFloorControl)
+        {
+            throw new ManifestException(
+                $"'{control}' is not a control of this command. Available: {WrongFloorControl}.");
+        }
+
         var manifest = ManifestJson.Load(manifestPath);
         if (phase is not null) return FloorSnapshotPhase(args, manifest, phase);
 
@@ -126,7 +135,7 @@ internal static partial class Commands
         // The floor the restored save is compared against. The same one for a real
         // materialisation; a different one for the control, whose whole content is that
         // the comparison refuses it.
-        var against = control is null ? plan : ControlPlan(manifest, plan, control);
+        var against = control is null ? plan : ControlPlan(manifest, plan);
 
         Console.WriteLine();
         Console.WriteLine(control is null
@@ -369,15 +378,8 @@ internal static partial class Commands
     /// runs are. A recording with only one floor arrival has no control available and
     /// says so rather than inventing one.
     /// </summary>
-    private static FloorEntryPlan ControlPlan(
-        ReplayManifest manifest, FloorEntryPlan plan, string control)
+    private static FloorEntryPlan ControlPlan(ReplayManifest manifest, FloorEntryPlan plan)
     {
-        if (control != WrongFloorControl)
-        {
-            throw new ManifestException(
-                $"'{control}' is not a control of this command. Available: {WrongFloorControl}.");
-        }
-
         var others = manifest.Boundaries
             .Where(boundary => boundary.IsFloorEntry && boundary.Floor is { } floor && floor != plan.FloorNumber)
             .Select(boundary => boundary.Floor!.Value)
