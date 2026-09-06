@@ -175,12 +175,14 @@ See [the in-game host](in-game-host.md).
 **The card-screen selector is the one scoped exception, and it took a shipped defect to see it.**
 A screen an opening blessing opens was opened by the recording and answered by the recording; until the boundary the player is watching rather than deciding, so answering it is not taking anything from them.
 The driver learned to queue those selections for the headless host without the client learning to issue them, so a recording whose blessing removes, transforms or upgrades a card replayed, verified, passed the gate and then aborted in the client at the step after the player had watched the blessing being made.
+The refusal had not gone away; it had moved from publication to the worst place a refusal can happen.
 So in the client the selector is pushed for the one step that queued an answer and released as soon as the engine has taken it, by `RunDriver.SettleAnyCardScreenTheLastStepOpened`.
 It cannot reach the player's fight: the last decision before a boundary is a map move, or an event option that starts its room's fight, and neither queues anything.
+Where the two hosts differ is *when* the answer arrives.
 Headlessly the engine's continuation runs inline, so the screen is answered inside the call that opened it and the step settles at the end of its own `Apply`.
 In the client that continuation resumes on a later frame, so the settle happens at the start of the next step and before the boundary is proved, and `RecordedFightRun` waits for the engine to have taken the answer rather than for a length of time.
 A selection nothing took is still refused, in the same sentence, one step later.
-Because the screen is never drawn, what the player is shown is the decision that opened it: `PrefightChoice.Blessing` carries the cards and the caption names them.
+Because the screen is never drawn, what the player is shown is the decision that opened it: `PrefightChoice.Blessing` carries the cards and the caption names them, which is the only place they are said.
 
 It also stops draining. The headless host drains the engine to idle after every
 action because it owns the process and there are no frames to do it; the retail

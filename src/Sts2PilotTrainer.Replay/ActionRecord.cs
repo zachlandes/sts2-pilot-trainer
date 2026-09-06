@@ -213,8 +213,15 @@ public static class CardScreenAnswers
     public static bool Answers(ActionVerb verb) => Array.IndexOf(Verbs, verb) >= 0;
 
     /// <summary>
-    /// Whether this action answers a screen an earlier decision opened, rather than
-    /// representing a separately revealable decision.
+    /// Whether this action is one of them: the recording's answer to a screen an
+    /// earlier decision opened, rather than a decision of its own.
+    ///
+    /// Here rather than at each caller because a host that has to know which of the
+    /// recording's actions it can point at on a screen is asking the same question
+    /// <see cref="After"/> answers, from the other end. A screen answer is never
+    /// separately revealable - the engine takes it inside the call that opened the
+    /// screen, so by the time the action that records it is executed there is nothing
+    /// left on screen to light.
     /// </summary>
     public static bool IsAnAnswer(ActionRecord action) => Answers(action.Verb);
 

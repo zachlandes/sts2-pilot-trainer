@@ -213,9 +213,9 @@ third from the manifest. Three prompts the `ICardSelector` seam does not reach -
 bundle screen, the relic screen and the Crystal Sphere's screen - are stood in for at
 the prompt itself by `ScreenStandIns`, headlessly only. None of them decides anything,
 and each refuses where the manifest is silent.
-The card screen is also the in-game host's when the recording opened and answered it, so in the retail client the selector is pushed only for the step that queued the answer and released as soon as the engine takes it.
+The card screen is also the in-game host's when the recording opened and answered it, so in the retail client the selector is pushed only for the step that queued the answer and released as soon as the engine takes it, never for the run's lifetime and never anywhere it could reach the fight.
 The two hosts differ only in when that answer arrives - inline headlessly and on a later frame in the client - and `docs/headless-fidelity.md` owns the mechanism.
-Do not narrow the verbs one host issues without holding them against a recorded walk to its first fight; `RunDriver.VerbsIssuedInsideARunningGame` states the set once and `RecordedFightVerbAgreementTests` holds the committed fixture against it.
+Do not narrow the verbs one host issues without holding them against a recorded walk to its first fight; `RunDriver.VerbsIssuedInsideARunningGame` states the set once and `RecordedFightVerbAgreementTests` holds the committed fixture against it without the game installed.
 
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
@@ -299,6 +299,8 @@ test. That document also names three limits this path does not remove.
 It has two ways in and one proof: `StartHeadless` walks the decisions, `RestoreHeadless` continues the run from a verified floor-entry snapshot, and both end at the same `VerifyBoundary`. Restoring is an optimisation a consumer opts into with `enter-fight --restore`, which replays instead whenever the cache is absent, of another history or of another build.
 The watched journey is one long-lived transport and not a popup per step: `PlaybackTransport` in `Sts2PilotTrainer.Trainer` owns what it says, `PlaybackTransportStrip` draws it, `PlaybackTransportDock` parents it to the run's own persistent interface so it survives the map-to-combat transition, and `RecordedFightReveal` lights the game's own selected state without clicking.
 Do not add a second playback path beside it; `docs/in-game-host.md` owns why.
+Not every step of a walk is a decision to be shown: a card selection is the recording's own answer to a screen an earlier decision opened, taken inside the engine call that opened it, so there is nothing left on screen to point at by the time its step runs.
+`CardScreenAnswers.IsAnAnswer` is the one owner of that distinction, `RecordedFightEntry.Decisions` is what a counter counts, and such a step is executed without a reveal or a hold.
 **What the transport *is* at any moment is derived in one place and never built by hand.**
 `PlaybackTransport.For(phase, facts)` is total and pure - every phase has an answer, null included for the two that draw nothing - and the five shapes behind it are private, so there is no way round it; `TransportSurface` answers present, drawn and pressable separately for every element and the strip projects that table without reading the mode; `RecordedFightRun.Transition` is the only thing that changes the phase and it re-derives, as does every fact that can change under it.
 Four defects came from the one boolean this replaced. `docs/mod-ui-direction.md` owns the table and the rule.
