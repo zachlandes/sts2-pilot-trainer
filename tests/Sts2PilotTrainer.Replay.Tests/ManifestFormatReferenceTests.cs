@@ -205,6 +205,69 @@ public class ManifestFormatReferenceTests
         Directory.Delete(root, recursive: true);
     }
 
+    /// <summary>
+    /// Renaming the local a shop purchase binds its id argument to changes nothing.
+    ///
+    /// The name is bound from the source rather than spelled here, because a reader
+    /// matching it by spelling would publish the local's name as a required argument
+    /// after an ordinary rename and nothing would say so.
+    /// </summary>
+    [Fact]
+    public void RenamingTheLocalTheShopBindsItsIdArgumentToChangesNothing()
+    {
+        var root = TreeWhere(
+            ValidatorSource.RelativePath,
+            source => source.Replace("idArgument", "boughtIdName", StringComparison.Ordinal));
+
+        Assert.Equal(Spelled(ValidatorSource.ReadShopPurchaseKinds(Root)), Spelled(ValidatorSource.ReadShopPurchaseKinds(root)));
+        Directory.Delete(root, recursive: true);
+    }
+
+    /// <summary>
+    /// A shop rule whose required arguments no longer name that local is refused rather
+    /// than published with the substitution silently not made.
+    /// </summary>
+    [Fact]
+    public void AShopRuleThatNoLongerNamesItsIdArgumentIsRefused()
+    {
+        var root = TreeWhere(
+            ValidatorSource.RelativePath,
+            source => source.Replace(
+                "idArgument is null ? Array.Empty<string>() : [idArgument, \"option_index\"]",
+                "idArgument is null ? Array.Empty<string>() : [\"option_index\"]",
+                StringComparison.Ordinal));
+
+        var refusal = Assert.Throws<SourceRefusal>(() => ManifestFormatReference.Render(root));
+        Assert.Contains("does not name 'idArgument' exactly once", refusal.Message, StringComparison.Ordinal);
+        Directory.Delete(root, recursive: true);
+    }
+
+    /// <summary>
+    /// A verb with two engine-command rows is refused by name, because the reference
+    /// would otherwise print one of them and fail with a stack trace on the way there.
+    /// </summary>
+    [Fact]
+    public void AVerbWithTwoEngineCommandRowsIsRefused()
+    {
+        var table = File.ReadAllText(Path.Combine(Root, EngineCommandSource.RelativePath));
+        var start = table.IndexOf("            Verb = ActionVerb.DiscardPotion,", StringComparison.Ordinal);
+        var opening = table.LastIndexOf("        new()", start, StringComparison.Ordinal);
+        var closing = table.IndexOf("        },", start, StringComparison.Ordinal) + "        },\n".Length;
+        var row = table[opening..closing];
+
+        var root = TreeWhere(
+            EngineCommandSource.RelativePath,
+            source => source.Insert(closing, row));
+
+        var refusal = Assert.Throws<SourceRefusal>(() => ManifestFormatReference.Render(root));
+        Assert.Contains("DiscardPotion has 2 rows in the engine-command table", refusal.Message, StringComparison.Ordinal);
+        Directory.Delete(root, recursive: true);
+    }
+
+    private static IReadOnlyList<string> Spelled(
+        IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> kinds) =>
+        kinds.Select(kind => $"{kind.Kind}: {string.Join(", ", kind.Required)}").ToList();
+
     /// <summary>A copy of the two declarations the reference is generated from, with one changed.</summary>
     private static string TreeWhere(string relativePath, Func<string, string> change)
     {

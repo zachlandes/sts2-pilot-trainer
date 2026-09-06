@@ -219,6 +219,12 @@ public static class ManifestFormatReference
         var ruled = rules.Select(rule => rule.Verb).ToHashSet(StringComparer.Ordinal);
         var commanded = mapped.Select(row => row.Verb).ToHashSet(StringComparer.Ordinal);
 
+        problems.AddRange(mapped.GroupBy(row => row.Verb, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .Select(group =>
+                $"{group.Key} has {group.Count()} rows in the engine-command table. One verb runs one command, " +
+                "so this reference would have printed whichever row came first and said nothing about the rest."));
+
         problems.AddRange(ruled.Except(commanded).Select(verb =>
             $"{verb} has argument rules and no engine command. A manifest using it would validate and then " +
             "refuse partway through a replay."));

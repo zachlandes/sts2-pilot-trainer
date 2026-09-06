@@ -44,9 +44,6 @@ public static class ValidatorSource
     private const string RulesMethod = "ValidateActionArguments";
     private const string ShopMethod = "ValidateShopPurchase";
 
-    /// <summary>The placeholder a shop kind's own id argument stands behind until the kind is known.</summary>
-    private const string IdArgumentPlaceholder = "idArgument";
-
     /// <summary>The rules, in the order the switch declares its arms.</summary>
     public static IReadOnlyList<VerbArguments> Read(string repositoryRoot)
     {
@@ -88,23 +85,32 @@ public static class ValidatorSource
     /// Read differently from the rest on purpose: the kinds and the argument that names
     /// what was bought are <c>ShopPurchaseKinds</c>' own public answers, so they are
     /// asked for rather than parsed. Only the companion argument every purchase of a
-    /// thing also carries is read from the source, because that one is written there.
+    /// thing also carries is read from the source, because that one is written there,
+    /// and the local the id stands behind is bound from the source too rather than
+    /// spelled here, so renaming it refuses instead of publishing its name.
     /// </summary>
     public static IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> ReadShopPurchaseKinds(
         string repositoryRoot)
     {
         var method = Method(repositoryRoot, ShopMethod);
-        var text = method.ToString();
-        foreach (var expected in new[] { $"{nameof(ShopPurchaseKinds)}.{nameof(ShopPurchaseKinds.All)}",
-                                         $"{nameof(ShopPurchaseKinds)}.{nameof(ShopPurchaseKinds.IdArgument)}" })
+        var all = $"{nameof(ShopPurchaseKinds)}.{nameof(ShopPurchaseKinds.All)}";
+        if (!method.ToString().Contains(all, StringComparison.Ordinal))
         {
-            if (!text.Contains(expected, StringComparison.Ordinal))
-            {
-                throw new SourceRefusal(
-                    $"{RelativePath}: {ShopMethod} no longer reads {expected}, so this reference cannot " +
-                    "keep answering the per-kind question from ShopPurchaseKinds.");
-            }
+            throw new SourceRefusal(
+                $"{RelativePath}: {ShopMethod} no longer reads {all}, so this reference cannot keep answering " +
+                "the per-kind question from ShopPurchaseKinds.");
         }
+
+        var idCall = $"{nameof(ShopPurchaseKinds)}.{nameof(ShopPurchaseKinds.IdArgument)}";
+        var placeholder = method.DescendantNodes().OfType<VariableDeclaratorSyntax>()
+                              .FirstOrDefault(candidate =>
+                                  candidate.Initializer?.Value is InvocationExpressionSyntax invocation &&
+                                  invocation.Expression.ToString() == idCall)
+                              ?.Identifier.ValueText
+                          ?? throw new SourceRefusal(
+                              $"{RelativePath}: {ShopMethod} binds nothing to {idCall}(...), so this reference " +
+                              "cannot tell which name in its list of required arguments stands for the id of " +
+                              "the thing a purchase bought.");
 
         var declaration = method.DescendantNodes().OfType<VariableDeclaratorSyntax>()
             .FirstOrDefault(candidate => candidate.Identifier.ValueText == "expected")
@@ -122,13 +128,22 @@ public static class ValidatorSource
             : throw SourceRefusal.At(
                 declaration, "`expected` is not the conditional this reader knows how to read.");
 
+        if (companions.Count(name => name == placeholder) != 1)
+        {
+            throw SourceRefusal.At(
+                declaration,
+                $"`expected` does not name '{placeholder}' exactly once, so the id of the thing a purchase " +
+                "bought cannot be substituted per kind and every buying kind would be published as requiring " +
+                "an argument named after a local variable.");
+        }
+
         return ShopPurchaseKinds.All
             .Select(kind =>
             {
                 var id = ShopPurchaseKinds.IdArgument(kind);
                 var required = id is null
                     ? Array.Empty<string>()
-                    : companions.Select(name => name == IdArgumentPlaceholder ? id : name).ToArray();
+                    : companions.Select(name => name == placeholder ? id : name).ToArray();
                 return (kind, (IReadOnlyList<string>)required);
             })
             .ToList();
@@ -276,8 +291,8 @@ public static class ValidatorSource
     ///
     /// Three forms appear: a list of names, `.. required` splicing a list already
     /// assigned in the same arm, and the bare identifier of such a list. An identifier
-    /// with nothing behind it is kept as its own name, which is how the shop's
-    /// `idArgument` reaches the caller that knows which kind is being bought.
+    /// with nothing behind it is kept as its own name, which is how the local the shop
+    /// binds its id argument to reaches the caller that knows which kind is being bought.
     /// </summary>
     private static IReadOnlyList<string> Names(
         ExpressionSyntax expression,
