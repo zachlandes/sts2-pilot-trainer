@@ -113,21 +113,32 @@ internal static class RecordingRetention
     /// standing in for it where it could not. Which of the two it is travels with it,
     /// because the row may neither name the sentinel nor be written from while the file
     /// it would write into is one this build refuses.
+    ///
+    /// Whether the run the game can continue is among the ones that policy names is
+    /// asked here too, and asked the way <see cref="Apply"/> asks it - the game's own
+    /// answer matched against the recordings the library named, never a second guess at
+    /// which run that is. Without it the row would predict one removal more than the
+    /// next main menu performs, because <see cref="Apply"/> always leaves that one.
     /// </summary>
     internal static MyRunsFacts OnDisk()
     {
-        var recordings = RecordingLibrary.Index(
-            RunmobileStore.ListFileNames(RunRecorder.RecordingsDirectory));
+        var fileNames = RunmobileStore.ListFileNames(RunRecorder.RecordingsDirectory);
+        var recordings = RecordingLibrary.Index(fileNames);
         var bytes = recordings
             .SelectMany(recording => recording.FileNames)
             .Sum(file => RunmobileStore.SizeOf($"{RunRecorder.RecordingsDirectory}/{file}"));
 
         var settings = RunmobileSettings.Read();
+        var continuable = ContinuableRun.StartedUtc();
+        var named = RecordingLibrary.Cull(fileNames, settings.KeepRecentRuns);
+
         return new MyRunsFacts(
             recordings.Count,
             bytes,
             settings.Readable ? settings.KeepRecentRuns : RunmobileSettings.DefaultKeepRecentRuns,
-            SettingsReadable: settings.Readable);
+            SettingsReadable: settings.Readable,
+            ContinuableRunWouldBeLeft:
+                continuable is { } started && named.Any(recording => recording.StartedUtc == started));
     }
 
     /// <summary>

@@ -68,8 +68,15 @@ internal static class MyRunsSettings
     /// <summary>
     /// What the disk holds, or the fact that it could not be asked.
     ///
-    /// The store refuses before the game has chosen a save profile, because there is no
-    /// answer yet to whose runs these are.
+    /// Two failures and not one. The store refuses before the game has chosen a save
+    /// profile, which is a state the player resolves by choosing one and the only cause
+    /// the row may name; anything else is a fault, and a row that named the profile for
+    /// it would be telling a player something untrue about a state they cannot act on.
+    /// The log carries the exception either way.
+    ///
+    /// Neither answer says anything about <c>settings.json</c>. A read that never ran
+    /// establishes nothing about that file, so the fact goes back unestablished rather
+    /// than as a refusal nobody made.
     /// </summary>
     private static MyRunsFacts OnDisk()
     {
@@ -77,18 +84,27 @@ internal static class MyRunsSettings
         {
             return RecordingRetention.OnDisk();
         }
+        catch (StoreNotReadyException ex)
+        {
+            return Unread(MyRunsDisk.NoSaveProfileYet, ex);
+        }
         catch (Exception ex)
         {
-            Log.Error(
-                $"[{RunmobileMod.ModId}] could not read what your runs take on this disk: " +
-                $"{ex.GetType().Name}: {ex.Message}", 2);
-            return new MyRunsFacts(
-                Runs: 0,
-                Bytes: 0,
-                Keep: RunmobileSettings.DefaultKeepRecentRuns,
-                SettingsReadable: false,
-                StoreReadable: false);
+            return Unread(MyRunsDisk.Refused, ex);
         }
+    }
+
+    private static MyRunsFacts Unread(MyRunsDisk disk, Exception ex)
+    {
+        Log.Error(
+            $"[{RunmobileMod.ModId}] could not read what your runs take on this disk: " +
+            $"{ex.GetType().Name}: {ex.Message}", 2);
+        return new MyRunsFacts(
+            Runs: 0,
+            Bytes: 0,
+            Keep: RunmobileSettings.DefaultKeepRecentRuns,
+            SettingsReadable: null,
+            Disk: disk);
     }
 
     /// <summary>

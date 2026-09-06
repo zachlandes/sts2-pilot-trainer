@@ -102,11 +102,19 @@ public sealed class MyRunsSettingsTests : IDisposable
     /// reachable before a save profile is chosen, and the store refuses until one is -
     /// there is no answer yet to whose runs these are. The row says so in one line and
     /// offers nothing, because every control here writes into a file it cannot name.
+    ///
+    /// The store's refusal is raised here rather than left to this process's own
+    /// SaveManager: another class in this assembly builds one with a profile on it, so
+    /// a test that waited for the real no-profile state would assert nothing depending
+    /// on what ran first.
     /// </summary>
     [Fact]
     public void WithNoSaveProfileChosenTheRowSaysSoAndOffersNothing()
     {
-        RunmobileStore.UseRootForTesting(null);
+        RunmobileStore.UseRootProviderForTesting(
+            () => throw new StoreNotReadyException(
+                "This game has not chosen a save profile yet, so Runmobile cannot tell whose files these " +
+                "would be."));
 
         var row = MyRunsSettings.Build(Width, font: null);
 
@@ -115,6 +123,72 @@ public sealed class MyRunsSettingsTests : IDisposable
         Assert.True(row.Fewer.Disabled);
         Assert.True(row.More.Disabled);
         Assert.True(row.Remove.Disabled);
+    }
+
+    /// <summary>
+    /// A store that refused for any other reason names no cause.
+    ///
+    /// The save-profile line is the one failure this row may name, because it is the one
+    /// a player resolves by choosing a profile. A fault told as that line would be a
+    /// sentence that is false about a state they cannot act on.
+    /// </summary>
+    [Fact]
+    public void AStoreThatRefusedForAnyOtherReasonNamesNoCause()
+    {
+        RunmobileStore.UseRootProviderForTesting(() => string.Empty);
+
+        var row = MyRunsSettings.Build(Width, font: null);
+
+        Assert.Equal("Your runs could not be read; the game's log says why", Label(row, "Reading").Text);
+        Assert.Equal(string.Empty, Label(row, "Detail").Text);
+        Assert.True(row.Fewer.Disabled);
+        Assert.True(row.More.Disabled);
+        Assert.True(row.Remove.Disabled);
+    }
+
+    /// <summary>
+    /// A game that cannot say which run it can continue is a disk that would not read,
+    /// not a pending count guessed at without it.
+    /// </summary>
+    [Fact]
+    public void AGameThatCannotSayWhichRunItCanContinueRefusesTheReading()
+    {
+        WriteSettings(keep: 1);
+        Record(Older);
+        Record(Newest);
+        ContinuableRun.UseReaderForTesting(
+            () => throw new InvalidOperationException("This game has a saved run it could not read."));
+
+        var row = MyRunsSettings.Build(Width, font: null);
+
+        Assert.Equal("Your runs could not be read; the game's log says why", Label(row, "Reading").Text);
+        Assert.True(row.Remove.Disabled);
+    }
+
+    /// <summary>
+    /// The row predicts what the next main menu will actually do. Retention never
+    /// removes the run the game can continue, so a hand-written policy of zero over
+    /// three runs takes two of them and the row says two.
+    /// </summary>
+    [Fact]
+    public void AStandingPurgeThatWillLeaveTheContinuableRunPredictsOneFewer()
+    {
+        WriteSettings(keep: 0);
+        Record(Older);
+        Record(Newest);
+        ContinuableRun.UseReaderForTesting(() => RecordingLibrary.Index([$"{Newest}.journal.jsonl"])[0].StartedUtc);
+
+        var row = MyRunsSettings.Build(Width, font: null);
+
+        Assert.Equal(
+            "1 older run will be removed at the main menu · user://Runmobile/recordings",
+            Label(row, "Detail").Text);
+
+        RecordingRetention.ApplyOnce();
+
+        Assert.Equal(
+            [$"{Newest}.journal.jsonl", $"{Newest}.replay.json"],
+            RunmobileStore.ListFileNames(Recordings));
     }
 
     private static void WriteSettings(int keep) =>

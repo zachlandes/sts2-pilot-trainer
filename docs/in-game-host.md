@@ -785,8 +785,18 @@ This profile only: another profile's policy was applied against its own recordin
 Without that the row's own second line would be describing the next launch rather than the next main menu, because this profile's turn at the latch is already taken by the time a player can reach the control.
 
 The store refuses until the game has chosen a save profile, and the settings section hangs off the main menu's own modding entry point, which is reachable before one is.
-`MyRunsSettings.Build` therefore catches and logs the way its other members do, and hands the derivation a `StoreReadable` fact of its own rather than a count of zero - no runs yet and cannot tell yet are different sentences.
-The row is then the one line that says the runs are read once a save profile is chosen, with every control refused, because each of them writes into a file this build cannot yet name.
+`MyRunsSettings.Build` therefore catches and logs the way its other members do, and hands the derivation a `MyRunsDisk` fact of its own rather than a count of zero - no runs yet and cannot tell yet are different sentences.
+That fact has three answers, not two, because only one failure has a cause the row may name.
+`RunmobileStore.StoreNotReadyException` is the store's own refusal to say where it is, and it alone gets the line about choosing a save profile - a state the player resolves by choosing one.
+Every other fault gets a line that names no cause, because the row has not established one and the log has the exception; a fault told as the save-profile sentence would be false about a state the player cannot act on.
+Neither answer says anything about `settings.json`: a read that never ran establishes nothing about that file, so `SettingsReadable` goes back unestablished rather than as a refusal nobody made.
+Either way the row is that one line with every control refused, because each of them writes into a file this build cannot yet name.
+
+The second line predicts what retention will actually do rather than what the subtraction says.
+`Apply` never removes the run the game can currently Continue, so `OnDisk` asks `ContinuableRun` the same way `Apply` does - the game's own answer matched against the recordings the library named - and hands the row `ContinuableRunWouldBeLeft`.
+A player only sees the difference under a hand-written `keep_recent_runs` of zero, where three runs on disk take two rather than three, and without it the row would break that promise every time.
+That makes the settings row `ContinuableRun`'s third caller, and its docstring names it: `LoadRunSave` is not a pure read, and what makes it safe is being called at the main menu, after the game's own `RefreshButtons` has made the same call.
+A game that cannot say which run it can continue refuses there as it does anywhere else, and the row shows the same could-not-be-read line rather than a pending count it could not compute.
 The confirmation is the game's own `NGenericPopup`, the one the eligibility screen uses, with the way out focused.
 
 Two deliberate departures from the design, both presentation rather than wording.

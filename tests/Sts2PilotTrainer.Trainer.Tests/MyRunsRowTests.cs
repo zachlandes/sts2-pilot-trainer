@@ -167,6 +167,64 @@ public sealed class MyRunsRowTests
     }
 
     /// <summary>
+    /// The prediction is what retention will do, not what the subtraction says.
+    ///
+    /// The run the game can currently Continue is never removed, whatever the policy
+    /// asks for, so a standing purge over three runs takes two.
+    /// </summary>
+    [Fact]
+    public void TheRunTheGameCanContinueIsNotCountedAmongTheOnesGoing()
+    {
+        var row = MyRunsRow.For(
+            new MyRunsFacts(Runs: 3, Bytes: Mb, Keep: 0, ContinuableRunWouldBeLeft: true));
+
+        Assert.Equal(
+            "2 older runs will be removed at the main menu · user://Runmobile/recordings", row.Detail);
+    }
+
+    /// <summary>The only run there is being the continuable one leaves nothing to
+    /// predict, so the row says where they are instead of promising a removal that
+    /// cannot happen.</summary>
+    [Fact]
+    public void AStandingPurgeOverTheContinuableRunAlonePromisesNothing()
+    {
+        var row = MyRunsRow.For(
+            new MyRunsFacts(Runs: 1, Bytes: Mb, Keep: 0, ContinuableRunWouldBeLeft: true));
+
+        Assert.Equal("on this computer, in user://Runmobile/recordings", row.Detail);
+    }
+
+    /// <summary>
+    /// A disk that refused for a reason this row did not establish names none of them.
+    /// The save-profile sentence is the one cause it may state, because it is the one a
+    /// player resolves by choosing a profile.
+    /// </summary>
+    [Fact]
+    public void ADiskThatRefusedNamesNoCauseAndOffersNothing()
+    {
+        var row = MyRunsRow.For(
+            new MyRunsFacts(Runs: 0, Bytes: 0, Keep: 50, SettingsReadable: null, Disk: MyRunsDisk.Refused));
+
+        Assert.Equal("Your runs could not be read; the game's log says why", row.Reading);
+        Assert.Equal(string.Empty, row.Detail);
+        Assert.False(row.KeepPressable);
+        Assert.False(row.RemovePressable);
+    }
+
+    /// <summary>A policy nobody got as far as reading is not a policy anybody refused,
+    /// and the controls over it are refused either way.</summary>
+    [Fact]
+    public void APolicyNobodyReadIsNotAPolicyRefused()
+    {
+        var row = MyRunsRow.For(
+            new MyRunsFacts(
+                Runs: 0, Bytes: 0, Keep: 50, SettingsReadable: null, Disk: MyRunsDisk.NoSaveProfileYet));
+
+        Assert.Equal("Your runs are read once you have chosen a save profile", row.Reading);
+        Assert.False(row.KeepPressable);
+    }
+
+    /// <summary>
     /// The row is written in the player's noun. Every internal name for the same thing
     /// stays internal.
     ///

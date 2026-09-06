@@ -30,19 +30,48 @@ namespace Sts2PilotTrainer.Trainer;
 /// a fact rather than left to be inferred from the number, because "the file says
 /// fifty" and "nobody could read the file, so no policy is in force at all" are two
 /// different things to tell a player, and neither this row nor anything behind it may
-/// write into the second one.</param>
-/// <param name="StoreReadable">Whether the disk could be asked at all. False before the
-/// game has chosen a save profile, because there is no answer to whose runs these are
-/// until it has. Its own fact rather than a count of zero: "no runs yet" and "cannot
-/// tell yet" are different sentences, and only one of them is safe to offer a removal
-/// beside.</param>
+/// write into the second one. Null where nobody got as far as reading it: a read that
+/// never happened establishes nothing about that file, and answering false would be
+/// this row reporting a refusal nobody made.</param>
+/// <param name="Disk">How the reading went. Its own fact rather than a count of zero:
+/// "no runs yet" and "cannot tell yet" are different sentences, and only one of them is
+/// safe to offer a removal beside.</param>
+/// <param name="ContinuableRunWouldBeLeft">Whether the runs this policy would take
+/// include the one the game can currently Continue, which retention always leaves. The
+/// row cannot work this out - which run that is comes from the game - and without it the
+/// second line predicts one removal more than the next main menu will actually
+/// perform.</param>
 public sealed record MyRunsFacts(
     int Runs,
     long Bytes,
     int Keep,
     int? RemovedJustNow = null,
-    bool SettingsReadable = true,
-    bool StoreReadable = true);
+    bool? SettingsReadable = true,
+    MyRunsDisk Disk = MyRunsDisk.Read,
+    bool ContinuableRunWouldBeLeft = false);
+
+/// <summary>
+/// How the reading of the player's own disk went.
+///
+/// Three answers rather than two, because only one failure has a cause this row may
+/// name. A player who has not chosen a save profile is looking at a state they resolve
+/// by choosing one; every other refusal is a fault, and a row that named the profile
+/// for it would be telling them something untrue about a state they cannot act on.
+/// </summary>
+public enum MyRunsDisk
+{
+    /// <summary>The disk answered.</summary>
+    Read,
+
+    /// <summary>The game has not said whose files these would be. The settings screen
+    /// hangs off the main menu, which is reachable before a save profile is
+    /// chosen.</summary>
+    NoSaveProfileYet,
+
+    /// <summary>Something else refused. The row names no cause because it has not
+    /// established one; the game's log carries the exception.</summary>
+    Refused,
+}
 
 /// <summary>
 /// The player's settings row about their own runs: keep, size, remove.
@@ -108,7 +137,12 @@ public sealed record MyRunsRow(
     /// whole row is that one line: a reading, a receipt and a policy all describe a
     /// disk this build cannot yet name, and a second line under it would be describing
     /// it too.</summary>
-    private const string Unreadable = "Your runs are read once you have chosen a save profile";
+    private const string NoSaveProfileYet = "Your runs are read once you have chosen a save profile";
+
+    /// <summary>And what it reads when the disk refused for any other reason. It names
+    /// no cause: what went wrong is in the game's log, and a row that guessed at one
+    /// would be stating a reason nobody read.</summary>
+    private const string Refused = "Your runs could not be read; the game's log says why";
 
     /// <summary>
     /// The row, for what is true right now. Total and pure: every combination of the
@@ -120,14 +154,21 @@ public sealed record MyRunsRow(
 
         var size = Size(facts.Bytes);
         var runs = Runs(facts.Runs);
+        var read = facts.Disk == MyRunsDisk.Read;
+        var settingsRead = facts.SettingsReadable == true;
         return new MyRunsRow(
-            Reading: facts.StoreReadable ? $"{runs} · {size}" : Unreadable,
-            Detail: facts.StoreReadable ? DetailLine(facts) : string.Empty,
+            Reading: facts.Disk switch
+            {
+                MyRunsDisk.NoSaveProfileYet => NoSaveProfileYet,
+                MyRunsDisk.Refused => Refused,
+                _ => $"{runs} · {size}",
+            },
+            Detail: read ? DetailLine(facts) : string.Empty,
             KeepLabel: "Keep my runs",
             KeepNumeral: facts.Keep.ToString(CultureInfo.InvariantCulture),
-            KeepPressable: facts.StoreReadable && facts.SettingsReadable,
+            KeepPressable: read && settingsRead,
             RemoveLabel: "Remove all my runs",
-            RemovePressable: facts.StoreReadable && facts.Runs > 0 && facts.SettingsReadable,
+            RemovePressable: read && settingsRead && facts.Runs > 0,
             Confirm: new MyRunsConfirm(
                 Title: "Remove all your runs?",
                 Body: $"{runs}, {size}, recorded by Runmobile. Your saves, profile and run history are not " +
@@ -137,14 +178,20 @@ public sealed record MyRunsRow(
     }
 
     /// <summary>
-    /// How many runs a standing policy of keeping <paramref name="keep"/> of them would
-    /// remove from <paramref name="runs"/>, at the next main menu.
+    /// How many runs the standing policy would remove at the next main menu.
+    ///
+    /// The arithmetic alone would overstate it. Retention never removes the run the
+    /// game can currently Continue, whatever the policy says, so where that run is
+    /// among the ones a policy names it is one fewer than the subtraction - which a
+    /// player only ever sees under a hand-written policy of zero, and which is a
+    /// promise the row would otherwise break every time.
     ///
     /// Private because the row's second line is the only place this number is ever
     /// stated: a caller that worked it out for itself could offer a number the row
     /// disagreed with.
     /// </summary>
-    private static int Pending(int runs, int keep) => Math.Max(0, runs - keep);
+    private static int Pending(MyRunsFacts facts) =>
+        Math.Max(0, Math.Max(0, facts.Runs - facts.Keep) - (facts.ContinuableRunWouldBeLeft ? 1 : 0));
 
     /// <summary>
     /// A number of bytes as a player reads it.
@@ -188,13 +235,13 @@ public sealed record MyRunsRow(
             return $"{Runs(removed)} removed just now · {Directory}";
         }
 
-        if (!facts.SettingsReadable)
+        if (facts.SettingsReadable != true)
         {
             return "settings.json could not be read, so no runs are removed automatically until it is · " +
                    Directory;
         }
 
-        var pending = Pending(facts.Runs, facts.Keep);
+        var pending = Pending(facts);
         return pending > 0
             ? $"{Older(pending)} will be removed at the main menu · {Directory}"
             : $"on this computer, in {Directory}";
