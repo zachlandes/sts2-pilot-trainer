@@ -3,7 +3,7 @@ using Sts2PilotTrainer.Replay;
 namespace Sts2PilotTrainer.Trainer.Tests;
 
 /// <summary>
-/// The table: for each of the five things the transport can be, what every element
+/// The table: for each of the seven things the transport can be, what every element
 /// of it is.
 ///
 /// This is the design written as an assertion rather than as prose, and it is the
@@ -25,13 +25,15 @@ public sealed class TransportSurfaceTests
     private static readonly TransportIdentity NaveGreed = new(
         "NaveGreed", "Ironclad A10, Underdocks", "https://www.youtube.com/watch?v=OJ-6QXhNgdg&t=26s", "0:26");
 
-    /// <summary>The five modes, named the way the table names them.</summary>
+    /// <summary>The seven modes, named the way the table names them.</summary>
     public enum Column
     {
         Watching,
+        Considering,
         LookingBack,
         Opening,
         Chip,
+        Ended,
         Refused,
     }
 
@@ -48,9 +50,11 @@ public sealed class TransportSurfaceTests
 
     [Theory]
     [InlineData(Column.Watching, TransportMode.Watching)]
+    [InlineData(Column.Considering, TransportMode.Considering)]
     [InlineData(Column.LookingBack, TransportMode.LookingBack)]
     [InlineData(Column.Opening, TransportMode.Opening)]
     [InlineData(Column.Chip, TransportMode.Chip)]
+    [InlineData(Column.Ended, TransportMode.Ended)]
     [InlineData(Column.Refused, TransportMode.Refused)]
     public void EachPhaseAndItsFactsProduceOneMode(Column column, TransportMode mode) =>
         Assert.Equal(mode, Surface(column).Mode);
@@ -61,19 +65,24 @@ public sealed class TransportSurfaceTests
     /// </summary>
     [Theory]
     [InlineData(Column.Watching, false)]
+    [InlineData(Column.Considering, false)]
     [InlineData(Column.LookingBack, false)]
     [InlineData(Column.Opening, false)]
     [InlineData(Column.Chip, true)]
+    [InlineData(Column.Ended, true)]
     [InlineData(Column.Refused, false)]
     public void ThePlate(Column column, bool chip) => Assert.Equal(chip, Surface(column).Surface.ChipPlate);
 
-    /// <summary>The mark is on every surface, and becomes the warning only under a
-    /// refusal.</summary>
+    /// <summary>The mark is on every surface. It loses its centre dot while a decision
+    /// is considered and not yet revealed - the mod has nothing to point at - and
+    /// becomes the warning only under a refusal.</summary>
     [Theory]
     [InlineData(Column.Watching, TransportGlyph.Mark)]
+    [InlineData(Column.Considering, TransportGlyph.MarkUnlit)]
     [InlineData(Column.LookingBack, TransportGlyph.Mark)]
     [InlineData(Column.Opening, TransportGlyph.Mark)]
     [InlineData(Column.Chip, TransportGlyph.Mark)]
+    [InlineData(Column.Ended, TransportGlyph.Mark)]
     [InlineData(Column.Refused, TransportGlyph.Warn)]
     public void TheMark(Column column, TransportGlyph glyph)
     {
@@ -91,9 +100,11 @@ public sealed class TransportSurfaceTests
     /// </summary>
     [Theory]
     [InlineData(Column.Watching, Presence.Drawn, true)]
+    [InlineData(Column.Considering, Presence.Drawn, true)]
     [InlineData(Column.LookingBack, Presence.Drawn, true)]
     [InlineData(Column.Opening, Presence.Drawn, true)]
     [InlineData(Column.Chip, Presence.Absent, false)]
+    [InlineData(Column.Ended, Presence.Absent, false)]
     [InlineData(Column.Refused, Presence.Drawn, false)]
     public void TheIdentityPressTarget(Column column, Presence presence, bool pressable)
     {
@@ -109,9 +120,11 @@ public sealed class TransportSurfaceTests
     /// </summary>
     [Theory]
     [InlineData(Column.Watching, Presence.Drawn)]
+    [InlineData(Column.Considering, Presence.Drawn)]
     [InlineData(Column.LookingBack, Presence.Drawn)]
     [InlineData(Column.Opening, Presence.Drawn)]
     [InlineData(Column.Chip, Presence.Absent)]
+    [InlineData(Column.Ended, Presence.Absent)]
     [InlineData(Column.Refused, Presence.Drawn)]
     public void TheVideoTitle(Column column, Presence presence) =>
         Assert.Equal(presence, Surface(column).Surface.Title.Presence);
@@ -158,9 +171,11 @@ public sealed class TransportSurfaceTests
     /// are behind the run and the fight is the player's.</summary>
     [Theory]
     [InlineData(Column.Watching, Presence.Drawn)]
+    [InlineData(Column.Considering, Presence.Drawn)]
     [InlineData(Column.LookingBack, Presence.Drawn)]
     [InlineData(Column.Opening, Presence.Drawn)]
     [InlineData(Column.Chip, Presence.Absent)]
+    [InlineData(Column.Ended, Presence.Absent)]
     [InlineData(Column.Refused, Presence.Absent)]
     public void TheCounter(Column column, Presence presence) =>
         Assert.Equal(presence, Surface(column).Surface.Counter.Presence);
@@ -176,9 +191,11 @@ public sealed class TransportSurfaceTests
     /// </summary>
     [Theory]
     [InlineData(Column.Watching, Presence.Drawn, true, Press.OpenSpeedMenu)]
+    [InlineData(Column.Considering, Presence.Drawn, true, Press.OpenSpeedMenu)]
     [InlineData(Column.LookingBack, Presence.Drawn, true, Press.OpenSpeedMenu)]
     [InlineData(Column.Opening, Presence.Drawn, true, Press.OpenSpeedMenu)]
     [InlineData(Column.Chip, Presence.Silent, true, Press.OpenChipMenu)]
+    [InlineData(Column.Ended, Presence.Silent, true, Press.OpenPostFightMenu)]
     [InlineData(Column.Refused, Presence.Drawn, false, Press.OpenSpeedMenu)]
     public void TheSpeedAndChipPressTarget(Column column, Presence presence, bool pressable, Press press)
     {
@@ -208,9 +225,11 @@ public sealed class TransportSurfaceTests
     /// </summary>
     [Theory]
     [InlineData(Column.Watching, Presence.Drawn, true, true)]
+    [InlineData(Column.Considering, Presence.Drawn, true, true)]
     [InlineData(Column.LookingBack, Presence.Drawn, true, true)]
     [InlineData(Column.Opening, Presence.Drawn, false, false)]
     [InlineData(Column.Chip, Presence.Absent, false, false)]
+    [InlineData(Column.Ended, Presence.Absent, false, false)]
     [InlineData(Column.Refused, Presence.Drawn, false, false)]
     public void TheControlsThatMoveTheRun(Column column, Presence presence, bool play, bool step)
     {
@@ -367,9 +386,11 @@ public sealed class TransportSurfaceTests
     /// </summary>
     [Theory]
     [InlineData(Column.Watching, true, false, false)]
+    [InlineData(Column.Considering, true, false, false)]
     [InlineData(Column.LookingBack, false, false, true)]
     [InlineData(Column.Opening, true, false, false)]
     [InlineData(Column.Chip, false, false, false)]
+    [InlineData(Column.Ended, false, false, false)]
     [InlineData(Column.Refused, false, false, false)]
     public void WhatHangsUnderTheTag(Column column, bool hold, bool note, bool ledger)
     {
@@ -400,9 +421,11 @@ public sealed class TransportSurfaceTests
     /// </summary>
     [Theory]
     [InlineData(Column.Watching, MenuKind.Speed)]
+    [InlineData(Column.Considering, MenuKind.Speed)]
     [InlineData(Column.LookingBack, MenuKind.Speed)]
     [InlineData(Column.Opening, MenuKind.Speed)]
     [InlineData(Column.Chip, MenuKind.Chip)]
+    [InlineData(Column.Ended, MenuKind.PostFight)]
     [InlineData(Column.Refused, MenuKind.None)]
     public void WhichMenuIsOffered(Column column, MenuKind menu) =>
         Assert.Equal(menu, Surface(column).Surface.Menu);
@@ -417,9 +440,11 @@ public sealed class TransportSurfaceTests
     /// </summary>
     [Theory]
     [InlineData(Column.Watching)]
+    [InlineData(Column.Considering)]
     [InlineData(Column.LookingBack)]
     [InlineData(Column.Opening)]
     [InlineData(Column.Chip)]
+    [InlineData(Column.Ended)]
     public void TheSpeedInForceIsCarriedThroughEveryMode(Column column) =>
         Assert.Equal("2×", Surface(column, PlaybackSpeed.Double).SpeedLabel);
 
@@ -440,11 +465,43 @@ public sealed class TransportSurfaceTests
             JourneyPhase.InFight, Facts(anythingPlayed: true))!.ChipMenu[1].Enabled);
     }
 
-    /// <summary>The result screen's surface is the chip's: the run is still there
-    /// underneath, and nothing new is offered over the result.</summary>
+    /// <summary>The seconds after the fight ends keep the chip: the game is drawing
+    /// its ending, and nothing new is offered until it has.</summary>
     [Fact]
     public void TheResultKeepsTheChip() =>
         Assert.Equal(TransportMode.Chip, PlaybackTransport.For(JourneyPhase.Result, Facts())!.Mode);
+
+    /// <summary>
+    /// The window between screens is the consider mode with everything that moves the
+    /// run refused. The mark and the pip say "nothing to point at" there for the same
+    /// reason they say it during the consider hold: nothing is lit.
+    /// </summary>
+    [Fact]
+    public void BetweenScreensIsConsideringWithNothingOffered()
+    {
+        var between = PlaybackTransport.For(
+            JourneyPhase.Watching, Facts(next: MapMove, stepsTaken: 1, revealed: false))!;
+
+        Assert.Equal(TransportMode.Considering, between.Mode);
+        Assert.Equal(TransportGlyph.MarkUnlit, between.Mark);
+        Assert.False(between.Counter.Lit);
+        Assert.False(between.Surface.Step.Pressable);
+        Assert.False(between.Surface.Play.Pressable);
+        Assert.False(between.Surface.Back.Pressable);
+    }
+
+    /// <summary>
+    /// The fight has ended and the transport has not been told how. The derivation
+    /// refuses rather than offering a choice about an outcome nobody read.
+    /// </summary>
+    [Fact]
+    public void RefusesToOfferThePostFightChoiceWithoutTheOutcome()
+    {
+        var refusal = Assert.Throws<ManifestException>(
+            () => PlaybackTransport.For(JourneyPhase.Ended, Facts()));
+
+        Assert.Contains("not been told how", refusal.Message, StringComparison.Ordinal);
+    }
 
     /// <summary>
     /// A watched journey with no decision left to show refuses rather than inventing
@@ -464,12 +521,19 @@ public sealed class TransportSurfaceTests
         {
             Column.Watching => PlaybackTransport.For(
                 JourneyPhase.Watching, Facts(next: MapMove, stepsTaken: 1, speed: speed))!,
+            Column.Considering => PlaybackTransport.For(
+                JourneyPhase.Watching,
+                Facts(next: MapMove, stepsTaken: 1, revealed: false, arrived: true, speed: speed))!,
             Column.LookingBack => PlaybackTransport.For(
                 JourneyPhase.Watching,
                 Facts(made: [Blessing], next: MapMove, stepsTaken: 1, lookingBackAt: 1, speed: speed))!,
             Column.Opening => PlaybackTransport.For(
                 JourneyPhase.Watching, Facts(stepsTaken: 2, atCombatStart: true, speed: speed))!,
             Column.Chip => PlaybackTransport.For(JourneyPhase.InFight, Facts(speed: speed))!,
+            Column.Ended => PlaybackTransport.For(
+                JourneyPhase.Ended, Facts(speed: speed, afterTheFight: new PostFightFacts(
+                    Won: true, ComparisonShown: false, FightWatched: false, CanWatch: false,
+                    CanContinueAsYou: false)))!,
             Column.Refused => PlaybackTransport.For(JourneyPhase.Refused, Facts(speed: speed))!,
             _ => throw new InvalidOperationException($"No column {column}."),
         };
@@ -486,8 +550,12 @@ public sealed class TransportSurfaceTests
         bool playing = false,
         bool noteShown = true,
         PlaybackSpeed speed = PlaybackSpeed.Normal,
-        bool anythingPlayed = false) =>
+        bool anythingPlayed = false,
+        bool? arrived = null,
+        int? options = 2,
+        PostFightFacts? afterTheFight = null) =>
         new(
-            identity ?? NaveGreed, made ?? [], next, stepsTaken, count, atCombatStart, revealed,
-            lookingBackAt, playing, noteShown, speed, anythingPlayed);
+            identity ?? NaveGreed, made ?? [], next, stepsTaken, count, atCombatStart,
+            Arrived: arrived ?? revealed, Lit: revealed, NextOptionCount: options,
+            lookingBackAt, playing, noteShown, speed, anythingPlayed, afterTheFight);
 }

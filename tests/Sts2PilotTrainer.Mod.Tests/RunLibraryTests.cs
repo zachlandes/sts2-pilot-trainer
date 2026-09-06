@@ -358,6 +358,27 @@ public sealed class RunLibraryStoreTests : IDisposable
 /// </summary>
 public sealed class RunViewRowMappingTests
 {
+    /// <summary>
+    /// A fight shown this sitting carries the hollow-eye mark on its row, and the
+    /// sentence behind the mark names the creator. The set is the Combat Trainer's,
+    /// in memory; the screen only draws what it is handed.
+    /// </summary>
+    [Fact]
+    public void AFightShownThisSittingCarriesTheMarkAndItsSentence()
+    {
+        var marked = RunBrowserScreen.EnteringRows(
+            RunView.For(Recording(), RunProgress.Empty, selectedFloor: 2, shownThisSitting: [1]),
+            "native-a", "NaveGreed");
+        var cold = RunBrowserScreen.EnteringRows(
+            RunView.For(Recording(), RunProgress.Empty, selectedFloor: 2), "native-a", "NaveGreed");
+
+        Assert.Equal(
+            "You have seen NaveGreed's fight this sitting. It is cold again next time you launch the game.",
+            marked[0].MarkTooltip);
+        Assert.All(marked.Skip(1), row => Assert.Null(row.MarkTooltip));
+        Assert.All(cold, row => Assert.Null(row.MarkTooltip));
+    }
+
     [Fact]
     public void EveryRunViewRowReachesTheScreenCarryingItsSecondLine()
     {

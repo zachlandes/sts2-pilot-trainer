@@ -175,6 +175,11 @@ What the result *looks like* is presentation and stays out of that contract:
 `FightResultScreen` and `FightResultChart` in `Sts2PilotTrainer.Trainer` derive the
 drawn model, and `FightResultPanel` in the mod draws it. A value the projection cannot
 derive honestly is a gap in a line, never a zero.
+The result is drawn on request and never unbidden: after the fight the chip offers
+`PostFightChoice`'s rows and the panel is the first of them, a lost line compares
+(Lost against Won) rather than standing behind a notice, and which fights were shown
+this sitting is held in memory by `CombatTrainerModule` for the sitting and written
+nowhere.
 
 **Where this is going, and what is runnable at each step, is
 [docs/proof-of-concept-path.md](docs/proof-of-concept-path.md).** Read it before

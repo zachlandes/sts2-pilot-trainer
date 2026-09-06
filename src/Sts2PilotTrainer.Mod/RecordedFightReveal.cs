@@ -15,7 +15,7 @@ namespace Sts2PilotTrainer.Mod;
 /// Lights the thing the recording is about to choose, using the game's own selected
 /// state and never its click path.
 ///
-/// The reveal half of reveal, hold, commit. The captain's rule for it is that the
+/// The reveal half of consider, reveal, commit. The captain's rule for it is that the
 /// trainer should piggy-back on the highlighting the game already has rather than
 /// draw a ring of its own, and that a watcher gets to see what was chosen before the
 /// screen moves on - so this applies the state a hovered or controller-focused
@@ -56,22 +56,55 @@ internal static class RecordedFightReveal
     internal static string Reveal(PrefightTarget target)
     {
         Clear();
-        switch (target)
+        var found = Find(target);
+        Focus(found.Control, found.What);
+
+        // Then the ring, directly, on the map. The game lights it from OnFocus only
+        // when the player is on a controller, and it is the clearest mark the map has
+        // - so it is lit here whatever they are holding, and it survives the player
+        // moving focus to the transport's own buttons.
+        if (found.Reticle is { } reticle)
         {
-            case PrefightTarget.MapNode node:
-                RevealMapNode(node.Coord);
-                break;
-            case PrefightTarget.EventOption option:
-                RevealEventOption(option.Index, option.RelicModelId);
-                break;
-            default:
-                throw new InvalidOperationException(
-                    $"Action {target.Seq} is a kind of decision this trainer cannot point at on the game's " +
-                    "own screen, so it will not be committed unseen.");
+            reticle.OnSelect();
+            _lit = reticle;
         }
 
         return target.Description;
     }
+
+    /// <summary>
+    /// Establishes that the screen the decision happens on has arrived and is still,
+    /// without lighting anything, and answers how many options it offers.
+    ///
+    /// The consider half: the viewer is to see every option the recording saw with
+    /// nothing lit, so this makes every check <see cref="Reveal"/> makes - the screen
+    /// is up, it holds the thing the recording chose, that thing can be selected -
+    /// and stops before the selection. The count is what decides whether there is a
+    /// consider hold at all; a screen with one option has nothing to consider.
+    /// </summary>
+    /// <exception cref="RevealNotReadyException">When the screen is still putting the
+    /// target up.</exception>
+    internal static int Arrive(PrefightTarget target)
+    {
+        var found = Find(target);
+        Ready(found.Control, found.What);
+        return found.Options;
+    }
+
+    /// <summary>What a decision points at on the game's own screen, once found.</summary>
+    /// <param name="Options">How many options that screen offers for the decision.</param>
+    /// <param name="Reticle">The map's own ring round the node, where the screen has
+    /// one.</param>
+    private sealed record Found(Control Control, string What, int Options, NSelectionReticle? Reticle);
+
+    private static Found Find(PrefightTarget target) => target switch
+    {
+        PrefightTarget.MapNode node => FindMapNode(node.Coord),
+        PrefightTarget.EventOption option => FindEventOption(option.Index, option.RelicModelId),
+        _ => throw new InvalidOperationException(
+            $"Action {target.Seq} is a kind of decision this trainer cannot point at on the game's " +
+            "own screen, so it will not be committed unseen."),
+    };
 
     /// <summary>Puts back whatever this class lit. Safe to call when nothing is.</summary>
     internal static void Clear()
@@ -82,7 +115,7 @@ internal static class RecordedFightReveal
         lit.OnDeselect();
     }
 
-    private static void RevealMapNode(MapCoord coord)
+    private static Found FindMapNode(MapCoord coord)
     {
         var map = NMapScreen.Instance
             ?? throw new RevealRefusedException(
@@ -99,22 +132,19 @@ internal static class RecordedFightReveal
                 TrainerCopy.MapScreenName);
         }
 
-        // Focus first, because the node's own OnFocus is what scales it and tints it.
-        Focus(point, "the map node the recording moves to");
+        // The options are the nodes the run can travel to from where it stands,
+        // which the screen itself marks; the recording's own node is one of them.
+        var travelable = points.Values.Count(candidate =>
+            GodotObject.IsInstanceValid(candidate) && candidate.State == MapPointState.Travelable);
 
-        // Then the ring, directly. The game lights it from OnFocus only when the
-        // player is on a controller, and it is the clearest mark the map has - so it
-        // is lit here whatever they are holding, and it survives the player moving
-        // focus to the transport's own buttons.
-        var reticle = point.GetNodeOrNull<NSelectionReticle>(ReticlePath);
-        if (reticle is not null)
-        {
-            reticle.OnSelect();
-            _lit = reticle;
-        }
+        return new Found(
+            point,
+            "the map node the recording moves to",
+            travelable,
+            point.GetNodeOrNull<NSelectionReticle>(ReticlePath));
     }
 
-    private static void RevealEventOption(int index, string relicModelId)
+    private static Found FindEventOption(int index, string relicModelId)
     {
         var room = NEventRoom.Instance
             ?? throw new RevealRefusedException(
@@ -152,7 +182,8 @@ internal static class RecordedFightReveal
                 TrainerCopy.EventScreenName);
         }
 
-        Focus(button, $"option {index.ToString(CultureInfo.InvariantCulture)} on the event screen");
+        return new Found(
+            button, $"option {index.ToString(CultureInfo.InvariantCulture)} on the event screen", buttons.Count, null);
     }
 
     /// <summary>
@@ -169,15 +200,22 @@ internal static class RecordedFightReveal
     /// </summary>
     private static void Focus(Control control, string what)
     {
-        if (control.FocusMode == Control.FocusModeEnum.None || !control.IsVisibleInTree())
-        {
-            throw new RevealNotReadyException($"This screen is still putting up {what}.");
-        }
-
+        Ready(control, what);
         control.GrabFocus();
         if (!control.HasFocus())
         {
             throw new RevealNotReadyException($"This screen would not let {what} be selected yet.");
+        }
+    }
+
+    /// <summary>Whether the screen has finished putting the target up: the same
+    /// reading <see cref="Focus"/> makes before it grabs, and all that arrival can
+    /// ask without lighting anything.</summary>
+    private static void Ready(Control control, string what)
+    {
+        if (control.FocusMode == Control.FocusModeEnum.None || !control.IsVisibleInTree())
+        {
+            throw new RevealNotReadyException($"This screen is still putting up {what}.");
         }
     }
 

@@ -45,7 +45,8 @@ public sealed class PlaybackTransportStripTests
         Assert.Equal("Ironclad A10, Underdocks", Label(strip, "VideoTitle").Text);
         Assert.Equal("1 of 2", Label(strip, "Counter").Text);
         Assert.Equal(
-            "NaveGreed's choices are shown as recorded. This shows what was chosen, not why.",
+            "NaveGreed's choices are shown as recorded, one press after each screen. This shows what was " +
+            "chosen, not why.",
             Label(strip, "NoteText").Text);
     }
 
@@ -946,6 +947,89 @@ public sealed class PlaybackTransportStripTests
             $"{ledger.Position.Y + ledger.Size.Y}");
     }
 
+    /// <summary>
+    /// While a decision is considered the two drawn signals are the mark without its
+    /// centre dot and a hollow current pip; the reveal fills both. Nothing else on
+    /// the tag moves between the two.
+    /// </summary>
+    [Fact]
+    public void AConsideredDecisionDrawsTheMarkWithoutItsDotAndAHollowPip()
+    {
+        var strip = Build(Considering(Blessing, 1));
+
+        var mark = Find<Control>(strip.Root, "Mark");
+        Assert.DoesNotContain(Descendants(mark), node => node.Name.ToString() == "Glyph.Centre");
+        Assert.Contains(Descendants(mark), node => node.Name.ToString() == "Glyph.Ring");
+        Assert.IsType<Line2D>(Find<Node>(strip.Root, "Pip1"));
+        Assert.False(strip.Step.Disabled);
+
+        strip.Apply(Revealing(Blessing, 1, noteShown: true));
+
+        Assert.Contains(Descendants(mark), node => node.Name.ToString() == "Glyph.Centre");
+        Assert.IsType<Polygon2D>(Find<Node>(strip.Root, "Pip1"));
+    }
+
+    /// <summary>Step's tooltip is Show before the reveal and Step after it, on the
+    /// same control, and the first never names the choice.</summary>
+    [Fact]
+    public void StepsTooltipSaysShowBeforeTheRevealAndStepAfterIt()
+    {
+        var strip = Build(Considering(Blessing, 1));
+        strip.Step.EmitHover(entered: true);
+
+        Assert.Equal("Show", Label(strip.Tooltip, "TooltipTitle").Text);
+        Assert.DoesNotContain("Leafy Poultice", Label(strip.Tooltip, "TooltipBody").Text, StringComparison.Ordinal);
+
+        strip.Apply(Revealing(Blessing, 1, noteShown: true));
+
+        Assert.Equal("Step", Label(strip.Tooltip, "TooltipTitle").Text);
+        Assert.Contains("Leafy Poultice", Label(strip.Tooltip, "TooltipBody").Text, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Once the ending is drawn the chip stays and the post-fight choice hangs under
+    /// it, in the chip menu's own shape: the three rows this build offers, the reveal
+    /// first, and the dot on a row already taken this sitting.
+    /// </summary>
+    [Fact]
+    public void OnceTheEndingIsDrawnTheChipHangsThePostFightChoice()
+    {
+        var chosen = new List<int>();
+        var strip = Build(AfterTheFight());
+        strip.OpenMenu(_ => { });
+        Assert.True(strip.MenuIsOpen);
+
+        // The in-fight menu does not survive the fight's end: a different kind closes.
+        strip.Apply(Ended(comparisonShown: false));
+        Assert.False(strip.MenuIsOpen);
+        Assert.True(strip.Speed.Visible);
+        Assert.False(strip.Speed.Disabled);
+
+        strip.OpenMenu(chosen.Add);
+        Assert.True(strip.Menu.Visible);
+        Assert.Equal("Show the comparison", Label(strip.Menu, "MenuRow0.Label").Text);
+        Assert.Equal("Fight it again", Label(strip.Menu, "MenuRow1.Label").Text);
+        Assert.Equal("Leave", Label(strip.Menu, "MenuRow2.Label").Text);
+        Assert.Contains(Descendants(strip.Menu), node => node.Name.ToString() == "MenuRow0.Glyph.Lid");
+        Assert.DoesNotContain(Descendants(strip.Menu), node => node.Name.ToString() == "MenuRow0.Current");
+
+        Find<Button>(strip.Menu, "MenuRow0").EmitPressed();
+        Assert.Equal([0], chosen);
+
+        strip.Apply(Ended(comparisonShown: true));
+        strip.OpenMenu(chosen.Add);
+        Assert.Contains(Descendants(strip.Menu), node => node.Name.ToString() == "MenuRow0.Current");
+        Assert.False(Find<Button>(strip.Menu, "MenuRow0").Disabled);
+    }
+
+    private static PlaybackTransport Considering(PrefightChoice choice, int number) =>
+        For(JourneyPhase.Watching, next: choice, stepsTaken: number - 1, revealed: false, arrived: true);
+
+    private static PlaybackTransport Ended(bool comparisonShown) =>
+        For(JourneyPhase.Ended, afterTheFight: new PostFightFacts(
+            Won: true, ComparisonShown: comparisonShown, FightWatched: false, CanWatch: false,
+            CanContinueAsYou: false));
+
     private static PlaybackTransport Revealing(PrefightChoice choice, int number, bool noteShown) =>
         For(JourneyPhase.Watching, next: choice, stepsTaken: number - 1, noteShown: noteShown);
 
@@ -966,10 +1050,14 @@ public sealed class PlaybackTransportStripTests
         bool playing = false,
         bool noteShown = true,
         PlaybackSpeed speed = PlaybackSpeed.Normal,
-        bool anythingPlayed = false) =>
+        bool anythingPlayed = false,
+        bool? arrived = null,
+        int? options = 2,
+        PostFightFacts? afterTheFight = null) =>
         PlaybackTransport.For(phase, new TransportFacts(
-            identity ?? NaveGreed, made ?? [], next, stepsTaken, count, atCombatStart, revealed,
-            lookingBackAt, playing, noteShown, speed, anythingPlayed))
+            identity ?? NaveGreed, made ?? [], next, stepsTaken, count, atCombatStart,
+            Arrived: arrived ?? revealed, Lit: revealed, NextOptionCount: options,
+            lookingBackAt, playing, noteShown, speed, anythingPlayed, afterTheFight))
         ?? throw new InvalidOperationException($"{phase} puts nothing on screen.");
 
     private static PlaybackTransport LookingBack() =>

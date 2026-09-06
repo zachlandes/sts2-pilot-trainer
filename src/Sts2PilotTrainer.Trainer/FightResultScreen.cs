@@ -42,7 +42,11 @@ public sealed record FightResultScreen(
     /// <summary>The one sentence shown instead of the rows when there is no
     /// comparison, or empty when there is one.</summary>
     string Notice,
-    string DoneButton)
+    string DoneButton,
+    /// <summary>Whether the player's fight was won. Read off the projection where
+    /// there is one; it decides where the post-fight choice hangs and which of its
+    /// rows are present, and it is not a verdict about the comparison.</summary>
+    bool Won = false)
 {
     /// <summary>Whether this screen carries a comparison, as opposed to a notice.</summary>
     public bool HasComparison => Rows.Count > 0;
@@ -77,16 +81,20 @@ public sealed record FightResultScreen(
             Chart: FightResultChart.From(creator, comparison),
             Notes: [TrainerCopy.NoVerdictNote, TrainerCopy.BlockNote],
             Notice: string.Empty,
-            DoneButton: TrainerCopy.DoneButton);
+            DoneButton: TrainerCopy.DoneButton,
+            Won: WonBy(comparison));
     }
 
     /// <summary>
     /// What to show for a capture, whatever state it ended in.
     ///
-    /// One place decides, so the four outcomes cannot drift apart: a fight left
-    /// before it ended, a capture that could not be completed, a fight that was not
-    /// won, and a completed win compared with the recording's. A comparison that
-    /// refuses - a boundary that is not the recording's - is shown in its own words.
+    /// One place decides, so the three outcomes cannot drift apart: a fight left
+    /// before it ended, a capture that could not be completed, and a completed fight
+    /// compared with the recording's. A lost fight is a completed one: the projection
+    /// treats a defeat as finished and the comparison already carries the outcome
+    /// row, so the panel draws Lost against Won rather than a notice claiming there is
+    /// no line to compare. A comparison that refuses - a boundary that is not the
+    /// recording's - is shown in its own words.
     /// </summary>
     public static FightResultScreen Of(string creator, FightCapture capture, CombatProjection recording)
     {
@@ -100,13 +108,7 @@ public sealed record FightResultScreen(
 
         try
         {
-            var yours = capture.Project();
-            if (!string.Equals(yours.Summary.Outcome, "victory", StringComparison.Ordinal))
-            {
-                return Lost(creator);
-            }
-
-            return For(creator, CombatComparison.Between(yours, recording));
+            return For(creator, CombatComparison.Between(capture.Project(), recording));
         }
         catch (ManifestException refusal)
         {
@@ -114,9 +116,12 @@ public sealed record FightResultScreen(
         }
     }
 
-    /// <summary>The player did not win. The recording's line was a won fight, and a
-    /// lost one has no completed line to set beside it.</summary>
-    public static FightResultScreen Lost(string creator) => NoticeOf(TrainerCopy.LostNote(creator));
+    /// <summary>Whether the player's side of the comparison is a victory. The outcome
+    /// row's left value is the player's, in the contract's own word for it.</summary>
+    private static bool WonBy(CombatComparison comparison) =>
+        comparison.Summary.Any(field =>
+            string.Equals(field.Field, "outcome", StringComparison.Ordinal) &&
+            string.Equals(field.Left, "victory", StringComparison.Ordinal));
 
     /// <summary>The fight was left before it ended.</summary>
     public static FightResultScreen Left() => NoticeOf(TrainerCopy.LeftNote);

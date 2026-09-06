@@ -27,9 +27,10 @@ A recorded fight takes five minutes and repeats exactly.
 
 **Play the fight a top player played, then see how yours compared.**
 Runmobile ships with one run this project reconstructed from a top player's public video.
-Open it and the game walks that player's decisions before the fight on its own screens, with playback controls: step one decision at a time, play them through at half to double speed, or look back at one already made.
+Open it and the game walks that player's decisions before the fight on its own screens, with playback controls: each screen arrives with nothing chosen so you can decide for yourself, one press shows what the player chose and one more makes it; play them through at half to double speed, or look back at one already made.
 Then the fight is yours.
-When it ends, the result panel shows the two fights side by side: summary figures, the cards and potions each of you played by turn, and a chart of health lost each turn.
+When it ends, nothing is shown until you ask: show the comparison, fight it again, or leave.
+The comparison puts the two fights side by side, won or lost: summary figures, the cards and potions each of you played by turn, and a chart of health lost each turn.
 The two lines stay distinct by colour and marker and nothing scores either one.
 Built and shown in the retail client; [demo/PLAYBACK-TRANSPORT.md](demo/PLAYBACK-TRANSPORT.md) and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md) have the screenshots.
 Today that is one featured run, and its menu card opens the first fight; the run library below opens every fight that recording proves.

@@ -35,7 +35,8 @@ public sealed class PlaybackTransportTests
         Assert.Equal("Ironclad A10, Underdocks", transport.Identity.VideoTitle);
         Assert.Equal("1 of 2", transport.Counter.Numerals);
         Assert.Equal(
-            "NaveGreed's choices are shown as recorded. This shows what was chosen, not why.",
+            "NaveGreed's choices are shown as recorded, one press after each screen. This shows what was " +
+            "chosen, not why.",
             transport.Note);
     }
 
@@ -386,6 +387,143 @@ public sealed class PlaybackTransportTests
         Assert.Contains("no way to describe", refusal.Message, StringComparison.Ordinal);
     }
 
+    // ── Consider, reveal, commit ────────────────────────────────────────────
+
+    /// <summary>
+    /// The screen has arrived and nothing is lit. Step's tooltip says Show, carries
+    /// the counter and not the caption - nothing on the tag may say what the
+    /// recording chose before the reveal - and the mark and the current pip are drawn
+    /// without their fill.
+    /// </summary>
+    [Fact]
+    public void WhileADecisionIsConsideredStepShowsAndNamesNothing()
+    {
+        var considering = Considering(Blessing, 1);
+
+        Assert.Equal(TransportMode.Considering, considering.Mode);
+        Assert.Equal(TransportGlyph.MarkUnlit, considering.Mark);
+        Assert.False(considering.Counter.Lit);
+        Assert.Equal("1 of 2", considering.Counter.Numerals);
+
+        Assert.True(considering.Step.Enabled);
+        Assert.Equal(TransportGlyph.Step, considering.Step.Glyph);
+        Assert.Equal("Show", considering.Step.TooltipTitle);
+        Assert.Equal("Shows what NaveGreed chose here.\n1 of 2", considering.Step.TooltipBody);
+        Assert.DoesNotContain("Leafy Poultice", considering.Step.TooltipBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("took", considering.Step.TooltipBody, StringComparison.Ordinal);
+    }
+
+    /// <summary>Step's two tooltips per decision: Show before the reveal, Step after
+    /// it, on the same control.</summary>
+    [Fact]
+    public void StepHasTwoTooltipsPerDecisionAndTheSecondNamesTheChoice()
+    {
+        var before = Considering(MapMove, 2);
+        var after = Revealing(MapMove, 2, noteShown: true);
+
+        Assert.Equal("Show", before.Step.TooltipTitle);
+        Assert.Equal("Step", after.Step.TooltipTitle);
+        Assert.DoesNotContain("Monster node", before.Step.TooltipBody, StringComparison.Ordinal);
+        Assert.Contains("NaveGreed moved to the Monster node, centre column", after.Step.TooltipBody,
+            StringComparison.Ordinal);
+        Assert.Equal(TransportGlyph.Mark, after.Mark);
+        Assert.True(after.Counter.Lit);
+    }
+
+    /// <summary>
+    /// A screen with one option has no consider beat: where the recording could only
+    /// have done one thing, arrival is the reveal, so an arrived-unlit state there is
+    /// the transition itself and offers nothing. A count nobody could read gets no
+    /// beat either, because a hold on an uncounted screen would be the mod guessing
+    /// there was a choice.
+    /// </summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(0)]
+    [InlineData(null)]
+    public void AScreenWithOneOptionHasNoConsiderBeat(int? options)
+    {
+        var arrived = For(
+            JourneyPhase.Watching, next: Blessing, revealed: false, arrived: true, options: options);
+
+        Assert.False(arrived.Step.Enabled);
+        Assert.False(arrived.Play.Enabled);
+        Assert.True(Considering(Blessing, 1).Step.Enabled);
+    }
+
+    /// <summary>Back re-shows a committed decision and never rewinds, so it is offered
+    /// in both holds: the ledger carries only what has been committed.</summary>
+    [Fact]
+    public void LookingBackIsOfferedDuringTheConsiderHoldOnceThereIsSomethingBehind()
+    {
+        Assert.True(Considering(MapMove, 2).Back.Enabled);
+        Assert.False(Considering(Blessing, 1).Back.Enabled);
+        Assert.Equal("This is the first choice.", Considering(Blessing, 1).Back.DisabledReason);
+    }
+
+    /// <summary>Play is offered in the consider hold and pause never refused; under
+    /// play the two holds drain one after the other.</summary>
+    [Fact]
+    public void PlayIsOfferedDuringTheConsiderHold()
+    {
+        Assert.True(Considering(Blessing, 1).Play.Enabled);
+        Assert.Equal(TransportGlyph.Play, Considering(Blessing, 1).Play.Glyph);
+        Assert.Equal(
+            TransportGlyph.Pause,
+            For(JourneyPhase.Watching, next: Blessing, revealed: false, arrived: true, playing: true).Play.Glyph);
+    }
+
+    /// <summary>The once-per-run sentence appears at the first reveal and not
+    /// before it: a rule about reading the screens is said beside a decision somebody
+    /// can read.</summary>
+    [Fact]
+    public void TheOnceOnlySentenceWaitsForTheReveal()
+    {
+        Assert.Equal(string.Empty, For(
+            JourneyPhase.Watching, next: Blessing, revealed: false, arrived: true, noteShown: false).Note);
+        Assert.NotEqual(string.Empty, Revealing(Blessing, 1, noteShown: false).Note);
+    }
+
+    // ── The post-fight choice ───────────────────────────────────────────────
+
+    /// <summary>
+    /// The fight has ended and the game has drawn its ending. The chip stays and the
+    /// choice hangs under it; nothing that moves the run is on the tag.
+    /// </summary>
+    [Fact]
+    public void OnceTheEndingIsDrawnTheChipCarriesThePostFightChoice()
+    {
+        var ended = Ended(won: true);
+
+        Assert.Equal(TransportMode.Ended, ended.Mode);
+        Assert.True(ended.Surface.ChipPlate);
+        Assert.Equal(MenuKind.PostFight, ended.Surface.Menu);
+        Assert.Equal(Press.OpenPostFightMenu, ended.Surface.Speed.Press);
+        Assert.Equal(Presence.Absent, ended.Surface.Step.Presence);
+        Assert.NotNull(ended.PostFight);
+        Assert.Equal(["Show the comparison", "Fight it again", "Leave"], ended.ChipMenu.Select(row => row.Label));
+        Assert.Equal(PostFightAction.Leave, ended.PostFight!.ActionAt(2));
+    }
+
+    /// <summary>A row already taken this sitting carries the dot; it stays offered.</summary>
+    [Fact]
+    public void ARevealAlreadyTakenThisSittingIsDottedAndStillOffered()
+    {
+        var ended = Ended(won: false, comparisonShown: true);
+
+        Assert.True(ended.ChipMenu[0].IsCurrent);
+        Assert.True(ended.ChipMenu[0].Enabled);
+        Assert.Equal(TransportGlyph.Reveal, ended.ChipMenu[0].Glyph);
+    }
+
+    private static PlaybackTransport Ended(bool won, bool comparisonShown = false) =>
+        For(JourneyPhase.Ended, afterTheFight: new PostFightFacts(
+            Won: won, ComparisonShown: comparisonShown, FightWatched: false, CanWatch: false,
+            CanContinueAsYou: false));
+
+    private static PlaybackTransport Considering(PrefightChoice choice, int number) =>
+        For(JourneyPhase.Watching, next: choice, stepsTaken: number - 1, revealed: false, arrived: true);
+
     private static PlaybackTransport Revealing(PrefightChoice choice, int number, bool noteShown) =>
         For(JourneyPhase.Watching, next: choice, stepsTaken: number - 1, noteShown: noteShown);
 
@@ -406,10 +544,14 @@ public sealed class PlaybackTransportTests
         bool playing = false,
         bool noteShown = true,
         PlaybackSpeed speed = PlaybackSpeed.Normal,
-        bool anythingPlayed = false) =>
+        bool anythingPlayed = false,
+        bool? arrived = null,
+        int? options = 2,
+        PostFightFacts? afterTheFight = null) =>
         PlaybackTransport.For(phase, new TransportFacts(
-            identity ?? NaveGreed, made ?? [], next, stepsTaken, count, atCombatStart, revealed,
-            lookingBackAt, playing, noteShown, speed, anythingPlayed))
+            identity ?? NaveGreed, made ?? [], next, stepsTaken, count, atCombatStart,
+            Arrived: arrived ?? revealed, Lit: revealed, NextOptionCount: options,
+            lookingBackAt, playing, noteShown, speed, anythingPlayed, afterTheFight))
         ?? throw new InvalidOperationException($"{phase} puts nothing on screen.");
 
     private sealed record UnknownChoice(int Seq) : PrefightChoice(Seq);

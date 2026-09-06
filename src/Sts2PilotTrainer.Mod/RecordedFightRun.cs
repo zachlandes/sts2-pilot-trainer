@@ -7,7 +7,9 @@ using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Rewards;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
+using MegaCrit.Sts2.Core.Nodes.Screens;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
@@ -38,6 +40,18 @@ internal static class RecordedFightRun
     private static RecordedFightEntry? _entry;
     private static PlayerFightObserver? _observer;
     private static FightResultScreen? _resultAfterMainMenu;
+
+    /// <summary>
+    /// The fight that has ended, held apart from the run that fought it.
+    ///
+    /// The post-fight choice outlives the run: on a loss the game's own flow may tear
+    /// the run down on its way to its ending, and the choice - show the comparison,
+    /// fight it again, leave - is the same either way. So what the choice needs is
+    /// kept here rather than read off the entry: the recording and the plan, to fight
+    /// it again; the fight's ordinal, for the sitting's marks; and the result screen,
+    /// which is data and survives the run it describes.
+    /// </summary>
+    private static EndedFight? _afterTheFight;
 
     /// <summary>The decisions the recording has already made, in order, described at
     /// the moment each one was revealed. Kept because Back re-shows a decision whose
@@ -127,15 +141,30 @@ internal static class RecordedFightRun
     private static int _phase;
 
     /// <summary>
-    /// Whether the recording's next decision is on the game's own screen yet.
+    /// Whether the game's screen for the recording's next decision is up and still.
     ///
-    /// Cleared before a decision is committed and set once the next one has been
-    /// revealed, with a re-derivation on each. Between those two points Step is
-    /// refused: the window is a screen transition long, and a step taken inside it
-    /// would make the next decision without anybody having been shown it, which is
-    /// exactly what reveal, hold and commit exists to prevent.
+    /// Cleared before a decision is committed and set once the next screen has
+    /// arrived, with a re-derivation on each. Between those two points every control
+    /// that moves the run is refused: the window is a screen transition long, and a
+    /// press inside it acts on a state nobody has been shown.
     /// </summary>
-    private static bool _revealed;
+    private static bool _arrived;
+
+    /// <summary>
+    /// Whether the recording's next decision is lit on that screen.
+    ///
+    /// Arrived and not lit is the consider hold: the viewer sees every option the
+    /// recording saw and decides in their head, and step reveals rather than
+    /// commits. A commit before this is set would make the decision without anybody
+    /// having been shown it, which is exactly what consider, reveal and commit exists
+    /// to prevent.
+    /// </summary>
+    private static bool _lit;
+
+    /// <summary>How many options the arrived screen offers for the next decision, or
+    /// null before arrival. A screen with one option has no consider hold: arrival is
+    /// the reveal.</summary>
+    private static int? _nextOptions;
 
     internal static JourneyPhase Phase => (JourneyPhase)_phase;
 
@@ -218,7 +247,7 @@ internal static class RecordedFightRun
                 $"[{RunmobileMod.ModId}] constructed {creator}'s run; watching " +
                 $"{entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)} recorded " +
                 "decision(s) before the fight", 2);
-            RevealWhenTheGameHasFinishedMoving();
+            ArriveWhenTheGameHasFinishedMoving();
         }
         catch (Exception ex)
         {
@@ -230,18 +259,24 @@ internal static class RecordedFightRun
 
     // ── The transport ──────────────────────────────────────────────────────
     //
-    // Reveal, hold, commit. The reveal applies the game's own selected state to what
-    // the recording is about to choose; the hold is the strip waiting, for the player
-    // under Forward and for a timer under Play; the commit is the same call the popup
-    // made before this existed. Back is not part of the cycle at all - it re-shows a
-    // decision already made, and there is no path here that uncommits one.
+    // Consider, reveal, commit. The game's screen arrives with nothing lit and the
+    // strip holds there, so the viewer sees every option the recording saw; the
+    // reveal applies the game's own selected state to what the recording is about to
+    // choose and the strip holds again; the commit is the same call the popup made
+    // before this existed. Each hold is the strip waiting, for the player under
+    // Forward and for a timer under Play, so Forward is pressed twice per decision
+    // and under Play the two holds drain one after the other. A screen with one
+    // option has no consider hold, and arrival is the reveal there. Back is not part
+    // of the cycle at all - it re-shows a decision already made, and there is no path
+    // here that uncommits one.
 
     /// <summary>
-    /// How long Play holds on a revealed decision before committing it.
+    /// How long Play holds on a considered or a revealed decision before moving on.
     ///
     /// It has to be longer than the game's own select effect, because the watcher did
     /// not do the thinking and is reading the screen rather than confirming a
-    /// conclusion they already reached.
+    /// conclusion they already reached. The same hold for both beats, so a run
+    /// watched at speed is unchanged in shape and slower by one hold per decision.
     /// </summary>
     private const double HoldSeconds = 1.6;
 
@@ -264,9 +299,11 @@ internal static class RecordedFightRun
     /// <summary>
     /// Forward.
     ///
-    /// One press, one recorded action - unless the player is looking back, where the
-    /// same press walks the ghost toward the present rather than moving the run. That
-    /// is the only way out of looking back that does not skip anything.
+    /// Two presses per decision: the first reveals what the recording chose, the
+    /// second makes it. Unless the player is looking back, where the same press walks
+    /// the ghost toward the present rather than moving the run - the only way out of
+    /// looking back that does not skip anything. A press between screens does
+    /// nothing, and the transport has already refused it.
     /// </summary>
     private static async void Forward()
     {
@@ -279,6 +316,12 @@ internal static class RecordedFightRun
                 _lookingBackAt = step < entry.StepsTaken ? step + 1 : null;
                 if (_lookingBackAt is null) Relight();
                 ShowTransport();
+                return;
+            }
+
+            if (!_lit)
+            {
+                if (_arrived && HasConsiderBeat) await RevealNow();
                 return;
             }
 
@@ -339,7 +382,8 @@ internal static class RecordedFightRun
             _lookingBackAt = null;
             Relight();
             ShowTransport();
-            HoldThenCommit();
+            if (_lit) HoldThenCommit();
+            else if (_arrived && HasConsiderBeat) HoldThenReveal();
         }
         catch (Exception ex)
         {
@@ -361,7 +405,9 @@ internal static class RecordedFightRun
     /// </summary>
     private static void Relight()
     {
-        if (_entry is not { AtBoundary: false } entry) return;
+        // Nothing to put back before the reveal: lighting the target here would be
+        // the mod volunteering the answer during the consider hold.
+        if (!_lit || _entry is not { AtBoundary: false } entry) return;
 
         try
         {
@@ -384,16 +430,26 @@ internal static class RecordedFightRun
         PlaybackTransportDock.Current?.HideHold();
     }
 
+    /// <summary>Waits out the revealed decision, then makes it. Reveal re-arms the
+    /// chain while Play is running, so nothing is lost by waiting.</summary>
+    private static void HoldThenCommit() => HoldThen(lit: true, CommitOne);
+
+    /// <summary>Waits out the consider hold, then reveals. Arrival arms this while
+    /// Play is running, and the reveal arms the commit.</summary>
+    private static void HoldThenReveal() => HoldThen(lit: false, RevealNow);
+
     /// <summary>
-    /// Waits out the revealed decision, then makes it.
+    /// One hold, drawn, then what comes after it.
     ///
     /// The timer is the game's, on its own scene tree, so the client goes on drawing
-    /// the reveal while it runs. Everything about the moment it wakes up is checked
+    /// the screen while it runs. Everything about the moment it wakes up is checked
     /// again: a hold that was paused, stepped past by Forward, belongs to a run that
-    /// has since ended, or wakes before the next decision is revealed commits nothing.
-    /// Reveal re-arms the chain while Play is running, so nothing is lost by waiting.
+    /// has since ended, or wakes to find the decision in a different state from the
+    /// one it was holding on does nothing.
     /// </summary>
-    private static async void HoldThenCommit()
+    /// <param name="lit">Which hold this is: the reveal hold, on a lit decision, or the
+    /// consider hold, on an arrived one that is not lit yet.</param>
+    private static async void HoldThen(bool lit, Func<Task> then)
     {
         var mine = _entry;
         try
@@ -403,12 +459,12 @@ internal static class RecordedFightRun
 
             // Drawn while it runs, not merely waited out. Without the line the tag
             // simply pauses under Play and a watcher cannot tell a hold from a stall,
-            // which is the whole of "reveal, hold and commit should be visible".
+            // which is the whole of "consider, reveal and commit should be visible".
             var steps = Math.Max(1, (int)Math.Round(seconds / HoldTick));
             for (var step = 0; step < steps; step++)
             {
                 if (hold != _hold || !_playing || !ReferenceEquals(mine, _entry)) break;
-                if (Phase != JourneyPhase.Watching || !_revealed) break;
+                if (Phase != JourneyPhase.Watching || !_arrived || _lit != lit) break;
 
                 PlaybackTransportDock.Current?.ShowHold(1.0 - ((double)step / steps));
                 await LetTheGameRun(seconds / steps);
@@ -417,15 +473,19 @@ internal static class RecordedFightRun
             PlaybackTransportDock.Current?.HideHold();
 
             if (hold != _hold || !_playing || !ReferenceEquals(mine, _entry)) return;
-            if (Phase != JourneyPhase.Watching || !_revealed) return;
+            if (Phase != JourneyPhase.Watching || !_arrived || _lit != lit) return;
 
-            await CommitOne();
+            await then();
         }
         catch (Exception ex)
         {
             if (StillOurs(mine)) Abandon(ex);
         }
     }
+
+    /// <summary>Whether the decision about to be made gets a consider hold, by the
+    /// one rule the transport applies: more than one option on the arrived screen.</summary>
+    private static bool HasConsiderBeat => _nextOptions is > 1;
 
     /// <summary>How often the draining line is redrawn. Frequent enough to read as
     /// motion, rare enough that a hold is not a hundred timers.</summary>
@@ -451,7 +511,7 @@ internal static class RecordedFightRun
     /// does the showing, and it is the tag's own line rather than new ornament.
     ///
     /// One treatment for both, because the condition is one thing rather than two: the
-    /// run is in a watched phase and nothing is revealed. That is the same condition
+    /// run is in a watched phase and no screen has arrived. That is the same condition
     /// that refuses Step, so what the player sees moving and what they find inert have
     /// the same cause rather than two that happen to coincide.
     /// </summary>
@@ -463,7 +523,7 @@ internal static class RecordedFightRun
             for (var step = 0; ; step++)
             {
                 if (sweep != _sweep) return;
-                if (_entry is null || Phase != JourneyPhase.Watching || _revealed) break;
+                if (_entry is null || Phase != JourneyPhase.Watching || _arrived) break;
 
                 PlaybackTransportDock.Current?.ShowMoving(step * SweepTick / SweepSeconds % 1.0);
                 await LetTheGameRun(SweepTick);
@@ -477,9 +537,9 @@ internal static class RecordedFightRun
         }
         finally
         {
-            // Not while Play has the line: the reveal that ends this window starts the
-            // hold on the same node in the same frame, and putting it out here would
-            // blink it off for a tick on the way past.
+            // Not while Play has the line: the arrival that ends this window starts
+            // the hold on the same node in the same frame, and putting it out here
+            // would blink it off for a tick on the way past.
             if (sweep == _sweep && !_playing) PlaybackTransportDock.Current?.HideHold();
         }
     }
@@ -522,10 +582,11 @@ internal static class RecordedFightRun
         // opening. Reached only by a press that beat the transport's own refusal.
         if (entry.AtBoundary) return;
 
-        // Nothing is on the game's own screen yet, so committing here would make a
-        // decision nobody was shown - the one thing reveal, hold and commit exists to
-        // prevent. Reveal re-arms the chain when Play is running.
-        if (!_revealed) return;
+        // The decision is not lit, so committing here would make a decision nobody
+        // was shown - the one thing consider, reveal and commit exists to prevent.
+        // Forward reveals first, and the reveal re-arms the chain when Play is
+        // running.
+        if (!_lit) return;
 
         // Any hold still in flight is invalidated: this decision is being made now,
         // and a timer that woke up afterwards would make the next one unrevealed.
@@ -539,11 +600,13 @@ internal static class RecordedFightRun
             Shown.Add(entry.DescribeNextStep());
             RecordedFightReveal.Clear();
 
-            // Nothing is revealed from here until the next reveal lands, and the tag
+            // Nothing has arrived from here until the next screen does, and the tag
             // is re-derived to say so. The window between the two is a screen
             // transition long and a second Step pressed inside it used to make the
             // next decision unrevealed.
-            _revealed = false;
+            _arrived = false;
+            _lit = false;
+            _nextOptions = null;
             ShowTransport();
             SweepWhileTheGameIsBetweenScreens();
 
@@ -558,7 +621,7 @@ internal static class RecordedFightRun
 
         if (_entry is { AtBoundary: false })
         {
-            RevealWhenTheGameHasFinishedMoving();
+            ArriveWhenTheGameHasFinishedMoving();
             return;
         }
 
@@ -570,26 +633,63 @@ internal static class RecordedFightRun
     }
 
     /// <summary>
-    /// Reveals the recording's next decision on the game's own screen and puts the
-    /// transport on it.
+    /// Waits for the game's screen for the next decision to arrive, and puts the
+    /// transport on it with nothing lit.
     ///
-    /// The refusal here is the one the whole design turns on. A decision this host
-    /// cannot point at is a decision that would be committed unseen, which is the
-    /// thing a watcher is here to prevent, so it ends the attempt with the reason
-    /// rather than skipping the reveal and clicking anyway.
+    /// The consider hold begins here where the screen offers a choice; where it
+    /// offers one thing, arrival is the reveal and this goes straight on to it. The
+    /// refusal is the one the whole design turns on, and it is made here before
+    /// anything is lit: a decision this host cannot point at is a decision that would
+    /// be committed unseen, which is the thing a watcher is here to prevent, so it
+    /// ends the attempt with the reason rather than skipping the reveal and clicking
+    /// anyway.
     /// </summary>
-    private static async Task RevealNext()
+    private static async Task ArriveNext()
     {
         var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
 
         _lookingBackAt = null;
-        var what = await RevealWhenTheScreenIsReady(entry.DescribeNextTarget());
+        var options = await WhenTheScreenIsReady(() => RecordedFightReveal.Arrive(entry.DescribeNextTarget()));
 
         // The retry above runs for up to five seconds, which is long enough for the
         // journey underneath it to have ended and another to have started.
         if (!StillOurs(entry)) return;
 
-        _revealed = true;
+        _arrived = true;
+        _nextOptions = options;
+        if (!HasConsiderBeat)
+        {
+            await RevealNow();
+            return;
+        }
+
+        Log.Info(
+            $"[{RunmobileMod.ModId}] arrived at decision " +
+            $"{(entry.StepsTaken + 1).ToString(CultureInfo.InvariantCulture)} of " +
+            $"{entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)}; " +
+            $"{options.ToString(CultureInfo.InvariantCulture)} option(s), nothing lit", 2);
+
+        ShowTransport();
+        if (_playing) HoldThenReveal();
+    }
+
+    /// <summary>
+    /// Reveals the recording's next decision on the game's own screen and puts the
+    /// transport on it.
+    ///
+    /// The second beat, reached by Forward or by Play's timer once the screen has
+    /// arrived, and reached directly from arrival where the screen offers one thing.
+    /// </summary>
+    private static async Task RevealNow()
+    {
+        var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
+
+        _lookingBackAt = null;
+        var what = await WhenTheScreenIsReady(() => RecordedFightReveal.Reveal(entry.DescribeNextTarget()));
+
+        if (!StillOurs(entry)) return;
+
+        _lit = true;
         Log.Info(
             $"[{RunmobileMod.ModId}] revealed decision " +
             $"{(entry.StepsTaken + 1).ToString(CultureInfo.InvariantCulture)} of " +
@@ -608,30 +708,31 @@ internal static class RecordedFightRun
     private const int SettlingAttempts = 25;
 
     /// <summary>
-    /// Reveals as soon as the screen will take it.
+    /// Asks the screen as soon as it will answer: for its arrival, or for the reveal.
     ///
     /// The retry is for one measured cause and no other: the game animates a screen's
-    /// controls in and enables them at the end of it, so a reveal issued the moment
+    /// controls in and enables them at the end of it, so a reading taken the moment
     /// the run reaches the screen is refused by a control that cannot yet take focus.
     /// A screen that cannot be driven at all is not retried - that refusal is passed
     /// straight out, and so is this one once the budget is spent.
     ///
-    /// Each pass lights a control in the game's own screen, so the loop belongs to the
-    /// journey that started it: five seconds is long enough for the player to have
+    /// A reveal pass lights a control in the game's own screen, so the loop belongs to
+    /// the journey that started it: five seconds is long enough for the player to have
     /// abandoned the run, and a retry landing after that would select a node in a run
-    /// the trainer does not own. It gives up silently there - the run it was revealing
-    /// for is gone, so there is nothing to refuse and nothing to say.
+    /// the trainer does not own. It gives up there - the run it was asking for is gone,
+    /// so there is nothing to refuse and nothing to say - and the caller's own guard
+    /// drops the default it answers with.
     /// </summary>
-    private static async Task<string> RevealWhenTheScreenIsReady(PrefightTarget target)
+    private static async Task<T> WhenTheScreenIsReady<T>(Func<T> ask)
     {
         var mine = _entry;
         for (var attempt = 1; ; attempt++)
         {
-            if (!StillOurs(mine)) return string.Empty;
+            if (!StillOurs(mine)) return default!;
 
             try
             {
-                return RecordedFightReveal.Reveal(target);
+                return ask();
             }
             catch (RevealNotReadyException notReady) when (attempt < SettlingAttempts)
             {
@@ -668,7 +769,12 @@ internal static class RecordedFightRun
                 return;
             }
 
-            strip.OpenMenu(strip.Surface.Speed.Press == Press.OpenChipMenu ? Jump : ChooseSpeed);
+            strip.OpenMenu(strip.Surface.Speed.Press switch
+            {
+                Press.OpenChipMenu => Jump,
+                Press.OpenPostFightMenu => ChoosePostFight,
+                _ => ChooseSpeed,
+            });
         }
         catch (Exception ex)
         {
@@ -761,17 +867,22 @@ internal static class RecordedFightRun
     {
         try
         {
-            var recording = _entry?.Manifest;
+            // The same boundary it was entered at, whichever row of the library put
+            // the player there: a fight entered from its own row and repeated must not
+            // come back as the recording's first fight.
+            var recording = _afterTheFight?.Manifest ?? _entry?.Manifest;
+            var plan = _afterTheFight?.Plan ?? _entry?.Plan;
 
             // The attempt is being discarded rather than left, so the result the
             // teardown queues for it is dropped before the return that would show it.
+            PrefightScreen.Close();
             await LeaveTheRun(keepTheResult: false);
             Finish();
 
             // Only once the menu is back: the game's own return task completing is the
             // signal the run it is tearing down has gone, and building the next run
             // over it is building it on the old one.
-            if (recording is not null) await Start(recording);
+            if (recording is not null && plan is not null) await Start(recording, plan);
         }
         catch (Exception ex)
         {
@@ -796,6 +907,10 @@ internal static class RecordedFightRun
     {
         try
         {
+            // Asked for by name - "the result is shown" - so this is an explicit
+            // reveal and the sitting remembers it as one, whatever the result says.
+            if (_entry is { } entry) MarkShownThisSitting(entry.Manifest.RunId, entry.Plan.Fight);
+
             _resultAfterMainMenu = FightResultScreen.Left();
             _ = LeaveTheRun(keepTheResult: true);
             Finish();
@@ -860,7 +975,11 @@ internal static class RecordedFightRun
     /// </summary>
     private static void ShowTransport()
     {
-        var state = _entry is { } entry ? PlaybackTransport.For(Phase, Facts(entry)) : null;
+        var state = _entry is { } entry
+            ? PlaybackTransport.For(Phase, Facts(entry))
+            : _afterTheFight is { } ended
+                ? PlaybackTransport.For(Phase, FactsAfter(ended))
+                : null;
 
         // Nothing is docked in the phases that have no surface, and detaching is how
         // that is said. It is idempotent, so the paths that also tear the strip down
@@ -876,7 +995,7 @@ internal static class RecordedFightRun
         // phase, which is before the first reveal lands, and consuming the note there
         // spent it on a window nothing was on screen for: measured in the client, it
         // was drawn and gone inside one deferred call.
-        _noteShown |= state.Note.Length > 0 && _revealed;
+        _noteShown |= state.Note.Length > 0 && _lit;
 
         if (PlaybackTransportDock.Current is null)
         {
@@ -910,18 +1029,61 @@ internal static class RecordedFightRun
     /// still should: that is the refusal, arriving where it can be reported.
     /// </summary>
     private static TransportFacts Facts(RecordedFightEntry entry) => new(
-        Identity(entry),
+        Identity(entry.Manifest, entry.NextStep),
         Shown,
         Phase == JourneyPhase.Watching && !entry.AtBoundary ? entry.DescribeNextStep() : null,
         entry.StepsTaken,
         entry.Plan.PrefixActions.Count,
         entry.AtBoundary,
-        _revealed,
+        _arrived,
+        _lit,
+        _nextOptions,
         _lookingBackAt,
         _playing,
         _noteShown,
         Speed,
-        AnythingPlayed(entry));
+        AnythingPlayed(entry),
+        _afterTheFight is { } ended ? PostFightFactsFor(ended) : null);
+
+    /// <summary>The same, once the run that fought is gone and only the ended fight
+    /// remains: every fact about decisions is spent, and the post-fight choice is the
+    /// whole of what there is to derive.</summary>
+    private static TransportFacts FactsAfter(EndedFight ended) => new(
+        Identity(ended.Manifest, null),
+        Shown,
+        null,
+        0,
+        0,
+        AtCombatStart: true,
+        Arrived: false,
+        Lit: false,
+        NextOptionCount: null,
+        LookingBackAt: null,
+        Playing: false,
+        NoteShown: _noteShown,
+        Speed,
+        AnythingPlayed: true,
+        PostFightFactsFor(ended));
+
+    /// <summary>
+    /// What the post-fight choice is derived from, read at the moment it is derived.
+    ///
+    /// Neither capability is this build's: the recording's fight cannot yet be run
+    /// through the engine inside the client, and the run cannot yet be handed to the
+    /// player after their fight. Both rows are absent rather than refused, by the
+    /// choice's own rule, until the phases that add them merge.
+    /// </summary>
+    private static PostFightFacts PostFightFactsFor(EndedFight ended) => new(
+        Won: ended.Screen.Won,
+        ComparisonShown: CombatTrainerModule.Instance.WasShownThisSitting(ended.Manifest.RunId, ended.Fight),
+        FightWatched: false,
+        CanWatch: false,
+        CanContinueAsYou: false);
+
+    private static void MarkShownThisSitting(string runId, int? fight)
+    {
+        if (fight is { } ordinal) CombatTrainerModule.Instance.MarkShownThisSitting(runId, ordinal);
+    }
 
     /// <summary>
     /// Whose recording this is, and where in the video the decision being shown was
@@ -932,15 +1094,15 @@ internal static class RecordedFightRun
     /// one; the timestamp is the action's own observation, so the link opens where the
     /// move actually happens rather than at the start of a thirty-four minute video.
     /// </summary>
-    private static TransportIdentity Identity(RecordedFightEntry entry)
+    private static TransportIdentity Identity(ReplayManifest manifest, ActionRecord? nextStep)
     {
         // A manifest with no video record still names its creator; what it loses is
         // the title and the link. Absent rather than invented, so the tag falls back
         // to the name alone and the block simply does not open anything.
-        var video = entry.Manifest.Source.Video;
-        var at = _lookingBackAt is null ? VideoTimeOf(entry.NextStep) : null;
+        var video = manifest.Source.Video;
+        var at = _lookingBackAt is null ? VideoTimeOf(nextStep) : null;
         return new TransportIdentity(
-            RecordingIdentity.Creator(entry.Manifest),
+            RecordingIdentity.Creator(manifest),
             video?.Title,
             video is null
                 ? null
@@ -1131,7 +1293,7 @@ internal static class RecordedFightRun
     /// proved to run here - the popup's own focus grab already relies on it - and
     /// end-of-frame is after the transition the decision started.
     /// </summary>
-    private static void RevealWhenTheGameHasFinishedMoving()
+    private static void ArriveWhenTheGameHasFinishedMoving()
     {
         var mine = _entry;
         Callable.From(async void () =>
@@ -1143,7 +1305,7 @@ internal static class RecordedFightRun
 
             try
             {
-                await RevealNext();
+                await ArriveNext();
             }
             catch (Exception ex)
             {
@@ -1297,13 +1459,15 @@ internal static class RecordedFightRun
     }
 
     /// <summary>
-    /// The player's fight is over. Computes what the result screen says, then puts
-    /// it up once the game has finished drawing the ending.
+    /// The player's fight is over. Computes what the result screen says, then
+    /// offers the post-fight choice once the game has finished drawing the ending.
     ///
-    /// Computed first and shown later, on purpose. On a loss the game's own flow
-    /// tears the run down on its way to the death screen, and this entry with it; a
-    /// result computed after that would have nothing to read. The screen is data, so
-    /// it survives the run it describes.
+    /// Computed first and drawn only when asked, on purpose. Computed first because on
+    /// a loss the game's own flow may tear the run down on its way to the death
+    /// screen, and this entry with it; the screen is data and survives the run it
+    /// describes. Drawn only when asked because the mod never volunteers the
+    /// recording's answer: what goes up after the two seconds is the choice, and the
+    /// comparison is its first row.
     /// </summary>
     private static async void TheFightEnded()
     {
@@ -1319,37 +1483,151 @@ internal static class RecordedFightRun
                 CombatTrainerModule.Instance.RecordedFights.Projection(entry.Fight));
             _observer?.Dispose();
             _observer = null;
+            _afterTheFight = new EndedFight(entry.Manifest, entry.Plan, entry.Fight, screen);
             Transition(JourneyPhase.Result);
             Log.Info(
                 $"[{RunmobileMod.ModId}] result: " +
-                (screen.HasComparison ? $"comparison, {screen.Rows.Count} row(s)" : screen.Notice), 2);
+                (screen.HasComparison
+                    ? $"comparison, {screen.Rows.Count} row(s), {(screen.Won ? "won" : "not won")}"
+                    : screen.Notice) +
+                "; held until asked for", 2);
 
             await LetTheGameRun(EndingTheFightSeconds);
 
-            // No stale-journey guard here, and that is the point of computing the
-            // screen first: on a loss the game's own flow has torn the run down during
-            // this wait, so a continuation that stopped because the entry had gone
-            // would drop the comparison the fight was played for. Detaching is about
-            // the transport rather than the journey and is idempotent, so it is safe
-            // whether or not the strip is still there.
-            PlaybackTransportDock.Detach();
-            PrefightScreen.ShowResult(screen, LeaveTheFight);
+            // No stale-journey guard on the entry here, and that is the point of
+            // holding the ended fight apart from it: on a loss the game's own flow may
+            // have torn the run down during this wait, and the choice is owed either
+            // way. Only a journey that has since been left has nothing to offer.
+            if (!ReferenceEquals(_afterTheFight?.Screen, screen)) return;
+
+            OfferTheChoice();
         }
         catch (Exception ex)
         {
-            // On a loss the run is already gone by the time the result is shown, so a
-            // failure here has no run to abandon and would otherwise vanish silently.
+            // On a loss the run may already be gone by the time the choice is offered,
+            // so a failure here has no run to abandon and would otherwise vanish silently.
             if (StillOurs(entry)) Abandon(ex);
             else Log.Error(
-                $"[{RunmobileMod.ModId}] the fight's result could not be shown after the run ended: " +
+                $"[{RunmobileMod.ModId}] the post-fight choice could not be offered after the run ended: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 
     /// <summary>
-    /// Done. The run is discarded the way a refused entry's is: it was never the
+    /// Hangs the post-fight choice under the chip, or where the chip's parent did not
+    /// survive the game's ending, puts it in the game's modal container instead.
+    ///
+    /// On a win the loot screen stays visible and locked under it; nothing dims. On a
+    /// loss the same, over the game's own ending, wherever the run's persistent
+    /// interface is still there to hang from - the game pushes its ending onto that
+    /// interface's own overlay stack, so it is expected to be. Which of the two
+    /// happened is logged, because it is a fact about the retail client this code
+    /// reads rather than assumes.
+    /// </summary>
+    private static void OfferTheChoice()
+    {
+        if (_afterTheFight is null) return;
+
+        Transition(JourneyPhase.Ended);
+        if (PlaybackTransportDock.Current is { } strip &&
+            GodotObject.IsInstanceValid(strip.Root) && strip.Root.IsInsideTree())
+        {
+            strip.OpenMenu(ChoosePostFight);
+            Log.Info($"[{RunmobileMod.ModId}] offered the post-fight choice under the chip", 2);
+            return;
+        }
+
+        Log.Info(
+            $"[{RunmobileMod.ModId}] the transport did not survive the game's ending; offering the " +
+            "post-fight choice in the modal container instead", 2);
+        OfferTheChoiceInTheModalContainer();
+    }
+
+    /// <summary>
+    /// The same rows, drawn in the game's own popup in the modal container, for the
+    /// case where there is no chip to hang them under.
+    ///
+    /// The library's screen already draws a column of rows in the game's popup, and
+    /// its ribbon is the leave. It carries neither glyph nor dot; it is the fallback
+    /// placement the design names, and every row presses the same action.
+    /// </summary>
+    private static void OfferTheChoiceInTheModalContainer()
+    {
+        var ended = _afterTheFight;
+        if (ended is null) return;
+
+        var choice = PostFightChoice.For(RecordingIdentity.Creator(ended.Manifest), PostFightFactsFor(ended));
+        var rows = new List<ScreenRow>();
+        for (var index = 0; index < choice.Rows.Count; index++)
+        {
+            if (choice.Rows[index].Action == PostFightAction.Leave) continue;
+
+            var row = index;
+            rows.Add(new ScreenRow(choice.Rows[index].Row.Label, Enabled: true, () => ChoosePostFight(row)));
+        }
+
+        LibraryScreen.Show(TrainerCopy.Name, string.Empty, rows, TrainerCopy.Leave, back: LeaveTheFight);
+    }
+
+    /// <summary>
+    /// One row of the post-fight choice, pressed.
+    ///
+    /// The row is mapped to its action by the choice itself, so a row absent on this
+    /// outcome cannot be reached by counting. Showing the comparison is the one thing
+    /// here that reveals, and the sitting remembers it before the panel goes up.
+    /// </summary>
+    private static void ChoosePostFight(int row)
+    {
+        try
+        {
+            var ended = _afterTheFight;
+            if (ended is null) return;
+
+            var choice = PostFightChoice.For(RecordingIdentity.Creator(ended.Manifest), PostFightFactsFor(ended));
+            var action = choice.ActionAt(row);
+            Log.Info($"[{RunmobileMod.ModId}] the post-fight choice was asked to {action}", 2);
+
+            switch (action)
+            {
+                case PostFightAction.ShowTheComparison:
+                    MarkShownThisSitting(ended.Manifest.RunId, ended.Fight);
+                    ShowTransport();
+                    PrefightScreen.ShowResult(ended.Screen, ReturnToTheChoice);
+                    break;
+                case PostFightAction.FightItAgain:
+                    StartTheFightAgain();
+                    break;
+                case PostFightAction.Leave:
+                    LeaveTheFight();
+                    break;
+                default:
+                    // Absent on this build by the choice's own rule, so a press here
+                    // is a row that was never drawn.
+                    Log.Warn($"[{RunmobileMod.ModId}] {action} is not offered on this build; ignoring.", 2);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not take the post-fight choice: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    /// <summary>Done on the comparison panel: closes it and returns to the choice,
+    /// which now carries the dot on the row just taken.</summary>
+    private static void ReturnToTheChoice()
+    {
+        PrefightScreen.Close();
+        OfferTheChoice();
+    }
+
+    /// <summary>
+    /// Leave. The run is discarded the way a refused entry's is: it was never the
     /// player's, it is never saved, and the game's own end-of-run path is what lowers
-    /// the write barrier.
+    /// the write barrier. The choice's Leave row and the game's own Continue on its
+    /// ending both come here.
     /// </summary>
     private static void LeaveTheFight()
     {
@@ -1497,6 +1775,7 @@ internal static class RecordedFightRun
         var observer = _observer;
         _entry = null;
         _observer = null;
+        _afterTheFight = null;
         _authorising = false;
         _playing = false;
         _committing = false;
@@ -1505,7 +1784,9 @@ internal static class RecordedFightRun
         _sweep++;
         _lookingBackAt = null;
         _noteShown = false;
-        _revealed = false;
+        _arrived = false;
+        _lit = false;
+        _nextOptions = null;
         Shown.Clear();
 
         // Last, and after the entry has gone: there is no surface for a journey that
@@ -1532,6 +1813,16 @@ internal static class RecordedFightRun
         }
     }
 
+    /// <summary>
+    /// The game has cleaned the run up. A fight still being fought was left; a fight
+    /// that had ended keeps its choice.
+    ///
+    /// The second case is the one this patch exists for now: the run may be torn down
+    /// by the game's own flow while the choice is owed, so the run's own things - the
+    /// entry, the observer, the write barrier - are released and the ended fight, the
+    /// phase and the transport are left as they are. The return to the main menu, by
+    /// the choice's Leave or the game's own Continue, is what finishes the journey.
+    /// </summary>
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.CleanUp))]
     internal static class TrainerRunTeardown
     {
@@ -1545,7 +1836,45 @@ internal static class RecordedFightRun
                 return;
             }
 
+            if (Phase is JourneyPhase.Result or JourneyPhase.Ended)
+            {
+                ReleaseTheRun();
+                return;
+            }
+
             if (Phase != JourneyPhase.None || ProfileWriteBarrier.IsActive) Finish();
+        }
+    }
+
+    /// <summary>Lets the run go and keeps the ended fight. The barrier is lowered
+    /// here because the game's own end-of-run path is what lowers it, and this is
+    /// that path arriving.</summary>
+    private static void ReleaseTheRun()
+    {
+        var entry = _entry;
+        var observer = _observer;
+        _entry = null;
+        _observer = null;
+        _authorising = false;
+        _playing = false;
+        _committing = false;
+        _hold++;
+        _sweep++;
+        try
+        {
+            RecordedFightReveal.Clear();
+            observer?.Dispose();
+            entry?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not release the ended fight's run: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+        finally
+        {
+            ProfileWriteBarrier.Lower();
         }
     }
 
@@ -1561,6 +1890,15 @@ internal static class RecordedFightRun
         try
         {
             await returning;
+
+            // The game's own Continue on its ending is the leave: a journey that was
+            // still offering its choice when the main menu came back is over.
+            if (Phase is JourneyPhase.Result or JourneyPhase.Ended)
+            {
+                PrefightScreen.Close();
+                Finish();
+            }
+
             if (_resultAfterMainMenu is not { } screen) return;
 
             _resultAfterMainMenu = null;
@@ -1579,6 +1917,55 @@ internal static class RecordedFightRun
     {
         PrefightScreen.Close();
         Finish();
+    }
+
+    /// <summary>
+    /// Keeps the loot the won fight offers where it is while the post-fight choice
+    /// is up.
+    ///
+    /// On a win the game's rewards screen stays visible under the chip and nothing
+    /// dims it, so a player could otherwise take a relic or press the game's own
+    /// proceed and move the run past the fight the choice is about. The loot rows are
+    /// the recording's next decisions, not the player's, and until the transport can
+    /// walk them the only ways off this screen are the choice's own. Three prefixes on
+    /// the screen's own handlers, because the rewards have no engine command the way
+    /// an event option does; each does nothing at every other moment.
+    /// </summary>
+    [HarmonyPatch]
+    internal static class LootLock
+    {
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(NRewardButton), "OnRelease")]
+        internal static bool NothingIsTakenFromTheEndedFightsLoot() => Allowed("take a reward");
+
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(NRewardsScreen), "OnProceedButtonPressed")]
+        internal static bool TheChoiceIsTheOnlyWayOffTheLoot() => Allowed("proceed past the rewards");
+
+        private static bool Allowed(string what)
+        {
+            if (Phase is not (JourneyPhase.Result or JourneyPhase.Ended)) return true;
+
+            Log.Info(
+                $"[{RunmobileMod.ModId}] ignoring an attempt to {what}: the fight has ended and the " +
+                "post-fight choice is the way on from here.", 2);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// A fight that has ended, apart from the run that fought it. See
+    /// <see cref="_afterTheFight"/>.
+    /// </summary>
+    private sealed class EndedFight(ReplayManifest manifest, IBoundaryPlan plan, int fight, FightResultScreen screen)
+    {
+        internal ReplayManifest Manifest { get; } = manifest;
+
+        internal IBoundaryPlan Plan { get; } = plan;
+
+        internal int Fight { get; } = fight;
+
+        internal FightResultScreen Screen { get; } = screen;
     }
 
     /// <summary>

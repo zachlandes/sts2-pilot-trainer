@@ -227,9 +227,15 @@ through its end and its combat-start digest are the manifest's boundary of the s
 ordinal - so a file carrying five fights refuses on the one that drifted. A test
 regenerates it in a fresh process and compares.
 
-**The result is a panel this mod draws, after the fight stops.**
-For a completed fight, the result is computed the moment `CombatEnded` fires and drawn two seconds later, over the loot on a win or the death screen on a loss.
-Computed first on purpose: on a loss the game's own flow tears the run down on its way to the death screen, and the entry with it.
+**The result is a panel this mod draws, and only when asked for.**
+For a completed fight, the result is computed the moment `CombatEnded` fires and held; two seconds later, once the game has drawn its ending, the journey moves to `Ended` and the post-fight choice opens under the chip - Show the comparison, Fight it again, Leave - in place of a panel drawn unbidden.
+`PostFightChoice` in `Sts2PilotTrainer.Trainer` derives the rows and `RecordedFightRun.ChoosePostFight` presses them; the first draws this panel, and its Done returns to the choice.
+A lost fight is compared, Lost against Won: the projection treats a defeat as finished and the comparison carries the outcome row, so the notice that claimed there was no line to compare is retired.
+Computed first on purpose, and held apart from the run in `RecordedFightRun.EndedFight`: on a loss the game's own flow may tear the run down on its way to its ending, and the choice is owed either way.
+`TrainerRunTeardown` therefore releases the run and keeps the ended fight when the fight is over, and the return to the main menu - the choice's Leave or the game's own Continue on its ending - is what finishes the journey.
+The loot a won fight offers stays visible under the choice and `LootLock` keeps it where it is: the reward buttons and the game's proceed are prefixed to do nothing while the fight is over, because those rows are the recording's next decisions and the choice is the only way on.
+Whether the run's persistent interface survives the game's ending decides where the choice is drawn - under the chip where it does, in the game's modal container where it does not - and `RecordedFightRun.OfferTheChoice` reads that live and logs which happened rather than assuming either.
+What the sitting remembers is `CombatTrainerModule`'s in-memory set of (run, fight) pairs shown this sitting, written nowhere: it draws the dot on a post-fight row already taken and the hollow-eye mark on the fight's row in the run view, and gates nothing.
 Leaving through the game's menu instead records the abandoned notice during cleanup and shows it over the main menu once the return finishes.
 `FightResultPanel` draws it: the summary as figures in two columns, the turn chronology as the game's own card and potion art in the order they were played, and the chart of what each turn cost either side.
 The two lines are told apart by colour and by the shape of their chart markers, and the same two colours run through the columns, the card borders and the lines, so a column, an icon and a line read as one fighter.
@@ -461,9 +467,12 @@ It hangs from an anchor measured off the game's own furniture: the bottom of the
 Both halves are load-bearing. `NTopBar` is a full-screen control whose rect ends at the bottom of the viewport, so measuring the node itself puts the tag off the screen; and the band's left carries the run's relic inventory, which grows, so a centred or left-hung surface covers relics by about the ninth one.
 `PrefightScreen` keeps only the two things a popup is actually for: a refusal, and the result of the player's fight.
 
-**Reveal, hold, commit, and Back is none of them.**
-`RecordedFightReveal` applies the game's own selected state to what the recording is about to choose and never its click path: `GrabFocus` is what a control's own `OnFocus` runs off, and on the map `NSelectionReticle.OnSelect` lights the ring directly so it survives the player moving focus to the transport.
-The hold is the strip waiting - for the player under Forward, for a `SceneTreeTimer` under Play, shorter on the map because the game supplies a second of its own before the fade.
+**Consider, reveal, commit, and Back is none of them.**
+`RecordedFightReveal.Arrive` establishes that the screen has arrived and holds the thing the recording chose, lights nothing, and answers how many options the screen offers; `RecordedFightRun.ArriveNext` puts the transport on the arrived screen with nothing lit, and that is the consider hold.
+A screen with one option has no consider hold and arrival goes straight to the reveal; the count is the map's own `Travelable` points or the event layout's option buttons, read on arrival.
+`RecordedFightReveal.Reveal` then applies the game's own selected state to what the recording is about to choose and never its click path: `GrabFocus` is what a control's own `OnFocus` runs off, and on the map `NSelectionReticle.OnSelect` lights the ring directly so it survives the player moving focus to the transport.
+Each hold is the strip waiting - for the player under Forward, for a `SceneTreeTimer` under Play, shorter on the map because the game supplies a second of its own before the fade - so Forward is pressed twice per decision and under Play the two holds drain one after the other on the same timer.
+`Relight` puts a reveal back only once there has been one; during the consider hold pressing a control lights nothing.
 The commit is `RecordedFightEntry.AdvanceOneStep`, unchanged.
 Back re-shows a decision already made from what the host wrote down at the moment it was revealed; there is no path that uncommits one, and the run is never rewound to answer.
 A target the host cannot resolve - no screen, a coordinate this act does not draw, an option row granting a different relic - ends the attempt with the reason rather than committing a decision unseen.

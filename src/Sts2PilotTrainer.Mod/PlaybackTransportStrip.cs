@@ -528,8 +528,9 @@ internal sealed class PlaybackTransportStrip
     ///
     /// Drawn only while there are few enough to be read at a glance; the numerals are
     /// always there, so a whole run loses the picture and keeps the fact. Done is a
-    /// filled grey dot, the current one is teal, the ones ahead are hollow, and the
-    /// one being looked at is ringed.
+    /// filled grey dot, the current one is teal - filled once the decision is revealed
+    /// and hollow while it is considered - the ones ahead are hollow, and the one
+    /// being looked at is ringed.
     /// </summary>
     private void ApplyPips(TransportCounter counter, TransportSurface surface, float x, float y)
     {
@@ -542,7 +543,7 @@ internal sealed class PlaybackTransportStrip
         {
             var centre = new Vector2(x + ((step - 1) * PipPitch * _unit), y);
             var (radius, colour, filled) = step == counter.Current
-                ? (2.9f, Teal, true)
+                ? (2.9f, Teal, counter.Lit)
                 : step < counter.Current ? (2.9f, Muted, true) : (2.6f, Dim, false);
 
             _pips.AddChild(filled
@@ -661,8 +662,8 @@ internal sealed class PlaybackTransportStrip
         }
     }
 
-    /// <summary>The speed menu, or the chip's two directions, hung in the same shape
-    /// as the ledger so they read as one family.</summary>
+    /// <summary>The speed menu, the chip's two directions or the post-fight choice,
+    /// hung in the same shape as the ledger so they read as one family.</summary>
     private void ApplyMenu(PlaybackTransport state, float left, float width)
     {
         Clear(_menu);
@@ -671,7 +672,7 @@ internal sealed class PlaybackTransportStrip
         if (!_menu.Visible) return;
 
         var rowHeight = 32 * _unit;
-        var chip = _openMenu == Code(MenuKind.Chip);
+        var chip = _openMenu == Code(MenuKind.Chip) || _openMenu == Code(MenuKind.PostFight);
         var menuWidth = (chip ? 260 : 96) * _unit;
         var menuHeight = (10 * _unit) + (rowHeight * rows.Count);
         var menuLeft = chip ? left + width - menuWidth : left + (192 * _unit);
@@ -756,7 +757,7 @@ internal sealed class PlaybackTransportStrip
     /// <summary>The rows the open menu is showing, read from the state rather than
     /// held.</summary>
     private IReadOnlyList<MenuRow> OpenRows =>
-        _openMenu == Code(MenuKind.Chip) ? _state.ChipMenu
+        _openMenu == Code(MenuKind.Chip) || _openMenu == Code(MenuKind.PostFight) ? _state.ChipMenu
         : _openMenu == Code(MenuKind.Speed) ? _state.SpeedMenu
         : [];
 

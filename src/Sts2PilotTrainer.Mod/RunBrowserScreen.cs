@@ -113,8 +113,10 @@ internal static class RunBrowserScreen
                 return;
             }
 
-            var view = RunView.For(recording, RunLibraryStore.ReadProgress(), floor);
-            var rows = new List<ScreenRow>(EnteringRows(view, runId));
+            var view = RunView.For(
+                recording, RunLibraryStore.ReadProgress(), floor,
+                CombatTrainerModule.Instance.FightsShownThisSitting(runId));
+            var rows = new List<ScreenRow>(EnteringRows(view, runId, RecordingIdentity.CreatorOrNull(recording)));
 
             if (view.Positions.Count > 1)
             {
@@ -149,7 +151,10 @@ internal static class RunBrowserScreen
     /// Primitives only in what the lambdas capture, for the load-order reason OpenTab
     /// records.
     /// </summary>
-    internal static IReadOnlyList<ScreenRow> EnteringRows(RunView view, string runId)
+    /// <param name="creator">Whose recording it is, for the sentence behind the
+    /// shown-this-sitting mark; a recording that names nobody carries the mark with
+    /// the feature's own name in its place.</param>
+    internal static IReadOnlyList<ScreenRow> EnteringRows(RunView view, string runId, string? creator = null)
     {
         var rows = new List<ScreenRow>();
         foreach (var row in view.Rows)
@@ -159,7 +164,10 @@ internal static class RunBrowserScreen
             var fight = row.Fight;
             var atFloor = row.Floor;
             rows.Add(new ScreenRow(
-                row.Label, row.Enabled, () => Enter(id, kind, fight, atFloor), row.Note, row.Reason));
+                row.Label, row.Enabled, () => Enter(id, kind, fight, atFloor), row.Note, row.Reason,
+                MarkTooltip: row.ShownThisSitting
+                    ? TrainerCopy.ShownThisSittingTooltip(creator ?? TrainerCopy.Name)
+                    : null));
         }
 
         return rows;

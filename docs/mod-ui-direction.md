@@ -90,7 +90,12 @@ There is no always-visible caption line; step's tooltip names the decision it is
 **The glyph family is the mod's own art**, because the game ships none - no play, pause, step or skip shape appears in any resource `sts2.dll` references.
 One rule carries meaning rather than decoration: **a filled shape moves the run, a hollow shape only looks.**
 
-**States.** Holding, with the target lit by the game's own selected state. Playing, with the hold drawn as a line draining along the tag's foot.
+**States.** Considering, with the game's screen arrived and nothing lit: the viewer sees every option the recording saw and decides in their head, and step reveals rather than commits.
+Two drawn signals say which hold the tag is in, and nothing on the tag may say what the recording chose before the reveal: the mark loses its centre dot while there is nothing to point at, and the current pip is hollow until the reveal fills it.
+Step's tooltip there is "Show" with the counter and no caption; the caption naming the decision belongs to the second press.
+A screen with one option has no consider beat - the rule is on the decision's option count, read from the screen on arrival, and arrival is the reveal there.
+Holding, with the target lit by the game's own selected state, exactly as before; the once-per-run note appears at the first reveal and not before it.
+Playing, with each hold drawn as a line draining along the tag's foot, the consider hold and the reveal hold one after the other on the same timer.
 Looking back, with a ledger of the decisions already made hung beneath - it exists because those screens are gone, and the run must never be rewound to answer for them.
 Step is offered there and walks the view forward through the ledger rather than committing, so its tooltip drops the sentence promising a commit; the counter and the caption still say which decision is on screen.
 A control's tooltip is part of what it is: one that names an action it does not perform is the same defect as one that cannot be pressed.
@@ -100,7 +105,13 @@ The one exception is play once it is already running: it is drawn as pause there
 The speed control is offered, as it is in Opening.
 The two ways look back can be refused stay distinguishable in the model, because nothing behind yet and not yet are different answers to somebody who pressed.
 The chip during the player's own fight: the mark and the name, silent until pressed.
-It stays exactly as it is for the couple of seconds between the fight ending and the result panel arriving, drawn and pressable, with both of its rows refused - both act on a fight that no longer exists.
+It stays exactly as it is for the couple of seconds the game takes to draw its own ending, drawn and pressable, with both of its rows refused - both act on a fight that no longer exists.
+Ended, once the ending is drawn: the chip stays and the post-fight choice hangs under it in the chip menu's own shape, opened on its own and re-opened by pressing the chip.
+The rows are the teaching's order - look, then act - and are present or absent, never disabled: Show the comparison, Fight it again and Leave on this build, with Watch {creator}'s fight and Continue as you absent until the phases that add them merge, and Continue as you always absent on a loss.
+Nothing about the recording's line is drawn unbidden; the comparison panel is the first row's, and its Done returns to the choice.
+The glyph rule extends by one shape there: **a hollow eye is a reveal that only looks.**
+A row already taken this sitting carries the teal dot the speed menu uses for "the one you are in", and the same hollow eye marks the fight's row in the run view; that state is in memory for the sitting, never written, and gates nothing.
+On a win the menu hangs over the loot screen, which stays visible and locked; on a loss it hangs the same way over the game's own ending, from the run's persistent interface, and where that interface did not survive the ending it is drawn in the game's modal container instead.
 Refused: the mark becomes the warning glyph and every control is drawn and refused, the speed control included - in the model.
 It is not on screen today: the teardown applies the refused state and detaches the tag inside one call stack, so no frame is ever drawn with it.
 The state stays because it is what keeps the derivation total - every phase a journey can be in has an answer - and the sentence a player actually reads on a refusal is the popup's.

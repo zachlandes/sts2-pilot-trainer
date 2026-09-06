@@ -153,7 +153,11 @@ internal static partial class Commands
                     StepsTaken: entry.StepsTaken,
                     Count: plan.PrefixActions.Count,
                     AtCombatStart: false,
-                    Revealed: true,
+                    Arrived: true,
+                    Lit: true,
+                    // Headless, there is no screen to count options on, and the printed
+                    // journey reveals each decision as it prints it.
+                    NextOptionCount: null,
                     LookingBackAt: null,
                     Playing: false,
                     NoteShown: noteShown,

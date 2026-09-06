@@ -36,6 +36,11 @@ public enum RunViewRowKind
 /// exists, and a row that vanished on some floors and reappeared on others would read
 /// as the screen changing shape rather than as this floor having no fight.
 /// </summary>
+/// <param name="ShownThisSitting">Whether the recording's line for this row's fight
+/// has been shown this sitting - the comparison drawn, or the attempt finished by
+/// name. Draws the hollow-eye mark beside the row and gates nothing: a rehearsal of
+/// a line just seen is a teaching move of its own, and the mark is there so the
+/// player knows which kind of attempt this is.</param>
 public sealed record RunViewRow(
     RunViewRowKind Kind,
     string Label,
@@ -43,7 +48,8 @@ public sealed record RunViewRow(
     bool Enabled,
     string? Reason = null,
     int? Fight = null,
-    int? Floor = null);
+    int? Floor = null,
+    bool ShownThisSitting = false);
 
 /// <summary>
 /// One run, opened: every place the recording proves a player can be stood, and the
@@ -79,8 +85,12 @@ public sealed record RunView(
     /// <paramref name="selectedFloor"/> null selects the first place the strip offers,
     /// which is where a player who has just opened the run is standing.
     /// </summary>
+    /// <param name="shownThisSitting">The fights of this recording whose line has been
+    /// shown this sitting. Held in memory by whoever draws the comparison and never
+    /// written, so a later launch passes nothing and every fight is cold again.</param>
     public static RunView For(
-        ReplayManifest recording, RunProgress progress, int? selectedFloor = null)
+        ReplayManifest recording, RunProgress progress, int? selectedFloor = null,
+        IReadOnlyCollection<int>? shownThisSitting = null)
     {
         var positions = PositionsIn(recording);
         var selected = selectedFloor is { } floor
@@ -93,7 +103,7 @@ public sealed record RunView(
             recording.RunId,
             positions,
             selected,
-            RowsFor(recording, progress, selected, fights),
+            RowsFor(recording, progress, selected, fights, shownThisSitting ?? []),
             played,
             fights.Count,
             LibraryCopy.FloorIsYours);
@@ -164,11 +174,11 @@ public sealed record RunView(
 
     private static IReadOnlyList<RunViewRow> RowsFor(
         ReplayManifest recording, RunProgress progress, RunViewPosition? selected,
-        IReadOnlyList<int> fights)
+        IReadOnlyList<int> fights, IReadOnlyCollection<int> shownThisSitting)
     {
         var rows = new List<RunViewRow>
         {
-            FightRow(selected),
+            FightRow(selected, shownThisSitting),
             FloorRow(selected),
         };
 
@@ -200,7 +210,7 @@ public sealed record RunView(
         return rows;
     }
 
-    private static RunViewRow FightRow(RunViewPosition? selected) =>
+    private static RunViewRow FightRow(RunViewPosition? selected, IReadOnlyCollection<int> shownThisSitting) =>
         selected?.Fight is { } fight
             ? new RunViewRow(
                 RunViewRowKind.PlayFromFight,
@@ -208,7 +218,8 @@ public sealed record RunView(
                 LibraryCopy.PlayFromThisFightNote,
                 Enabled: true,
                 Fight: fight,
-                Floor: selected.Floor)
+                Floor: selected.Floor,
+                ShownThisSitting: shownThisSitting.Contains(fight))
             : new RunViewRow(
                 RunViewRowKind.PlayFromFight,
                 LibraryCopy.PlayFromThisFight,

@@ -10,6 +10,14 @@ public enum TransportMode
     /// and the tag is holding on it.</summary>
     Watching,
 
+    /// <summary>The game's screen has arrived and nothing is lit. The viewer sees
+    /// every option the recording saw and decides in their head; step reveals. The
+    /// same elements as Watching with two drawn differences: the mark has no centre
+    /// dot and the current pip is hollow, because the mod has nothing to point at
+    /// yet. Between screens it is this mode with everything that moves the run
+    /// refused, the screen not having arrived.</summary>
+    Considering,
+
     /// <summary>The player pressed look back. A decision already made is being
     /// re-shown over a ledger of the ones before it; the run has not moved.</summary>
     LookingBack,
@@ -22,6 +30,11 @@ public enum TransportMode
     /// <summary>The fight is the player's. The tag is a chip and says nothing until
     /// it is pressed.</summary>
     Chip,
+
+    /// <summary>The fight has ended and the game has drawn its ending. The chip stays
+    /// and the post-fight choice hangs under it; nothing about the recording's line is
+    /// drawn until a row is pressed.</summary>
+    Ended,
 
     /// <summary>A screen could not be driven. The mark becomes the warning glyph and
     /// every control is refused; the sentence itself is a popup's, not the tag's.</summary>
@@ -58,6 +71,19 @@ public enum TransportGlyph
 
     /// <summary>The trainer's mark, which is the reticle the reveal lights.</summary>
     Mark,
+
+    /// <summary>The mark with nothing to point at yet: ring and ticks, no centre dot.
+    /// Not a new glyph but the mark while a decision is considered and not yet
+    /// revealed.</summary>
+    MarkUnlit,
+
+    /// <summary>Hollow eye: a reveal that only looks. Shows the comparison, and marks a
+    /// fight shown this sitting.</summary>
+    Reveal,
+
+    /// <summary>Filled triangle with a hollow bar after it: the run goes on and the
+    /// hold is the player's.</summary>
+    Continue,
 
     /// <summary>A refusal is up.</summary>
     Warn,
@@ -106,7 +132,10 @@ public sealed record TransportIdentity(
 /// of them to be read at a glance, which is what keeps this honest on a whole run
 /// rather than on the two decisions this recording has.
 /// </summary>
-public sealed record TransportCounter(int Current, int Count, int? LookingAt)
+/// <param name="Lit">Whether the current decision is revealed. The current pip is
+/// filled once it is and hollow until then, which is one of the two drawn signals
+/// that a decision is being considered rather than shown.</param>
+public sealed record TransportCounter(int Current, int Count, int? LookingAt, bool Lit = true)
 {
     /// <summary>Above this many decisions the pips stop being a picture and start
     /// being a texture.</summary>
@@ -215,9 +244,14 @@ public enum JourneyPhase
     /// Every action they take is being sampled either side.</summary>
     InFight,
 
-    /// <summary>The fight has ended and its result is on screen. The run still exists
-    /// underneath until the player leaves.</summary>
+    /// <summary>The fight has ended and the game is drawing its ending. The chip
+    /// stays, with both of its rows refused, until the ending is drawn.</summary>
     Result,
+
+    /// <summary>The game has drawn its ending and the post-fight choice is on offer.
+    /// The run may still exist underneath, on a win, or have been torn down by the
+    /// game's own flow, on a loss; the choice is the same either way.</summary>
+    Ended,
 
     /// <summary>A screen could not be driven and the attempt is being torn down.</summary>
     Refused,
@@ -241,11 +275,19 @@ public enum JourneyPhase
 /// <param name="Next">The decision about to be made, absent once there is none.</param>
 /// <param name="AtCombatStart">Whether every recorded decision is behind the run, which
 /// is the window in which the game is opening the fight.</param>
-/// <param name="Revealed">Whether the decision about to be made is on the game's own
-/// screen yet. Between committing one and revealing the next it is not, and a step
-/// taken there would commit a decision nobody was shown.</param>
+/// <param name="Arrived">Whether the game's screen for the decision about to be made
+/// is up and still. Between committing one decision and the next screen arriving it
+/// is not, and a press there acts on a state nobody has been shown.</param>
+/// <param name="Lit">Whether the decision about to be made is lit on the game's own
+/// screen. Arrived and not lit is the consider hold; a step taken before it is lit
+/// would commit a decision nobody was shown, so step reveals there instead.</param>
+/// <param name="NextOptionCount">How many options the screen offers for the decision
+/// about to be made, read from the screen on arrival, or null where it could not be
+/// read. A screen with one option has no consider beat: arrival is the reveal.</param>
 /// <param name="AnythingPlayed">Whether the player has taken an action of their own in
 /// their own fight. One card is enough; it is not a completed turn.</param>
+/// <param name="AfterTheFight">What the post-fight choice is derived from, once the
+/// fight has ended. Null until then.</param>
 public sealed record TransportFacts(
     TransportIdentity Identity,
     IReadOnlyList<PrefightChoice> Made,
@@ -253,12 +295,26 @@ public sealed record TransportFacts(
     int StepsTaken,
     int Count,
     bool AtCombatStart,
-    bool Revealed,
+    bool Arrived,
+    bool Lit,
+    int? NextOptionCount,
     int? LookingBackAt,
     bool Playing,
     bool NoteShown,
     PlaybackSpeed Speed,
-    bool AnythingPlayed);
+    bool AnythingPlayed,
+    PostFightFacts? AfterTheFight = null)
+{
+    /// <summary>
+    /// Whether the decision about to be made gets a consider hold before its reveal.
+    ///
+    /// The rule is on the option count and not on the screen: where the recording
+    /// could only have done one thing there is nothing to consider, and arrival is the
+    /// reveal. A count that could not be read gets no hold either, because a hold on
+    /// a screen nobody counted would be the mod guessing there was a choice.
+    /// </summary>
+    public bool HasConsiderBeat => NextOptionCount is > 1;
+}
 
 /// <summary>
 /// The playback transport: one long-lived tag that carries the whole watched journey,
@@ -273,12 +329,16 @@ public sealed record TransportFacts(
 /// its material - flat where the game is textured - so a player reads "the game, then
 /// the mod" with no caption. See docs/mod-ui-direction.md.
 ///
-/// The vocabulary is reveal, hold, commit. Reveal applies the game's own selected
-/// state to the target without clicking; the hold is this model's Watching mode,
-/// waiting for the player under step and draining a timer under play; commit calls
-/// the game's own click path. Look back re-shows a decision already made and never
-/// uncommits one, which is why <see cref="TransportMode.LookingBack"/> is a way of
-/// reading rather than a way of moving.
+/// The vocabulary is consider, reveal, commit. The game's screen arrives with
+/// nothing lit and the tag holds there - this model's Considering mode - so the
+/// viewer sees every option the recording saw; reveal applies the game's own
+/// selected state to the target without clicking and the tag holds again, in
+/// Watching; commit calls the game's own click path. Step is therefore pressed
+/// twice per decision, and under play the two holds drain one after the other on
+/// the same timer. Nothing the viewer thought is captured, compared or scored. Look
+/// back re-shows a decision already made and never uncommits one, which is why
+/// <see cref="TransportMode.LookingBack"/> is a way of reading rather than a way of
+/// moving.
 ///
 /// Nothing here is written down about one recording. The creator and the video come
 /// from the manifest's source record, each caption's subject from the run the
@@ -294,10 +354,17 @@ public sealed record PlaybackTransport(
     TransportControl Step,
     IReadOnlyList<LedgerRow> Ledger,
     string Note,
-    IReadOnlyList<MenuRow> ChipMenu)
+    IReadOnlyList<MenuRow> ChipMenu,
+    PostFightChoice? PostFight = null)
 {
-    /// <summary>The mark, or the warning that replaces it while a refusal is up.</summary>
-    public TransportGlyph Mark => Mode == TransportMode.Refused ? TransportGlyph.Warn : TransportGlyph.Mark;
+    /// <summary>The mark; without its centre dot while there is nothing to point at
+    /// yet, or the warning that replaces it while a refusal is up.</summary>
+    public TransportGlyph Mark => Mode switch
+    {
+        TransportMode.Refused => TransportGlyph.Warn,
+        TransportMode.Considering => TransportGlyph.MarkUnlit,
+        _ => TransportGlyph.Mark,
+    };
 
     /// <summary>
     /// What the tag is, element by element - the table the strip draws and the one
@@ -322,6 +389,24 @@ public sealed record PlaybackTransport(
             Step: Projected(Step, Press.Step),
             HoldLine: true,
             Note: Note.Length > 0,
+            Ledger: false,
+            Menu: MenuKind.Speed),
+
+        // The same elements as Watching. What differs is drawn from the state rather
+        // than decided here: the mark without its dot, the hollow current pip, and
+        // step's tooltip saying Show.
+        TransportMode.Considering => new TransportSurface(
+            ChipPlate: false,
+            Mark: ElementSurface.Shown(Mark),
+            Identity: IdentityElement(Identity.IsLink),
+            Title: ElementSurface.ShownIf(Identity.VideoTitle is not null),
+            Counter: ElementSurface.Shown(),
+            Speed: SpeedElement(pressable: true),
+            Back: Projected(Back, Press.Back),
+            Play: Projected(Play, Press.PlayOrPause),
+            Step: Projected(Step, Press.Step),
+            HoldLine: true,
+            Note: false,
             Ledger: false,
             Menu: MenuKind.Speed),
 
@@ -382,6 +467,24 @@ public sealed record PlaybackTransport(
             Note: false,
             Ledger: false,
             Menu: MenuKind.Chip),
+
+        // The chip it was during the fight, with the post-fight choice under it in
+        // place of the two directions. The one press target closes and re-opens the
+        // choice; the rows themselves are the choice's.
+        TransportMode.Ended => new TransportSurface(
+            ChipPlate: true,
+            Mark: ElementSurface.Shown(Mark),
+            Identity: ElementSurface.Absent,
+            Title: ElementSurface.Absent,
+            Counter: ElementSurface.Absent,
+            Speed: new ElementSurface(Presence.Silent, Pressable: true, Press.OpenPostFightMenu),
+            Back: ElementSurface.Absent,
+            Play: ElementSurface.Absent,
+            Step: ElementSurface.Absent,
+            HoldLine: false,
+            Note: false,
+            Ledger: false,
+            Menu: MenuKind.PostFight),
 
         // Everything refused, the speed included: a tag that has lost its run has not
         // kept one control that still works. What keeps the derivation total rather
@@ -457,9 +560,13 @@ public sealed record PlaybackTransport(
             facts.Identity, facts.Made, step, facts.StepsTaken + 1, facts.Count, Next(facts), facts.Speed),
         JourneyPhase.Watching => Revealing(
             facts.Identity, Next(facts), facts.StepsTaken + 1, facts.Count, facts.Playing, facts.NoteShown,
-            facts.Revealed, facts.Speed),
+            facts.Arrived, facts.Lit, facts.HasConsiderBeat, facts.Speed),
         JourneyPhase.InFight or JourneyPhase.Result => DuringYourFight(
             facts.Identity, facts.AnythingPlayed, facts.Speed, phase == JourneyPhase.Result),
+        JourneyPhase.Ended => AfterTheFight(
+            facts.Identity, facts.Speed, facts.AfterTheFight ?? throw new ManifestException(
+                "The fight has ended and the transport has not been told how, so the post-fight choice " +
+                "cannot be put on it.")),
         JourneyPhase.Refused => Refused(facts.Identity, facts.Speed),
         _ => throw new ManifestException($"A journey cannot be in phase {phase}."),
     };
@@ -476,33 +583,78 @@ public sealed record PlaybackTransport(
     public string SpeedLabel => Speed.Label();
 
     /// <summary>
-    /// The recording's next decision, revealed and held.
+    /// The recording's next decision: considered, or revealed and held.
+    ///
+    /// Three states of one decision and one shape for all of them. Lit is the reveal
+    /// hold, exactly as it was. Arrived and not lit is the consider hold, where step
+    /// reveals rather than commits and nothing on the tag says what the recording
+    /// chose: the caption that names the decision stays out of step's tooltip until
+    /// the reveal, and the mark and the current pip are drawn without their fill. Not
+    /// arrived is the window between screens, where everything that moves the run is
+    /// refused because the screen it would act on is not there yet.
     /// </summary>
     /// <param name="number">Which of the recording's decisions this is, from one.</param>
     /// <param name="count">How many the recording makes before its fight.</param>
     /// <param name="playing">Whether Play is running the sequence, which decides
     /// only which glyph the middle button carries.</param>
     /// <param name="noteShown">Whether the once-per-run sentence has been said.</param>
-    /// <param name="revealed">Whether the decision is on the game's own screen yet.
-    /// Between committing one and revealing the next it is not, and a step taken in
-    /// that window would make the next decision without anybody having been shown
-    /// it - which is the whole of what reveal, hold and commit exists to prevent.</param>
+    /// <param name="arrived">Whether the game's screen for this decision is up and
+    /// still.</param>
+    /// <param name="lit">Whether the decision is lit on that screen.</param>
+    /// <param name="considerBeat">Whether this decision gets a hold before its reveal.
+    /// Where it does not, arrival is the reveal, and an arrived-unlit state is the
+    /// transition itself rather than an offer to show.</param>
     private static PlaybackTransport Revealing(
         TransportIdentity identity, PrefightChoice choice, int number, int count, bool playing,
-        bool noteShown, bool revealed, PlaybackSpeed speed) =>
-        new(
-            Mode: TransportMode.Watching,
+        bool noteShown, bool arrived, bool lit, bool considerBeat, PlaybackSpeed speed)
+    {
+        var considering = arrived && !lit && considerBeat;
+        var offered = lit || considering;
+        return new PlaybackTransport(
+            Mode: lit ? TransportMode.Watching : TransportMode.Considering,
             Identity: identity,
-            Counter: Check(number, count),
+            Counter: Check(number, count) with { Lit = lit },
             Speed: speed,
-            Back: BackControl(number > 1, revealed),
-            Play: PlayControl(playing, enabled: playing || revealed),
-            Step: StepControl(number, count, Describe(identity.Creator, choice), revealed),
+            Back: BackControl(number > 1, offered),
+            Play: PlayControl(playing, enabled: playing || offered),
+            Step: lit
+                ? StepControl(number, count, Describe(identity.Creator, choice))
+                : ShowControl(identity.Creator, number, count, considering),
             Ledger: [],
-            // Said once, before the first decision anybody watches. A rule about how
-            // to read these screens is worth saying once and tiresome above every one.
-            Note: number == 1 && !noteShown ? TrainerCopy.ChoicesShownAsRecorded(identity.Creator) : string.Empty,
+            // Said once, before the first decision anybody watches, and at the reveal
+            // rather than before it: a rule about how to read these screens is worth
+            // saying once and tiresome above every one.
+            Note: lit && number == 1 && !noteShown
+                ? TrainerCopy.ChoicesShownAsRecorded(identity.Creator)
+                : string.Empty,
             ChipMenu: []);
+    }
+
+    /// <summary>
+    /// The chip with the post-fight choice under it.
+    ///
+    /// The rows are <see cref="PostFightChoice"/>'s and carried here as the chip's
+    /// menu, so the strip hangs them in the shape it already has. Every control that
+    /// moves the run is absent, as on the chip: the choice is the whole of what is
+    /// offered.
+    /// </summary>
+    private static PlaybackTransport AfterTheFight(
+        TransportIdentity identity, PlaybackSpeed speed, PostFightFacts facts)
+    {
+        var choice = PostFightChoice.For(identity.Creator, facts);
+        return new PlaybackTransport(
+            Mode: TransportMode.Ended,
+            Identity: identity,
+            Counter: new TransportCounter(0, 0, null),
+            Speed: speed,
+            Back: BackControl(false),
+            Play: PlayControl(playing: false) with { Enabled = false },
+            Step: StepControl(0, 0, string.Empty) with { Enabled = false },
+            Ledger: [],
+            Note: string.Empty,
+            ChipMenu: choice.Menu,
+            PostFight: choice);
+    }
 
     /// <summary>
     /// A decision the recording already made, re-shown over the ledger of the ones
@@ -720,6 +872,23 @@ public sealed record PlaybackTransport(
             TransportGlyph.Step, enabled, TrainerCopy.StepTooltipTitle, body,
             enabled ? null : TrainerCopy.BetweenScreensDisabledReason);
     }
+
+    /// <summary>
+    /// Step's tooltip before the reveal: the first of its two presses.
+    ///
+    /// Titled Show rather than Step because a tooltip that names an action it does
+    /// not perform is the same defect as one that cannot be pressed, and the first
+    /// press does not commit. The counter is kept and the caption is not: the caption
+    /// names what the recording chose, and nothing on the tag may say that before the
+    /// reveal. Refused, as every control is between screens, it goes on saying what
+    /// it does.
+    /// </summary>
+    private static TransportControl ShowControl(string creator, int number, int count, bool enabled) => new(
+        TransportGlyph.Step,
+        enabled,
+        TrainerCopy.ShowTooltipTitle,
+        $"{TrainerCopy.ShowTooltipBody(creator)}\n{TrainerCopy.StepCounter(number, count)}",
+        enabled ? null : TrainerCopy.BetweenScreensDisabledReason);
 
     private static TransportCounter Check(int number, int count)
     {
