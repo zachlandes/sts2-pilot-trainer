@@ -456,6 +456,7 @@ Silent and pressable at once is a distinction the strip has to be able to make: 
 The row carries the engine's own sentence saying so, whether it is green or red.
 The hash covers content contributed by mods that declare themselves gameplay-affecting; it says nothing about a mod that patches behaviour.
 The same prerequisite reading therefore inspects every mod the game discovered, including failed states that may have left resources loaded, and refuses every active local mod except the known non-gameplay Runmobile host.
+What a mod actually patched is a separate reading, taken from Harmony rather than from anybody's manifest and captured into a recording as `environment.mods.patch_roster`; [environment-identity.md](environment-identity.md) owns it and the two refusals over it.
 
 **A profile reading describes the modded profile.**
 The game forks a separate profile for modded play, and that is the one a modded session reads.

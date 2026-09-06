@@ -220,6 +220,27 @@ public static partial class ManifestValidator
             ValidateParityWaiver(waiver, problems);
         }
 
+        // A patched member with no owner names nobody, and one with no member names
+        // nothing. Either would sit in a roster looking like a reading and answer no
+        // question the roster exists to answer.
+        foreach (var member in mods.Patches?.Members ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(member.DeclaringType) || string.IsNullOrWhiteSpace(member.Member))
+            {
+                problems.Add(
+                    "environment.mods.patch_roster has an entry that names no member. A roster is read by " +
+                    "member name, so an unnamed entry is a row nobody can check.");
+            }
+
+            if (member.Owners.Count == 0)
+            {
+                problems.Add(
+                    $"environment.mods.patch_roster entry '{member.DeclaringType}.{member.Member}' names no " +
+                    "owner. Who patched a member is the whole reading; a patched member with no patcher is a " +
+                    "reading that was not taken.");
+            }
+        }
+
         if (env.Acts.Value.Count == 0)
         {
             problems.Add(

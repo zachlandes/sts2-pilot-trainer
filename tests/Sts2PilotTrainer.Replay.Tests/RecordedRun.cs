@@ -190,7 +190,8 @@ internal static class RecordedRun
             Runs = 137,
         },
         Mods = ModEnvironment.AsRecorded(
-            [new LocalMod("Runmobile", "Runmobile", "0.1.0", AffectsGameplay: false, "Loaded")]),
+            [new LocalMod("Runmobile", "Runmobile", "0.1.0", AffectsGameplay: false, "Loaded")],
+            RecordedPatchRoster.HostOnly()),
     };
 
     private static IReadOnlyDictionary<string, string> Floor(int floor) => new Dictionary<string, string>(
@@ -270,4 +271,29 @@ internal static class RecordedRun
 
     private static IReadOnlyDictionary<string, string> Args(params (string Key, string Value)[] args) =>
         args.ToDictionary(arg => arg.Key, arg => arg.Value, StringComparer.Ordinal);
+}
+
+/// <summary>
+/// The patch roster a game with only Runmobile in it reads back.
+///
+/// Shaped like the real one rather than emptied down to nothing: the shell patches
+/// the profile write and the screens it watches, so a roster with no member of ours
+/// on it is the broken reading <c>EnvironmentPreflight</c> refuses, and a fixture
+/// that used one would be testing that refusal everywhere by accident.
+/// </summary>
+internal static class RecordedPatchRoster
+{
+    internal static PatchRoster HostOnly() => new()
+    {
+        Members =
+        [
+            Member("MegaCrit.Sts2.Core.Saving.ProgressSaveManager", "SaveProgressFile()"),
+            Member("MegaCrit.Sts2.Core.Run.RunManager", "StartNewSingleplayerRun(RunSetup, Boolean)"),
+        ],
+    };
+
+    internal static PatchedMember Member(
+        string declaringType, string member, params string[] owners) =>
+        new(declaringType, member, owners.Length == 0 ? [PatchRoster.HostOwnerId] : owners,
+            Prefixes: 1, Postfixes: 0, Transpilers: 0, Finalizers: 0);
 }

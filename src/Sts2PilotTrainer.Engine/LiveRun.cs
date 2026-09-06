@@ -145,8 +145,13 @@ public static class LiveRun
     /// against a fixed list of audited names. What is written into the risk line is
     /// therefore the declaration itself, never a judgement this code is not in a
     /// position to make.
+    ///
+    /// The patch roster goes on the same reading, because it is the half a manifest
+    /// cannot state: what the loaded mods actually did to this process. See
+    /// <see cref="HarmonyRoster"/> and <c>EnvironmentPreflight</c>, which judges it.
     /// </summary>
-    public static ModEnvironment LoadedMods() => ModEnvironment.AsRecorded(LocalEnvironment.ReadMods());
+    public static ModEnvironment LoadedMods() =>
+        ModEnvironment.AsRecorded(LocalEnvironment.ReadMods(), HarmonyRoster.Read());
 
     /// <summary>Whether a fight is open at all, however far into opening it is.</summary>
     public static bool InCombat => CombatManager.Instance is { IsInProgress: true };
