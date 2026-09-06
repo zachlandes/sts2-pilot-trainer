@@ -278,6 +278,11 @@ public static class LibraryCopy
     /// a run nobody can reproduce.</summary>
     public const string PlateConsoleUsed = "A console command was used, so it can't be submitted.";
 
+    /// <summary>Why the submit row is refused while the flow it leads to is not built.
+    /// The row keeps its place for the reason every refused row here does: its position
+    /// is how a player learns the offer is coming.</summary>
+    public const string PlateSubmitComing = "Submitting runs is coming";
+
     /// <summary>Why nothing on a broken recording is offered.</summary>
     public const string PlateContinuityBroken = "The game reloaded past a point already recorded.";
 

@@ -706,14 +706,41 @@ What holds the states apart meanwhile is that each one says what it is in words 
 Drawing the marks is a change to `LibraryScreen` and `TransportGlyphArt` and to nothing
 behind either.
 
+**Two states the design names are derived and not reachable, for reasons outside this
+module.** The plate's console-command state - play rows offered, Submit refused, "A
+console command was used, so it can't be submitted." - is derived correctly by
+`RunHistoryPlate` and nothing supplies the fact behind it, so `RunHistoryPlateHost.FactsFor`
+passes `ConsoleUsed` null.
+Null rather than false, because absent is not a clean run under another name and a plate
+reporting one it never checked is the claim `AGENTS.md` forbids.
+The reading it waits on is `source.native.integrity`, which the recorder writes on
+`fm/recorder-detection-multiplayer-and-console`; the honest reading once that lands is
+`NativeSource.StatesSomethingOtherThanComplete`.
+The Submit row is the other: the flow it leads to is outside this slice by the design's
+own section 9.8, so `SubmitAvailable` is supplied false and the row is drawn refused with
+"Submitting runs is coming" rather than drawn as an offer nothing honours.
+
 **What the accepted design draws and this does not.** The browser's parchment tabs, the
 run strip, the deck tiles, the relic row and the portrait; and the run-history plate hung
 flat under the game's pane. Those are scene work against furniture this mod has no path
 to instantiate or measure, so the same headings, the same rows, the same refusals and the
-same sentences are shown in the game's own modal instead, and the run strip's floor
-selection is a row (`LibraryCopy.ChooseAFloor`) rather than a strip. The vocabulary, the
-offers and the rules are the design's exactly; only the furniture is smaller. Changing
-that is a change to `LibraryScreen` and `RunBrowserScreen` and to nothing behind them.
+same sentences are shown in the game's own modal instead. Named in the design's own
+terms: the Community list's grouping is a summary line in the popup's body over one flat
+row column rather than headed sections; the run strip with played fights ticked and the
+selected position ringed is a "Choose a floor" row; and the deck at the selected position
+and the fight pane are not drawn at all. The vocabulary, the offers and the rules are the
+design's exactly; only the furniture is smaller. Changing that is a change to
+`LibraryScreen` and `RunBrowserScreen` and to nothing behind them, and is filed as
+run-library-parchment-furniture.
+
+**A screen opened from another goes back to it.** The container holds one modal, so every
+step replaces the last, and the ribbon would otherwise drop a player out of the library
+from wherever they had got to. Each screen is handed the way back as an argument -
+`LibraryScreen.Show`'s `back` - rather than a stack being kept: the run view returns to
+the tab it was opened from, the floor chooser to the run at the floor it was standing on,
+and only the browser itself, which is the screen a player enters on, closes the library.
+The tab travels as a bool because the way back ends up in a lambda's captured fields, and
+a captured `LibraryTab` has stopped this mod loading once already.
 
 ## Two more surfaces, and the hook each one needs
 

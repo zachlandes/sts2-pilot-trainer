@@ -61,16 +61,20 @@ internal static class RunBrowserScreen
                 foreach (var run in group.Runs)
                 {
                     var runId = run.RunId;
-                    rows.Add(new ScreenRow(RowLabel(run), Enabled: true, () => OpenRun(runId)));
+                    var mine = !community;
+                    rows.Add(new ScreenRow(
+                        RowLabel(run), Enabled: true, () => OpenRun(runId, fromMyRuns: mine)));
                 }
             }
 
+            // This is the screen a player enters on, so its ribbon closes the library
+            // rather than going anywhere.
             LibraryScreen.Show(
                 LibraryCopy.CompendiumCard,
                 Body(browser),
                 rows,
                 LibraryCopy.Back,
-                codeSubmitted: Look,
+                codeSubmitted: code => Look(code, !community),
                 codePlaceholder: LibraryCopy.RunCodeField);
         }
         catch (Exception ex)
@@ -85,8 +89,13 @@ internal static class RunBrowserScreen
     /// Every row it offers is a boundary the recording proves, and every one of them
     /// goes through the same entry - so a row here can never offer somewhere
     /// <see cref="RecordedFightEntry"/> would refuse to stand a player.
+    ///
+    /// <paramref name="fromMyRuns"/> is which tab the ribbon goes back to, carried as a
+    /// bool rather than a <c>LibraryTab</c>: it ends up in a lambda's captured fields,
+    /// and a captured sibling-assembly type stops the whole mod loading. See
+    /// docs/in-game-host.md.
     /// </summary>
-    internal static void OpenRun(string runId, int? floor = null)
+    internal static void OpenRun(string runId, int? floor = null, bool fromMyRuns = false)
     {
         try
         {
@@ -112,10 +121,18 @@ internal static class RunBrowserScreen
             if (view.Positions.Count > 1)
             {
                 var id = runId;
-                rows.Add(new ScreenRow(LibraryCopy.ChooseAFloor, Enabled: true, () => ChooseFloor(id)));
+                var mine = fromMyRuns;
+                rows.Add(new ScreenRow(
+                    LibraryCopy.ChooseAFloor, Enabled: true, () => ChooseFloor(id, floor, mine)));
             }
 
-            LibraryScreen.Show(Title(recording), RunBody(recording, view), rows, LibraryCopy.Back);
+            var backToTab = fromMyRuns;
+            LibraryScreen.Show(
+                Title(recording),
+                RunBody(recording, view),
+                rows,
+                LibraryCopy.Back,
+                back: () => OpenTab(backToTab ? LibraryTab.MyRuns : LibraryTab.Community));
         }
         catch (Exception ex)
         {
@@ -124,8 +141,9 @@ internal static class RunBrowserScreen
     }
 
     /// <summary>The strip, as rows: every floor the recording proves, and the fight on
-    /// it where there is one.</summary>
-    internal static void ChooseFloor(string runId)
+    /// it where there is one. Its ribbon goes back to the run as it was left, at the
+    /// floor it was standing on.</summary>
+    internal static void ChooseFloor(string runId, int? floor = null, bool fromMyRuns = false)
     {
         try
         {
@@ -140,13 +158,22 @@ internal static class RunBrowserScreen
             {
                 var id = runId;
                 var atFloor = position.Floor;
+                var mine = fromMyRuns;
                 rows.Add(new ScreenRow(
                     LibraryCopy.FloorRow(position.Floor, position.Fight),
                     Enabled: true,
-                    () => OpenRun(id, atFloor)));
+                    () => OpenRun(id, atFloor, mine)));
             }
 
-            LibraryScreen.Show(Title(recording), LibraryCopy.ChooseAFloorNote, rows, LibraryCopy.Back);
+            var backId = runId;
+            var backFloor = floor;
+            var backToMyRuns = fromMyRuns;
+            LibraryScreen.Show(
+                Title(recording),
+                LibraryCopy.ChooseAFloorNote,
+                rows,
+                LibraryCopy.Back,
+                back: () => OpenRun(backId, backFloor, backToMyRuns));
         }
         catch (Exception ex)
         {
@@ -165,22 +192,26 @@ internal static class RunBrowserScreen
     /// The browser's own modal comes down first, once, because both exits open another
     /// one and the container holds a single screen - the same rule
     /// <c>LibraryScreen.Press</c> follows for every row, and this is the one way in that
-    /// does not go through a row.
+    /// does not go through a row. Both exits go back to the tab the code was typed on,
+    /// for the same reason every other nested screen does.
     /// </summary>
-    private static void Look(string code)
+    private static void Look(string code, bool fromMyRuns)
     {
         LibraryScreen.Dismiss();
         var answer = RunBrowser.Lookup(code, RunLibrary.Runs(), RunLibrary.ThisBuild());
         if (!answer.Refused && answer.Run is { } found)
         {
-            OpenRun(found.RunId);
+            OpenRun(found.RunId, fromMyRuns: fromMyRuns);
             return;
         }
 
         var body = answer.Note is { Length: > 0 } note
             ? $"{answer.Body}\n\n{LibraryMarkup.Dim(note)}"
             : answer.Body;
-        LibraryScreen.Show(answer.Title, body, [], answer.Back);
+        var mine = fromMyRuns;
+        LibraryScreen.Show(
+            answer.Title, body, [], answer.Back,
+            back: () => OpenTab(mine ? LibraryTab.MyRuns : LibraryTab.Community));
     }
 
     /// <summary>

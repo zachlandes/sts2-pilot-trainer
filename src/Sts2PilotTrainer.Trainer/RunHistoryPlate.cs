@@ -52,6 +52,11 @@ public sealed record PlateRow(PlateRowKind Kind, string Label, bool Enabled, int
 /// <param name="ThisBuild">The build this game is.</param>
 /// <param name="RunInProgress">Whether a run is being played right now. Play-from is
 /// after the fact, and this is the one state where the plate says so.</param>
+/// <param name="SubmitAvailable">Whether there is a submit flow to lead to. Supplied
+/// like every other fact here rather than decided inside the derivation, because
+/// whether the flow exists is a fact about the build and not about the run - and a
+/// host that drew the row refused on its own would put the enabled decision in two
+/// owners.</param>
 /// <param name="LastFight">The run's own last fight, or null when the recording proves
 /// none.</param>
 /// <param name="LastFloor">The last floor the run arrived at, or null when the
@@ -64,6 +69,7 @@ public sealed record RunHistoryFacts(
     string RecordedBuild,
     string ThisBuild,
     bool RunInProgress,
+    bool SubmitAvailable,
     int? LastFight,
     int? LastFloor);
 
@@ -132,8 +138,11 @@ public sealed record RunHistoryPlate(
 
         // A console command changes what the run was, so it stops the run being
         // published and stops nothing else: the fights really were fought and playing
-        // from one is still playing from what happened.
-        var submittable = facts.ConsoleUsed != true;
+        // from one is still playing from what happened. It is named ahead of the
+        // missing flow because it is the more particular thing true of this run - the
+        // flow's absence is true of every run on this build.
+        var consoleUsed = facts.ConsoleUsed == true;
+        var submittable = !consoleUsed && facts.SubmitAvailable;
         return new RunHistoryPlate(
             PlateMark.Recorded,
             LibraryCopy.PlateRecorded,
@@ -142,7 +151,8 @@ public sealed record RunHistoryPlate(
                 FloorRow(facts, enabled: facts.LastFloor is not null),
                 new PlateRow(PlateRowKind.Submit, LibraryCopy.SubmitThisRun, submittable),
             ],
-            submittable ? null : LibraryCopy.PlateConsoleUsed);
+            consoleUsed ? LibraryCopy.PlateConsoleUsed
+                : submittable ? null : LibraryCopy.PlateSubmitComing);
     }
 
     private static RunHistoryPlate Refused(

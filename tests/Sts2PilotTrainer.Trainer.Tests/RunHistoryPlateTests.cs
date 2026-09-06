@@ -20,10 +20,11 @@ public sealed class RunHistoryPlateTests
         bool? consoleUsed = null,
         string recordedBuild = Build,
         bool runInProgress = false,
+        bool submitAvailable = true,
         int? lastFight = 4,
         int? lastFloor = 11) =>
         new(hasRecording, multiplayer, continuous, consoleUsed, recordedBuild, Build,
-            runInProgress, lastFight, lastFloor);
+            runInProgress, submitAvailable, lastFight, lastFloor);
 
     [Fact]
     public void ARunWithNoRecordingHasNoPlateAtAll()
@@ -43,6 +44,35 @@ public sealed class RunHistoryPlateTests
         Assert.Equal("Play from fight 4", plate.Rows[0].Label);
         Assert.Equal("Play from floor 11", plate.Rows[1].Label);
         Assert.Equal(LibraryCopy.SubmitThisRun, plate.Rows[2].Label);
+    }
+
+    /// <summary>
+    /// The flow the Submit row leads to is not built, so the row is refused and says so
+    /// - one owner for the decision, and no greyed row a player has to guess about. The
+    /// two play rows are untouched: whether a run can be submitted says nothing about
+    /// whether it can be played from.
+    /// </summary>
+    [Fact]
+    public void WithNoSubmitFlowTheSubmitRowIsRefusedAndSaysWhyAndNothingElseChanges()
+    {
+        var plate = RunHistoryPlate.For(Facts(submitAvailable: false))!;
+
+        Assert.Equal(PlateMark.Recorded, plate.Mark);
+        Assert.True(plate.Rows[0].Enabled);
+        Assert.True(plate.Rows[1].Enabled);
+        Assert.False(plate.Rows[2].Enabled);
+        Assert.Equal(LibraryCopy.PlateSubmitComing, plate.Reason);
+    }
+
+    /// <summary>A console command is the more particular thing true of this run, so it
+    /// is what the reason names even where the flow is missing too.</summary>
+    [Fact]
+    public void AConsoleCommandIsNamedAheadOfTheMissingFlow()
+    {
+        var plate = RunHistoryPlate.For(Facts(consoleUsed: true, submitAvailable: false))!;
+
+        Assert.False(plate.Rows[2].Enabled);
+        Assert.Equal(LibraryCopy.PlateConsoleUsed, plate.Reason);
     }
 
     /// <summary>

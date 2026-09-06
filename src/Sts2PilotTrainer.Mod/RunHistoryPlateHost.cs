@@ -115,8 +115,19 @@ internal static class RunHistoryPlateHost
     /// recording, and that is the point: there is no recording of a multiplayer run to
     /// read, because the recorder does not attach to one. Continuity and the recorded
     /// build come from the recording, which is the only thing that witnessed them.
-    /// Whether a console command was used is nobody's answer yet - it is null rather
-    /// than false, so nothing here reports a clean run it never checked.
+    ///
+    /// <para>Whether a console command was used is nobody's answer yet, so it is null
+    /// rather than false: absent is not a clean run under another name, and reporting
+    /// one this never checked is the claim <c>AGENTS.md</c> forbids. The reading it is
+    /// waiting for is <c>source.native.integrity</c>, which the recorder writes on
+    /// <c>fm/recorder-detection-multiplayer-and-console</c>; once that lands the honest
+    /// reading here is <c>NativeSource.StatesSomethingOtherThanComplete</c>. Until then
+    /// the design's console-command state is derived correctly and unreachable, which
+    /// docs/in-game-host.md records beside the other stated gaps.</para>
+    ///
+    /// <para>Whether there is a submit flow is this build's own answer and it is no:
+    /// section 9.8 puts the flow outside this slice, so the row is drawn refused with a
+    /// reason rather than drawn as an offer nothing honours.</para>
     /// </summary>
     internal static RunHistoryFacts FactsFor(RunHistory? history, ReplayManifest? recording) =>
         new(
@@ -127,6 +138,7 @@ internal static class RunHistoryPlateHost
             RecordedBuild: recording?.Environment.BuildVersion.Value ?? string.Empty,
             ThisBuild: RunLibrary.ThisBuild(),
             RunInProgress: LocalEnvironment.ReadStartedRun() is not null,
+            SubmitAvailable: false,
             LastFight: LastOf(recording, LibraryRun.ProvedFights),
             LastFloor: LastOf(recording, LibraryRun.ProvedFloors));
 
@@ -139,9 +151,8 @@ internal static class RunHistoryPlateHost
     /// <c>ReplayManifest</c> stops the whole mod loading. See docs/in-game-host.md;
     /// <c>ModAssemblyLoadOrderTests</c> is what actually says so.
     ///
-    /// The submit row leads to a flow that does not exist yet, so it is drawn in its
-    /// place and takes no press. That is the same shape a refused row already has, and
-    /// it is honest: the row is what tells a player the flow is coming.
+    /// Whether a row can be pressed is the plate's answer and nothing here overrules
+    /// it: this asks only whether there is a run behind the row to press it against.
     /// </summary>
     private static IReadOnlyList<ScreenRow> Rows(RunHistoryPlate plate, ReplayManifest? recording)
     {
@@ -154,7 +165,7 @@ internal static class RunHistoryPlateHost
             var floor = row.Floor;
             rows.Add(new ScreenRow(
                 row.Label,
-                row.Enabled && id is not null && row.Kind != PlateRowKind.Submit,
+                row.Enabled && id is not null,
                 () => Enter(id!, fight, floor)));
         }
 

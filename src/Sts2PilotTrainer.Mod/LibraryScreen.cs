@@ -71,11 +71,16 @@ internal static class LibraryScreen
     /// with a second ribbon meaning "the one you highlighted" would be a second way to
     /// press the thing already under the cursor.
     /// </summary>
+    /// <param name="back">Where the ribbon goes. Null closes the library, which is
+    /// what the screen a player entered on does; a screen opened from another one hands
+    /// in the way back to it, so the surface is one place a player moves around in
+    /// rather than a sequence they fall out of the bottom of.</param>
     internal static void Show(
         string title,
         string body,
         IReadOnlyList<ScreenRow> rows,
         string backLabel,
+        Action? back = null,
         Action<string>? codeSubmitted = null,
         string codePlaceholder = "")
     {
@@ -98,7 +103,15 @@ internal static class LibraryScreen
             label.ScrollActive = true;
             content.SetText(title, body);
 
-            content.InitYesButton(PlaceholderConfirm, _ => { });
+            // Deferred for the reason Press clears first: the popup takes itself down
+            // when the ribbon is pressed, and a screen shown inside the handler would be
+            // the one it took down. Deferring puts the next screen after that.
+            content.InitYesButton(
+                PlaceholderConfirm,
+                _ =>
+                {
+                    if (back is not null) Callable.From(() => Reopen(back)).CallDeferred();
+                });
             content.HideNoButton();
             content.YesButton.SetText(backLabel);
 
@@ -235,6 +248,23 @@ internal static class LibraryScreen
     /// knows which container it is.
     /// </summary>
     internal static void Dismiss() => NModalContainer.Instance?.Clear();
+
+    /// <summary>Shows the screen a ribbon returns to, with whatever is up taken down
+    /// first, and says so rather than leaving a player on a screen that did not
+    /// change.</summary>
+    private static void Reopen(Action back)
+    {
+        Dismiss();
+        try
+        {
+            back();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not go back: {ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
 
     /// <summary>Runs a row's action with the modal taken down first.</summary>
     private static void Press(ScreenRow row)

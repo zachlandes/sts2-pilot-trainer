@@ -171,10 +171,19 @@ internal static class RunVerdicts
 /// Which of a module's patches this build cannot attach.
 ///
 /// Asked of Harmony's own resolution rather than of a name list, because what has to
-/// be true is exactly that the patch will attach. The recorder asks the same question
-/// about its own targets for a different reason - it would miss decisions - and this
-/// module asks it because a surface that silently failed to appear is a feature a
-/// player cannot find. One implementation, so the two answers cannot drift.
+/// be true is exactly that the patch will attach. This module asks it because a
+/// surface that silently failed to appear is a feature a player cannot find.
+///
+/// <para>There are two readers, not one. <c>RecorderModule.UnresolvableTargets</c> asks
+/// the same question of the recorder's own patch classes for a different reason - it
+/// would miss decisions rather than fail to draw - and the two are not yet the same
+/// code because neither reader answers for the other's classes. That one reads only
+/// class-level attributes, which is the narrowness this one had to grow out of, and it
+/// resolves a constructor patch, which this one has no branch for. Every recorder patch
+/// names its method on the class attribute today, so nothing is unchecked; unifying them
+/// means one reader that covers both declaration styles and constructors, and one
+/// refusal sentence that reads right for a missing surface and a missed decision
+/// alike.</para>
 /// </summary>
 internal static class PatchTargets
 {
