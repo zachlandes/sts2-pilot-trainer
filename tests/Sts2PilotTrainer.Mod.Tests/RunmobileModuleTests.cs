@@ -56,6 +56,8 @@ public sealed class RunmobileModuleTests
                 (Type: type, Owner: CombatTrainerModule.Instance.Name)))
             .Concat(RunRecorder.PatchClasses.Select(type =>
                 (Type: type, Owner: RecorderModule.Instance.Name)))
+            .Concat(RecorderModule.PresencePatchClasses.Select(type =>
+                (Type: type, Owner: RecorderModule.Instance.Name)))
             .Concat(RunLibraryModule.PatchClasses.Select(type =>
                 (Type: type, Owner: RunLibraryModule.Instance.Name)))
             .GroupBy(entry => entry.Type)
@@ -71,6 +73,9 @@ public sealed class RunmobileModuleTests
             type => Assert.Equal("Combat Trainer", Assert.Single(ownership[type])));
         Assert.All(
             RunRecorder.PatchClasses,
+            type => Assert.Equal("Recorder", Assert.Single(ownership[type])));
+        Assert.All(
+            RecorderModule.PresencePatchClasses,
             type => Assert.Equal("Recorder", Assert.Single(ownership[type])));
         Assert.All(
             RunLibraryModule.PatchClasses,

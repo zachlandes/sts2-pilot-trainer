@@ -678,6 +678,26 @@ And the popup's body scrolls when the evidence is longer than the panel, which i
 unmet rows are ordered first: what a player has to act on is above the fold, and the
 rows that already passed are below it.
 
+**The recorder's row is a fourth label in the game's own version overlay, not a
+plate.** `NDebugInfoLabelManager.UpdateText` fills a `VBoxContainer` of three
+right-aligned labels sharing one font and size - build, date and seed, then MODDED -
+and `RecorderPresenceRow.VersionOverlay` postfixes that method to add a sibling label
+under the MODDED one, copying its font and size rather than styling one of its own.
+`RecorderPresence.For` derives what it says and its colour from exactly
+`RunRecorder.Active` and `RunCapture.State`; the row is re-derived every frame, because
+the recorder attaches after the overlay is built and a watch can break at any decision.
+It follows the MODDED label's own visibility, which is how hiding the overlay from the
+menu that put it up hides this with it, and it asks `RunmobileMod.MayDraw` the same way
+every other surface does. It is installed apart from `RunRecorder.PatchClasses` -
+`RecorderModule.PresencePatchClasses` names it on its own - because the two fail
+differently: a decision method this build renamed refuses the whole module, but an
+overlay this build renamed only costs the row, logged and nothing else. The game's
+fields here are private and one starts with an underscore of its own
+(`_moddedWarning`), so Harmony's own `___`-prefixed injected-field parameter needs a
+fourth underscore to reach it - `____moddedWarning`, not the `___moddedWarning` the
+marker alone would suggest - caught here only by checking the decompiled name rather
+than guessing it.
+
 ## The run library
 
 The third module, and the only one with a surface a player browses. What it offers and
