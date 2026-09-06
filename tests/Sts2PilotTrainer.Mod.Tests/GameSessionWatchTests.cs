@@ -175,6 +175,45 @@ public sealed class GameSessionWatchTests : IDisposable
             .GetValue(null)!;
 
     /// <summary>
+    /// A console command used after the run ended changes neither artifact.
+    ///
+    /// The window is real: <c>RunManager.OnEnded</c> finishes the recording and writes
+    /// its manifest, and nothing clears the recorder until the run is torn down, so it
+    /// is still live for as long as the player sits on the score screen with the
+    /// console this mod turns on. The command is not in the history the recording
+    /// holds - the run's last decision is behind it - so the recorder ignores it. What
+    /// is asserted is that the journal and the manifest still say the same thing, which
+    /// is the failure this is about: two artifacts disagreeing about `integrity` with
+    /// nothing raised anywhere.
+    /// </summary>
+    [GameFact]
+    public void AConsoleCommandAfterTheRunEndedLeavesBothArtifactsSayingComplete()
+    {
+        _ = EngineHost.StartupPhase();
+        var capture = RecordedRun.Captured();
+        var journalPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RunJournal.FileExtension}";
+        var manifestPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RecordingLibrary.ManifestExtension}";
+        RunmobileStore.Write(journalPath, capture.Journal.Render());
+        RunRecorder.BeginRecording(capture, journalPath);
+
+        RunRecorder.RunEnded(isVictory: true);
+        Assert.NotNull(RunRecorder.Active);
+        Assert.Equal(NativeSource.CompleteIntegrity, WrittenIntegrity(manifestPath));
+
+        RunRecorder.ConsoleCommandUsed();
+
+        Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
+        Assert.False(RunJournal.Parse(RunmobileStore.Read(journalPath)!).NonStandard);
+        Assert.Equal(NativeSource.CompleteIntegrity, WrittenIntegrity(manifestPath));
+    }
+
+    /// <summary>What the manifest on disk says about the run it recorded. Read back
+    /// through the format's own reader, because the file is the artifact anybody else
+    /// acts on.</summary>
+    private static string? WrittenIntegrity(string manifestPath) =>
+        ManifestJson.Deserialize(RunmobileStore.Read(manifestPath)!).Source.Native!.Integrity;
+
+    /// <summary>
     /// Every member the multiplayer watch attaches to is on this build.
     ///
     /// The shell installs these however the modules answer, and unlike

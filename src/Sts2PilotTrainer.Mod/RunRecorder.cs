@@ -260,9 +260,17 @@ internal sealed class RunRecorder : IDisposable
     /// Appended the moment it is seen, for the same reason a refusal is: a mark only
     /// the running session knows about is one a crash takes with it, and the session
     /// after it would publish a run the console had been used in.
+    ///
+    /// A recording that has finished takes no more marks. Its manifest is already
+    /// written and says what the run was, and the run's last decision is behind it -
+    /// so a command used on the score screen is not in the history this recording
+    /// holds, and marking the journal for it would leave two artifacts disagreeing
+    /// about the same field with nothing raised anywhere.
     /// </summary>
     private void NoticeConsoleCommand()
     {
+        if (_finished || _disposed) return;
+
         Append(_journalPath, _capture.MarkNonStandard());
         Log.Warn(
             $"[{RunmobileMod.ModId}] the console was used in this run, so its recording is kept and is not " +
@@ -271,9 +279,12 @@ internal sealed class RunRecorder : IDisposable
 
     /// <summary>The same mark, for the same reason, on the other thing that makes a
     /// run one nobody may publish. Written before the recorder detaches, so a crash
-    /// between the two still leaves the mark on the file.</summary>
+    /// between the two still leaves the mark on the file, and not at all once the
+    /// recording has finished - for the reason above.</summary>
     private void NoticeMultiplayerSession()
     {
+        if (_finished || _disposed) return;
+
         Append(_journalPath, _capture.MarkNonStandard());
         Log.Warn(
             $"[{RunmobileMod.ModId}] a multiplayer session began while this run was being recorded, so its " +
