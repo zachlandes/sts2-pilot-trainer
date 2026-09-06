@@ -306,10 +306,12 @@ Absent is not `complete` under another name: a recording made before the recorde
 
 **The seam is the console's own funnel, not the action queue.**
 `DevConsole` has two public entries - `ProcessCommand(string)` for a command typed on this client and `ProcessNetCommand` for one a peer sent - and both reach the private three-argument `ProcessCommand`, so one patch covers both, for the same reason `SkipRewardsSet` is watched rather than the call the driver makes.
-The queue is deliberately not it. A console command reaches the queue as `ConsoleCmdGameAction`, one of the eleven types in the game's own generated `INetActionSubtypes` list, and only in a networked game: in singleplayer `DevConsole.ProcessCommand` takes its local branch and builds none.
+The queue is deliberately not it. A console command reaches the queue only in a networked game, and as two types rather than one: the game's own generated `INetActionSubtypes` list holds the eleven `Net*` structs, of which the console's is `NetConsoleCmdGameAction`, and the action it builds and puts on the queue is `ConsoleCmdGameAction`. In singleplayer `DevConsole.ProcessCommand` takes its local branch and builds neither.
 Since singleplayer is the only kind of run this records, a watch on the queue would have seen a console command in exactly the runs that are never recorded and in none of the runs that are.
 Every command the console accepted counts, read off the game's own `CmdResult.success` so a typo is not one; a command that only printed something counts too, because which of the game's commands change a run is not a judgement this mod is in a position to make and the cheap direction to be wrong in is the one that keeps the recording on the player's disk and off the gate.
-A command used between the run starting and the recorder attaching is held and applied to the capture at attach, because it is in that run's history and nothing later could recover it.
+A command used between the run starting and the recorder attaching is held and applied to the capture at attach, because it is in that run's history and nothing later could recover it - held unconditionally rather than only while there is a run to read, since continuing a saved run is asynchronous and there is nothing to read for the whole of that load.
+The hold is cleared when the next run starts, so a command typed at the main menu is never carried into the run that follows it.
+Nothing the player typed is kept: the journal line carries the mark and nothing else, `RunJournal.NonStandard` reads back as whether the mark is present, and `source.native.integrity` is the whole of what a recording states.
 
 **What it watches is `EngineCommands` read from the other end.**
 The driver calls those members to make a recorded decision; a player clicking makes the game call the same members.
@@ -736,7 +738,7 @@ The same file says how many runs are kept and how to remove them all; "Keeping r
    Any turn in the run can supply the pair, so this is usually satisfied by accident; it is only worth thinking about if you find yourself opening every turn with the same card.
    A run that misses either finishes normally and then gets `NOT PUBLISHABLE` for coverage, with nothing wrong with the recording.
    The recorder writes the alternative each of the last three offered, and omits it where the decision genuinely had none - a run that never met one of them records honestly and is not publishable.
-5. End it - won, dead, or given up from the pause menu. `[Runmobile] recorded <id>: <outcome>, N decision(s), M boundary/boundaries, continuity continuous, written to recordings/<id>.replay.json` says it finished, and a line after it says so if the recording does not validate.
+5. End it - won, dead, or given up from the pause menu. `[Runmobile] recorded <id>: <outcome>, N decision(s), M boundary/boundaries, continuity continuous, integrity complete, written to recordings/<id>.replay.json` says it finished, and a line after it says so if the recording does not validate.
 6. The recording is under the store: `~/Library/Application Support/SlayTheSpire2/Runmobile/<the game's own profile scope>/recordings/`. The scope mirrors what the game resolved for its own saves, so two accounts and two profiles do not share a library.
 7. `./scripts/arbiter gate <that file>` is the verdict, and `./scripts/arbiter enter-fight <that file> --fight 2` stands the arbiter in its second fight.
 8. `./scripts/protected-files.sh compare before.ledger` reports what the session changed. The game's own saves, profile and run history are expected to change - the player really played a run - and everything of this mod's is under `user://Runmobile/`.

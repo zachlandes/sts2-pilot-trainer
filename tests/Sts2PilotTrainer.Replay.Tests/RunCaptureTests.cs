@@ -379,7 +379,7 @@ public sealed class RunCaptureTests
         var manifest = capture.ToManifest();
 
         Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
-        Assert.Empty(capture.ConsoleCommands);
+        Assert.False(capture.Journal.NonStandard);
         Assert.Equal(NativeSource.CompleteIntegrity, manifest.Source.Native!.Integrity);
         Assert.True(ManifestValidator.Validate(manifest).IsValid);
     }
@@ -398,7 +398,7 @@ public sealed class RunCaptureTests
     {
         var capture = RunCapture.Begin(Start());
         capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
-        capture.MarkNonStandard("gold 999");
+        capture.MarkNonStandard();
         capture.Record(ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")), Floor(2), Digest(1));
         capture.Finish("won");
 
@@ -413,7 +413,6 @@ public sealed class RunCaptureTests
         Assert.Null(capture.Refusal);
 
         Assert.Equal(NativeSource.NonStandardIntegrity, manifest.Source.Native!.Integrity);
-        Assert.Equal(["gold 999"], capture.ConsoleCommands);
 
         var result = ManifestValidator.Validate(manifest);
         Assert.False(result.IsValid);
@@ -433,34 +432,46 @@ public sealed class RunCaptureTests
     public void AConsoleCommandSurvivesIntoTheSessionThatResumesTheRun()
     {
         var capture = Played();
-        var line = capture.MarkNonStandard("kill all");
+        var line = capture.MarkNonStandard();
 
-        Assert.Equal(RunJournal.RenderConsoleCommand("kill all"), line);
+        Assert.Equal(RunJournal.RenderNonStandard(), line);
+
+        // The mark and nothing else: no command the player typed is on the file.
+        Assert.DoesNotContain("kill", capture.Journal.Render(), StringComparison.OrdinalIgnoreCase);
 
         var read = RunJournal.Parse(capture.Journal.Render());
-        Assert.Equal(["kill all"], read.ConsoleCommands);
+        Assert.True(read.NonStandard);
 
         // Every decision is still there, and the resumed capture is non-standard
         // without having seen the command itself.
         Assert.Equal(6, read.Entries.Count);
         var resumed = RunCapture.Resume(read, Digest(4));
         Assert.Equal(NativeSource.NonStandardIntegrity, resumed.Integrity);
-        Assert.Equal(["kill all"], resumed.ConsoleCommands);
+        Assert.True(resumed.Journal.NonStandard);
         Assert.Equal(RunCaptureState.Recording, resumed.State);
     }
 
-    /// <summary>Marking twice says so twice and means the same thing once: it is a
-    /// statement about the run, not a counter anything acts on.</summary>
+    /// <summary>Marking twice means the same thing once: it is a statement about the
+    /// run, not a counter anything acts on, so a journal carrying two marks resumes
+    /// into exactly the state one mark leaves.</summary>
     [Fact]
     public void ASecondConsoleCommandDoesNotChangeWhatTheRecordingSays()
     {
         var capture = Played();
-        capture.MarkNonStandard("gold 999");
-        capture.MarkNonStandard("relic add RELIC.BURNING_BLOOD");
-        capture.Finish("abandoned");
+        var once = capture.MarkNonStandard();
+        capture.MarkNonStandard();
 
         Assert.Equal(NativeSource.NonStandardIntegrity, capture.Integrity);
-        Assert.Equal(["gold 999", "relic add RELIC.BURNING_BLOOD"], capture.ConsoleCommands);
+
+        var twiceMarked = RunJournal.Parse(capture.Journal.Render() + once);
+        var resumed = RunCapture.Resume(twiceMarked, Digest(4));
+
+        Assert.True(twiceMarked.NonStandard);
+        Assert.Equal(NativeSource.NonStandardIntegrity, resumed.Integrity);
+        Assert.Equal(RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(4)).Journal.Render(),
+            resumed.Journal.Render());
+
+        capture.Finish("abandoned");
         Assert.Equal(
             NativeSource.NonStandardIntegrity, capture.ToManifest().Source.Native!.Integrity);
     }

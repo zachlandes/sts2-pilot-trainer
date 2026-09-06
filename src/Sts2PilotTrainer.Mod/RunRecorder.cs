@@ -61,12 +61,12 @@ internal sealed class RunRecorder : IDisposable
 
     private static readonly Lock Gate = new();
 
-    /// <summary>Console commands seen while a run existed and this recorder had not
-    /// attached to it yet. Drained into the capture at attach, because a command used
-    /// in that stretch is in the run's history and nothing later could recover it.
-    /// A static list of a framework type, so this type still lays out before the
+    /// <summary>Whether the console was used before this recorder attached to the run
+    /// it is being started for. Applied to the capture at attach, because a command
+    /// used in that stretch is in the run's history and nothing later could recover it.
+    /// A static field of a framework type, so this type still lays out before the
     /// sibling assemblies are resolvable - see docs/in-game-host.md.</summary>
-    private static readonly List<string> ConsoleBeforeAttach = [];
+    private static bool _consoleUsedBeforeAttach;
 
     private readonly RunCapture _capture;
     private readonly string _journalPath;
@@ -123,25 +123,13 @@ internal sealed class RunRecorder : IDisposable
                 return;
             }
 
+            // Cleared at the start of a run rather than only at the end of one, so a
+            // command typed at the main menu is never carried into the run that
+            // follows it. Before any refusal below, because a run this recorder does
+            // not attach to still ends the stretch the mark would have belonged to.
+            lock (Gate) _consoleUsedBeforeAttach = false;
+
             if (!RunmobileSettings.Read().RecordMyRuns) return;
-
-            // A run this recorder may not record is one no console command of it needs
-            // keeping either. Cleared at the start of a run rather than only at the end
-            // of one, so a command typed at the main menu is never carried into the run
-            // that follows it.
-            lock (Gate) ConsoleBeforeAttach.Clear();
-
-            // Asked here as well as at attach, so a multiplayer session is refused
-            // before this starts waiting sixty seconds for a run it will not record.
-            // The reading at attach is the one that decides; this one only saves the
-            // wait, because a run that has not been built yet reads as no run at all.
-            var kind = GameSessionWatch.Observed;
-            if (RunSession.IsMultiplayer(kind))
-            {
-                Log.Info(
-                    $"[{RunmobileMod.ModId}] not recording: this is {RunSession.Describe(kind)}", 2);
-                return;
-            }
 
             _ = AttachWhenReady();
         }
@@ -184,7 +172,7 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     internal static void RunTornDown()
     {
-        lock (Gate) ConsoleBeforeAttach.Clear();
+        lock (Gate) _consoleUsedBeforeAttach = false;
 
         var recorder = Active;
         if (recorder is null) return;
@@ -205,23 +193,27 @@ internal sealed class RunRecorder : IDisposable
     ///
     /// Taken whether or not a recording is live, because the two cases are different
     /// and neither is "nothing happened": with a recording, the mark goes on it now;
-    /// without one, the command is held until a recording of this run exists, and
-    /// dropped when the run does.
+    /// without one, the mark is held until a recording of this run exists, and dropped
+    /// when the next run starts.
+    ///
+    /// Held unconditionally rather than only while there is a run to read. Continuing a
+    /// saved run is asynchronous, so between the game saying a run is starting and the
+    /// run existing there is nothing to read, and a command used in that stretch is in
+    /// the run's history exactly like one used a second later.
     /// </summary>
-    internal static void ConsoleCommandUsed(string command)
+    internal static void ConsoleCommandUsed()
     {
         try
         {
             if (Active is { } recorder)
             {
-                recorder.NoticeConsoleCommand(command);
+                recorder.NoticeConsoleCommand();
                 return;
             }
 
             // No recording yet. Whether one of this run ever exists is the attach's
             // question; if it does, this is part of what it holds.
-            if (LiveRun.State is null) return;
-            lock (Gate) ConsoleBeforeAttach.Add(command);
+            lock (Gate) _consoleUsedBeforeAttach = true;
         }
         catch (Exception ex)
         {
@@ -239,9 +231,9 @@ internal sealed class RunRecorder : IDisposable
     /// the running session knows about is one a crash takes with it, and the session
     /// after it would publish a run the console had been used in.
     /// </summary>
-    private void NoticeConsoleCommand(string command)
+    private void NoticeConsoleCommand()
     {
-        Append(_journalPath, _capture.MarkNonStandard(command));
+        Append(_journalPath, _capture.MarkNonStandard());
         Log.Warn(
             $"[{RunmobileMod.ModId}] the console was used in this run, so its recording is kept and is not " +
             "publishable", 2);
@@ -388,14 +380,14 @@ internal sealed class RunRecorder : IDisposable
             // this run's history and nothing later could recover it, so it is applied
             // here rather than dropped. Before Active is published, so the mark is on
             // the file before the first decision that follows it.
-            List<string> early;
+            bool early;
             lock (Gate)
             {
-                early = ConsoleBeforeAttach.ToList();
-                ConsoleBeforeAttach.Clear();
+                early = _consoleUsedBeforeAttach;
+                _consoleUsedBeforeAttach = false;
             }
 
-            foreach (var command in early) recorder.NoticeConsoleCommand(command);
+            if (early) recorder.NoticeConsoleCommand();
 
             // A journal whose last decision left a fight live resumes with that fight
             // still live, and nothing else here would ever ask: the question is asked
@@ -1345,11 +1337,13 @@ internal sealed class RunRecorder : IDisposable
     /// is what makes one patch cover both, and the same reason <c>SkipRewardsSet</c>
     /// is watched rather than the call the driver makes.
     ///
-    /// It is deliberately not the queue. A console command reaches the action queue as
-    /// <c>ConsoleCmdGameAction</c> - one of the eleven types in the game's own
-    /// generated <c>INetActionSubtypes</c> list - only in a networked game: in
-    /// singleplayer <c>DevConsole.ProcessCommand</c> takes the local branch and never
-    /// builds one, and singleplayer is the only kind of run this recorder records. A
+    /// It is deliberately not the queue. A console command reaches the action queue
+    /// only in a networked game, and as two types rather than one: the game's own
+    /// generated <c>INetActionSubtypes</c> list holds the eleven <c>Net*</c> structs,
+    /// of which the console's is <c>NetConsoleCmdGameAction</c>, and the action it
+    /// builds and puts on the queue is <c>ConsoleCmdGameAction</c>. In singleplayer
+    /// <c>DevConsole.ProcessCommand</c> takes the local branch and builds neither, and
+    /// singleplayer is the only kind of run this recorder records. A
     /// watch on the queue would therefore have seen a console command in exactly the
     /// runs that are never recorded and none of the runs that are.
     /// </summary>
@@ -1394,12 +1388,11 @@ internal sealed class RunRecorder : IDisposable
     internal static class ConsoleCommand
     {
         [HarmonyPostfix]
-        internal static void After(string cmdName, string[] args, CmdResult __result)
+        internal static void After(CmdResult __result)
         {
             if (!__result.success) return;
 
-            var typed = args is { Length: > 0 } ? $"{cmdName} {string.Join(" ", args)}" : cmdName;
-            ConsoleCommandUsed(typed);
+            ConsoleCommandUsed();
         }
     }
 

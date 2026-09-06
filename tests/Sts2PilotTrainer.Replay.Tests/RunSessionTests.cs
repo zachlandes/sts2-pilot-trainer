@@ -36,27 +36,28 @@ public sealed class RunSessionTests
 
         Assert.False(RunSession.MaySpeakIn(RunSessionKind.NetworkedMultiplayer));
         Assert.False(RunSession.MaySpeakIn(RunSessionKind.LocalMultiplayer));
+        Assert.False(RunSession.MaySpeakIn(RunSessionKind.MultiplayerKindUnread));
         Assert.False(RunSession.MaySpeakIn(RunSessionKind.Spectated));
         Assert.False(RunSession.MaySpeakIn(RunSessionKind.Unreadable));
     }
 
     /// <summary>
-    /// Two players sharing one client is a multiplayer run here, whatever the game's
-    /// own networking calls it.
+    /// A multiplayer session nothing read the kind of says that and no more.
     ///
-    /// <c>RunManager.IsSingleplayerOrFakeMultiplayer</c> answers true for it, because
-    /// what that property is about is whether anything has to be sent over a wire. What
-    /// this is about is whose decisions the history holds, and a run two people played
-    /// holds decisions this client's player did not make.
+    /// The latch establishes that the game set a multiplayer session up, and nothing
+    /// about which shape it is: the run does not exist yet, so there is no network
+    /// game or player list to read. It is refused exactly like the two kinds a reading
+    /// names, and the sentence it puts in the player's log claims no network game.
     /// </summary>
     [Fact]
-    public void TwoPlayersOnOneClientIsAMultiplayerRun()
+    public void ALatchedMultiplayerSessionClaimsNoMoreThanTheLatchEstablished()
     {
-        Assert.True(RunSession.IsMultiplayer(RunSessionKind.LocalMultiplayer));
-        Assert.True(RunSession.IsMultiplayer(RunSessionKind.NetworkedMultiplayer));
+        Assert.False(RunSession.MayBeRecorded(RunSessionKind.MultiplayerKindUnread));
+        Assert.False(RunSession.MaySpeakIn(RunSessionKind.MultiplayerKindUnread));
 
-        Assert.False(RunSession.IsMultiplayer(RunSessionKind.Singleplayer));
-        Assert.False(RunSession.IsMultiplayer(RunSessionKind.NoRunInProgress));
+        var described = RunSession.Describe(RunSessionKind.MultiplayerKindUnread);
+        Assert.Contains("multiplayer", described, StringComparison.Ordinal);
+        Assert.DoesNotContain("network", described, StringComparison.Ordinal);
     }
 
     /// <summary>Every kind explains itself, because the sentence is what a player reads

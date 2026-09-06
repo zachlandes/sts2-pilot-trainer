@@ -55,6 +55,11 @@ internal static class GameSessionWatch
     /// taken then answers <see cref="RunSessionKind.NoRunInProgress"/> - which is a
     /// state this mod may draw in. So a session the game said was multiplayer stays
     /// multiplayer until the run is torn down, whatever a later reading says.
+    ///
+    /// What it answers while the latch is set is
+    /// <see cref="RunSessionKind.MultiplayerKindUnread"/>, which is what the latch
+    /// establishes: the game set a multiplayer session up. Which of the two shapes it
+    /// is would be a reading, and no reading was taken.
     /// </summary>
     internal static RunSessionKind Observed
     {
@@ -62,7 +67,7 @@ internal static class GameSessionWatch
         {
             bool multiplayer;
             lock (Gate) multiplayer = _multiplayerSessionSetUp;
-            return multiplayer ? RunSessionKind.NetworkedMultiplayer : LiveRun.ReadSession();
+            return multiplayer ? RunSessionKind.MultiplayerKindUnread : LiveRun.ReadSession();
         }
     }
 

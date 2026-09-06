@@ -23,7 +23,11 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 [CollectionDefinition(nameof(GameSessionWatchTests), DisableParallelization = true)]
 public sealed class GameSessionWatchTests : IDisposable
 {
-    public void Dispose() => GameSessionWatch.SessionTornDown();
+    public void Dispose()
+    {
+        GameSessionWatch.SessionTornDown();
+        RunRecorder.RunTornDown();
+    }
 
     /// <summary>The passing half: an ordinary client, before any run, is one this mod
     /// may draw its card in.</summary>
@@ -52,7 +56,7 @@ public sealed class GameSessionWatchTests : IDisposable
         _ = EngineHost.StartupPhase();
         GameSessionWatch.MultiplayerSessionSetUp();
 
-        Assert.Equal(RunSessionKind.NetworkedMultiplayer, GameSessionWatch.Observed);
+        Assert.Equal(RunSessionKind.MultiplayerKindUnread, GameSessionWatch.Observed);
         Assert.False(GameSessionWatch.MaySpeak);
         Assert.Empty(RunmobileMod.MenuCards);
 
@@ -94,6 +98,47 @@ public sealed class GameSessionWatchTests : IDisposable
         Assert.Equal(RunSessionKind.NoRunInProgress, GameSessionWatch.Observed);
         Assert.True(GameSessionWatch.MaySpeak);
     }
+
+    /// <summary>
+    /// A console command used before the recorder attaches is held, not dropped.
+    ///
+    /// The stretch this covers is the one where there is nothing to read: continuing a
+    /// saved run is asynchronous, so between the game saying a run is starting and the
+    /// run existing <c>LiveRun.State</c> is null for the whole of a save load. A
+    /// command typed then is in that run's history exactly like one typed a second
+    /// later, and a recording that dropped it would state <c>integrity = "complete"</c>
+    /// for a run the console was used in - a wrong label with no error anywhere.
+    ///
+    /// And the hold does not outlive the stretch: the next run starting clears it, so a
+    /// command typed at the main menu is never carried into the run that follows.
+    /// </summary>
+    [GameFact]
+    public void AConsoleCommandUsedBeforeTheRecorderAttachesIsHeldForIt()
+    {
+        _ = EngineHost.StartupPhase();
+        Assert.Null(RunRecorder.Active);
+
+        // The game says a run is starting. There is no run yet, and no reading to take.
+        RunRecorder.NoticeRun();
+        Assert.Equal(RunSessionKind.NoRunInProgress, LiveRun.ReadSession());
+        Assert.False(HeldForAttach());
+
+        RunRecorder.ConsoleCommandUsed();
+
+        Assert.True(HeldForAttach());
+
+        // And the run that follows this one starts from nothing held.
+        RunRecorder.NoticeRun();
+        Assert.False(HeldForAttach());
+    }
+
+    /// <summary>Whether a console command is being held for the recording this run is
+    /// about to have. Private because nothing outside the recorder may act on it; read
+    /// here because it is the whole of what the hold does before an attach.</summary>
+    private static bool HeldForAttach() =>
+        (bool)typeof(RunRecorder)
+            .GetField("_consoleUsedBeforeAttach", BindingFlags.NonPublic | BindingFlags.Static)!
+            .GetValue(null)!;
 
     /// <summary>
     /// Every member the multiplayer watch attaches to is on this build.
@@ -160,10 +205,12 @@ public sealed class GameSessionWatchTests : IDisposable
     /// Why the queue is not the seam, kept as a fact about this build rather than as
     /// prose.
     ///
-    /// A console command reaches the action queue as <c>ConsoleCmdGameAction</c> - one
-    /// of the eleven types in the game's own generated <c>INetActionSubtypes</c> list -
-    /// and only in a networked game: in singleplayer <c>DevConsole.ProcessCommand</c>
-    /// takes its local branch and builds none. Singleplayer is the only kind of run
+    /// A console command reaches the action queue only in a networked game, and as two
+    /// types rather than one: the game's own generated <c>INetActionSubtypes</c> list
+    /// holds the eleven <c>Net*</c> structs, of which the console's is
+    /// <c>NetConsoleCmdGameAction</c>, and the action it builds and puts on the queue
+    /// is <c>ConsoleCmdGameAction</c>. In singleplayer <c>DevConsole.ProcessCommand</c>
+    /// takes its local branch and builds neither. Singleplayer is the only kind of run
     /// this recorder records, so a watch on the queue would see a console command in
     /// exactly the runs that are never recorded and in none of the runs that are.
     ///

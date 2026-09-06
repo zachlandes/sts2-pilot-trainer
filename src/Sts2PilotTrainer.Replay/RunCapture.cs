@@ -69,7 +69,6 @@ public sealed class RunCapture
     private readonly Dictionary<int, string> _digests = [];
     private readonly Dictionary<int, int?> _clocks = [];
     private readonly List<string> _refusals = [];
-    private readonly List<string> _consoleCommands = [];
 
     private FightCapture? _fight;
 
@@ -122,11 +121,6 @@ public sealed class RunCapture
     /// stops.
     /// </summary>
     public string Integrity { get; private set; } = NativeSource.CompleteIntegrity;
-
-    /// <summary>Every console command this recording saw, in the order it saw them.
-    /// Kept for the player looking at their own recording; the manifest states only
-    /// <see cref="Integrity"/>.</summary>
-    public IReadOnlyList<string> ConsoleCommands => _consoleCommands;
 
     public RunCaptureState State { get; private set; } = RunCaptureState.Recording;
 
@@ -185,7 +179,7 @@ public sealed class RunCapture
         WitnessedRunStart = WitnessedRunStart,
         Entries = [Opening, .. _entries],
         Refusals = _refusals.ToList(),
-        ConsoleCommands = _consoleCommands.ToList(),
+        NonStandard = !string.Equals(Integrity, NativeSource.CompleteIntegrity, StringComparison.Ordinal),
     };
 
     /// <summary>
@@ -283,11 +277,11 @@ public sealed class RunCapture
         // continuous.
         foreach (var reason in journal.Refusals) capture.Break(reason);
 
-        // Same reasoning, for the same reason: a console command an earlier session
-        // saw is a fact about this run that no later reading of the live game could
-        // recover, and a session that resumed without it would publish a run the
-        // console had been used in.
-        foreach (var command in journal.ConsoleCommands) capture.MarkNonStandard(command);
+        // Same reasoning, for the same reason: the console having been used in this
+        // run is a fact about it that no later reading of the live game could recover,
+        // and a session that resumed without it would publish a run the console had
+        // been used in.
+        if (journal.NonStandard) capture.MarkNonStandard();
 
         var last = capture._entries.Count > 0 ? capture._entries[^1] : journal.Opening;
         if (!string.Equals(last.Digest, liveDigest, StringComparison.Ordinal))
@@ -413,18 +407,19 @@ public sealed class RunCapture
     /// It marks and never stops, which is the difference between this and
     /// <see cref="MarkBroken"/>: a broken watch is a recording that cannot account for
     /// the run, and this is a complete account of a run nobody may publish.
+    ///
+    /// Nothing the player typed is kept, here or on the file. Which of the game's
+    /// commands change a run is not a judgement this class is in a position to make,
+    /// and what a recording states is <see cref="Integrity"/> and nothing else - so a
+    /// mark is a statement about the run rather than a record of what was entered in
+    /// it, and marking twice says the same thing as marking once.
     /// </summary>
-    /// <param name="command">The command as the player typed it, kept for them to
-    /// read back. Never interpreted: which of the game's commands change a run is not
-    /// a judgement this class is in a position to make, and one that changed nothing
-    /// still means somebody had the console open in a run being recorded.</param>
     /// <returns>The journal line to append for it, so the mark survives this session
     /// the same way a decision does.</returns>
-    public string MarkNonStandard(string command)
+    public string MarkNonStandard()
     {
-        _consoleCommands.Add(command);
         Integrity = NativeSource.NonStandardIntegrity;
-        return RunJournal.RenderConsoleCommand(command);
+        return RunJournal.RenderNonStandard();
     }
 
     /// <summary>

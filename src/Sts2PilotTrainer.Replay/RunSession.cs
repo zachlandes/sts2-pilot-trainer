@@ -39,6 +39,19 @@ public enum RunSessionKind
     /// <summary>A network game, hosting or joined.</summary>
     NetworkedMultiplayer,
 
+    /// <summary>
+    /// A multiplayer session the game itself set up, of a kind nothing here read.
+    ///
+    /// The one value that comes from a latch rather than a reading: the game called
+    /// its own multiplayer setup member, which settles that this is a multiplayer
+    /// session and settles nothing about which of the two shapes above it is - the
+    /// run does not exist yet, so there is no player list or network game to read.
+    /// It is a value of its own rather than either of them, because a recording and a
+    /// log line that named a network game here would be asserting what nobody looked
+    /// at.
+    /// </summary>
+    MultiplayerKindUnread,
+
     /// <summary>A recorded network game being played back by the game's own replay
     /// path. Not a run anybody is playing, and not one this project may describe.</summary>
     Spectated,
@@ -78,11 +91,6 @@ public static class RunSession
     public static bool MaySpeakIn(RunSessionKind kind) =>
         kind is RunSessionKind.Singleplayer or RunSessionKind.NoRunInProgress;
 
-    /// <summary>Whether the reading says this is a game more than one person is
-    /// playing, by either route.</summary>
-    public static bool IsMultiplayer(RunSessionKind kind) =>
-        kind is RunSessionKind.LocalMultiplayer or RunSessionKind.NetworkedMultiplayer;
-
     /// <summary>
     /// The reading in the words a log line uses. Interpolated from the kind rather
     /// than written at each caller, so the two refusals cannot come to describe the
@@ -94,6 +102,7 @@ public static class RunSession
         RunSessionKind.NoRunInProgress => "no run in progress",
         RunSessionKind.LocalMultiplayer => "a multiplayer run shared with another player on this client",
         RunSessionKind.NetworkedMultiplayer => "a multiplayer run over the network",
+        RunSessionKind.MultiplayerKindUnread => "a multiplayer run this client set up",
         RunSessionKind.Spectated => "a recorded network game being played back",
         _ => "a run this build could not read the kind of",
     };

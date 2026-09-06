@@ -65,19 +65,21 @@ public sealed record RunJournal
     public IReadOnlyList<string> Refusals { get; init; } = [];
 
     /// <summary>
-    /// Every console command the sessions that wrote this journal saw, in the order
-    /// they saw them.
+    /// Whether the sessions that wrote this journal saw the console used in this run.
     ///
     /// On the file for the same reason the refusals are: what the console did to the
     /// run is not among the decisions this journal holds, so no later reading of the
     /// live game could recover it. A session that resumed without it would publish a
     /// run the console had been used in, with every value in the recording true.
     ///
-    /// A journal carrying one of these lines is refused by a build older than the one
-    /// that introduced them, which is the right way round: an older build cannot tell
-    /// that this run is unpublishable, and refusing to read it is how it says so.
+    /// A statement about the run rather than a record of what was typed in it, so it
+    /// is one flag however many mark lines the file carries and no player-typed text
+    /// is ever persisted. A journal carrying one of those lines is refused by a build
+    /// older than the one that introduced them, which is the right way round: an older
+    /// build cannot tell that this run is unpublishable, and refusing to read it is how
+    /// it says so.
     /// </summary>
-    public IReadOnlyList<string> ConsoleCommands { get; init; } = [];
+    public bool NonStandard { get; init; }
 
     /// <summary>The reading taken before any decision.</summary>
     public RunJournalEntry Opening => Entries[0];
@@ -108,10 +110,11 @@ public sealed record RunJournal
     public static string RenderRefusal(string reason) =>
         JsonSerializer.Serialize(new JournalRefusal { Reason = reason }, Compact) + "\n";
 
-    /// <summary>One console command, as the line appended for it. Appended the moment
-    /// it is seen, for the same reason a refusal is.</summary>
-    public static string RenderConsoleCommand(string command) =>
-        JsonSerializer.Serialize(new JournalConsoleCommand { Command = command }, Compact) + "\n";
+    /// <summary>The mark that says the console was used in this run, as the line
+    /// appended for it. Appended the moment it is seen, for the same reason a refusal
+    /// is, and it carries the mark and nothing else.</summary>
+    public static string RenderNonStandard() =>
+        JsonSerializer.Serialize(new JournalNonStandard { NonStandard = true }, Compact) + "\n";
 
     /// <summary>The whole journal as it would be on disk. For a caller writing one in
     /// a single pass; a recorder appends instead.</summary>
@@ -119,7 +122,7 @@ public sealed record RunJournal
         RenderHeader() +
         string.Concat(Entries.Select(RenderEntry)) +
         string.Concat(Refusals.Select(RenderRefusal)) +
-        string.Concat(ConsoleCommands.Select(RenderConsoleCommand));
+        (NonStandard ? RenderNonStandard() : string.Empty);
 
     /// <summary>
     /// The journal brought back to a boundary an append may follow, or null when it is
@@ -170,11 +173,11 @@ public sealed record RunJournal
     /// kept.
     /// </summary>
     private static Exception? ReadRecord(
-        string line, out RunJournalEntry? entry, out string? refusal, out string? consoleCommand)
+        string line, out RunJournalEntry? entry, out string? refusal, out bool nonStandard)
     {
         entry = null;
         refusal = null;
-        consoleCommand = null;
+        nonStandard = false;
         try
         {
             if (JsonSerializer.Deserialize<JournalRefusal>(line, Compact) is { Reason: not null } read)
@@ -183,9 +186,9 @@ public sealed record RunJournal
                 return null;
             }
 
-            if (JsonSerializer.Deserialize<JournalConsoleCommand>(line, Compact) is { Command: not null } console)
+            if (JsonSerializer.Deserialize<JournalNonStandard>(line, Compact) is { NonStandard: not null } mark)
             {
-                consoleCommand = console.Command;
+                nonStandard = mark.NonStandard.Value;
                 return null;
             }
 
@@ -239,10 +242,10 @@ public sealed record RunJournal
 
         var entries = new List<RunJournalEntry>();
         var refusals = new List<string>();
-        var consoleCommands = new List<string>();
+        var nonStandard = false;
         for (var index = 1; index < lines.Count; index++)
         {
-            if (ReadRecord(lines[index], out var entry, out var refusal, out var command) is { } unreadable)
+            if (ReadRecord(lines[index], out var entry, out var refusal, out var marked) is { } unreadable)
             {
                 // The last line of a file a crash interrupted. Everything before it
                 // finished being written and is a real recording of what happened.
@@ -251,8 +254,8 @@ public sealed record RunJournal
             }
 
             if (refusal is not null) refusals.Add(refusal);
-            else if (command is not null) consoleCommands.Add(command);
-            else entries.Add(entry!);
+            else if (entry is null) nonStandard |= marked;
+            else entries.Add(entry);
         }
 
         var journal = new RunJournal
@@ -264,7 +267,7 @@ public sealed record RunJournal
             WitnessedRunStart = header.WitnessedRunStart,
             Entries = entries,
             Refusals = refusals,
-            ConsoleCommands = consoleCommands,
+            NonStandard = nonStandard,
         };
         journal.RequireReadable();
         return journal;
@@ -349,12 +352,13 @@ public sealed record RunJournal
         public string? Reason { get; init; }
     }
 
-    /// <summary>A console-command line, told apart from the other two shapes the same
-    /// way: one property none of them has.</summary>
-    private sealed record JournalConsoleCommand
+    /// <summary>The non-standard mark's line, told apart from the other two shapes the
+    /// same way: one property none of them has. It carries no payload, because what a
+    /// recording states about the console is that it was used.</summary>
+    private sealed record JournalNonStandard
     {
-        [JsonPropertyName("console_command")]
-        public string? Command { get; init; }
+        [JsonPropertyName("non_standard")]
+        public bool? NonStandard { get; init; }
     }
 }
 
