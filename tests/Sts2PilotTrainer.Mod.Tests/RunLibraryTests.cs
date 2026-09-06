@@ -195,6 +195,49 @@ public sealed class RunLibraryStoreTests : IDisposable
         Assert.Null(RunHistoryPlateHost.RecordingOf(Wanted() with { Character = null }));
     }
 
+    /// <summary>
+    /// A run the console was used in says on its plate why it cannot be submitted, and a
+    /// recording made before the recorder could tell says nothing rather than "clean".
+    ///
+    /// The reading is the subject, so the two facts this takes off the process rather
+    /// than off the recording - which build this game is, and whether a run is live - are
+    /// supplied here. Neither is a fact about the recording, and leaving them to whatever
+    /// the test process happens to be would decide a state on something nobody is
+    /// asserting.
+    /// </summary>
+    [GameFact]
+    public void ARunTheConsoleWasUsedInSaysSoAndOneThatStatesNothingDoesNot()
+    {
+        var quiet = BareRecording("native-quiet");
+        var console = quiet with
+        {
+            Source = quiet.Source with
+            {
+                Native = quiet.Source.Native! with { Integrity = NativeSource.NonStandardIntegrity },
+            },
+        };
+
+        var consoleFacts = RunHistoryPlateHost.FactsFor(null, console);
+        var quietFacts = RunHistoryPlateHost.FactsFor(null, quiet);
+
+        Assert.True(consoleFacts.ConsoleUsed);
+        Assert.Null(quietFacts.ConsoleUsed);
+
+        var consolePlate = RunHistoryPlate.For(AsIfHere(consoleFacts))!;
+        Assert.Equal(PlateMark.Recorded, consolePlate.Mark);
+        Assert.False(consolePlate.Rows[2].Enabled);
+        Assert.Equal(LibraryCopy.PlateConsoleUsed, consolePlate.Reason);
+
+        var quietPlate = RunHistoryPlate.For(AsIfHere(quietFacts))!;
+        Assert.Equal(PlateMark.Recorded, quietPlate.Mark);
+        Assert.Equal(LibraryCopy.PlateSubmitComing, quietPlate.Reason);
+    }
+
+    /// <summary>The same facts with this process's own two readings settled, so what
+    /// decides the state is what the recording says.</summary>
+    private static RunHistoryFacts AsIfHere(RunHistoryFacts facts) =>
+        facts with { RecordedBuild = facts.ThisBuild, RunInProgress = false };
+
     /// <summary>What the game's history says about the run these recordings are of.
     /// The values are the fixture's own; nothing here is under test but the
     /// matching.</summary>

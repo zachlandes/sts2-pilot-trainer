@@ -126,14 +126,13 @@ internal static class RunHistoryPlateHost
     /// read, because the recorder does not attach to one. Continuity and the recorded
     /// build come from the recording, which is the only thing that witnessed them.
     ///
-    /// <para>Whether a console command was used is nobody's answer yet, so it is null
-    /// rather than false: absent is not a clean run under another name, and reporting
-    /// one this never checked is the claim <c>AGENTS.md</c> forbids. The reading it is
-    /// waiting for is <c>source.native.integrity</c>, which the recorder writes on
-    /// <c>fm/recorder-detection-multiplayer-and-console</c>; once that lands the honest
-    /// reading here is <c>NativeSource.StatesSomethingOtherThanComplete</c>. Until then
-    /// the design's console-command state is derived correctly and unreachable, which
-    /// docs/in-game-host.md records beside the other stated gaps.</para>
+    /// <para>Whether a console command was used is the recording's own answer, read
+    /// through <c>NativeSource.StatesSomethingOtherThanComplete</c> - the owner of that
+    /// reading, so the integrity values are compared in one place. It is three-valued
+    /// rather than a boolean because a recording written before the recorder could tell
+    /// states no integrity at all, and absent is not a clean run under another name:
+    /// reporting one this never established is the claim <c>AGENTS.md</c> forbids, so
+    /// such a recording answers null.</para>
     ///
     /// <para>Whether there is a submit flow is this build's own answer and it is no:
     /// section 9.8 puts the flow outside this slice, so the row is drawn refused with a
@@ -144,7 +143,9 @@ internal static class RunHistoryPlateHost
             HasRecording: recording is not null,
             Multiplayer: history is not null && history.Players.Count > 1,
             Continuous: recording?.Source.Native?.IsContinuous ?? false,
-            ConsoleUsed: null,
+            ConsoleUsed: recording?.Source.Native is { Integrity: not null } native
+                ? native.StatesSomethingOtherThanComplete
+                : null,
             RecordedBuild: recording?.Environment.BuildVersion.Value ?? string.Empty,
             ThisBuild: RunLibrary.ThisBuild(),
             RunInProgress: LocalEnvironment.ReadStartedRun() is not null,

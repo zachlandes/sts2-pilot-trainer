@@ -746,29 +746,29 @@ reading fails again on every open.
 Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup
 judge live, every time they open.
 
-**Three states the design names are derived and not reachable, for reasons outside this
+**Two states the design names are derived and not reachable, for reasons outside this
 module.** The plate's console-command state - play rows offered, Submit refused, "A
-console command was used, so it can't be submitted." - is derived correctly by
-`RunHistoryPlate` and nothing supplies the fact behind it, so `RunHistoryPlateHost.FactsFor`
-passes `ConsoleUsed` null.
-Null rather than false, because absent is not a clean run under another name and a plate
-reporting one it never checked is the claim `AGENTS.md` forbids.
-The reading it waits on is `source.native.integrity`, which the recorder writes on
-`fm/recorder-detection-multiplayer-and-console`; the honest reading once that lands is
-`NativeSource.StatesSomethingOtherThanComplete`.
-The browser's multiplayer rule is the second.
+console command was used, so it can't be submitted." - is not one of them any more: the
+recorder writes `source.native.integrity`, and `RunHistoryPlateHost.FactsFor` reads it
+through `NativeSource.StatesSomethingOtherThanComplete`, which owns the comparison.
+That reading is three-valued rather than a boolean, because a recording written before the
+recorder could tell states no integrity at all and answers `ConsoleUsed` null - absent is
+not a clean run under another name, and a plate reporting one it never checked is the claim
+`AGENTS.md` forbids.
+The browser's multiplayer rule is the first that is still unreachable.
 `LibraryRun.Listed` hides an established multiplayer run and `RunBrowser.Lookup` answers a
 run code for one with the multiplayer body, both correctly, and nothing supplies the fact:
 `LibraryRun.Multiplayer` is null on every run the library builds, so neither arm is
 reached.
-Null rather than false for the same reason the console fact is - a host reporting
-"single-player" it never established is the claim `AGENTS.md` forbids, and the hidden rule
-hides what was established and never a question nobody asked.
-The reading it waits on is the recorder's own multiplayer detection, also on
-`fm/recorder-detection-multiplayer-and-console`; both arms become reachable when it merges,
-with no change here.
+Null rather than false for the same reason the console fact is null where it is - a host
+reporting "single-player" it never established is the claim `AGENTS.md` forbids, and the
+hidden rule hides what was established and never a question nobody asked.
+The reading it waits on is a recording that says which kind of run it was, and no manifest
+field carries one: the recorder attaches to singleplayer runs only, so nothing writes a
+session kind for the library to read.
+Both arms become reachable when something does, with no change here.
 
-The Submit row is the third, and it is the one that shows.
+The Submit row is the second, and it is the one that shows.
 The flow it leads to is outside this slice by the design's own section 9.8, so
 `SubmitAvailable` is supplied false and the row is drawn refused with "Submitting runs is
 coming" rather than drawn as an offer nothing honours.
