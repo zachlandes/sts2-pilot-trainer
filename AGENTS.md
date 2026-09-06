@@ -316,6 +316,7 @@ Continuity, a witnessed start, the mod set a run was played under, the controls 
 Four such claims were shipped on this branch and caught in review; [docs/in-game-host.md](docs/in-game-host.md) names them, so the rule is checkable rather than an abstraction.
 It writes an append-only `RunJournal` after every decision so a crash keeps the prefix, never raises `ProfileWriteBarrier` - the player's own run saves normally - and never writes a Steam id, a machine path, a profile id or hardware.
 Every write goes through `RunmobileStore`. [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
+The recorder's one on-screen surface is a row of the game's own version overlay rather than a plate or a chip: `RecorderPresence.For` in `Sts2PilotTrainer.Trainer` derives it from exactly `RunRecorder.Active` and `RunCapture.State`, and `RecorderPresenceRow` in the mod draws it as a sibling label under the overlay's own MODDED row, installed apart from the watch above so a renamed overlay costs the row rather than the recorder. [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
 
 **A fight a person plays is captured, never re-read.**
 `FightCapture` in `Sts2PilotTrainer.Replay` is the one owner of turning what the game's own action executor announces into the same `ReplayTrace` the headless arbiter produces; `PlayerFightObserver` in the mod only decides when a sample is taken.

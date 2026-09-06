@@ -1,4 +1,5 @@
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Engine;
 
 namespace Sts2PilotTrainer.Mod;
@@ -68,6 +69,37 @@ internal sealed class RecorderModule : IRunmobileModule
         // about the game that the Combat Trainer's settle reads too. What was answered
         // is this feature's, so it subscribes rather than patching them a second time.
         RunRecorder.ReadTheAnswers();
+
+        InstallPresenceRow(harmony);
+    }
+
+    /// <summary>
+    /// The recorder's one surface: a row of the game's own version overlay.
+    ///
+    /// Listed apart from <see cref="RunRecorder.PatchClasses"/>, and installed apart from
+    /// the watch, because the two fail differently. A decision this build renamed is a
+    /// history with a hole in it and refuses the whole module above; an overlay this build
+    /// renamed is a row that does not appear, and the recording it would have announced is
+    /// whole. So a patch that will not attach here is a line in the log and nothing else -
+    /// it never reaches <see cref="Examine"/>'s refusal.
+    /// </summary>
+    internal static readonly IReadOnlyList<Type> PresencePatchClasses = [typeof(RecorderPresenceRow.VersionOverlay)];
+
+    private static void InstallPresenceRow(Harmony harmony)
+    {
+        foreach (var patchClass in PresencePatchClasses)
+        {
+            try
+            {
+                harmony.CreateClassProcessor(patchClass).Patch();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(
+                    $"[{RunmobileMod.ModId}] the recording row could not be added to this build's version " +
+                    $"overlay, so the recorder runs without one: {ex.GetType().Name}: {ex.Message}", 2);
+            }
+        }
     }
 
     /// <summary>

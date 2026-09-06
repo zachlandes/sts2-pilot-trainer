@@ -17,8 +17,10 @@ internal static class ScreenMarkup
     private const string MetColor = "#8fc972";
 
     /// <summary>Requirement not met. Warm rather than alarming: a missing unlock is
-    /// something to go and play, not an error.</summary>
-    private const string NotMetColor = "#e0755a";
+    /// something to go and play, not an error. Also the recorder's stopped row, in the
+    /// version overlay: the one other place this mod asks the player to see to
+    /// something, drawn in the one hue that already means that.</summary>
+    internal const string NotMetColor = "#e0755a";
 
     /// <summary>
     /// Requirement this build cannot supply. Cool and flat, because the warm colour
