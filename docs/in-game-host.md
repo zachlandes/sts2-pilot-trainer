@@ -488,6 +488,9 @@ and every feature that reads the engine asks it for itself at the first moment i
 demonstrably has a running game - the singleplayer menu for the mode card, the recorder
 when a run has entered its first room. No feature's correctness rests on another having
 asked first, and a refusal is the caller's to act on: no mode card, and no recording.
+The singleplayer-menu postfix asks before it looks at what the modules contribute, so
+adoption - and the retention duty behind it - happens on a build where every module
+declined and there is no card to draw.
 
 **Godot does not load the game into the default load context.**
 A mod's sibling assemblies have to be resolved on the load context the mod itself was
@@ -743,6 +746,7 @@ Three properties hold, and each is asserted rather than described.
 Every file removed came back from `RecordingLibrary` as part of a recording written under the name this build writes, so a player's own file in that directory, a manifest they copied in, and this mod's `settings.json` all survive a purge.
 Every removal goes through `RunmobileStore.Remove`, which refuses a path outside the store, a path inside a game installation and a directory, exactly as a write does.
 And the moment is `RunmobileMod.EnsureAdopted` - the mod's one "there is demonstrably a running game" gate, which every path reaching the store passes first, so a removal can never race a journal being appended to.
+It is asked from the shell's own singleplayer-menu patch, ahead of any question about which modules contributed a card, because keeping and removing a player's files is the shell's duty: a build where the Combat Trainer and the recorder both decline still honours a purge, and still enforces `keep_recent_runs`.
 It cannot be mod start: the game has no chosen save profile then, so the store cannot yet say whose files these are.
 
 One consequence, stated rather than hidden: a run the player saved and has not finished is a recording like any other, so a cap small enough to reach it removes the journal of a run still on the game's Continue.
