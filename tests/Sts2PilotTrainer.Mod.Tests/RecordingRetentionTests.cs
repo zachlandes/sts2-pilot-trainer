@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
@@ -61,8 +62,8 @@ public sealed class RecordingRetentionTests : IDisposable
         Assert.Equal(4, RunmobileStore.ListFileNames(Recordings).Count);
     }
 
-    /// <summary>Keeping every run there will ever be is what a negative number says,
-    /// and it is what a settings file this build could not read falls back to.</summary>
+    /// <summary>Removing nothing is the internal fallback for a settings file this
+    /// build could not read, and there is no way to ask the file for it.</summary>
     [Fact]
     public void KeepingEveryRunRemovesNothing()
     {
@@ -90,7 +91,7 @@ public sealed class RecordingRetentionTests : IDisposable
     [Fact]
     public void APurgeClearsItsOwnRequestAndDoesNotRunAgain()
     {
-        Settings(keep: 50, purge: true).Save();
+        WriteSettings(keep: 50, purge: true);
         Record(Older);
 
         RecordingRetention.Apply(RunmobileSettings.Read());
@@ -146,7 +147,7 @@ public sealed class RecordingRetentionTests : IDisposable
     [Fact]
     public void ItIsAppliedOncePerProcess()
     {
-        Settings(keep: 0).Save();
+        WriteSettings(keep: 0);
         Record(Older);
 
         RecordingRetention.ApplyOnce();
@@ -156,6 +157,33 @@ public sealed class RecordingRetentionTests : IDisposable
         RecordingRetention.ApplyOnce();
         Assert.Equal(2, RunmobileStore.ListFileNames(Recordings).Count);
     }
+
+    /// <summary>
+    /// A purge writes back the one member it honoured. Every other member is the
+    /// player's own text, refused values included: a policy this build will not apply
+    /// is still a sentence they wrote, and normalising it onto disk would make the mod
+    /// a writer of the whole file.
+    /// </summary>
+    [Fact]
+    public void APurgeLeavesEveryOtherMemberOfTheFileAsThePlayerWroteIt()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","keep_recent_runs":-1,"purge_my_runs":true}""");
+        Record(Older);
+
+        RecordingRetention.Apply(RunmobileSettings.Read());
+
+        var written = JsonNode.Parse(RunmobileStore.Read(RunmobileSettings.FileName)!)!.AsObject();
+        Assert.Equal(-1, (int)written["keep_recent_runs"]!);
+        Assert.False((bool)written["purge_my_runs"]!);
+        Assert.Empty(RunmobileStore.ListFileNames(Recordings));
+    }
+
+    private static void WriteSettings(int keep, bool purge = false) =>
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","keep_recent_runs":{{keep}},"purge_my_runs":{{(purge ? "true" : "false")}}}""");
 
     private static RunmobileSettings Settings(int keep, bool purge = false) =>
         RunmobileSettings.Default with { KeepRecentRuns = keep, PurgeMyRuns = purge };

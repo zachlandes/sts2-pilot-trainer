@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Replay;
@@ -156,13 +157,22 @@ internal sealed record RunmobileSettings
     }
 
     /// <summary>
-    /// Writes these settings back over the player's file.
+    /// Takes a honoured purge request back out of the player's file, and touches
+    /// nothing else in it.
     ///
-    /// The one thing this mod writes into a file a player hand-edits, and it exists for
-    /// exactly one member: a purge that stayed requested would run again at every
-    /// launch. Whole and atomic through <see cref="RunmobileStore"/>, so an interrupted
-    /// write leaves the file the player wrote rather than half of a new one.
+    /// A purge that stayed requested would run again at every launch, so this one
+    /// member has to be written; every other member is the player's own text and is
+    /// written back exactly as they wrote it, refused values included. The file is
+    /// edited rather than re-serialised from this record for that reason. Whole and
+    /// atomic through <see cref="RunmobileStore"/>, so an interrupted write leaves the
+    /// file the player wrote rather than half of a new one.
     /// </summary>
-    internal void Save() =>
-        RunmobileStore.Write(FileName, JsonSerializer.Serialize(this, ManifestJson.Options) + "\n");
+    internal static void ClearPurgeRequest()
+    {
+        if (RunmobileStore.Read(FileName) is not { } json) return;
+        if (JsonNode.Parse(json) is not JsonObject settings) return;
+
+        settings["purge_my_runs"] = false;
+        RunmobileStore.Write(FileName, settings.ToJsonString(ManifestJson.Options) + "\n");
+    }
 }

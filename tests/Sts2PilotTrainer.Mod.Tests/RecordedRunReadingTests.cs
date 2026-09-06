@@ -73,7 +73,7 @@ public sealed class RecordedRunReadingTests
     [Fact]
     public void ARecordingsNameCarriesOnlyItsSeedAndWhenItBegan()
     {
-        var name = LiveRun.NameRecording(
+        var name = RecordingLibrary.Name(
             "SFXT47K77RFK", new DateTimeOffset(2026, 9, 5, 3, 14, 15, TimeSpan.Zero));
 
         Assert.Equal("native-SFXT47K77RFK-20260905-031415", name);

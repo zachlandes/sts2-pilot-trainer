@@ -231,7 +231,7 @@ internal sealed class RunRecorder : IDisposable
             }
 
             var startedUtc = LiveRun.RunStartedUtc();
-            var runId = LiveRun.NameRecording(run.Rng.StringSeed, startedUtc);
+            var runId = RecordingLibrary.Name(run.Rng.StringSeed, startedUtc);
             var journalPath = $"{RecordingsDirectory}/{runId}{RunJournal.FileExtension}";
             var (sample, digest) = LiveRun.Read();
             var clock = LiveRun.RunClockMs();

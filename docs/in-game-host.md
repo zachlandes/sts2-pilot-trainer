@@ -736,7 +736,7 @@ A negative number is refused with a logged sentence naming the file and the valu
 Removing nothing survives only as an internal answer for a settings file this build cannot read - a sentence nobody could read is not somebody asking for their runs to be deleted, so recording off and deleting nothing fail in the same direction.
 
 `purge_my_runs` is the one-shot act: every recorded run is removed, and then the mod writes the member back to `false` so a purge is something a player did rather than a state they are left in.
-It is the only member of that file the mod ever writes.
+It is the only member of that file the mod ever writes: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
 `godot.log` carries the receipt either way - `purged your recorded runs: N removed` for the act, `keeping your 50 most recent runs: N older one(s) removed` for the policy.
 
 Three properties hold, and each is asserted rather than described.

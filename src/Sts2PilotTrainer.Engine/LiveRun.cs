@@ -172,16 +172,4 @@ public static class LiveRun
 
     /// <summary>The same question about the run this game is in the middle of.</summary>
     public static bool ReadyForThePlayer() => State is { } run && ReadyForThePlayer(run);
-
-    /// <summary>
-    /// How a recording made here is named.
-    ///
-    /// The name is the format's rather than this layer's, because reading it back is
-    /// what orders a player's library of recordings and that has to work in a process
-    /// with no game. <see cref="RecordingLibrary.Name"/> owns both directions; this is
-    /// the engine-side name for it, so the recorder keeps asking the question where it
-    /// already asks every other question about the run it is watching.
-    /// </summary>
-    public static string NameRecording(string seed, DateTimeOffset startedUtc) =>
-        RecordingLibrary.Name(seed, startedUtc);
 }

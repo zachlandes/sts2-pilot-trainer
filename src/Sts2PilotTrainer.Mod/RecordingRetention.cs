@@ -94,7 +94,7 @@ internal static class RecordingRetention
             RunmobileStore.Remove($"{RunRecorder.RecordingsDirectory}/{file}");
         }
 
-        if (settings.PurgeMyRuns) (settings with { PurgeMyRuns = false }).Save();
+        if (settings.PurgeMyRuns) RunmobileSettings.ClearPurgeRequest();
 
         Announce(settings, removing.Count);
         return removing.Count;

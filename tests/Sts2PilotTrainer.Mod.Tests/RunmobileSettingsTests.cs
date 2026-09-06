@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
@@ -155,17 +156,20 @@ public sealed class RunmobileSettingsTests : IDisposable
     }
 
     /// <summary>The one member this mod writes back, so a purge is an act rather than
-    /// a state the player is left in.</summary>
+    /// a state the player is left in - and the only one it touches.</summary>
     [Fact]
-    public void SavingWritesEveryMemberBackWhereThePlayerWroteIt()
+    public void ClearingAPurgeWritesBackThatMemberAndNoOther()
     {
-        (RunmobileSettings.Default with { KeepRecentRuns = 7, PurgeMyRuns = false }).Save();
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","keep_recent_runs":7,"purge_my_runs":true}""");
 
-        var written = RunmobileStore.Read(RunmobileSettings.FileName);
+        RunmobileSettings.ClearPurgeRequest();
 
-        Assert.Contains("\"keep_recent_runs\": 7", written);
-        Assert.Contains("\"purge_my_runs\": false", written);
-        Assert.Equal(7, RunmobileSettings.Read().KeepRecentRuns);
+        var written = JsonNode.Parse(RunmobileStore.Read(RunmobileSettings.FileName)!)!.AsObject();
+        Assert.False((bool)written["purge_my_runs"]!);
+        Assert.Equal(7, (int)written["keep_recent_runs"]!);
+        Assert.False(RunmobileSettings.Read().PurgeMyRuns);
     }
 
     /// <summary>The setting is in the store, like everything else this mod writes, so
