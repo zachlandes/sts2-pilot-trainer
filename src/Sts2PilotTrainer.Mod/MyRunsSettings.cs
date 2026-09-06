@@ -44,10 +44,6 @@ internal static class MyRunsSettings
 
     private static MyRunsSettingsRow? _row;
 
-    /// <summary>The row this build put on the settings screen, for a host that has to
-    /// place it or take it down.</summary>
-    internal static MyRunsSettingsRow? Current => _row;
-
     /// <summary>
     /// Builds the row against what is on the disk right now, wired to act on it.
     ///
@@ -61,10 +57,6 @@ internal static class MyRunsSettings
             MyRunsRow.For(facts), facts.Keep, width, font, Retain, AskToRemove);
         return _row;
     }
-
-    /// <summary>Forgets the row, for a host taking the settings screen down. The nodes
-    /// are the host's to free, as they are its to parent.</summary>
-    internal static void Detach() => _row = null;
 
     /// <summary>
     /// Writes the player's new standing policy and says what it now means.

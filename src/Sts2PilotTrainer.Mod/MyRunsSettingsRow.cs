@@ -26,8 +26,8 @@ namespace Sts2PilotTrainer.Mod;
 /// <em>icon</em>, so a slider here would either wear the engine's default grey on a
 /// screen made of torn stone, or need a piece of art this mod does not ship - and the
 /// game's own <c>NSettingsSlider</c> cannot be had outside the settings scene it lives
-/// in. What the design settles is the label, the numeral and the note, and all three
-/// are exactly as written. How the number moves is presentation, which
+/// in. What the design settles is the label and the numeral, and both are exactly as
+/// written. How the number moves is presentation, which
 /// docs/mod-ui-direction.md puts on this side of the line.</para>
 ///
 /// Built from stock Godot nodes for the reason the transport and the result panel are:
@@ -66,6 +66,7 @@ internal sealed class MyRunsSettingsRow
     private const float StepGap = 6f;
     private const float NumeralWidth = 34f;
     private const float RemoveWidth = 168f;
+    private const float RemovePad = 14f;
     private const float RemoveHeight = 30f;
 
     private const int LabelFontSize = 15;
@@ -78,7 +79,6 @@ internal sealed class MyRunsSettingsRow
     private readonly Control _root;
     private readonly Label _keepLabel;
     private readonly Label _keepNumeral;
-    private readonly Label _keepNote;
     private readonly Button _fewer;
     private readonly Button _more;
     private readonly Line2D _rule;
@@ -114,7 +114,6 @@ internal sealed class MyRunsSettingsRow
         _root = nodes.Root;
         _keepLabel = nodes.KeepLabel;
         _keepNumeral = nodes.KeepNumeral;
-        _keepNote = nodes.KeepNote;
         _fewer = nodes.Fewer;
         _more = nodes.More;
         _rule = nodes.Rule;
@@ -139,16 +138,22 @@ internal sealed class MyRunsSettingsRow
     /// re-derive.</summary>
     internal MyRunsRow Row => _row;
 
-    /// <summary>How tall the row is at the width it was built for. A section stacks
-    /// what it hosts, so it has to be told.</summary>
-    internal static float Height => (LabelHeight * 2) + (NoteHeight * 2) + RuleGap + RemoveHeight;
+    /// <summary>
+    /// How tall the row is at the width it was built for. A section stacks what it
+    /// hosts, so it has to be told.
+    ///
+    /// The lower line is as tall as the taller of its two things rather than as tall as
+    /// both: the reading and its note are stacked, and the destructive control sits
+    /// beside them rather than under them.
+    /// </summary>
+    internal static float Height => LabelHeight + RuleGap + Math.Max(LabelHeight + NoteHeight, RemoveHeight);
 
     /// <summary>
     /// Assembles the row.
     /// </summary>
     /// <param name="row">What it says to begin with.</param>
     /// <param name="keep">The policy the stepper starts on - the player's own number,
-    /// which may be outside the range the stepper can reach.</param>
+    /// which may be larger than anything a press would reach it at.</param>
     /// <param name="width">How wide the section is laying it out, in engine
     /// units.</param>
     /// <param name="font">The font the game's own labels use, or null to leave the
@@ -182,7 +187,6 @@ internal sealed class MyRunsSettingsRow
             Keep = keep,
             KeepLabel = Add(root, Text("KeepLabel", LabelFontSize, Cream, font)),
             KeepNumeral = Add(root, Text("KeepNumeral", NumeralFontSize, Cream, font)),
-            KeepNote = Add(root, Text("KeepNote", NoteFontSize, Muted, font)),
             Rule = Add(root, new Line2D { Name = "Rule", DefaultColor = RuleLine, Width = 1f }),
             Reading = Add(root, Text("Reading", LabelFontSize, Cream, font)),
             Detail = Add(root, Text("Detail", NoteFontSize, Muted, font)),
@@ -202,7 +206,7 @@ internal sealed class MyRunsSettingsRow
         built._more.Pressed += () => built.Step(1, keepChanged);
         built._remove.Pressed += removePressed;
 
-        built.Layout(width);
+        built.Layout(width, font);
         built.Apply(row, keep);
         return built;
     }
@@ -226,15 +230,15 @@ internal sealed class MyRunsSettingsRow
 
         _keepLabel.Text = row.KeepLabel;
         _keepNumeral.Text = row.KeepNumeral;
-        _keepNote.Text = row.KeepNote;
         _reading.Text = row.Reading;
         _detail.Text = row.Detail;
         _remove.Text = row.RemoveLabel;
 
-        // The stepper refuses at each end rather than disappearing there, so the two
-        // controls never move about under the player's aim.
-        Refuse(_fewer, _keep <= MyRunsRow.MinimumKeep);
-        Refuse(_more, _keep >= MyRunsRow.MaximumKeep);
+        // The stepper refuses at its bottom rather than disappearing there, so the two
+        // controls never move about under the player's aim. There is no top: a policy
+        // has a minimum and the player's own number above it is theirs.
+        Refuse(_fewer, !row.KeepPressable || _keep <= MyRunsRow.MinimumKeep);
+        Refuse(_more, !row.KeepPressable);
         Refuse(_remove, !row.RemovePressable);
 
         Face(_fewer, !_fewer.Disabled);
@@ -246,14 +250,16 @@ internal sealed class MyRunsSettingsRow
     /// Reports the number one press would move the policy to, and moves nothing
     /// itself.
     ///
-    /// Clamped to the range the control offers, which a player's file may already be
-    /// outside: a file that keeps five hundred steps down to the top of the range on the
-    /// first press rather than to four hundred and ninety-nine, because the control
-    /// cannot represent where it was.
+    /// One run, from wherever the file already stands: a file that keeps five hundred
+    /// steps to four hundred and ninety-nine, because nothing here may quietly rewrite a
+    /// larger policy into a smaller one. Only the bottom is held, and a policy this
+    /// build could not read is not stepped at all.
     /// </summary>
     private void Step(int by, Action<int> keepChanged)
     {
-        var next = Math.Clamp(_keep + by, MyRunsRow.MinimumKeep, MyRunsRow.MaximumKeep);
+        if (!_row.KeepPressable) return;
+
+        var next = Math.Max(MyRunsRow.MinimumKeep, _keep + by);
         if (next == _keep) return;
 
         keepChanged(next);
@@ -266,25 +272,46 @@ internal sealed class MyRunsSettingsRow
     /// because they are two different sentences: a standing policy above, and what is
     /// on the disk right now below.
     /// </summary>
-    private void Layout(float width)
+    private void Layout(float width, Font? font)
     {
         var stepper = (StepSize * 2) + NumeralWidth + (StepGap * 2);
+        var removeWidth = Math.Min(width, RemoveBoxWidth(_row.RemoveLabel, font));
 
         Place(_keepLabel, 0f, 0f, width - stepper - StepGap, LabelHeight);
         Place(_fewer, width - stepper, (LabelHeight - StepSize) / 2f, StepSize, StepSize);
         Place(_keepNumeral, width - stepper + StepSize + StepGap, 0f, NumeralWidth, LabelHeight);
         _keepNumeral.HorizontalAlignment = HorizontalAlignment.Center;
         Place(_more, width - StepSize, (LabelHeight - StepSize) / 2f, StepSize, StepSize);
-        Place(_keepNote, 0f, LabelHeight, width, NoteHeight);
 
-        var ruleY = LabelHeight + NoteHeight + (RuleGap / 2f);
+        var ruleY = LabelHeight + (RuleGap / 2f);
         _rule.Points = [new Vector2(0f, ruleY), new Vector2(width, ruleY)];
 
-        var lower = LabelHeight + NoteHeight + RuleGap;
-        Place(_reading, 0f, lower, width - RemoveWidth - StepGap, LabelHeight);
-        Place(_remove, width - RemoveWidth, lower + ((LabelHeight - RemoveHeight) / 2f), RemoveWidth, RemoveHeight);
-        Place(_detail, 0f, lower + LabelHeight, width - RemoveWidth - StepGap, NoteHeight);
+        var lower = LabelHeight + RuleGap;
+        Place(_reading, 0f, lower, width - removeWidth - StepGap, LabelHeight);
+        Place(_remove, width - removeWidth, lower + ((LabelHeight - RemoveHeight) / 2f), removeWidth, RemoveHeight);
+        Place(_detail, 0f, lower + LabelHeight, width - removeWidth - StepGap, NoteHeight);
     }
+
+    /// <summary>
+    /// How wide the destructive control's box has to be for its own word to fit in it.
+    ///
+    /// Measured rather than assumed, because a Button's own minimum width is its
+    /// unwrapped label and a box narrower than that is one the engine widens straight
+    /// back out of the row. The constant stands in where there is no font to measure
+    /// with, which is the fallback the transport's own measuring uses: a process with no
+    /// game draws nothing, so an estimate there costs nothing.
+    /// </summary>
+    private static float RemoveBoxWidth(string label, Font? font) =>
+        font is null
+            ? RemoveWidth
+            : font.GetStringSize(
+                label,
+                HorizontalAlignment.Left,
+                width: -1f,
+                RemoveFontSize,
+                TextServer.JustificationFlag.None,
+                TextServer.Direction.Auto,
+                TextServer.Orientation.Horizontal).X + (RemovePad * 2);
 
     private static void Refuse(Button button, bool refused)
     {
@@ -362,6 +389,10 @@ internal sealed class MyRunsSettingsRow
         {
             Name = name,
             Text = text,
+            // Clipped for the reason the labels are: a Button's own minimum width is
+            // its unwrapped label, so one whose word outgrows its box widens itself
+            // back out of the row rather than being cut off inside it.
+            ClipText = true,
             // Takes focus on purpose: a control a keyboard or a controller cannot
             // reach is a control half the players do not have.
             FocusMode = Control.FocusModeEnum.All,
@@ -418,8 +449,6 @@ internal sealed class MyRunsSettingsRow
         internal required Label KeepLabel { get; init; }
 
         internal required Label KeepNumeral { get; init; }
-
-        internal required Label KeepNote { get; init; }
 
         internal required Line2D Rule { get; init; }
 

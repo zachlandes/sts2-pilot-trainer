@@ -108,6 +108,11 @@ internal static class RecordingRetention
     /// the figure is what this mod's own runs occupy rather than what is in the
     /// directory - a file a player put there themselves is not this mod's to count, for
     /// the same reason it is not this mod's to delete.
+    ///
+    /// The policy is the player's own where their file could be read, and the default
+    /// standing in for it where it could not. Which of the two it is travels with it,
+    /// because the row may neither name the sentinel nor be written from while the file
+    /// it would write into is one this build refuses.
     /// </summary>
     internal static MyRunsFacts OnDisk()
     {
@@ -117,7 +122,12 @@ internal static class RecordingRetention
             .SelectMany(recording => recording.FileNames)
             .Sum(file => RunmobileStore.SizeOf($"{RunRecorder.RecordingsDirectory}/{file}"));
 
-        return new MyRunsFacts(recordings.Count, bytes, RunmobileSettings.Read().KeepRecentRuns);
+        var settings = RunmobileSettings.Read();
+        return new MyRunsFacts(
+            recordings.Count,
+            bytes,
+            settings.Readable ? settings.KeepRecentRuns : RunmobileSettings.DefaultKeepRecentRuns,
+            SettingsReadable: settings.Readable);
     }
 
     /// <summary>

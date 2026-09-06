@@ -783,8 +783,16 @@ The confirmation is the game's own `NGenericPopup`, the one the eligibility scre
 
 Two deliberate departures from the design, both presentation rather than wording.
 The keep control is a stepper where the design says slider: Godot draws a slider's grabber from a theme *icon*, so a slider here would wear the engine's default grey on a screen made of torn stone or need art this mod does not ship, and the game's own `NSettingsSlider` cannot be had outside the settings scene it lives in.
-The label, the numeral and the note are exactly as the design settles them.
+The label and the numeral are exactly as the design settles them.
 And the numeral shows what the player's file says even where the control cannot reach it: a file that keeps zero is a standing purge and a row reading "1" over it would misstate the policy, so the numeral is the truth and the control is only how far a press reaches.
+
+The policy has a minimum of one and no maximum, and one press moves it by one from wherever the file already stands.
+There is no top to refuse at: a press that reported two hundred over a file saying five hundred would take three hundred runs nobody asked to lose, which is the whole of what a cap here would ever do.
+
+A settings file this build cannot read is the one case where the numeral is not the player's own sentence, and the row says so rather than showing it.
+`RunmobileSettings.Read` answers an unreadable file with its "remove nothing" sentinel, which is a number no player wrote and no control can put right, so `RecordingRetention.OnDisk` carries the readable-or-not as a fact of its own on `MyRunsFacts` and hands the row the default in force instead.
+The row then reads that default, says on its second line that `settings.json` could not be read, warns about nothing - how many runs a policy nobody could read would take is not something to tell a player - and refuses both stepper controls.
+`RunmobileSettings.Set` refuses on the same grounds `Read` does, an unrecognised schema included, so a policy write or a purge request into a document this build has declared unreadable fails loudly rather than half-editing it with this build's meaning of a member.
 
 The one recording retention never names is the run the game can currently Continue, and neither a cap nor a purge removes its journal.
 A run whose journal went missing under it is one the recorder picks up again at its next room and records as a run it watched from the start, which is a claim about what was observed that nobody established - and that is worse than a purge which leaves one file, so the file stays and the log says it was left.

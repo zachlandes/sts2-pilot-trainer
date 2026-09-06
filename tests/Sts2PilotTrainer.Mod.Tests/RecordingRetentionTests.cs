@@ -339,6 +339,37 @@ public sealed class RecordingRetentionTests : IDisposable
         Assert.Equal(4, RecordingRetention.OnDisk().Bytes);
     }
 
+    /// <summary>
+    /// A settings file this build cannot read reaches the row as the default in force
+    /// and as the fact that nobody could read it, never as retention's own sentinel:
+    /// a row that showed "-1" as the player's policy would be stating a number they
+    /// never wrote, over a control that could not put it right.
+    /// </summary>
+    [Fact]
+    public void TheReadingOfAnUnreadableSettingsFileIsTheDefaultAndSaysSo()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            """{"schema":"sts2-pilot-trainer/runmobile-settings/v2","keep_recent_runs":7}""");
+        Record(Older);
+
+        var facts = RecordingRetention.OnDisk();
+
+        Assert.False(facts.SettingsReadable);
+        Assert.Equal(RunmobileSettings.DefaultKeepRecentRuns, facts.Keep);
+    }
+
+    [Fact]
+    public void TheReadingOfAPlayersOwnPolicySaysItWasRead()
+    {
+        WriteSettings(keep: 20);
+
+        var facts = RecordingRetention.OnDisk();
+
+        Assert.True(facts.SettingsReadable);
+        Assert.Equal(20, facts.Keep);
+    }
+
     [Fact]
     public void TheReadingOfAnEmptyStoreIsNothing()
     {

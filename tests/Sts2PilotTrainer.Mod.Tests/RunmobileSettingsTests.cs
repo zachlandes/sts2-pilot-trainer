@@ -249,6 +249,38 @@ public sealed class RunmobileSettingsTests : IDisposable
         Assert.Equal(content, RunmobileStore.Read(RunmobileSettings.FileName));
     }
 
+    /// <summary>
+    /// A file declaring a schema this build does not read is not written into either.
+    /// <see cref="RunmobileSettings.Read"/> already refuses it, and editing one member
+    /// of it would put this build's meaning of <c>keep_recent_runs</c> or
+    /// <c>purge_my_runs</c> into a document written by a build with another - a sentence
+    /// neither of them said, in a file this one has declared it cannot read.
+    /// </summary>
+    [Fact]
+    public void AFileThisBuildCannotReadIsNotWrittenIntoEither()
+    {
+        const string content = """{"schema":"sts2-pilot-trainer/runmobile-settings/v2","keep_recent_runs":7}""";
+        RunmobileStore.Write(RunmobileSettings.FileName, content);
+
+        Assert.ThrowsAny<Exception>(RunmobileSettings.RequestPurge);
+        Assert.ThrowsAny<Exception>(() => RunmobileSettings.SetKeepRecentRuns(12));
+        Assert.Equal(content, RunmobileStore.Read(RunmobileSettings.FileName));
+    }
+
+    /// <summary>A file that could be read says so, which is what the settings row shows
+    /// the player's own policy from rather than the stand-in.</summary>
+    [Fact]
+    public void AReadableFileSaysItWasReadAndAnUnreadableOneSaysItWasNot()
+    {
+        Assert.True(RunmobileSettings.Read().Readable);
+
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            """{"schema":"sts2-pilot-trainer/runmobile-settings/v2"}""");
+
+        Assert.False(RunmobileSettings.Read().Readable);
+    }
+
     /// <summary>The setting is in the store, like everything else this mod writes, so
     /// the protected-files ledger sees it where it sees the rest.</summary>
     [Fact]

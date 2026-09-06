@@ -28,7 +28,6 @@ public sealed class MyRunsSettingsRowTests
 
         Assert.Equal("Keep my runs", Label(row, "KeepLabel").Text);
         Assert.Equal("20", Label(row, "KeepNumeral").Text);
-        Assert.Equal("keeps the newest; older ones are removed at the main menu", Label(row, "KeepNote").Text);
         Assert.Equal("12 runs · 6 MB", Label(row, "Reading").Text);
         Assert.Equal("on this computer, in user://Runmobile/recordings", Label(row, "Detail").Text);
         Assert.Equal("Remove all my runs", row.Remove.Text);
@@ -114,28 +113,28 @@ public sealed class MyRunsSettingsRowTests
         Assert.Equal("21", Label(row, "KeepNumeral").Text);
     }
 
-    /// <summary>Each end of the range refuses its own control and leaves the other one
-    /// reachable.</summary>
+    /// <summary>The stepper refuses at its bottom and has no top: a policy keeps at
+    /// least one run, and how many more than that is the player's own.</summary>
     [Fact]
-    public void TheStepperRefusesAtEachEndOfItsRange()
+    public void TheStepperRefusesAtTheBottomOfItsRangeOnly()
     {
         var bottom = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: MyRunsRow.MinimumKeep));
         Assert.True(bottom.Fewer.Disabled);
         Assert.False(bottom.More.Disabled);
 
-        var top = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: MyRunsRow.MaximumKeep));
-        Assert.False(top.Fewer.Disabled);
-        Assert.True(top.More.Disabled);
+        var large = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 500));
+        Assert.False(large.Fewer.Disabled);
+        Assert.False(large.More.Disabled);
     }
 
     /// <summary>
-    /// A policy written by hand outside the range the control offers is shown as the
-    /// player wrote it. The numeral is the truth and the control is only how far a press
-    /// reaches; the first press lands inside the range rather than one step from a
-    /// number the control cannot represent.
+    /// A large policy written by hand is shown as the player wrote it and moves by one
+    /// from where it stands. Nothing here may quietly rewrite a larger policy into a
+    /// smaller one: a press that reported two hundred over a file saying five hundred
+    /// would take three hundred runs nobody asked to lose.
     /// </summary>
     [Fact]
-    public void APolicyOutsideTheControlsRangeIsShownAsWrittenAndSteppedIntoIt()
+    public void ALargePolicyIsShownAsWrittenAndStepsByOne()
     {
         var reported = new List<int>();
         var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 500), keepChanged: reported.Add);
@@ -143,7 +142,29 @@ public sealed class MyRunsSettingsRowTests
         Assert.Equal("500", Label(row, "KeepNumeral").Text);
 
         row.Fewer.EmitPressed();
-        Assert.Equal([MyRunsRow.MaximumKeep], reported);
+        row.More.EmitPressed();
+        Assert.Equal([499, 501], reported);
+    }
+
+    /// <summary>
+    /// A settings file this build cannot read refuses both ends of the stepper, and a
+    /// press writes nothing: the numeral over it is the default in force, and moving it
+    /// would put this build's meaning of a member into a document it refuses to read.
+    /// </summary>
+    [Fact]
+    public void AnUnreadableSettingsFileRefusesBothStepperControlsAndWritesNothing()
+    {
+        var reported = new List<int>();
+        var row = Build(
+            new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 50, SettingsReadable: false),
+            keepChanged: reported.Add);
+
+        Assert.True(row.Fewer.Disabled);
+        Assert.True(row.More.Disabled);
+
+        row.Fewer.EmitPressed();
+        row.More.EmitPressed();
+        Assert.Empty(reported);
     }
 
     /// <summary>
@@ -187,7 +208,7 @@ public sealed class MyRunsSettingsRowTests
         var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 20));
 
         Assert.Equal(Control.MouseFilterEnum.Ignore, row.Root.MouseFilter);
-        foreach (var name in new[] { "KeepLabel", "KeepNumeral", "KeepNote", "Reading", "Detail" })
+        foreach (var name in new[] { "KeepLabel", "KeepNumeral", "Reading", "Detail" })
         {
             Assert.Equal(Control.MouseFilterEnum.Ignore, Label(row, name).MouseFilter);
         }
@@ -218,6 +239,36 @@ public sealed class MyRunsSettingsRowTests
             Assert.True(
                 child.Position.X + child.Size.X <= Width, $"{child.Name} runs past the width it was given");
         }
+    }
+
+    /// <summary>
+    /// Its text is cut to the box it is in rather than widening the box. A Control is
+    /// clamped up to its own minimum size and a Button's minimum is its unwrapped label,
+    /// so a control that did not clip would push itself off the side of the row at any
+    /// font the player's language happens to need.
+    /// </summary>
+    [Fact]
+    public void EveryElementClipsItsTextRatherThanWideningItself()
+    {
+        var row = Build(new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20));
+
+        foreach (var button in row.Root.GetChildren().OfType<Button>())
+        {
+            Assert.True(button.ClipText, $"{button.Name} would widen itself out of the row");
+        }
+    }
+
+    /// <summary>The row is as tall as what it draws. A section stacks what it hosts, so
+    /// a height taller than the lowest element leaves a gap nothing explains.</summary>
+    [Fact]
+    public void TheHeightItReportsIsWhatItDraws()
+    {
+        var row = Build(new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20));
+
+        var lowest = row.Root.GetChildren().OfType<Control>()
+            .Max(child => child.Position.Y + child.Size.Y);
+
+        Assert.Equal(MyRunsSettingsRow.Height, lowest);
     }
 
     private static MyRunsSettingsRow Build(

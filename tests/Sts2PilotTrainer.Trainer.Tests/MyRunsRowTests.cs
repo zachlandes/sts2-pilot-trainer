@@ -128,13 +128,47 @@ public sealed class MyRunsRowTests
         Assert.Equal(expected, MyRunsRow.Size(bytes));
     }
 
-    /// <summary>A policy nobody could read names nothing, the same way the retention
-    /// owner's own sentinel does: an unreadable file is not somebody asking for their
-    /// runs to be deleted.</summary>
+    /// <summary>
+    /// A settings file this build could not read says so, and the number beside it is
+    /// the default in force rather than the player's sentence. No warning is issued
+    /// from it either: how many runs a policy nobody could read would take is not
+    /// something to tell a player.
+    /// </summary>
     [Fact]
-    public void AnUnreadablePolicyIsPendingOnNothing()
+    public void AnUnreadableSettingsFileSaysSoAndWarnsAboutNothing()
     {
-        Assert.Equal(0, MyRunsRow.Pending(runs: 12, keep: -1));
+        var row = MyRunsRow.For(
+            new MyRunsFacts(Runs: 12, Bytes: 6 * Mb, Keep: 50, SettingsReadable: false));
+
+        Assert.Equal("50", row.KeepNumeral);
+        Assert.Equal(
+            "settings.json could not be read, so this is the usual policy · user://Runmobile/recordings",
+            row.Detail);
+    }
+
+    /// <summary>
+    /// Neither end of the stepper may be pressed over a file this build refuses: a
+    /// press would write this build's meaning of a member into a document written under
+    /// a schema it does not read.
+    /// </summary>
+    [Fact]
+    public void AnUnreadableSettingsFileRefusesThePolicyControls()
+    {
+        Assert.False(
+            MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: Mb, Keep: 50, SettingsReadable: false))
+                .KeepPressable);
+        Assert.True(MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: Mb, Keep: 50)).KeepPressable);
+    }
+
+    /// <summary>The receipt still beats it: the removal already happened, and what the
+    /// row cannot read about the standing policy is the smaller news.</summary>
+    [Fact]
+    public void AReceiptIsStillWhatAnUnreadableFileShows()
+    {
+        var row = MyRunsRow.For(
+            new MyRunsFacts(Runs: 0, Bytes: 0, Keep: 50, RemovedJustNow: 3, SettingsReadable: false));
+
+        Assert.Equal("3 runs removed just now · user://Runmobile/recordings", row.Detail);
     }
 
     /// <summary>
@@ -155,7 +189,7 @@ public sealed class MyRunsRowTests
 
         foreach (var line in new[]
                  {
-                     row.Reading, row.Detail, row.KeepLabel, row.KeepNote, row.RemoveLabel,
+                     row.Reading, row.Detail, row.KeepLabel, row.RemoveLabel,
                      row.Confirm.Title, row.Confirm.Body, row.Confirm.Remove, row.Confirm.Keep,
                  })
         {
@@ -171,7 +205,7 @@ public sealed class MyRunsRowTests
 
         Assert.Equal("Keep my runs", row.KeepLabel);
         Assert.Equal("5", row.KeepNumeral);
-        Assert.Equal("keeps the newest; older ones are removed at the main menu", row.KeepNote);
+        Assert.True(row.KeepPressable);
     }
 
     /// <summary>

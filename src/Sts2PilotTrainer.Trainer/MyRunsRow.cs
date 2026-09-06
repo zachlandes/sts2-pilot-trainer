@@ -15,14 +15,23 @@ namespace Sts2PilotTrainer.Trainer;
 /// a run's journal and its manifest are one recording.</param>
 /// <param name="Bytes">What those runs occupy, summed over the files each is made
 /// of.</param>
-/// <param name="Keep">How many of the newest runs the player's policy keeps. The
-/// player's own number, not a slider position: a file may say zero, which is a standing
-/// purge, and the numeral says so even though the control cannot be moved there.</param>
+/// <param name="Keep">How many of the newest runs the policy in effect keeps. The
+/// player's own number where their file could be read, not a control position: a file
+/// may say zero, which is a standing purge, and the numeral says so even though the
+/// control cannot be moved there. Where it could not be read this is the default in
+/// effect instead, and <paramref name="SettingsReadable"/> is what says which of the
+/// two a reader is looking at.</param>
 /// <param name="RemovedJustNow">How many runs the purge this screen ran removed, or
 /// null when it has not run one. Zero is a real answer and is not null: somebody
 /// pressed Remove and deserves the receipt whether or not there was anything to
 /// take.</param>
-public sealed record MyRunsFacts(int Runs, long Bytes, int Keep, int? RemovedJustNow = null);
+/// <param name="SettingsReadable">Whether the policy above is the player's own
+/// sentence or the default standing in for one this build could not read. Carried as
+/// a fact rather than left to be inferred from the number, because "the file says
+/// fifty" and "nobody could read the file, so fifty is what is in force" are two
+/// different things to tell a player and only one of them may be written to.</param>
+public sealed record MyRunsFacts(
+    int Runs, long Bytes, int Keep, int? RemovedJustNow = null, bool SettingsReadable = true);
 
 /// <summary>
 /// The player's settings row about their own runs: keep, size, remove.
@@ -52,7 +61,10 @@ public sealed record MyRunsFacts(int Runs, long Bytes, int Keep, int? RemovedJus
 /// <param name="KeepLabel">The standing policy's own label.</param>
 /// <param name="KeepNumeral">The number of runs that policy keeps, as the player reads
 /// it.</param>
-/// <param name="KeepNote">What the policy does, under it.</param>
+/// <param name="KeepPressable">Whether the policy may be moved. False where this build
+/// could not read the settings file: the numeral is then the default standing in for a
+/// sentence nobody could read, and a press would write a member this build's own
+/// meaning into a document whose schema it refuses.</param>
 /// <param name="RemoveLabel">The destructive control's label.</param>
 /// <param name="RemovePressable">Whether it may be pressed. False with nothing to
 /// remove: a control that would do nothing is drawn refused rather than hidden, so the
@@ -63,7 +75,7 @@ public sealed record MyRunsRow(
     string Detail,
     string KeepLabel,
     string KeepNumeral,
-    string KeepNote,
+    bool KeepPressable,
     string RemoveLabel,
     bool RemovePressable,
     MyRunsConfirm Confirm)
@@ -72,11 +84,6 @@ public sealed record MyRunsRow(
     /// could be dragged to zero would be a standing purge a player set by accident;
     /// asking for every run to go is the ribbon's job and it asks first.</summary>
     public const int MinimumKeep = 1;
-
-    /// <summary>The largest. A file may say more, and then the numeral says what the
-    /// file says while the control sits at its top - the policy is the player's text
-    /// and this is only how far a drag reaches.</summary>
-    public const int MaximumKeep = 200;
 
     /// <summary>Where the runs are, in the words the row uses for it.</summary>
     private const string Directory = "user://Runmobile/recordings";
@@ -96,7 +103,7 @@ public sealed record MyRunsRow(
             Detail: DetailLine(facts),
             KeepLabel: "Keep my runs",
             KeepNumeral: facts.Keep.ToString(CultureInfo.InvariantCulture),
-            KeepNote: "keeps the newest; older ones are removed at the main menu",
+            KeepPressable: facts.SettingsReadable,
             RemoveLabel: "Remove all my runs",
             RemovePressable: facts.Runs > 0,
             Confirm: new MyRunsConfirm(
@@ -111,11 +118,11 @@ public sealed record MyRunsRow(
     /// How many runs a standing policy of keeping <paramref name="keep"/> of them would
     /// remove from <paramref name="runs"/>, at the next main menu.
     ///
-    /// Here rather than at the row's caller because it is the same arithmetic the row's
-    /// second line states, and a caller that worked it out separately could offer a
-    /// number the row disagreed with.
+    /// Private because the row's second line is the only place this number is ever
+    /// stated: a caller that worked it out for itself could offer a number the row
+    /// disagreed with.
     /// </summary>
-    public static int Pending(int runs, int keep) => keep < 0 ? 0 : Math.Max(0, runs - keep);
+    private static int Pending(int runs, int keep) => Math.Max(0, runs - keep);
 
     /// <summary>
     /// A number of bytes as a player reads it.
@@ -141,10 +148,13 @@ public sealed record MyRunsRow(
     /// <summary>
     /// The second line: where the runs are, and what is happening to them.
     ///
-    /// One of three, in a stated order. A receipt beats a warning because the removal
-    /// already happened and the warning is about the next main menu; a warning beats the
-    /// plain line because a policy that is about to take runs away is the thing a player
-    /// on this screen needs to read. The directory is on all three, because "on this
+    /// One of four, in a stated order. A receipt beats everything because the removal
+    /// already happened and the rest is about the next main menu. A settings file this
+    /// build could not read beats the warning below it, because the number above is
+    /// then the default standing in rather than anything the player wrote, and no
+    /// warning may be issued from a policy nobody could read. A warning beats the plain
+    /// line because a policy that is about to take runs away is the thing a player on
+    /// this screen needs to read. The directory is on all four, because "on this
     /// computer" is the claim the whole row exists to make.
     /// </summary>
     private static string DetailLine(MyRunsFacts facts)
@@ -152,6 +162,11 @@ public sealed record MyRunsRow(
         if (facts.RemovedJustNow is { } removed)
         {
             return $"{Runs(removed)} removed just now · {Directory}";
+        }
+
+        if (!facts.SettingsReadable)
+        {
+            return $"settings.json could not be read, so this is the usual policy · {Directory}";
         }
 
         var pending = Pending(facts.Runs, facts.Keep);

@@ -90,6 +90,19 @@ internal sealed record RunmobileSettings
     [JsonPropertyName("purge_my_runs")]
     public bool PurgeMyRuns { get; init; }
 
+    /// <summary>
+    /// Whether the answers above are the player's own sentence or this build standing
+    /// in for one it could not read.
+    ///
+    /// Not a member of the file and never written to it: it is what <see cref="Read"/>
+    /// did, and a surface that showed a refused file's stand-in as the player's policy
+    /// would be stating something nobody established. <see cref="RecordingRetention"/>
+    /// carries it on to the row, which neither names the sentinel nor offers a control
+    /// that would write into a document this build refuses.
+    /// </summary>
+    [JsonIgnore]
+    public bool Readable { get; init; } = true;
+
     /// <summary>What a player who has never touched the file gets.</summary>
     internal static RunmobileSettings Default =>
         new() { SchemaId = Schema, RecordMyRuns = true, KeepRecentRuns = DefaultKeepRecentRuns };
@@ -102,7 +115,7 @@ internal sealed record RunmobileSettings
     /// sentence nobody could read is not somebody asking for their runs to be deleted.
     /// </summary>
     private static RunmobileSettings DoNotRecord =>
-        new() { SchemaId = Schema, RecordMyRuns = false, KeepRecentRuns = KeepEveryRun };
+        new() { SchemaId = Schema, RecordMyRuns = false, KeepRecentRuns = KeepEveryRun, Readable = false };
 
     /// <summary>
     /// The settings this session runs under.
@@ -225,10 +238,12 @@ internal sealed record RunmobileSettings
     /// nothing yet gets the defaults with this one member set, because there has to be
     /// somewhere to put the answer.
     ///
-    /// A file that is there and is not a JSON object is refused. <see cref="Read"/>
-    /// already treats an unreadable file as "record nothing", and overwriting it here
-    /// would be this mod discarding something a player wrote in order to store
-    /// something they meant to add to it.
+    /// A file this build cannot read is refused, on the same grounds <see cref="Read"/>
+    /// refuses it and including a schema it does not recognise. Overwriting it would be
+    /// this mod discarding something a player wrote in order to store something they
+    /// meant to add to it; editing one member of it would be worse, because a
+    /// <c>keep_recent_runs</c> written with this build's meaning into a document written
+    /// by a build with another is a sentence neither of them said.
     /// </summary>
     private static void Set(string member, JsonNode value)
     {
@@ -249,6 +264,15 @@ internal sealed record RunmobileSettings
             settings = JsonNode.Parse(json) as JsonObject
                 ?? throw new ManifestException(
                     $"{FileName} is not a settings object, so Runmobile will not write over it.");
+
+            if (settings["schema"] is not JsonValue declared
+                || !declared.TryGetValue<string>(out var schema)
+                || !string.Equals(schema, Schema, StringComparison.Ordinal))
+            {
+                throw new ManifestException(
+                    $"{FileName} does not declare schema '{Schema}', which is the one this build reads, so " +
+                    "Runmobile will not write into it.");
+            }
         }
 
         settings[member] = value;
