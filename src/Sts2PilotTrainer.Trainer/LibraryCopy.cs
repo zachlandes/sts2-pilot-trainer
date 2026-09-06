@@ -204,13 +204,21 @@ public static class LibraryCopy
     /// screens, and comes to rest at the first fight.
     ///
     /// The same destination as "Play from this fight" on fight 1's floor, reached two
-    /// ways: one walks the run and one goes straight in. The note says where it ends
-    /// because a row promising run start and landing mid-fight-1 without saying so was
-    /// the row describing somewhere it does not go.
+    /// ways: one walks the run and one goes straight in.
     /// </summary>
     public const string StartTheRunOver = "Start the run over";
 
-    /// <inheritdoc cref="StartTheRunOver"/>
+    /// <summary>
+    /// This row's second line, and a deliberate departure from the design's own wording.
+    ///
+    /// The accepted design writes it "from run start, every choice shown". This row is
+    /// built on the fight-1 plan, which replays every recorded decision from run start
+    /// and then stands the player inside fight 1 - so a note that stopped at "every
+    /// choice shown" would name a destination the row does not go to, which is the defect
+    /// the clause was added to close. The other three second lines are the design's word
+    /// for word; this one is longer on purpose. Do not shorten it back without changing
+    /// where the row goes.
+    /// </summary>
     public const string StartTheRunOverNote = "from run start, every choice shown, ending at fight 1";
 
     /// <summary>One floor on the chooser, and what the recording proves about

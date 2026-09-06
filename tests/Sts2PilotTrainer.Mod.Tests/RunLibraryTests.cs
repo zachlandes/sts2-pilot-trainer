@@ -116,68 +116,28 @@ public sealed class RunLibraryStoreTests : IDisposable
     }
 
     /// <summary>
-    /// The Compendium's question reads no manifest. Proved by asking it about a
-    /// recording whose manifest this build cannot parse at all: a walk that opened the
-    /// file would have nothing to say about the run, and this answers from the run id in
-    /// the directory index and the verdict the browser remembered.
+    /// The Compendium's question reads no manifest, and it never hides a run the list
+    /// would hold.
+    ///
+    /// Proved against a recording whose manifest this build cannot parse at all: nothing
+    /// that opened the file could say anything about the run, and the question still
+    /// answers yes from the run id in the recorder's directory index. That is the
+    /// one-directional promise - a stored recording shows the button whatever judging it
+    /// would say, and the browser is then the thing that judges. The opposite direction
+    /// is what must never happen: the browser is the only thing that judges and the
+    /// button is the only way to the browser, so a card hidden on a remembered negative
+    /// closes the way in for good, which is what a per-build verdict cache did here for
+    /// two rounds.
     /// </summary>
     [GameFact]
-    public void TheCheapCheckAnswersFromRememberedVerdictsRatherThanFromTheRecordings()
+    public void AStoredRecordingShowsTheCardWithoutAnyManifestBeingRead()
     {
         Write("native-a-20260906-120000.replay.json", "{\"manifest_version\": 9999}");
+
         Assert.Equal(["native-a-20260906-120000"], RunLibraryStore.StoredRunIds());
         Assert.Empty(RunLibraryStore.MyRecordings());
-
-        var build = RunLibrary.ThisBuild();
-        Assert.Null(RunLibraryStore.ReadVerdicts().For("native-a-20260906-120000", build));
-
-        Assert.True(RunLibraryStore.RecordVerdicts(
-            build, new Dictionary<string, RunVerdict>(StringComparer.Ordinal)
-            {
-                ["native-a-20260906-120000"] = RunVerdict.Passed,
-            }));
-
-        var remembered = RunLibraryStore.ReadVerdicts();
-        Assert.Equal(RunVerdict.Passed, remembered.For("native-a-20260906-120000", build));
-        Assert.Null(remembered.For("native-a-20260906-120000", "some-other-build"));
-        Assert.True(remembered.CouldListAny(RunLibraryStore.StoredRunIds(), build));
-    }
-
-    /// <summary>
-    /// The loop the round-6 cache closed, traced end to end. A player who updates the
-    /// game arrives with nothing remembered for the build they are now on, and their
-    /// stored runs are unknown - which shows the button, so the browser is reachable,
-    /// so the browser judges and records, so from then on the cache answers.
-    ///
-    /// Hiding on unknown had no way out of this: the browser is the only thing that
-    /// judges and the button is the only way to the browser.
-    /// </summary>
-    [GameFact]
-    public void AfterAGameUpdateTheUnjudgedRunsStillReachTheBrowser()
-    {
-        Write(
-            "native-a-20260906-120000.replay.json",
-            ManifestJson.Serialize(Recording("native-a-20260906-120000")));
-
-        var build = RunLibrary.ThisBuild();
-        var stored = RunLibraryStore.StoredRunIds();
-
-        // What is left of a previous build's session: answers, none of them about this
-        // build.
-        Assert.True(RunLibraryStore.RecordVerdicts(
-            "v0.110.0", new Dictionary<string, RunVerdict>(StringComparer.Ordinal)
-            {
-                ["native-a-20260906-120000"] = RunVerdict.Passed,
-            }));
-
-        Assert.True(RunLibraryStore.ReadVerdicts().CouldListAny(stored, build));
-
-        // Opening the browser is what judges, and it records what it judged.
-        _ = RunLibrary.Runs();
-
-        Assert.Equal(
-            RunVerdicts.For(RunLibraryStore.RecordingFor("native-a-20260906-120000")!, build),
-            RunLibraryStore.ReadVerdicts().For("native-a-20260906-120000", build));
+        Assert.DoesNotContain(RunLibrary.Runs(), run => run.Origin == RunOrigin.Mine);
+        Assert.True(RunLibrary.HasAnythingToShow());
     }
 
     /// <summary>A run still being played has a journal and no manifest, so it is not a
@@ -208,23 +168,6 @@ public sealed class RunLibraryStoreTests : IDisposable
             RunLibraryStore.RecordingFor("native-a-20260906-120000")?.RunId);
         Assert.Null(RunLibraryStore.RecordingFor("native-bad-20260906-130000"));
         Assert.Null(RunLibraryStore.RecordingFor("nobody"));
-    }
-
-    /// <summary>Only a judgement actually taken is written, so a browser opened twice
-    /// over an unchanged library does not rewrite the file.</summary>
-    [GameFact]
-    public void RememberingTheSameVerdictAgainChangesNothing()
-    {
-        var build = RunLibrary.ThisBuild();
-        var judged = new Dictionary<string, RunVerdict>(StringComparer.Ordinal)
-        {
-            ["native-a"] = RunVerdict.Failed,
-        };
-
-        Assert.True(RunLibraryStore.RecordVerdicts(build, judged));
-        Assert.False(RunLibraryStore.RecordVerdicts(build, judged));
-        Assert.False(RunLibraryStore.RecordVerdicts(
-            build, new Dictionary<string, RunVerdict>(StringComparer.Ordinal)));
     }
 
     [GameFact]

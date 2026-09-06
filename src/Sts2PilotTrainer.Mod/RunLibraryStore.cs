@@ -1,6 +1,5 @@
 using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Replay;
-using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -21,10 +20,8 @@ namespace Sts2PilotTrainer.Mod;
 /// failure mode this project exists to prevent is a surface that shows something
 /// plausible instead of refusing.</para>
 ///
-/// <para>Two writes and no others: the progress record, which holds fight ordinals and
-/// nothing else, and the verdict cache. See <see cref="RunProgress"/> for why the first
-/// can never become a resume, and <see cref="RunVerdictCache"/> for why the second is a
-/// hint about a menu button and never evidence about a run.</para>
+/// <para>The one write is the progress record, which holds fight ordinals and nothing
+/// else. See <see cref="RunProgress"/> for why it can never become a resume.</para>
 /// </summary>
 internal static class RunLibraryStore
 {
@@ -156,58 +153,6 @@ internal static class RunLibraryStore
                 $"[{RunmobileMod.ModId}] could not read {RunProgress.FileName}, so this session starts " +
                 $"from no progress: {ex.GetType().Name}: {ex.Message}", 2);
             return RunProgress.Empty;
-        }
-    }
-
-    /// <summary>
-    /// What this game has judged about each recording, per build.
-    ///
-    /// A cache this build cannot read is forgotten rather than guessed at, the same
-    /// direction the progress record fails in: the cost is a menu button that waits
-    /// until the browser has been opened once. See <see cref="RunVerdictCache"/> for why
-    /// nothing a player reads about a run may come from it.
-    /// </summary>
-    internal static RunVerdictCache ReadVerdicts()
-    {
-        try
-        {
-            return RunVerdictCache.Read(RunmobileStore.Read(RunVerdictCache.FileName));
-        }
-        catch (Exception ex)
-        {
-            Log.Error(
-                $"[{RunmobileMod.ModId}] could not read {RunVerdictCache.FileName}, so the Compendium " +
-                $"card waits for the browser: {ex.GetType().Name}: {ex.Message}", 2);
-            return RunVerdictCache.Empty;
-        }
-    }
-
-    /// <summary>
-    /// Records the verdicts the browser reached this time it was opened, and says
-    /// whether anything changed.
-    ///
-    /// Only what was judged, because an entry is a record that a judgement happened.
-    /// Nothing here is load-bearing: losing this file costs a menu button one browser
-    /// open, so a write that fails is logged and swallowed.
-    /// </summary>
-    internal static bool RecordVerdicts(string build, IReadOnlyDictionary<string, RunVerdict> judged)
-    {
-        if (judged.Count == 0) return false;
-
-        try
-        {
-            var cache = ReadVerdicts();
-            var updated = cache.WithJudged(build, judged);
-            if (ReferenceEquals(updated, cache)) return false;
-            RunmobileStore.Write(RunVerdictCache.FileName, updated.Write());
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(
-                $"[{RunmobileMod.ModId}] could not record what this game judged: " +
-                $"{ex.GetType().Name}: {ex.Message}", 2);
-            return false;
         }
     }
 

@@ -712,27 +712,23 @@ recording on the player's disk and preflighting each one - fifty files at the re
 default, on the game's own thread, exactly in the case where the answer is no.
 So `RunLibrary.HasAnythingToShow` judges the shipped recordings, which are in memory
 already and normally answer it outright, and otherwise reads the run ids out of the
-recorder's directory index and asks `RunVerdictCache` what this build last concluded
-about each.
-`RunLibrary.RecordingFor` resolves one run the same way: the id names the recording in
+recorder's directory index: any finished recording is a reason to show the button.
+`RunLibrary.RecordingFor` resolves one run the same way - the id names the recording in
 the index, so pressing a row costs that recording's manifest and no other's, and a
 manifest whose own run id disagrees with its name answers nothing rather than answering
 with the wrong run.
-The cache is a hint about one menu button and never evidence about a run: `RunBrowser`'s
-list and the run-code lookup judge live through `RunVerdicts.For` every time they open,
-because a verdict is a reading of the whole environment and not of the build alone.
-A run nobody has judged on this build shows the button rather than hiding it: only a
-remembered failed or absent verdict takes a run out of the reckoning.
-That direction is deliberate.
-Hiding on unknown closed a loop with no way out - the browser is the only thing that
-judges and the button is the only way to the browser, so a player who updated the game
-past every remembered verdict lost the feature permanently.
-Erring the other way shows a button onto a list that turns out empty, which is not a
-claim about a run and which the same browser open corrects by judging every run and
-writing the answers.
-Where the remembered verdicts are in step with what the preflight would say now, the
-cheap question answers exactly what building the list would answer.
-Only a judgement actually taken is written; nothing seeds it and nothing backfills it.
+
+The promise that makes is one-directional and nothing stronger: the card never hides a
+run the list would hold, and it can show onto a list that turns out empty, which the
+browser then draws with the "{n} not shown" numeral underneath.
+That direction is the point rather than a compromise.
+The browser is the only thing that judges a recording and the card is the only way to the
+browser, so anything persisted that could hide the card could close the only path to
+judging again - a per-build verdict cache lived here for two rounds and did exactly that
+after a game update, and a cached "could not judge" would have repeated it, because that
+reading fails again on every open.
+Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup
+judge live, every time they open.
 
 **Two states the design names are derived and not reachable, for reasons outside this
 module.** The plate's console-command state - play rows offered, Submit refused, "A

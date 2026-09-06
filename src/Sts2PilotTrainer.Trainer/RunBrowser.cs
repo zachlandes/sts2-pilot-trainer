@@ -97,6 +97,19 @@ public sealed record RunBrowser(
     /// and answering "no such run" about a run that plainly exists would be the library
     /// lying to them. A player who did not type a code is owed a list of runs that
     /// work, which is why nothing here puts a row in the list.
+    ///
+    /// <para><b>The design specifies two refusals and this build answers four.</b> Its
+    /// two are the build sentence with its sub-line and the multiplayer sentence with
+    /// none, and both are here word for word. The two added are
+    /// <see cref="LookupOutcome.NoLongerMatches"/> and
+    /// <see cref="LookupOutcome.CouldNotJudge"/>, and neither elaborates on the design -
+    /// each exists to stop a sentence that would have been false. A run recorded on this
+    /// very build that failed its preflight, or that this game could not be read to
+    /// judge, is not a build mismatch: the specified body would print one build twice
+    /// ("recorded on v0.111.0 and your game is v0.111.0") under a sub-line promising a
+    /// verdict that already exists and already failed. Adding a refusal here means a
+    /// player could be told something untrue without one; it is not a place to elaborate.
+    /// </para>
     /// </summary>
     public static RunLookup Lookup(string? code, IReadOnlyList<LibraryRun> runs, string thisBuild)
     {

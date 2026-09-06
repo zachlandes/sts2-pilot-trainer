@@ -22,25 +22,23 @@ namespace Sts2PilotTrainer.Mod;
 /// simply empty - which is what the browser draws when a group has nothing in it,
 /// rather than a placeholder saying so.</para>
 ///
-/// <para><b>Two questions, and only one of them builds the list.</b> "Which runs are
-/// there" is <see cref="Runs"/>, and it is expensive on purpose: every recording is
-/// deserialized and judged live, every time it is asked, because the recorder writes
-/// into the library while the game is running and because a verdict is a reading of the
-/// whole environment rather than of the build alone. Nothing a player is shown about
-/// whether a run plays comes from anywhere else. "Is there anything at all" is
-/// <see cref="HasAnythingToShow"/>, which the Compendium asks on every menu open, and it
-/// reads no manifest: the shipped recordings are already in memory and are judged
-/// directly, and the player's own runs are answered from the run ids in the recorder's
-/// directory index and the verdicts <see cref="RunVerdictCache"/> remembers.</para>
+/// <para><b>Nothing is cached, and only one of the two questions builds the list.</b>
+/// "Which runs are there" is <see cref="Runs"/>, and it is expensive on purpose: every
+/// recording is deserialized and judged live, every time it is asked, because the
+/// recorder writes into the library while the game is running and because a verdict is a
+/// reading of the whole environment rather than of the build alone. Everything a player
+/// is shown about whether a run plays comes from there and from nowhere else. "Is there
+/// anything at all" is <see cref="HasAnythingToShow"/>, which the Compendium asks on
+/// every menu open, and it reads no manifest: the shipped recordings are already in
+/// memory and are judged directly, and the player's own runs are answered from the run
+/// ids in the recorder's directory index alone.</para>
 ///
-/// <para>So what is cached is one hint about one menu button, and what is not cached is
-/// everything a player reads. A run nobody has judged on this build shows the button
-/// rather than hiding it, because the browser is the only thing that judges and the
-/// button is the only way to the browser. Where the remembered verdicts are in step with
-/// what the preflight would say now, the cheap question answers exactly what building the
-/// list would answer; where they are stale it can be wrong in one direction only - a
-/// button onto a list that turns out empty, which the same open then corrects.
-/// <see cref="RunVerdictCache"/> owns why neither is a false claim about a run.</para>
+/// <para>The promise the cheap question makes is one-directional, and only that. It never
+/// hides a run the list would hold; it may show the button when the list turns out empty.
+/// That is the direction to be wrong in, because the browser is the only thing that
+/// judges and the button is the only way to the browser - anything remembered that could
+/// hide the button could hide the only path to judging again, and a persisted negative
+/// that never corrects itself is how this feature was once lost permanently.</para>
 /// </summary>
 internal static class RunLibrary
 {
@@ -55,7 +53,6 @@ internal static class RunLibrary
         var build = ThisBuild();
         var progress = RunLibraryStore.ReadProgress();
         var runs = new List<LibraryRun>();
-        var judged = new Dictionary<string, RunVerdict>(StringComparer.Ordinal);
 
         foreach (var included in Included())
         {
@@ -68,19 +65,14 @@ internal static class RunLibrary
 
         foreach (var stored in RunLibraryStore.MyRecordings())
         {
-            var verdict = RunVerdicts.For(stored.Recording, build);
-            judged[stored.Recording.RunId] = verdict;
             runs.Add(LibraryRun.From(
                 stored.Recording,
                 RunOrigin.Mine,
-                verdict,
+                RunVerdicts.For(stored.Recording, build),
                 progress.PlayedFrom(stored.Recording.RunId),
                 recorded: stored.Started));
         }
 
-        // Only what was judged here, and only the player's own: the shipped recordings
-        // cost nothing to judge and the cheap question judges them itself.
-        RunLibraryStore.RecordVerdicts(build, judged);
         return runs;
     }
 
@@ -94,12 +86,16 @@ internal static class RunLibrary
     /// It reads no manifest, which is what makes it cheap enough to ask on a menu open
     /// at all. The shipped recordings are in memory already and are judged the same way
     /// the list judges them, so on an ordinary build they answer it outright. Only when
-    /// none of them is playable does it reach the player's own runs, and then it asks
-    /// the remembered verdicts rather than the recordings - and a run nobody has judged
-    /// on this build is a reason to show the button rather than to hide it. See
-    /// <see cref="RunVerdictCache.CouldListAny"/>: hiding on unknown is what a game
-    /// update would otherwise turn into a permanent lockout, since the browser is the
-    /// only thing that judges and the button is the only way to the browser.
+    /// none of them is playable does it reach the player's own runs, and there it asks
+    /// the recorder's directory index and nothing more: any finished recording is a
+    /// reason to show the button.
+    ///
+    /// So the answer is one-directional rather than exact. It never hides a run the list
+    /// would hold, and it may show the button onto a list that turns out empty - a run
+    /// this game cannot play is one the browser then leaves out, with the numeral under
+    /// the list saying how many. That is the direction to be wrong in: the browser is the
+    /// only thing that judges and the button is the only way to the browser, so anything
+    /// that could hide the button could close the way in for good.
     /// </summary>
     internal static bool HasAnythingToShow()
     {
@@ -114,8 +110,7 @@ internal static class RunLibrary
                 }
             }
 
-            return RunLibraryStore.ReadVerdicts()
-                .CouldListAny(RunLibraryStore.StoredRunIds(), build);
+            return RunLibraryStore.StoredRunIds().Count > 0;
         }
         catch (Exception ex)
         {
