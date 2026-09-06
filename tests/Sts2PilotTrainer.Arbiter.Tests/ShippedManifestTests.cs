@@ -17,6 +17,42 @@ public class ShippedManifestTests
         Assert.True(result.IsValid, result.Describe());
     }
 
+    /// <summary>
+    /// Every manifest this repository ships is already in the current format on disk.
+    ///
+    /// A migrated file must not migrate again: the reader would accept a version-5
+    /// file forever, and the moment a file changes has to be a moment a person chose,
+    /// in the change that moved the format. The two native recordings carry the
+    /// migration's own note, because their event choices name no option key and a
+    /// version-6 recorder would have named one.
+    /// </summary>
+    [Theory]
+    [InlineData("navegreed-OJ-6QXhNgdg.replay.json", false)]
+    [InlineData("native-9F8CY60C5BK7-20260906-005737.replay.json", true)]
+    [InlineData("native-3LACFJ5NJ371-20260906-015901.replay.json", true)]
+    public void EveryShippedManifestIsAlreadyInTheCurrentFormat(string fileName, bool migratedNative)
+    {
+        var path = Path.Combine(Arbiter.RepoRoot, "manifests", fileName);
+        using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(path));
+
+        Assert.Equal(
+            ReplayManifest.CurrentManifestVersion,
+            document.RootElement.GetProperty("manifest_version").GetInt32());
+
+        var manifest = ManifestJson.Load(path);
+        var result = ManifestValidator.Validate(manifest);
+        Assert.True(result.IsValid, result.Describe());
+
+        if (!migratedNative) return;
+
+        var native = document.RootElement.GetProperty("source").GetProperty("native");
+        Assert.Equal(NativeSource.CompleteIntegrity, native.GetProperty("integrity").GetString());
+        Assert.Equal(5, native.GetProperty("migrated_from_version").GetInt32());
+        Assert.All(
+            manifest.Actions.Where(action => action.Verb is ActionVerb.ChooseNeowBlessing or ActionVerb.ChooseEventOption),
+            action => Assert.False(action.Args.ContainsKey("option_key")));
+    }
+
     [Fact]
     public void ShippedMapObservationPassesIngestion()
     {

@@ -32,6 +32,7 @@ public static class ManifestFormatReference
         var nonEmpty = ValidatorSource.ReadNonEmptyArguments(repositoryRoot);
         var enumerated = ValidatorSource.ReadEnumeratedArguments(repositoryRoot);
         var shopKinds = ValidatorSource.ReadShopPurchaseKinds(repositoryRoot);
+        var rewardKinds = ValidatorSource.ReadClaimRewardKinds(repositoryRoot);
         var controls = ControlArguments();
         var commands = mapped.ToDictionary(row => row.Verb, StringComparer.Ordinal);
 
@@ -44,7 +45,12 @@ public static class ManifestFormatReference
             Verb(page, rule, commands[rule.Verb], nonEmpty, enumerated, controls);
             if (rule.Verb == nameof(ActionVerb.ShopPurchase))
             {
-                ShopKinds(page, shopKinds);
+                Kinds(page, "kind", "purchase", "bought", shopKinds);
+            }
+
+            if (rule.Verb == nameof(ActionVerb.ClaimReward))
+            {
+                Kinds(page, "reward_type", "claim", "claimed", rewardKinds);
             }
         }
 
@@ -159,13 +165,17 @@ public static class ManifestFormatReference
         return nonEmpty.Contains(name, StringComparer.Ordinal) ? "non-empty string" : "string";
     }
 
-    private static void ShopKinds(
-        StringBuilder page, IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> kinds)
+    private static void Kinds(
+        StringBuilder page,
+        string argument,
+        string decision,
+        string named,
+        IReadOnlyList<(string Kind, IReadOnlyList<string> Required)> kinds)
     {
-        page.AppendLine("What a purchase must name depends on what it bought.");
+        page.AppendLine($"What a {decision} must name depends on what it {named}.");
         page.AppendLine("An argument a kind does not have is refused as firmly as a missing one.");
         page.AppendLine();
-        page.AppendLine("| `kind` | Also required |");
+        page.AppendLine($"| `{argument}` | Also required |");
         page.AppendLine("|---|---|");
 
         foreach (var (kind, required) in kinds)

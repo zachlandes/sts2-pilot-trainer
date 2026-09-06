@@ -42,7 +42,7 @@ public static class ManifestJson
         }
 
         var version = versionElement.GetInt32();
-        if (version == PreviousManifestVersion) return MigrateFromVersion4(json);
+        if (version == PreviousManifestVersion) return MigrateFromVersion5(json);
 
         if (version != ReplayManifest.CurrentManifestVersion)
         {
@@ -59,59 +59,42 @@ public static class ManifestJson
     }
 
     /// <summary>
-    /// The one older version this build still reads. Version 4 carried a single
-    /// combat-start digest on the source; version 5 carries a list of boundaries, and
-    /// the old scalar is the first entry of that list.
+    /// The one older version this build still reads. Version 5 carried no integrity
+    /// on a native source and named no event option by key; version 6 requires the
+    /// first and, of a native recording, the second.
     /// </summary>
-    public const int PreviousManifestVersion = 4;
+    public const int PreviousManifestVersion = 5;
 
     /// <summary>
-    /// Reads a version-4 manifest as the version-5 manifest it means.
+    /// Reads a version-5 manifest as the version-6 manifest it means.
     ///
     /// In memory and never on disk: a file on disk is migrated once, deliberately, by
     /// <c>arbiter migrate-manifest</c>, so a reader can never silently rewrite
-    /// somebody's evidence. Nothing is invented here - the digest was engine-produced
-    /// and stays engine-produced, and where the first fight begins is read the same
-    /// way the version-4 entry path read it.
+    /// somebody's evidence. Nothing about the run is invented. A native source gains
+    /// an integrity where it stated none - <c>complete</c>, because a version-5
+    /// recorder had no unmapped stop and refused rather than stopping at anything it
+    /// could not name; one it did state is kept as it was - and it declares that it
+    /// was migrated from 5, which is what lets the validator waive the option keys no
+    /// version-5 recorder read. No action and no boundary is touched, so the history
+    /// hash and every captured digest stay exactly what they were.
     /// </summary>
-    private static ReplayManifest MigrateFromVersion4(string json)
+    private static ReplayManifest MigrateFromVersion5(string json)
     {
         var node = JsonNode.Parse(json)?.AsObject()
             ?? throw new ManifestException("Manifest deserialized to null.");
         node["manifest_version"] = ReplayManifest.CurrentManifestVersion;
 
         var source = node["source"]?.AsObject();
-        var digest = source?["combat_start_snapshot_digest"]?.DeepClone();
-        source?.Remove("combat_start_snapshot_digest");
-        node.Remove("boundaries");
+        if (source?["kind"]?.GetValue<string>() == "native" && source["native"] is JsonObject native)
+        {
+            native["integrity"] ??= NativeSource.CompleteIntegrity;
+            native["migrated_from_version"] = PreviousManifestVersion;
+        }
 
         var migrated = JsonSerializer.Deserialize<ReplayManifest>(node.ToJsonString(), Options)
             ?? throw new ManifestException("Manifest deserialized to null.");
         ValidateRequiredMembers(migrated, "Manifest");
-
-        if (digest is null) return migrated;
-
-        var fact = digest.Deserialize<Fact<string>>(Options)
-            ?? throw new ManifestException(
-                "This version-4 manifest's combat_start_snapshot_digest could not be read, so its boundary " +
-                "cannot be migrated.");
-
-        int combatStartSeq;
-        try
-        {
-            combatStartSeq = RecordedFightPlan.FirstCombatStartSeq(migrated);
-        }
-        catch (ManifestException refusal)
-        {
-            throw new ManifestException(
-                $"This version-{PreviousManifestVersion} manifest declares a combat-start digest and its history " +
-                $"does not reach a fight, so where that boundary sits cannot be established: {refusal.Message}");
-        }
-
-        return migrated with
-        {
-            Boundaries = [ReplayBoundary.CombatStart(fight: 1, afterSeq: combatStartSeq, digest: fact)],
-        };
+        return migrated;
     }
 
     public static ReplayManifest Load(string path) => Deserialize(File.ReadAllText(path));

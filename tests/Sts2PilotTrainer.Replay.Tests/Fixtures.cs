@@ -140,6 +140,17 @@ internal static class Fixtures
             },
             Actions = [.. vod.Actions.Select(action => action with
             {
+                // A recorder names an event option by key as well as by position,
+                // which a video never can; the native fixture carries what a recorder
+                // writes.
+                Args = action.Verb is ActionVerb.ChooseNeowBlessing or ActionVerb.ChooseEventOption
+                    ? new SortedDictionary<string, string>(
+                        new Dictionary<string, string>(action.Args, StringComparer.Ordinal)
+                        {
+                            ["option_key"] = "OPTION.KEY",
+                        },
+                        StringComparer.Ordinal)
+                    : action.Args,
                 Source = FactSource.Captured,
                 Evidence = FactEvidence.AtActionOrdinal(action.Seq, runClockMs: 1000 * (action.Seq + 1)),
             })],
@@ -156,12 +167,14 @@ internal static class Fixtures
     internal static NativeSource NativeSourceBlock(
         bool witnessedStart = true,
         string continuity = NativeSource.ContinuousContinuity,
-        string outcome = "won") => new()
+        string outcome = "won",
+        string integrity = NativeSource.CompleteIntegrity) => new()
         {
             RecorderVersion = "runmobile-recorder/0.1.0",
             WitnessedRunStart = Fact<bool>.Captured(witnessedStart, FactEvidence.AtActionOrdinal(0)),
             Continuity = continuity,
             Outcome = outcome,
+            Integrity = integrity,
         };
 
     internal static UnlockStateInventory UnlockInventory() => new()

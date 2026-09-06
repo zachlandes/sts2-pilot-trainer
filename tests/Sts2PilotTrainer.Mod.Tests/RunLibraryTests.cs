@@ -208,7 +208,14 @@ public sealed class RunLibraryStoreTests : IDisposable
     [GameFact]
     public void ARunTheConsoleWasUsedInSaysSoAndOneThatStatesNothingDoesNot()
     {
-        var quiet = BareRecording("native-quiet");
+        var recorded = BareRecording("native-quiet");
+
+        // A recording from before the recorder could tell states no integrity at all,
+        // which is not the same as stating that nothing happened.
+        var quiet = recorded with
+        {
+            Source = recorded.Source with { Native = recorded.Source.Native! with { Integrity = null! } },
+        };
         var console = quiet with
         {
             Source = quiet.Source with
@@ -317,6 +324,7 @@ public sealed class RunLibraryStoreTests : IDisposable
                 RecorderVersion = "runmobile-recorder/0.1.0",
                 WitnessedRunStart = Fact<bool>.Captured(true, FactEvidence.AtActionOrdinal(-1, 0)),
                 Continuity = NativeSource.ContinuousContinuity,
+                Integrity = NativeSource.CompleteIntegrity,
                 Outcome = "abandoned",
             },
         },

@@ -43,7 +43,7 @@ public struct Vector2
     public override string ToString() => $"({X}, {Y})";
 }
 
-public struct Vector2I
+public partial struct Vector2I
 {
     public int X;
     public int Y;

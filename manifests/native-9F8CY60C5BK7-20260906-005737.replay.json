@@ -1,5 +1,5 @@
 {
-  "manifest_version": 5,
+  "manifest_version": 6,
   "run_id": "native-9F8CY60C5BK7-20260906-005737",
   "environment": {
     "build_version": {
@@ -224,7 +224,9 @@
         }
       },
       "continuity": "continuous",
-      "outcome": "abandoned"
+      "outcome": "abandoned",
+      "integrity": "complete",
+      "migrated_from_version": 5
     },
     "extraction_method": "captured",
     "coverage": "The whole run as it was played: 51 decision(s) from run start across 6 floor(s) and 4 fight(s), and the run ended abandoned."

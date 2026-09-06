@@ -30,7 +30,7 @@ Run it on its own only when that is what you want, because the skip is silent in
 totals and the suite still reports green.
 Building first is what makes it run everything: nothing in the solution references
 `Sts2PilotTrainer.Cli`, so `dotnet test` never builds the arbiter the integration
-tests drive, and bootstrapping alone leaves 164 of them skipped.
+tests drive, and bootstrapping alone leaves every test that drives it skipped.
 Every test run is bounded by `TestSessionTimeout` in `.runsettings`, wired in from
 `Directory.Build.props` so it applies however `dotnet test` was started. A run that
 exceeds it aborts with a non-zero exit rather than hanging: a deadlocked test used to
@@ -142,13 +142,14 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, 135 of
-`Sts2PilotTrainer.Arbiter.Tests`' 201 tests skip and the job still reports success.
-`./scripts/assert-expected-skips.sh` asserts that skipped set against
-`scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
-one, or deleting one fails CI until the list is regenerated with `--update` in the
-same commit. It catches structural drift only. A test that skips there and is broken
-inside is caught by the local gate, which runs everything.
+**What CI cannot run is recorded by name.** On a runner without the game, the 139
+tests named in `scripts/expected-hosted-skips.txt` skip out of
+`Sts2PilotTrainer.Arbiter.Tests`' 208 and the job still reports success.
+`./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
+adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
+list is regenerated with `--update` in the same commit. It catches structural drift
+only. A test that skips there and is broken inside is caught by the local gate, which
+runs everything.
 
 **Read [docs/environment-identity.md](docs/environment-identity.md) before touching run setup or preflight.**
 Two fields on that list are there because a replay looked correct and was not: the act variant and the player's unlock state.
@@ -198,15 +199,18 @@ same two questions for a recording made inside the player's own game.
 **Read [docs/headless-fidelity.md](docs/headless-fidelity.md) before changing what
 the host patches or stands in for.** Each patch has a stated reason and the set is
 deliberately small. `TestMode` in particular reaches further than its name suggests:
-at three sites it changes what the game *generates* rather than how it is drawn, and
+at four sites it changes what the game *generates* rather than how it is drawn, and
 `HeadlessPatches.RestoreRetailBranches` runs each of those with the flag off so the
-engine's own retail branch decides. Adding a fourth is a sweep of the class, not a
+engine's own retail branch decides. Adding a fifth is a sweep of the class, not a
 guess - a gameplay path that consumes randomness only when test mode is off leaves a
 run-persistent stream in the wrong place, silently, for the rest of the run.
-Three screens have no engine command at all - the loot a won fight offers, the chest a
-treasure room opens, and the card screens a reward or an enchantment opens - so the
-host drives the first two and answers the third from the manifest. None of them decides
-anything, and each refuses where the manifest is silent.
+Four screens have no engine command at all - the loot a won fight offers, the chest a
+treasure room opens, the card screens a reward or an enchantment opens, and the Crystal
+Sphere's own screen - so the host drives the first two and the last and answers the
+third from the manifest. Three prompts the `ICardSelector` seam does not reach - the
+bundle screen, the relic screen and the Crystal Sphere's screen - are stood in for at
+the prompt itself by `ScreenStandIns`, headlessly only. None of them decides anything,
+and each refuses where the manifest is silent.
 
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
@@ -300,10 +304,13 @@ path that writes what the barrier suppresses.
 **A run a person plays is recorded by one owner, and refused rather than repaired.**
 `RunCapture` in `Sts2PilotTrainer.Replay` is the whole-run counterpart of `FightCapture` and delegates the inside of each fight to one, so there is one capture path.
 It records singleplayer runs only, and which kind of run this is is read - `LiveRun.ReadSession` off the game's own networking and player list, with `RunSession` owning what each `RunSessionKind` permits - never inferred from the name of the setup member the game called.
-A run the console was used in is kept whole, recorded to its end, and marked `source.native.integrity = "non-standard"` through `RunCapture.MarkNonStandard`, which the validator refuses for publication; `integrity` is the one field that says this, and a recording written before the recorder could read the question states none.
+A run the console was used in is kept whole, recorded to its end, and marked `source.native.integrity = "non-standard"` through `RunCapture.MarkNonStandard`, which the validator refuses for publication; `integrity` is the one field that says this.
 `RunRecorder` in the mod owns only what a pure class cannot: which game member is which decision, what its arguments are, and when the engine has settled enough to read.
 Inside a fight it hands over to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink`.
 The recorder refuses a run whose start it did not witness, marks `continuity = broken` when a resumed session's live state is not the state its journal last recorded, and never truncates.
+`source.native.integrity` is the one field that says whether a recording may ever be published, and it is required from format v6: `complete`, `non-standard` for a run the console was used in, or `unmapped` for a recorder that stopped at a decision it could not name, with what it met in `source.native.unmapped` - `RunCapture.MarkNonStandard` and `RunCapture.MarkUnmapped` are the only writers.
+A version-5 file states none, and `ManifestJson.MigrateFromVersion5` reads it as `complete` with `migrated_from_version = 5` beside it; that note is what excuses the `option_key` a version-5 recorder never read, and nothing else is ever excused by it.
+Every decision in a journal carries the reading it began from as well as the one it settled into, because the comparison instant is before each decision; `RunJournal.Schema` is v2 for that and a v1 journal is refused on resume rather than repaired.
 **Every integrity claim it makes is derived from what was observed, never from what a component assumes it observed.**
 Continuity, a witnessed start, the mod set a run was played under, the controls a verdict rests on: each of these is a claim about what happened, and a component that reports one it did not establish produces evidence nobody can check while every value in it is individually true.
 Four such claims were shipped on this branch and caught in review; [docs/in-game-host.md](docs/in-game-host.md) names them, so the rule is checkable rather than an abstraction.

@@ -46,11 +46,15 @@ internal static class RecordedRun
             RunClockMs = 0,
         });
 
-        capture.Record(ActionVerb.ChooseNeowBlessing, Args(("option_index", "0")), Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
 
         capture.Record(
             ActionVerb.ChooseEventOption,
-            Args(("event_id", "EVENT.WATERLOGGED_SCRIPTORIUM"), ("option_index", "2")),
+            Args(
+                ("event_id", "EVENT.WATERLOGGED_SCRIPTORIUM"), ("option_index", "2"),
+                ("option_key", "WATERLOGGED_SCRIPTORIUM.ENCHANT")),
             Floor(1),
             Digest(1));
 

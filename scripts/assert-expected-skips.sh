@@ -2,13 +2,13 @@
 # Asserts that the set of tests CI skips is the set we agreed it would skip.
 #
 # CI runs sts2-pilot-trainer.domain.slnf on a hosted runner that does not own the
-# game. Of Sts2PilotTrainer.Arbiter.Tests' 183 tests, 133 skip there, and the job
-# still prints "Test Run Successful" and renders a green tick. The skip itself is
-# correct - not owning the game is a good reason to be unable to run a test, and
-# tests/Sts2PilotTrainer.Arbiter.Tests/Arbiter.cs says so. What was missing is that
-# nothing recorded WHICH tests were skipped, so a test moved behind [GameFact],
-# deleted, or swapped for a different one changed CI's real coverage without
-# changing its verdict.
+# game. Most of Sts2PilotTrainer.Arbiter.Tests skips there - AGENTS.md carries the
+# counts - and the job still prints "Test Run Successful" and renders a green tick.
+# The skip itself is correct - not owning the game is a good reason to be unable to
+# run a test, and tests/Sts2PilotTrainer.Arbiter.Tests/Arbiter.cs says so. What was
+# missing is that nothing recorded WHICH tests were skipped, so a test moved behind
+# [GameFact], deleted, or swapped for a different one changed CI's real coverage
+# without changing its verdict.
 #
 # This compares the skipped set against scripts/expected-hosted-skips.txt and fails
 # when they differ. It catches structural drift only - a test appearing in or

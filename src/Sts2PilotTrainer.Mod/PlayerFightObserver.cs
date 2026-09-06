@@ -125,7 +125,7 @@ internal sealed class PlayerFightObserver : IDisposable
     /// <summary>
     /// Samples the state an action is about to act on.
     ///
-    /// Only the player's own actions, and only the four the fight is made of. The
+    /// Only the player's own actions, and only the five the fight is made of. The
     /// game's own bookkeeping actions - the enemy turn's readiness, a hook - are not
     /// decisions and the executor tells them apart for us.
     /// </summary>
@@ -163,10 +163,11 @@ internal sealed class PlayerFightObserver : IDisposable
                     break;
                 case UndoEndPlayerTurnAction:
                     // The game took the ended turn back before the enemy turn began.
-                    // Nothing happened, so nothing is recorded; the state it returns to
-                    // is checked by the next action's before-sample like any other.
+                    // Both are decisions: the ended turn closes with this instant's
+                    // sample as its after-state, and the undo opens as a step of its
+                    // own, so a replay makes the same two decisions in the same order.
                     _awaitingPlayerTurn = false;
-                    _sink.DiscardOpenStep();
+                    opened = Begin(nameof(ActionVerb.UndoEndTurn), new Arguments(Empty), previousFinished);
                     break;
             }
         }
@@ -232,7 +233,7 @@ internal sealed class PlayerFightObserver : IDisposable
 
         switch (action)
         {
-            case PlayCardAction or UsePotionAction or DiscardPotionGameAction:
+            case PlayCardAction or UsePotionAction or DiscardPotionGameAction or UndoEndPlayerTurnAction:
                 _openStepFinished = true;
                 _ = CompleteWhenSettled();
                 break;

@@ -372,3 +372,22 @@ public class Polygon2D : Node2D
 
     public Color Color { get; set; } = Color.White;
 }
+
+/// <summary>
+/// The integer-vector members the Crystal Sphere's minigame reaches and upstream does
+/// not stub: <c>One</c>, which sizes every one-cell item, and the operators the grid
+/// arithmetic uses. Godot's own semantics, component-wise.
+/// </summary>
+public partial struct Vector2I : IEquatable<Vector2I>
+{
+    public static Vector2I One { get; } = new(1, 1);
+
+    public static Vector2I operator +(Vector2I a, Vector2I b) => new(a.X + b.X, a.Y + b.Y);
+    public static Vector2I operator -(Vector2I a, Vector2I b) => new(a.X - b.X, a.Y - b.Y);
+    public static bool operator ==(Vector2I a, Vector2I b) => a.X == b.X && a.Y == b.Y;
+    public static bool operator !=(Vector2I a, Vector2I b) => !(a == b);
+    public bool Equals(Vector2I other) => this == other;
+    public override bool Equals(object? obj) => obj is Vector2I other && this == other;
+    public override int GetHashCode() => HashCode.Combine(X, Y);
+    public override string ToString() => $"({X}, {Y})";
+}

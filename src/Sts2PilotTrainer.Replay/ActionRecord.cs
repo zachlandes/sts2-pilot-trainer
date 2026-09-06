@@ -35,6 +35,103 @@ public static class ShopPurchaseKinds
 }
 
 /// <summary>
+/// What a loot screen offers with one click, as the kind the screen names.
+///
+/// Shared by the validator, the driver and the recorder so the three cannot disagree
+/// about what a kind is. The card reward is absent on purpose: it opens a second
+/// screen, so taking it is <see cref="ActionVerb.TakeCard"/>, which records which card
+/// came back. A linked set of rewards is absent too - it is a container over other
+/// rewards and no singleplayer path on v0.111.0 was found to construct one.
+/// </summary>
+public static class RewardKinds
+{
+    public const string Gold = "gold";
+    public const string Potion = "potion";
+    public const string Relic = "relic";
+
+    /// <summary>A card removal earned as loot rather than bought. It opens a screen
+    /// over the deck like the merchant's does, and the card that came off it is
+    /// recorded separately, as a card selection.</summary>
+    public const string CardRemoval = "card_removal";
+
+    /// <summary>A fixed card a fight or an event adds to the deck, named so a build
+    /// that changed the card refuses rather than adds a different one.</summary>
+    public const string SpecialCard = "special_card";
+
+    public static readonly string[] All = [Gold, Potion, Relic, CardRemoval, SpecialCard];
+
+    /// <summary>The argument naming what was claimed, for the kinds that claim a
+    /// thing a build could have changed.</summary>
+    public static string? IdArgument(string kind) => kind switch
+    {
+        Relic => "relic_id",
+        SpecialCard => "card_id",
+        _ => null,
+    };
+}
+
+/// <summary>
+/// The tools the Crystal Sphere's minigame reveals a cell with.
+///
+/// Two rather than the engine's three: its <c>None</c> is the state before a tool is
+/// chosen, and a click is only accepted through the screen once one is. Which tool
+/// was set decides how many cells one click reveals, so a reveal recorded without it
+/// would replay as a different reveal.
+/// </summary>
+public static class CrystalSphereTools
+{
+    public const string Small = "small";
+    public const string Big = "big";
+
+    public static readonly string[] All = [Small, Big];
+}
+
+/// <summary>
+/// A decision the recorder met and could not name, kept beside the history it stopped.
+///
+/// Provenance rather than history: it is excluded from the action-history hash like
+/// every other annotation, because it records what the recorder did not understand
+/// rather than what the player decided. Every value in it is raw - the game's own name
+/// for the thing, its arguments as strings, never interpreted - so a later build can
+/// say what it was without this one having guessed.
+/// </summary>
+public sealed record UnmappedDecision
+{
+    /// <summary>Where the decision is observed. One of <see cref="Seams"/>.</summary>
+    public const string NetActionSeam = "net_action";
+    public const string PlayerChoiceSeam = "player_choice";
+    public const string MemberSeam = "member";
+
+    public static readonly string[] Seams = [NetActionSeam, PlayerChoiceSeam, MemberSeam];
+
+    /// <summary>The ordinal the decision would have taken, which is where the history
+    /// stops.</summary>
+    [JsonPropertyName("seq")]
+    public required int Seq { get; init; }
+
+    [JsonPropertyName("seam")]
+    public required string Seam { get; init; }
+
+    /// <summary>The game's own name for the thing: a net action's type, a choice's
+    /// kind, a member's declaring type and name.</summary>
+    [JsonPropertyName("name")]
+    public required string Name { get; init; }
+
+    /// <summary>The choice kind or the action's subtype, where the seam has one.</summary>
+    [JsonPropertyName("discriminator")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Discriminator { get; init; }
+
+    /// <summary>The arguments as the game handed them over, as strings, uninterpreted.</summary>
+    [JsonPropertyName("args")]
+    public IReadOnlyDictionary<string, string> Args { get; init; } =
+        new SortedDictionary<string, string>(StringComparer.Ordinal);
+
+    [JsonPropertyName("evidence")]
+    public required FactEvidence Evidence { get; init; }
+}
+
+/// <summary>
 /// One decision in the run, in order. The <see cref="Seq"/>/<see cref="Verb"/>/
 /// <see cref="Args"/> triple is the semantic content; everything else is
 /// provenance and is excluded from the action-history hash so that improving an
@@ -87,23 +184,39 @@ public sealed record ActionRecord
 }
 
 /// <summary>
-/// The card-selection actions that answer the screen one action opened.
+/// The screen-answer actions that answer the screens one action opened.
 ///
-/// The contiguous run of <see cref="ActionVerb.SelectCardFromScreen"/> records
-/// immediately after it, which is all the driver ever reads and is where a screen
-/// answered inside the call that opened it gets its answer from. One owner because
-/// every caller that hands an action a window into the rest of the history - a whole
-/// replay, a prefix that stops at a boundary, a walk to one - has to cut that window
-/// in the same place: one that stopped short would refuse the screen for an omission
-/// the truncation caused rather than one the recording made.
+/// The contiguous run of <see cref="Verbs"/> records immediately after it, which is
+/// all the driver ever reads and is where a screen answered inside the call that
+/// opened it gets its answer from. One owner because every caller that hands an
+/// action a window into the rest of the history - a whole replay, a prefix that stops
+/// at a boundary, a walk to one - has to cut that window in the same place: one that
+/// stopped short would refuse the screen for an omission the truncation caused rather
+/// than one the recording made.
+///
+/// Three verbs answer a screen this way. A card screen over the hand, the deck or a
+/// pile, a bundle screen and a relic screen all suspend inside the engine call that
+/// opened them and pull the answer through a seam. A card reward's alternative is not
+/// one of them: on this build an alternative ends the reward's selection, so the
+/// record that takes one is the loot-screen decision itself, beside
+/// <see cref="ActionVerb.TakeCard"/>, rather than an answer following it.
 /// </summary>
 public static class CardScreenAnswers
 {
+    public static readonly ActionVerb[] Verbs =
+    [
+        ActionVerb.SelectCardFromScreen,
+        ActionVerb.SelectBundleFromScreen,
+        ActionVerb.SelectRelicFromScreen,
+    ];
+
+    public static bool Answers(ActionVerb verb) => Array.IndexOf(Verbs, verb) >= 0;
+
     public static IReadOnlyList<ActionRecord> After(IEnumerable<ActionRecord> actions, int seq) =>
         actions
             .OrderBy(action => action.Seq)
             .SkipWhile(action => action.Seq <= seq)
-            .TakeWhile(action => action.Verb == ActionVerb.SelectCardFromScreen)
+            .TakeWhile(action => Answers(action.Verb))
             .ToList();
 }
 
@@ -112,15 +225,17 @@ public static class CardScreenAnswers
 /// an action the arbiter cannot replay, and that must be a loud failure rather than
 /// a silently dropped decision.
 ///
-/// This milestone implements only the subset the selected proof needs. The rest are
-/// named but unimplemented, and the engine refuses them explicitly - a named verb
-/// that quietly does nothing would be the worst of both worlds.
+/// Every verb here but one is mapped onto one of the game's own members in
+/// <c>EngineCommands</c>; the one that is not is named with the reason, and the engine
+/// refuses it explicitly - a named verb that quietly did nothing would be the worst of
+/// both worlds. Declaration order is a reading order only: nothing serializes by
+/// ordinal.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter<ActionVerb>))]
 public enum ActionVerb
 {
-    // ── Implemented for the selected proof ──
-    /// <summary>Pick one of Neow's opening blessings. Args: <c>option_index</c>.</summary>
+    /// <summary>Pick one of Neow's opening blessings. Args: <c>option_index</c>, and
+    /// <c>option_key</c> naming the option, required of a native recording.</summary>
     ChooseNeowBlessing,
 
     /// <summary>Move to a map node. Args: <c>act</c>, <c>row</c>, <c>column</c>.</summary>
@@ -133,11 +248,43 @@ public enum ActionVerb
     /// <summary>End the player's turn.</summary>
     EndTurn,
 
+    /// <summary>Take the ended turn back before the enemy turn began. Valid only
+    /// immediately after an <see cref="EndTurn"/> of the same turn.</summary>
+    UndoEndTurn,
+
+    /// <summary>Pick an event's option. Args: <c>event_id</c>, <c>option_index</c>,
+    /// and <c>option_key</c> naming the option, required of a native recording.</summary>
     ChooseEventOption,
+
+    /// <summary>Take one reward off the loot screen with a click. Args:
+    /// <c>reward_type</c>, one of <see cref="RewardKinds"/>, and the id of what was
+    /// claimed for the kinds that name one.</summary>
     ClaimReward,
+
+    /// <summary>Take a card off a card reward. Args: <c>card_id</c>, <c>option_index</c>.</summary>
     TakeCard,
+
+    /// <summary>Answer a card reward with one of its alternatives instead of a card -
+    /// Pael's Wing's sacrifice, on this build. Args: <c>option_id</c>, the
+    /// alternative's own id, and <c>option_index</c>, the position the screen reports,
+    /// which is the count of cards offered plus the alternative's position.</summary>
+    TakeCardRewardAlternative,
+
     SkipRewards,
+
+    /// <summary>Pick a card off a screen over the hand, the deck or a pile. Args:
+    /// <c>card_id</c>, <c>option_index</c>.</summary>
     SelectCardFromScreen,
+
+    /// <summary>Pick a bundle of cards off the screen Scroll Boxes opens. Args:
+    /// <c>option_index</c>, and <c>card_ids</c>, the bundle's cards joined with a comma
+    /// in the order the prompt listed them.</summary>
+    SelectBundleFromScreen,
+
+    /// <summary>Pick a relic off a choose-a-relic screen. Args: <c>relic_id</c>,
+    /// <c>option_index</c>. Nothing on v0.111.0 opens that screen, so a history that
+    /// records it is refused with that sentence.</summary>
+    SelectRelicFromScreen,
 
     /// <summary>Take the relic a treasure chest offered. Args: <c>relic_id</c>,
     /// <c>option_index</c>.</summary>
@@ -159,15 +306,17 @@ public enum ActionVerb
     /// <c>slot_index</c>.</summary>
     DiscardPotion,
 
-    /// <summary>Buy one thing from the merchant. Args: <c>kind</c>, and for
-    /// everything but a card removal an <c>option_index</c> and the id of what was
-    /// bought. See <see cref="ShopPurchaseKinds"/>.</summary>
+    /// <summary>Buy one thing from the merchant, or from an event that sells. Args:
+    /// <c>kind</c>, and for everything but a card removal an <c>option_index</c> and
+    /// the id of what was bought. See <see cref="ShopPurchaseKinds"/>.</summary>
     ShopPurchase,
 
     ProceedToNextAct,
 
-    // ── Named, and this build maps nothing onto them; see EngineCommands ──
+    /// <summary>Reveal one cell of the Crystal Sphere's grid. Args: <c>x</c>, <c>y</c>,
+    /// the cell's coordinates, and <c>tool</c>, one of <see cref="CrystalSphereTools"/>.</summary>
+    RevealCrystalSphereCell,
+
+    // ── Named, and this build maps nothing onto it; see EngineCommands ──
     SelectHandCards,
-    CloseShop,
-    ProceedToMap,
 }

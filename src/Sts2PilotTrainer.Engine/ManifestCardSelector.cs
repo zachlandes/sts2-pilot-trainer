@@ -29,7 +29,24 @@ internal sealed class ManifestCardSelector : ICardSelector
     /// <summary>One card the manifest says was picked off a selection screen.</summary>
     internal readonly record struct Pick(int Seq, string CardId, int OptionIndex);
 
+    /// <summary>One alternative the manifest says a card reward was answered with.</summary>
+    internal readonly record struct AlternativePick(int Seq, string OptionId, int OptionIndex);
+
+    /// <summary>One bundle the manifest says was picked off a bundle screen, by the
+    /// joined ids of its cards and its position.</summary>
+    internal readonly record struct BundlePick(int Seq, string CardIds, int OptionIndex);
+
+    /// <summary>One relic the manifest says was picked off a relic screen.</summary>
+    internal readonly record struct RelicPick(int Seq, string RelicId, int OptionIndex);
+
+    /// <summary>How a bundle's cards are joined into one identity, in the order the
+    /// prompt listed them.</summary>
+    internal const char BundleSeparator = ',';
+
     private readonly Queue<Pick> _pending = new();
+    private readonly Queue<AlternativePick> _pendingAlternatives = new();
+    private readonly Queue<BundlePick> _pendingBundles = new();
+    private readonly Queue<RelicPick> _pendingRelics = new();
 
     /// <summary>
     /// Whether a screen the manifest is silent about is answered from the front of
@@ -60,12 +77,116 @@ internal sealed class ManifestCardSelector : ICardSelector
 
     internal void Enqueue(Pick pick) => _pending.Enqueue(pick);
 
-    internal int PendingCount => _pending.Count;
+    internal void Enqueue(AlternativePick pick) => _pendingAlternatives.Enqueue(pick);
+
+    internal void Enqueue(BundlePick pick) => _pendingBundles.Enqueue(pick);
+
+    internal void Enqueue(RelicPick pick) => _pendingRelics.Enqueue(pick);
+
+    internal int PendingCount =>
+        _pending.Count + _pendingAlternatives.Count + _pendingBundles.Count + _pendingRelics.Count;
 
     /// <summary>The queued picks nothing consumed, by the action that recorded each,
     /// so a refusal names the stray decisions rather than counting them.</summary>
     internal string DescribePending() =>
-        string.Join(", ", _pending.Select(pick => $"action {pick.Seq} ({pick.CardId})"));
+        string.Join(", ",
+            _pending.Select(pick => $"action {pick.Seq} ({pick.CardId})")
+                .Concat(_pendingAlternatives.Select(pick => $"action {pick.Seq} (alternative {pick.OptionId})"))
+                .Concat(_pendingBundles.Select(pick => $"action {pick.Seq} (bundle {pick.CardIds})"))
+                .Concat(_pendingRelics.Select(pick => $"action {pick.Seq} (relic {pick.RelicId})")));
+
+    /// <summary>
+    /// The bundle taken off a choose-a-bundle screen, or an empty list with the
+    /// refusal recorded.
+    ///
+    /// Reached from the host's stand-in at <c>CardSelectCmd.FromChooseABundleScreen</c>,
+    /// because the engine's own test branch takes the first bundle without asking and
+    /// <c>ICardSelector</c> has no bundle member. The identity is the bundle's cards in
+    /// the order the prompt listed them, so a build that offers the bundles in another
+    /// order refuses rather than hands over a different set of cards.
+    /// </summary>
+    internal IReadOnlyList<CardModel> GetSelectedBundle(IReadOnlyList<IReadOnlyList<CardModel>> bundles)
+    {
+        if (_pendingBundles.Count == 0)
+        {
+            Refuse(
+                $"A bundle screen asked which of its {bundles.Count} bundle(s) was taken and the manifest does " +
+                "not say. Every bundle picked off a screen has to be a recorded decision; answering would be " +
+                "inventing one.");
+            return [];
+        }
+
+        var pick = _pendingBundles.Dequeue();
+        if (pick.OptionIndex < 0 || pick.OptionIndex >= bundles.Count)
+        {
+            Refuse(
+                $"Action {pick.Seq} takes bundle {pick.OptionIndex}, but this screen offers {bundles.Count}: " +
+                $"{DescribeBundles(bundles)}.");
+            return [];
+        }
+
+        var offered = BundleIds(bundles[pick.OptionIndex]);
+        if (offered != pick.CardIds)
+        {
+            Refuse(
+                $"Action {pick.Seq} expects bundle {pick.CardIds} at bundle option {pick.OptionIndex}, but the " +
+                $"engine offers {offered}. The screen is {DescribeBundles(bundles)}. The replay has diverged " +
+                "from the recorded history before this point.");
+            return [];
+        }
+
+        return bundles[pick.OptionIndex];
+    }
+
+    /// <summary>
+    /// The relic taken off a choose-a-relic screen, or null with the refusal recorded.
+    ///
+    /// Reached from the host's stand-in at <c>RelicSelectCmd.FromChooseARelicScreen</c>.
+    /// Nothing on v0.111.0 opens that screen, so on this build the refusal that fires
+    /// for a recorded relic pick is the one in <c>RunDriver.Apply</c> for a queued
+    /// answer no screen consumed.
+    /// </summary>
+    internal RelicModel? GetSelectedRelic(IReadOnlyList<RelicModel> relics)
+    {
+        if (_pendingRelics.Count == 0)
+        {
+            Refuse(
+                $"A relic screen asked which of its {relics.Count} relic(s) was taken and the manifest does " +
+                "not say. Every relic picked off a screen has to be a recorded decision; answering would be " +
+                "inventing one.");
+            return null;
+        }
+
+        var pick = _pendingRelics.Dequeue();
+        if (pick.OptionIndex < 0 || pick.OptionIndex >= relics.Count)
+        {
+            Refuse(
+                $"Action {pick.Seq} takes relic {pick.OptionIndex} off a screen, but this screen offers " +
+                $"{relics.Count}: {DescribeRelics(relics)}.");
+            return null;
+        }
+
+        var relic = relics[pick.OptionIndex];
+        if (relic.Id.ToString() != pick.RelicId)
+        {
+            Refuse(
+                $"Action {pick.Seq} expects {pick.RelicId} at relic option {pick.OptionIndex}, but the engine " +
+                $"offers {relic.Id}. The screen is {DescribeRelics(relics)}. The replay has diverged from the " +
+                "recorded history before this point.");
+            return null;
+        }
+
+        return relic;
+    }
+
+    internal static string BundleIds(IEnumerable<CardModel> bundle) =>
+        string.Join(BundleSeparator, bundle.Select(card => card.Id.ToString()));
+
+    private static string DescribeBundles(IReadOnlyList<IReadOnlyList<CardModel>> bundles) =>
+        string.Join("; ", bundles.Select((bundle, index) => $"{index}:{BundleIds(bundle)}"));
+
+    private static string DescribeRelics(IReadOnlyList<RelicModel> relics) =>
+        string.Join(", ", relics.Select((relic, index) => $"{index}:{relic.Id}"));
 
     /// <summary>
     /// Raises a refusal, keeping the first one. The first is the one that describes
@@ -88,6 +209,42 @@ internal sealed class ManifestCardSelector : ICardSelector
     public CardRewardSelection GetSelectedCardReward(
         IReadOnlyList<CardCreationResult> options, IReadOnlyList<CardRewardAlternative> alternatives)
     {
+        // An alternative is answered past the cards. The id names which one, because
+        // a build can reorder them, and the index is the screen's own - the count of
+        // cards offered plus the alternative's position - so both are checked.
+        if (_pendingAlternatives.Count > 0)
+        {
+            var alternative = _pendingAlternatives.Dequeue();
+            var position = -1;
+            for (var candidate = 0; candidate < alternatives.Count; candidate++)
+            {
+                if (alternatives[candidate].OptionId != alternative.OptionId) continue;
+                position = candidate;
+                break;
+            }
+
+            if (position < 0)
+            {
+                Refuse(
+                    $"Action {alternative.Seq} answers a card reward with alternative '{alternative.OptionId}', " +
+                    $"and this reward offers {DescribeAlternatives(alternatives)}. The replay has diverged " +
+                    "from the recorded history before this point.");
+                return default;
+            }
+
+            var expectedIndex = options.Count + position;
+            if (alternative.OptionIndex != expectedIndex)
+            {
+                Refuse(
+                    $"Action {alternative.Seq} answers a card reward with alternative '{alternative.OptionId}' " +
+                    $"at option {alternative.OptionIndex}, and this screen reports it at {expectedIndex} " +
+                    $"({options.Count} card(s) then {DescribeAlternatives(alternatives)}).");
+                return default;
+            }
+
+            return new CardRewardSelection { alternative = alternatives[position] };
+        }
+
         if (_pending.Count == 0)
         {
             Refuse(
@@ -197,4 +354,9 @@ internal sealed class ManifestCardSelector : ICardSelector
 
     private static string Describe(IEnumerable<CardModel> cards) =>
         string.Join(", ", cards.Select((card, index) => $"{index}:{card.Id}"));
+
+    private static string DescribeAlternatives(IReadOnlyList<CardRewardAlternative> alternatives) =>
+        alternatives.Count == 0
+            ? "no alternative"
+            : string.Join(", ", alternatives.Select((alternative, index) => $"{index}:{alternative.OptionId}"));
 }

@@ -27,7 +27,7 @@ public class CorruptionTests
         var manifest = native ? Fixtures.NativeManifest() : Fixtures.ValidManifest();
         IReadOnlyList<ActionRecord> actions =
         [
-            At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+            At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"), ("option_key", "NEOW.BLESSING"))),
             At(1, Fixtures.Action(1, ActionVerb.MapMove,
                 ("act", "0"), ("row", "1"), ("column", "3"),
                 (Corruption.AlternativeColumn, "1"))),
@@ -45,7 +45,8 @@ public class CorruptionTests
                 (Corruption.AlternativeCardId, "CARD.TREMBLE"),
                 (Corruption.AlternativeOptionIndex, "1"))),
             At(8, Fixtures.Action(8, ActionVerb.ChooseEventOption,
-                ("event_id", "EVENT.WATERLOGGED_SCRIPTORIUM"), ("option_index", "2"))),
+                ("event_id", "EVENT.WATERLOGGED_SCRIPTORIUM"), ("option_index", "2"),
+                ("option_key", "WATERLOGGED_SCRIPTORIUM.ENCHANT"))),
             At(9, Fixtures.Action(9, ActionVerb.SelectCardFromScreen,
                 ("card_id", "CARD.DEFEND_IRONCLAD"), ("option_index", "5"),
                 (Corruption.AlternativeOptionIndex, "4"))),
@@ -417,7 +418,7 @@ public class CorruptionTests
         {
             Actions =
             [
-                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"), ("option_key", "NEOW.BLESSING"))),
                 At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
                 // Same card, same target: swapping these two is the same history.
                 At(2, Fixtures.Action(2, ActionVerb.PlayCard,
@@ -459,7 +460,7 @@ public class CorruptionTests
         {
             Actions =
             [
-                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"), ("option_key", "NEOW.BLESSING"))),
                 At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
                 At(2, Fixtures.Action(2, ActionVerb.PlayCard,
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
@@ -496,7 +497,7 @@ public class CorruptionTests
         {
             Actions =
             [
-                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"), ("option_key", "NEOW.BLESSING"))),
                 At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
                 At(2, Fixtures.Action(2, ActionVerb.ShopPurchase, ("kind", ShopPurchaseKinds.CardRemoval))),
                 At(3, Fixtures.Action(3, ActionVerb.SelectCardFromScreen,
@@ -528,7 +529,7 @@ public class CorruptionTests
         {
             Actions =
             [
-                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"), ("option_key", "NEOW.BLESSING"))),
                 At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
                 At(2, Fixtures.Action(2, ActionVerb.PlayCard,
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
@@ -578,7 +579,7 @@ public class CorruptionTests
         {
             Actions =
             [
-                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"), ("option_key", "NEOW.BLESSING"))),
                 At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
                 At(2, Fixtures.Action(2, ActionVerb.PlayCard,
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
@@ -663,7 +664,7 @@ public class CorruptionTests
         {
             Actions =
             [
-                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"), ("option_key", "NEOW.BLESSING"))),
                 At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
                 At(2, Fixtures.Action(2, ActionVerb.PlayCard,
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
@@ -699,7 +700,7 @@ public class CorruptionTests
         {
             Actions =
             [
-                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"), ("option_key", "NEOW.BLESSING"))),
                 At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
                 At(2, Fixtures.Action(2, ActionVerb.PlayCard,
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),
@@ -731,7 +732,7 @@ public class CorruptionTests
         {
             Actions =
             [
-                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"))),
+                At(0, Fixtures.Action(0, ActionVerb.ChooseNeowBlessing, ("option_index", "2"), ("option_key", "NEOW.BLESSING"))),
                 At(1, Fixtures.Action(1, ActionVerb.MapMove, ("act", "0"), ("row", "1"), ("column", "3"))),
                 At(2, Fixtures.Action(2, ActionVerb.PlayCard,
                     ("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "0"), ("target_index", "0"))),

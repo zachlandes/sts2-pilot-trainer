@@ -660,6 +660,7 @@ public sealed class RecordedFightEntry : IDisposable
     [
         ActionVerb.PlayCard,
         ActionVerb.EndTurn,
+        ActionVerb.UndoEndTurn,
         ActionVerb.UsePotion,
         ActionVerb.DiscardPotion,
         ActionVerb.SelectCardFromScreen,

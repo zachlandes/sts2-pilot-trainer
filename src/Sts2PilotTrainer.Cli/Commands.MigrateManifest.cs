@@ -14,12 +14,12 @@ internal static partial class Commands
     /// evidence as a side effect of looking at it, and the moment a file changes has to
     /// be a moment a person chose.
     ///
-    /// Without <c>--derive-boundaries</c> it copies and never derives. The version-4
-    /// combat-start digest was produced by the engine and stays engine-produced as the
-    /// first entry of <see cref="ReplayManifest.Boundaries"/>; the boundaries a
-    /// version-4 manifest never had are facts about what the engine did, and inventing
-    /// them from the shape of a history would be exactly the plausible wrong answer
-    /// this project exists to prevent.
+    /// Without <c>--derive-boundaries</c> it copies and never derives. A version-5
+    /// native manifest gains the integrity it could not state and a note that it was
+    /// migrated, and nothing else: the option keys a version-5 recorder never read are
+    /// not invented, and the boundaries a manifest never had are facts about what the
+    /// engine did, so inventing either from the shape of a history would be exactly
+    /// the plausible wrong answer this project exists to prevent.
     ///
     /// With it, the run is replayed through the real engine and every boundary the
     /// history passes is written in with the digest that replay produced. Still a
@@ -39,6 +39,14 @@ internal static partial class Commands
         Console.WriteLine($"manifest : {manifest.RunId}");
         Console.WriteLine(
             $"version  : {ReplayManifest.CurrentManifestVersion.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+        if (manifest.Source.Native is { } native)
+        {
+            Console.WriteLine(
+                $"integrity: {native.Integrity}" +
+                (native.MigratedFromVersion is { } from
+                    ? $" (migrated from version {from.ToString(System.Globalization.CultureInfo.InvariantCulture)})"
+                    : string.Empty));
+        }
         foreach (var boundary in manifest.Boundaries)
         {
             Console.WriteLine(

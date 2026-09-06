@@ -248,6 +248,19 @@ public class ManifestFormatReferenceTests
         Directory.Delete(root, recursive: true);
     }
 
+    /// <summary>A claimed reward's per-kind rule is read the same way a purchase's is,
+    /// and says what the format's own kinds say.</summary>
+    [Fact]
+    public void AClaimedRewardsPerKindRuleIsReadFromTheSameShape()
+    {
+        var kinds = ValidatorSource.ReadClaimRewardKinds(Root);
+
+        Assert.Equal(
+            RewardKinds.All.Select(kind =>
+                $"{kind}: {(RewardKinds.IdArgument(kind) is { } id ? id : string.Empty)}"),
+            Spelled(kinds));
+    }
+
     /// <summary>
     /// A shop rule whose required arguments no longer name that local is refused rather
     /// than published with the substitution silently not made.

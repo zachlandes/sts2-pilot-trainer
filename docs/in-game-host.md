@@ -286,7 +286,7 @@ lowers the write barrier on every one of those paths.
 ## Recording the player's own run
 
 **The recorder is that observer widened to a whole run, and it shares its parts.**
-`RunRecorder` in `Sts2PilotTrainer.Mod` attaches when a run starts, watches every decision the player makes, and writes a v5 native manifest under `user://Runmobile/recordings/` when the run ends.
+`RunRecorder` in `Sts2PilotTrainer.Mod` attaches when a run starts, watches every decision the player makes, and writes a v6 native manifest under `user://Runmobile/recordings/` when the run ends.
 Inside a fight it hands the run to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink` in `Sts2PilotTrainer.Replay`: the trainer's sink is a `FightCapture` and the recorder's is an adapter onto the `RunCapture` that keeps the whole run.
 There is one observer, one settle rule and one set of rules about what a sample means, whichever feature is watching.
 The one question the two sinks answer differently is an action whose argument the observer could not resolve, which is why `IFightSampleSink` asks it rather than the observer deciding: a history missing an argument the format requires is a run nobody can replay, so the recorder refuses and keeps nothing for that action, while a fight being compared never reads that argument and the capture keeps the step.
@@ -316,7 +316,14 @@ The shell has no refusal to fall back on the way `RecorderModule` does, so `Game
 Installing this mod turns the game's full console on: `NDevConsole` reads `ModManager.IsRunningModded()` when it decides whether to register the debug commands, so this is a reachable state in an ordinary modded session rather than a developer-only one.
 `RunCapture.MarkNonStandard` sets `source.native.integrity = "non-standard"` and changes nothing else - not the state, not the continuity, not the history - and the validator refuses the manifest for publication where the field says anything but `complete`.
 The recording is still written to `user://Runmobile/recordings/`, because it is what the player played; what it is not is evidence anybody else can act on, since what a console command did to the state is not among the decisions the history holds.
-Absent is not `complete` under another name: a recording made before the recorder could read this question states nothing, and the validator accepts that because it is the standard the recording was made and gated under.
+From format v6 the field is required, and `unmapped` is its third value: a recorder that met a decision it could not name stops there through `RunCapture.MarkUnmapped`, writes what it met to the journal as a stop line and to the manifest as `source.native.unmapped`, and records nothing past it - a prefix that skipped a decision and carried on would replay into a run that never made it.
+A version-5 recording states no integrity; the migration reads it as `complete` and says so in `migrated_from_version`, because a version-5 recorder refused rather than stopping at anything it could not name.
+The runtime that decides a decision is unmapped is not in this build; the format, the capture and the journal line are, so that build changes no file shape.
+
+**Every decision is read either side.**
+The journal's schema is v2 and every decision line carries `before` and `before_digest` beside the settled `state` and `digest`: the reading taken in the prefix of the member the decision went through, which is the state the player made it from and the instant a comparison at verification asks about.
+Inside a fight that reading is the observer's before-sample and coincides with the previous after-sample, and `FightCapture` still refuses a gap between them; outside one, the reward screen after a fight is generated on the client's clock between two decisions, so `RunCapture` carries the reading that was taken rather than refusing the gap.
+A v1 journal on a player's disk is refused on resume, exactly as any schema this build does not read is, and the run is simply not continued as a recording.
 
 **The seam is the console's own funnel, not the action queue.**
 `DevConsole` has two public entries - `ProcessCommand(string)` for a command typed on this client and `ProcessNetCommand` for one a peer sent - and both reach the private three-argument `ProcessCommand`, so one patch covers both, for the same reason `SkipRewardsSet` is watched rather than the call the driver makes.
@@ -768,10 +775,10 @@ module.** The plate's console-command state - play rows offered, Submit refused,
 console command was used, so it can't be submitted." - is not one of them any more: the
 recorder writes `source.native.integrity`, and `RunHistoryPlateHost.FactsFor` reads it
 through `NativeSource.StatesSomethingOtherThanComplete`, which owns the comparison.
-That reading is three-valued rather than a boolean, because a recording written before the
-recorder could tell states no integrity at all and answers `ConsoleUsed` null - absent is
-not a clean run under another name, and a plate reporting one it never checked is the claim
-`AGENTS.md` forbids.
+That reading answers `ConsoleUsed` null where a recording states no integrity at all, because
+absent is not a clean run under another name and a plate reporting one it never checked is the
+claim `AGENTS.md` forbids. From format v6 the field is required and a version-5 file reads as
+`complete` through the migration, so no manifest this build parses reaches that answer.
 The browser's multiplayer rule is the first that is still unreachable.
 `LibraryRun.Listed` hides an established multiplayer run and `RunBrowser.Lookup` answers a
 run code for one with the multiplayer body, both correctly, and nothing supplies the fact:

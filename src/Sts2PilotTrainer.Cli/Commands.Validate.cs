@@ -25,6 +25,17 @@ internal static partial class Commands
 
         var result = ManifestValidator.Validate(manifest);
         Console.WriteLine($"manifest : {manifest.RunId}");
+        if (manifest.Source.Native is { } native)
+        {
+            // What the recorder says stops this being published, if anything, printed
+            // before the verdict: a reader of a refused native recording is told what
+            // the recorder met, not only that it was refused.
+            Console.WriteLine($"integrity: {native.Integrity}");
+            foreach (var entry in native.Unmapped ?? [])
+            {
+                Console.WriteLine($"unmapped : {ManifestValidator.Describe(entry)}");
+            }
+        }
         Console.WriteLine($"structure: {(result.IsValid ? "VALID" : "INVALID")}");
         if (!result.IsValid) Console.WriteLine(result.Describe());
         Console.WriteLine();
