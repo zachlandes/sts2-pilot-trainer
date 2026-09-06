@@ -42,7 +42,7 @@ Today that is one featured run, and its menu card opens the first fight; the run
 **Practise the fight you keep losing.**
 Play the same fight again from the same start, as many times as you like, and try the other line.
 From inside the fight, one control takes you back to its proven start or straight to the end of your attempt; both ask first.
-A lost fight is not compared, because there is no completed line to set beside the recording's; the panel says so.
+A lost fight is compared too, on request: the comparison reads Lost against Won.
 
 **Your own runs, recorded.**
 Every singleplayer run you play is recorded: an ordered history of every decision from run start, written as you play so a crash keeps what happened.

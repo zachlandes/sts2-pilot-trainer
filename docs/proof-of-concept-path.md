@@ -318,10 +318,11 @@ sides to the S1 contract, and show him the result.
   once the player's next turn has started; and for the action the fight ended
   inside, the combat manager's own event closes it with the final state.
 - `FightResultScreen` in `Sts2PilotTrainer.Trainer`: the approved wording over a
-  comparison, and the one sentence shown instead when there is none - a fight left,
-  a capture that could not be completed, a fight not won, or a comparison that
+  comparison, and the one sentence shown instead when there is none - a fight left
+  before it ended, a capture that could not be completed, or a comparison that
   refused, shown in its own words.
-  A lost, abandoned or incomplete fight never produces a comparison.
+  A lost fight is a completed one and compares, Lost against Won; only an abandoned
+  or incomplete fight, or a comparison that itself refuses, produces no comparison.
 - Done discards the run the way a refused entry does, and the game's own end-of-run
   path lowers the write barrier; a fight left through the game's own menu abandons
   the capture the same way.
@@ -522,10 +523,11 @@ line cannot be re-derived the way a replayed one can. What can be shown is that 
 recording's own actions, played through the capture, project to a line identical to
 the recording's replay - and that is what the headless test pins.
 
-**Only a won fight is compared.** The recording's fight was won, and a lost or
-abandoned fight has no completed line to set beside it; the panel says so and shows
-nothing else. Comparing two losses is not a thing the comparison refuses, it is a
-thing no recording here has.
+**A finished fight is compared whether it was won or lost; an abandoned one is not.**
+The projection treats a defeat as a completed line, so a lost fight compares Lost
+against Won. A fight left before it ended has no completed line to set beside the
+recording's, and its own screen says so rather than showing a comparison. Comparing
+two losses is not a thing the comparison refuses, it is a thing no recording here has.
 
 **The transport carries only the two decision kinds this path uses.** An opening
 blessing and a map move are what the transcribed prefix contains, and they are what
