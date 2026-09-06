@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sts2PilotTrainer.Mod.Tests"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sts2PilotTrainer.Trainer.Tests", "tests\Sts2PilotTrainer.Trainer.Tests\Sts2PilotTrainer.Trainer.Tests.csproj", "{2BC78930-A16E-4817-BB01-F2974ABAFCC6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sts2PilotTrainer.FormatReference", "tools\Sts2PilotTrainer.FormatReference\Sts2PilotTrainer.FormatReference.csproj", "{CD6836B2-00D6-41F3-829F-36A1C1CF031B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -92,6 +94,10 @@ Global
 		{2BC78930-A16E-4817-BB01-F2974ABAFCC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2BC78930-A16E-4817-BB01-F2974ABAFCC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2BC78930-A16E-4817-BB01-F2974ABAFCC6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CD6836B2-00D6-41F3-829F-36A1C1CF031B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CD6836B2-00D6-41F3-829F-36A1C1CF031B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CD6836B2-00D6-41F3-829F-36A1C1CF031B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CD6836B2-00D6-41F3-829F-36A1C1CF031B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{DEB3640B-C258-4038-832E-4DC4BEA9B532} = {7DA01F83-83DF-4903-B653-003159ED1758}
@@ -106,5 +112,6 @@ Global
 		{E0FDE92C-7D82-4A0C-85BA-E208050FF1ED} = {03C728DF-FAB9-449A-B10C-3F5639672EEA}
 		{A8219590-D302-4605-9C02-2EDFA36F17BB} = {31052745-61AC-417D-8B23-66DE8B374B82}
 		{2BC78930-A16E-4817-BB01-F2974ABAFCC6} = {31052745-61AC-417D-8B23-66DE8B374B82}
+		{CD6836B2-00D6-41F3-829F-36A1C1CF031B} = {38B1ED7B-73A8-4065-A87C-6475D5E47DA5}
 	EndGlobalSection
 EndGlobal

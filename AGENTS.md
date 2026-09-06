@@ -19,6 +19,7 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
                             # snapshot-restore-probe | migrate-manifest | engine-commands
 ./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
 ./scripts/assert-expected-skips.sh          # what CI skips is still what we recorded (--update to re-record)
+./scripts/format-reference.sh               # rewrite docs/manifest-format.md from the code (--check to compare)
 ```
 
 `dotnet test` works without the game: the integration suite skips with an explanation
@@ -189,6 +190,15 @@ Its final state is exactly `Runmobile` under the selected supported game mod dir
 `ProfileWriteBarrier` is a different thing and stays as it is: it suppresses the game's own writes during a trainer run.
 `./scripts/protected-files.sh` is how "nothing outside that subtree changed" is measured rather than asserted.
 Do not add a second writer, a second path rule or a second account-identity mechanism; [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
+
+**The per-verb format reference is generated, never written.**
+[docs/manifest-format.md](docs/manifest-format.md) is produced by `./scripts/format-reference.sh`
+from `ManifestValidator`'s per-verb argument rules and `EngineCommands`' table, and CI
+fails when the committed copy is not what those two declarations produce. Regenerate it
+in the change that moved either one; editing it by hand only moves that failure onto
+somebody else's branch. Both are read as source rather than loaded, because the
+engine-command table needs the game to load and the check runs where there is none. It
+is an internal engineering reference and nothing a player sees is written from it.
 
 **Read [docs/ingestion.md](docs/ingestion.md) before touching how a recording is found or
 dated.** Screening runs on free metadata and establishes nothing: a seed it recovers is a

@@ -9,7 +9,8 @@
       "tests/Sts2PilotTrainer.Replay.Tests/Sts2PilotTrainer.Replay.Tests.csproj",
       "tests/Sts2PilotTrainer.Trainer.Tests/Sts2PilotTrainer.Trainer.Tests.csproj",
       "third_party/godot-stubs/GodotStubs.csproj",
-      "tools/Sts2PilotTrainer.Bootstrap/Sts2PilotTrainer.Bootstrap.csproj"
+      "tools/Sts2PilotTrainer.Bootstrap/Sts2PilotTrainer.Bootstrap.csproj",
+      "tools/Sts2PilotTrainer.FormatReference/Sts2PilotTrainer.FormatReference.csproj"
     ]
   }
 }
