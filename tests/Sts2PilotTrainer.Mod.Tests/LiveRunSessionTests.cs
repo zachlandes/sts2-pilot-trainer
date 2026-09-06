@@ -18,9 +18,10 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// The run is started the way every headless caller starts one, and this process is
 /// put back as it was found afterwards: a started headless engine and a live run are
 /// both process-wide, and the rest of this assembly reads a client that has neither.
+/// Nothing runs beside them while they are up, which is AssemblyInfo.cs's
+/// <c>[assembly: CollectionBehavior(DisableTestParallelization = true)]</c> rather
+/// than anything this class declares.
 /// </summary>
-[Collection(nameof(LiveRunSessionTests))]
-[CollectionDefinition(nameof(LiveRunSessionTests), DisableParallelization = true)]
 public sealed class LiveRunSessionTests
 {
     [GameFact]

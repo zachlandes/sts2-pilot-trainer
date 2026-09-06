@@ -25,7 +25,7 @@ namespace Sts2PilotTrainer.Mod;
 ///
 /// It is observed rather than assumed, twice over. <see cref="LiveRun.ReadSession"/>
 /// reads the game's own networking and player list, which is the reading; the two
-/// patches below latch the moment the game itself sets a multiplayer session up,
+/// patches below latch the moment the game is asked to set a multiplayer session up,
 /// which closes the window before there is anything to read - continuing a saved
 /// multiplayer run is asynchronous, so the method that starts it returns long before
 /// the run exists. Neither stands in for the other: the latch says a multiplayer
@@ -82,10 +82,10 @@ internal static class GameSessionWatch
     /// not yet available and the fact is certain: the game called its own multiplayer
     /// setup member.
     ///
-    /// A recording that is already live is told, because a recording of a run this
-    /// client stopped being the only player of is one nobody may publish. That is the
-    /// safety net and not the rule: the reading at attach is what normally keeps a
-    /// multiplayer game out of a recording, and it is taken before any journal exists.
+    /// This suppresses surfaces and nothing else. It is called from a prefix, so what
+    /// it knows is that the game was asked to set a multiplayer session up - not that
+    /// the setup took effect - and going quiet on a request that then fails costs
+    /// nothing, because the next teardown clears the latch.
     /// </summary>
     internal static void MultiplayerSessionSetUp()
     {
@@ -98,6 +98,27 @@ internal static class GameSessionWatch
         Log.Info(
             $"[{RunmobileMod.ModId}] this is a multiplayer game; Runmobile will show nothing and record " +
             "nothing until it ends", 2);
+    }
+
+    /// <summary>
+    /// This client is in a multiplayer game, so a recording of it is one nobody may
+    /// publish.
+    ///
+    /// The other half of the question the latch answers, and deliberately not the same
+    /// half. Suppressing surfaces asks "may this mod draw", which a request to set a
+    /// multiplayer session up settles on its own; marking a recording asks "did this
+    /// run stop being a singleplayer run", which only the game's own state answers -
+    /// so this reads it rather than trusting the call, because ending somebody's
+    /// recording is permanent and a setup the game refuses did not happen.
+    ///
+    /// The reading is the whole condition. <see cref="LiveRun.ReadSession"/> answers
+    /// what this client is playing right now, and only an answer that names a
+    /// multiplayer game reaches the recorder: a reading that could not be taken is an
+    /// absence, and a recording is never ended on one.
+    /// </summary>
+    internal static void MultiplayerSessionTookEffect()
+    {
+        if (!RunSession.IsMultiplayer(LiveRun.ReadSession())) return;
 
         RunRecorder.MultiplayerSessionStarted();
     }
@@ -115,6 +136,12 @@ internal static class GameSessionWatch
     {
         [HarmonyPrefix]
         internal static void Before() => MultiplayerSessionSetUp();
+
+        // A postfix does not run when the body throws, which is the difference that
+        // matters here: this member refuses a setup while a run's state is still set,
+        // and a recording must not be ended by a call the game rejected.
+        [HarmonyPostfix]
+        internal static void After() => MultiplayerSessionTookEffect();
     }
 
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.SetUpSavedMultiplayer))]
@@ -125,6 +152,12 @@ internal static class GameSessionWatch
         // the whole point of the latch is to cover that stretch.
         [HarmonyPrefix]
         internal static void Before() => MultiplayerSessionSetUp();
+
+        // Which is also why the marking half cannot lean on this one running late:
+        // an asynchronous member carries its refusal in the task it returns, so the
+        // reading rather than the postfix is what establishes the session here.
+        [HarmonyPostfix]
+        internal static void After() => MultiplayerSessionTookEffect();
     }
 
     [HarmonyPatch(typeof(RunManager), nameof(RunManager.CleanUp))]

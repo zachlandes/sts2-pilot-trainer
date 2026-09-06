@@ -17,11 +17,11 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// driven with - which is exactly what the two patches on the game's multiplayer setup
 /// do in the client.
 ///
-/// The latch is process-wide, so these run on their own rather than beside a test that
-/// asks the shell for its cards.
+/// The latch is process-wide, so these must not run beside a test that asks the shell
+/// for its cards. What guarantees that is AssemblyInfo.cs's
+/// <c>[assembly: CollectionBehavior(DisableTestParallelization = true)]</c>, which
+/// serializes every test in this assembly.
 /// </summary>
-[Collection(nameof(GameSessionWatchTests))]
-[CollectionDefinition(nameof(GameSessionWatchTests), DisableParallelization = true)]
 public sealed class GameSessionWatchTests : IDisposable
 {
     private readonly string _storeRoot = Path.Combine(
@@ -94,14 +94,9 @@ public sealed class GameSessionWatchTests : IDisposable
     public void AMultiplayerSessionUnderALiveRecordingStopsItAndMarksItUnpublishable()
     {
         _ = EngineHost.StartupPhase();
-        var capture = RecordedRun.Captured();
-        var journalPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RunJournal.FileExtension}";
-        RunmobileStore.Write(journalPath, capture.Journal.Render());
-        RunRecorder.BeginRecording(capture, journalPath);
-        Assert.NotNull(RunRecorder.Active);
-        Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
+        var capture = ALiveRecording(out var journalPath);
 
-        GameSessionWatch.MultiplayerSessionSetUp();
+        RunRecorder.MultiplayerSessionStarted();
 
         Assert.Null(RunRecorder.Active);
         Assert.Equal(NativeSource.NonStandardIntegrity, capture.Integrity);
@@ -111,6 +106,45 @@ public sealed class GameSessionWatchTests : IDisposable
         Assert.True(written.NonStandard);
         Assert.Equal(capture.NextSeq + 1, written.Entries.Count);
         Assert.Equal(RunCaptureState.Recording, capture.State);
+    }
+
+    /// <summary>
+    /// A multiplayer setup that did not take effect changes no recording.
+    ///
+    /// The two halves of the watch answer different questions and only one of them may
+    /// act on a request. The latch is set from a prefix, so it fires on a call the game
+    /// may go on to refuse - going quiet for that is free, and ending somebody's
+    /// recording is not. Marking waits for a reading that says this client really is in
+    /// a multiplayer game, which a process still playing its singleplayer run never
+    /// gives.
+    /// </summary>
+    [GameFact]
+    public void AMultiplayerSetupThatTookNoEffectLeavesALiveRecordingAlone()
+    {
+        _ = EngineHost.StartupPhase();
+        var capture = ALiveRecording(out var journalPath);
+
+        GameSessionWatch.MultiplayerSessionSetUp();
+        GameSessionWatch.MultiplayerSessionTookEffect();
+
+        Assert.False(GameSessionWatch.MaySpeak);
+        Assert.NotNull(RunRecorder.Active);
+        Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
+        Assert.False(RunJournal.Parse(RunmobileStore.Read(journalPath)!).NonStandard);
+    }
+
+    /// <summary>A recording live enough for the patches to reach, written the way a
+    /// recorder writes one.</summary>
+    private static RunCapture ALiveRecording(out string journalPath)
+    {
+        var capture = RecordedRun.Captured();
+        journalPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RunJournal.FileExtension}";
+        RunmobileStore.Write(journalPath, capture.Journal.Render());
+        RunRecorder.BeginRecording(capture, journalPath);
+
+        Assert.NotNull(RunRecorder.Active);
+        Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
+        return capture;
     }
 
     /// <summary>

@@ -60,6 +60,30 @@ public sealed class RunSessionTests
         Assert.DoesNotContain("network", described, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Which readings positively say more than one person is playing.
+    ///
+    /// Not the negation of <see cref="OnlyASingleplayerRunIsRecorded"/>: a reading that
+    /// could not be taken refuses a recording and is still not a multiplayer game, and
+    /// the caller that ends a live recording acts on the second question rather than
+    /// the first. Two players sharing one client counts, whatever the game's own
+    /// networking calls it - <c>RunManager.IsSingleplayerOrFakeMultiplayer</c> is about
+    /// whether anything goes over a wire, and this is about whose decisions the history
+    /// holds.
+    /// </summary>
+    [Fact]
+    public void OnlyAReadingThatNamesAMultiplayerGameSaysThisIsOne()
+    {
+        Assert.True(RunSession.IsMultiplayer(RunSessionKind.LocalMultiplayer));
+        Assert.True(RunSession.IsMultiplayer(RunSessionKind.NetworkedMultiplayer));
+        Assert.True(RunSession.IsMultiplayer(RunSessionKind.MultiplayerKindUnread));
+
+        Assert.False(RunSession.IsMultiplayer(RunSessionKind.Singleplayer));
+        Assert.False(RunSession.IsMultiplayer(RunSessionKind.NoRunInProgress));
+        Assert.False(RunSession.IsMultiplayer(RunSessionKind.Unreadable));
+        Assert.False(RunSession.IsMultiplayer(RunSessionKind.Spectated));
+    }
+
     /// <summary>Every kind explains itself, because the sentence is what a player reads
     /// in the game's log when a run of theirs is not recorded.</summary>
     [Fact]

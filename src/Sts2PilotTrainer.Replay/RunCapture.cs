@@ -396,13 +396,17 @@ public sealed class RunCapture
     }
 
     /// <summary>
-    /// The developer console was used in this run.
+    /// This run was not played entirely by the game's own rules.
     ///
     /// The run is kept, whole, and recorded to its end: it is what the player played
     /// and it is theirs. What it is not is publishable, and
-    /// <see cref="Integrity"/> is what says so - the state a console command left
-    /// behind is not among the decisions this history holds, so replaying the history
-    /// reconstructs a different run while every value in it is individually true.
+    /// <see cref="Integrity"/> is what says so - whatever changed the state is not
+    /// among the decisions this history holds, so replaying the history reconstructs a
+    /// different run while every value in it is individually true.
+    ///
+    /// Which of the things that make a run one of these happened is not recorded here
+    /// and is not in the field: this is the mark more than one caller writes, and a
+    /// caller that knows its own cause says so in its own log line.
     ///
     /// It marks and never stops, which is the difference between this and
     /// <see cref="MarkBroken"/>: a broken watch is a recording that cannot account for

@@ -92,6 +92,20 @@ public static class RunSession
         kind is RunSessionKind.Singleplayer or RunSessionKind.NoRunInProgress;
 
     /// <summary>
+    /// Whether this is a game more than one person is playing, by any route.
+    ///
+    /// A different question from <see cref="MayBeRecorded"/>, which is why it is here
+    /// rather than expressed as its negation: "may this be recorded" refuses a reading
+    /// nobody could take, and this one answers only what the reading positively says.
+    /// A recorder that ended somebody's recording because a reading failed would be
+    /// acting on an absence.
+    /// </summary>
+    public static bool IsMultiplayer(RunSessionKind kind) =>
+        kind is RunSessionKind.LocalMultiplayer
+            or RunSessionKind.NetworkedMultiplayer
+            or RunSessionKind.MultiplayerKindUnread;
+
+    /// <summary>
     /// The reading in the words a log line uses. Interpolated from the kind rather
     /// than written at each caller, so the two refusals cannot come to describe the
     /// same reading differently.

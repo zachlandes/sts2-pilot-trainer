@@ -239,10 +239,11 @@ public sealed record NativeSource
     /// own rules.</summary>
     public const string CompleteIntegrity = "complete";
 
-    /// <summary>The developer console was used during this run. The run is still a
-    /// run and the recording is still what happened, and it is never publishable:
-    /// what a console command did to the state is not in the history, so replaying
-    /// the history reconstructs a different run.</summary>
+    /// <summary>This run was not played entirely by the game's own rules. The run is
+    /// still a run and the recording is still what happened, and it is never
+    /// publishable: whatever changed the state is not in the history, so replaying
+    /// the history reconstructs a different run. The field states that and no cause -
+    /// more than one thing about a run puts it here.</summary>
     public const string NonStandardIntegrity = "non-standard";
 
     public static readonly string[] Integrities = [CompleteIntegrity, NonStandardIntegrity];

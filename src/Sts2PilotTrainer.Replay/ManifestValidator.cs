@@ -574,8 +574,8 @@ public static partial class ManifestValidator
 
         // Absent rather than 'complete' is how a recording made before the recorder
         // could read this question says so, and it is accepted: that was the standard
-        // it was made and gated under, and reading absence as a claim about the
-        // console would be this validator inventing a reading nothing took.
+        // it was made and gated under, and reading absence as a claim about the run
+        // would be this validator inventing a reading nothing took.
         if (native.Integrity is { } integrity &&
             !NativeSource.Integrities.Contains(integrity, StringComparer.Ordinal))
         {
@@ -586,9 +586,10 @@ public static partial class ManifestValidator
         else if (native.StatesSomethingOtherThanComplete)
         {
             problems.Add(
-                $"source.native.integrity is '{native.Integrity}'. The developer console was used during this " +
-                "run, so what it did to the state is not among the decisions this history holds and replaying " +
-                "them reconstructs a different run. The recording is kept and is not publishable.");
+                $"source.native.integrity is '{native.Integrity}'. This run was not played entirely by the " +
+                "game's own rules, so what changed the state is not among the decisions this history holds " +
+                "and replaying them reconstructs a different run. The recording is kept and is not " +
+                "publishable.");
         }
     }
 
