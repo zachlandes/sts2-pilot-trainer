@@ -171,12 +171,16 @@ internal static partial class Commands
         var refusals = RestoreRefusals(candidate, restored);
         if (control is not null)
         {
-            var refused = !restored.Matches;
+            var refused = refusals.Count == 0 && !restored.Matches;
             Console.WriteLine();
+            foreach (var refusal in refusals) Console.Error.WriteLine(refusal);
             Console.WriteLine(refused
                 ? $"CONTROL HELD: {restored.Refusal}"
-                : "CONTROL FAILED: restoring another floor's save reproduced this boundary, so the comparison " +
-                  "discriminates nothing and no snapshot may be trusted on it.");
+                : refusals.Count > 0
+                    ? "CONTROL ESTABLISHED NOTHING: the comparison it rests on was itself refused, so whether " +
+                      "another floor's save reproduces this boundary is still unmeasured."
+                    : "CONTROL FAILED: restoring another floor's save reproduced this boundary, so the comparison " +
+                      "discriminates nothing and no snapshot may be trusted on it.");
             reportArtifact.WriteAtomic(JsonSerializer.Serialize(
                 Report(manifestPath, plan, candidate, restored, control, cached: false, refusals),
                 Json.Indented) + "\n");

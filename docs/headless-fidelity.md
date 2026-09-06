@@ -76,9 +76,9 @@ runs are created with `shouldSave: false`. What is collected is therefore what t
 *asked* to save. For a snapshot produced from a replay that is the same object; reading a
 save a player's own client wrote is a different path.
 
-A missing `SaveRun` in a future build is a startup **failure** rather than a warning,
-unlike the neutralize beside it: a host that silently stopped intercepting it would write
-no save and collect none either, and both silences look like success.
+A missing `SaveRun` in a future build is a startup **failure**, as every name in this
+patch set is: a host that silently stopped intercepting it would write no save and
+collect none either, and both silences look like success.
 
 ### Three screens the host has to stand in for
 

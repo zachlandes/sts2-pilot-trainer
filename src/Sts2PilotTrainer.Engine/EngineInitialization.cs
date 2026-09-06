@@ -426,10 +426,10 @@ internal static class HeadlessPatches
     /// Patches <c>SaveManager.SaveRun</c> so nothing is ever written and, when
     /// something is collecting, the save the game was about to write is offered to it.
     ///
-    /// A missing name here is a failure rather than a warning, unlike the neutralize
-    /// beside it: a host that silently stopped intercepting this method would write no
-    /// save and collect none either, and the only symptom would be a snapshot cache
-    /// that never materialises anything, for a reason nothing says out loud.
+    /// A missing name here is a startup failure, as every name in this patch set is:
+    /// a host that silently stopped intercepting this method would write no save and
+    /// collect none either, and the only symptom would be a snapshot cache that never
+    /// materialises anything, for a reason nothing says out loud.
     /// </summary>
     private static void InterceptSaveRun(Harmony harmony, Assembly assembly, List<string> failures)
     {
@@ -449,10 +449,15 @@ internal static class HeadlessPatches
             return;
         }
 
-        var prefix = typeof(HeadlessPatches).GetMethod(
-            nameof(CollectAndSkipSaveRun), BindingFlags.NonPublic | BindingFlags.Static)!;
         foreach (var method in methods)
         {
+            // Harmony rejects a __result parameter on a void method, so the prefix
+            // is chosen by return shape rather than one prefix covering both.
+            var prefixName = method.ReturnType == typeof(void)
+                ? nameof(CollectAndSkipVoidSaveRun)
+                : nameof(CollectAndSkipSaveRun);
+            var prefix = typeof(HeadlessPatches).GetMethod(
+                prefixName, BindingFlags.NonPublic | BindingFlags.Static)!;
             try
             {
                 harmony.Patch(method, prefix: new HarmonyMethod(prefix));
@@ -468,12 +473,20 @@ internal static class HeadlessPatches
     /// original and hand back a finished task.</summary>
     private static bool CollectAndSkipSaveRun(object[] __args, ref object? __result)
     {
+        CollectAndSkipVoidSaveRun(__args);
+        __result = Task.CompletedTask;
+        return false;
+    }
+
+    /// <summary>Harmony prefix: the same collection for a void overload, which Harmony
+    /// will not hand a __result.</summary>
+    private static bool CollectAndSkipVoidSaveRun(object[] __args)
+    {
         if (RunSaveInterception.Armed)
         {
             RunSaveInterception.Offer(__args.Length > 0 ? __args[0] : null);
         }
 
-        __result = Task.CompletedTask;
         return false;
     }
 

@@ -86,9 +86,17 @@ internal static partial class Commands
         // either way, and a cache that is absent, of another history, or of a build this
         // is not simply is not used.
         var asked = PlanFor(recording, args);
-        var restoreFrom = Args.Has(args, "--restore")
-            ? SnapshotToRestoreFrom(recording, asked, cacheDir, out var restoreSource)
-            : NotRestoring(out restoreSource);
+        string restoreSource;
+        string? restoreFrom;
+        if (Args.Has(args, "--restore"))
+        {
+            restoreFrom = SnapshotToRestoreFrom(recording, asked, cacheDir, out restoreSource);
+        }
+        else
+        {
+            restoreFrom = null;
+            restoreSource = "replayed - the recording's own decisions, one at a time";
+        }
 
         using var entry = restoreFrom is null
             ? RecordedFightEntry.StartHeadless(recording, asked, progress)
@@ -358,14 +366,6 @@ internal static partial class Commands
             $"restored from the game's own save at {plan.Describe()}, cached under " +
             $"{plan.SnapshotKey.ToCacheDirectoryName()}, verified at {snapshot.VerifiedDigest}";
         return saveJson;
-    }
-
-    /// <summary>Walking the decisions, said in the same shape so the two routes report
-    /// themselves through one field rather than two.</summary>
-    private static string? NotRestoring(out string source)
-    {
-        source = "replayed - the recording's own decisions, one at a time";
-        return null;
     }
 
     /// <summary>
