@@ -140,16 +140,9 @@ public sealed record SnapshotCacheKey(
         return candidate;
     }
 
-    // The patch roster is part of the environment, so it is part of the environment's
-    // hash: two recordings whose mod lists read the same and whose processes were
-    // patched differently are not the same environment, and a key blind to that hands
-    // one of them a snapshot the other produced.
     private static string HashModEnvironment(ModEnvironment mods) => HashParts(
         [mods.Name, mods.ReportedCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
-         .. mods.Mods.SelectMany(mod => new[] { mod.Name, mod.Role, mod.ReplayRisk }),
-         .. mods.Patches is { } roster
-             ? roster.Members.Select(member => member.Describe())
-             : ["no patch roster was read"]]);
+         .. mods.Mods.SelectMany(mod => new[] { mod.Name, mod.Role, mod.ReplayRisk })]);
 
     private static string HashParts(IEnumerable<string> parts) =>
         "sha256:" + Convert.ToHexStringLower(SHA256.HashData(

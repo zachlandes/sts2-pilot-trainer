@@ -83,4 +83,20 @@ public sealed class PatchRosterTests
             ManifestValidator.Validate(broken).Problems,
             problem => problem.Contains("names no owner", StringComparison.Ordinal));
     }
+
+    /// <summary>
+    /// A serialized manifest's <c>patch_roster</c> carries the captured members and
+    /// nothing derived from them: the two computed readings are answers to questions
+    /// about the roster, not facts a recorder observed.
+    /// </summary>
+    [Fact]
+    public void ASerializedRosterCarriesOnlyTheCapturedMembers()
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(
+            ManifestJson.Serialize(Fixtures.NativeManifest()))!.AsObject();
+
+        var roster = json["environment"]!["mods"]!["Value"]!["patch_roster"]!.AsObject();
+
+        Assert.Equal(["members"], roster.Select(property => property.Key));
+    }
 }

@@ -46,6 +46,7 @@ public sealed record PatchRoster
 
     /// <summary>Every member on this roster that somebody other than Runmobile
     /// patched.</summary>
+    [JsonIgnore]
     public IReadOnlyList<PatchedMember> PatchedByAnybodyElse =>
         Members.Where(member => member.ForeignOwners.Count > 0).ToList();
 
@@ -58,6 +59,7 @@ public sealed record PatchRoster
     /// ours in it is a reading that did not see the patches this process definitely
     /// applied, and nothing it says about anybody else's can be trusted either.
     /// </summary>
+    [JsonIgnore]
     public bool NamesTheHost => Members.Any(member => member.Owners.Contains(HostOwnerId));
 }
 
