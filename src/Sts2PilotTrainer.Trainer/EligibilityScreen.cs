@@ -224,11 +224,12 @@ public sealed record EligibilityScreen(
     /// gate judged, never from parsing the gate's own sentence back apart.
     ///
     /// Splitting the gate's one verdict into rows is a projection and stays one: the
-    /// gate decides whether the acts were asked about at all, and the reading is
-    /// consulted only where it says they were. Turning the unasked case into a locked
-    /// act - which is what a missing answer read as "locked" amounts to - is a claim
-    /// nobody measured, and it is the claim that sent a player off to unlock an act
-    /// their build does not ship.
+    /// reading says whether the question was asked at all and which act it names, and
+    /// the gate says what that answer is worth - an errand under a complete
+    /// requirement, a build shortfall under an exact one. Turning the unasked case
+    /// into a locked act - which is what a missing answer read as "locked" amounts to
+    /// - is a claim nobody measured, and it is the claim that sent a player off to
+    /// unlock an act their build does not ship.
     /// </summary>
     private static void AddActRows(
         List<EligibilityRow> rows,
@@ -241,7 +242,7 @@ public sealed record EligibilityScreen(
         if (field is null) return;
 
         claimed.Add(ActsField);
-        var asked = field.Outcome != PreflightOutcome.Unavailable ? reading.LockedActs : null;
+        var asked = reading.LockedActs;
 
         // Said once where it is about the state rather than about an act. A locked act
         // is a fact about that act and its row carries the sentence; a question that
@@ -253,17 +254,20 @@ public sealed record EligibilityScreen(
             var state = asked is not { } locked
                 ? PreflightOutcome.Unavailable
                 : locked.Contains(act, StringComparer.Ordinal)
-                    ? PreflightOutcome.NotMet
+                    ? field.Outcome
                     : PreflightOutcome.Met;
 
-            var note = state switch
+            string? note;
+            if (asked is null)
             {
-                PreflightOutcome.Met => null,
-                PreflightOutcome.NotMet => field.Diagnostic,
-                _ => explained ? null : field.Diagnostic,
-            };
+                note = explained ? null : field.Diagnostic;
+                explained = true;
+            }
+            else
+            {
+                note = state == PreflightOutcome.Met ? null : field.Diagnostic;
+            }
 
-            explained |= state == PreflightOutcome.Unavailable;
             rows.Add(new EligibilityRow($"Act: {ModelIdNames.Display(act)} unlocked", state, note));
         }
     }

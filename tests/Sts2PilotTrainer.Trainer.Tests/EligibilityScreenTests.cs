@@ -234,6 +234,51 @@ public sealed class EligibilityScreenTests
     }
 
     /// <summary>
+    /// Under an exact requirement the locked act is still one act, and the acts the
+    /// build does have are still met.
+    ///
+    /// The state was built here, so the reading names which act it leaves locked; only
+    /// what that answer is worth changes, and a screen that read the gate's outcome as
+    /// "the question was never asked" drew all three acts as content this build does
+    /// not ship and put the sentence under the wrong one.
+    /// </summary>
+    [Fact]
+    public void UnderAnExactRequirementOnlyTheLockedActRefusesAndKeepsItsOwnSentence()
+    {
+        var unbuildable = Fixtures.UnbuildablePrerequisites();
+        var reading = unbuildable with
+        {
+            Unlocks = unbuildable.Unlocks with
+            {
+                ShippedIds = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+                {
+                    ["epochs"] = ["EPOCH.ONE", "EPOCH.TWO"],
+                    ["encounters_seen"] = ["ENCOUNTER.ONE"],
+                },
+            },
+            LockedActs = ["ACT.HIVE"],
+            UnlockStateShortfall = null,
+        };
+
+        var screen = Fixtures.Screen(reading, identity: Fixtures.ExactIdentity());
+        var hive = screen.Row("Act: Hive");
+
+        Assert.Equal(PreflightOutcome.Met, screen.Row("Act: Underdocks").State);
+        Assert.Null(screen.Row("Act: Underdocks").Note);
+        Assert.Equal(PreflightOutcome.Met, screen.Row("Act: Glory").State);
+        Assert.Null(screen.Row("Act: Glory").Note);
+
+        Assert.Equal(PreflightOutcome.Unavailable, hive.State);
+        Assert.Contains("cannot climb", hive.Note);
+        Assert.Contains(EnvironmentPreflight.ContentNotShipped, hive.Note);
+        Assert.DoesNotContain(EnvironmentPreflight.UnlockRemediation, hive.Note);
+        Assert.Equal(
+            1,
+            screen.Rows.Count(row =>
+                row.Label.StartsWith("Act:", StringComparison.Ordinal) && row.Note is { Length: > 0 }));
+    }
+
+    /// <summary>
     /// The run count an exact state is built from is not a requirement of anybody's
     /// game, so it is not a row.
     ///
