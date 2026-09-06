@@ -731,7 +731,9 @@ Both live in the same `settings.json`, and both are the same operation with a di
 
 `keep_recent_runs` is a standing policy and defaults to 50, which is roughly the size of a screenshot folder.
 Older runs go the next time the mod has a game to read, and the count is of runs rather than of files: a run's journal and its manifest go together or not at all.
-Zero keeps none. A negative number keeps every run there will ever be, and it is also what a settings file this build cannot read falls back to - a sentence nobody could read is not somebody asking for their runs to be deleted, so recording off and deleting nothing fail in the same direction.
+Zero keeps none.
+A negative number is refused with a logged sentence naming the file and the value, and the default is applied instead: a player who wants more keeps writes a larger number, and there is no way to ask the file for unbounded growth.
+Removing nothing survives only as an internal answer for a settings file this build cannot read - a sentence nobody could read is not somebody asking for their runs to be deleted, so recording off and deleting nothing fail in the same direction.
 
 `purge_my_runs` is the one-shot act: every recorded run is removed, and then the mod writes the member back to `false` so a purge is something a player did rather than a state they are left in.
 It is the only member of that file the mod ever writes.

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MegaCrit.Sts2.Core.Logging;
@@ -42,10 +43,10 @@ internal sealed record RunmobileSettings
     /// accord. Fifty of them is roughly the size of a screenshot folder.</summary>
     internal const int DefaultKeepRecentRuns = 50;
 
-    /// <summary>What any negative <c>keep_recent_runs</c> means: keep every run this
-    /// mod ever records, and remove nothing without being asked. It is also what a
-    /// settings file this build cannot read falls back to, because a file nobody could
-    /// read is not permission to delete anything.</summary>
+    /// <summary>The internal sentinel for "remove nothing", used only where this build
+    /// could not read the player's file: a file nobody could read is not permission to
+    /// delete anything. There is no way to ask for it from the file itself, because an
+    /// unbounded pile of recordings is the thing retention exists to end.</summary>
     internal const int KeepEveryRun = -1;
 
     [JsonPropertyName("schema")]
@@ -61,7 +62,9 @@ internal sealed record RunmobileSettings
     /// Older ones are removed the next time this mod has a game to read, and the count
     /// is of runs rather than of files: a run's journal and its manifest go together or
     /// not at all. Zero keeps none, which is a standing purge rather than the one-shot
-    /// one below; a negative number keeps every run there will ever be.
+    /// one below; a negative number is refused and the default applied instead, so a
+    /// player who wants more keeps writes a larger number rather than an opt-out of
+    /// having a policy at all.
     /// </summary>
     [JsonPropertyName("keep_recent_runs")]
     public int KeepRecentRuns { get; init; } = DefaultKeepRecentRuns;
@@ -129,6 +132,16 @@ internal sealed record RunmobileSettings
                 throw new ManifestException(
                     $"This settings file declares schema '{settings.SchemaId}', and this build reads " +
                     $"'{Schema}'.");
+            }
+
+            if (settings.KeepRecentRuns < 0)
+            {
+                Log.Error(
+                    $"[{RunmobileMod.ModId}] {FileName} asks to keep " +
+                    $"{settings.KeepRecentRuns.ToString(CultureInfo.InvariantCulture)} runs, which is not a " +
+                    $"number of runs, so this session keeps the usual {DefaultKeepRecentRuns.ToString(CultureInfo.InvariantCulture)}. " +
+                    "Write a larger number to keep more.", 2);
+                return settings with { KeepRecentRuns = DefaultKeepRecentRuns };
             }
 
             return settings;

@@ -1,5 +1,6 @@
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
+using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -111,6 +112,28 @@ public sealed class RunmobileSettingsTests : IDisposable
         Assert.Equal(3, settings.KeepRecentRuns);
         Assert.True(settings.PurgeMyRuns);
         Assert.True(settings.RecordMyRuns);
+    }
+
+    /// <summary>
+    /// There is no player-facing way to ask for unbounded growth: a negative policy is
+    /// refused and the default applied, so the file cannot turn retention off.
+    /// </summary>
+    [Fact]
+    public void ANegativePolicyIsRefusedAndTheDefaultApplied()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","keep_recent_runs":-1,"purge_my_runs":false}""");
+
+        var settings = RunmobileSettings.Read();
+
+        Assert.Equal(RunmobileSettings.DefaultKeepRecentRuns, settings.KeepRecentRuns);
+        Assert.True(settings.RecordMyRuns);
+        Assert.NotEmpty(RecordingLibrary.Cull(
+            [.. Enumerable.Range(0, RunmobileSettings.DefaultKeepRecentRuns + 1).Select(i =>
+                RecordingLibrary.Name("seed", new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(i))
+                + RecordingLibrary.ManifestExtension)],
+            settings.KeepRecentRuns));
     }
 
     /// <summary>

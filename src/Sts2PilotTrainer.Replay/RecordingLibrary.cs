@@ -131,9 +131,10 @@ public static class RecordingLibrary
     /// removes, newest of those first.
     ///
     /// One method for the policy and for the purge, because they are the same question:
-    /// keeping none removes every recording there is, and keeping a negative number is
-    /// how "keep every run I ever play" is said. Nothing is deleted here - this says
-    /// which files a caller that owns the disk may remove.
+    /// keeping none removes every recording there is, and a negative number names
+    /// nothing at all, which is how a caller with no readable policy asks for no
+    /// removals. Nothing is deleted here - this says which files a caller that owns
+    /// the disk may remove.
     /// </summary>
     public static IReadOnlyList<RecordingFiles> Cull(IEnumerable<string> fileNames, int keepNewest) =>
         keepNewest < 0 ? [] : [.. Index(fileNames).Skip(keepNewest)];
