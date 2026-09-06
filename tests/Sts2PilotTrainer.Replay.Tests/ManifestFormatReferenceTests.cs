@@ -184,6 +184,31 @@ public class ManifestFormatReferenceTests
     }
 
     /// <summary>
+    /// An arm that decides one of its lists conditionally is refused too.
+    ///
+    /// A statement the reader cannot read is refused wherever it stands: the names still
+    /// reach the page when only the assignments are looked at, so an arm that widens what
+    /// it allows under a condition would publish the narrower set and call everything
+    /// else refused.
+    /// </summary>
+    [Fact]
+    public void AnArmThatReassignsAListUnderAConditionIsRefused()
+    {
+        var root = TreeWhere(
+            ValidatorSource.RelativePath,
+            source => source.Replace(
+                "                nonNegativeIntegers = [\"option_index\"];",
+                "                nonNegativeIntegers = [\"option_index\"];\n" +
+                "                if (action.Seq > 0) allowed = [.. required, \"target_index\"];",
+                StringComparison.Ordinal));
+
+        var refusal = Assert.Throws<SourceRefusal>(() => ManifestFormatReference.Render(root));
+        Assert.Contains(
+            "does something other than assign its lists", refusal.Message, StringComparison.Ordinal);
+        Directory.Delete(root, recursive: true);
+    }
+
+    /// <summary>
     /// A verb the validator accepts arguments for and no engine command executes is
     /// refused before anything is written, because a manifest using it would pass
     /// validation and then fail partway through a replay.

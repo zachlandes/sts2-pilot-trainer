@@ -253,13 +253,16 @@ public static class ValidatorSource
         }
 
         var assigned = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        foreach (var statement in section.Statements.OfType<ExpressionStatementSyntax>())
+        foreach (var statement in section.Statements.Where(statement => statement is not BreakStatementSyntax))
         {
-            if (statement.Expression is not AssignmentExpressionSyntax
+            if (statement is not ExpressionStatementSyntax
                 {
-                    RawKind: (int)SyntaxKind.SimpleAssignmentExpression,
-                    Left: IdentifierNameSyntax name,
-                } assignment)
+                    Expression: AssignmentExpressionSyntax
+                    {
+                        RawKind: (int)SyntaxKind.SimpleAssignmentExpression,
+                        Left: IdentifierNameSyntax name,
+                    } assignment,
+                })
             {
                 throw SourceRefusal.At(statement, "A rule arm does something other than assign its lists.");
             }
