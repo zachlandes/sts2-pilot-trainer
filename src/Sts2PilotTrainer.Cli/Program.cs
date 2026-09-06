@@ -24,7 +24,6 @@ internal static class Program
                 "gate" => Commands.Gate(args[1..]),
                 "validate" => Commands.Validate(args[1..]),
                 "engine-commands" => Commands.EngineCommandsCommand(args[1..]),
-                "verb-probe" => Commands.VerbProbeCommand(args[1..]),
                 "migrate-manifest" => Commands.MigrateManifest(args[1..]),
                 "preflight" => Commands.Preflight(args[1..]),
                 "preflight-live" => Commands.PreflightLive(args[1..]),
@@ -93,13 +92,6 @@ internal static class Program
               generate. Those three read a consequence retail has and test mode does
               not and pin no value, because what the price or the relic turns out to be
               is the game's business. See docs/headless-fidelity.md.
-
-          verb-probe      <undo-end-turn | bundle | relic-screen | card-reward-alternative | crystal-sphere>
-              Measure one of the verbs format v6 added against the real engine: start a
-              run, ask the prompt the way the engine asks it, and check the driver's own
-              selector answers it from a queued decision and refuses with its own
-              sentence where the decision is wrong or absent. No history passes through
-              these seams yet, so this is how each one is shown to work at all.
 
           preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile]
                                      [--shipped-ids]

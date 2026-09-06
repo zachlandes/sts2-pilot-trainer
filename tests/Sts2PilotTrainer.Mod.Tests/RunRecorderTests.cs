@@ -1,5 +1,6 @@
 using System.Reflection;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Models;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
@@ -173,6 +174,58 @@ public sealed class RunRecorderTests
         return AccessTools.Method(patch.declaringType, patch.methodName, patch.argumentTypes) is null
             ? null
             : $"{patch.declaringType.FullName}.{patch.methodName}";
+    }
+
+    /// <summary>
+    /// A prompt the engine answers for itself holds nothing open, so no later answer
+    /// can be read as its.
+    ///
+    /// The bundle screen has no seam of its own, so what the recorder holds between the
+    /// prompt and the answer is the prompt itself. It used to hold it whatever the call
+    /// did with it - and two of that call's branches answer nobody: a fight that is
+    /// ending, and a prompt with no bundles in it. Scroll Boxes offering bundles as a
+    /// combat ends left the prompt open, and the next ordinary card screen the player
+    /// answered was written down as the bundle they picked. Every value in that
+    /// recording is true and the decision it states was never made.
+    /// </summary>
+    [GameFact]
+    public void APromptTheEngineAnswersItselfHoldsNothingOpenForSomebodyElsesAnswer()
+    {
+        IReadOnlyList<IReadOnlyList<CardModel>> bundles = [[], []];
+
+        RunRecorder.BundleScreen.Opened(bundles, combatIsEnding: true);
+        Assert.Null(RunRecorder.BundleScreen.Open);
+
+        RunRecorder.BundleScreen.Opened([], combatIsEnding: false);
+        Assert.Null(RunRecorder.BundleScreen.Open);
+
+        RunRecorder.BundleScreen.Opened(bundles, combatIsEnding: false);
+        Assert.Same(bundles, RunRecorder.BundleScreen.Open);
+
+        RunRecorder.BundleScreen.Open = null;
+        RunRecorder.RelicScreen.Opened([]);
+        Assert.Null(RunRecorder.RelicScreen.Open);
+    }
+
+    /// <summary>
+    /// And a prompt whose call has settled holds nothing open either, whatever that
+    /// call settled into: the answer is read while the call is still waiting for it.
+    /// </summary>
+    [GameFact]
+    public void APromptWhoseCallHasSettledIsNoLongerOpen()
+    {
+        var answering = new TaskCompletionSource<IEnumerable<CardModel>>();
+        IReadOnlyList<IReadOnlyList<CardModel>> bundles = [[]];
+
+        RunRecorder.BundleScreen.Opened(bundles, combatIsEnding: false);
+        RunRecorder.BundleScreen.After(answering.Task);
+
+        // Still the player's question to answer.
+        Assert.Same(bundles, RunRecorder.BundleScreen.Open);
+
+        answering.SetResult([]);
+
+        Assert.Null(RunRecorder.BundleScreen.Open);
     }
 
     [GameFact]

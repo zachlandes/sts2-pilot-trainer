@@ -53,8 +53,13 @@ internal static class ScreenStandIns
             typeof(NCrystalSphereScreen), nameof(NCrystalSphereScreen.ShowScreen), nameof(BeforeCrystalSphereScreen));
     }
 
-    /// <summary>The minigame is over, or the run left it; nothing is open.</summary>
-    internal static void ForgetMinigame() => OpenMinigame = null;
+    /// <summary>The minigame is over, or the run left it; nothing is open. The
+    /// subscription goes with it, so a forgotten grid holds nothing here.</summary>
+    internal static void ForgetMinigame()
+    {
+        if (OpenMinigame is { } open) open.Finished -= ForgetMinigame;
+        OpenMinigame = null;
+    }
 
     private static void Patch(Harmony harmony, List<string> failures, Type type, string method, string prefix)
     {
@@ -124,6 +129,7 @@ internal static class ScreenStandIns
     {
         if (Current is null) return true;
 
+        ForgetMinigame();
         OpenMinigame = grid;
         grid.Finished += ForgetMinigame;
         __result = null!;

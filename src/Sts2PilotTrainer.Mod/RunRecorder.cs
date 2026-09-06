@@ -2197,8 +2197,12 @@ internal sealed class RunRecorder : IDisposable
     ///
     /// The prompt has no seam of its own - <c>ICardSelector</c> has no bundle member -
     /// so what is watched is the prompt's entry point, for what it offered, and the
-    /// choice the client then syncs, for what came back. The prefix holds the bundles
-    /// while the prompt is open and <see cref="ChoiceSynced"/> reads the answer.
+    /// choice the client then syncs, for what came back. What is held open is the call
+    /// that opened it and nothing wider: the two branches the engine answers itself -
+    /// a fight that is ending and an empty prompt - ask nobody anything and so open
+    /// nothing, and a call that has settled holds nothing open either. Without that,
+    /// an unrelated prompt's answer is read as this one's and the recording states a
+    /// decision nobody made.
     /// </summary>
     [HarmonyPatch(typeof(CardSelectCmd), nameof(CardSelectCmd.FromChooseABundleScreen))]
     internal static class BundleScreen
@@ -2206,34 +2210,73 @@ internal sealed class RunRecorder : IDisposable
         internal static IReadOnlyList<IReadOnlyList<CardModel>>? Open { get; set; }
 
         [HarmonyPrefix]
-        internal static void Before(IReadOnlyList<IReadOnlyList<CardModel>> bundles)
-        {
-            if (Active is null) return;
-            Open = bundles;
-        }
+        internal static void Before(IReadOnlyList<IReadOnlyList<CardModel>> bundles) =>
+            Opened(bundles, CombatManager.Instance is { IsEnding: true });
+
+        /// <summary>What this call opened, from what it was asked and the reading the
+        /// engine's own early returns are taken from.</summary>
+        internal static void Opened(IReadOnlyList<IReadOnlyList<CardModel>> bundles, bool combatIsEnding) =>
+            Open = combatIsEnding || bundles.Count == 0 ? null : bundles;
+
+        [HarmonyPostfix]
+        internal static void After(Task<IEnumerable<CardModel>>? __result) =>
+            CloseWhenSettled(__result, Open, () => Open, prompt => Open = prompt);
     }
 
-    /// <summary>The relic screen, watched the same way. Nothing on v0.111.0 opens it.</summary>
+    /// <summary>The relic screen, watched and scoped the same way. Nothing on v0.111.0
+    /// opens one.</summary>
     [HarmonyPatch(typeof(RelicSelectCmd), nameof(RelicSelectCmd.FromChooseARelicScreen))]
     internal static class RelicScreen
     {
         internal static IReadOnlyList<RelicModel>? Open { get; set; }
 
         [HarmonyPrefix]
-        internal static void Before(IReadOnlyList<RelicModel> relics)
+        internal static void Before(IReadOnlyList<RelicModel> relics) => Opened(relics);
+
+        internal static void Opened(IReadOnlyList<RelicModel> relics) =>
+            Open = relics.Count == 0 ? null : relics;
+
+        [HarmonyPostfix]
+        internal static void After(Task<RelicModel?>? __result) =>
+            CloseWhenSettled(__result, Open, () => Open, prompt => Open = prompt);
+    }
+
+    /// <summary>
+    /// Drops the prompt a call opened once that call has settled, and only while it is
+    /// still the one open.
+    ///
+    /// The answer is read while the call is still waiting for it, so a call that has
+    /// settled is one whose prompt was either already read or never put to a player at
+    /// all. Either way, nothing that happens afterwards is its answer.
+    /// </summary>
+    private static void CloseWhenSettled<TPrompt, TResult>(
+        Task<TResult>? call, TPrompt? opened, Func<TPrompt?> read, Action<TPrompt?> write)
+        where TPrompt : class
+    {
+        if (opened is null) return;
+
+        if (call is null)
         {
-            if (Active is null) return;
-            Open = relics;
+            write(null);
+            return;
         }
+
+        call.ContinueWith(
+            _ =>
+            {
+                if (ReferenceEquals(read(), opened)) write(null);
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     /// <summary>
     /// The client's own answer to a prompt, read as it is synced.
     ///
     /// Every locally answered prompt passes through here; only the two whose prompt
-    /// this recorder is holding open are read, and the prompt is closed by reading it.
-    /// A prompt the engine answered without syncing - an ending fight, an empty prompt
-    /// - is closed by the next prompt opening.
+    /// this recorder is holding open are read, and a prompt is closed by the sync that
+    /// answers it whether or not there is a recording to read it into.
     /// </summary>
     [HarmonyPatch(typeof(PlayerChoiceSynchronizer), nameof(PlayerChoiceSynchronizer.SyncLocalChoice))]
     internal static class ChoiceSynced
@@ -2241,20 +2284,23 @@ internal sealed class RunRecorder : IDisposable
         [HarmonyPrefix]
         internal static void Before(PlayerChoiceResult result)
         {
+            var bundles = BundleScreen.Open;
+            var relics = RelicScreen.Open;
+            BundleScreen.Open = null;
+            RelicScreen.Open = null;
+
             if (Active is null) return;
 
             try
             {
-                if (BundleScreen.Open is { } bundles)
+                if (bundles is not null)
                 {
-                    BundleScreen.Open = null;
                     BundleScreenAnswered(bundles, result.AsIndex());
                     return;
                 }
 
-                if (RelicScreen.Open is { } relics)
+                if (relics is not null)
                 {
-                    RelicScreen.Open = null;
                     RelicScreenAnswered(relics, result.AsIndex());
                 }
             }

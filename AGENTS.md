@@ -18,8 +18,7 @@ not released yet. See [README.md](README.md).
                             # verify-seed | replay | determinism | negative-controls |
                             # combat-snapshot | floor-snapshot | combat-compare |
                             # enter-fight | recorded-fight |
-                            # snapshot-restore-probe | migrate-manifest | engine-commands |
-                            # verb-probe
+                            # snapshot-restore-probe | migrate-manifest | engine-commands
 ./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
 ./scripts/assert-expected-skips.sh          # what CI skips is still what we recorded (--update to re-record)
 ./scripts/format-reference.sh               # rewrite docs/manifest-format.md from the code (--check to compare)

@@ -202,7 +202,14 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
             _chestRelicsSubscribed = false;
         }
 
-        if (ReferenceEquals(ScreenStandIns.Current, this)) ScreenStandIns.Current = null;
+        if (ReferenceEquals(ScreenStandIns.Current, this))
+        {
+            ScreenStandIns.Current = null;
+
+            // A minigame this run left open belongs to this run; a later driver that
+            // found it still there would drive a dead run's grid.
+            ScreenStandIns.ForgetMinigame();
+        }
 
         if (_selectorScope is null) return;
         RewardsSet.testSelector = _previousRewardsSelector;
@@ -462,10 +469,6 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// </summary>
     internal void ImproviseUnrecordedCardSelections() =>
         _selector.AnswersFromTheFrontWhenSilent = true;
-
-    /// <summary>The selector this driver answers screens from. For <see cref="VerbProbe"/>,
-    /// which measures the stand-ins by asking the same selector the prompts ask.</summary>
-    internal ManifestCardSelector Selector => _selector;
 
     /// <summary>The screen answers the last action improvised, as the arguments a
     /// <see cref="ActionVerb.SelectCardFromScreen"/> records, in order.</summary>

@@ -647,9 +647,10 @@ public static partial class ManifestValidator
                 "that says it did not stop is two claims about one run.");
         }
 
-        foreach (var entry in unmapped)
+        for (var index = 0; index < unmapped.Count; index++)
         {
-            var path = $"source.native.unmapped[{entry.Seq.ToString(CultureInfo.InvariantCulture)}]";
+            var entry = unmapped[index];
+            var path = $"source.native.unmapped[{index.ToString(CultureInfo.InvariantCulture)}]";
 
             if (entry.Seq != actionCount)
             {
