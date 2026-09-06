@@ -57,7 +57,7 @@ internal static class RunLibrary
                 RunOrigin.Mine,
                 RunVerdicts.For(stored.Recording, build),
                 progress.PlayedFrom(stored.Recording.RunId),
-                recorded: stored.LastWritten));
+                recorded: stored.Started));
         }
 
         return runs;

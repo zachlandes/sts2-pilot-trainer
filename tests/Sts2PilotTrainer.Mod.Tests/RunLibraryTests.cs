@@ -14,6 +14,11 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// here and neither is visible from the pure derivation: a recording this build cannot
 /// read is left out of the list rather than shown as a run nobody can open, and the
 /// progress record survives a round trip through a real file.
+///
+/// They still need the game's assembly, because every path here reports what it skipped
+/// through the game's own log. Started explicitly rather than left to whichever test ran
+/// first: one of these failed on its own and passed in a full run, which is a test suite
+/// that cannot be trusted about which of its members is broken.
 /// </summary>
 public sealed class RunLibraryStoreTests : IDisposable
 {
@@ -23,6 +28,7 @@ public sealed class RunLibraryStoreTests : IDisposable
 
     public RunLibraryStoreTests()
     {
+        _ = EngineHost.StartupPhase();
         Directory.CreateDirectory(_root);
         RunmobileStore.UseRootForTesting(_root);
     }
@@ -34,7 +40,7 @@ public sealed class RunLibraryStoreTests : IDisposable
         if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
     }
 
-    [Fact]
+    [GameFact]
     public void AnEmptyStoreHoldsNoRecordingsAndNoProgress()
     {
         Assert.Empty(RunLibraryStore.MyRecordings());
@@ -45,7 +51,7 @@ public sealed class RunLibraryStoreTests : IDisposable
 
     /// <summary>A journal is a run still being played. There is nothing to play from
     /// until the manifest is written, so it is not in the list.</summary>
-    [Fact]
+    [GameFact]
     public void OnlyFinishedRecordingsAreListedAndAllOfThemAreSized()
     {
         Write("native-a-20260906-120000.replay.json", ManifestJson.Serialize(Recording("native-a")));
@@ -58,11 +64,45 @@ public sealed class RunLibraryStoreTests : IDisposable
     }
 
     /// <summary>
+    /// The ordering is the run's own start, read back out of the name by the owner that
+    /// composed it - not the file's modification time, which does not survive the
+    /// library being copied to another machine.
+    /// </summary>
+    [GameFact]
+    public void RecordingsComeBackNewestRunFirstByWhenTheRunBegan()
+    {
+        Write("native-old-20260901-090000.replay.json", ManifestJson.Serialize(Recording("native-old")));
+        Write("native-new-20260906-120000.replay.json", ManifestJson.Serialize(Recording("native-new")));
+
+        var recordings = RunLibraryStore.MyRecordings();
+
+        Assert.Equal(["native-new", "native-old"], recordings.Select(stored => stored.Recording.RunId));
+        Assert.Equal(
+            new DateTimeOffset(2026, 9, 6, 12, 0, 0, TimeSpan.Zero), recordings[0].Started);
+    }
+
+    /// <summary>
+    /// A file whose name is not one the recorder wrote is not a recording: it is not
+    /// listed, not read, and not counted against the player's disk - which matters
+    /// because the footer's number is a size of exactly what removing their runs would
+    /// remove.
+    /// </summary>
+    [GameFact]
+    public void AFileTheRecorderDidNotNameIsNotARunAndIsNotCounted()
+    {
+        Write("my-notes.replay.json", ManifestJson.Serialize(Recording("my-notes")));
+
+        Assert.Empty(RunLibraryStore.ManifestFileNames());
+        Assert.Empty(RunLibraryStore.MyRecordings());
+        Assert.Equal(0, RunLibraryStore.MyRunsBytes());
+    }
+
+    /// <summary>
     /// Refusing rather than approximating, at the one moment a player is deciding
     /// whether the mod works: a file this build cannot read is left out and named in
     /// the log, never listed as a run that would fail when opened.
     /// </summary>
-    [Fact]
+    [GameFact]
     public void ARecordingThisBuildCannotReadIsLeftOutRatherThanListed()
     {
         Write("native-good-20260906-120000.replay.json", ManifestJson.Serialize(Recording("native-good")));
@@ -73,7 +113,7 @@ public sealed class RunLibraryStoreTests : IDisposable
         Assert.Equal(["native-good"], recordings.Select(stored => stored.Recording.RunId));
     }
 
-    [Fact]
+    [GameFact]
     public void ProgressIsWrittenOnceAndReadBack()
     {
         Assert.True(RunLibraryStore.RecordFightPlayed("native-a", 2));
@@ -88,7 +128,7 @@ public sealed class RunLibraryStoreTests : IDisposable
     /// a record this build cannot read is forgotten rather than guessed at - and never
     /// takes a player out of the fight they were about to enter.
     /// </summary>
-    [Fact]
+    [GameFact]
     public void AProgressRecordThisBuildCannotReadIsForgottenRatherThanFatal()
     {
         RunmobileStore.Write(RunProgress.FileName, """{"schema":"somebody-elses/v1"}""");

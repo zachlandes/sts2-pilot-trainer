@@ -11,12 +11,14 @@ namespace Sts2PilotTrainer.Mod;
 /// own: it names entries under the recorder's own directory and asks the store for
 /// them.
 ///
-/// <para><b>A recording is read, never inferred from its name.</b> The library lists
-/// the recorder's directory, keeps the manifests, and reads each one - so what a row
-/// says is what the recording says. A file whose name looks like a recording and whose
-/// contents this build cannot read is skipped with a line in the log, rather than
-/// listed as a run nobody can open: the failure mode this project exists to prevent is
-/// a surface that shows something plausible instead of refusing.</para>
+/// <para><b>A recording is read, never inferred from its name.</b> Which files are a
+/// recording's is <see cref="RecordingLibrary"/>'s answer - the same index the retention
+/// policy culls by, so a run the library lists and a run retention counts are the same
+/// set - and what a row <em>says</em> comes from reading the manifest itself. A file
+/// whose name looks like a recording and whose contents this build cannot read is
+/// skipped with a line in the log, rather than listed as a run nobody can open: the
+/// failure mode this project exists to prevent is a surface that shows something
+/// plausible instead of refusing.</para>
 ///
 /// <para>The one write is the progress record, which holds fight ordinals and nothing
 /// else. See <see cref="RunProgress"/> for why it can never become a resume.</para>
@@ -27,31 +29,40 @@ internal static class RunLibraryStore
     /// than repeated, so one directory has one name.</summary>
     internal static string RecordingsDirectory => RunRecorder.RecordingsDirectory;
 
-    /// <summary>The extension a finished recording's manifest carries.</summary>
-    internal const string ManifestExtension = ".replay.json";
-
-    /// <summary>The file names under the recorder's directory that are finished
-    /// recordings. A run still being played has a journal and no manifest, and is not
-    /// a run anybody can play from yet.</summary>
+    /// <summary>
+    /// The file names under the recorder's directory that are finished recordings,
+    /// newest run first.
+    ///
+    /// A run still being played has a journal and no manifest, and is not a run anybody
+    /// can play from yet. Which files belong to which recording is
+    /// <see cref="RecordingLibrary.Index"/>'s, so nothing here parses a name.
+    /// </summary>
     internal static IReadOnlyList<string> ManifestFileNames() =>
         [
-            .. RunmobileStore.ListFileNames(RecordingsDirectory)
-                .Where(name => name.EndsWith(ManifestExtension, StringComparison.Ordinal)),
+            .. RecordingLibrary.Index(RunmobileStore.ListFileNames(RecordingsDirectory))
+                .SelectMany(recording => recording.FileNames)
+                .Where(name =>
+                    name.EndsWith(RecordingLibrary.ManifestExtension, StringComparison.Ordinal)),
         ];
 
     /// <summary>
-    /// Every recording of the player's own that this build can read, with when its
-    /// file was last written.
+    /// Every recording of the player's own that this build can read, newest run first,
+    /// with when its run began.
     ///
-    /// The write time is the library's ordering and nothing else. It is a fact about
-    /// the file on this disk rather than about the run, which is why it never travels:
-    /// nothing exported carries it.
+    /// The time is the run's own start, read back out of the recording's name by the
+    /// owner that composed it, rather than the file's timestamp on this disk. That is
+    /// the ordering a library keeps when it is copied to another machine, which a
+    /// modification time is not.
     /// </summary>
     internal static IReadOnlyList<StoredRecording> MyRecordings()
     {
         var recordings = new List<StoredRecording>();
-        foreach (var fileName in ManifestFileNames())
+        foreach (var indexed in RecordingLibrary.Index(RunmobileStore.ListFileNames(RecordingsDirectory)))
         {
+            var fileName = indexed.FileNames.FirstOrDefault(name =>
+                name.EndsWith(RecordingLibrary.ManifestExtension, StringComparison.Ordinal));
+            if (fileName is null) continue;
+
             var entry = $"{RecordingsDirectory}/{fileName}";
             try
             {
@@ -59,7 +70,7 @@ internal static class RunLibraryStore
                 if (json is null) continue;
                 recordings.Add(new StoredRecording(
                     ManifestJson.Deserialize(json),
-                    LastWritten(entry),
+                    new DateTimeOffset(indexed.StartedUtc, TimeSpan.Zero),
                     RunmobileStore.SizeOf(entry)));
             }
             catch (Exception ex)
@@ -75,11 +86,19 @@ internal static class RunLibraryStore
         return recordings;
     }
 
-    /// <summary>What the player's own runs occupy on this computer: every file the
-    /// recorder wrote, journals included, because that is what a player would find if
-    /// they went and looked.</summary>
+    /// <summary>
+    /// What the player's own runs occupy on this computer: every file the recorder
+    /// wrote, journals included, because that is what a player would find if they went
+    /// and looked.
+    ///
+    /// Counted over the index rather than over the directory, so the number under the
+    /// list is a size of exactly the files "Keep or remove them in Settings" would
+    /// remove. A note a player left in there is not a run and is not theirs to have
+    /// counted against them.
+    /// </summary>
     internal static long MyRunsBytes() =>
-        RunmobileStore.ListFileNames(RecordingsDirectory)
+        RecordingLibrary.Index(RunmobileStore.ListFileNames(RecordingsDirectory))
+            .SelectMany(recording => recording.FileNames)
             .Sum(name => RunmobileStore.SizeOf($"{RecordingsDirectory}/{name}"));
 
     /// <summary>
@@ -132,21 +151,9 @@ internal static class RunLibraryStore
         }
     }
 
-    private static DateTimeOffset? LastWritten(string entry)
-    {
-        try
-        {
-            return new DateTimeOffset(File.GetLastWriteTimeUtc(RunmobileStore.PathOf(entry)), TimeSpan.Zero);
-        }
-        catch (Exception)
-        {
-            // A run whose time nobody could read sorts last rather than being given one.
-            return null;
-        }
-    }
 }
 
-/// <summary>One recording on this computer: what it says, when its file was last
-/// written, and what it costs.</summary>
+/// <summary>One recording on this computer: what it says, when its run began, and what
+/// it costs.</summary>
 internal sealed record StoredRecording(
-    ReplayManifest Recording, DateTimeOffset? LastWritten, long Bytes);
+    ReplayManifest Recording, DateTimeOffset? Started, long Bytes);
