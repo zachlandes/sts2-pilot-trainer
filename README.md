@@ -135,8 +135,10 @@ output.
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
 `engine-commands`, `verify-seed`, `determinism`, `negative-controls`,
 `combat-snapshot`, `snapshot-restore-probe`, `migrate-manifest`. `engine-commands`
-prints which of the game's own members each recorded decision maps onto, and says of
-every verb it does not map why there is nothing to map it onto. `validate` and
+prints which of the game's own members each recorded decision maps onto, says of
+every verb it does not map why there is nothing to map it onto, and checks that the
+three gameplay paths the engine's test-mode flag would otherwise change still take
+retail's branch under this host. `validate` and
 `migrate-manifest` need no game, the latter unless it is deriving boundaries;
 `migrate-manifest` is the only command that rewrites a manifest on disk, so
 reading somebody's evidence never edits it.

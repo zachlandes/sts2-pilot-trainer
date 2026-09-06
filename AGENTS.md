@@ -16,8 +16,7 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
                             # combat-snapshot | combat-compare | enter-fight | recorded-fight |
-                            # snapshot-restore-probe | retail-branch-probe |
-                            # migrate-manifest | engine-commands
+                            # snapshot-restore-probe | migrate-manifest | engine-commands
 ./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
 ./scripts/assert-expected-skips.sh          # what CI skips is still what we recorded (--update to re-record)
 ```

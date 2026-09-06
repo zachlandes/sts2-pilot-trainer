@@ -43,7 +43,6 @@ internal static class Program
                 "negative-controls" => Commands.NegativeControls(args[1..]),
                 "combat-snapshot" => Commands.CombatSnapshot(args[1..]),
                 "snapshot-restore-probe" => Commands.SnapshotRestoreProbe(args[1..]),
-                "retail-branch-probe" => Commands.RetailBranchProbe(args[1..]),
                 "enter-fight" => Commands.EnterFight(args[1..]),
                 "combat-compare" => Commands.CombatCompare(args[1..]),
                 "recorded-fight" => Commands.RecordedFightCommand(args[1..]),
@@ -84,9 +83,14 @@ internal static class Program
 
           engine-commands
               Print which of the game's own members each recorded decision maps onto,
-              and check that the mapping still describes this build: every named
-              member still exists, and every verb in the format is either mapped or
-              carries a written reason it is not.
+              and check that the host's account of this build still describes it: every
+              named member still exists, every verb in the format is either mapped or
+              carries a written reason it is not, and each of the three gameplay paths
+              the test-mode flag would otherwise change still takes retail's branch -
+              the merchant's potion price, and the rewards Cauldron and Calling Bell
+              generate. Those three read a consequence retail has and test mode does
+              not and pin no value, because what the price or the relic turns out to be
+              is the game's business. See docs/headless-fidelity.md.
 
           preflight       <manifest> [--progress all-unlocked|none-unlocked|local-profile]
                                      [--shipped-ids]
@@ -210,16 +214,6 @@ internal static class Program
               ranked. Refuses two fights that did not start from the same boundary,
               and refuses a history whose combat never finishes. See
               docs/comparison-direction.md.
-
-          retail-branch-probe [--out <path>]
-              Measure whether the three gameplay paths the engine's test-mode flag would
-              otherwise change take retail's branch under this host: the merchant's potion
-              price, and the rewards Cauldron and Calling Bell generate when picked up.
-              Reads a consequence retail has and test mode does not - a stream that moved,
-              a reward that still has to be populated - and pins no value, because what the
-              price or the relic turns out to be is the game's business. The two relics are
-              reached by no recording and no fixture, so this is the only thing that
-              measures them. See docs/headless-fidelity.md.
 
           snapshot-restore-probe <manifest> [--out <dir>] [--control unreadable-room-set]
               Measure whether the game's own save format can carry a run across a

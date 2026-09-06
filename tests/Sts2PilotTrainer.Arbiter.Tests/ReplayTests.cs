@@ -407,24 +407,28 @@ public class ReplayTests
     /// The test above covers the merchant's potion price, because both recordings walk
     /// into a shop. It cannot cover the other two: Cauldron and Calling Bell are picked
     /// up by no committed recording and no fixture, so without this their patches would
-    /// ship measured by nothing. The probe reads a consequence retail has and test mode
-    /// does not - the Shops stream moved, the rewards still have to be populated - and
-    /// pins no price and no relic, because those are the game's to choose.
+    /// ship measured by nothing. The measurement reads a consequence retail has and test
+    /// mode does not - the Shops stream moved, the rewards still have to be populated -
+    /// and pins no price and no relic, because those are the game's to choose.
     ///
-    /// It exits non-zero if any site did not take retail's branch, or if the headless
-    /// flag was not back on afterwards, so the assertion here is the exit code and the
-    /// output is what says which site and by how much.
+    /// It rides on `engine-commands` rather than a verb of its own: the question is the
+    /// same patch-day one that command already asks, and this project drives the built
+    /// CLI in a subprocess precisely so the test project need not reference the engine.
+    /// The command exits non-zero if any site did not take retail's branch or if the
+    /// headless flag was not back on afterwards, so the assertion here is the exit code
+    /// and the output is what says which site and by how much.
     /// </summary>
     [GameFact]
     public void EveryRestoredRetailBranchTakesRetailsPath()
     {
-        var result = Arbiter.Run("retail-branch-probe", "--out", Temp("retail-branch-probe.json"));
+        var result = Arbiter.Run("engine-commands");
 
-        Assert.True(result.Verified, result.All);
-        Assert.Contains("Every restored retail branch took retail's path.", result.Output, StringComparison.Ordinal);
+        Assert.True(result.ExitCode == 0, result.All);
+        Assert.Contains("restored retail branch takes retail's path", result.Output, StringComparison.Ordinal);
         Assert.Contains("MerchantPotionEntry.CalcCost", result.Output, StringComparison.Ordinal);
         Assert.Contains("Cauldron.GenerateRewards", result.Output, StringComparison.Ordinal);
         Assert.Contains("CallingBell.GenerateRewards", result.Output, StringComparison.Ordinal);
+        Assert.Contains("TestMode.IsOn", result.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("FAIL", result.Output, StringComparison.Ordinal);
     }
 
