@@ -256,9 +256,14 @@ is demonstrated on:
 [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md) has it with its real
 output.
 
+A floor arrival can also be reached from the game's own save at that floor instead of by walking the decisions that lead to it.
+`./scripts/arbiter floor-snapshot <manifest> --floor <n>` materialises that snapshot, keyed by the whole history that produced it and cached only once a restore in a fresh process has reproduced the digest the recording declares.
+`enter-fight --floor <n> --restore` then uses it, and replays as usual where no such snapshot is there.
+The boundary is proved the same way either way; only arrivals with a live fight are cached, and [docs/native-replay-format.md](docs/native-replay-format.md) owns why.
+
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
 `engine-commands`, `verify-seed`, `determinism`, `negative-controls`,
-`combat-snapshot`, `snapshot-restore-probe`, `migrate-manifest`. `engine-commands`
+`combat-snapshot`, `floor-snapshot`, `snapshot-restore-probe`, `migrate-manifest`. `engine-commands`
 prints which of the game's own members each recorded decision maps onto, says of
 every verb it does not map why there is nothing to map it onto, and checks that the
 three gameplay paths the engine's test-mode flag would otherwise change still take
