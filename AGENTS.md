@@ -16,7 +16,8 @@ shows. Intended to become an open-source mod. See [README.md](README.md).
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
                             # combat-snapshot | combat-compare | enter-fight | recorded-fight |
-                            # snapshot-restore-probe | migrate-manifest | engine-commands
+                            # snapshot-restore-probe | retail-branch-probe |
+                            # migrate-manifest | engine-commands
 ./scripts/bootstrap.sh --archive build/archive   # keep the receipted prepared set under its build
 ./scripts/assert-expected-skips.sh          # what CI skips is still what we recorded (--update to re-record)
 ```
@@ -101,8 +102,8 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, 116 of
-`Sts2PilotTrainer.Arbiter.Tests`' 176 tests skip and the job still reports success.
+**What CI cannot run is recorded by name.** On a runner without the game, 117 of
+`Sts2PilotTrainer.Arbiter.Tests`' 177 tests skip and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts that skipped set against
 `scripts/expected-hosted-skips.txt`, so adding a `[GameFact]`, moving a test behind
 one, or deleting one fails CI until the list is regenerated with `--update` in the

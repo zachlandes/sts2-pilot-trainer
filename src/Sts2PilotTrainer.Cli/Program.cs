@@ -43,6 +43,7 @@ internal static class Program
                 "negative-controls" => Commands.NegativeControls(args[1..]),
                 "combat-snapshot" => Commands.CombatSnapshot(args[1..]),
                 "snapshot-restore-probe" => Commands.SnapshotRestoreProbe(args[1..]),
+                "retail-branch-probe" => Commands.RetailBranchProbe(args[1..]),
                 "enter-fight" => Commands.EnterFight(args[1..]),
                 "combat-compare" => Commands.CombatCompare(args[1..]),
                 "recorded-fight" => Commands.RecordedFightCommand(args[1..]),
@@ -209,6 +210,16 @@ internal static class Program
               ranked. Refuses two fights that did not start from the same boundary,
               and refuses a history whose combat never finishes. See
               docs/comparison-direction.md.
+
+          retail-branch-probe [--out <path>]
+              Measure whether the three gameplay paths the engine's test-mode flag would
+              otherwise change take retail's branch under this host: the merchant's potion
+              price, and the rewards Cauldron and Calling Bell generate when picked up.
+              Reads a consequence retail has and test mode does not - a stream that moved,
+              a reward that still has to be populated - and pins no value, because what the
+              price or the relic turns out to be is the game's business. The two relics are
+              reached by no recording and no fixture, so this is the only thing that
+              measures them. See docs/headless-fidelity.md.
 
           snapshot-restore-probe <manifest> [--out <dir>] [--control unreadable-room-set]
               Measure whether the game's own save format can carry a run across a

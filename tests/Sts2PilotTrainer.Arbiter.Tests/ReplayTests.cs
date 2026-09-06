@@ -400,6 +400,34 @@ public class ReplayTests
             string.Join(", ", mismatched));
     }
 
+    /// <summary>
+    /// Every gameplay path the engine's test-mode flag would otherwise change takes
+    /// retail's branch under this host.
+    ///
+    /// The test above covers the merchant's potion price, because both recordings walk
+    /// into a shop. It cannot cover the other two: Cauldron and Calling Bell are picked
+    /// up by no committed recording and no fixture, so without this their patches would
+    /// ship measured by nothing. The probe reads a consequence retail has and test mode
+    /// does not - the Shops stream moved, the rewards still have to be populated - and
+    /// pins no price and no relic, because those are the game's to choose.
+    ///
+    /// It exits non-zero if any site did not take retail's branch, or if the headless
+    /// flag was not back on afterwards, so the assertion here is the exit code and the
+    /// output is what says which site and by how much.
+    /// </summary>
+    [GameFact]
+    public void EveryRestoredRetailBranchTakesRetailsPath()
+    {
+        var result = Arbiter.Run("retail-branch-probe", "--out", Temp("retail-branch-probe.json"));
+
+        Assert.True(result.Verified, result.All);
+        Assert.Contains("Every restored retail branch took retail's path.", result.Output, StringComparison.Ordinal);
+        Assert.Contains("MerchantPotionEntry.CalcCost", result.Output, StringComparison.Ordinal);
+        Assert.Contains("Cauldron.GenerateRewards", result.Output, StringComparison.Ordinal);
+        Assert.Contains("CallingBell.GenerateRewards", result.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("FAIL", result.Output, StringComparison.Ordinal);
+    }
+
     /// <summary>How a boundary in one list is matched to the same boundary in the
     /// other. Sequence alone is not identity: three kinds can share one.</summary>
     private static string Coordinate(ReplayBoundary boundary) =>

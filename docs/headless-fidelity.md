@@ -164,7 +164,11 @@ Nothing there reimplements a cost, a roll or a pool.
 The merchant one was live and measured.
 Two native recordings of whole runs, replayed against the engine, disagreed at eight of nineteen and eight of twenty-six boundaries — every disagreement from the shop's own floor entry onward, every recorded digest reproduced by `Shops+3` and by nothing else, and `replay` exiting 0 throughout.
 `ReplayTests.NativeRecordingReproducesEveryBoundaryItCaptured` replays both and asserts every captured boundary is reproduced; it is the only check here that can see a bias this host has, because a synthetic fixture's expected values were produced by this same host.
-The two relics are the same defect at a site no recording has reached yet.
+
+The two relics are the same defect at a site no recording or fixture has reached, so nothing above measures them.
+`./scripts/arbiter retail-branch-probe` does, and covers all three the same way: it exercises each site through the engine's own construction and reads a consequence retail has and test mode does not - the Shops stream advanced by one, the potion and relic rewards still unpopulated and therefore still to be drawn.
+It pins no price and no relic, because those are the game's to choose and a probe that pinned one would fail on the next build for the wrong reason.
+With the patches removed all three sites report FAIL and the command exits non-zero, which is what makes its pass mean something.
 
 The card and relic merchant entries take the same price draw with no guard at all, which is why only the potion slots drifted.
 A name in that list that stops matching a future build is a startup **failure**, not a warning: a fidelity patch that silently stops applying is a host that reproduces nothing and says so nowhere.
