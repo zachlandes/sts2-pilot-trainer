@@ -53,9 +53,9 @@ public static class Corruption
             "damage and block totals agree. The intermediate state and hidden pile order still depend on order.",
             ReorderPlays)
         {
-            Requires = "the first two plays after one of the recording's own hand-beginning checkpoints, " +
-                       "sitting where that checkpoint's recorded combat.hand says they sat, and differing in " +
-                       "the card played or the enemy it is aimed at",
+            Requires = "the first two plays after one of the recording's own checkpoints that recorded a " +
+                       "combat.hand, sitting where that hand says they sat, and differing in the card " +
+                       "played or the enemy it is aimed at",
             AppliesTo = manifest => TryFindPlaysWhoseOrderCanMatter(manifest, out _),
         },
 
@@ -192,14 +192,18 @@ public static class Corruption
     ///
     /// And both plays have to have come out of one hand, because the swap re-indexes
     /// them against a single one. Rather than predict what the hand does between two
-    /// plays, this checks the pair against the hand the recording <em>observed</em>:
-    /// every boundary that begins a hand - a turn start, and the combat start and floor
-    /// entry that begin a fight - is a checkpoint whose <c>expect</c> carries
-    /// <c>combat.hand</c>. The candidate pair is therefore the first two plays after
-    /// such a checkpoint, with no later one between them, because that is the only
-    /// place the recorded hand is the hand both plays saw; anywhere later in the turn
-    /// would mean replaying the plays in between to work out what the hand had become,
-    /// which is modelling again.
+    /// plays, this checks the pair against the hand the recording <em>observed</em>: a
+    /// checkpoint whose <c>expect</c> carries <c>combat.hand</c> is one that observed
+    /// it. The candidate pair is therefore the first two plays after such a checkpoint,
+    /// with no later hand-carrying one between them, because that is the only place the
+    /// recorded hand is the hand both plays saw; anywhere later would mean replaying the
+    /// plays in between to work out what the hand had become, which is modelling again.
+    ///
+    /// A recorded hand is what this asks for, not a checkpoint kind. Keying it on the
+    /// kinds that begin a hand declined every engine-generated fixture in this
+    /// repository, whose checkpoints are all labelled <c>synthetic-engine</c> and carry
+    /// the hand all the same, and the control reported NOT APPLICABLE on histories it
+    /// can damage.
     ///
     /// The check itself: the first play's card must sit at its recorded index in that
     /// hand, and the second's must sit at its recorded index in what is left once the
@@ -216,22 +220,22 @@ public static class Corruption
     /// </summary>
     private static bool TryFindPlaysWhoseOrderCanMatter(ReplayManifest manifest, out Swap swap)
     {
-        var handBegins = manifest.Checkpoints
-            .Where(checkpoint => BeginsAHand.Contains(checkpoint.Kind, StringComparer.Ordinal))
+        var handObserved = manifest.Checkpoints
+            .Where(checkpoint => checkpoint.Expect.ContainsKey("combat.hand"))
             .OrderBy(checkpoint => checkpoint.AfterSeq)
             .ToList();
 
         var plays = manifest.Actions.Where(action => action.Verb == ActionVerb.PlayCard).ToList();
 
-        foreach (var checkpoint in handBegins)
+        foreach (var checkpoint in handObserved)
         {
-            if (!checkpoint.Expect.TryGetValue("combat.hand", out var dealt)) continue;
+            var dealt = checkpoint.Expect["combat.hand"];
 
             var candidate = plays.Where(play => play.Seq > checkpoint.AfterSeq).Take(2).ToList();
             if (candidate.Count < 2) continue;
 
             var (first, second) = (candidate[0], candidate[1]);
-            if (handBegins.Any(other =>
+            if (handObserved.Any(other =>
                     other.AfterSeq > checkpoint.AfterSeq && other.AfterSeq < second.Seq))
             {
                 continue;
@@ -297,15 +301,6 @@ public static class Corruption
             System.Globalization.CultureInfo.InvariantCulture, out index) &&
         index >= 0 && index < count;
 
-    /// <summary>The checkpoint kinds that begin a hand: a turn start deals one, and a
-    /// combat start and a floor entry begin the fight that deals the first.</summary>
-    private static readonly string[] BeginsAHand =
-    [
-        ReplayBoundary.TurnStartKind,
-        ReplayBoundary.CombatStartKind,
-        ReplayBoundary.FloorEntryKind,
-    ];
-
     private static string? Argument(ActionRecord action, string name) =>
         action.Args.TryGetValue(name, out var value) ? value : null;
 
@@ -318,12 +313,11 @@ public static class Corruption
         if (!TryFindPlaysWhoseOrderCanMatter(manifest, out var swap))
         {
             throw new ManifestException(
-                "reorder-plays needs the first two plays after one of this recording's own hand-beginning " +
-                "checkpoints - a turn start, combat start or floor entry carrying combat.hand - to differ in " +
-                "the card played or the enemy it is aimed at, and to sit where that recorded hand says they " +
-                "sat. No pair in this history does, so swapping any two of its plays produces either the same " +
-                "history or one the recording cannot show came out of a single hand, and would prove nothing " +
-                "about the arbiter.");
+                "reorder-plays needs the first two plays after one of this recording's own checkpoints that " +
+                "recorded a combat.hand to differ in the card played or the enemy it is aimed at, and to " +
+                "sit where that recorded hand says they sat. No pair in this history does, so swapping any " +
+                "two of its plays produces either the same history or one the recording cannot show came " +
+                "out of a single hand, and would prove nothing about the arbiter.");
         }
 
         var (first, second, hand, firstIndex, secondIndex) = swap;

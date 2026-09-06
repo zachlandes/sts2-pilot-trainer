@@ -584,6 +584,36 @@ public class CorruptionTests
     }
 
     /// <summary>
+    /// The hand is what the control needs, and a checkpoint that recorded one has it
+    /// whatever it is called.
+    ///
+    /// Both engine-generated fixtures label every checkpoint <c>synthetic-engine</c>
+    /// and carry <c>combat.hand</c> on the ones that observed a hand. Asking for a
+    /// checkpoint kind instead reported NOT APPLICABLE on both of them, which cost the
+    /// negative-control suite its two video-undetectable controls on the one history in
+    /// this repository the engine itself wrote.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReorderingAppliesToAnEngineFixtureWhoseCheckpointsAreNotNamedForBoundaries(bool wholeAct)
+    {
+        var manifest = wholeAct ? SyntheticReplayFixture.CreateWholeAct() : SyntheticReplayFixture.Create();
+        Assert.DoesNotContain(
+            manifest.Checkpoints,
+            checkpoint => checkpoint.Kind is ReplayBoundary.TurnStartKind or ReplayBoundary.CombatStartKind
+                or ReplayBoundary.FloorEntryKind);
+
+        var reorder = Corruption.All.Single(control => control.Name == "reorder-plays");
+
+        Assert.True(reorder.AppliesTo(manifest));
+        var swapped = reorder.Apply(manifest).Actions
+            .Where(action => action.Note == "reordered by a negative control")
+            .ToList();
+        Assert.Equal(2, swapped.Count);
+    }
+
+    /// <summary>
     /// A card the run had marked is still the card the hand slot holds.
     ///
     /// A canonical hand entry carries what a card had become - <c>+1</c> for an upgrade,
