@@ -356,21 +356,48 @@ public sealed class RunLibraryStoreTests : IDisposable
     }
 
     [GameFact]
-    public void CurrentIndexCurationOverridesCachedExactCodeMetadata()
+    public void IndexRefreshCuratesVerifiedDownloadsWithoutReplacingTheirMetadataOrOrder()
     {
-        var shared = Shared(Recording($"refreshed-{Guid.NewGuid():N}"));
-        RunLibrary.AcceptShared(shared, shared.Code);
-        var current = SummaryFor(shared) with
+        var downloaded = Shared(Recording($"downloaded-{Guid.NewGuid():N}"));
+        var cachedOnly = Shared(Recording($"cached-{Guid.NewGuid():N}"));
+        var indexedOnly = Shared(Recording($"indexed-{Guid.NewGuid():N}"));
+        RunLibrary.AcceptShared(downloaded, downloaded.Code);
+        RunLibrary.AcceptShared(cachedOnly, cachedOnly.Code);
+        var currentTime = downloaded.SubmittedAt.AddDays(1);
+        var stale = SummaryFor(downloaded) with
         {
-            SubmittedAt = shared.SubmittedAt.AddDays(1),
+            Submission = downloaded.Submission with { DisplayName = "Wrong creator" },
+            Run = downloaded.Run with
+            {
+                Character = "CHARACTER.SILENT",
+                Fights = [99],
+            },
+            Environment = downloaded.Summary.Environment with
+            {
+                Character = downloaded.Summary.Environment.Character with
+                {
+                    Value = "CHARACTER.SILENT",
+                },
+            },
+            SubmittedAt = currentTime,
             Featured = true,
         };
+        var first = SummaryFor(indexedOnly) with { Featured = true };
 
-        RunLibrary.AcceptIndex([current]);
+        RunLibrary.AcceptIndex([first, stale]);
 
-        var listed = Assert.Single(RunLibrary.Runs(), run => run.EntryId == shared.ShareId);
+        var online = RunLibrary.Runs()
+            .Where(run => run.ShareId is not null)
+            .ToList();
+        Assert.Equal(
+            [indexedOnly.ShareId, downloaded.ShareId, cachedOnly.ShareId],
+            online.Select(run => run.ShareId));
+        var listed = online[1];
+        Assert.Equal(downloaded.Submission.DisplayName, listed.Creator);
+        Assert.Equal(downloaded.Run.Character, listed.Character);
+        Assert.Equal(downloaded.Run.Fights, listed.Fights);
         Assert.Equal(RunOrigin.Featured, listed.Origin);
-        Assert.Equal(current.SubmittedAt, listed.Recorded);
+        Assert.Equal(currentTime, listed.Recorded);
     }
 
     [GameFact]

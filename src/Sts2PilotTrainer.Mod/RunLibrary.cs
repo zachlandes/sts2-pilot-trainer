@@ -76,14 +76,37 @@ internal static class RunLibrary
                 recorded: stored.Started));
         }
 
-        var shared = new Dictionary<string, SharedRunSummary>(StringComparer.Ordinal);
-        foreach (var item in SharedRecordings) shared[item.Key] = item.Value.Summary;
+        var shared = new List<SharedRunSummary>();
+        var indexedShares = new HashSet<string>(StringComparer.Ordinal);
         if (RunmobileSettings.Read().FetchRunIndex)
         {
-            foreach (var item in SharedIndex) shared[item.Key] = item.Value;
+            foreach (var item in SharedIndex.Values)
+            {
+                indexedShares.Add(item.ShareId);
+                if (SharedRecordings.TryGetValue(item.ShareId, out var downloaded))
+                {
+                    var verified = downloaded.Summary with
+                    {
+                        SubmittedAt = item.SubmittedAt,
+                        Featured = item.Featured,
+                    };
+                    shared.Add(verified with
+                    {
+                        Run = OnlineRun(verified, downloaded.Run.Verdict),
+                    });
+                }
+                else
+                {
+                    shared.Add(item);
+                }
+            }
+        }
+        foreach (var item in SharedRecordings.Values)
+        {
+            if (!indexedShares.Contains(item.ShareId)) shared.Add(item.Summary);
         }
 
-        foreach (var item in shared.Values)
+        foreach (var item in shared)
         {
             runs.Add(item.Run with
             {
