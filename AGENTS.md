@@ -241,8 +241,10 @@ Its final state is exactly `Runmobile` under the selected supported game mod dir
 
 **The run library is the third module, and browsing is after the fact.**
 `RunLibraryModule` owns the Compendium button (`NCompendiumSubmenu`), the browser, one run opened, and the plate under the game's own run history (`NMapPointHistoryEntry.Released`).
-Two settled rules run through all of it and neither is a preference: a player plays *from* a run, one verb everywhere; and a run this build has no passing verdict for - or an established multiplayer run - is not in the list in any state, with no tickbox and no greyed row.
-`LibraryRun.Listed` is that rule in one place; the numeral under the list counts what it hid, and a run code still finds one, which is the only place an unplayable run is ever described.
+Two settled rules run through all of it and neither is a preference: a player plays *from* a run, one verb everywhere; and ordinary browsing hides a run this build has no passing verdict for, or an established multiplayer run.
+`LibraryRun.Listed` is that rule in one place, the visible `Compatible with your game version` filter defaults on, and the numeral under the list counts what it hid.
+Turning the filter off reveals incompatible runs as disabled rows, and an exact code does that automatically before selecting its run in the sorted position and naming both its required build and the current build.
+The player-facing tabs are Others and Mine; `LibraryTab.Community` and `LibraryTab.MyRuns` are internal names only.
 Where a player can be stood is the recording's own `boundaries[]`, read through `RunView`, so no row can offer somewhere `RecordedFightEntry` would refuse; `RecordedFightRun.Start` takes the plan, because there is still one playback path.
 `RunProgress` under the store holds fight ordinals and nothing resumable - it is the pips and Continue's number, never a save.
 What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [docs/in-game-host.md](docs/in-game-host.md) owns what it draws and what the accepted design still wants.

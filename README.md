@@ -61,9 +61,11 @@ Settings show how much space recordings take, how many are kept, remove them on 
 
 **Browse the runs and play from one.**
 The Compendium, which the game opens when no run is active, has a Runmobile button beside its own Run History.
-Two tabs: Community - the runs included with Runmobile, the featured ones and the recent ones, newest first - and My runs, your own recordings with a line under the list saying how many there are and what they take on this computer.
+Two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
 Open a run and it lists every place the recording proves you can be stood: from a fight's recorded start, from a floor's first screen, "Continue: play from fight N" for the next fight you have not played from, or from run start with every choice shown.
-A run your game version cannot reproduce, and a multiplayer run, is not in the list at all - no tickbox and no greyed row - and a muted "{n} not shown" underneath says how many were hidden and that a run code still finds one.
+The visible `Compatible with your game version` filter defaults on, hides incompatible runs during ordinary browsing, and leaves a muted "{n} not shown" count underneath.
+Turning the filter off reveals incompatible runs as disabled rows; entering an exact code does that automatically, selects its run in the sorted position, and shows both the build it requires and the current build.
+An established multiplayer run remains hidden.
 Your own finished runs are reachable a second way: the game's own run history carries a plate under its pane offering that run's last fight or last floor, and where it cannot offer them the rows stay in place with the reason on them - the recording has a gap in it, or it was made on another build, or a run is in progress.
 
 **One whole fight, no undo.**

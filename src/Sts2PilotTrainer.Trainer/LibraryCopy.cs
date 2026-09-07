@@ -18,8 +18,8 @@ namespace Sts2PilotTrainer.Trainer;
 /// recording anywhere on this surface, because two of them would read as two different
 /// things happening.</para>
 ///
-/// <para><b>The run noun.</b> What a player has is runs - Community, My runs, "{n}
-/// runs". "Recording", "manifest" and "journal" are this project's internal words for
+/// <para><b>The run noun.</b> What a player has is runs - Others, Mine, "{n} runs".
+/// "Recording", "manifest" and "journal" are this project's internal words for
 /// the file, and a player never sees one.</para>
 ///
 /// Every value a recording supplies is interpolated. A sentence here that named a
@@ -57,11 +57,10 @@ public static class LibraryCopy
     public const string RecentGroup = "Recent";
 
     /// <summary>
-    /// The one trace an incompatible run leaves: a count, under the list.
+    /// The count of runs hidden by compatibility and multiplayer rules.
     ///
-    /// Settled and not a filter. There is no tickbox for it and no greyed row, so a
-    /// run this game cannot play is simply not in the list - and this numeral is what
-    /// stops that being a silent disappearance.
+    /// The compatibility filter defaults on. Turning it off reveals disabled
+    /// incompatible rows; the numeral keeps every remaining omission visible.
     /// </summary>
     public static string NotShown(int count) =>
         $"{count.ToString(CultureInfo.InvariantCulture)} not shown";
@@ -74,9 +73,8 @@ public static class LibraryCopy
     /// <summary>
     /// What the run-code field says before anything is typed in it.
     ///
-    /// The code is the one way to ask about a run that is not in the list, which is
-    /// what makes the hidden rule bearable: a run this game cannot play is not shown
-    /// and is still findable by somebody who was sent it.
+    /// A code finds a run hidden by the default compatibility filter and selects it in
+    /// the list, so somebody who was sent one sees the run and why it is disabled.
     /// </summary>
     public const string RunCodeField = "Run code";
 
@@ -126,10 +124,9 @@ public static class LibraryCopy
     /// <summary>
     /// What a run code answers with when it names a run this game cannot play.
     ///
-    /// The one place on the surface where an incompatible run is described at all. It
-    /// is a popup rather than a row because the list never holds one: a player who
-    /// typed a code asked about a specific run and is owed an answer, and a player who
-    /// did not is owed a list of runs that work.
+    /// The build sentence shown on an incompatible row selected by exact code.
+    /// A player who typed a code asked about a specific run and is owed both the build
+    /// it requires and the build currently running.
     /// </summary>
     public const string LookupRefusedTitle = "Not playable on your game";
 
@@ -187,7 +184,7 @@ public static class LibraryCopy
 
     /// <inheritdoc cref="LookupNotFoundTitle"/>
     public const string LookupNotFound =
-        "Nothing here is that run. Check the code, or open Community and pick a run from the list.";
+        "Nothing here is that run. Check the code, or open Others and pick a run from the list.";
 
     /// <summary>Leaves any of the lookup's answers.</summary>
     public const string Back = "Back";

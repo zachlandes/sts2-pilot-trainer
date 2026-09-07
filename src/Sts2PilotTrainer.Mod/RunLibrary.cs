@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
@@ -33,12 +34,14 @@ internal static class RunLibrary
     private static bool indexLoaded;
     private static IRunSharingApi? configuredSharing;
     private static string? configuredSharingEndpoint;
+    private static string? sharingScope;
     private static readonly object SharingLock = new();
     private static int nextSubmission;
     private static readonly object PendingSubmissionLock = new();
     private static readonly Dictionary<int, string> PendingManifestJson = [];
     private static readonly Dictionary<int, ShareSubmission> PendingSubmissions = [];
     private static readonly Dictionary<int, string> PendingSharingEndpoints = [];
+    private static readonly Dictionary<int, string> PendingSharingScopes = [];
 
     /// <summary>
     /// Every run, listed or not, with the verdict that decides which.
@@ -48,6 +51,7 @@ internal static class RunLibrary
     /// </summary>
     internal static IReadOnlyList<LibraryRun> Runs()
     {
+        RefreshSharingScope();
         var build = ThisBuild();
         var progress = RunLibraryStore.ReadProgress();
         var runs = new List<LibraryRun>();
@@ -103,20 +107,29 @@ internal static class RunLibrary
         return runs;
     }
 
-    internal static Task<IReadOnlyList<SharedRunSummary>> FetchIndexAsync()
+    internal static Task<IReadOnlyList<SharedRunSummary>> FetchIndexAsync() =>
+        FetchIndexAsync(out _);
+
+    internal static Task<IReadOnlyList<SharedRunSummary>> FetchIndexAsync(out string scope)
     {
         var endpoint = RequireSharingEndpoint();
+        scope = CurrentSharingScope();
         indexRequested = true;
         return SharingAt(endpoint).IndexAsync();
     }
 
-    internal static bool SharingAvailable => ConfiguredSharingEndpoint() is not null;
+    internal static bool SharingAvailable => RefreshSharingScope() is not null;
 
     internal static bool ShouldFetchIndex =>
         SharingAvailable && !indexRequested && !indexLoaded && RunmobileSettings.Read().FetchRunIndex;
 
-    internal static void AcceptIndex(IReadOnlyList<SharedRunSummary> index)
+    internal static void AcceptIndex(IReadOnlyList<SharedRunSummary> index) =>
+        AcceptIndex(index, CurrentSharingScope());
+
+    internal static bool AcceptIndex(IReadOnlyList<SharedRunSummary> index, string expectedScope)
     {
+        RefreshSharingScope();
+        if (!IsCurrentSharingScope(expectedScope)) return false;
         var accepted = new Dictionary<string, SharedRunSummary>(StringComparer.Ordinal);
         var build = ThisBuild();
         foreach (var item in index)
@@ -140,6 +153,7 @@ internal static class RunLibrary
         foreach (var item in accepted) SharedIndex[item.Key] = item.Value;
         indexRequested = false;
         indexLoaded = true;
+        return true;
     }
 
     internal static LibraryRun OnlineRun(SharedRunSummary item, RunVerdict verdict)
@@ -158,8 +172,12 @@ internal static class RunLibrary
         };
     }
 
-    internal static void RefuseIndex()
+    internal static void RefuseIndex() => RefuseIndex(CurrentSharingScope());
+
+    internal static void RefuseIndex(string expectedScope)
     {
+        RefreshSharingScope();
+        if (!IsCurrentSharingScope(expectedScope)) return;
         indexRequested = false;
         indexLoaded = false;
     }
@@ -169,6 +187,7 @@ internal static class RunLibrary
     /// recording's manifest and no other's.</summary>
     internal static ReplayManifest? RecordingFor(string runId)
     {
+        RefreshSharingScope();
         foreach (var included in Included())
         {
             if (string.Equals(included.RunId, runId, StringComparison.Ordinal)) return included;
@@ -180,8 +199,13 @@ internal static class RunLibrary
         return shared is null ? null : ManifestJson.Deserialize(shared.ManifestJson);
     }
 
-    internal static Task<SharedRun?> FindSharedAsync(string code)
+    internal static Task<SharedRun?> FindSharedAsync(string code) =>
+        FindSharedAsync(code, out _);
+
+    internal static Task<SharedRun?> FindSharedAsync(string code, out string scope)
     {
+        RefreshSharingScope();
+        scope = CurrentSharingScope();
         var wanted = code.Trim();
         var cached = SharedRecordings.Values.FirstOrDefault(item =>
             string.Equals(item.Code, wanted, StringComparison.OrdinalIgnoreCase));
@@ -189,8 +213,12 @@ internal static class RunLibrary
         return SharingAt(RequireSharingEndpoint()).FindAsync(wanted);
     }
 
-    internal static SharedRun AcceptShared(SharedRun found, string? expectedCode = null)
+    internal static SharedRun AcceptShared(
+        SharedRun found, string? expectedCode = null, string? expectedScope = null)
     {
+        RefreshSharingScope();
+        if (expectedScope is not null && !IsCurrentSharingScope(expectedScope))
+            throw new ShareValidationException("The sharing profile changed before that request finished.");
         found.Submission.Validate();
         var computedId = SharedRunIdentity.For(found.ManifestJson, found.Submission);
         var computedCode = SharedRunIdentity.CodeFor(computedId);
@@ -203,17 +231,15 @@ internal static class RunLibrary
                 "The downloaded run does not match its advertised sharing identity.");
         }
 
-        foreach (var advertised in SharedIndex.Values)
+        var recording = ManifestJson.Deserialize(found.ManifestJson);
+        var advertised = SharedIndex.Values.FirstOrDefault(item =>
+            string.Equals(item.Code, found.Code, StringComparison.OrdinalIgnoreCase));
+        if (advertised is not null && !IndexDescribes(advertised, found, recording))
         {
-            if (string.Equals(advertised.Code, found.Code, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(advertised.ShareId, found.ShareId, StringComparison.Ordinal))
-            {
-                throw new ShareValidationException(
-                    "The downloaded run does not match the run index entry.");
-            }
+            throw new ShareValidationException(
+                "The downloaded run does not match the run index entry.");
         }
 
-        var recording = ManifestJson.Deserialize(found.ManifestJson);
         var described = LibraryRun.From(
             recording,
             found.Featured ? RunOrigin.Featured : RunOrigin.Recent,
@@ -228,17 +254,25 @@ internal static class RunLibrary
         return local;
     }
 
-    internal static string? ShareCodeFor(string runId) =>
-        SharedRecordings.Values.FirstOrDefault(item =>
+    internal static string? ShareCodeFor(string runId)
+    {
+        RefreshSharingScope();
+        return SharedRecordings.Values.FirstOrDefault(item =>
             string.Equals(item.Run.RunId, runId, StringComparison.Ordinal))?.Code
-        ?? SharedIndex.Values.FirstOrDefault(item =>
-            string.Equals(item.Run.RunId, runId, StringComparison.Ordinal))?.Code;
+            ?? SharedIndex.Values.FirstOrDefault(item =>
+                string.Equals(item.Run.RunId, runId, StringComparison.Ordinal))?.Code;
+    }
 
     internal static Task<SharedRun> ShareAsync(
-        ReplayManifest recording, ShareSubmission submission)
+        ReplayManifest recording, ShareSubmission submission) =>
+        ShareAsync(recording, submission, out _);
+
+    internal static Task<SharedRun> ShareAsync(
+        ReplayManifest recording, ShareSubmission submission, out string scope)
     {
         submission.Validate();
         var endpoint = RequireSharingEndpoint();
+        scope = CurrentSharingScope();
         var gate = PublicationGate.RunAsync(recording);
         var request = Interlocked.Increment(ref nextSubmission);
         lock (PendingSubmissionLock)
@@ -246,6 +280,7 @@ internal static class RunLibrary
             PendingManifestJson[request] = ManifestJson.Serialize(recording);
             PendingSubmissions[request] = submission;
             PendingSharingEndpoints[request] = endpoint;
+            PendingSharingScopes[request] = scope;
         }
         return gate.ContinueWith(
             static (completed, value) => CompletePublicationGate(completed, (int)value!),
@@ -260,25 +295,53 @@ internal static class RunLibrary
         string manifestJson;
         ShareSubmission submission;
         string endpoint;
+        string scope;
         lock (PendingSubmissionLock)
         {
             manifestJson = PendingManifestJson[request];
             submission = PendingSubmissions[request];
             endpoint = PendingSharingEndpoints[request];
+            scope = PendingSharingScopes[request];
             PendingManifestJson.Remove(request);
             PendingSubmissions.Remove(request);
             PendingSharingEndpoints.Remove(request);
+            PendingSharingScopes.Remove(request);
         }
         if (!completed.IsCompletedSuccessfully)
             throw completed.Exception?.GetBaseException()
                 ?? new ShareValidationException("Local validation could not finish.");
         if (!completed.Result)
             throw new ShareValidationException("Local validation did not pass, so the run was not sent.");
+        if (!IsCurrentSharingScope(scope))
+            throw new ShareValidationException(
+                "The sharing profile changed before local validation finished, so the run was not sent.");
         return SharingAt(endpoint).SubmitAsync(manifestJson, submission);
     }
 
+    private static bool IndexDescribes(
+        SharedRunSummary advertised, SharedRun found, ReplayManifest recording)
+    {
+        var described = LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Unjudged);
+        return string.Equals(advertised.ShareId, found.ShareId, StringComparison.Ordinal) &&
+               advertised.Submission == found.Submission &&
+               string.Equals(advertised.Run.RunId, described.RunId, StringComparison.Ordinal) &&
+               string.Equals(
+                   advertised.Run.Creator, found.Submission.DisplayName, StringComparison.Ordinal) &&
+               string.Equals(advertised.Run.Character, described.Character, StringComparison.Ordinal) &&
+               advertised.Run.Ascension == described.Ascension &&
+               string.Equals(
+                   advertised.Run.RecordedBuild, described.RecordedBuild, StringComparison.Ordinal) &&
+               advertised.Run.Fights.SequenceEqual(described.Fights) &&
+               string.Equals(advertised.Run.Outcome, described.Outcome, StringComparison.Ordinal) &&
+               string.Equals(advertised.SourceKind, recording.Source.Kind, StringComparison.Ordinal) &&
+               string.Equals(
+                   JsonSerializer.Serialize(advertised.Environment, ManifestJson.Options),
+                   JsonSerializer.Serialize(recording.Environment, ManifestJson.Options),
+                   StringComparison.Ordinal);
+    }
+
     private static string RequireSharingEndpoint() =>
-        ConfiguredSharingEndpoint()
+        RefreshSharingScope()
         ?? throw new ShareValidationException(LibraryCopy.SharingServiceUnavailable);
 
     private static string? ConfiguredSharingEndpoint()
@@ -300,6 +363,50 @@ internal static class RunLibrary
         return endpoint.AbsoluteUri.EndsWith("/", StringComparison.Ordinal)
             ? endpoint.AbsoluteUri
             : endpoint.AbsoluteUri + "/";
+    }
+
+    private static string? RefreshSharingScope()
+    {
+        var endpoint = ConfiguredSharingEndpoint();
+        string root;
+        try
+        {
+            root = RunmobileStore.Root;
+        }
+        catch (Exception)
+        {
+            root = string.Empty;
+        }
+
+        var current = $"{root}\n{endpoint}";
+        lock (SharingLock)
+        {
+            if (!string.Equals(sharingScope, current, StringComparison.Ordinal))
+            {
+                SharedIndex.Clear();
+                SharedRecordings.Clear();
+                indexRequested = false;
+                indexLoaded = false;
+                configuredSharing = null;
+                configuredSharingEndpoint = null;
+                sharingScope = current;
+            }
+        }
+
+        return endpoint;
+    }
+
+    internal static string CurrentSharingScope()
+    {
+        RefreshSharingScope();
+        lock (SharingLock) return sharingScope!;
+    }
+
+    internal static bool IsCurrentSharingScope(string expectedScope)
+    {
+        RefreshSharingScope();
+        lock (SharingLock)
+            return string.Equals(sharingScope, expectedScope, StringComparison.Ordinal);
     }
 
     private static IRunSharingApi SharingAt(string endpoint)
@@ -329,6 +436,7 @@ internal static class RunLibrary
         indexLoaded = false;
         configuredSharing = null;
         configuredSharingEndpoint = null;
+        sharingScope = null;
     }
 
     /// <summary>

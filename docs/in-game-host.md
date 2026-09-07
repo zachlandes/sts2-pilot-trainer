@@ -768,9 +768,13 @@ It reads no manifest and performs no network request merely to decide visibility
 `RunLibrary.RecordingFor` resolves one run from the recorder's directory index - the id names the recording in the index, so pressing a row costs that recording's manifest and no other's, and a manifest whose own run id disagrees with its name answers nothing rather than answering with the wrong run.
 
 The browser still judges every run before showing it, and an empty or unavailable index is shown on that surface rather than represented by removing the way in.
+Its player-facing tabs are Others and Mine; the Featured and Recent groups sit under Others.
+The visible `Compatible with your game version` filter defaults on and hides incompatible runs during ordinary browsing.
+Turning the filter off reveals incompatible runs as disabled rows.
+An exact code does that automatically, selects its run in the sorted position, and shows both the required build and the current build.
+Established multiplayer runs and incompatible runs still hidden by the filter remain counted.
 A transport failure is stated inside the browser while direct run-code lookup remains available.
-Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup
-judge live, every time they open.
+Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup judge live every time they open.
 
 **Two states the design names are derived and not reachable, for reasons outside this
 module.** The plate's console-command state - play rows offered, Submit refused, "A
@@ -806,7 +810,7 @@ run strip, the deck tiles, the relic row and the portrait; and the run-history p
 flat under the game's pane. Those are scene work against furniture this mod has no path
 to instantiate or measure, so the same headings, the same rows, the same refusals and the
 same sentences are shown in the game's own modal instead. Named in the design's own
-terms: the Community list's grouping is a summary line in the popup's body over one flat
+terms: the Others list's grouping is a summary line in the popup's body over one flat
 row column rather than headed sections; the run strip with played fights ticked and the
 selected position ringed is a "Choose a floor" row; and the deck at the selected position
 and the fight pane are not drawn at all. The vocabulary, the offers and the rules are the

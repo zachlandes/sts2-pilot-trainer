@@ -33,6 +33,7 @@ internal static class RunBrowserScreen
     private static readonly Dictionary<int, LookupRequest> PendingLookupRequests = [];
     private static readonly Dictionary<int, Task<SharedRun?>> PendingLookups = [];
     private static string? indexFailure;
+    private static string? indexFailureScope;
     private static int nextRequest;
 
     /// <summary>Opens the library on the tab a player lands on: everybody's runs.</summary>
@@ -136,11 +137,11 @@ internal static class RunBrowserScreen
             LibraryCopy.Back,
             back: static () => { });
         var request = Interlocked.Increment(ref nextRequest);
-        var task = RunLibrary.FetchIndexAsync();
+        var task = RunLibrary.FetchIndexAsync(out var scope);
         lock (PendingLock)
         {
             PendingIndexRequests[request] = new IndexRequest(
-                tab, compatibleOnly, selectedRunId, surface);
+                tab, compatibleOnly, selectedRunId, surface, scope);
             PendingIndexes[request] = task;
         }
         _ = task.ContinueWith(
@@ -163,27 +164,48 @@ internal static class RunBrowserScreen
             PendingIndexRequests.Remove(request);
         }
 
+        if (!RunLibrary.IsCurrentSharingScope(state.Scope))
+        {
+            if (LibraryScreen.IsCurrent(state.Surface))
+            {
+                LibraryScreen.Dismiss();
+                OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedRunId);
+            }
+            return;
+        }
+
         var failed = !task.IsCompletedSuccessfully;
         try
         {
             if (!failed)
             {
-                RunLibrary.AcceptIndex(task.Result);
+                if (!RunLibrary.AcceptIndex(task.Result, state.Scope))
+                {
+                    if (LibraryScreen.IsCurrent(state.Surface))
+                    {
+                        LibraryScreen.Dismiss();
+                        OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedRunId);
+                    }
+                    return;
+                }
                 indexFailure = null;
+                indexFailureScope = null;
             }
         }
         catch (Exception ex)
         {
             failed = true;
             indexFailure = LibraryCopy.FetchRunIndexFailed;
+            indexFailureScope = state.Scope;
             Log.Error(
                 $"[{RunmobileMod.ModId}] could not accept the run index: {ex.Message}", 2);
         }
 
         if (failed)
         {
-            RunLibrary.RefuseIndex();
+            RunLibrary.RefuseIndex(state.Scope);
             indexFailure = LibraryCopy.FetchRunIndexFailed;
+            indexFailureScope = state.Scope;
             if (!task.IsCompletedSuccessfully)
             {
                 Log.Error($"[{RunmobileMod.ModId}] could not fetch the run index: " +
@@ -199,7 +221,7 @@ internal static class RunBrowserScreen
     }
 
     private sealed record IndexRequest(
-        int Tab, bool CompatibleOnly, string? SelectedRunId, long Surface);
+        int Tab, bool CompatibleOnly, string? SelectedRunId, long Surface, string Scope);
 
     /// <summary>
     /// One run, opened at a floor.
@@ -355,10 +377,10 @@ internal static class RunBrowserScreen
                 LibraryCopy.Back,
                 back: static () => { });
             var request = Interlocked.Increment(ref nextRequest);
-            var task = RunLibrary.FindSharedAsync(code);
+            var task = RunLibrary.FindSharedAsync(code, out var scope);
             lock (PendingLock)
             {
-                PendingLookupRequests[request] = new LookupRequest(code, fromMyRuns, surface);
+                PendingLookupRequests[request] = new LookupRequest(code, fromMyRuns, surface, scope);
                 PendingLookups[request] = task;
             }
             _ = task.ContinueWith(
@@ -386,6 +408,15 @@ internal static class RunBrowserScreen
             PendingLookupRequests.Remove(request);
         }
 
+        if (!RunLibrary.IsCurrentSharingScope(state.Scope))
+        {
+            if (LibraryScreen.IsCurrent(state.Surface))
+            {
+                LibraryScreen.Dismiss();
+                OpenTab(state.FromMyRuns ? LibraryTab.MyRuns : LibraryTab.Community);
+            }
+            return;
+        }
         if (!LibraryScreen.IsCurrent(state.Surface)) return;
         LibraryScreen.Dismiss();
 
@@ -393,7 +424,8 @@ internal static class RunBrowserScreen
         {
             try
             {
-                var shared = RunLibrary.AcceptShared(found, state.Code);
+                var shared = RunLibrary.AcceptShared(
+                    found, state.Code, expectedScope: state.Scope);
                 var lookup = RunBrowser.Lookup(
                     shared.Run.RunId, [shared.Run], RunLibrary.ThisBuild());
                 if (lookup.Outcome == LookupOutcome.Found)
@@ -450,7 +482,7 @@ internal static class RunBrowserScreen
             back: () => OpenTab(fromMyRuns ? LibraryTab.MyRuns : LibraryTab.Community));
     }
 
-    private sealed record LookupRequest(string Code, bool FromMyRuns, long Surface);
+    private sealed record LookupRequest(string Code, bool FromMyRuns, long Surface, string Scope);
 
     /// <summary>
     /// Stands the player where the row says, through the one entry there is.
@@ -523,7 +555,9 @@ internal static class RunBrowserScreen
         {
             body.Append("\n\n").Append(LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable));
         }
-        else if (indexFailure is { Length: > 0 } failure)
+        else if (indexFailure is { Length: > 0 } failure &&
+                 indexFailureScope is { } failureScope &&
+                 RunLibrary.IsCurrentSharingScope(failureScope))
         {
             body.Append("\n\n").Append(LibraryMarkup.Dim(failure));
         }

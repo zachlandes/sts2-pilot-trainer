@@ -14,9 +14,9 @@ namespace Sts2PilotTrainer.Mod;
 /// The third module in the shell, and the one with the most surface. It owns four
 /// things and they are one screen rather than four features - a card in the
 /// Compendium, the browser behind it, one run opened, and the plate under the game's
-/// own run-history pane. All four speak the same vocabulary and obey the same two
-/// settled rules: a player plays <em>from</em> a run, and a run this game cannot play
-/// is not in the list at all.
+/// own run-history pane. All four speak the same vocabulary and obey the same rule:
+/// a player plays <em>from</em> a run. Compatibility is a visible filter that defaults
+/// on; exact-code lookup can clear it and select one disabled incompatible row.
 ///
 /// <para><b>After the fact, always.</b> Nothing here is reachable while a run is being
 /// played. The Compendium is a main-menu surface, and the run-history plate says so in

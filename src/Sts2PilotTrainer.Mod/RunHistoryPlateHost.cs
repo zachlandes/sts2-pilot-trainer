@@ -53,6 +53,7 @@ internal static class RunHistoryPlateHost
     private static readonly object PendingLock = new();
     private static readonly Dictionary<int, Task<SharedRun>> PendingShares = [];
     private static readonly Dictionary<int, long> PendingShareSurfaces = [];
+    private static readonly Dictionary<int, string> PendingShareScopes = [];
     private static readonly HashSet<long> SubmittingSurfaces = [];
     private static int nextShare;
 
@@ -296,13 +297,15 @@ internal static class RunHistoryPlateHost
                 throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
             var request = Interlocked.Increment(ref nextShare);
             var task = RunLibrary.ShareAsync(
-                recording, new ShareSubmission(name, description, displayName, consent));
+                recording, new ShareSubmission(name, description, displayName, consent),
+                out var scope);
             lock (PendingLock)
             {
                 SubmittingSurfaces.Remove(formSurface);
                 SubmittingSurfaces.Add(loadingSurface);
                 PendingShares[request] = task;
                 PendingShareSurfaces[request] = loadingSurface;
+                PendingShareScopes[request] = scope;
             }
             _ = task.ContinueWith(
                 static (_, value) => Callable.From(() => CompleteShare((int)value!)).CallDeferred(),
@@ -328,22 +331,26 @@ internal static class RunHistoryPlateHost
     {
         Task<SharedRun> task;
         long surface;
+        string scope;
         lock (PendingLock)
         {
             task = PendingShares[request];
             surface = PendingShareSurfaces[request];
+            scope = PendingShareScopes[request];
             PendingShares.Remove(request);
             PendingShareSurfaces.Remove(request);
+            PendingShareScopes.Remove(request);
             SubmittingSurfaces.Remove(surface);
         }
 
+        if (!RunLibrary.IsCurrentSharingScope(scope)) return;
         SharedRun? shared = null;
         Exception? failure = task.Exception?.GetBaseException();
         if (task.IsCompletedSuccessfully)
         {
             try
             {
-                shared = RunLibrary.AcceptShared(task.Result);
+                shared = RunLibrary.AcceptShared(task.Result, expectedScope: scope);
             }
             catch (Exception ex)
             {

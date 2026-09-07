@@ -98,11 +98,10 @@ public sealed record RunBrowser(
     /// <summary>
     /// What a run code answers with.
     ///
-    /// The one surface on which a run this game cannot play is described at all, and
-    /// the reason it exists: a player who typed a code asked about one particular run,
-    /// and answering "no such run" about a run that plainly exists would be the library
-    /// lying to them. A player who did not type a code is owed a list of runs that
-    /// work, which is why nothing here puts a row in the list.
+    /// A player who typed a code asked about one particular run, and answering "no such
+    /// run" about a run that plainly exists would be the library lying to them.
+    /// An incompatible result clears the compatibility filter and selects its disabled
+    /// row; the other refusals remain popup answers.
     ///
     /// <para><b>The design specifies two refusals and this build answers four.</b> Its
     /// two are the build sentence with its sub-line and the multiplayer sentence with
@@ -241,7 +240,6 @@ public sealed record RunLookup(
 {
     public string Back => LibraryCopy.Back;
 
-    /// <summary>Whether this answer is a popup rather than a selection in the
-    /// list.</summary>
+    /// <summary>Whether this answer refuses entry into the run.</summary>
     public bool Refused => Outcome != LookupOutcome.Found;
 }

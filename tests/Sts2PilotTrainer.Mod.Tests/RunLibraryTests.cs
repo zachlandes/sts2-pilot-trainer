@@ -356,6 +356,85 @@ public sealed class RunLibraryStoreTests : IDisposable
     }
 
     [GameFact]
+    public void SharingStateDoesNotCrossProfileOrEndpointBoundaries()
+    {
+        ConfigureEndpoint(_root, "https://one.example.test/v1/");
+        var shared = Shared(Recording($"scoped-{Guid.NewGuid():N}"));
+        var summary = SummaryFor(shared);
+        var firstScope = RunLibrary.CurrentSharingScope();
+        RunLibrary.AcceptIndex([summary]);
+        RunLibrary.AcceptShared(shared, expectedScope: firstScope);
+        Assert.False(RunLibrary.ShouldFetchIndex);
+
+        ConfigureEndpoint(_root, "https://two.example.test/v1/");
+        Assert.True(RunLibrary.SharingAvailable);
+        Assert.True(RunLibrary.ShouldFetchIndex);
+        Assert.Null(RunLibrary.ShareCodeFor(shared.Run.RunId));
+        Assert.False(RunLibrary.AcceptIndex([summary], firstScope));
+        Assert.Throws<ShareValidationException>(() =>
+            RunLibrary.AcceptShared(shared, expectedScope: firstScope));
+
+        var secondScope = RunLibrary.CurrentSharingScope();
+        RunLibrary.AcceptIndex([summary], secondScope);
+        Assert.False(RunLibrary.ShouldFetchIndex);
+        var secondProfile = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
+        Directory.CreateDirectory(secondProfile);
+        ConfigureEndpoint(secondProfile, "https://two.example.test/v1/");
+
+        Assert.True(RunLibrary.SharingAvailable);
+        Assert.True(RunLibrary.ShouldFetchIndex);
+        Assert.Null(RunLibrary.ShareCodeFor(shared.Run.RunId));
+    }
+
+    [GameFact]
+    public void DownloadedRunMustMatchManifestDerivedIndexMetadata()
+    {
+        var shared = Shared(Recording($"bound-{Guid.NewGuid():N}"));
+        var summary = SummaryFor(shared);
+        var differentEnvironment = summary.Environment with
+        {
+            Seed = summary.Environment.Seed with { Value = "DIFFERENT" },
+        };
+        IReadOnlyList<SharedRunSummary> mismatches =
+        [
+            summary with { Run = summary.Run with { RunId = "different-run" } },
+            summary with { Run = summary.Run with { Character = "CHARACTER.SILENT" } },
+            summary with { Run = summary.Run with { Fights = [1] } },
+            summary with { Run = summary.Run with { Outcome = LibraryRun.WonOutcome } },
+            summary with { Environment = differentEnvironment },
+            summary with { SourceKind = "video" },
+            summary with
+            {
+                Submission = summary.Submission with { Description = "Different" },
+            },
+        ];
+
+        foreach (var mismatch in mismatches)
+        {
+            RunLibrary.AcceptIndex([mismatch]);
+            var error = Assert.Throws<ShareValidationException>(() =>
+                RunLibrary.AcceptShared(shared, shared.Code));
+            Assert.Contains("run index entry", error.Message, StringComparison.Ordinal);
+        }
+    }
+
+    [GameFact]
+    public void DownloadedRunDoesNotTreatCurationAsManifestIdentity()
+    {
+        var shared = Shared(Recording($"curated-{Guid.NewGuid():N}"));
+        var advertised = SummaryFor(shared) with
+        {
+            SubmittedAt = shared.SubmittedAt.AddDays(1),
+            Featured = !shared.Featured,
+        };
+        RunLibrary.AcceptIndex([advertised]);
+
+        var accepted = RunLibrary.AcceptShared(shared, shared.Code);
+
+        Assert.Equal(shared.ShareId, accepted.ShareId);
+    }
+
+    [GameFact]
     public void LightweightIndexIdentityUsesTheEnvironmentPreflight()
     {
         var recording = Recording("shared-a");
@@ -404,6 +483,33 @@ public sealed class RunLibraryStoreTests : IDisposable
             RunmobileStore.UseRootForTesting(_root);
             RunLibrary.AcceptIndex([]);
         }
+    }
+
+    private static SharedRun Shared(ReplayManifest recording)
+    {
+        var manifestJson = ManifestJson.Serialize(recording);
+        var submission = new ShareSubmission("Run", "", "Ada", true);
+        var shareId = SharedRunIdentity.For(manifestJson, submission);
+        return new SharedRun(
+            shareId,
+            SharedRunIdentity.CodeFor(shareId),
+            manifestJson,
+            submission,
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Absent) with
+            {
+                Creator = submission.DisplayName,
+            },
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
+    }
+
+    private static SharedRunSummary SummaryFor(SharedRun shared) => shared.Summary;
+
+    private static void ConfigureEndpoint(string root, string endpoint)
+    {
+        RunmobileStore.UseRootForTesting(root);
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","sharing_service_url":"{{endpoint}}"}""");
     }
 
     private void Write(string name, string content) =>
