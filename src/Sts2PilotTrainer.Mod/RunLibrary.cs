@@ -42,6 +42,7 @@ internal static class RunLibrary
     private static readonly Dictionary<int, ShareSubmission> PendingSubmissions = [];
     private static readonly Dictionary<int, string> PendingSharingEndpoints = [];
     private static readonly Dictionary<int, string> PendingSharingScopes = [];
+    private static readonly Dictionary<int, TaskCompletionSource<SharedRun>> PendingSharingResults = [];
 
     /// <summary>
     /// Every run, listed or not, with the verdict that decides which.
@@ -264,47 +265,104 @@ internal static class RunLibrary
         scope = CurrentSharingScope();
         var gate = PublicationGate.RunAsync(recording);
         var request = Interlocked.Increment(ref nextSubmission);
+        var result = new TaskCompletionSource<SharedRun>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
         lock (PendingSubmissionLock)
         {
             PendingManifestJson[request] = ManifestJson.Serialize(recording);
             PendingSubmissions[request] = submission;
             PendingSharingEndpoints[request] = endpoint;
             PendingSharingScopes[request] = scope;
+            PendingSharingResults[request] = result;
         }
-        return gate.ContinueWith(
-            static (completed, value) => CompletePublicationGate(completed, (int)value!),
+        _ = gate.ContinueWith(
+            static (completed, value) =>
+            {
+                var request = (int)value!;
+                Godot.Callable.From(() => CompletePublicationGate(completed, request)).CallDeferred();
+            },
             request,
             CancellationToken.None,
             TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default).Unwrap();
+            TaskScheduler.Default);
+        return result.Task;
     }
 
-    private static Task<SharedRun> CompletePublicationGate(Task<bool> completed, int request)
+    private static void CompletePublicationGate(Task<bool> completed, int request)
     {
         string manifestJson;
         ShareSubmission submission;
         string endpoint;
         string scope;
+        TaskCompletionSource<SharedRun> result;
         lock (PendingSubmissionLock)
         {
             manifestJson = PendingManifestJson[request];
             submission = PendingSubmissions[request];
             endpoint = PendingSharingEndpoints[request];
             scope = PendingSharingScopes[request];
+            result = PendingSharingResults[request];
             PendingManifestJson.Remove(request);
             PendingSubmissions.Remove(request);
             PendingSharingEndpoints.Remove(request);
             PendingSharingScopes.Remove(request);
+            PendingSharingResults.Remove(request);
         }
+
         if (!completed.IsCompletedSuccessfully)
-            throw completed.Exception?.GetBaseException()
-                ?? new ShareValidationException("Local validation could not finish.");
+        {
+            result.SetException(completed.Exception?.GetBaseException()
+                ?? new ShareValidationException("Local validation could not finish."));
+            return;
+        }
         if (!completed.Result)
-            throw new ShareValidationException("Local validation did not pass, so the run was not sent.");
+        {
+            result.SetException(new ShareValidationException(
+                "Local validation did not pass, so the run was not sent."));
+            return;
+        }
         if (!IsCurrentSharingScope(scope))
-            throw new ShareValidationException(
-                "The sharing profile changed before local validation finished, so the run was not sent.");
-        return SharingAt(endpoint).SubmitAsync(manifestJson, submission);
+        {
+            result.SetException(new ShareValidationException(
+                "The sharing profile changed before local validation finished, so the run was not sent."));
+            return;
+        }
+
+        Task<SharedRun> submissionTask;
+        try
+        {
+            submissionTask = SharingAt(endpoint).SubmitAsync(manifestJson, submission);
+        }
+        catch (Exception ex)
+        {
+            result.SetException(ex);
+            return;
+        }
+
+        _ = submissionTask.ContinueWith(
+            static (finished, value) => CompleteSubmission(finished, (TaskCompletionSource<SharedRun>)value!),
+            result,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private static void CompleteSubmission(
+        Task<SharedRun> completed, TaskCompletionSource<SharedRun> result)
+    {
+        if (completed.IsCompletedSuccessfully)
+        {
+            result.SetResult(completed.Result);
+        }
+        else if (completed.IsCanceled)
+        {
+            result.SetCanceled();
+        }
+        else
+        {
+            result.SetException(completed.Exception?.GetBaseException()
+                ?? new ShareValidationException("Sharing could not finish."));
+        }
     }
 
     private static bool IndexDescribes(
