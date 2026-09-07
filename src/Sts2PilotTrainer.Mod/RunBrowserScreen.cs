@@ -395,7 +395,7 @@ internal static class RunBrowserScreen
                     shared.Run.RunId, [shared.Run], RunLibrary.ThisBuild());
                 if (lookup.Outcome == LookupOutcome.Found)
                 {
-                    OpenRun(shared.Run.RunId);
+                    OpenRun(shared.Run.RunId, fromMyRuns: state.FromMyRuns);
                     return;
                 }
 
@@ -409,9 +409,10 @@ internal static class RunBrowserScreen
                 var remoteBody = lookup.Note is { Length: > 0 } remoteNote
                     ? $"{lookup.Body}\n\n{LibraryMarkup.Dim(remoteNote)}"
                     : lookup.Body;
+                var backToMyRuns = state.FromMyRuns;
                 LibraryScreen.Show(
                     lookup.Title, remoteBody, [], lookup.Back,
-                    back: () => OpenTab(LibraryTab.Community));
+                    back: () => OpenTab(backToMyRuns ? LibraryTab.MyRuns : LibraryTab.Community));
                 return;
             }
             catch (Exception ex)

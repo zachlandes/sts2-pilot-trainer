@@ -375,6 +375,70 @@ public sealed class RunLibraryStoreTests : IDisposable
     }
 }
 
+public sealed class OnlineIndexTests
+{
+    [Fact]
+    public void FeaturedAndRecentUseTransportClassificationAndSubmissionTime()
+    {
+        var recording = RunLibraryStoreTests.BareRecording("source");
+        var featured = Summary(
+            recording,
+            Run("featured", RunOrigin.Mine, recorded: null),
+            submitted: "2026-09-01T00:00:00Z",
+            featured: true);
+        var newer = Summary(
+            recording,
+            Run("newer", RunOrigin.Featured, recorded: null),
+            submitted: "2026-09-03T00:00:00Z");
+        var older = Summary(
+            recording,
+            Run("older", RunOrigin.Mine, recorded: DateTimeOffset.MaxValue),
+            submitted: "2026-09-02T00:00:00Z");
+        var accepted = new[] { featured, older, newer }
+            .Select(item => RunLibrary.OnlineRun(item, RunVerdict.Passed))
+            .ToArray();
+
+        var browser = RunBrowser.For(LibraryTab.Community, accepted, "v0.111.0");
+
+        Assert.Equal(
+            [LibraryCopy.FeaturedGroup, LibraryCopy.RecentGroup],
+            browser.Groups.Select(group => group.Heading));
+        Assert.Equal("featured", Assert.Single(browser.Groups[0].Runs).RunId);
+        Assert.Equal(["newer", "older"], browser.Groups[1].Runs.Select(run => run.RunId));
+    }
+
+    private static SharedRunSummary Summary(
+        ReplayManifest recording,
+        LibraryRun run,
+        string submitted,
+        bool featured = false) =>
+        new(
+            run.RunId,
+            run.RunId,
+            new ShareSubmission("Run", "", "Ada", true),
+            run,
+            recording.Environment,
+            recording.Source.Kind,
+            DateTimeOffset.Parse(submitted),
+            featured);
+
+    private static LibraryRun Run(
+        string runId, RunOrigin origin, DateTimeOffset? recorded) =>
+        new(
+            runId,
+            origin,
+            "Ada",
+            "Ironclad",
+            0,
+            "v0.111.0",
+            [1],
+            "won",
+            false,
+            RunVerdict.Unjudged,
+            [],
+            recorded);
+}
+
 /// <summary>
 /// What the run view's rows carry by the time the screen has them.
 ///

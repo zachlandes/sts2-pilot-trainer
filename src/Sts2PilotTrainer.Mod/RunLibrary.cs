@@ -123,7 +123,7 @@ internal static class RunLibrary
 
             var verdict = RunVerdicts.For(
                 item.Environment, item.SourceKind, item.Run.RunId, build);
-            accepted[item.Code] = item with { Run = item.Run with { Verdict = verdict } };
+            accepted[item.Code] = item with { Run = OnlineRun(item, verdict) };
         }
 
         SharedIndex.Clear();
@@ -131,6 +131,14 @@ internal static class RunLibrary
         indexRequested = false;
         indexLoaded = true;
     }
+
+    internal static LibraryRun OnlineRun(SharedRunSummary item, RunVerdict verdict) =>
+        item.Run with
+        {
+            Origin = item.Featured ? RunOrigin.Featured : RunOrigin.Recent,
+            Verdict = verdict,
+            Recorded = item.SubmittedAt,
+        };
 
     internal static void RefuseIndex()
     {
