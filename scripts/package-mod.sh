@@ -31,7 +31,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-./scripts/build.sh
+# Package the already prepared build without replacing build/lib underneath another process
+
+dotnet build src/Sts2PilotTrainer.Mod/Sts2PilotTrainer.Mod.csproj \
+  -c Release --nologo -v quiet
 
 mkdir -p "$work/arbiter" "$work/bootstrap" "$out_dir/payload"
 

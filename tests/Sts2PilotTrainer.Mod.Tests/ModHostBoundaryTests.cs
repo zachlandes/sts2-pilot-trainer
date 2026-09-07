@@ -238,12 +238,15 @@ public sealed class ModHostBoundaryTests
         var former = Path.Combine(mods, "CombatTrainer");
         Directory.CreateDirectory(former);
         File.WriteAllText(Path.Combine(former, "leftover.txt"), "old");
+        var preparedReceipt = Path.Combine(Arbiter.RepoRoot, "build", "lib", "prepared-assembly.json");
+        var receiptBeforeInstall = File.ReadAllBytes(preparedReceipt);
 
         try
         {
             var result = RunInstaller(mods);
 
             Assert.Equal(0, result.ExitCode);
+            Assert.Equal(receiptBeforeInstall, File.ReadAllBytes(preparedReceipt));
             Assert.False(Directory.Exists(former));
             var installed = Path.Combine(mods, "Runmobile");
             Assert.Equal(

@@ -135,7 +135,6 @@ internal static class RunLibrary
         RefreshSharingScope();
         if (!IsCurrentSharingScope(expectedScope)) return false;
         var accepted = new Dictionary<string, SharedRunSummary>(StringComparer.Ordinal);
-        var build = ThisBuild();
         foreach (var item in index)
         {
             if (!string.Equals(
@@ -145,8 +144,6 @@ internal static class RunLibrary
                     "The run index contains an invalid sharing identity.");
             }
 
-            var verdict = RunVerdicts.For(
-                item.Environment, item.SourceKind, item.Run.RunId, build);
             if (accepted.Values.Any(acceptedItem =>
                     string.Equals(acceptedItem.Code, item.Code, StringComparison.OrdinalIgnoreCase)))
             {
@@ -154,10 +151,7 @@ internal static class RunLibrary
                     "The run index assigns one sharing code to more than one run.");
             }
 
-            accepted[item.ShareId] = item with
-            {
-                Run = OnlineRun(item, verdict),
-            };
+            accepted[item.ShareId] = item;
         }
 
         SharedIndex.Clear();

@@ -521,7 +521,7 @@ public sealed class RunLibraryStoreTests : IDisposable
     }
 
     [GameFact]
-    public void SharedProgressIsReadLiveFromTheCurrentProfile()
+    public void SharedProgressAndIndexAreScopedToTheCurrentProfile()
     {
         var runId = $"shared-progress-{Guid.NewGuid():N}";
         var recording = Recording(runId);
@@ -548,7 +548,7 @@ public sealed class RunLibraryStoreTests : IDisposable
             var secondProfile = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
             Directory.CreateDirectory(secondProfile);
             RunmobileStore.UseRootForTesting(secondProfile);
-            Assert.Empty(RunLibrary.Runs().Single(run => run.RunId == runId).FightsPlayed);
+            Assert.DoesNotContain(RunLibrary.Runs(), run => run.RunId == runId);
         }
         finally
         {
