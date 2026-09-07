@@ -8,7 +8,7 @@ public enum LibraryTab
     MyRuns,
 }
 
-/// <summary>One headed run set in the list. A heading of null is the My runs list,
+/// <summary>One headed run set in the list. A heading of null is the Mine list,
 /// which is one set and does not head itself.</summary>
 public sealed record BrowserGroup(string? Heading, IReadOnlyList<LibraryRun> Runs);
 

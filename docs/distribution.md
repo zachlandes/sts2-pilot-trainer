@@ -42,7 +42,8 @@ It also contains a platform-specific, self-contained `arbiter/` directory so `Sh
 It remains DLL-only in the game's packaging terms: `has_pck: false`, `dependencies: []`, `affects_gameplay: false`.
 `./scripts/package-mod.sh` produces the distributable archive with a self-contained preparation tool and `install.sh` beside the mod payload.
 After extraction, `./install.sh` installs that payload without a repository checkout or a system .NET runtime.
-That installer prepares a private, receipted copy of the player's own game assemblies under `arbiter/lib/` and routes engine writes into the profile-scoped Runmobile store before atomically replacing the installed mod.
+That installer prepares a private, receipted copy of the player's own game assemblies under `arbiter/lib/` before atomically replacing the installed mod.
+When publication runs, the installed arbiter routes its engine writes into a temporary workspace inside the profile-scoped Runmobile store.
 The published archive contains no game assembly; the prepared copy is made locally from the installation during install.
 It also contains no sharing endpoint.
 Online sharing is enabled only when the profile-scoped `settings.json` explicitly names an absolute HTTPS `sharing_service_url` without embedded credentials, a query, or a fragment.

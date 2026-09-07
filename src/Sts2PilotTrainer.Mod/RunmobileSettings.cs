@@ -60,7 +60,7 @@ internal sealed record RunmobileSettings
     [JsonPropertyName("record_my_runs")]
     public bool RecordMyRuns { get; init; } = true;
 
-    /// <summary>Whether the community run index is fetched. This never submits a run.</summary>
+    /// <summary>Whether the shared-run index for Others is fetched. This never submits a run.</summary>
     [JsonPropertyName("fetch_run_index")]
     public bool FetchRunIndex { get; init; } = true;
 

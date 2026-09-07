@@ -110,7 +110,7 @@ public static class LibraryCopy
 
     public const string ShareSubmit = "Share";
 
-    /// <summary>What the player's own runs occupy, under the My runs list.</summary>
+    /// <summary>What the player's own runs occupy, under the Mine list.</summary>
     public static string MyRunsFooter(int runs, string size) =>
         $"{runs.ToString(CultureInfo.InvariantCulture)} runs, {size} on this computer";
 

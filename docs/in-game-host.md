@@ -28,11 +28,12 @@ S7's session did run the renamed shell, which is what establishes the row below;
 
 ## What it proves
 
-**Retail loading of the renamed artifact is established, mod list included.**
+**Retail loading of the renamed core artifact is established, mod list included.**
 The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.dll`, the four project-owned libraries the host uses, and the self-contained local publication arbiter under `arbiter/`.
-The S7 transport session installed that package with `install-mod.sh`, launched the shipped client with it as the only enabled mod, and ran the whole watched journey through it - so discovery, initialization and a complete session through the renamed shell are shown, and the protected-files ledger of that session is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp.
+The S7 transport session predates the packaged arbiter: it installed the core Runmobile payload with `install-mod.sh`, launched the shipped client with it as the only enabled mod, and ran the whole watched journey through it.
+That session establishes discovery, initialization and a complete journey through the renamed shell, and its protected-files ledger is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp; it does not establish the newer publication package in retail.
 The game's own mod line naming `Runmobile` is photographed in that session's record, so the row no longer rests on the pre-rename `CombatTrainer` screenshots.
-The libraries are built to ship together; there is no separately installed framework or runtime dependency, and no resource pack.
+The libraries and arbiter are built to ship together; there is no separately installed framework or runtime dependency, and no resource pack.
 
 **The eligibility answer comes from the same owner the arbiter uses.**
 `Preflight.EvaluateLiveHost` reads this process's game and judges it through
@@ -776,16 +777,16 @@ Established multiplayer runs and incompatible runs still hidden by the filter re
 A transport failure is stated inside the browser while direct run-code lookup remains available.
 Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup judge live every time they open.
 
-**Two states the design names are derived and not reachable, for reasons outside this
+**One state the design names is derived and not reachable, for a reason outside this
 module.** The plate's console-command state - play rows offered, Submit refused, "A
-console command was used, so it can't be submitted." - is not one of them any more: the
+console command was used, so it can't be submitted." - is not that state any more: the
 recorder writes `source.native.integrity`, and `RunHistoryPlateHost.FactsFor` reads it
 through `NativeSource.StatesSomethingOtherThanComplete`, which owns the comparison.
 That reading answers `ConsoleUsed` null where a recording states no integrity at all, because
 absent is not a clean run under another name and a plate reporting one it never checked is the
 claim `AGENTS.md` forbids. From format v6 the field is required and a version-5 file reads as
 `complete` through the migration, so no manifest this build parses reaches that answer.
-The browser's multiplayer rule is the first that is still unreachable.
+The browser's multiplayer rule is the state that is still unreachable.
 `LibraryRun.Listed` hides an established multiplayer run and `RunBrowser.Lookup` answers a
 run code for one with the multiplayer body, both correctly, and nothing supplies the fact:
 `LibraryRun.Multiplayer` is null on every run the library builds, so neither arm is
@@ -796,14 +797,15 @@ hidden rule hides what was established and never a question nobody asked.
 The reading it waits on is a recording that says which kind of run it was, and no manifest
 field carries one: the recorder attaches to singleplayer runs only, so nothing writes a
 session kind for the library to read.
-Both arms become reachable when something does, with no change here.
+Both arms become reachable when something supplies that fact, with no change here.
 
-The Submit row is the second, and it is the one that shows.
-`SubmitAvailable` is true only when this profile's `settings.json` names an authorized `sharing_service_url`; without one, the row stays in place refused and the browser says online sharing is unavailable.
-There is no built-in endpoint.
+The Submit row shows and is available only when this profile's `settings.json` names an authorized `sharing_service_url`; without one, the row stays in place refused and the browser says online sharing is unavailable.
+There is no built-in endpoint and no setting that automatically shares a run.
 A configured endpoint must be absolute HTTPS without embedded credentials, a query, or a fragment, and any other value makes no network request.
-Submitting sends the complete manifest and the entered name, description, display name, and CC0 consent only after the local publication gate passes.
-Index fetching and exact-code lookup use that same configured service boundary.
+The single popup shows the run's identity and integrity seals, takes a required name of at most 40 characters and an optional description of at most 200, and requires a display name for submission.
+It says no other personal information travels, requires explicit CC0 consent, and says validation runs locally before anything is sent.
+Only after that local publication gate passes does submitting send the complete manifest and the entered name, description, display name, and consent.
+Index fetching and exact-code lookup use that same configured service boundary; the `fetch_run_index` setting defaults on and controls index retrieval only.
 
 **What the accepted design draws and this does not.** The browser's parchment tabs, the
 run strip, the deck tiles, the relic row and the portrait; and the run-history plate hung
@@ -873,7 +875,8 @@ floor identity a "play this fight" action would need - alongside its private
 
 ```bash
 ./scripts/build.sh                       # bootstrap the game assembly copy, build everything
-./scripts/install-mod.sh                 # build the mod and install it into the game's mods directory
+./scripts/package-mod.sh                 # build the distributable package without game content
+./scripts/install-mod.sh                 # package, prepare, and install the mod
 ./scripts/install-mod.sh --uninstall     # remove it again
 ./scripts/protected-files.sh snapshot before.ledger   # hash everything the mod must not change
 ./scripts/protected-files.sh compare  before.ledger   # ... and say what a session changed
