@@ -675,10 +675,11 @@ public static partial class ManifestValidator
             if (verification is null) continue;
 
             var fight = coverage!.Fights.FirstOrDefault(entry => entry.CombatStartSeq == branch.RollbackToSeq);
-            var boundary = fight is null
+            var floor = coverage.Floors.FirstOrDefault(entry => entry.EnteredAfterSeq == branch.RollbackToSeq);
+            var boundary = fight is null || floor is null
                 ? null
                 : verification.Boundaries.FirstOrDefault(candidate =>
-                    candidate.IsCombatStart && candidate.Fight == fight.Fight &&
+                    candidate.Kind == ReplayBoundary.FloorEntryKind && candidate.Floor == floor.Floor &&
                     candidate.AfterSeq == branch.RollbackToSeq);
             if (boundary is null || boundary.Digest.Source != FactSource.Engine ||
                 !string.Equals(boundary.Digest.Value, branch.RollbackToDigest, StringComparison.Ordinal))

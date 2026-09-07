@@ -264,18 +264,22 @@ public sealed class FormatSixValidatorTests
                 {
                     Steps =
                     [
-                        TraceStep(-1, "none"),
-                        TraceStep(0, "none"),
-                        TraceStep(1, "in_progress"),
-                        TraceStep(2, "victory"),
+                        TraceStep(-1, "none", 1),
+                        TraceStep(0, "none", 1),
+                        TraceStep(1, "in_progress", 2),
+                        TraceStep(2, "victory", 2),
                     ],
                 },
-                Boundaries = [ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest))],
+                Boundaries =
+                [
+                    ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest)),
+                    ReplayBoundary.FloorEntry(2, 1, Fact<string>.Engine(Fixtures.Digest)),
+                ],
             },
         };
     }
 
-    private static ReplayStep TraceStep(int seq, string outcome) => new()
+    private static ReplayStep TraceStep(int seq, string outcome, int floor) => new()
     {
         Seq = seq,
         Verb = "test",
@@ -283,6 +287,7 @@ public sealed class FormatSixValidatorTests
         After = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["combat.outcome"] = outcome,
+            ["run.total_floor"] = floor.ToString(System.Globalization.CultureInfo.InvariantCulture),
         },
     };
 
