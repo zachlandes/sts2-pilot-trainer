@@ -1,30 +1,24 @@
 using HarmonyLib;
 using Sts2PilotTrainer.Replay;
-using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
 /// <summary>
-/// The Combat Trainer: stand in a recorded fight, play it, and see your line beside
-/// the recording's.
+/// The recorded-fight journey: it carries the recording this build ships, starts a
+/// player at one of its proved boundaries, and compares the finished fight.
 ///
-/// This is the module the proof of concept was, wrapped in the seam the other two
-/// features will arrive through. It owns the recording this build ships, the
-/// singleplayer card that opens the trainer, and the three patch classes the journey
-/// needs; it owns nothing about how the mod is loaded or how module cards are drawn.
-///
-/// Its recording is read here rather than by the shell because a build whose
-/// embedded recording cannot be read is a broken Combat Trainer, not a broken mod.
+/// Its recording is read here rather than by the shell because a build whose embedded
+/// recording cannot be read cannot offer its recorded fights.
 /// </summary>
-internal sealed class CombatTrainerModule : IRunmobileModule
+internal sealed class RecordedFightModule : IRunmobileModule
 {
-    internal static CombatTrainerModule Instance { get; } = new();
+    internal static RecordedFightModule Instance { get; } = new();
 
     /// <summary>
     /// The patch classes this module owns, listed rather than discovered.
     ///
     /// <c>PatchAll</c> over the assembly would install another module's patches too,
-    /// and would install these for a Combat Trainer that had refused to start.
+    /// and would install these for a recorded-fight journey that had refused to start.
     /// </summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
@@ -54,11 +48,11 @@ internal sealed class CombatTrainerModule : IRunmobileModule
     /// </summary>
     private readonly Dictionary<string, HashSet<int>> _shownThisSitting = new(StringComparer.Ordinal);
 
-    private CombatTrainerModule()
+    private RecordedFightModule()
     {
     }
 
-    public string Name => TrainerCopy.Name;
+    public string Name => "Recorded fights";
 
     public bool Enabled
     {
@@ -77,15 +71,6 @@ internal sealed class CombatTrainerModule : IRunmobileModule
             return _refusal;
         }
     }
-
-    public IReadOnlyList<MenuCard> MenuCards =>
-    [
-        new MenuCard(
-            "CombatTrainerButton",
-            TrainerCopy.Name,
-            () => RecordingIdentity.Description(Recording),
-            TrainerScreen.Open),
-    ];
 
     /// <summary>
     /// The recording this build ships. Established by <see cref="Enabled"/> before

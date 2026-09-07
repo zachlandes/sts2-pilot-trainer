@@ -31,10 +31,9 @@ public sealed class RunRecorderTests
     }
 
     [GameFact]
-    public void TheRecorderIsOneOfTheModulesTheShellInstallsAndDrawsNothing()
+    public void TheRecorderIsOneOfTheModulesTheShellInstalls()
     {
         Assert.Contains(RunmobileMod.Modules, module => ReferenceEquals(module, RecorderModule.Instance));
-        Assert.Empty(RecorderModule.Instance.MenuCards);
     }
 
     /// <summary>

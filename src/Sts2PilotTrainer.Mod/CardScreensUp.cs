@@ -10,7 +10,7 @@ namespace Sts2PilotTrainer.Mod;
 ///
 /// A fact about the game rather than about either feature, which is why it is the
 /// shell's. Both settles read it - the recorder's, to keep a reading off a decision
-/// somebody has not finished making, and the Combat Trainer's, so a prompt a played
+/// somebody has not finished making, and the recorded-fight journey's, so a prompt a played
 /// card opens does not spend the engine's budget - and neither of them owns it. Left
 /// behind the recorder's patches it would stop counting on a build the recorder
 /// declines to watch, which is exactly the build where the trainer is meant to carry

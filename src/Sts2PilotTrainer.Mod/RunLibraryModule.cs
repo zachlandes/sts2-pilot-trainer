@@ -34,9 +34,9 @@ internal sealed class RunLibraryModule : IRunmobileModule
     internal static RunLibraryModule Instance { get; } = new();
 
     /// <summary>
-    /// The patch classes this module owns, listed rather than discovered, for the
-    /// reason the Combat Trainer lists its own: <c>PatchAll</c> would install another
-    /// module's patches and would install these for a library that had refused.
+    /// The patch classes this module owns, listed rather than discovered: <c>PatchAll</c>
+    /// would install another module's patches and would install these for a library
+    /// that had refused.
     /// </summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
@@ -75,16 +75,6 @@ internal sealed class RunLibraryModule : IRunmobileModule
             return _refusal;
         }
     }
-
-    /// <summary>
-    /// The library has no singleplayer-menu card.
-    ///
-    /// Its way in is the Compendium, which is where the game already keeps the things
-    /// you look at rather than play - the card library, the bestiary, the run history.
-    /// A second card in the singleplayer menu would offer to browse from the screen
-    /// that starts runs, which is the one place browsing does not belong.
-    /// </summary>
-    public IReadOnlyList<MenuCard> MenuCards => [];
 
     public void Install(Harmony harmony)
     {

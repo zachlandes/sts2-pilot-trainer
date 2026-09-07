@@ -106,7 +106,7 @@ public sealed record CombatComparison
 
                 "Both lines were sampled by the real engine either side of every action, from the same " +
                 "combat-start boundary: a recording replayed headlessly, a fight a person played in the retail " +
-                "client with the Combat Trainer capturing it, or one of each. Which is which is stated by each " +
+                "client with the recorded-fight journey capturing it, or one of each. Which is which is stated by each " +
                 "side's source id, not judged here.",
             ],
         };

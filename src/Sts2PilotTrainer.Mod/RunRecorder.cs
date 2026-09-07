@@ -28,7 +28,7 @@ namespace Sts2PilotTrainer.Mod;
 /// <summary>
 /// Watches the player play their own run and writes it down as a native recording.
 ///
-/// It is the Combat Trainer's observer widened to a whole run. The same principle
+/// It is the recorded-fight journey's observer widened to a whole run. The same principle
 /// holds: it issues nothing, decides nothing, and changes nothing about the run. Every
 /// patch here reads its arguments and returns; the run saves normally, the write
 /// barrier is never raised, and the only thing written is this mod's own journal and
@@ -1149,7 +1149,7 @@ internal sealed class RunRecorder : IDisposable
             }
 
             // The recorder draws nothing, so it has nothing to re-derive when a sample
-            // is taken; the transport's callback is the Combat Trainer's.
+            // is taken; the transport's callback is the recorded-fight journey's.
             _observer = PlayerFightObserver.Start(
                 run.Players[0], LiveRun.Sample, FightSink(), () => { }, () => { });
             return;
@@ -1542,7 +1542,7 @@ internal sealed class RunRecorder : IDisposable
     internal static Type[] ProcessConsoleCommandArguments => [typeof(Player), typeof(string), typeof(string[])];
 
     /// <summary>Every patch class this module installs, listed rather than discovered:
-    /// <c>PatchAll</c> over the assembly would install the Combat Trainer's too.</summary>
+    /// <c>PatchAll</c> over the assembly would install the recorded-fight journey's too.</summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
         typeof(NewRun), typeof(ContinuedRun), typeof(RunOver), typeof(RunTeardown),

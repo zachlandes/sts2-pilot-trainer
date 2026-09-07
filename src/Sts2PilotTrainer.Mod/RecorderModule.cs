@@ -7,9 +7,8 @@ namespace Sts2PilotTrainer.Mod;
 /// <summary>
 /// The recorder: every run the player plays becomes a recording of their own.
 ///
-/// The second module in the shell, and the one with no surface at all. It contributes
-/// no menu card and draws nothing; what it does is watch, and the only thing a player
-/// sees is that their runs turn up in the store afterwards. The settings row that
+/// The recorder watches rather than being a destination. The only thing a player sees
+/// is that their runs turn up in the store afterwards. The settings row that
 /// turns it off arrives with the rest of Runmobile's own drawing; until then the
 /// toggle is a line in <see cref="RunmobileSettings"/>.
 ///
@@ -55,9 +54,6 @@ internal sealed class RecorderModule : IRunmobileModule
         }
     }
 
-    /// <summary>The recorder has no surface in this release.</summary>
-    public IReadOnlyList<MenuCard> MenuCards => [];
-
     public void Install(Harmony harmony)
     {
         foreach (var patchClass in RunRecorder.PatchClasses)
@@ -65,9 +61,8 @@ internal sealed class RecorderModule : IRunmobileModule
             harmony.CreateClassProcessor(patchClass).Patch();
         }
 
-        // The screens themselves are the shell's, because a screen being up is a fact
-        // about the game that the Combat Trainer's settle reads too. What was answered
-        // is this feature's, so it subscribes rather than patching them a second time.
+        // The screens are the shell's, because a screen being up is a fact every
+        // observer needs. What was answered is this feature's, so it subscribes.
         RunRecorder.ReadTheAnswers();
 
         InstallPresenceRow(harmony);

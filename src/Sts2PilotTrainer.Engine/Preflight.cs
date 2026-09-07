@@ -26,9 +26,9 @@ public static class Preflight
     /// run's generation will read.
     /// </summary>
     /// <param name="progress">
-    /// Which unlock state to check. The Combat Trainer passes the supplied state it
-    /// will construct the recorded run with; callers asking whether a player could
-    /// start a run themselves pass <see cref="PlayerProgress.LocalProfile"/>.
+    /// Which unlock state to check. A recorded-fight journey passes the supplied state
+    /// it will construct the run with; callers asking whether a player could start a
+    /// run themselves pass <see cref="PlayerProgress.LocalProfile"/>.
     /// </param>
     /// <param name="sourceKind">
     /// What kind of recording this environment belongs to. It selects the mod rule:
@@ -62,32 +62,4 @@ public static class Preflight
             Evaluate(expected, PlayerProgress.LocalProfile, sourceKind),
             EvaluateStartedRun(expected));
 
-    /// <summary>
-    /// Both gates as the in-game host asks them: the same rules over one reading,
-    /// with the two verdicts kept apart.
-    ///
-    /// Same owners, same order, nothing softened. Both gates are judged from a single
-    /// reading, so a screen can never show a row measured at one moment beside a
-    /// verdict measured at another, and a host can distinguish "you have not started
-    /// the run yet" from "your install cannot play this". Where a run exists
-    /// <see cref="EnvironmentPreflight.RunIdentity"/> is still authoritative. See
-    /// <see cref="LivePreflight"/>.
-    /// </summary>
-    /// <param name="progress">
-    /// Whose progress the prerequisites are asked about, and the one thing a host has
-    /// to decide for itself. A host asking whether the player could play this run
-    /// themselves passes <see cref="PlayerProgress.LocalProfile"/>. A host that
-    /// constructs the run passes the state it will construct it with, because that is
-    /// the environment the run is actually generated in - and a screen that showed a
-    /// requirement measured against a profile nothing consults would be reporting a
-    /// requirement that is not one. Named rather than defaulted: which question is
-    /// being asked is the whole difference between the two answers.
-    /// </param>
-    public static LivePreflight EvaluateLiveHost(
-        EnvironmentIdentity expected, PlayerProgress progress, string sourceKind = "vod") =>
-        EnvironmentPreflight.LiveGame(
-            expected,
-            LocalEnvironment.ReadPrerequisites(expected, progress),
-            LocalEnvironment.ReadStartedRun(),
-            sourceKind);
 }

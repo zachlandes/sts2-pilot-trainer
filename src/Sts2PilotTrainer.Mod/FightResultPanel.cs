@@ -28,7 +28,7 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class FightResultPanel
 {
-    internal const string RootName = "CombatTrainerResult";
+    internal const string RootName = "RunmobileFightResult";
 
     // ── The palette ────────────────────────────────────────────────────────
     //

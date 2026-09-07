@@ -107,23 +107,6 @@ public sealed class RecordedFightEntry : IDisposable
     public Task? Pending => _driver.Pending;
 
     /// <summary>
-    /// Whether this game can construct the recording's run, asked before offering to.
-    ///
-    /// The same rules as everywhere else, over the progress model the run will
-    /// actually be generated against. The eligibility screen asks the same question,
-    /// so no saved-profile shortfall is presented as blocking a run that does not
-    /// consult it.
-    /// </summary>
-    public static bool CanConstruct(
-        ReplayManifest recording, out PreflightResult gate,
-        PlayerProgress? progress = null)
-    {
-        gate = Preflight.Evaluate(
-            recording.Environment, progress ?? SuppliedProgressFor(recording), recording.Source.Kind);
-        return gate.Matches && LocalEnvironment.ReadStartedRun() is null;
-    }
-
-    /// <summary>
     /// Builds the recording's run in this headless process and enters its first
     /// room, ready for the first recorded decision.
     /// </summary>

@@ -6,13 +6,10 @@ namespace Sts2PilotTrainer.Mod;
 /// One feature of Runmobile, and everything the shell needs to know about it.
 ///
 /// Runmobile is one mod made of three features - the recorder, the run library, and
-/// the Combat Trainer - and this is the line between them. The shell owns what is
+/// recorded fights - and this is the line between them. The shell owns what is
 /// true of the mod however it is configured: the assembly resolver, the Harmony
-/// instance, adopting the running game, the write barrier, and drawing the
-/// singleplayer-menu cards. A module owns one feature's patches and the surfaces it
-/// puts in front of a player, which it contributes as <see cref="MenuCard"/> entries
-/// rather than by installing the renderer itself - so a module that refuses cannot
-/// take another module's card down with it.
+/// instance, adopting the running game, and the write barrier. A module owns one
+/// feature's patches and surfaces.
 ///
 /// A module that cannot establish what it needs is disabled rather than fatal. It
 /// installs no patch and contributes no surface, and the reason goes to the game's
@@ -45,29 +42,8 @@ internal interface IRunmobileModule
     string? Refusal { get; }
 
     /// <summary>
-    /// The singleplayer-menu cards this module contributes. Read only from an
-    /// enabled module, so an implementation may assume what <see cref="Enabled"/>
-    /// established.
-    /// </summary>
-    IReadOnlyList<MenuCard> MenuCards { get; }
-
-    /// <summary>
     /// Installs this module's patches on the shell's Harmony instance. Called once,
     /// at mod start, and only on an enabled module.
     /// </summary>
     void Install(Harmony harmony);
 }
-
-/// <summary>
-/// A card a module puts in the game's singleplayer menu.
-///
-/// The description is deferred because it is read out of the module's own data - the
-/// recording a card is about - and a module builds this list before anything asks it
-/// to draw.
-/// </summary>
-/// <param name="NodeName">The name given to the node, so a second pass over the same
-/// menu sees its own work rather than adding another card.</param>
-/// <param name="Title">The card's title, from <c>Sts2PilotTrainer.Trainer</c>.</param>
-/// <param name="Description">The card's description, read when it is drawn.</param>
-/// <param name="Open">What pressing it opens.</param>
-internal sealed record MenuCard(string NodeName, string Title, Func<string> Description, Action Open);

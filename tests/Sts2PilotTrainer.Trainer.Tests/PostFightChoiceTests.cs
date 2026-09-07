@@ -65,8 +65,8 @@ public sealed class PostFightChoiceTests
         Assert.Equal(PostFightAction.WatchTheirFight, with.ActionAt(1));
     }
 
-    /// <summary>Continue as you needs a run to go on with, so it is absent on a loss
-    /// however capable the build.</summary>
+    /// <summary>Continue needs a run to go on with, so it is absent on a loss however
+    /// capable the build.</summary>
     [Fact]
     public void ContinueAsYouIsPresentOnlyOnAWinAndOnlyWhereTheBuildCanContinue()
     {
@@ -78,7 +78,7 @@ public sealed class PostFightChoiceTests
             row => row.Action == PostFightAction.ContinueAsYou);
 
         var offered = PostFightChoice.For("NaveGreed", Facts(won: true, canContinueAsYou: true));
-        Assert.Equal("Continue as you", offered.Rows[^2].Row.Label);
+        Assert.Equal("Continue", offered.Rows[^2].Row.Label);
         Assert.Equal("Leave", offered.Rows[^1].Row.Label);
     }
 

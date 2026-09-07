@@ -1075,14 +1075,14 @@ internal static class RecordedFightRun
     /// </summary>
     private static PostFightFacts PostFightFactsFor(EndedFight ended) => new(
         Won: ended.Screen.Won,
-        ComparisonShown: CombatTrainerModule.Instance.WasShownThisSitting(ended.Manifest.RunId, ended.Fight),
+        ComparisonShown: RecordedFightModule.Instance.WasShownThisSitting(ended.Manifest.RunId, ended.Fight),
         FightWatched: false,
         CanWatch: false,
         CanContinueAsYou: false);
 
     private static void MarkShownThisSitting(string runId, int? fight)
     {
-        if (fight is { } ordinal) CombatTrainerModule.Instance.MarkShownThisSitting(runId, ordinal);
+        if (fight is { } ordinal) RecordedFightModule.Instance.MarkShownThisSitting(runId, ordinal);
     }
 
     /// <summary>
@@ -1480,7 +1480,7 @@ internal static class RecordedFightRun
                 ?? throw new InvalidOperationException("The fight ended before its capture began.");
             var screen = FightResultScreen.Of(
                 RecordingIdentity.Creator(entry.Manifest), capture,
-                CombatTrainerModule.Instance.RecordedFights.Projection(entry.Fight));
+                RecordedFightModule.Instance.RecordedFights.Projection(entry.Fight));
             _observer?.Dispose();
             _observer = null;
             _afterTheFight = new EndedFight(entry.Manifest, entry.Plan, entry.Fight, screen);

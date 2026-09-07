@@ -43,7 +43,4 @@ public static class RecordingIdentity
         recording.Environment.Character.Value,
         recording.Environment.Ascension.Value);
 
-    /// <summary>What this recording is, in the game's mod list and on the mode card.</summary>
-    public static string Description(ReplayManifest recording) =>
-        TrainerCopy.Description(Creator(recording));
 }

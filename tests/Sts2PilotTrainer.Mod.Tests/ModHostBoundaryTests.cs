@@ -231,7 +231,7 @@ public sealed class ModHostBoundaryTests
     }
 
     [GameFact]
-    public void TheBuiltModInstallsUnderTheIdLivePreflightAccepts()
+    public void TheBuiltModInstallsUnderTheIdPreflightAccepts()
     {
         var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-install-{Guid.NewGuid():N}");
         var mods = Path.Combine(sandbox, "mods");
@@ -281,8 +281,8 @@ public sealed class ModHostBoundaryTests
             Assert.Equal(declared, AssemblyName.GetAssemblyName(Path.Combine(installed, "Runmobile.dll")).Name);
             Assert.Equal(RunmobileMod.ModId, declared);
 
-            var expected = CombatTrainerModule.Instance.Recording.Environment;
-            var preflight = EnvironmentPreflight.LiveGame(
+            var expected = RecordedFightModule.Instance.Recording.Environment;
+            var preflight = EnvironmentPreflight.Prerequisites(
                 expected,
                 new LocalPrerequisites
                 {
@@ -305,11 +305,10 @@ public sealed class ModHostBoundaryTests
                         Categories = [],
                     },
                     LockedActs = [],
-                },
-                run: null);
+                });
 
             Assert.True(
-                preflight.Prerequisites.Fields.Single(field => field.Field == "loaded_mod_environment").Matches);
+                preflight.Fields.Single(field => field.Field == "loaded_mod_environment").Matches);
         }
         finally
         {

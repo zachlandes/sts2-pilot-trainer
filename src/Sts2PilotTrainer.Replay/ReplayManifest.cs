@@ -373,7 +373,7 @@ public sealed record VideoSource
 
     /// <summary>
     /// The recording's title as the platform published it, for a host that needs to name
-    /// the thing a player is stepping into.
+    /// the recording a player is about to play from.
     ///
     /// Declared, and deliberately not an identifier: this channel A/B tests its titles, so
     /// the same recording can carry two of them and only <see cref="VideoId"/> is stable.

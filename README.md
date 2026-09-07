@@ -9,7 +9,7 @@ Playing from a recording writes nothing to your saves, your stats or your run hi
 Recording your own runs changes nothing about them: they save and count exactly as they always did.
 Works on Slay the Spire 2 `v0.111.0`, needs no other mod, and asks you to play from a recording with only Runmobile enabled.
 
-This repository is `sts2-pilot-trainer`: the mod a player installs is `Runmobile`, and the Combat Trainer is one feature inside it.
+This repository is `sts2-pilot-trainer`: the mod a player installs is `Runmobile`, and its Compendium is the entry point for recorded runs.
 Anything marked **Coming soon** below is planned for launch and not built yet.
 A feature stops being coming soon by deleting the tag, so this file stays current without losing the framing.
 
@@ -217,7 +217,7 @@ Re-archiving the same prepared set is safe; a conflicting or unreceipted directo
 
 `preflight-live` is a headless demonstration, not a connection to the retail process.
 Its user data is redirected to `build/sandbox`, it cannot see the retail `RunManager`, and its default path therefore reads an empty sandbox profile, finds no active run, and refuses by design.
-`Preflight.EvaluateLiveHost` is the API the in-game host calls before showing a player anything, and the mod is where it meets a real client:
+The in-game host reads the client through `Preflight.Evaluate` before it constructs a recorded run:
 
 ```bash
 ./scripts/package-mod.sh                # build the distributable package without game content
@@ -226,11 +226,10 @@ Its user data is redirected to `build/sandbox`, it cannot see the retail `RunMan
 ./scripts/arbiter adopt-live            # the refusal, from a process that is not a running game
 ```
 
-The corresponding retail flow was demonstrated with the pre-rename Combat Trainer artifact: opening Singleplayer showed a fourth mode card, `Combat Trainer`, which checked whether that install could reproduce the recording and offered `Enter the fight` when it could.
-Winning the fight showed the mod's visual result panel with the player's fight beside the recording's: compact summary figures, card and potion art by turn, and a chart of enemy and player health lost each turn.
-The two lines stayed distinct by colour and marker shape, and the panel stated differences without scoring either line or giving a verdict.
-The trainer supplied the recording's unlocks, acts, and Ascension 10 in memory, then visibly made the recording's pre-fight decisions and handed over only after the live combat-start state matched the manifest's observed fields and snapshot digest.
-Under the renamed `Runmobile` artifact a later session repeated the fight itself - the recording's decisions, the handover, the fight played to a win and to a deliberate loss, and the panel each earns - but not the mode card and the offer that precede them, which are still claimed only for the pre-rename artifact.
+The Compendium opens the run library, where a player opens a recorded run and chooses **Play from this fight**, **Play from this floor**, **Continue**, or **Start the run over**.
+The resulting journey makes the recording's decisions and hands over only after the live boundary matches the manifest's observed fields and snapshot digest.
+Winning the fight shows the visual result panel with the player's fight beside the recording's: compact summary figures, card and potion art by turn, and a chart of enemy and player health lost each turn.
+The two lines stay distinct by colour and marker shape, and the panel states differences without scoring either line or giving a verdict.
 See [docs/in-game-host.md](docs/in-game-host.md), [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md), and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md); [demo/PLAYBACK-TRANSPORT.md](demo/PLAYBACK-TRANSPORT.md) is the `Runmobile` session, and [docs/mod-ui-direction.md](docs/mod-ui-direction.md) owns what those surfaces are.
 
 The mod also records the player's own runs, on unless `settings.json` in its store says otherwise: every run played becomes a manifest of the same kind under `user://Runmobile/recordings/`, which `gate` judges by the same standard as one transcribed from a video.
@@ -303,8 +302,8 @@ The full walkthrough, with commands and their real output, is in
 |---|---|
 | `src/Sts2PilotTrainer.Replay` | The replay format and its rules. Depends on nothing — not the game, not a video pipeline, not a storefront. Its tests run on a machine that does not own the game. |
 | `src/Sts2PilotTrainer.Engine` | The only project that knows about a specific game version. |
-| `src/Sts2PilotTrainer.Trainer` | The game-free owner of the Combat Trainer screen model, wording, and chart derivation. |
-| `src/Sts2PilotTrainer.Mod` | The only project loaded into the retail game; it owns the native mode card and retail presentation. |
+| `src/Sts2PilotTrainer.Trainer` | The game-free owner of recorded-fight wording, result models, and chart derivation. |
+| `src/Sts2PilotTrainer.Mod` | The only project loaded into the retail game; it owns the Compendium entry and retail presentation. |
 | `src/Sts2PilotTrainer.Cli` | The arbiter's commands. |
 | `manifests/` | The reconstructed run and the map read from the video, plus two runs recorded inside the player's own game. Facts only. |
 | `docs/` | [The proof-of-concept path](docs/proof-of-concept-path.md) · [the in-game host](docs/in-game-host.md) · [environment identity](docs/environment-identity.md) · [comparison direction](docs/comparison-direction.md) · [headless fidelity](docs/headless-fidelity.md) · [dependencies](docs/dependencies.md) · [distribution](docs/distribution.md) · [the engine's own replay format](docs/native-replay-format.md) |

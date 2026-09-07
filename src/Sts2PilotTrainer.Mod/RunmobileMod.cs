@@ -20,14 +20,14 @@ namespace Sts2PilotTrainer.Mod;
 ///
 /// It is a shell: what is true of the mod however it is configured lives here, and
 /// each feature lives behind <see cref="IRunmobileModule"/>. Today there are three
-/// modules: the Combat Trainer, the recorder and the run library.
+/// modules: recorded fights, the recorder and the run library.
 ///
 /// Mod initialization deliberately reads nothing about the game. It runs inside the
 /// game's "very early" startup phase, one phase before the game builds its model
 /// database and id-serialization cache, so there is no game to read yet: asking then
 /// took the process down with a segmentation fault rather than an error. Everything
-/// that reads the running game happens from <see cref="ModeCard"/>, off a surface a
-/// player has reached. See docs/in-game-host.md.
+/// that reads the running game happens from a surface a player has reached. See
+/// docs/in-game-host.md.
 ///
 /// It refuses rather than degrades. A module that cannot establish what it needs
 /// says so in the game's log, installs no patch and contributes no surface.
@@ -44,7 +44,7 @@ public static class RunmobileMod
     private const string HarmonyId = PatchRoster.HostOwnerId;
 
     internal static IReadOnlyList<Type> ShellPatchClasses { get; } =
-        [typeof(ModeCard), .. CardScreensUp.PatchClasses, .. GameSessionWatch.PatchClasses];
+        [typeof(SingleplayerMenuRetention), .. CardScreensUp.PatchClasses, .. GameSessionWatch.PatchClasses];
 
     private static readonly Lock AdoptionGate = new();
 
@@ -59,11 +59,10 @@ public static class RunmobileMod
     /// <summary>
     /// Every feature this build carries, in the order they are installed.
     ///
-    /// Three: the Combat Trainer, the recorder, and the run library. Adding the third
-    /// changed nothing else about the shell, which is what the seam was for.
+    /// Recorded fights, the recorder, and the run library.
     /// </summary>
     internal static IReadOnlyList<IRunmobileModule> Modules { get; } =
-        [CombatTrainerModule.Instance, RecorderModule.Instance, RunLibraryModule.Instance];
+        [RecordedFightModule.Instance, RecorderModule.Instance, RunLibraryModule.Instance];
 
     /// <summary>The modules that could establish what they need in this process.</summary>
     internal static IEnumerable<IRunmobileModule> EnabledModules => Modules.Where(module => module.Enabled);
@@ -86,13 +85,6 @@ public static class RunmobileMod
     /// speaking in somebody else's session.
     /// </summary>
     internal static bool MayDraw => GameSessionWatch.MaySpeak;
-
-    /// <summary>Every singleplayer-menu card the enabled modules contribute, or none at
-    /// all in a game this mod may not draw in.</summary>
-    internal static IReadOnlyList<MenuCard> MenuCards => MayDraw ? MenuCardsFrom(Modules) : [];
-
-    internal static IReadOnlyList<MenuCard> MenuCardsFrom(IReadOnlyList<IRunmobileModule> modules) =>
-        modules.Where(module => module.Enabled).SelectMany(module => module.MenuCards).ToList();
 
     public static void Initialize()
     {
@@ -133,7 +125,7 @@ public static class RunmobileMod
         InstallModules(harmony, Modules);
         LogThePatchRoster();
         Started = true;
-        Log.Info($"[{ModId}] loaded; its cards are added when the singleplayer menu opens", 2);
+        Log.Info($"[{ModId}] loaded", 2);
     }
 
     /// <summary>
@@ -217,16 +209,15 @@ public static class RunmobileMod
     ///
     /// Not from mod loading, because the game has no model database yet then. Every
     /// feature that reads the engine asks this for itself at the first moment it has
-    /// demonstrably got a running game - the menu for the mode card, the recorder when
-    /// a run has entered its first room - so no feature's correctness rests on another
+    /// demonstrably got a running game - the recorder when a run has entered its first
+    /// room - so no feature's correctness rests on another
     /// having asked first. It is the mod's one adoption entry and answers the same way
     /// however many ask.
     ///
     /// <see cref="EngineHost.AdoptRunningGame"/> refuses anything it cannot read
-    /// honestly, and a refusal here is the caller's to act on: no mode card, and no
-    /// recording. A card that opened onto a screen which could not answer its own
-    /// question, or a recording that named a build nobody read off this client, would
-    /// each be worse than not being there. The outcome is remembered, so a refusal is
+    /// honestly, and a refusal here is the caller's to act on: no recording. A
+    /// recording that named a build nobody read off this client would be worse than not
+    /// being there. The outcome is remembered, so a refusal is
     /// reported once rather than on every visit to the menu.
     ///
     /// Applying the player's retention policy happens here too and is not one of the

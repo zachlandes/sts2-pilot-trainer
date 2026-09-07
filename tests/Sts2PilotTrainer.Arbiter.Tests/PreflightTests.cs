@@ -105,7 +105,7 @@ public class PreflightTests
     [GameTheory]
     [InlineData("all-unlocked")]
     [InlineData("none-unlocked")]
-    public void LivePreflightRefusesASubstitutedUnlockModel(string progress)
+    public void PreflightLiveRefusesASubstitutedUnlockModel(string progress)
     {
         var result = Arbiter.Run("preflight-live", Arbiter.Manifest, "--progress", progress);
 

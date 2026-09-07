@@ -38,7 +38,7 @@ public sealed record StateReading(IReadOnlyDictionary<string, string> State, str
 /// after it, and the rules about what those samples mean live here rather than in the
 /// mod that supplies them. It delegates the inside of a fight to a
 /// <see cref="FightCapture"/> per fight, so a fight a person plays goes through one
-/// capture path whether the Combat Trainer or the recorder is watching.
+/// capture path whether the recorded-fight journey or the recorder is watching.
 ///
 /// It records rather than derives. Where the boundaries of the run are is
 /// <see cref="RunCoverage"/>'s question, asked of the trace this builds; what the

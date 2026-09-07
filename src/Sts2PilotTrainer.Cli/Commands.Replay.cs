@@ -10,7 +10,7 @@ internal static partial class Commands
     /// The prerequisite gate: is this the machine, with the progress, that could
     /// replay this run at all?
     ///
-    /// <c>--progress</c> chooses whose unlock state is checked. The Combat Trainer
+    /// <c>--progress</c> chooses whose unlock state is checked. The recorded-fight journey
     /// host passes <c>local-profile</c> and gates on what the player actually has.
     /// Without it, the state checked is the state a run from this recording would
     /// actually be constructed with - the recorded player's own where the recording
