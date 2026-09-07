@@ -41,10 +41,10 @@ public static class LibraryCopy
     // ── The browser ────────────────────────────────────────────────────────
 
     /// <summary>Runs anybody made. The tab a player opens on.</summary>
-    public const string CommunityTab = "Community";
+    public const string CommunityTab = "Others";
 
     /// <summary>Runs of the player's own, which the recorder wrote.</summary>
-    public const string MyRunsTab = "My runs";
+    public const string MyRunsTab = "Mine";
 
     /// <summary>The recordings that travel inside the mod, present with no network
     /// and no index.</summary>
@@ -81,7 +81,7 @@ public static class LibraryCopy
     public const string RunCodeField = "Run code";
 
     /// <summary>Leads to the submit flow, which is somewhere else.</summary>
-    public const string SubmitThisRun = "Submit this run";
+    public const string SubmitThisRun = "Share this run";
 
     /// <summary>What the player's own runs occupy, under the My runs list.</summary>
     public static string MyRunsFooter(int runs, string size) =>

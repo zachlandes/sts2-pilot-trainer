@@ -63,6 +63,10 @@ internal sealed record RunmobileSettings
     [JsonPropertyName("record_my_runs")]
     public bool RecordMyRuns { get; init; } = true;
 
+    /// <summary>Whether the community run index is fetched. This never submits a run.</summary>
+    [JsonPropertyName("fetch_run_index")]
+    public bool FetchRunIndex { get; init; } = true;
+
     /// <summary>
     /// How many of the player's most recent recorded runs are kept.
     ///
@@ -227,6 +231,9 @@ internal sealed record RunmobileSettings
         Set("keep_recent_runs", keep);
     }
 
+    /// <summary>Writes only the network index preference. Sharing is always explicit.</summary>
+    internal static void SetFetchRunIndex(bool fetch) => Set("fetch_run_index", fetch);
+
     /// <summary>
     /// Writes one member of the player's file and leaves every other one exactly as
     /// they wrote it.
@@ -258,6 +265,7 @@ internal sealed record RunmobileSettings
             {
                 ["schema"] = Schema,
                 ["record_my_runs"] = Default.RecordMyRuns,
+                ["fetch_run_index"] = Default.FetchRunIndex,
                 ["keep_recent_runs"] = Default.KeepRecentRuns,
                 ["purge_my_runs"] = false,
             };
