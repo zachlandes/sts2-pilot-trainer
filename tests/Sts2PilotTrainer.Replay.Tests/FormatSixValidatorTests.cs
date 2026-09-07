@@ -163,6 +163,27 @@ public sealed class FormatSixValidatorTests
             p.Contains("migrated_from_version is 4, which is not a format this build migrates from (5)", StringComparison.Ordinal));
     }
 
+    // ── discarded fight branches ──────────────────────────────────────────
+
+    [Fact]
+    public void AVerifiedRollbackMatchesTheReplayedFightEntry()
+    {
+        var result = ManifestValidator.Validate(WithDiscardedRollback(1, Fixtures.Digest));
+
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Theory]
+    [InlineData(0, Fixtures.Digest)]
+    [InlineData(1, "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    public void AVerifiedRollbackMustIdentifyTheReplayedFightEntry(int rollbackToSeq, string rollbackDigest)
+    {
+        var result = ManifestValidator.Validate(WithDiscardedRollback(rollbackToSeq, rollbackDigest));
+
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("does not identify the verified room-entry state", StringComparison.Ordinal));
+    }
+
     // ── the new verbs' arguments ───────────────────────────────────────────
 
     [Fact]
@@ -200,6 +221,70 @@ public sealed class FormatSixValidatorTests
     }
 
     // ── helpers ────────────────────────────────────────────────────────────
+
+    private static ReplayManifest WithDiscardedRollback(int rollbackToSeq, string rollbackDigest)
+    {
+        var manifest = Fixtures.NativeManifest();
+        var discardedAction = new ActionRecord
+        {
+            Seq = rollbackToSeq + 1,
+            Verb = ActionVerb.PlayCard,
+            Args = new SortedDictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["card_id"] = "CARD.STRIKE_IRONCLAD",
+                ["hand_index"] = "0",
+                ["target_index"] = "0",
+            },
+            Source = FactSource.Captured,
+            Evidence = FactEvidence.AtActionOrdinal(rollbackToSeq + 1),
+        };
+        return manifest with
+        {
+            Source = manifest.Source with
+            {
+                Native = manifest.Source.Native! with
+                {
+                    Discarded =
+                    [
+                        new DiscardedBranch
+                        {
+                            RollbackToSeq = rollbackToSeq,
+                            RollbackToDigest = rollbackDigest,
+                            Actions = [discardedAction],
+                        },
+                    ],
+                },
+            },
+            Verification = new VerificationReport
+            {
+                Status = VerificationStatus.Verified,
+                ArbiterVersion = "test",
+                Preflight = new PreflightResult(true, []),
+                Trace = new ReplayTrace
+                {
+                    Steps =
+                    [
+                        TraceStep(-1, "none"),
+                        TraceStep(0, "none"),
+                        TraceStep(1, "in_progress"),
+                        TraceStep(2, "victory"),
+                    ],
+                },
+                Boundaries = [ReplayBoundary.CombatStart(1, 1, Fact<string>.Engine(Fixtures.Digest))],
+            },
+        };
+    }
+
+    private static ReplayStep TraceStep(int seq, string outcome) => new()
+    {
+        Seq = seq,
+        Verb = "test",
+        Before = new Dictionary<string, string>(StringComparer.Ordinal),
+        After = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["combat.outcome"] = outcome,
+        },
+    };
 
     private static UnmappedDecision Stop(int seq) => new()
     {

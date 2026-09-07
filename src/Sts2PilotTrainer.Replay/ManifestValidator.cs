@@ -64,6 +64,7 @@ public static partial class ManifestValidator
 
         var maxActionOrdinal = manifest.Actions.Count - 1;
         ValidateSource(manifest.Source, manifest.Actions, problems);
+        ValidateDiscardedBranches(manifest, problems);
         var videoDurationMs = manifest.Source.Video is { DurationSeconds: > 0 } video
             ? checked(video.DurationSeconds * 1000)
             : 0;
@@ -605,7 +606,6 @@ public static partial class ManifestValidator
         }
 
         ValidateIntegrity(native, actions.Count, problems);
-        ValidateDiscardedBranches(native, actions, problems);
 
         // The key beside the index, on every event option a recorder chose. Waived
         // only for a file that says it was written before the key existed: absent
@@ -625,10 +625,15 @@ public static partial class ManifestValidator
         }
     }
 
-    private static void ValidateDiscardedBranches(
-        NativeSource native, IReadOnlyList<ActionRecord> actions, List<string> problems)
+    private static void ValidateDiscardedBranches(ReplayManifest manifest, List<string> problems)
     {
-        if (native.Discarded is not { } branches) return;
+        if (manifest.Source.Native?.Discarded is not { } branches) return;
+
+        var actions = manifest.Actions;
+        var verification = manifest.Verification is { Status: VerificationStatus.Verified, Trace: { } trace }
+            ? manifest.Verification
+            : null;
+        var coverage = verification is null ? null : RunCoverage.Of(trace);
 
         for (var branchIndex = 0; branchIndex < branches.Count; branchIndex++)
         {
@@ -665,6 +670,21 @@ public static partial class ManifestValidator
                         "own action ordinal.");
                 }
                 ValidateActionArguments(action, problems);
+            }
+
+            if (verification is null) continue;
+
+            var fight = coverage!.Fights.FirstOrDefault(entry => entry.CombatStartSeq == branch.RollbackToSeq);
+            var boundary = fight is null
+                ? null
+                : verification.Boundaries.FirstOrDefault(candidate =>
+                    candidate.IsCombatStart && candidate.Fight == fight.Fight &&
+                    candidate.AfterSeq == branch.RollbackToSeq);
+            if (boundary is null || boundary.Digest.Source != FactSource.Engine ||
+                !string.Equals(boundary.Digest.Value, branch.RollbackToDigest, StringComparison.Ordinal))
+            {
+                problems.Add(
+                    $"{path} does not identify the verified room-entry state of a fight in the continued history.");
             }
         }
     }

@@ -65,14 +65,20 @@ public sealed class NativeGateTests
         Directory.CreateDirectory(directory);
         try
         {
-            var recorded = RecordedRun.ManifestWithMidFightRollback();
             var replayable = ManifestJson.Load(Path.Combine(
                 Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json"));
+            var combatStart = replayable.Boundaries.First(boundary => boundary.IsCombatStart);
+            var discarded = new DiscardedBranch
+            {
+                RollbackToSeq = combatStart.AfterSeq,
+                RollbackToDigest = combatStart.Digest.Value,
+                Actions = [replayable.Actions.Single(action => action.Seq == combatStart.AfterSeq + 1)],
+            };
             var manifest = replayable with
             {
                 Source = replayable.Source with
                 {
-                    Native = replayable.Source.Native! with { Discarded = recorded.Source.Native!.Discarded },
+                    Native = replayable.Source.Native! with { Discarded = [discarded] },
                 },
             };
             var path = Path.Combine(directory, "fixture.replay.json");
