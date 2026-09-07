@@ -89,6 +89,9 @@ public static class LibraryCopy
     public const string FetchRunIndexFailed =
         "The run index could not be fetched. Direct run-code lookup is still available.";
 
+    public const string SharingServiceUnavailable =
+        "Online sharing is unavailable because no authorized service is configured.";
+
     public const string LookingUpRunCode = "Looking up that run code…";
 
     public const string SubmitThisRun = "Share this run";

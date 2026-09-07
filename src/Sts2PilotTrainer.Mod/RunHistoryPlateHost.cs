@@ -152,7 +152,7 @@ internal static class RunHistoryPlateHost
             RecordedBuild: recording?.Environment.BuildVersion.Value ?? string.Empty,
             ThisBuild: RunLibrary.ThisBuild(),
             RunInProgress: LocalEnvironment.ReadStartedRun() is not null,
-            SubmitAvailable: true,
+            SubmitAvailable: RunLibrary.SharingAvailable,
             LastFight: LastOf(recording, LibraryRun.ProvedFights),
             LastFloor: LastOf(recording, LibraryRun.ProvedFloors));
 

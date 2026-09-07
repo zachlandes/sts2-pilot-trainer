@@ -795,13 +795,11 @@ session kind for the library to read.
 Both arms become reachable when something does, with no change here.
 
 The Submit row is the second, and it is the one that shows.
-The flow it leads to is outside this slice by the design's own section 9.8, so
-`SubmitAvailable` is supplied false and the row is drawn refused with "Submitting runs is
-coming" rather than drawn as an offer nothing honours.
-That departs from section 5, which gives the healthy state no reason line, and the
-departure closes itself: when the submit flow lands the supplied fact turns true, the row
-is offered, the reason is null, and the state matches section 5 exactly with no other
-change here.
+`SubmitAvailable` is true only when this profile's `settings.json` names an authorized `sharing_service_url`; without one, the row stays in place refused and the browser says online sharing is unavailable.
+There is no built-in endpoint.
+A configured endpoint must be absolute HTTPS without embedded credentials, a query, or a fragment, and any other value makes no network request.
+Submitting sends the complete manifest and the entered name, description, display name, and CC0 consent only after the local publication gate passes.
+Index fetching and exact-code lookup use that same configured service boundary.
 
 **What the accepted design draws and this does not.** The browser's parchment tabs, the
 run strip, the deck tiles, the relic row and the portrait; and the run-history plate hung

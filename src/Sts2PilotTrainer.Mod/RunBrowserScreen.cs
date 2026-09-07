@@ -393,7 +393,7 @@ internal static class RunBrowserScreen
         {
             try
             {
-                var shared = RunLibrary.AcceptShared(found, state.Code, exact: true);
+                var shared = RunLibrary.AcceptShared(found, state.Code);
                 var lookup = RunBrowser.Lookup(
                     shared.Run.RunId, [shared.Run], RunLibrary.ThisBuild());
                 if (lookup.Outcome == LookupOutcome.Found)
@@ -519,7 +519,11 @@ internal static class RunBrowserScreen
                 .Append('\n').Append(LibraryMarkup.Dim(browser.NotShownTooltipBody));
         }
 
-        if (indexFailure is { Length: > 0 } failure)
+        if (!RunLibrary.SharingAvailable)
+        {
+            body.Append("\n\n").Append(LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable));
+        }
+        else if (indexFailure is { Length: > 0 } failure)
         {
             body.Append("\n\n").Append(LibraryMarkup.Dim(failure));
         }

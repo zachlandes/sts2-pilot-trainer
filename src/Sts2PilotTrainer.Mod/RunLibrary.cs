@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
@@ -26,21 +27,18 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class RunLibrary
 {
-    private static readonly IRunSharingApi Sharing = new HttpRunSharingApi(new HttpClient
-    {
-        BaseAddress = new Uri("https://runs.runmobile.app/v1/"),
-        Timeout = TimeSpan.FromSeconds(10),
-    });
-
     private static readonly Dictionary<string, SharedRunSummary> SharedIndex = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, SharedRun> SharedRecordings = new(StringComparer.Ordinal);
     private static bool indexRequested;
     private static bool indexLoaded;
-    private static string? exactRunId;
+    private static IRunSharingApi? configuredSharing;
+    private static string? configuredSharingEndpoint;
+    private static readonly object SharingLock = new();
     private static int nextSubmission;
     private static readonly object PendingSubmissionLock = new();
     private static readonly Dictionary<int, string> PendingManifestJson = [];
     private static readonly Dictionary<int, ShareSubmission> PendingSubmissions = [];
+    private static readonly Dictionary<int, string> PendingSharingEndpoints = [];
 
     /// <summary>
     /// Every run, listed or not, with the verdict that decides which.
@@ -73,15 +71,15 @@ internal static class RunLibrary
                 recorded: stored.Started));
         }
 
-        var includeIndex = RunmobileSettings.Read().FetchRunIndex;
-        foreach (var item in SharedIndex.Values)
+        var shared = new Dictionary<string, SharedRunSummary>(StringComparer.Ordinal);
+        if (RunmobileSettings.Read().FetchRunIndex)
         {
-            if (!includeIndex &&
-                !string.Equals(item.Run.RunId, exactRunId, StringComparison.Ordinal))
-            {
-                continue;
-            }
+            foreach (var item in SharedIndex) shared[item.Key] = item.Value;
+        }
+        foreach (var item in SharedRecordings) shared[item.Key] = item.Value.Summary;
 
+        foreach (var item in shared.Values)
+        {
             var duplicate = false;
             foreach (var run in runs)
             {
@@ -107,12 +105,15 @@ internal static class RunLibrary
 
     internal static Task<IReadOnlyList<SharedRunSummary>> FetchIndexAsync()
     {
+        var endpoint = RequireSharingEndpoint();
         indexRequested = true;
-        return Sharing.IndexAsync();
+        return SharingAt(endpoint).IndexAsync();
     }
 
+    internal static bool SharingAvailable => ConfiguredSharingEndpoint() is not null;
+
     internal static bool ShouldFetchIndex =>
-        !indexRequested && !indexLoaded && RunmobileSettings.Read().FetchRunIndex;
+        SharingAvailable && !indexRequested && !indexLoaded && RunmobileSettings.Read().FetchRunIndex;
 
     internal static void AcceptIndex(IReadOnlyList<SharedRunSummary> index)
     {
@@ -184,11 +185,11 @@ internal static class RunLibrary
         var wanted = code.Trim();
         var cached = SharedRecordings.Values.FirstOrDefault(item =>
             string.Equals(item.Code, wanted, StringComparison.OrdinalIgnoreCase));
-        return cached is null ? Sharing.FindAsync(wanted) : Task.FromResult<SharedRun?>(cached);
+        if (cached is not null) return Task.FromResult<SharedRun?>(cached);
+        return SharingAt(RequireSharingEndpoint()).FindAsync(wanted);
     }
 
-    internal static SharedRun AcceptShared(
-        SharedRun found, string? expectedCode = null, bool exact = false)
+    internal static SharedRun AcceptShared(SharedRun found, string? expectedCode = null)
     {
         found.Submission.Validate();
         var computedId = SharedRunIdentity.For(found.ManifestJson, found.Submission);
@@ -224,25 +225,27 @@ internal static class RunLibrary
         };
         var local = found with { Run = described };
         SharedRecordings[local.Code] = local;
-        SharedIndex[local.Code] = local.Summary;
-        if (exact) exactRunId = local.Run.RunId;
         return local;
     }
 
     internal static string? ShareCodeFor(string runId) =>
-        SharedIndex.Values.FirstOrDefault(item =>
+        SharedRecordings.Values.FirstOrDefault(item =>
+            string.Equals(item.Run.RunId, runId, StringComparison.Ordinal))?.Code
+        ?? SharedIndex.Values.FirstOrDefault(item =>
             string.Equals(item.Run.RunId, runId, StringComparison.Ordinal))?.Code;
 
     internal static Task<SharedRun> ShareAsync(
         ReplayManifest recording, ShareSubmission submission)
     {
         submission.Validate();
+        var endpoint = RequireSharingEndpoint();
         var gate = PublicationGate.RunAsync(recording);
         var request = Interlocked.Increment(ref nextSubmission);
         lock (PendingSubmissionLock)
         {
             PendingManifestJson[request] = ManifestJson.Serialize(recording);
             PendingSubmissions[request] = submission;
+            PendingSharingEndpoints[request] = endpoint;
         }
         return gate.ContinueWith(
             static (completed, value) => CompletePublicationGate(completed, (int)value!),
@@ -256,19 +259,76 @@ internal static class RunLibrary
     {
         string manifestJson;
         ShareSubmission submission;
+        string endpoint;
         lock (PendingSubmissionLock)
         {
             manifestJson = PendingManifestJson[request];
             submission = PendingSubmissions[request];
+            endpoint = PendingSharingEndpoints[request];
             PendingManifestJson.Remove(request);
             PendingSubmissions.Remove(request);
+            PendingSharingEndpoints.Remove(request);
         }
         if (!completed.IsCompletedSuccessfully)
             throw completed.Exception?.GetBaseException()
                 ?? new ShareValidationException("Local validation could not finish.");
         if (!completed.Result)
             throw new ShareValidationException("Local validation did not pass, so the run was not sent.");
-        return Sharing.SubmitAsync(manifestJson, submission);
+        return SharingAt(endpoint).SubmitAsync(manifestJson, submission);
+    }
+
+    private static string RequireSharingEndpoint() =>
+        ConfiguredSharingEndpoint()
+        ?? throw new ShareValidationException(LibraryCopy.SharingServiceUnavailable);
+
+    private static string? ConfiguredSharingEndpoint()
+    {
+        var configured = RunmobileSettings.Read().SharingServiceUrl;
+        if (string.IsNullOrWhiteSpace(configured)) return null;
+        if (!Uri.TryCreate(configured, UriKind.Absolute, out var endpoint) ||
+            endpoint.Scheme != Uri.UriSchemeHttps ||
+            endpoint.UserInfo.Length > 0 ||
+            endpoint.Query.Length > 0 ||
+            endpoint.Fragment.Length > 0)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] settings.json does not name an authorized HTTPS sharing " +
+                "service, so no network request will be made.", 2);
+            return null;
+        }
+
+        return endpoint.AbsoluteUri.EndsWith("/", StringComparison.Ordinal)
+            ? endpoint.AbsoluteUri
+            : endpoint.AbsoluteUri + "/";
+    }
+
+    private static IRunSharingApi SharingAt(string endpoint)
+    {
+        lock (SharingLock)
+        {
+            if (configuredSharing is null ||
+                !string.Equals(configuredSharingEndpoint, endpoint, StringComparison.Ordinal))
+            {
+                configuredSharing = new HttpRunSharingApi(new HttpClient
+                {
+                    BaseAddress = new Uri(endpoint),
+                    Timeout = TimeSpan.FromSeconds(10),
+                });
+                configuredSharingEndpoint = endpoint;
+            }
+
+            return configuredSharing;
+        }
+    }
+
+    internal static void ResetSharedRunsForTesting()
+    {
+        SharedIndex.Clear();
+        SharedRecordings.Clear();
+        indexRequested = false;
+        indexLoaded = false;
+        configuredSharing = null;
+        configuredSharingEndpoint = null;
     }
 
     /// <summary>

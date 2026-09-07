@@ -44,6 +44,9 @@ It remains DLL-only in the game's packaging terms: `has_pck: false`, `dependenci
 After extraction, `./install.sh` installs that payload without a repository checkout or a system .NET runtime.
 That installer prepares a private, receipted copy of the player's own game assemblies under `arbiter/lib/` and routes engine writes into the profile-scoped Runmobile store before atomically replacing the installed mod.
 The published archive contains no game assembly; the prepared copy is made locally from the installation during install.
+It also contains no sharing endpoint.
+Online sharing is enabled only when the profile-scoped `settings.json` explicitly names an absolute HTTPS `sharing_service_url` without embedded credentials, a query, or a fragment.
+That configured service receives the complete replay manifest and the submission's name, description, display name, and CC0 consent only after the local publication gate passes; without it, no network request is made and the client says sharing is unavailable.
 Everything else in this repository that could not go inside that archive — including the video tooling — is a build-time or proof-only concern and is kept out of the published mod.
 See [dependencies](dependencies.md).
 

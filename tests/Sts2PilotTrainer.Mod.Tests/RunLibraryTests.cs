@@ -34,10 +34,12 @@ public sealed class RunLibraryStoreTests : IDisposable
         _ = EngineHost.StartupPhase();
         Directory.CreateDirectory(_root);
         RunmobileStore.UseRootForTesting(_root);
+        RunLibrary.ResetSharedRunsForTesting();
     }
 
     public void Dispose()
     {
+        RunLibrary.ResetSharedRunsForTesting();
         RunmobileStore.UseRootForTesting(null);
         var sandbox = _root[.._root.IndexOf("Runmobile", StringComparison.Ordinal)];
         if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
@@ -329,6 +331,28 @@ public sealed class RunLibraryStoreTests : IDisposable
             RunLibrary.AcceptShared(shared, shared.Code));
 
         Assert.Contains("CC0 consent", error.Message, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void IndexRefreshPreservesAnAcceptedExactCodeResult()
+    {
+        var recording = Recording($"exact-{Guid.NewGuid():N}");
+        var manifestJson = ManifestJson.Serialize(recording);
+        var submission = new ShareSubmission("Run", "", "Ada", true);
+        var shareId = SharedRunIdentity.For(manifestJson, submission);
+        var shared = new SharedRun(
+            shareId,
+            SharedRunIdentity.CodeFor(shareId),
+            manifestJson,
+            submission,
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Absent),
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
+
+        RunLibrary.AcceptShared(shared, shared.Code);
+        RunLibrary.AcceptIndex([]);
+
+        Assert.Contains(RunLibrary.Runs(), run => run.RunId == recording.RunId);
+        Assert.Equal(shared.Code, RunLibrary.ShareCodeFor(recording.RunId));
     }
 
     [GameFact]

@@ -20,8 +20,9 @@ namespace Sts2PilotTrainer.Mod;
 /// that surface is: the default is what the person building this wants while it is
 /// being built, and it becomes a decision the moment somebody else can see it.
 ///
-/// Four things are said here and they are three different kinds of sentence.
+/// Five things are said here and they are four different kinds of sentence.
 /// Whether to record and whether to fetch the shared-run index are standing choices.
+/// The sharing-service endpoint is the explicit authority for outbound transfer and has no default.
 /// How many runs to keep is a standing policy, and it has a default rather than being unbounded because the recorder writes a real file per run and nothing else ever removed one.
 /// Asking for every run to be removed is a one-shot act: it is honoured once and then set to false, which is both how it stops repeating and how a player sees that it happened.
 ///
@@ -62,6 +63,9 @@ internal sealed record RunmobileSettings
     /// <summary>Whether the community run index is fetched. This never submits a run.</summary>
     [JsonPropertyName("fetch_run_index")]
     public bool FetchRunIndex { get; init; } = true;
+
+    [JsonPropertyName("sharing_service_url")]
+    public string? SharingServiceUrl { get; init; }
 
     /// <summary>
     /// How many of the player's most recent recorded runs are kept.
@@ -269,6 +273,7 @@ internal sealed record RunmobileSettings
                 ["schema"] = Schema,
                 ["record_my_runs"] = Default.RecordMyRuns,
                 ["fetch_run_index"] = Default.FetchRunIndex,
+                ["sharing_service_url"] = Default.SharingServiceUrl,
                 ["keep_recent_runs"] = Default.KeepRecentRuns,
                 ["purge_my_runs"] = false,
             };
