@@ -91,8 +91,8 @@ kind is cross-checked against it - a fight the trace holds and finishes, a floor
 arrives on, a turn that fight takes, each at the action the trace says.
 `ManifestValidator` reads those off `RunCoverage`, which is what the derive path builds
 its boundaries from, so the guard and the deriver cannot disagree about one history.
-A coordinate checked for shape alone passes publication and is refused later, in front
-of a player. Do not add a boundary kind without its cross-check.
+Without that cross-check, a coordinate can pass publication on shape alone and be refused later, in front of a player.
+Do not add a boundary kind without its cross-check.
 Everything else that entry demands of a floor_entry is refused there too, and needs no
 trace to ask: the action it names is the map move that arrived, and a checkpoint there
 names `run.total_floor` and `run.map_coord` for the floor the boundary names, resolved
@@ -106,6 +106,7 @@ because this validator can re-derive it from the recorded map move.
 The file a recorder or a stranger hands over carries no trace, so `gate` asks the
 validator again of the verified copy its own replay wrote, as the `declared-boundaries`
 condition; without that the cross-checks never run on the manifests they exist for.
+The gate's `combat-boundary` condition then compares the complete hidden-state digest at every declared boundary the verified replay also derives, by that kind's own coordinate; checking only the first fight is not publication evidence.
 
 **Real-engine reproduction is the publication standard.** `gate` is where it is
 written down and computed. No condition may be satisfied by a cheaper proxy - not
@@ -142,9 +143,9 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 139
+**What CI cannot run is recorded by name.** On a runner without the game, the 140
 tests named in `scripts/expected-hosted-skips.txt` skip out of
-`Sts2PilotTrainer.Arbiter.Tests`' 208 and the job still reports success.
+`Sts2PilotTrainer.Arbiter.Tests`' 209 and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift

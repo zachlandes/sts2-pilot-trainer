@@ -142,10 +142,11 @@ internal static partial class Commands
                         "declared-boundaries", DeclaredBoundariesRequirement, false,
                         "A declared boundary can only be checked against a verified reproduction."));
 
-                conditions.Add(Check(
-                    "combat-boundary",
-                    CombatBoundaryRequirement,
-                    SelfProcess.Run("combat-snapshot", manifestPath, "--out", outDir)));
+                conditions.Add(reproduction.Passed
+                    ? BoundaryDigestsHold(manifestPath, verifiedPath)
+                    : new Condition(
+                        "combat-boundary", CombatBoundaryRequirement, false,
+                        "Boundary digests can only be compared against a verified reproduction."));
 
                 conditions.Add(Check("determinism",
                 "Fresh processes produce byte-identical canonical state.",
@@ -275,7 +276,7 @@ internal static partial class Commands
         "Every boundary the recording declares is one the verified history reaches, at the action it names.";
 
     private const string CombatBoundaryRequirement =
-        "The manifest's combat-start snapshot digest matches a fresh real-engine derivation.";
+        "Every compatible boundary digest in the manifest matches the real-engine reproduction.";
 
     /// <summary>
     /// Whether the verified history covers a fight that finished.
@@ -332,6 +333,58 @@ internal static partial class Commands
             return new Condition(
                 "declared-boundaries", DeclaredBoundariesRequirement, false,
                 $"The verified manifest could not be read: {exception.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Whether every boundary both the recording and the verified replay hold has the
+    /// same digest.
+    ///
+    /// Compatibility means the kind's own coordinate: fight for combat start, floor
+    /// for floor entry, and fight plus turn for turn start. The declared-boundaries
+    /// condition separately proves that declarations point at places the replay
+    /// reached; this condition asks the independent reading neither shape check can:
+    /// whether the complete hidden state at every shared place is the same.
+    /// </summary>
+    private static Condition BoundaryDigestsHold(string manifestPath, string verifiedManifestPath)
+    {
+        try
+        {
+            var declared = ManifestJson.Load(manifestPath).Boundaries;
+            var derived = ManifestJson.Load(verifiedManifestPath).Verification?.Boundaries
+                ?? throw new InvalidOperationException(
+                    "the verified manifest carries no verification report, so its boundaries cannot be read");
+
+            var compatible = declared
+                .Select(boundary => new
+                {
+                    Declared = boundary,
+                    Derived = derived.FirstOrDefault(candidate =>
+                        string.Equals(candidate.Kind, boundary.Kind, StringComparison.Ordinal) &&
+                        candidate.Fight == boundary.Fight &&
+                        candidate.Floor == boundary.Floor &&
+                        candidate.Turn == boundary.Turn),
+                })
+                .Where(pair => pair.Derived is not null)
+                .ToList();
+            var mismatches = compatible
+                .Where(pair => !string.Equals(
+                    pair.Declared.Digest.Value, pair.Derived!.Digest.Value, StringComparison.Ordinal))
+                .Select(pair =>
+                    $"{pair.Declared.Describe()}: the recording declares {pair.Declared.Digest.Value}, " +
+                    $"the engine produced {pair.Derived!.Digest.Value}")
+                .ToList();
+
+            return new Condition(
+                "combat-boundary", CombatBoundaryRequirement, mismatches.Count == 0,
+                mismatches.Count == 0 ? null : $"Boundary digest mismatches: {string.Join("; ", mismatches)}.");
+        }
+        catch (Exception exception) when (
+            exception is IOException or JsonException or ManifestException or InvalidOperationException)
+        {
+            return new Condition(
+                "combat-boundary", CombatBoundaryRequirement, false,
+                $"Boundary digests could not be compared: {exception.Message}");
         }
     }
 

@@ -559,6 +559,52 @@ public class PublicationGateTests
         Assert.False(source.GetProperty("passed").GetBoolean());
     }
 
+    /// <summary>
+    /// A recording whose first fight still agrees used to pass because the one
+    /// boundary probe silently defaulted to that fight. These three later places are
+    /// all reached by the verified replay and disagree only in their declared hidden
+    /// state, so the boundary condition itself has to name every disagreement.
+    /// </summary>
+    [GameFact]
+    public void RefusesLaterDigestDivergenceAtEveryBoundaryKind()
+    {
+        var outDir = TempDir();
+        var manifest = ManifestJson.Load(Arbiter.Manifest);
+        var divergent = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["the start of fight 2"] = "sha256:" + new string('0', 64),
+            ["arrival on floor 5"] = "sha256:" + new string('1', 64),
+            ["turn 5 of fight 2"] = "sha256:" + new string('2', 64),
+        };
+        var path = Path.Combine(outDir, "later-boundary-divergence.json");
+        ManifestJson.Save(
+            manifest with
+            {
+                Boundaries = manifest.Boundaries.Select(boundary =>
+                    divergent.TryGetValue(boundary.Describe(), out var digest)
+                        ? boundary with { Digest = Fact<string>.Engine(digest) }
+                        : boundary).ToList(),
+            },
+            path);
+
+        var result = Arbiter.Run(
+            "gate", path, "--map-observation", Arbiter.MapObservation, "--out", outDir);
+
+        Assert.False(result.Verified, result.All);
+        var report = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(outDir, "publication-gate.json"))).RootElement;
+        Assert.False(report.GetProperty("publishable").GetBoolean());
+        var conditions = report.GetProperty("conditions").EnumerateArray().ToList();
+        Assert.True(conditions.Single(condition =>
+            condition.GetProperty("name").GetString() == "reproduction").GetProperty("passed").GetBoolean());
+        var boundary = conditions.Single(condition =>
+            condition.GetProperty("name").GetString() == "combat-boundary");
+        Assert.False(boundary.GetProperty("passed").GetBoolean());
+        var diagnostic = boundary.GetProperty("diagnostic").GetString()!;
+        Assert.All(divergent.Keys, description =>
+            Assert.Contains(description, diagnostic, StringComparison.Ordinal));
+    }
+
     [GameFact]
     public void RequiresEveryNegativeControlToApplyAtPublication()
     {
