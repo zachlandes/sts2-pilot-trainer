@@ -132,13 +132,20 @@ internal static class RunLibrary
         indexLoaded = true;
     }
 
-    internal static LibraryRun OnlineRun(SharedRunSummary item, RunVerdict verdict) =>
-        item.Run with
+    internal static LibraryRun OnlineRun(SharedRunSummary item, RunVerdict verdict)
+    {
+        item.Submission.Validate();
+        return item.Run with
         {
             Origin = item.Featured ? RunOrigin.Featured : RunOrigin.Recent,
+            Creator = item.Submission.DisplayName,
+            Character = item.Environment.Character.Value,
+            Ascension = item.Environment.Ascension.Value,
+            RecordedBuild = item.Environment.BuildVersion.Value,
             Verdict = verdict,
             Recorded = item.SubmittedAt,
         };
+    }
 
     internal static void RefuseIndex()
     {
@@ -173,6 +180,7 @@ internal static class RunLibrary
     internal static SharedRun AcceptShared(
         SharedRun found, string? expectedCode = null, bool exact = false)
     {
+        found.Submission.Validate();
         var computedId = SharedRunIdentity.For(found.ManifestJson, found.Submission);
         var computedCode = SharedRunIdentity.CodeFor(computedId);
         if (!string.Equals(found.ShareId, computedId, StringComparison.Ordinal) ||

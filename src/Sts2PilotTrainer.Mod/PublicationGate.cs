@@ -6,6 +6,9 @@ namespace Sts2PilotTrainer.Mod;
 
 internal static class PublicationGate
 {
+    private static readonly TimeSpan ProcessTimeout = TimeSpan.FromMinutes(15);
+    private static readonly TimeSpan TerminationTimeout = TimeSpan.FromSeconds(30);
+
     internal static Task<bool> RunAsync(ReplayManifest recording)
     {
         var id = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
@@ -41,6 +44,7 @@ internal static class PublicationGate
 
             return Task.Run(async () =>
             {
+                var removeWorkspace = true;
                 try
                 {
                     var start = new ProcessStartInfo
@@ -63,13 +67,54 @@ internal static class PublicationGate
                         ?? throw new ShareValidationException("The local replay arbiter could not start.");
                     var output = process.StandardOutput.ReadToEndAsync();
                     var errors = process.StandardError.ReadToEndAsync();
-                    await process.WaitForExitAsync().ConfigureAwait(false);
+                    var timedOut = false;
+                    using var timeout = new CancellationTokenSource(ProcessTimeout);
+                    try
+                    {
+                        await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+                    {
+                        if (!process.HasExited)
+                        {
+                            timedOut = true;
+                            try
+                            {
+                                process.Kill(entireProcessTree: true);
+                            }
+                            catch (Exception ex)
+                            {
+                                if (!process.HasExited)
+                                {
+                                    removeWorkspace = false;
+                                    throw new ShareValidationException(
+                                        $"The local replay arbiter timed out and could not be stopped: {ex.Message}");
+                                }
+                            }
+
+                            if (!process.WaitForExit((int)TerminationTimeout.TotalMilliseconds))
+                            {
+                                removeWorkspace = false;
+                                throw new ShareValidationException(
+                                    "The local replay arbiter timed out and did not stop when asked.");
+                            }
+                        }
+                    }
+
                     await Task.WhenAll(output, errors).ConfigureAwait(false);
+                    if (timedOut)
+                    {
+                        throw new ShareValidationException(
+                            "The local replay arbiter timed out, so this run was not sent.");
+                    }
                     return process.ExitCode == 0;
                 }
                 finally
                 {
-                    RecordingRetention.RemovePublicationWorkspace(storeRoot, workspace);
+                    if (removeWorkspace)
+                        RecordingRetention.RemovePublicationWorkspace(storeRoot, workspace);
+                    else
+                        RecordingRetention.ReleasePublicationWorkspace(storeRoot, workspace);
                 }
             });
         }

@@ -80,6 +80,11 @@ internal static class RecordingRetention
         }
     }
 
+    internal static void ReleasePublicationWorkspace(string root, string relativeDirectory)
+    {
+        lock (Gate) ActivePublicationWorkspaces.Remove(PublicationKey(root, relativeDirectory));
+    }
+
     private static string PublicationKey(string root, string relativeDirectory) =>
         Path.Combine(root, relativeDirectory);
 

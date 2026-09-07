@@ -311,6 +311,27 @@ public sealed class RunLibraryStoreTests : IDisposable
     }
 
     [GameFact]
+    public void ADownloadedRecordingWithoutValidSubmissionConsentIsRefused()
+    {
+        var recording = Recording("shared-a");
+        var manifestJson = ManifestJson.Serialize(recording);
+        var submission = new ShareSubmission("Run", "", "Ada", false);
+        var shareId = SharedRunIdentity.For(manifestJson, submission);
+        var shared = new SharedRun(
+            shareId,
+            SharedRunIdentity.CodeFor(shareId),
+            manifestJson,
+            submission,
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed),
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
+
+        var error = Assert.Throws<ShareValidationException>(() =>
+            RunLibrary.AcceptShared(shared, shared.Code));
+
+        Assert.Contains("CC0 consent", error.Message, StringComparison.Ordinal);
+    }
+
+    [GameFact]
     public void LightweightIndexIdentityUsesTheEnvironmentPreflight()
     {
         var recording = Recording("shared-a");
@@ -403,8 +424,29 @@ public sealed class OnlineIndexTests
         Assert.Equal(
             [LibraryCopy.FeaturedGroup, LibraryCopy.RecentGroup],
             browser.Groups.Select(group => group.Heading));
-        Assert.Equal("featured", Assert.Single(browser.Groups[0].Runs).RunId);
+        var acceptedFeatured = Assert.Single(browser.Groups[0].Runs);
+        Assert.Equal("featured", acceptedFeatured.RunId);
+        Assert.Equal("Ada", acceptedFeatured.Creator);
+        Assert.Equal(recording.Environment.Character.Value, acceptedFeatured.Character);
+        Assert.Equal(recording.Environment.Ascension.Value, acceptedFeatured.Ascension);
+        Assert.Equal(recording.Environment.BuildVersion.Value, acceptedFeatured.RecordedBuild);
         Assert.Equal(["newer", "older"], browser.Groups[1].Runs.Select(run => run.RunId));
+    }
+
+    [Fact]
+    public void OnlineMetadataWithoutValidSubmissionConsentIsRefused()
+    {
+        var recording = RunLibraryStoreTests.BareRecording("source");
+        var summary = Summary(
+            recording,
+            Run("run", RunOrigin.Recent, recorded: null),
+            submitted: "2026-09-01T00:00:00Z") with
+        {
+            Submission = new ShareSubmission("Run", "", "Ada", false),
+        };
+
+        Assert.Throws<ShareValidationException>(() =>
+            RunLibrary.OnlineRun(summary, RunVerdict.Passed));
     }
 
     private static SharedRunSummary Summary(
@@ -427,10 +469,10 @@ public sealed class OnlineIndexTests
         new(
             runId,
             origin,
-            "Ada",
-            "Ironclad",
-            0,
-            "v0.111.0",
+            "Wrong creator",
+            "WRONG.CHARACTER",
+            99,
+            "wrong-build",
             [1],
             "won",
             false,
