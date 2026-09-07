@@ -60,6 +60,7 @@ if [[ "$rid" == win-* ]]; then
 fi
 payload_files=(
   "Runmobile.json"
+  "Runmobile.pck"
   "Runmobile.dll"
   "Sts2PilotTrainer.Trainer.dll"
   "Sts2PilotTrainer.Engine.dll"

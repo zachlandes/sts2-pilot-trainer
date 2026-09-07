@@ -77,8 +77,8 @@ internal static class LibraryScreen
     private const string VerticalPopupPath = "VerticalPopup";
 
     /// <summary>Labels the ribbons carry until this mod replaces them. Never shown:
-    /// the game's initialisers take a localized string and a DLL-only mod contributes
-    /// no localization table, so the game's own confirm and cancel keys stand in and
+    /// the game's initialisers take a localized string and Runmobile contributes no
+    /// localization table, so the game's own confirm and cancel keys stand in and
     /// the text is then set directly.</summary>
     private static LocString PlaceholderConfirm => new("main_menu_ui", "GENERIC_POPUP.confirm");
 

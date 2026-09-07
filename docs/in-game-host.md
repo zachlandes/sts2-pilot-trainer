@@ -29,16 +29,17 @@ S7's session did run the renamed shell, which is what establishes the row below;
 ## What it proves
 
 **Retail loading of the renamed core artifact is established, mod list included.**
-The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.dll`, the four project-owned libraries the host uses, and the self-contained local publication arbiter under `arbiter/`.
+The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.pck` carrying the mod-list icon, `Runmobile.dll`, the four project-owned libraries the host uses, and the self-contained local publication arbiter under `arbiter/`.
 The S7 transport session predates the packaged arbiter: it installed the core Runmobile payload with `install-mod.sh`, launched the shipped client with it as the only enabled mod, and ran the whole watched journey through it.
 That session establishes discovery, initialization and a complete journey through the renamed shell, and its protected-files ledger is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp; it does not establish the newer publication package in retail.
 The game's own mod line naming `Runmobile` is photographed in that session's record, so the row no longer rests on the pre-rename `CombatTrainer` screenshots.
-The libraries and arbiter are built to ship together; there is no separately installed framework or runtime dependency, and no resource pack.
+The libraries and arbiter are built to ship together; there is no separately installed framework or runtime dependency.
+The one-resource pack contains only the mod-list icon.
 
 **It reads the game and never writes to it.**
 The installed build, discovered mods, and supplied in-memory progress model are inputs to the fight offer; the player's saved profile is not.
 The executable `adopt-live` boundary test verifies that a console process is refused without changing the prepared game inputs or sandbox profile.
-The mod-manifest contract verifies that the shipped host is non-gameplay and carries no resource pack.
+The mod-manifest contract verifies that the shipped host is non-gameplay and declares its one-resource icon pack.
 There is no source-reference scan presented as behavioural evidence.
 
 **What it writes, it writes in one place.**
@@ -645,8 +646,8 @@ and added through `NModalContainer`, in the same order the game's own confirmati
 popups use.
 
 Two consequences of that choice, stated rather than hidden. The card keeps the icon
-it was duplicated from, because art of its own would need a resource pack and the
-packaging contract in [distribution](distribution.md) deliberately does without one.
+it was duplicated from: Runmobile's one-resource pack supplies the mod-list image,
+not a second card treatment.
 And the popup's body scrolls when the evidence is longer than the panel, which is why
 unmet rows are ordered first: what a player has to act on is above the fold, and the
 rows that already passed are below it.

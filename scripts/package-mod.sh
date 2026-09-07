@@ -59,6 +59,9 @@ for file in "${files[@]}"; do
   fi
   cp "$built/$file" "$out_dir/payload/$file"
 done
+python3 tools/pack-runmobile-icon.py \
+  src/Sts2PilotTrainer.Mod/Assets \
+  "$out_dir/payload/Runmobile.pck"
 
 cp -R "$work/arbiter" "$out_dir/payload/arbiter"
 (

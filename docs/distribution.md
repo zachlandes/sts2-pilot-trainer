@@ -37,9 +37,9 @@ where anything is eventually published, and the tests for all of it run on a mac
 that does not own the game.
 
 **The eventual published artifact carries the local arbiter it needs.**
-It contains `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries that the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
+It contains `Runmobile.json`, `Runmobile.pck`, `Runmobile.dll`, and the four project-owned libraries that the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
 It also contains a platform-specific, self-contained `arbiter/` directory so `Share this run` can apply the real publication gate in fresh processes without a repository checkout or a separately installed .NET runtime.
-It remains DLL-only in the game's packaging terms: `has_pck: false`, `dependencies: []`, `affects_gameplay: false`.
+Its one-resource pack supplies the 64×64 `mod_image.png` the game's mod list reads; `has_pck: true`, `dependencies: []`, and `affects_gameplay: false` remain the manifest's complete declaration.
 `./scripts/package-mod.sh` produces the distributable archive with a self-contained preparation tool and `install.sh` beside the mod payload.
 After extraction, `./install.sh` installs that payload without a repository checkout or a system .NET runtime.
 That installer prepares a private, receipted copy of the player's own game assemblies under `arbiter/lib/` before atomically replacing the installed mod.

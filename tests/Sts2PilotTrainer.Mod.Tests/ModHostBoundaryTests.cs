@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -75,14 +76,14 @@ public sealed class ModHostBoundaryTests
     }
 
     [Fact]
-    public void TheModManifestDeclaresItselfNonGameplayAndPackless()
+    public void TheModManifestDeclaresItselfNonGameplayAndPacksItsModImage()
     {
         var path = Path.Combine(
             Arbiter.RepoRoot, "src", "Sts2PilotTrainer.Mod", "Runmobile.json");
         var manifest = JsonDocument.Parse(File.ReadAllText(path)).RootElement;
 
         Assert.False(manifest.GetProperty("affects_gameplay").GetBoolean());
-        Assert.False(manifest.GetProperty("has_pck").GetBoolean());
+        Assert.True(manifest.GetProperty("has_pck").GetBoolean());
         Assert.True(manifest.GetProperty("has_dll").GetBoolean());
         Assert.Empty(manifest.GetProperty("dependencies").EnumerateArray());
         Assert.Equal("Runmobile", manifest.GetProperty("id").GetString());
@@ -201,6 +202,7 @@ public sealed class ModHostBoundaryTests
         foreach (var file in new[]
         {
             "Runmobile.json",
+            "Runmobile.pck",
             "Runmobile.dll",
             "Sts2PilotTrainer.Trainer.dll",
             "Sts2PilotTrainer.Engine.dll",
@@ -253,12 +255,26 @@ public sealed class ModHostBoundaryTests
                 [
                     "Runmobile.dll",
                     "Runmobile.json",
+                    "Runmobile.pck",
                     "Sts2PilotTrainer.Engine.dll",
                     "Sts2PilotTrainer.IO.dll",
                     "Sts2PilotTrainer.Replay.dll",
                     "Sts2PilotTrainer.Trainer.dll",
                 ],
                 Directory.EnumerateFiles(installed).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+            var iconResources = ReadPckEntries(Path.Combine(installed, "Runmobile.pck"));
+            var icon = iconResources["Runmobile/mod_image.png"];
+            Assert.Equal(
+                File.ReadAllBytes(Path.Combine(
+                    Arbiter.RepoRoot, "src", "Sts2PilotTrainer.Mod", "Assets", "Runmobile", "mod_image.png")),
+                icon);
+            Assert.Equal(64u, BinaryPrimitives.ReadUInt32BigEndian(icon.AsSpan(16)));
+            Assert.Equal(64u, BinaryPrimitives.ReadUInt32BigEndian(icon.AsSpan(20)));
+            Assert.Contains("Runmobile/mod_image.png.import", iconResources.Keys);
+            Assert.Contains(iconResources.Keys, path =>
+                path.StartsWith(".godot/imported/mod_image.png-", StringComparison.Ordinal) &&
+                path.EndsWith(".ctex", StringComparison.Ordinal));
+
             var arbiterDirectory = Path.Combine(installed, "arbiter");
             Assert.True(Directory.Exists(arbiterDirectory));
             Assert.True(File.Exists(Path.Combine(
@@ -446,6 +462,39 @@ public sealed class ModHostBoundaryTests
         }
 
         return new WeakReference(duplicateContext);
+    }
+
+    private static IReadOnlyDictionary<string, byte[]> ReadPckEntries(string path)
+    {
+        using var stream = File.OpenRead(path);
+        using var reader = new BinaryReader(stream);
+        Assert.Equal(0x43504447u, reader.ReadUInt32());
+        Assert.Equal(3u, reader.ReadUInt32());
+        stream.Position = 24;
+        var fileBase = reader.ReadUInt64();
+        var directory = reader.ReadUInt64();
+        stream.Position = (long)directory;
+        var entries = new List<(string Path, ulong Offset, ulong Length)>();
+        var count = reader.ReadUInt32();
+        for (var index = 0; index < count; index++)
+        {
+            var length = reader.ReadUInt32();
+            var resourcePath = System.Text.Encoding.UTF8.GetString(reader.ReadBytes((int)length)).TrimEnd('\0');
+            var offset = reader.ReadUInt64();
+            var size = reader.ReadUInt64();
+            reader.ReadBytes(16);
+            reader.ReadUInt32();
+            entries.Add((resourcePath, offset, size));
+        }
+
+        return entries.ToDictionary(
+            entry => entry.Path,
+            entry =>
+            {
+                stream.Position = checked((long)(fileBase + entry.Offset));
+                return reader.ReadBytes(checked((int)entry.Length));
+            },
+            StringComparer.Ordinal);
     }
 
     private static IReadOnlyList<FileFingerprint> GameInputSnapshot()

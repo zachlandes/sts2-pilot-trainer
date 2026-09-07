@@ -191,8 +191,8 @@ internal static class CompendiumCard
     /// Replaces the duplicate's label with this mod's own wording.
     ///
     /// Set on the label node rather than through <c>SetLocalization</c>, which reads
-    /// the game's own localization tables: a DLL-only mod contributes no tables, so
-    /// asking for a key that does not exist would put a key on screen. The duplicate's
+    /// the game's own localization tables: Runmobile contributes no tables, so asking
+    /// for a key that does not exist would put a key on screen. The duplicate's
     /// localization prefix is cleared so a translation refresh leaves it unchanged.
     /// </summary>
     internal static void SetLabel(NCompendiumBottomButton button, string text)
