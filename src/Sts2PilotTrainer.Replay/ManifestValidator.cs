@@ -674,12 +674,12 @@ public static partial class ManifestValidator
 
             if (verification is null) continue;
 
-            var fight = coverage!.Fights.FirstOrDefault(entry => entry.CombatStartSeq == branch.RollbackToSeq);
-            var floor = coverage.Floors.FirstOrDefault(entry => entry.EnteredAfterSeq == branch.RollbackToSeq);
-            var boundary = fight is null || floor is null
+            var floor = coverage!.Floors.FirstOrDefault(entry => entry.EnteredAfterSeq == branch.RollbackToSeq);
+            var fight = floor is null ? null : coverage.FightsOn(floor).FirstOrDefault();
+            var boundary = fight is null
                 ? null
                 : verification.Boundaries.FirstOrDefault(candidate =>
-                    candidate.Kind == ReplayBoundary.FloorEntryKind && candidate.Floor == floor.Floor &&
+                    candidate.Kind == ReplayBoundary.FloorEntryKind && candidate.Floor == floor!.Floor &&
                     candidate.AfterSeq == branch.RollbackToSeq);
             if (boundary is null || boundary.Digest.Source != FactSource.Engine ||
                 !string.Equals(boundary.Digest.Value, branch.RollbackToDigest, StringComparison.Ordinal))

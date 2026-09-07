@@ -355,9 +355,9 @@ public sealed record RunJournal
                     }).ToList(),
                 };
                 var coverage = RunCoverage.Of(trace);
-                var fight = coverage.Fights.LastOrDefault();
                 var roomEntry = coverage.Floors.LastOrDefault();
-                if (fight is not { Finished: false } || roomEntry?.EnteredAfterSeq != rollback.RollbackToSeq)
+                var fight = roomEntry is null ? null : coverage.FightsOn(roomEntry).LastOrDefault();
+                if (fight is not { Finished: false } || roomEntry!.EnteredAfterSeq != rollback.RollbackToSeq)
                 {
                     throw new ManifestException(
                         "A run journal's rollback is not to the room-entry decision before the fight its history " +

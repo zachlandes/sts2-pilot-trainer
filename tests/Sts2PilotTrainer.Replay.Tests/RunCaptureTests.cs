@@ -298,24 +298,7 @@ public sealed class RunCaptureTests
 
         var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
         resumed.Finish("abandoned");
-        var manifest = resumed.ToManifest();
-        var verified = manifest with
-        {
-            Verification = new VerificationReport
-            {
-                Status = VerificationStatus.Verified,
-                ArbiterVersion = "test",
-                Preflight = new PreflightResult(true, []),
-                Trace = resumed.Trace,
-                Boundaries =
-                [
-                    .. manifest.Boundaries.Select(boundary => boundary with
-                    {
-                        Digest = Fact<string>.Engine(boundary.Digest.Value),
-                    }),
-                ],
-            },
-        };
+        var verified = Verified(resumed);
 
         var result = ManifestValidator.Validate(verified);
 
@@ -324,6 +307,38 @@ public sealed class RunCaptureTests
             boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.AfterSeq == 5);
         Assert.DoesNotContain(verified.Verification.Boundaries, boundary =>
             boundary.IsCombatStart && boundary.AfterSeq == 5);
+    }
+
+    [Fact]
+    public void AnEventFightRollbackRemainsValidWhenTheContinuedFightIsAbandoned()
+    {
+        var capture = Played();
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "3")),
+            Floor(3), Digest(5));
+        capture.Record(
+            ActionVerb.ChooseEventOption,
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
+            InFight(3), Digest(6));
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
+            InFight(3, enemyHp: 30), Digest(7));
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        resumed.Record(
+            ActionVerb.ChooseEventOption,
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
+            InFight(3), Digest(6));
+        resumed.Finish("abandoned");
+        var verified = Verified(resumed);
+
+        var result = ManifestValidator.Validate(verified);
+
+        Assert.True(result.IsValid, result.Describe());
+        var discarded = Assert.Single(verified.Source.Native!.Discarded!);
+        Assert.Equal([6, 7], discarded.Actions.Select(action => action.Seq));
+        Assert.Contains(verified.Verification!.Trace!.Steps, step =>
+            step.Seq == 6 && step.After["combat.outcome"] == "in_progress");
     }
 
     [Fact]
@@ -770,6 +785,28 @@ public sealed class RunCaptureTests
             ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
             Won(2, hp: 58), Digest(4));
         return capture;
+    }
+
+    private static ReplayManifest Verified(RunCapture capture)
+    {
+        var manifest = capture.ToManifest();
+        return manifest with
+        {
+            Verification = new VerificationReport
+            {
+                Status = VerificationStatus.Verified,
+                ArbiterVersion = "test",
+                Preflight = new PreflightResult(true, []),
+                Trace = capture.Trace,
+                Boundaries =
+                [
+                    .. manifest.Boundaries.Select(boundary => boundary with
+                    {
+                        Digest = Fact<string>.Engine(boundary.Digest.Value),
+                    }),
+                ],
+            },
+        };
     }
 
     private static RunRecordingStart Start() => new()

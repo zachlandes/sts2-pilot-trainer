@@ -375,9 +375,9 @@ public sealed class RunCapture
     private bool IsObservedFightRollback(RunJournalEntry target)
     {
         var coverage = RunCoverage.Of(Trace);
-        var fight = coverage.Fights.LastOrDefault();
         var roomEntry = coverage.Floors.LastOrDefault();
-        return fight is { Finished: false } && roomEntry?.EnteredAfterSeq == target.Seq &&
+        var fight = roomEntry is null ? null : coverage.FightsOn(roomEntry).LastOrDefault();
+        return fight is { Finished: false } && roomEntry!.EnteredAfterSeq == target.Seq &&
                _entries.Any(entry => entry.Seq > target.Seq);
     }
 
