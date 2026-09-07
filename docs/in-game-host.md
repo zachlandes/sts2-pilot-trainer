@@ -12,7 +12,7 @@ nothing else can draw.
 So is `CardScreensUp`, whose two patch classes count the card screens up in front of
 the player: a screen being up is a fact about the game rather than about either
 feature, and both settles read it - the recorder's, to keep a reading off a decision
-somebody has not finished making, and the Combat Trainer's, so a prompt a played card
+somebody has not finished making, and the recorded-fight journey's, so a prompt a played card
 opens does not spend the engine's budget. Behind one feature's patches it would stop
 counting on a build that feature declines to watch, which is the build the other is
 meant to carry on through. What a screen answered is a feature's own business, and a
@@ -257,7 +257,7 @@ lowers the write barrier on every one of those paths.
 
 **The recorder is that observer widened to a whole run, and it shares its parts.**
 `RunRecorder` in `Sts2PilotTrainer.Mod` attaches when a run starts, watches every decision the player makes, and writes a v6 native manifest under `user://Runmobile/recordings/` when the run ends.
-Inside a fight it hands the run to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink` in `Sts2PilotTrainer.Replay`: the trainer's sink is a `FightCapture` and the recorder's is an adapter onto the `RunCapture` that keeps the whole run.
+Inside a fight it hands the run to the same `PlayerFightObserver` the recorded-fight journey uses, through `IFightSampleSink` in `Sts2PilotTrainer.Replay`: the recorded-fight journey's sink is a `FightCapture` and the recorder's is an adapter onto the `RunCapture` that keeps the whole run.
 There is one observer, one settle rule and one set of rules about what a sample means, whichever feature is watching.
 The one question the two sinks answer differently is an action whose argument the observer could not resolve, which is why `IFightSampleSink` asks it rather than the observer deciding: a history missing an argument the format requires is a run nobody can replay, so the recorder refuses and keeps nothing for that action, while a fight being compared never reads that argument and the capture keeps the step.
 
@@ -930,7 +930,7 @@ And the moment is the singleplayer menu: the shell's own patch asks for retentio
 `RunmobileMod.EnsureAdopted` asks for it again, so the recorder's own first adopted moment is covered too, and asking twice costs nothing: it is applied once per save profile whoever asks.
 No journal is being appended to when it runs - the recorder opens one only after passing that same adoption gate, and it has let go of the run it was recording before the singleplayer menu can be reached again - so a removal can never race a journal.
 Retention runs whether or not the adoption succeeded, and where adoption is never attempted at all: its condition is the store's, a chosen save profile, and not the engine layer's verdict on whether this game can be read.
-So a build where the Combat Trainer and the recorder both decline, and a build the engine layer refuses to adopt, both still honour a purge and still enforce `keep_recent_runs`.
+So a build where the run library and the recorder both decline, and a build the engine layer refuses to adopt, both still honour a purge and still enforce `keep_recent_runs`.
 The policy is applied once per save profile rather than once per process: the store is resolved per operation and two profiles do not share a library, so a player who switches profile has their second profile's `settings.json` honoured against their second profile's recordings.
 It cannot be mod start: the game has no chosen save profile then, so the store cannot yet say whose files these are.
 

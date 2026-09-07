@@ -464,7 +464,7 @@ same kind, without a video and without a transcriber.
   a continued session publishes exactly what an uninterrupted one would have.
 - `RunRecorder` and `RecorderModule` in the mod: the hooks, the settle rule, and the
   translation from what the game announces into what the format records. Inside a
-  fight it hands over to the same `PlayerFightObserver` the Combat Trainer uses,
+  fight it hands over to the same `PlayerFightObserver` the recorded-fight journey uses,
   through `IFightSampleSink`. It never raises the write barrier - the player's own run
   saves normally - and it declines to attach while a trainer run is live.
 - `LiveRun` in the engine: the canonical state, its digest, the run's clock and start
