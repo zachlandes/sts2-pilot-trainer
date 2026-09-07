@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
+using System.Text;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Trainer;
@@ -11,11 +12,15 @@ public sealed record ShareSubmission(
     string DisplayName,
     bool Cc0Consent)
 {
+    public const int NameCharacterLimit = 40;
+    public const int DescriptionCharacterLimit = 200;
+
     public void Validate()
     {
-        if (string.IsNullOrWhiteSpace(Name) || Name.Length > 40)
+        if (string.IsNullOrWhiteSpace(Name) ||
+            Name.EnumerateRunes().Count() > NameCharacterLimit)
             throw new ShareValidationException("Name is required and may contain at most 40 characters.");
-        if (Description.Length > 200)
+        if (Description.EnumerateRunes().Count() > DescriptionCharacterLimit)
             throw new ShareValidationException("Description may contain at most 200 characters.");
         if (string.IsNullOrWhiteSpace(DisplayName))
             throw new ShareValidationException("Display name is required for submission.");
@@ -162,8 +167,8 @@ public sealed record ShareRunForm(
         run.Source.Native is { IsContinuous: true, StatesSomethingOtherThanComplete: false }
             ? "Complete recording · publication gate required"
             : "Recording is not eligible to share",
-        40,
-        200,
+        ShareSubmission.NameCharacterLimit,
+        ShareSubmission.DescriptionCharacterLimit,
         LibraryCopy.SharePrivacy,
         LibraryCopy.ShareConsent,
         LibraryCopy.ShareLocalValidation);

@@ -112,6 +112,26 @@ public sealed class RunSharingTests
     }
 
     [Fact]
+    public void SubmissionLimitsCountUnicodeScalarValues()
+    {
+        var scalar = "\U0001F680";
+        var nameAtLimit = string.Concat(Enumerable.Repeat(
+            scalar, ShareSubmission.NameCharacterLimit));
+        var descriptionAtLimit = string.Concat(Enumerable.Repeat(
+            scalar, ShareSubmission.DescriptionCharacterLimit));
+
+        new ShareSubmission(nameAtLimit, descriptionAtLimit, "Ada", true).Validate();
+
+        Assert.Throws<ShareValidationException>(() => new ShareSubmission(
+            nameAtLimit + scalar, "", "Ada", true).Validate());
+        Assert.Throws<ShareValidationException>(() => new ShareSubmission(
+            "Run", descriptionAtLimit + scalar, "Ada", true).Validate());
+        var form = ShareRunForm.For(Fixture());
+        Assert.Equal(ShareSubmission.NameCharacterLimit, form.NameLimit);
+        Assert.Equal(ShareSubmission.DescriptionCharacterLimit, form.DescriptionLimit);
+    }
+
+    [Fact]
     public async Task SubmissionAcceptsAnUncappedNonemptyDisplayName()
     {
         var displayName = new string('A', 200);

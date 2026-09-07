@@ -427,9 +427,12 @@ internal static class LibraryScreen
             return field;
         }
 
-        var name = Field("RunmobileShareName", LibraryCopy.ShareNameField, 40, 0);
+        var name = Field(
+            "RunmobileShareName", LibraryCopy.ShareNameField,
+            ShareSubmission.NameCharacterLimit, 0);
         var description = Field(
-            "RunmobileShareDescription", LibraryCopy.ShareDescriptionField, 200, 1);
+            "RunmobileShareDescription", LibraryCopy.ShareDescriptionField,
+            ShareSubmission.DescriptionCharacterLimit, 1);
         var displayName = Field(
             "RunmobileShareDisplayName", LibraryCopy.ShareDisplayNameField, null, 2);
         var consent = new CheckBox
