@@ -126,7 +126,8 @@ internal static class LibraryScreen
         Action? back = null,
         Action<string>? codeSubmitted = null,
         string codePlaceholder = "",
-        int page = 0)
+        int page = 0,
+        Action<string, string, string, bool>? shareSubmitted = null)
     {
         NGenericPopup? popup = null;
         NModalContainer? container = null;
@@ -150,23 +151,47 @@ internal static class LibraryScreen
             // Deferred for the reason Press clears first: the popup takes itself down
             // when the ribbon is pressed, and a screen shown inside the handler would be
             // the one it took down. Deferring puts the next screen after that.
+            var share = shareSubmitted is null ? null : AddShareFields(content);
             content.InitYesButton(
                 PlaceholderConfirm,
                 _ =>
                 {
-                    if (back is not null) Callable.From(() => Reopen(back)).CallDeferred();
+                    if (share is not null)
+                    {
+                        shareSubmitted!(share.Name.Text, share.Description.Text,
+                            share.DisplayName.Text, share.Consent.ButtonPressed);
+                    }
+                    else if (back is not null)
+                    {
+                        Callable.From(() => Reopen(back)).CallDeferred();
+                    }
                 });
-            content.HideNoButton();
-            content.YesButton.SetText(backLabel);
+            content.YesButton.SetText(share is null ? backLabel : LibraryCopy.ShareSubmit);
+            if (share is null)
+            {
+                content.HideNoButton();
+            }
+            else
+            {
+                content.NoButton.Visible = true;
+                content.NoButton.SetText(backLabel);
+                content.NoButton.Connect(
+                    NClickableControl.SignalName.Released,
+                    Callable.From<NButton>(_ =>
+                    {
+                        if (back is not null) Callable.From(() => Reopen(back)).CallDeferred();
+                    }));
+            }
 
             var field = codeSubmitted is null ? null : AddCodeField(content, codePlaceholder, codeSubmitted);
             var first = AddRows(
                 content,
                 rows,
-                field is null ? 0f : 1f,
+                share is not null ? 4f : field is null ? 0f : 1f,
                 page,
                 turned => Show(
-                    title, body, rows, backLabel, back, codeSubmitted, codePlaceholder, turned));
+                    title, body, rows, backLabel, back, codeSubmitted, codePlaceholder, turned,
+                    shareSubmitted));
 
             // Deferred: adding the modal updates the game's active screen context,
             // which decides what is focused. Grabbing focus before that has finished
@@ -356,6 +381,50 @@ internal static class LibraryScreen
     /// borrowed from a label already on screen, the way the result panel borrows it,
     /// so the field reads as part of the game rather than as Godot's default sans.
     /// </summary>
+    private sealed record ShareFields(
+        LineEdit Name, LineEdit Description, LineEdit DisplayName, CheckBox Consent);
+
+    private static ShareFields AddShareFields(NVerticalPopup content)
+    {
+        var label = content.BodyLabel();
+        var x = content.NoButton.Position.X;
+        var y = label.Position.Y + label.Size.Y;
+        var width = label.Size.X;
+        var height = content.NoButton.Size.Y;
+        var font = GameFont.Of(content.GetTree()?.Root);
+
+        LineEdit Field(string name, string placeholder, int limit, int step)
+        {
+            var field = new LineEdit
+            {
+                Name = name,
+                PlaceholderText = placeholder,
+                MaxLength = limit,
+                Position = new Vector2(x, y + (height * step)),
+                CustomMinimumSize = new Vector2(width, height),
+            };
+            if (font is not null) field.AddThemeFontOverride("font", font);
+            content.AddChild(field);
+            return field;
+        }
+
+        var name = Field("RunmobileShareName", LibraryCopy.ShareNameField, 40, 0);
+        var description = Field(
+            "RunmobileShareDescription", LibraryCopy.ShareDescriptionField, 200, 1);
+        var displayName = Field(
+            "RunmobileShareDisplayName", LibraryCopy.ShareDisplayNameField, 40, 2);
+        var consent = new CheckBox
+        {
+            Name = "RunmobileShareConsent",
+            Text = LibraryCopy.ShareConsent,
+            Position = new Vector2(x, y + (height * 3)),
+            CustomMinimumSize = new Vector2(width, height),
+        };
+        if (font is not null) consent.AddThemeFontOverride("font", font);
+        content.AddChild(consent);
+        return new ShareFields(name, description, displayName, consent);
+    }
+
     private static Control AddCodeField(
         NVerticalPopup content, string placeholder, Action<string> submitted)
     {

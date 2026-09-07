@@ -15,13 +15,6 @@ namespace Sts2PilotTrainer.Mod;
 /// is shown - the hidden rule lives in <c>LibraryRun.Listed</c>, in one place, so
 /// "why is this run not in the list" has one field to look at.
 ///
-/// <para>Two sources today and the shape allows a third. The recordings that travel
-/// inside the mod are the Community tab's "Included with Runmobile" group and are
-/// there with no network and no index; the recorder's own output is My runs. Featured
-/// and Recent are the fetched index's groups, and until an index exists they are
-/// simply empty - which is what the browser draws when a group has nothing in it,
-/// rather than a placeholder saying so.</para>
-///
 /// <para><b>Nothing is cached, and only one of the two questions builds the list.</b>
 /// "Which runs are there" is <see cref="Runs"/>, and it is expensive on purpose: every
 /// recording is deserialized and judged live, every time it is asked, because the
@@ -42,6 +35,14 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class RunLibrary
 {
+    private static readonly IRunSharingApi Sharing = new HttpRunSharingApi(new HttpClient
+    {
+        BaseAddress = new Uri("https://runs.runmobile.app/v1/"),
+        Timeout = TimeSpan.FromSeconds(10),
+    });
+
+    private static readonly Dictionary<string, SharedRun> Shared = new(StringComparer.Ordinal);
+
     /// <summary>
     /// Every run, listed or not, with the verdict that decides which.
     ///
@@ -71,6 +72,34 @@ internal static class RunLibrary
                 RunVerdicts.For(stored.Recording, build),
                 progress.PlayedFrom(stored.Recording.RunId),
                 recorded: stored.Started));
+        }
+
+        if (RunmobileSettings.Read().FetchRunIndex)
+        {
+            try
+            {
+                Shared.Clear();
+                foreach (var item in Sharing.Index())
+                {
+                    var recording = ManifestJson.Deserialize(item.ManifestJson);
+                    var origin = item.Featured ? RunOrigin.Featured : RunOrigin.Recent;
+                    var described = LibraryRun.From(
+                        recording, origin, RunVerdicts.For(recording, build),
+                        progress.PlayedFrom(recording.RunId), recorded: item.SubmittedAt) with
+                    {
+                        Creator = item.Submission.DisplayName,
+                    };
+                    Shared[item.Code] = item with { Run = described };
+                    if (runs.All(run => !string.Equals(run.RunId, described.RunId, StringComparison.Ordinal)))
+                        runs.Add(described);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(
+                    $"[{RunmobileMod.ModId}] could not fetch the run index: " +
+                    $"{ex.GetType().Name}: {ex.Message}", 2);
+            }
         }
 
         return runs;
@@ -130,7 +159,48 @@ internal static class RunLibrary
             if (string.Equals(included.RunId, runId, StringComparison.Ordinal)) return included;
         }
 
-        return RunLibraryStore.RecordingFor(runId);
+        if (RunLibraryStore.RecordingFor(runId) is { } local) return local;
+        var shared = Shared.Values.FirstOrDefault(item =>
+            string.Equals(item.Run.RunId, runId, StringComparison.Ordinal));
+        return shared is null ? null : ManifestJson.Deserialize(shared.ManifestJson);
+    }
+
+    internal static SharedRun? FindShared(string code)
+    {
+        var wanted = code.Trim();
+        var cached = Shared.Values.FirstOrDefault(item =>
+            string.Equals(item.Code, wanted, StringComparison.OrdinalIgnoreCase));
+        if (cached is not null) return cached;
+        if (!RunmobileSettings.Read().FetchRunIndex) return null;
+
+        var found = Sharing.Find(wanted);
+        if (found is null) return null;
+
+        var recording = ManifestJson.Deserialize(found.ManifestJson);
+        var described = LibraryRun.From(
+            recording,
+            found.Featured ? RunOrigin.Featured : RunOrigin.Recent,
+            RunVerdicts.For(recording, ThisBuild()),
+            RunLibraryStore.ReadProgress().PlayedFrom(recording.RunId),
+            recorded: found.SubmittedAt) with
+        {
+            Creator = found.Submission.DisplayName,
+        };
+        var local = found with { Run = described };
+        Shared[local.Code] = local;
+        return local;
+    }
+
+    internal static SharedRun Share(ReplayManifest recording, ShareSubmission submission)
+    {
+        var valid = ManifestValidator.Validate(recording).IsValid;
+        var native = recording.Source.Native;
+        var publishable = valid && native is
+            { IsContinuous: true, StatesSomethingOtherThanComplete: false } &&
+            RunVerdicts.For(recording, ThisBuild()) == RunVerdict.Passed;
+        if (!publishable)
+            throw new ShareValidationException("Local validation did not pass, so the run was not sent.");
+        return Sharing.Submit(ManifestJson.Serialize(recording), submission);
     }
 
     /// <summary>

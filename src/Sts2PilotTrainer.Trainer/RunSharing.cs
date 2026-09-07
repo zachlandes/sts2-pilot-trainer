@@ -1,17 +1,30 @@
+using System.Net;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Trainer;
 
-/// <summary>The only personal value attached to a shared run.</summary>
 public sealed record ShareSubmission(
     string Name,
     string Description,
     string DisplayName,
-    bool Cc0Consent);
+    bool Cc0Consent)
+{
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Name) || Name.Length > 40)
+            throw new ShareValidationException("Name is required and may contain at most 40 characters.");
+        if (Description.Length > 200)
+            throw new ShareValidationException("Description may contain at most 200 characters.");
+        if (string.IsNullOrWhiteSpace(DisplayName))
+            throw new ShareValidationException("Display name is required for submission.");
+        if (!Cc0Consent)
+            throw new ShareValidationException("CC0 consent is required before submission.");
+    }
+}
 
-/// <summary>An immutable, content-addressed run accepted by the sharing service.</summary>
 public sealed record SharedRun(
     string ShareId,
     string Code,
@@ -23,11 +36,6 @@ public sealed record SharedRun(
 
 public sealed class ShareValidationException(string message) : Exception(message);
 
-/// <summary>
-/// The narrow boundary between the run library and a sharing transport.
-/// Implementations may be HTTP-backed; the deterministic implementation below is the
-/// local service used to prove submission through retrieval without credentials.
-/// </summary>
 public interface IRunSharingApi
 {
     SharedRun Submit(string manifestJson, ShareSubmission submission);
@@ -35,23 +43,90 @@ public interface IRunSharingApi
     SharedRun? Find(string code);
 }
 
-/// <summary>
-/// Deterministic local sharing service. The publication gate is supplied by the host,
-/// so no transport can turn an unchecked recording into a shared one.
-/// </summary>
-public sealed class LocalRunSharingService(
+public sealed class HttpRunSharingApi(HttpClient client) : IRunSharingApi
+{
+    public SharedRun Submit(string manifestJson, ShareSubmission submission)
+    {
+        submission.Validate();
+        var response = client.PostAsJsonAsync("runs", new ShareRequest(manifestJson, submission))
+            .GetAwaiter().GetResult();
+        return Read<SharedRun>(response);
+    }
+
+    public IReadOnlyList<SharedRun> Index()
+    {
+        var response = client.GetAsync("runs").GetAwaiter().GetResult();
+        return Read<List<SharedRun>>(response);
+    }
+
+    public SharedRun? Find(string code)
+    {
+        var response = client.GetAsync($"runs/{Uri.EscapeDataString(code.Trim())}")
+            .GetAwaiter().GetResult();
+        if (response.StatusCode == HttpStatusCode.NotFound) return null;
+        return Read<SharedRun>(response);
+    }
+
+    private static T Read<T>(HttpResponseMessage response)
+    {
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            throw new ShareValidationException(string.IsNullOrWhiteSpace(detail)
+                ? $"The sharing service returned {(int)response.StatusCode}."
+                : detail);
+        }
+
+        return response.Content.ReadFromJsonAsync<T>().GetAwaiter().GetResult()
+            ?? throw new ShareValidationException("The sharing service returned no result.");
+    }
+
+    public sealed record ShareRequest(string ManifestJson, ShareSubmission Submission);
+}
+
+/// <summary>A deterministic HTTP endpoint used to exercise the same transport as production.</summary>
+public sealed class DeterministicRunSharingServer(
     Func<ReplayManifest, bool> publicationGate,
     Func<ReplayManifest, LibraryRun> describe,
     Func<DateTimeOffset>? clock = null,
-    Func<ReplayManifest, bool>? featured = null) : IRunSharingApi
+    Func<ReplayManifest, bool>? featured = null) : HttpMessageHandler
 {
     private readonly Dictionary<string, SharedRun> shared = new(StringComparer.Ordinal);
 
-    public SharedRun Submit(string manifestJson, ShareSubmission submission)
-    {
-        ArgumentNullException.ThrowIfNull(submission);
-        ValidateSubmission(submission);
+    protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken) =>
+        SendAsync(request, cancellationToken).GetAwaiter().GetResult();
 
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var path = request.RequestUri?.AbsolutePath.Trim('/') ?? string.Empty;
+            if (request.Method == HttpMethod.Post && path == "runs")
+            {
+                var body = await request.Content!.ReadFromJsonAsync<HttpRunSharingApi.ShareRequest>(
+                    cancellationToken: cancellationToken) ?? throw new ShareValidationException("No submission was sent.");
+                return Json(Submit(body.ManifestJson, body.Submission));
+            }
+
+            if (request.Method == HttpMethod.Get && path == "runs") return Json(Index());
+            if (request.Method == HttpMethod.Get && path.StartsWith("runs/", StringComparison.Ordinal))
+            {
+                var found = Find(Uri.UnescapeDataString(path[5..]));
+                return found is null ? new HttpResponseMessage(HttpStatusCode.NotFound) : Json(found);
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        }
+        catch (ShareValidationException ex)
+        {
+            return new HttpResponseMessage(HttpStatusCode.BadRequest) { Content = new StringContent(ex.Message) };
+        }
+    }
+
+    private SharedRun Submit(string manifestJson, ShareSubmission submission)
+    {
+        submission.Validate();
         ReplayManifest manifest;
         try
         {
@@ -69,18 +144,17 @@ public sealed class LocalRunSharingService(
         var identityInput = Encoding.UTF8.GetBytes(canonical + "\n" + submission.Name + "\n" +
             submission.Description + "\n" + submission.DisplayName);
         var hash = Convert.ToHexString(SHA256.HashData(identityInput)).ToLowerInvariant();
-        var code = hash[..12].ToUpperInvariant();
-
         if (shared.TryGetValue(hash, out var existing)) return existing;
 
+        var run = describe(manifest) with { Creator = submission.DisplayName };
         var result = new SharedRun(
-            hash, code, canonical, submission, describe(manifest),
+            hash, hash[..12].ToUpperInvariant(), canonical, submission, run,
             (clock ?? (() => DateTimeOffset.UtcNow))(), featured?.Invoke(manifest) == true);
         shared.Add(hash, result);
         return result;
     }
 
-    public IReadOnlyList<SharedRun> Index() =>
+    private IReadOnlyList<SharedRun> Index() =>
     [
         .. shared.Values.Where(run => run.Featured),
         .. shared.Values.Where(run => !run.Featured)
@@ -88,79 +162,31 @@ public sealed class LocalRunSharingService(
             .ThenBy(run => run.ShareId, StringComparer.Ordinal),
     ];
 
-    public SharedRun? Find(string code)
-    {
-        var wanted = code?.Trim();
-        if (string.IsNullOrEmpty(wanted)) return null;
-        return shared.Values.SingleOrDefault(run =>
-            string.Equals(run.Code, wanted, StringComparison.OrdinalIgnoreCase));
-    }
+    private SharedRun? Find(string code) => shared.Values.SingleOrDefault(run =>
+        string.Equals(run.Code, code.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    private static void ValidateSubmission(ShareSubmission submission)
-    {
-        if (string.IsNullOrWhiteSpace(submission.Name) || submission.Name.Length > 40)
-            throw new ShareValidationException("Name is required and may contain at most 40 characters.");
-        if (submission.Description.Length > 200)
-            throw new ShareValidationException("Description may contain at most 200 characters.");
-        if (string.IsNullOrWhiteSpace(submission.DisplayName))
-            throw new ShareValidationException("Display name is required for submission.");
-        if (!submission.Cc0Consent)
-            throw new ShareValidationException("CC0 consent is required before submission.");
-    }
+    private static HttpResponseMessage Json<T>(T value) =>
+        new(HttpStatusCode.OK) { Content = JsonContent.Create(value) };
+
 }
 
-/// <summary>The designed browser state, including the exceptional exact-code path.</summary>
-public sealed record SharingBrowser(
-    LibraryTab Tab,
-    bool CompatibleOnly,
-    IReadOnlyList<BrowserGroup> Groups,
-    string? SelectedCode,
-    RunLookup? Selected)
+public sealed record ShareRunForm(
+    string IdentitySeal,
+    string IntegritySeal,
+    int NameLimit,
+    int DescriptionLimit,
+    string Privacy,
+    string Consent,
+    string LocalValidation)
 {
-    public static SharingBrowser For(
-        LibraryTab tab, IReadOnlyList<SharedRun> index, string thisBuild,
-        bool compatibleOnly = true, string? selectedCode = null)
-    {
-        var runs = index.Select(item => item.Run with
-        {
-            Origin = item.Featured ? RunOrigin.Featured : RunOrigin.Recent,
-        }).ToList();
-        var selected = selectedCode is null
-            ? null
-            : index.FirstOrDefault(item => string.Equals(item.Code, selectedCode.Trim(),
-                StringComparison.OrdinalIgnoreCase));
-        if (selected is not null && !selected.Run.Listed) compatibleOnly = false;
-
-        var visible = compatibleOnly ? runs.Where(run => run.Listed).ToList() : runs;
-        var inTab = visible.Where(run => (run.Origin == RunOrigin.Mine) == (tab == LibraryTab.MyRuns)).ToList();
-        IReadOnlyList<BrowserGroup> groups = tab == LibraryTab.MyRuns
-            ? (inTab.Count == 0 ? [] : [new BrowserGroup(null, Newest(inTab))])
-            :
-            [
-                .. Group(LibraryCopy.FeaturedGroup, inTab.Where(run => run.Origin == RunOrigin.Featured).ToList()),
-                .. Group(LibraryCopy.RecentGroup, Newest(inTab.Where(run => run.Origin == RunOrigin.Recent))),
-            ];
-        var lookup = selected is null ? null : RunBrowser.Lookup(selected.Run.RunId, runs, thisBuild);
-        return new SharingBrowser(tab, compatibleOnly, groups, selected?.Code, lookup);
-    }
-
-    private static IReadOnlyList<BrowserGroup> Group(string heading, IReadOnlyList<LibraryRun> runs) =>
-        runs.Count == 0 ? [] : [new BrowserGroup(heading, runs)];
-
-    private static IReadOnlyList<LibraryRun> Newest(IEnumerable<LibraryRun> runs) =>
-        [.. runs.OrderByDescending(run => run.Recorded ?? DateTimeOffset.MinValue)
-            .ThenBy(run => run.RunId, StringComparer.Ordinal)];
-}
-
-/// <summary>All fixed submission wording shown in one popup.</summary>
-public static class SharingCopy
-{
-    public const string ShareThisRun = "Share this run";
-    public const string OthersTab = "Others";
-    public const string MineTab = "Mine";
-    public const string CompatibleFilter = "Compatible with your game version";
-    public const string FetchRunIndex = "Fetch the run index";
-    public const string Privacy = "No other personal information travels with this run.";
-    public const string Consent = "I release this run under CC0.";
-    public const string LocalValidation = "Validation runs locally before anything is sent.";
+    public static ShareRunForm For(ReplayManifest run) => new(
+        $"{run.RunId} · {run.Environment.BuildVersion.Value}",
+        run.Source.Native is { IsContinuous: true, StatesSomethingOtherThanComplete: false }
+            ? "Complete recording · integrity checked"
+            : "Recording is not eligible to share",
+        40,
+        200,
+        LibraryCopy.SharePrivacy,
+        LibraryCopy.ShareConsent,
+        LibraryCopy.ShareLocalValidation);
 }

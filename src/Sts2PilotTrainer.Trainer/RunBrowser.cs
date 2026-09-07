@@ -16,12 +16,6 @@ public sealed record BrowserGroup(string? Heading, IReadOnlyList<LibraryRun> Run
 /// What the browser shows for one tab, derived from the runs a host could find and
 /// nothing else.
 ///
-/// The whole of the settled compatibility rule lives here rather than in the drawing:
-/// a run this game cannot play is not in <see cref="Groups"/>, is counted in
-/// <see cref="NotShown"/>, and has no row anywhere in any state. There is no filter to
-/// turn off, because there is no filter - the rule is not a preference and a control
-/// for it would imply it was one.
-///
 /// <para>The list is a projection. Nothing here reads a file, replays anything or
 /// decides a verdict; every run arrives with its verdict already established, which is
 /// what keeps "why is this run not listed" answerable by looking at one field.</para>
@@ -33,7 +27,9 @@ public sealed record RunBrowser(
     string? NotShownLabel,
     string NotShownTooltipBody,
     string? Footer,
-    string? FooterAction)
+    string? FooterAction,
+    bool CompatibleOnly = true,
+    string? SelectedRunId = null)
 {
     /// <summary>
     /// The browser for one tab.
@@ -61,20 +57,26 @@ public sealed record RunBrowser(
         LibraryTab tab,
         IReadOnlyList<LibraryRun> runs,
         string thisBuild,
-        long? myRunsBytes = null)
+        long? myRunsBytes = null,
+        bool compatibleOnly = true,
+        string? selectedRunId = null)
     {
         var mine = tab == LibraryTab.MyRuns;
         var inTab = runs.Where(run => (run.Origin == RunOrigin.Mine) == mine).ToList();
-        var listed = inTab.Where(run => run.Listed).ToList();
-        var hidden = inTab.Count - listed.Count;
+        var selected = selectedRunId is null
+            ? null
+            : inTab.FirstOrDefault(run => string.Equals(run.RunId, selectedRunId, StringComparison.Ordinal));
+        if (selected is { Listed: false }) compatibleOnly = false;
 
+        var visible = compatibleOnly ? inTab.Where(run => run.Listed).ToList() : inTab;
+        var hidden = compatibleOnly ? inTab.Count - visible.Count : 0;
         var groups = mine
-            ? Group(null, Newest(listed))
+            ? Group(null, Newest(visible))
             :
             [
-                .. Group(LibraryCopy.IncludedGroup, Newest(Of(listed, RunOrigin.Included))),
-                .. Group(LibraryCopy.FeaturedGroup, Of(listed, RunOrigin.Featured)),
-                .. Group(LibraryCopy.RecentGroup, Newest(Of(listed, RunOrigin.Recent))),
+                .. Group(LibraryCopy.IncludedGroup, Newest(Of(visible, RunOrigin.Included))),
+                .. Group(LibraryCopy.FeaturedGroup, Of(visible, RunOrigin.Featured)),
+                .. Group(LibraryCopy.RecentGroup, Newest(Of(visible, RunOrigin.Recent))),
             ];
 
         return new RunBrowser(
@@ -86,7 +88,9 @@ public sealed record RunBrowser(
             mine && myRunsBytes is { } bytes
                 ? LibraryCopy.MyRunsFooter(inTab.Count, LibraryCopy.Size(bytes))
                 : null,
-            mine && myRunsBytes is not null ? LibraryCopy.MyRunsFooterAction : null);
+            mine && myRunsBytes is not null ? LibraryCopy.MyRunsFooterAction : null,
+            compatibleOnly,
+            selected?.RunId);
     }
 
     /// <summary>

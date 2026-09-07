@@ -134,9 +134,6 @@ internal static class RunHistoryPlateHost
     /// field is required and a version-5 file reads as <c>complete</c> through the
     /// migration, so no manifest this build parses reaches that answer.</para>
     ///
-    /// <para>Whether there is a submit flow is this build's own answer and it is no:
-    /// section 9.8 puts the flow outside this slice, so the row is drawn refused with a
-    /// reason rather than drawn as an offer nothing honours.</para>
     /// </summary>
     internal static RunHistoryFacts FactsFor(RunHistory? history, ReplayManifest? recording) =>
         new(
@@ -149,7 +146,7 @@ internal static class RunHistoryPlateHost
             RecordedBuild: recording?.Environment.BuildVersion.Value ?? string.Empty,
             ThisBuild: RunLibrary.ThisBuild(),
             RunInProgress: LocalEnvironment.ReadStartedRun() is not null,
-            SubmitAvailable: false,
+            SubmitAvailable: true,
             LastFight: LastOf(recording, LibraryRun.ProvedFights),
             LastFloor: LastOf(recording, LibraryRun.ProvedFloors));
 
@@ -172,22 +169,29 @@ internal static class RunHistoryPlateHost
         foreach (var row in plate.Rows)
         {
             var id = runId;
+            var kind = (int)row.Kind;
             var fight = row.Fight;
             var floor = row.Floor;
             rows.Add(new ScreenRow(
                 row.Label,
                 row.Enabled && id is not null,
-                () => Enter(id!, fight, floor)));
+                () => Act(id!, kind, fight, floor)));
         }
 
         return rows;
     }
 
-    private static void Enter(string runId, int? fight, int? floor)
+    private static void Act(string runId, int kind, int? fight, int? floor)
     {
         if (RunLibrary.RecordingFor(runId) is not { } recording)
         {
             throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
+        }
+
+        if ((PlateRowKind)kind == PlateRowKind.Submit)
+        {
+            ShowShare(recording);
+            return;
         }
 
         if (fight is { } ordinal)
@@ -205,6 +209,57 @@ internal static class RunHistoryPlateHost
 
         throw new InvalidOperationException(
             $"That row names no boundary of '{runId}', so there is nowhere to stand.");
+    }
+
+    private static void ShowShare(ReplayManifest recording)
+    {
+        var form = ShareRunForm.For(recording);
+        var id = recording.RunId;
+        var body = string.Join("\n", [
+            form.IdentitySeal,
+            form.IntegritySeal,
+            string.Empty,
+            form.Privacy,
+            form.LocalValidation,
+        ]);
+        LibraryScreen.Show(
+            LibraryCopy.SubmitThisRun,
+            LibraryMarkup.Dim(body),
+            [],
+            LibraryCopy.Back,
+            shareSubmitted: (name, description, displayName, consent) =>
+                Submit(id, name, description, displayName, consent));
+    }
+
+    private static void Submit(
+        string runId, string name, string description, string displayName, bool consent)
+    {
+        try
+        {
+            if (RunLibrary.RecordingFor(runId) is not { } recording)
+                throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
+            var shared = RunLibrary.Share(
+                recording, new ShareSubmission(name, description, displayName, consent));
+            LibraryScreen.Dismiss();
+            LibraryScreen.Show(
+                LibraryCopy.SubmitThisRun,
+                LibraryMarkup.Dim($"Shared as {shared.Code}"),
+                [],
+                LibraryCopy.Back);
+        }
+        catch (Exception ex)
+        {
+            LibraryScreen.Dismiss();
+            LibraryScreen.Show(
+                LibraryCopy.SubmitThisRun,
+                LibraryMarkup.Dim(ex.Message),
+                [],
+                LibraryCopy.Back,
+                back: () =>
+                {
+                    if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry);
+                });
+        }
     }
 
     private static int? LastOf(

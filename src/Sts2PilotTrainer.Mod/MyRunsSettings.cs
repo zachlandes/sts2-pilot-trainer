@@ -60,8 +60,10 @@ internal static class MyRunsSettings
     internal static MyRunsSettingsRow Build(float width, Font? font)
     {
         var facts = OnDisk();
+        var settings = RunmobileSettings.Read();
         _row = MyRunsSettingsRow.Build(
-            MyRunsRow.For(facts), facts.Keep, width, font, Retain, AskToRemove);
+            MyRunsRow.For(facts), facts.Keep, settings.FetchRunIndex,
+            width, font, Retain, AskToRemove, SetFetchRunIndex);
         return _row;
     }
 
@@ -156,6 +158,24 @@ internal static class MyRunsSettings
     /// confirmation with a controller should be one press from leaving it, and the
     /// affirmative stays on the right because that is where the game puts its own.
     /// </summary>
+    private static void SetFetchRunIndex(bool fetch)
+    {
+        try
+        {
+            RunmobileSettings.SetFetchRunIndex(fetch);
+            if (_row is { } row)
+                row.Apply(row.Row, RunmobileSettings.Read().KeepRecentRuns, fetch);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not write whether the run index is fetched: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            if (_row is { } row) row.Apply(row.Row, RunmobileSettings.Read().KeepRecentRuns,
+                RunmobileSettings.Read().FetchRunIndex);
+        }
+    }
+
     private static void AskToRemove()
     {
         if (_row is not { } row) return;

@@ -10,26 +10,23 @@ public sealed class RunSharingTests
     public void ALocallyValidatedRunTravelsFromSubmissionThroughIndexAndExactCodeLookup()
     {
         var manifest = Fixture();
-        var service = new LocalRunSharingService(
+        var service = Service(
             _ => true,
-            recording => LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed),
             () => DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
         var request = new ShareSubmission("A good run", "A close finish", "Ada", true);
 
         var shared = service.Submit(ManifestJson.Serialize(manifest), request);
 
-        Assert.Equal(shared, Assert.Single(service.Index()));
-        Assert.Equal(shared, service.Find(shared.Code.ToLowerInvariant()));
-        Assert.Equal(shared, service.Submit(ManifestJson.Serialize(manifest), request));
+        Assert.Equal(shared.ShareId, Assert.Single(service.Index()).ShareId);
+        Assert.Equal(shared.ShareId, service.Find(shared.Code.ToLowerInvariant())?.ShareId);
+        Assert.Equal(shared.ShareId, service.Submit(ManifestJson.Serialize(manifest), request).ShareId);
         Assert.Equal(12, shared.Code.Length);
     }
 
     [Fact]
     public void NothingIsSentUnlessTheExistingLocalPublicationGatePasses()
     {
-        var service = new LocalRunSharingService(
-            _ => false,
-            recording => LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed));
+        var service = Service(_ => false);
 
         var error = Assert.Throws<ShareValidationException>(() => service.Submit(
             ManifestJson.Serialize(Fixture()),
@@ -48,9 +45,7 @@ public sealed class RunSharingTests
     public void SubmissionEnforcesTheDesignedConsentAndLengthLimits(
         string name, string description, string displayName, bool consent)
     {
-        var service = new LocalRunSharingService(
-            _ => true,
-            recording => LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed));
+        var service = Service(_ => true);
 
         Assert.Throws<ShareValidationException>(() => service.Submit(
             ManifestJson.Serialize(Fixture()),
@@ -68,25 +63,48 @@ public sealed class RunSharingTests
             new ShareSubmission("Run", "", "Ada", true), incompatible,
             DateTimeOffset.Parse("2026-09-07T00:00:00Z"));
 
-        var initial = SharingBrowser.For(LibraryTab.Community, [shared], "v0.111.0");
-        var found = SharingBrowser.For(LibraryTab.Community, [shared], "v0.111.0", selectedCode: "abc123");
+        var initial = RunBrowser.For(LibraryTab.Community, [shared.Run], "v0.111.0");
+        var found = RunBrowser.For(
+            LibraryTab.Community, [shared.Run], "v0.111.0", selectedRunId: "run");
 
         Assert.True(initial.CompatibleOnly);
         Assert.Empty(initial.Groups);
         Assert.False(found.CompatibleOnly);
-        Assert.Equal("ABC123", found.SelectedCode);
+        Assert.Equal("run", found.SelectedRunId);
         Assert.Equal(incompatible, Assert.Single(Assert.Single(found.Groups).Runs));
-        Assert.Equal(LookupOutcome.IncompatibleBuild, found.Selected!.Outcome);
-        Assert.Contains("v0.110.0", found.Selected.Body);
-        Assert.Contains("v0.111.0", found.Selected.Body);
+        var lookup = RunBrowser.Lookup("run", [incompatible], "v0.111.0");
+        Assert.Equal(LookupOutcome.IncompatibleBuild, lookup.Outcome);
+        Assert.Contains("v0.110.0", lookup.Body);
+        Assert.Contains("v0.111.0", lookup.Body);
     }
 
     [Fact]
-    public void SubmissionPopupStatesPrivacyConsentAndLocalValidation()
+    public void SubmissionFormCarriesTheRunSealsLimitsAndDisclosure()
     {
-        Assert.Contains("No other personal information", SharingCopy.Privacy);
-        Assert.Contains("CC0", SharingCopy.Consent);
-        Assert.Contains("locally", SharingCopy.LocalValidation);
+        var manifest = Fixture();
+
+        var form = ShareRunForm.For(manifest);
+
+        Assert.Contains(manifest.RunId, form.IdentitySeal);
+        Assert.Contains(manifest.Environment.BuildVersion.Value, form.IdentitySeal);
+        Assert.Equal(40, form.NameLimit);
+        Assert.Equal(200, form.DescriptionLimit);
+        Assert.Contains("No other personal information", form.Privacy);
+        Assert.Contains("CC0", form.Consent);
+        Assert.Contains("locally", form.LocalValidation);
+    }
+
+    private static IRunSharingApi Service(
+        Func<ReplayManifest, bool> gate, Func<DateTimeOffset>? clock = null)
+    {
+        var server = new DeterministicRunSharingServer(
+            gate,
+            recording => LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed),
+            clock);
+        return new HttpRunSharingApi(new HttpClient(server)
+        {
+            BaseAddress = new Uri("http://run-sharing.test/"),
+        });
     }
 
     private static ReplayManifest Fixture()

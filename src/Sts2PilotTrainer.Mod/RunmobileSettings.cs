@@ -119,7 +119,14 @@ internal sealed record RunmobileSettings
     /// sentence nobody could read is not somebody asking for their runs to be deleted.
     /// </summary>
     private static RunmobileSettings DoNotRecord =>
-        new() { SchemaId = Schema, RecordMyRuns = false, KeepRecentRuns = KeepEveryRun, Readable = false };
+        new()
+        {
+            SchemaId = Schema,
+            RecordMyRuns = false,
+            FetchRunIndex = false,
+            KeepRecentRuns = KeepEveryRun,
+            Readable = false,
+        };
 
     /// <summary>
     /// The settings this session runs under.

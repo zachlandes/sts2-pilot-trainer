@@ -80,8 +80,25 @@ public static class LibraryCopy
     /// </summary>
     public const string RunCodeField = "Run code";
 
-    /// <summary>Leads to the submit flow, which is somewhere else.</summary>
+    public const string CompatibleFilter = "Compatible with your game version";
+
+    public const string FetchRunIndex = "Fetch the run index";
+
     public const string SubmitThisRun = "Share this run";
+
+    public const string SharePrivacy = "No other personal information travels with this run.";
+
+    public const string ShareConsent = "I release this run under CC0.";
+
+    public const string ShareLocalValidation = "Validation runs locally before anything is sent.";
+
+    public const string ShareNameField = "Run name (40 characters)";
+
+    public const string ShareDescriptionField = "Description (200 characters)";
+
+    public const string ShareDisplayNameField = "Display name (required for sharing)";
+
+    public const string ShareSubmit = "Share";
 
     /// <summary>What the player's own runs occupy, under the My runs list.</summary>
     public static string MyRunsFooter(int runs, string size) =>
@@ -300,10 +317,8 @@ public static class LibraryCopy
     /// a run nobody can reproduce.</summary>
     public const string PlateConsoleUsed = "A console command was used, so it can't be submitted.";
 
-    /// <summary>Why the submit row is refused while the flow it leads to is not built.
-    /// The row keeps its place for the reason every refused row here does: its position
-    /// is how a player learns the offer is coming.</summary>
-    public const string PlateSubmitComing = "Submitting runs is coming";
+    /// <summary>Why the submit row is refused when its host has no sharing service.</summary>
+    public const string PlateSubmitComing = "Submitting runs is unavailable";
 
     /// <summary>Why nothing on a broken recording is offered.</summary>
     public const string PlateContinuityBroken = "The game reloaded past a point already recorded.";

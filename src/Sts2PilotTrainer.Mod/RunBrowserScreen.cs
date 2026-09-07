@@ -16,14 +16,8 @@ namespace Sts2PilotTrainer.Mod;
 /// <c>RunLibrary</c> gathers the runs, <c>RunBrowser</c> and <c>RunView</c> decide
 /// what is offered, and this puts the rows on screen and calls the one entry there is.
 ///
-/// <para><b>The list never holds a run this game cannot play.</b> That rule lives in
-/// <c>LibraryRun.Listed</c> and reaches here as a shorter list plus a number; there is
-/// no control on this screen that turns it off, because it is not a preference. The
-/// run-code field is the one way to ask about a run that is not listed, and it answers
-/// with the game's own popup rather than by putting a row back.</para>
-///
 /// <para>What the accepted design draws and this does not: the run strip, the deck
-/// tiles, the relic row and the portrait; and the Community list's group headings,
+/// tiles, the relic row and the portrait; and the list's group headings,
 /// which are a summary line in the popup's body rather than headings between the rows,
 /// so the rows follow group order without each one saying which group it is in. Those
 /// are a scene this mod has no path to build, and what stands in for them is a row per
@@ -35,14 +29,16 @@ internal static class RunBrowserScreen
     /// <summary>Opens the library on the tab a player lands on: everybody's runs.</summary>
     internal static void Open() => OpenTab(LibraryTab.Community);
 
-    internal static void OpenTab(LibraryTab tab)
+    internal static void OpenTab(
+        LibraryTab tab, bool compatibleOnly = true, string? selectedRunId = null)
     {
         try
         {
             var build = RunLibrary.ThisBuild();
             var runs = RunLibrary.Runs();
             var browser = RunBrowser.For(
-                tab, runs, build, tab == LibraryTab.MyRuns ? RunLibraryStore.MyRunsBytes() : null);
+                tab, runs, build, tab == LibraryTab.MyRuns ? RunLibraryStore.MyRunsBytes() : null,
+                compatibleOnly, selectedRunId);
 
             // Nothing captured here is a sibling assembly's type. A lambda in this
             // assembly becomes a class whose fields are what it captured, and the game
@@ -62,6 +58,13 @@ internal static class RunBrowserScreen
                     Enabled: true,
                     () => OpenTab(community ? LibraryTab.MyRuns : LibraryTab.Community),
                     Pinned: true),
+                new(
+                    $"{(browser.CompatibleOnly ? "✓" : "□")} {LibraryCopy.CompatibleFilter}",
+                    Enabled: true,
+                    () => OpenTab(
+                        community ? LibraryTab.Community : LibraryTab.MyRuns,
+                        !browser.CompatibleOnly),
+                    Pinned: true),
             };
 
             foreach (var group in browser.Groups)
@@ -70,8 +73,16 @@ internal static class RunBrowserScreen
                 {
                     var runId = run.RunId;
                     var mine = !community;
+                    var selected = string.Equals(
+                        browser.SelectedRunId, run.RunId, StringComparison.Ordinal);
+                    var reason = run.Listed
+                        ? null
+                        : LibraryCopy.LookupRefusedBuild(run.RecordedBuild, build);
                     rows.Add(new ScreenRow(
-                        RowLabel(run), Enabled: true, () => OpenRun(runId, fromMyRuns: mine)));
+                        $"{(selected ? "▶ " : string.Empty)}{RowLabel(run)}",
+                        Enabled: run.Listed,
+                        () => OpenRun(runId, fromMyRuns: mine),
+                        Reason: reason));
                 }
             }
 
@@ -238,6 +249,13 @@ internal static class RunBrowserScreen
         try
         {
             LibraryScreen.Dismiss();
+            if (RunLibrary.FindShared(code) is { } shared)
+            {
+                OpenTab(LibraryTab.Community, compatibleOnly: shared.Run.Listed,
+                    selectedRunId: shared.Run.RunId);
+                return;
+            }
+
             var answer = RunBrowser.Lookup(code, RunLibrary.Runs(), RunLibrary.ThisBuild());
             if (!answer.Refused && answer.Run is { } found)
             {
@@ -311,6 +329,8 @@ internal static class RunBrowserScreen
         var body = new StringBuilder();
         body.Append(LibraryMarkup.Dim(
             browser.Tab == LibraryTab.Community ? LibraryCopy.CommunityTab : LibraryCopy.MyRunsTab));
+        body.Append('\n').Append(LibraryMarkup.Dim(
+            $"{LibraryCopy.CompatibleFilter}: {(browser.CompatibleOnly ? "on" : "off")}"));
         foreach (var group in browser.Groups.Where(group => group.Heading is { Length: > 0 }))
         {
             body.Append('\n').Append(LibraryMarkup.Dim(
