@@ -77,11 +77,11 @@ internal static class RunLibrary
         }
 
         var shared = new Dictionary<string, SharedRunSummary>(StringComparer.Ordinal);
+        foreach (var item in SharedRecordings) shared[item.Key] = item.Value.Summary;
         if (RunmobileSettings.Read().FetchRunIndex)
         {
             foreach (var item in SharedIndex) shared[item.Key] = item.Value;
         }
-        foreach (var item in SharedRecordings) shared[item.Key] = item.Value.Summary;
 
         foreach (var item in shared.Values)
         {

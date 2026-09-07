@@ -356,6 +356,24 @@ public sealed class RunLibraryStoreTests : IDisposable
     }
 
     [GameFact]
+    public void CurrentIndexCurationOverridesCachedExactCodeMetadata()
+    {
+        var shared = Shared(Recording($"refreshed-{Guid.NewGuid():N}"));
+        RunLibrary.AcceptShared(shared, shared.Code);
+        var current = SummaryFor(shared) with
+        {
+            SubmittedAt = shared.SubmittedAt.AddDays(1),
+            Featured = true,
+        };
+
+        RunLibrary.AcceptIndex([current]);
+
+        var listed = Assert.Single(RunLibrary.Runs(), run => run.EntryId == shared.ShareId);
+        Assert.Equal(RunOrigin.Featured, listed.Origin);
+        Assert.Equal(current.SubmittedAt, listed.Recorded);
+    }
+
+    [GameFact]
     public void SharedEntriesWithOneManifestRunIdRemainDistinct()
     {
         var first = Shared(Recording("same-run", "FIRSTSEED"));
