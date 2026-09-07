@@ -257,17 +257,23 @@ internal static class RunHistoryPlateHost
         catch (Exception ex)
         {
             lock (PendingLock) SubmittingSurfaces.Remove(surface);
-            LibraryScreen.Dismiss();
-            LibraryScreen.Show(
-                LibraryCopy.SubmitThisRun,
-                LibraryMarkup.Dim(ex.Message),
-                [],
-                LibraryCopy.Back,
-                back: () =>
-                {
-                    if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry);
-                });
+            LibraryScreen.Invalidate(surface);
+            var message = ex.Message;
+            Callable.From(() => ShowSubmitFailure(runId, message)).CallDeferred();
         }
+    }
+
+    private static void ShowSubmitFailure(string runId, string message)
+    {
+        LibraryScreen.Show(
+            LibraryCopy.SubmitThisRun,
+            LibraryMarkup.Dim(message),
+            [],
+            LibraryCopy.Back,
+            back: () =>
+            {
+                if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry);
+            });
     }
 
     private static void BeginSubmit(
@@ -314,15 +320,7 @@ internal static class RunHistoryPlateHost
             }
             if (!LibraryScreen.IsCurrent(loadingSurface)) return;
             LibraryScreen.Dismiss();
-            LibraryScreen.Show(
-                LibraryCopy.SubmitThisRun,
-                LibraryMarkup.Dim(ex.Message),
-                [],
-                LibraryCopy.Back,
-                back: () =>
-                {
-                    if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry);
-                });
+            ShowSubmitFailure(runId, ex.Message);
         }
     }
 

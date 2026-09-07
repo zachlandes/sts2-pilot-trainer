@@ -96,6 +96,19 @@ public sealed class RecordingRetentionTests : IDisposable
     }
 
     [Fact]
+    public void PublicationCleanupRefusesLinkedPathComponents()
+    {
+        RunmobileStore.Write("recordings/kept.replay.json", "{}");
+        Directory.CreateSymbolicLink(
+            RunmobileStore.PathOf("publication"),
+            _root);
+
+        Assert.Throws<PathContainmentException>(() =>
+            RecordingRetention.RemovePublicationWorkspace(_root, "publication/recordings"));
+        Assert.True(RunmobileStore.Exists("recordings/kept.replay.json"));
+    }
+
+    [Fact]
     public void APolicyKeepsTheNewestRunsAndRemovesBothFilesOfTheRest()
     {
         Record(Older);

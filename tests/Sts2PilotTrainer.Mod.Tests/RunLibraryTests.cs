@@ -345,6 +345,43 @@ public sealed class RunLibraryStoreTests : IDisposable
             RunVerdicts.For(wrongEnvironment, recording.Source.Kind, recording.RunId, Build));
     }
 
+    [GameFact]
+    public void SharedProgressIsReadLiveFromTheCurrentProfile()
+    {
+        var runId = $"shared-progress-{Guid.NewGuid():N}";
+        var recording = Recording(runId);
+        var submission = new ShareSubmission("Run", "", "Ada", true);
+        var shareId = SharedRunIdentity.For(ManifestJson.Serialize(recording), submission);
+        var summary = new SharedRunSummary(
+            shareId,
+            SharedRunIdentity.CodeFor(shareId),
+            submission,
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed, [99]),
+            recording.Environment,
+            recording.Source.Kind,
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"),
+            Featured: false);
+
+        try
+        {
+            RunLibrary.AcceptIndex([summary]);
+            Assert.Empty(RunLibrary.Runs().Single(run => run.RunId == runId).FightsPlayed);
+
+            Assert.True(RunLibraryStore.RecordFightPlayed(runId, 2));
+            Assert.Equal([2], RunLibrary.Runs().Single(run => run.RunId == runId).FightsPlayed);
+
+            var secondProfile = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
+            Directory.CreateDirectory(secondProfile);
+            RunmobileStore.UseRootForTesting(secondProfile);
+            Assert.Empty(RunLibrary.Runs().Single(run => run.RunId == runId).FightsPlayed);
+        }
+        finally
+        {
+            RunmobileStore.UseRootForTesting(_root);
+            RunLibrary.AcceptIndex([]);
+        }
+    }
+
     private void Write(string name, string content) =>
         RunmobileStore.Write($"{RunLibraryStore.RecordingsDirectory}/{name}", content);
 
@@ -416,7 +453,7 @@ public sealed class OnlineIndexTests
             Run("older", RunOrigin.Mine, recorded: DateTimeOffset.MaxValue),
             submitted: "2026-09-02T00:00:00Z");
         var accepted = new[] { featured, older, newer }
-            .Select(item => RunLibrary.OnlineRun(item, RunVerdict.Passed, [2]))
+            .Select(item => RunLibrary.OnlineRun(item, RunVerdict.Passed))
             .ToArray();
 
         var browser = RunBrowser.For(LibraryTab.Community, accepted, "v0.111.0");
@@ -430,7 +467,7 @@ public sealed class OnlineIndexTests
         Assert.Equal(recording.Environment.Character.Value, acceptedFeatured.Character);
         Assert.Equal(recording.Environment.Ascension.Value, acceptedFeatured.Ascension);
         Assert.Equal(recording.Environment.BuildVersion.Value, acceptedFeatured.RecordedBuild);
-        Assert.Equal([2], acceptedFeatured.FightsPlayed);
+        Assert.Empty(acceptedFeatured.FightsPlayed);
         Assert.Equal(["newer", "older"], browser.Groups[1].Runs.Select(run => run.RunId));
     }
 
@@ -447,7 +484,7 @@ public sealed class OnlineIndexTests
         };
 
         Assert.Throws<ShareValidationException>(() =>
-            RunLibrary.OnlineRun(summary, RunVerdict.Passed, []));
+            RunLibrary.OnlineRun(summary, RunVerdict.Passed));
     }
 
     private static SharedRunSummary Summary(

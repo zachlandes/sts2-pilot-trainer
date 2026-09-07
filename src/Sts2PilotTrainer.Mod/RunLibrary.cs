@@ -93,7 +93,13 @@ internal static class RunLibrary
                 }
             }
 
-            if (!duplicate) runs.Add(item.Run);
+            if (!duplicate)
+            {
+                runs.Add(item.Run with
+                {
+                    FightsPlayed = progress.PlayedFrom(item.Run.RunId),
+                });
+            }
         }
 
         return runs;
@@ -112,7 +118,6 @@ internal static class RunLibrary
     {
         var accepted = new Dictionary<string, SharedRunSummary>(StringComparer.Ordinal);
         var build = ThisBuild();
-        var progress = RunLibraryStore.ReadProgress();
         foreach (var item in index)
         {
             if (!string.Equals(
@@ -126,7 +131,7 @@ internal static class RunLibrary
                 item.Environment, item.SourceKind, item.Run.RunId, build);
             accepted[item.Code] = item with
             {
-                Run = OnlineRun(item, verdict, progress.PlayedFrom(item.Run.RunId)),
+                Run = OnlineRun(item, verdict),
             };
         }
 
@@ -136,8 +141,7 @@ internal static class RunLibrary
         indexLoaded = true;
     }
 
-    internal static LibraryRun OnlineRun(
-        SharedRunSummary item, RunVerdict verdict, IReadOnlyList<int> fightsPlayed)
+    internal static LibraryRun OnlineRun(SharedRunSummary item, RunVerdict verdict)
     {
         item.Submission.Validate();
         return item.Run with
@@ -148,7 +152,7 @@ internal static class RunLibrary
             Ascension = item.Environment.Ascension.Value,
             RecordedBuild = item.Environment.BuildVersion.Value,
             Verdict = verdict,
-            FightsPlayed = fightsPlayed,
+            FightsPlayed = [],
             Recorded = item.SubmittedAt,
         };
     }
@@ -213,7 +217,7 @@ internal static class RunLibrary
             recording,
             found.Featured ? RunOrigin.Featured : RunOrigin.Recent,
             RunVerdicts.For(recording, ThisBuild()),
-            RunLibraryStore.ReadProgress().PlayedFrom(recording.RunId),
+            fightsPlayed: [],
             recorded: found.SubmittedAt) with
         {
             Creator = found.Submission.DisplayName,

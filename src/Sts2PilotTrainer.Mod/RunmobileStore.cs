@@ -231,10 +231,12 @@ internal static class RunmobileStore
 
     internal static void RemoveTree(string root, string relativeDirectory)
     {
+        var fullRoot = Path.GetFullPath(root);
         var directory = ProtectedInstallPath.RequireUnprotected(
-            PathContainment.RequireContained(root, Path.Combine(root, relativeDirectory)));
-        if (directory == root)
+            PathContainment.RequireContained(fullRoot, Path.Combine(fullRoot, relativeDirectory)));
+        if (Path.GetRelativePath(fullRoot, directory) == ".")
             throw new PathContainmentException("The store cannot remove its own root.");
+        RejectLinkedComponents(fullRoot, directory);
         if (!Directory.Exists(directory)) return;
 
         var files = new List<string>();
@@ -246,6 +248,29 @@ internal static class RunmobileStore
 
         string CheckedEntry(string path) => ProtectedInstallPath.RequireUnprotected(
             PathContainment.RequireContained(directory, path));
+
+        static void RejectLinkedComponents(string allowedRoot, string path)
+        {
+            var relative = Path.GetRelativePath(allowedRoot, path);
+            var current = allowedRoot;
+            foreach (var component in relative.Split(
+                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries))
+            {
+                current = Path.Combine(current, component);
+                FileSystemInfo entry = Directory.Exists(current)
+                    ? new DirectoryInfo(current)
+                    : new FileInfo(current);
+                if (entry.LinkTarget is not null ||
+                    entry.Exists && (entry.Attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    throw new PathContainmentException(
+                        $"Linked path component '{entry.FullName}' cannot be removed.");
+                }
+
+                if (!entry.Exists) return;
+            }
+        }
 
         void Audit(string current)
         {
