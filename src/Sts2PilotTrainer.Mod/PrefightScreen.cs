@@ -26,7 +26,7 @@ internal static class PrefightScreen
     private const string VerticalPopupPath = "VerticalPopup";
 
     /// <summary>Labels the popup's buttons carry until this mod replaces them. Never
-    /// shown; the game's own initialisers take localized strings and a DLL-only mod
+    /// shown; the game's own initialisers take localized strings and Runmobile
     /// contributes no localization table, so its own keys stand in and the text is
     /// then set directly.</summary>
     private static LocString PlaceholderConfirm => new("main_menu_ui", "GENERIC_POPUP.confirm");

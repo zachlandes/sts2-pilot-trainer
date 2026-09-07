@@ -98,9 +98,8 @@ else, so the panel, the hover tween, the focus behaviour and the controller navi
 are the ones MegaCrit authored rather than a lookalike. The row is re-centred by the
 step measured between two of the game's own cards, so four sit where three did.
 
-The card keeps the icon it was duplicated from. Art of its own needs a resource pack,
-and the packaging contract in [distribution](../docs/distribution.md) deliberately does
-without one.
+The card kept the icon it was duplicated from.
+At the time, CombatTrainer had no resource pack; [distribution](../docs/distribution.md) owns the current Runmobile package.
 
 ```bash {image}
 ![The Slay the Spire 2 singleplayer menu with four mode cards: Standard, Daily, Custom, and Combat Trainer, whose description reads "Fight NaveGreed's Floor 2 Sludge Spinner exactly as recorded, then compare your fight with the recording. Reads your game; never writes to it."](in-game-mode-card.png)
@@ -146,7 +145,8 @@ sentence that says so.
 The boundary suite drives `adopt-live` as a real command and verifies that a console process refuses without changing the prepared game inputs or sandbox profile.
 It also loads a second copy of `sts2` and verifies that adoption refuses before reading either copy's state, with the bound assembly named in the refusal.
 A third test proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
-The remaining declarative test parses the mod manifest and verifies the non-gameplay, DLL-only, packless contract that keeps the compared content hash meaningful.
+For S3, the remaining declarative test parsed the mod manifest and verified the non-gameplay, DLL-only, packless contract that kept the compared content hash meaningful.
+The current equivalent verifies Runmobile's non-gameplay declaration and one-resource mod-list icon pack.
 There is no source-reference scan presented as behavioral evidence.
 
 ```bash
