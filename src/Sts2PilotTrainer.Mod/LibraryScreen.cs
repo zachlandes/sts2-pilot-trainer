@@ -180,6 +180,7 @@ internal static class LibraryScreen
                     Callable.From<NButton>(_ =>
                     {
                         if (back is not null) Callable.From(() => Reopen(back)).CallDeferred();
+                        else Dismiss();
                     }));
             }
 

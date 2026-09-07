@@ -42,6 +42,12 @@ internal static class RunLibrary
     });
 
     private static readonly Dictionary<string, SharedRun> Shared = new(StringComparer.Ordinal);
+    private static bool indexRequested;
+    private static string? exactRunId;
+    private static int nextSubmission;
+    private static readonly object PendingSubmissionLock = new();
+    private static readonly Dictionary<int, string> PendingManifestJson = [];
+    private static readonly Dictionary<int, ShareSubmission> PendingSubmissions = [];
 
     /// <summary>
     /// Every run, listed or not, with the verdict that decides which.
@@ -74,35 +80,45 @@ internal static class RunLibrary
                 recorded: stored.Started));
         }
 
-        if (RunmobileSettings.Read().FetchRunIndex)
+        var includeIndex = RunmobileSettings.Read().FetchRunIndex;
+        foreach (var item in Shared.Values)
         {
-            try
+            if (!includeIndex &&
+                !string.Equals(item.Run.RunId, exactRunId, StringComparison.Ordinal))
             {
-                Shared.Clear();
-                foreach (var item in Sharing.Index())
+                continue;
+            }
+
+            var duplicate = false;
+            foreach (var run in runs)
+            {
+                if (run.Origin != RunOrigin.Mine &&
+                    string.Equals(run.RunId, item.Run.RunId, StringComparison.Ordinal))
                 {
-                    var recording = ManifestJson.Deserialize(item.ManifestJson);
-                    var origin = item.Featured ? RunOrigin.Featured : RunOrigin.Recent;
-                    var described = LibraryRun.From(
-                        recording, origin, RunVerdicts.For(recording, build),
-                        progress.PlayedFrom(recording.RunId), recorded: item.SubmittedAt) with
-                    {
-                        Creator = item.Submission.DisplayName,
-                    };
-                    Shared[item.Code] = item with { Run = described };
-                    if (runs.All(run => !string.Equals(run.RunId, described.RunId, StringComparison.Ordinal)))
-                        runs.Add(described);
+                    duplicate = true;
+                    break;
                 }
             }
-            catch (Exception ex)
-            {
-                Log.Error(
-                    $"[{RunmobileMod.ModId}] could not fetch the run index: " +
-                    $"{ex.GetType().Name}: {ex.Message}", 2);
-            }
+
+            if (!duplicate) runs.Add(item.Run);
         }
 
         return runs;
+    }
+
+    internal static Task<IReadOnlyList<SharedRun>> FetchIndexAsync()
+    {
+        indexRequested = true;
+        return Sharing.IndexAsync();
+    }
+
+    internal static bool ShouldFetchIndex =>
+        !indexRequested && RunmobileSettings.Read().FetchRunIndex;
+
+    internal static void AcceptIndex(IReadOnlyList<SharedRun> index)
+    {
+        Shared.Clear();
+        foreach (var item in index) AcceptShared(item);
     }
 
     /// <summary>
@@ -165,17 +181,16 @@ internal static class RunLibrary
         return shared is null ? null : ManifestJson.Deserialize(shared.ManifestJson);
     }
 
-    internal static SharedRun? FindShared(string code)
+    internal static Task<SharedRun?> FindSharedAsync(string code)
     {
         var wanted = code.Trim();
         var cached = Shared.Values.FirstOrDefault(item =>
             string.Equals(item.Code, wanted, StringComparison.OrdinalIgnoreCase));
-        if (cached is not null) return cached;
-        if (!RunmobileSettings.Read().FetchRunIndex) return null;
+        return cached is null ? Sharing.FindAsync(wanted) : Task.FromResult<SharedRun?>(cached);
+    }
 
-        var found = Sharing.Find(wanted);
-        if (found is null) return null;
-
+    internal static SharedRun AcceptShared(SharedRun found, bool exact = false)
+    {
         var recording = ManifestJson.Deserialize(found.ManifestJson);
         var described = LibraryRun.From(
             recording,
@@ -188,19 +203,45 @@ internal static class RunLibrary
         };
         var local = found with { Run = described };
         Shared[local.Code] = local;
+        if (exact) exactRunId = local.Run.RunId;
         return local;
     }
 
-    internal static SharedRun Share(ReplayManifest recording, ShareSubmission submission)
+    internal static Task<SharedRun> ShareAsync(
+        ReplayManifest recording, ShareSubmission submission)
     {
-        var valid = ManifestValidator.Validate(recording).IsValid;
-        var native = recording.Source.Native;
-        var publishable = valid && native is
-            { IsContinuous: true, StatesSomethingOtherThanComplete: false } &&
-            RunVerdicts.For(recording, ThisBuild()) == RunVerdict.Passed;
-        if (!publishable)
+        submission.Validate();
+        var request = Interlocked.Increment(ref nextSubmission);
+        lock (PendingSubmissionLock)
+        {
+            PendingManifestJson[request] = ManifestJson.Serialize(recording);
+            PendingSubmissions[request] = submission;
+        }
+        return PublicationGate.RunAsync(recording).ContinueWith(
+            static (completed, value) => CompletePublicationGate(completed, (int)value!),
+            request,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default).Unwrap();
+    }
+
+    private static Task<SharedRun> CompletePublicationGate(Task<bool> completed, int request)
+    {
+        string manifestJson;
+        ShareSubmission submission;
+        lock (PendingSubmissionLock)
+        {
+            manifestJson = PendingManifestJson[request];
+            submission = PendingSubmissions[request];
+            PendingManifestJson.Remove(request);
+            PendingSubmissions.Remove(request);
+        }
+        if (!completed.IsCompletedSuccessfully)
+            throw completed.Exception?.GetBaseException()
+                ?? new ShareValidationException("Local validation could not finish.");
+        if (!completed.Result)
             throw new ShareValidationException("Local validation did not pass, so the run was not sent.");
-        return Sharing.Submit(ManifestJson.Serialize(recording), submission);
+        return Sharing.SubmitAsync(manifestJson, submission);
     }
 
     /// <summary>

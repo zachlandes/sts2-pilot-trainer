@@ -50,6 +50,10 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class RunHistoryPlateHost
 {
+    private static readonly object PendingLock = new();
+    private static readonly Dictionary<int, Task<SharedRun>> PendingShares = [];
+    private static int nextShare;
+
     /// <summary>
     /// Connects each run-history entry the game builds, once.
     ///
@@ -238,14 +242,16 @@ internal static class RunHistoryPlateHost
         {
             if (RunLibrary.RecordingFor(runId) is not { } recording)
                 throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
-            var shared = RunLibrary.Share(
+            var request = Interlocked.Increment(ref nextShare);
+            var task = RunLibrary.ShareAsync(
                 recording, new ShareSubmission(name, description, displayName, consent));
-            LibraryScreen.Dismiss();
-            LibraryScreen.Show(
-                LibraryCopy.SubmitThisRun,
-                LibraryMarkup.Dim($"Shared as {shared.Code}"),
-                [],
-                LibraryCopy.Back);
+            lock (PendingLock) PendingShares[request] = task;
+            _ = task.ContinueWith(
+                static (_, value) => Callable.From(() => CompleteShare((int)value!)).CallDeferred(),
+                request,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
         catch (Exception ex)
         {
@@ -260,6 +266,33 @@ internal static class RunHistoryPlateHost
                     if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry);
                 });
         }
+    }
+
+    private static void CompleteShare(int request)
+    {
+        Task<SharedRun> task;
+        lock (PendingLock)
+        {
+            task = PendingShares[request];
+            PendingShares.Remove(request);
+        }
+
+        LibraryScreen.Dismiss();
+        if (task.IsCompletedSuccessfully)
+        {
+            LibraryScreen.Show(
+                LibraryCopy.SubmitThisRun,
+                LibraryMarkup.Dim($"Shared as {task.Result.Code}"),
+                [],
+                LibraryCopy.Back);
+            return;
+        }
+
+        LibraryScreen.Show(
+            LibraryCopy.SubmitThisRun,
+            LibraryMarkup.Dim(task.Exception?.GetBaseException().Message ?? "Sharing was refused."),
+            [],
+            LibraryCopy.Back);
     }
 
     private static int? LastOf(

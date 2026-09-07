@@ -38,46 +38,52 @@ public sealed class ShareValidationException(string message) : Exception(message
 
 public interface IRunSharingApi
 {
-    SharedRun Submit(string manifestJson, ShareSubmission submission);
-    IReadOnlyList<SharedRun> Index();
-    SharedRun? Find(string code);
+    Task<SharedRun> SubmitAsync(
+        string manifestJson, ShareSubmission submission, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SharedRun>> IndexAsync(CancellationToken cancellationToken = default);
+    Task<SharedRun?> FindAsync(string code, CancellationToken cancellationToken = default);
 }
 
 public sealed class HttpRunSharingApi(HttpClient client) : IRunSharingApi
 {
-    public SharedRun Submit(string manifestJson, ShareSubmission submission)
+    public async Task<SharedRun> SubmitAsync(
+        string manifestJson, ShareSubmission submission, CancellationToken cancellationToken = default)
     {
         submission.Validate();
-        var response = client.PostAsJsonAsync("runs", new ShareRequest(manifestJson, submission))
-            .GetAwaiter().GetResult();
-        return Read<SharedRun>(response);
+        using var response = await client.PostAsJsonAsync(
+            "runs", new ShareRequest(manifestJson, submission), cancellationToken).ConfigureAwait(false);
+        return await Read<SharedRun>(response, cancellationToken).ConfigureAwait(false);
     }
 
-    public IReadOnlyList<SharedRun> Index()
+    public async Task<IReadOnlyList<SharedRun>> IndexAsync(
+        CancellationToken cancellationToken = default)
     {
-        var response = client.GetAsync("runs").GetAwaiter().GetResult();
-        return Read<List<SharedRun>>(response);
+        using var response = await client.GetAsync("runs", cancellationToken).ConfigureAwait(false);
+        return await Read<List<SharedRun>>(response, cancellationToken).ConfigureAwait(false);
     }
 
-    public SharedRun? Find(string code)
+    public async Task<SharedRun?> FindAsync(
+        string code, CancellationToken cancellationToken = default)
     {
-        var response = client.GetAsync($"runs/{Uri.EscapeDataString(code.Trim())}")
-            .GetAwaiter().GetResult();
+        using var response = await client.GetAsync(
+            $"runs/{Uri.EscapeDataString(code.Trim())}", cancellationToken).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
-        return Read<SharedRun>(response);
+        return await Read<SharedRun>(response, cancellationToken).ConfigureAwait(false);
     }
 
-    private static T Read<T>(HttpResponseMessage response)
+    private static async Task<T> Read<T>(
+        HttpResponseMessage response, CancellationToken cancellationToken)
     {
         if (!response.IsSuccessStatusCode)
         {
-            var detail = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+            var detail = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             throw new ShareValidationException(string.IsNullOrWhiteSpace(detail)
                 ? $"The sharing service returned {(int)response.StatusCode}."
                 : detail);
         }
 
-        return response.Content.ReadFromJsonAsync<T>().GetAwaiter().GetResult()
+        return await response.Content.ReadFromJsonAsync<T>(
+            cancellationToken: cancellationToken).ConfigureAwait(false)
             ?? throw new ShareValidationException("The sharing service returned no result.");
     }
 
@@ -92,9 +98,6 @@ public sealed class DeterministicRunSharingServer(
     Func<ReplayManifest, bool>? featured = null) : HttpMessageHandler
 {
     private readonly Dictionary<string, SharedRun> shared = new(StringComparer.Ordinal);
-
-    protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken) =>
-        SendAsync(request, cancellationToken).GetAwaiter().GetResult();
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
@@ -182,7 +185,7 @@ public sealed record ShareRunForm(
     public static ShareRunForm For(ReplayManifest run) => new(
         $"{run.RunId} · {run.Environment.BuildVersion.Value}",
         run.Source.Native is { IsContinuous: true, StatesSomethingOtherThanComplete: false }
-            ? "Complete recording · integrity checked"
+            ? "Complete recording · publication gate required"
             : "Recording is not eligible to share",
         40,
         200,

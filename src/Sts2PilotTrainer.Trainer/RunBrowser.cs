@@ -66,10 +66,12 @@ public sealed record RunBrowser(
         var selected = selectedRunId is null
             ? null
             : inTab.FirstOrDefault(run => string.Equals(run.RunId, selectedRunId, StringComparison.Ordinal));
-        if (selected is { Listed: false }) compatibleOnly = false;
+        if (selected is { Verdict: RunVerdict.Absent, Multiplayer: not true }) compatibleOnly = false;
 
-        var visible = compatibleOnly ? inTab.Where(run => run.Listed).ToList() : inTab;
-        var hidden = compatibleOnly ? inTab.Count - visible.Count : 0;
+        var eligible = inTab.Where(run =>
+            run.Multiplayer != true && run.Verdict is RunVerdict.Passed or RunVerdict.Absent).ToList();
+        var visible = compatibleOnly ? eligible.Where(run => run.Listed).ToList() : eligible;
+        var hidden = inTab.Count - visible.Count;
         var groups = mine
             ? Group(null, Newest(visible))
             :

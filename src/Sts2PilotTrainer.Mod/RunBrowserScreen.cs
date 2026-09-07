@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Godot;
 using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
@@ -26,6 +27,13 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class RunBrowserScreen
 {
+    private static readonly object PendingLock = new();
+    private static readonly Dictionary<int, IndexRequest> PendingIndexRequests = [];
+    private static readonly Dictionary<int, Task<IReadOnlyList<SharedRun>>> PendingIndexes = [];
+    private static readonly Dictionary<int, LookupRequest> PendingLookupRequests = [];
+    private static readonly Dictionary<int, Task<SharedRun?>> PendingLookups = [];
+    private static int nextRequest;
+
     /// <summary>Opens the library on the tab a player lands on: everybody's runs.</summary>
     internal static void Open() => OpenTab(LibraryTab.Community);
 
@@ -34,6 +42,12 @@ internal static class RunBrowserScreen
     {
         try
         {
+            if (RunLibrary.ShouldFetchIndex)
+            {
+                BeginIndexFetch((int)tab, compatibleOnly, selectedRunId);
+                return;
+            }
+
             var build = RunLibrary.ThisBuild();
             var runs = RunLibrary.Runs();
             var browser = RunBrowser.For(
@@ -47,6 +61,7 @@ internal static class RunBrowserScreen
             // loading. ModAssemblyLoadOrderTests is what says so; see
             // docs/in-game-host.md.
             var community = tab == LibraryTab.Community;
+            var showCompatibleOnly = browser.CompatibleOnly;
             var rows = new List<ScreenRow>
             {
                 // Pinned: the way to the other tab is this screen's own navigation, and
@@ -59,11 +74,11 @@ internal static class RunBrowserScreen
                     () => OpenTab(community ? LibraryTab.MyRuns : LibraryTab.Community),
                     Pinned: true),
                 new(
-                    $"{(browser.CompatibleOnly ? "✓" : "□")} {LibraryCopy.CompatibleFilter}",
+                    $"{(showCompatibleOnly ? "✓" : "□")} {LibraryCopy.CompatibleFilter}",
                     Enabled: true,
                     () => OpenTab(
                         community ? LibraryTab.Community : LibraryTab.MyRuns,
-                        !browser.CompatibleOnly),
+                        !showCompatibleOnly),
                     Pinned: true),
             };
 
@@ -101,6 +116,50 @@ internal static class RunBrowserScreen
             Refuse("could not open the run library", ex);
         }
     }
+
+    private static void BeginIndexFetch(int tab, bool compatibleOnly, string? selectedRunId)
+    {
+        var request = Interlocked.Increment(ref nextRequest);
+        var task = RunLibrary.FetchIndexAsync();
+        lock (PendingLock)
+        {
+            PendingIndexRequests[request] = new IndexRequest(tab, compatibleOnly, selectedRunId);
+            PendingIndexes[request] = task;
+        }
+        _ = task.ContinueWith(
+            static (_, value) => Callable.From(() => CompleteIndex((int)value!)).CallDeferred(),
+            request,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private static void CompleteIndex(int request)
+    {
+        Task<IReadOnlyList<SharedRun>> task;
+        IndexRequest state;
+        lock (PendingLock)
+        {
+            task = PendingIndexes[request];
+            state = PendingIndexRequests[request];
+            PendingIndexes.Remove(request);
+            PendingIndexRequests.Remove(request);
+        }
+
+        if (task.IsCompletedSuccessfully)
+        {
+            RunLibrary.AcceptIndex(task.Result);
+        }
+        else
+        {
+            Log.Error($"[{RunmobileMod.ModId}] could not fetch the run index: " +
+                task.Exception?.GetBaseException().Message, 2);
+        }
+
+        OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedRunId);
+    }
+
+    private sealed record IndexRequest(int Tab, bool CompatibleOnly, string? SelectedRunId);
 
     /// <summary>
     /// One run, opened at a floor.
@@ -249,33 +308,88 @@ internal static class RunBrowserScreen
         try
         {
             LibraryScreen.Dismiss();
-            if (RunLibrary.FindShared(code) is { } shared)
+            var request = Interlocked.Increment(ref nextRequest);
+            var task = RunLibrary.FindSharedAsync(code);
+            lock (PendingLock)
             {
-                OpenTab(LibraryTab.Community, compatibleOnly: shared.Run.Listed,
-                    selectedRunId: shared.Run.RunId);
-                return;
+                PendingLookupRequests[request] = new LookupRequest(code, fromMyRuns);
+                PendingLookups[request] = task;
             }
-
-            var answer = RunBrowser.Lookup(code, RunLibrary.Runs(), RunLibrary.ThisBuild());
-            if (!answer.Refused && answer.Run is { } found)
-            {
-                OpenRun(found.RunId, fromMyRuns: fromMyRuns);
-                return;
-            }
-
-            var body = answer.Note is { Length: > 0 } note
-                ? $"{answer.Body}\n\n{LibraryMarkup.Dim(note)}"
-                : answer.Body;
-            var mine = fromMyRuns;
-            LibraryScreen.Show(
-                answer.Title, body, [], answer.Back,
-                back: () => OpenTab(mine ? LibraryTab.MyRuns : LibraryTab.Community));
+            _ = task.ContinueWith(
+                static (_, value) => Callable.From(() => CompleteLookup((int)value!)).CallDeferred(),
+                request,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
         catch (Exception ex)
         {
             Refuse("could not look up that run code", ex);
         }
     }
+
+    private static void CompleteLookup(int request)
+    {
+        Task<SharedRun?> task;
+        LookupRequest state;
+        lock (PendingLock)
+        {
+            task = PendingLookups[request];
+            state = PendingLookupRequests[request];
+            PendingLookups.Remove(request);
+            PendingLookupRequests.Remove(request);
+        }
+
+        if (task.IsCompletedSuccessfully && task.Result is { } found)
+        {
+            var shared = RunLibrary.AcceptShared(found, exact: true);
+            var lookup = RunBrowser.Lookup(
+                shared.Run.RunId, [shared.Run], RunLibrary.ThisBuild());
+            if (lookup.Outcome == LookupOutcome.Found)
+            {
+                OpenRun(shared.Run.RunId);
+                return;
+            }
+
+            if (lookup.Outcome == LookupOutcome.IncompatibleBuild)
+            {
+                OpenTab(LibraryTab.Community, compatibleOnly: false,
+                    selectedRunId: shared.Run.RunId);
+                return;
+            }
+
+            var remoteBody = lookup.Note is { Length: > 0 } remoteNote
+                ? $"{lookup.Body}\n\n{LibraryMarkup.Dim(remoteNote)}"
+                : lookup.Body;
+            LibraryScreen.Show(
+                lookup.Title, remoteBody, [], lookup.Back,
+                back: () => OpenTab(LibraryTab.Community));
+            return;
+        }
+
+        if (!task.IsCompletedSuccessfully)
+        {
+            Refuse("could not look up that run code", task.Exception?.GetBaseException());
+            return;
+        }
+
+        var fromMyRuns = state.FromMyRuns;
+        var answer = RunBrowser.Lookup(state.Code, RunLibrary.Runs(), RunLibrary.ThisBuild());
+        if (!answer.Refused && answer.Run is { } local)
+        {
+            OpenRun(local.RunId, fromMyRuns: state.FromMyRuns);
+            return;
+        }
+
+        var body = answer.Note is { Length: > 0 } note
+            ? $"{answer.Body}\n\n{LibraryMarkup.Dim(note)}"
+            : answer.Body;
+        LibraryScreen.Show(
+            answer.Title, body, [], answer.Back,
+            back: () => OpenTab(fromMyRuns ? LibraryTab.MyRuns : LibraryTab.Community));
+    }
+
+    private sealed record LookupRequest(string Code, bool FromMyRuns);
 
     /// <summary>
     /// Stands the player where the row says, through the one entry there is.

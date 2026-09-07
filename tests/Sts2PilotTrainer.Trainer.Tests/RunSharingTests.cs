@@ -7,7 +7,7 @@ namespace Sts2PilotTrainer.Trainer.Tests;
 public sealed class RunSharingTests
 {
     [Fact]
-    public void ALocallyValidatedRunTravelsFromSubmissionThroughIndexAndExactCodeLookup()
+    public async Task ALocallyValidatedRunTravelsFromSubmissionThroughIndexAndExactCodeLookup()
     {
         var manifest = Fixture();
         var service = Service(
@@ -15,25 +15,27 @@ public sealed class RunSharingTests
             () => DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
         var request = new ShareSubmission("A good run", "A close finish", "Ada", true);
 
-        var shared = service.Submit(ManifestJson.Serialize(manifest), request);
+        var shared = await service.SubmitAsync(ManifestJson.Serialize(manifest), request);
 
-        Assert.Equal(shared.ShareId, Assert.Single(service.Index()).ShareId);
-        Assert.Equal(shared.ShareId, service.Find(shared.Code.ToLowerInvariant())?.ShareId);
-        Assert.Equal(shared.ShareId, service.Submit(ManifestJson.Serialize(manifest), request).ShareId);
+        Assert.Equal(shared.ShareId, Assert.Single(await service.IndexAsync()).ShareId);
+        Assert.Equal(shared.ShareId, (await service.FindAsync(shared.Code.ToLowerInvariant()))?.ShareId);
+        Assert.Equal(
+            shared.ShareId,
+            (await service.SubmitAsync(ManifestJson.Serialize(manifest), request)).ShareId);
         Assert.Equal(12, shared.Code.Length);
     }
 
     [Fact]
-    public void NothingIsSentUnlessTheExistingLocalPublicationGatePasses()
+    public async Task NothingIsSentUnlessTheExistingLocalPublicationGatePasses()
     {
         var service = Service(_ => false);
 
-        var error = Assert.Throws<ShareValidationException>(() => service.Submit(
+        var error = await Assert.ThrowsAsync<ShareValidationException>(() => service.SubmitAsync(
             ManifestJson.Serialize(Fixture()),
             new ShareSubmission("Run", "", "Ada", true)));
 
         Assert.Contains("Local validation did not pass", error.Message);
-        Assert.Empty(service.Index());
+        Assert.Empty(await service.IndexAsync());
     }
 
     [Theory]
@@ -42,15 +44,15 @@ public sealed class RunSharingTests
     [InlineData("Run", "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901", "Ada", true)]
     [InlineData("Run", "", "", true)]
     [InlineData("Run", "", "Ada", false)]
-    public void SubmissionEnforcesTheDesignedConsentAndLengthLimits(
+    public async Task SubmissionEnforcesTheDesignedConsentAndLengthLimits(
         string name, string description, string displayName, bool consent)
     {
         var service = Service(_ => true);
 
-        Assert.Throws<ShareValidationException>(() => service.Submit(
+        await Assert.ThrowsAsync<ShareValidationException>(() => service.SubmitAsync(
             ManifestJson.Serialize(Fixture()),
             new ShareSubmission(name, description, displayName, consent)));
-        Assert.Empty(service.Index());
+        Assert.Empty(await service.IndexAsync());
     }
 
     [Fact]
@@ -76,6 +78,51 @@ public sealed class RunSharingTests
         Assert.Equal(LookupOutcome.IncompatibleBuild, lookup.Outcome);
         Assert.Contains("v0.110.0", lookup.Body);
         Assert.Contains("v0.111.0", lookup.Body);
+    }
+
+    [Fact]
+    public void ASharedMineRunAppearsInBothTabs()
+    {
+        var mine = new LibraryRun(
+            "run", RunOrigin.Mine, "Ada", "Ironclad", 0, "current", [1], "won",
+            false, RunVerdict.Passed, [], DateTimeOffset.Parse("2026-09-01T00:00:00Z"));
+        var shared = mine with { Origin = RunOrigin.Recent };
+
+        var others = RunBrowser.For(LibraryTab.Community, [mine, shared], "current");
+        var myRuns = RunBrowser.For(LibraryTab.MyRuns, [mine, shared], "current");
+
+        Assert.Equal("run", Assert.Single(Assert.Single(others.Groups).Runs).RunId);
+        Assert.Equal("run", Assert.Single(Assert.Single(myRuns.Groups).Runs).RunId);
+    }
+
+    [Theory]
+    [InlineData(RunVerdict.Failed, false)]
+    [InlineData(RunVerdict.Unjudged, false)]
+    [InlineData(RunVerdict.Absent, true)]
+    public void CompatibilityFilterOnlyRevealsOtherBuildRuns(
+        RunVerdict verdict, bool visible)
+    {
+        var run = new LibraryRun(
+            "run", RunOrigin.Recent, "Ada", "Ironclad", 0, "other", [1], "won",
+            false, verdict, [], DateTimeOffset.Parse("2026-09-01T00:00:00Z"));
+
+        var browser = RunBrowser.For(
+            LibraryTab.Community, [run], "current", compatibleOnly: false);
+
+        Assert.Equal(visible, browser.Groups.SelectMany(group => group.Runs).Any());
+    }
+
+    [Fact]
+    public void CompatibilityFilterNeverRevealsMultiplayerRuns()
+    {
+        var run = new LibraryRun(
+            "run", RunOrigin.Recent, "Ada", "Ironclad", 0, "other", [1], "won",
+            true, RunVerdict.Absent, [], DateTimeOffset.Parse("2026-09-01T00:00:00Z"));
+
+        var browser = RunBrowser.For(
+            LibraryTab.Community, [run], "current", compatibleOnly: false);
+
+        Assert.Empty(browser.Groups);
     }
 
     [Fact]
