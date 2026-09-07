@@ -292,17 +292,17 @@ public sealed class FormatSixValidatorTests
 
     private static ReplayStep TraceStep(
         int seq, string verb, IReadOnlyDictionary<string, string> args, string outcome, int floor) => new()
-    {
-        Seq = seq,
-        Verb = verb,
-        Args = args,
-        Before = new Dictionary<string, string>(StringComparer.Ordinal),
-        After = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["combat.outcome"] = outcome,
-            ["run.total_floor"] = floor.ToString(System.Globalization.CultureInfo.InvariantCulture),
-        },
-    };
+            Seq = seq,
+            Verb = verb,
+            Args = args,
+            Before = new Dictionary<string, string>(StringComparer.Ordinal),
+            After = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["combat.outcome"] = outcome,
+                ["run.total_floor"] = floor.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            },
+        };
 
     private static UnmappedDecision Stop(int seq) => new()
     {
