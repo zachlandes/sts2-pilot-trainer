@@ -29,12 +29,12 @@ S7's session did run the renamed shell, which is what establishes the row below;
 ## What it proves
 
 **Retail loading of the renamed core artifact is established, mod list included.**
-The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.pck` carrying the mod-list icon, `Runmobile.dll`, the four project-owned libraries the host uses, and the self-contained local publication arbiter under `arbiter/`.
+The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.pck` carrying the wagon icon shared by the mod list and Compendium entry, `Runmobile.dll`, the four project-owned libraries the host uses, and the self-contained local publication arbiter under `arbiter/`.
 The S7 transport session predates the packaged arbiter: it installed the core Runmobile payload with `install-mod.sh`, launched the shipped client with it as the only enabled mod, and ran the whole watched journey through it.
 That session establishes discovery, initialization and a complete journey through the renamed shell, and its protected-files ledger is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp; it does not establish the newer publication package in retail.
 The game's own mod line naming `Runmobile` is photographed in that session's record, so the row no longer rests on the pre-rename `CombatTrainer` screenshots.
 The libraries and arbiter are built to ship together; there is no separately installed framework or runtime dependency.
-The one-resource pack contains only the mod-list icon.
+The one-resource pack contains only the wagon icon shared by the mod list and Compendium entry.
 
 **It reads the game and never writes to it.**
 The installed build, discovered mods, and supplied in-memory progress model are inputs to the fight offer; the player's saved profile is not.
@@ -645,9 +645,8 @@ sit where three did.
 and added through `NModalContainer`, in the same order the game's own confirmation
 popups use.
 
-Two consequences of that choice, stated rather than hidden. The card keeps the icon
-it was duplicated from: Runmobile's one-resource pack supplies the mod-list image,
-not a second card treatment.
+Two consequences of that choice, stated rather than hidden.
+The retired singleplayer mode card kept the icon it was duplicated from; the current Compendium entry reuses the wagon in Runmobile's one-resource pack.
 And the popup's body scrolls when the evidence is longer than the panel, which is why
 unmet rows are ordered first: what a player has to act on is above the fold, and the
 rows that already passed are below it.
@@ -680,7 +679,7 @@ what it refuses is `Sts2PilotTrainer.Trainer`'s - `RunBrowser`, `RunView`,
 a game. What runs inside the client is the three patches below plus the drawing classes behind them.
 
 **Three hooks, and each is the honest one for its question.**
-`CompendiumCard` follows `NCompendiumSubmenu._Ready`, which is where the row is built and where every focus neighbour is assigned index by index, so a button added anywhere else exists and is unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides per-visit visibility, so "is there a run to show" is asked each time rather than once.
+`CompendiumCard` follows `NCompendiumSubmenu._Ready`, which is where the row is built and where every focus neighbour is assigned index by index, so a button added anywhere else exists and is unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides per-visit visibility, so the shell's permission to draw is asked each time rather than once.
 `MyRunsSettings` follows `NSettingsScreen._Ready` and places its row beside `%ModdingButton`, the game's own modding settings entry point.
 `RunHistoryPlateHost` follows `NMapPointHistoryEntry._Ready` and connects the `Released` that entry already emits and nothing in the game listens to.
 One patch there rather than two: the entry carries both its own `FloorNum` and the `RunHistory` it belongs to, so nothing has to follow the screen's own selection to know which run a press is about.
@@ -709,9 +708,8 @@ controller walking down into rows nobody can see.
 count and the measured room and nothing else; the last two places of a paged page go to
 Previous and Next, which are rows like any other, and focus is joined across what is drawn
 and nothing else.
-The measurement is the only thing that decides how many rows are drawn: room for fewer
-than a page is refused by `ScreenPage.For` rather than raised to the minimum, because a
-page of three in room for two and a half is a row over the popup's own ribbons.
+The measurement is the only thing that decides how many rows are drawn: the scrolling body is bounded first to reserve the measured controls below it, and room for fewer than a page is refused by `ScreenPage.For` rather than raised to the minimum, because a page of three in room for two and a half is a row over the popup's own ribbons.
+A browser with no listed runs needs only its pinned tab and compatibility controls rather than an empty three-row page beside them.
 A row may be pinned instead of paged - it is drawn above the page's own rows on every
 page and spends one of the page's places, so pinning shrinks the page rather than pushing
 its last row past the panel. The browser's way to its other tab is the one pinned row
@@ -737,11 +735,14 @@ Drawing the marks is a change to `LibraryScreen` and `TransportGlyphArt` and to 
 behind either.
 
 **The Compendium entry is present whenever the shell may draw.**
+It occupies the authored slot the game leaves when it hides Leaderboards, so the three visible bottom destinations remain inside the viewport and in the game's controller focus chain.
+It duplicates the Run History treatment, replaces its label, and loads the same packaged wagon used by the mod list.
 The browser is the only route to automatic index retrieval and direct run-code lookup, so an empty local library and a disabled `Fetch the run index` setting cannot hide it.
 It reads no manifest and performs no network request merely to decide visibility.
 `RunLibrary.RecordingFor` resolves one run from the recorder's directory index - the id names the recording in the index, so pressing a row costs that recording's manifest and no other's, and a manifest whose own run id disagrees with its name answers nothing rather than answering with the wrong run.
 
 The browser still judges every run before showing it, and an empty or unavailable index is shown on that surface rather than represented by removing the way in.
+Its build reading comes from `GameIdentity.ReadForCurrentEngine`: the running client is its own authority in retail, while only a headless process consults the receipted prepared copy.
 Its player-facing tabs are Others and Mine; the Featured and Recent groups sit under Others.
 The visible `Compatible with your game version` filter defaults on and hides incompatible runs during ordinary browsing.
 Turning the filter off reveals incompatible runs as disabled rows.
@@ -820,8 +821,8 @@ explicitly, index by index. A duplicated card therefore has to be added *and* jo
 that focus chain, or it will exist and be unreachable on a controller.
 `NCompendiumSubmenu.OnSubmenuOpened` is the second hook, and the honest one for
 visibility: the game hides `%LeaderboardsButton` there unconditionally and decides
-`%RunHistoryButton` and `%BestiaryButton` per run, so a card that should only appear
-when a recording is installed belongs there rather than in `_Ready`.
+`%RunHistoryButton` and `%BestiaryButton` per run.
+Runmobile uses that vacant Leaderboards slot and remains present whenever the shell may draw, including with an empty local library, because direct run-code lookup begins behind it.
 
 **The Settings screen's mods surface.** There is no Mods tab to extend.
 `NSettingsTabManager._Ready` builds exactly four tabs, by plain node name -

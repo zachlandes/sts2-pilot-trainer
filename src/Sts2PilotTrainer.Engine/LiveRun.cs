@@ -110,9 +110,7 @@ public static class LiveRun
     /// </summary>
     public static RunIdentityReading ReadIdentity(RunState run)
     {
-        var identity = EngineHost.Origin == EngineOrigin.RunningGame
-            ? GameIdentity.ReadFromRunningGame()
-            : GameIdentity.Read();
+        var identity = GameIdentity.ReadForCurrentEngine();
 
         if (run.Players.Count == 0)
         {

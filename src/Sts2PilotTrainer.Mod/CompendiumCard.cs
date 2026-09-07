@@ -10,29 +10,25 @@ using Sts2PilotTrainer.Trainer;
 namespace Sts2PilotTrainer.Mod;
 
 /// <summary>
-/// Puts a fourth button in the Compendium's bottom row, beside Leaderboards,
-/// Statistics and Run History.
+/// Puts Runmobile in the Compendium's bottom row beside Statistics and Run History.
 ///
 /// The Compendium is where the game already keeps the things you look at rather than
 /// play, which is what makes it the honest place for a library of runs. The button is
 /// a duplicate of the game's own Run History button rather than a control built from
-/// parts: the panel, the shader, the
-/// tween, the focus behaviour and the label font are MegaCrit's, and a hand-built
-/// lookalike is a worse copy of them that also drifts.
+/// parts: the panel, shader, tween, focus behaviour and label font are MegaCrit's,
+/// while the icon is Runmobile's packaged wagon artwork.
 ///
 /// Two hooks, and each is the honest one for its question.
 /// <c>_Ready</c> is where the row is built and where every focus neighbour is assigned
 /// index by index, so a button added anywhere else exists and is unreachable on a
 /// controller. <c>OnSubmenuOpened</c> is where the game decides what is visible
 /// per-run - it hides Leaderboards unconditionally there and decides Run History and
-/// the Bestiary each time - so a button whose presence depends on what is installed
-/// belongs there rather than in <c>_Ready</c>, where it would be decided once and
-/// never again.
+/// the Bestiary each time - so the shell's permission to draw belongs there rather
+/// than in <c>_Ready</c>, where it would be decided once and never again.
 ///
-/// The row is not re-centred. The singleplayer row could be, because three cards were
-/// centred and four still are; this row already ships with a member the game hides
-/// every time it opens, so there is no centring here to read and a fourth button
-/// extends the row rather than moving the game's own three.
+/// The game always hides Leaderboards when this submenu opens, so Runmobile occupies
+/// that existing slot instead of extending the authored row past the viewport. The
+/// hidden button remains untouched; only its vacant position and focus edges are used.
 /// </summary>
 [HarmonyPatch(typeof(NCompendiumSubmenu))]
 internal static class CompendiumCard
@@ -42,12 +38,17 @@ internal static class CompendiumCard
     /// stopped working before reaching us.</summary>
     private const string SourceButtonPath = "%RunHistoryButton";
 
-    /// <summary>The one before it, for measuring the row's own step.</summary>
-    private const string PreviousButtonPath = "%StatisticsButton";
+    /// <summary>The button the game hides whenever this submenu opens. Its authored
+    /// slot is where Runmobile belongs.</summary>
+    private const string VacancyButtonPath = "%LeaderboardsButton";
 
-    /// <summary>The top-row button above ours, so a controller travelling up from it
-    /// lands somewhere.</summary>
-    private const string AboveButtonPath = "%BestiaryButton";
+    private const string RightButtonPath = "%StatisticsButton";
+    private const string AboveButtonPath = "%RelicCollectionButton";
+    private const string UpperLeftButtonPath = "%CardLibraryButton";
+
+    /// <summary>The resource already packaged for the game's mod list and reused here,
+    /// so the selected wagon has one owner.</summary>
+    internal const string IconPath = "res://Runmobile/mod_image.png";
 
     /// <summary>The name given to our node, so a second pass over the same menu sees
     /// its own work rather than adding another button.</summary>
@@ -66,12 +67,13 @@ internal static class CompendiumCard
             if (!RunmobileMod.EnsureAdopted()) return;
 
             var source = __instance.GetNodeOrNull<NCompendiumBottomButton>(SourceButtonPath);
-            var previous = __instance.GetNodeOrNull<NCompendiumBottomButton>(PreviousButtonPath);
-            if (source is null || previous is null)
+            var vacancy = __instance.GetNodeOrNull<NCompendiumBottomButton>(VacancyButtonPath);
+            var right = __instance.GetNodeOrNull<NCompendiumBottomButton>(RightButtonPath);
+            if (source is null || vacancy is null || right is null)
             {
                 Log.Warn(
-                    $"[{RunmobileMod.ModId}] this build's Compendium has no '{SourceButtonPath}' to model a " +
-                    "library button on; not adding one.", 2);
+                    $"[{RunmobileMod.ModId}] this build's Compendium has no complete bottom row to model " +
+                    "a library button on; not adding one.", 2);
                 return;
             }
 
@@ -86,7 +88,7 @@ internal static class CompendiumCard
                 return;
             }
 
-            Install(__instance, source, previous, button);
+            Install(__instance, source, vacancy, right, button);
         }
         catch (Exception ex)
         {
@@ -131,7 +133,8 @@ internal static class CompendiumCard
     internal static void Install(
         NCompendiumSubmenu submenu,
         NCompendiumBottomButton source,
-        NCompendiumBottomButton previous,
+        NCompendiumBottomButton vacancy,
+        NCompendiumBottomButton right,
         NCompendiumBottomButton button)
     {
         // The row the game's own bottom buttons sit in, not the submenu. A position is
@@ -142,11 +145,13 @@ internal static class CompendiumCard
             ?? throw new InvalidOperationException(
                 "This build's Compendium button is not in a row, so there is nowhere to add one beside it.");
 
-        // Saved before JoinFocusChain writes it, and put back exactly as it was: this
-        // is the one edge of the game's own chain this touches, and an empty one is a
-        // real answer - Godot then picks a neighbour geometrically, which is what the
-        // player had.
-        var sourceNeighbour = source.FocusNeighborRight;
+        if (vacancy.GetParent() != row || right.GetParent() != row)
+        {
+            throw new InvalidOperationException(
+                "This build's Compendium bottom buttons do not share one row.");
+        }
+
+        var focus = FocusSnapshot.Capture(submenu, vacancy, right);
         var added = false;
         try
         {
@@ -154,8 +159,9 @@ internal static class CompendiumCard
             row.AddChild(button);
             added = true;
             SetLabel(button, LibraryCopy.CompendiumCard);
-            Place(row, source, previous, button);
-            JoinFocusChain(submenu, source, button);
+            SetIcon(button);
+            Place(row, vacancy, button);
+            JoinFocusChain(submenu, right, button);
 
             var error = button.Connect(
                 NClickableControl.SignalName.Released,
@@ -169,7 +175,7 @@ internal static class CompendiumCard
         {
             try
             {
-                source.FocusNeighborRight = sourceNeighbour;
+                focus.Restore();
             }
             finally
             {
@@ -205,9 +211,20 @@ internal static class CompendiumCard
         label.SetTextAutoSize(text);
     }
 
+    private static void SetIcon(NCompendiumBottomButton button)
+    {
+        if (!ResourceLoader.Exists(IconPath))
+        {
+            throw new InvalidOperationException(
+                $"Runmobile's packaged Compendium icon is missing at '{IconPath}'.");
+        }
+
+        button.GetNode<TextureRect>("Icon").Texture = ResourceLoader.Load<Texture2D>(IconPath);
+    }
+
     /// <summary>
-    /// Whether the button is there at all: the shell has to allow this mod a surface,
-    /// and the library has to have something behind the button.
+    /// Whether the button is there at all: the shell has to allow this mod a surface.
+    /// The browser itself remains useful even when no runs are currently listed.
     ///
     /// The shell is asked first and its answer is not a state to draw. A button greyed
     /// or a popup explaining itself would each be this mod speaking in a game it was
@@ -229,48 +246,64 @@ internal static class CompendiumCard
             $"NCompendiumBottomButton has no '{name}' on this build, so the button cannot be relabelled.");
 
     /// <summary>
-    /// Where the fourth button goes.
-    ///
-    /// <paramref name="row"/> is the game's own buttons' parent, and both questions here
-    /// are asked of it: whether it lays its children out itself, and the space the two
-    /// measured positions are in. Asking the new button's parent instead would answer
-    /// about wherever it had been added rather than about the row it is joining.
-    ///
-    /// When the row is a container, the container decides and this does nothing. When it
-    /// positions its buttons itself - which is what v0.111.0 does - the step between two
-    /// of the game's own is measured and reused, so a build that changes the spacing
-    /// changes this with it.
+    /// Takes the authored slot of the always-hidden Leaderboards button. Child order is
+    /// set as well as position so a future container row makes the same decision.
     /// </summary>
-    private static void Place(Node row, Control source, Control previous, Control button)
+    private static void Place(Node row, Control vacancy, Control button)
     {
-        if (row is Container) return;
-
-        var step = source.Position - previous.Position;
-        if (step.LengthSquared() <= 0f)
-        {
-            throw new InvalidOperationException("The native Compendium row has no usable spacing.");
-        }
-
-        button.Position = source.Position + step;
+        row.MoveChild(button, vacancy.GetIndex() + 1);
+        if (row is not Container) button.Position = vacancy.Position;
     }
 
-    /// <summary>
-    /// Joins the button to the row the game wired index by index.
-    ///
-    /// Only the two edges that reach the new button are changed: right off Run History
-    /// into ours, and left, top and bottom out of ours. The game's own assignments
-    /// between its own buttons are left exactly as it made them, so a build that
-    /// rearranges the row rearranges it.
-    /// </summary>
+    /// <summary>Joins the visible button into the game's existing controller chain.</summary>
     private static void JoinFocusChain(
-        NCompendiumSubmenu submenu, Control source, Control button)
+        NCompendiumSubmenu submenu, Control right, Control button)
     {
-        source.FocusNeighborRight = button.GetPath();
-        button.FocusNeighborLeft = source.GetPath();
-        button.FocusNeighborRight = button.GetPath();
-        button.FocusNeighborBottom = button.GetPath();
+        var path = button.GetPath();
+        right.FocusNeighborLeft = path;
+        foreach (var upperPath in new[] { UpperLeftButtonPath, AboveButtonPath })
+        {
+            if (submenu.GetNodeOrNull<Control>(upperPath) is { } upper)
+            {
+                upper.FocusNeighborBottom = path;
+            }
+        }
+
+        button.FocusNeighborLeft = path;
+        button.FocusNeighborRight = right.GetPath();
+        button.FocusNeighborBottom = path;
         button.FocusNeighborTop = submenu.GetNodeOrNull<Control>(AboveButtonPath) is { } above
             ? above.GetPath()
-            : source.GetPath();
+            : right.GetPath();
+    }
+
+    private sealed record FocusSnapshot(
+        Control Right,
+        NodePath RightLeft,
+        Control? UpperLeft,
+        NodePath UpperLeftBottom,
+        Control? Above,
+        NodePath AboveBottom)
+    {
+        internal static FocusSnapshot Capture(
+            NCompendiumSubmenu submenu, Control vacancy, Control right)
+        {
+            var upperLeft = submenu.GetNodeOrNull<Control>(UpperLeftButtonPath);
+            var above = submenu.GetNodeOrNull<Control>(AboveButtonPath);
+            return new FocusSnapshot(
+                right,
+                right.FocusNeighborLeft,
+                upperLeft,
+                upperLeft?.FocusNeighborBottom ?? vacancy.GetPath(),
+                above,
+                above?.FocusNeighborBottom ?? vacancy.GetPath());
+        }
+
+        internal void Restore()
+        {
+            Right.FocusNeighborLeft = RightLeft;
+            if (UpperLeft is not null) UpperLeft.FocusNeighborBottom = UpperLeftBottom;
+            if (Above is not null) Above.FocusNeighborBottom = AboveBottom;
+        }
     }
 }

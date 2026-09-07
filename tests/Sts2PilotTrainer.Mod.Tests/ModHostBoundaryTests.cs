@@ -263,7 +263,7 @@ public sealed class ModHostBoundaryTests
                 ],
                 Directory.EnumerateFiles(installed).Select(Path.GetFileName).Order(StringComparer.Ordinal));
             var iconResources = ReadPckEntries(Path.Combine(installed, "Runmobile.pck"));
-            var icon = iconResources["Runmobile/mod_image.png"];
+            var icon = iconResources[CompendiumCard.IconPath["res://".Length..]];
             Assert.Equal(
                 File.ReadAllBytes(Path.Combine(
                     Arbiter.RepoRoot, "src", "Sts2PilotTrainer.Mod", "Assets", "Runmobile", "mod_image.png")),

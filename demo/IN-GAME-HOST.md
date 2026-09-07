@@ -146,7 +146,7 @@ The boundary suite drives `adopt-live` as a real command and verifies that a con
 It also loads a second copy of `sts2` and verifies that adoption refuses before reading either copy's state, with the bound assembly named in the refusal.
 A third test proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
 For S3, the remaining declarative test parsed the mod manifest and verified the non-gameplay, DLL-only, packless contract that kept the compared content hash meaningful.
-The current equivalent verifies Runmobile's non-gameplay declaration and one-resource mod-list icon pack.
+The current equivalent verifies Runmobile's non-gameplay declaration and one-resource wagon icon pack.
 There is no source-reference scan presented as behavioral evidence.
 
 ```bash

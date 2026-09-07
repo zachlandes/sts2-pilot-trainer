@@ -25,6 +25,14 @@ public sealed record GameIdentity(
     IReadOnlyList<string> Notes)
 {
     /// <summary>
+    /// Reads identity from whichever engine this process is using.
+    /// The retail client is its own authority; a headless process uses the receipted
+    /// prepared copy.
+    /// </summary>
+    public static GameIdentity ReadForCurrentEngine() =>
+        EngineHost.Origin == EngineOrigin.RunningGame ? ReadFromRunningGame() : Read();
+
+    /// <summary>
     /// Reads the identity of the game this process would replay with.
     ///
     /// The content hash comes from the engine rather than from any file, because

@@ -87,6 +87,11 @@ public sealed record ScreenPage(
         }
 
         var places = perPage - pinned;
+        if (places >= 0 && rows <= places)
+        {
+            return new ScreenPage(0, rows, false, false, 0, 1, pinned);
+        }
+
         if (places < MinimumPerPage)
         {
             throw new ArgumentOutOfRangeException(
@@ -95,8 +100,6 @@ public sealed record ScreenPage(
                 $"A page of {perPage} places with {pinned} pinned to it leaves fewer than the " +
                 $"{MinimumPerPage} rows a page holds.");
         }
-
-        if (rows <= places) return new ScreenPage(0, rows, false, false, 0, 1, pinned);
 
         var size = places - 2;
         var pages = ((rows - 1) / size) + 1;

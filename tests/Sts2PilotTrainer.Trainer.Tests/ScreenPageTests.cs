@@ -190,6 +190,17 @@ public sealed class ScreenPageTests
         Assert.True(page.Drawn <= 8);
     }
 
+    /// <summary>A browser with no listed runs still has its two pinned controls and
+    /// needs no empty three-row page beside them.</summary>
+    [Fact]
+    public void PinnedControlsNeedOnlyTheirOwnMeasuredPlacesWhenThereAreNoPagedRows()
+    {
+        var page = ScreenPage.For(rows: 0, perPage: 2, page: 0, pinned: 2);
+
+        Assert.Equal(2, page.Drawn);
+        Assert.Equal(1, page.Pages);
+    }
+
     /// <summary>A panel with room for a page, but not once a row is pinned to it, is
     /// refused rather than drawing the pinned row over the ribbons.</summary>
     [Fact]

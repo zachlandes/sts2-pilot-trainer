@@ -61,7 +61,7 @@ No setting shares a run automatically.
 - **Coming soon:** a control for turning recording itself off.
 
 **Browse the runs and play from one.**
-The Compendium, which the game opens when no run is active, has a Runmobile button beside its own Run History.
+The Compendium, which the game opens when no run is active, has a Runmobile button in its bottom row with Statistics and Run History.
 Two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
 Open a run and it lists every place the recording proves you can be stood: from a fight's recorded start, from a floor's first screen, "Continue: play from fight N" for the next fight you have not played from, or from run start with every choice shown.
 The visible `Compatible with your game version` filter defaults on, hides incompatible runs during ordinary browsing, and leaves a muted "{n} not shown" count underneath.
@@ -111,7 +111,7 @@ Runmobile lets you play from the fight they played.
 ## Works on
 
 - Slay the Spire 2 `v0.111.0`, the build the featured recording and both recorded runs were made on.
-- No dependencies. The mod's only resource pack is its mod-list icon; it declares `affects_gameplay: false` and needs no BaseLib.
+- No dependencies. The mod's only resource pack is the wagon icon shared by its mod-list and Compendium entries; it declares `affects_gameplay: false` and needs no BaseLib.
 - Playing from a recording asks you to run with only Runmobile enabled, and says so in a sentence if another mod is active, because another mod's behaviour cannot be established from the game's content hash.
 - Recording your own runs works with other mods loaded; the recording notes which mods were active. A run recorded with a gameplay-affecting, undeclared or unidentified mod loaded is recorded, and refused when you later play from it.
 - Each recording is keyed to the build it was made on. When the game updates, the featured runs are re-verified on the new build and the ones that no longer reproduce are retired; your own new recordings are on the new build because you played them there.
