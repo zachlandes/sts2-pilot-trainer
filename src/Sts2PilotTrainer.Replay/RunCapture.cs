@@ -50,9 +50,9 @@ public sealed record StateReading(IReadOnlyDictionary<string, string> State, str
 /// Two facts about a recording cannot be established downstream and are established
 /// here. A recorder that joined a run half way through has a history that replays
 /// perfectly into a different run, so <see cref="Begin"/> refuses a run whose start it
-/// did not witness. A recorder that stopped and started again saw two stretches of a
-/// run and cannot know what happened between them, so <see cref="Resume"/> compares
-/// the state the game resumed into against the state the journal last recorded and
+/// did not witness. A recorder that resumes must account for the gap between sessions,
+/// so <see cref="Resume"/> compares the state the game resumed into against the state
+/// the journal last recorded and
 /// marks <see cref="Continuity"/> broken when they differ, except when the live state
 /// is the room-entry boundary of the fight the journal still held open. That is the
 /// game's observed save rollback: its later fight decisions remain as discarded

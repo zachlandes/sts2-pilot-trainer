@@ -221,9 +221,8 @@ public sealed record SourceProvenance
 /// <see cref="WitnessedRunStart"/> is the native counterpart of a video's run-start
 /// evidence: a history replayed from run start against a run the recorder joined
 /// half way through reconstructs a different run, and every other gate passes.
-/// <see cref="Continuity"/> is the counterpart of the end-of-run reading: a recorder
-/// that stopped and started again saw two stretches of a run and cannot know what
-/// happened between them.
+/// <see cref="Continuity"/> is the counterpart of the end-of-run reading: a resumed
+/// recorder must either account for the gap between sessions or mark the watch broken.
 /// </summary>
 public sealed record NativeSource
 {
@@ -299,8 +298,9 @@ public sealed record NativeSource
 
     /// <summary>
     /// Branches the player played after entering a fight and the game's own save
-    /// later rolled back. Kept as captured evidence, but excluded from the ordered
-    /// history the arbiter replays because they did not happen in the continued run.
+    /// later rolled back. Kept as captured evidence and excluded from the continued
+    /// run's ordered history; the publication gate replays each branch separately
+    /// through its final captured state.
     /// </summary>
     [JsonPropertyName("discarded")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

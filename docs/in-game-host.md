@@ -338,6 +338,7 @@ On resume, `RunCapture.Resume` rebuilds the capture from the journal and compare
 Equal means nothing happened in between that the recorder missed.
 The one unequal state that remains continuous is the game's own save behavior after a quit during a live fight: the live digest must equal that same open fight's room-entry decision in the journal, and the journal must contain decisions observed after it.
 Those decisions remain in an append-only rollback record and in `source.native.discarded`, while the replayable history resumes at the room-entry decision; the fact that Continue was pressed establishes none of this.
+For publication, `gate` replays every discarded branch from that verified room-entry state and requires its final engine state to match the final state the recorder captured.
 Any other mismatch marks the recording `continuity = broken` and it is refused for publication, because a history missing decisions replays into a different run while every value in it is individually true.
 Every rollback and refusal is appended to the journal as a line of its own, the moment it is established, and `Resume` applies each one back.
 Without that the break lives only in the session that decided on it: quit and continue once more and the next session finds a journal whose last digest is exactly the live one, sees nothing wrong, and publishes `continuity = continuous` over a hole - which is the one claim nothing downstream could check.
