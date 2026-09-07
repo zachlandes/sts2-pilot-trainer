@@ -398,6 +398,12 @@ public sealed class RunLibraryStoreTests : IDisposable
         Assert.Equal(downloaded.Run.Fights, listed.Fights);
         Assert.Equal(RunOrigin.Featured, listed.Origin);
         Assert.Equal(currentTime, listed.Recorded);
+
+        var reopened = RunLibrary.AcceptShared(downloaded, downloaded.Code);
+        Assert.Equal(downloaded.ManifestJson, reopened.ManifestJson);
+        Assert.Equal(downloaded.Submission, reopened.Submission);
+        Assert.Equal(RunOrigin.Featured, reopened.Run.Origin);
+        Assert.Equal(currentTime, reopened.Run.Recorded);
     }
 
     [GameFact]

@@ -85,15 +85,7 @@ internal static class RunLibrary
                 indexedShares.Add(item.ShareId);
                 if (SharedRecordings.TryGetValue(item.ShareId, out var downloaded))
                 {
-                    var verified = downloaded.Summary with
-                    {
-                        SubmittedAt = item.SubmittedAt,
-                        Featured = item.Featured,
-                    };
-                    shared.Add(verified with
-                    {
-                        Run = OnlineRun(verified, downloaded.Run.Verdict),
-                    });
+                    shared.Add(Curated(downloaded, item).Summary);
                 }
                 else
                 {
@@ -191,6 +183,21 @@ internal static class RunLibrary
         };
     }
 
+    private static SharedRun Curated(SharedRun downloaded, SharedRunSummary indexed)
+    {
+        var verified = downloaded.Summary with
+        {
+            SubmittedAt = indexed.SubmittedAt,
+            Featured = indexed.Featured,
+        };
+        return downloaded with
+        {
+            SubmittedAt = indexed.SubmittedAt,
+            Featured = indexed.Featured,
+            Run = OnlineRun(verified, downloaded.Run.Verdict),
+        };
+    }
+
     internal static void RefuseIndex() => RefuseIndex(CurrentSharingScope());
 
     internal static void RefuseIndex(string expectedScope)
@@ -251,9 +258,15 @@ internal static class RunLibrary
                 "The downloaded run does not match its advertised sharing identity.");
         }
 
+        if (SharedRecordings.TryGetValue(found.ShareId, out var downloaded))
+        {
+            return SharedIndex.TryGetValue(found.ShareId, out var indexed)
+                ? Curated(downloaded, indexed)
+                : downloaded;
+        }
+
         var recording = ManifestJson.Deserialize(found.ManifestJson);
-        var advertised = SharedIndex.Values.FirstOrDefault(item =>
-            string.Equals(item.Code, found.Code, StringComparison.OrdinalIgnoreCase));
+        SharedIndex.TryGetValue(found.ShareId, out var advertised);
         if (advertised is not null && !IndexDescribes(advertised, found, recording))
         {
             throw new ShareValidationException(
