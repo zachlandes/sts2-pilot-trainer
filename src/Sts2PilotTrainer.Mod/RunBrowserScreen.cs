@@ -45,7 +45,7 @@ internal static class RunBrowserScreen
     {
         try
         {
-            if (!skipIndexFetch && RunLibrary.ShouldFetchIndex)
+            if (tab == LibraryTab.Community && !skipIndexFetch && RunLibrary.ShouldFetchIndex)
             {
                 BeginIndexFetch((int)tab, compatibleOnly, selectedEntryId);
                 return;
