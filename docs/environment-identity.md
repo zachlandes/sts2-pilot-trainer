@@ -297,7 +297,7 @@ It adopts the client through `EngineHost.AdoptRunningGame`; `EngineHost.Start` r
 One of the four boundary tests drives the console refusal and verifies that the prepared game inputs and sandbox profile remain unchanged.
 Another loads a duplicate game assembly and proves that state refuses before adoption.
 A third proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
-The fourth parses the manifest and proves that the shipped host is non-gameplay, DLL-only and packless.
+The fourth parses the manifest and proves that the shipped host is non-gameplay and declares its one-resource mod-list icon pack.
 The host first establishes install eligibility, then S4 constructs and enters the captured combat only after the player deliberately advances.
 Which state a replay constructs the run with is decided from the recording rather than from a default.
 `RecordedFightEntry.SuppliedProgressFor` gives the recorded player's own state where the recording carries one, and the complete state where it does not - which is every recording read off a video, because no video shows an unlock state.

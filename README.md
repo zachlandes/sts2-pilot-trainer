@@ -111,7 +111,7 @@ Runmobile lets you play from the fight they played.
 ## Works on
 
 - Slay the Spire 2 `v0.111.0`, the build the featured recording and both recorded runs were made on.
-- No dependencies. The mod is DLL-only, declares `affects_gameplay: false`, and needs no BaseLib.
+- No dependencies. The mod's only resource pack is its mod-list icon; it declares `affects_gameplay: false` and needs no BaseLib.
 - Playing from a recording asks you to run with only Runmobile enabled, and says so in a sentence if another mod is active, because another mod's behaviour cannot be established from the game's content hash.
 - Recording your own runs works with other mods loaded; the recording notes which mods were active. A run recorded with a gameplay-affecting, undeclared or unidentified mod loaded is recorded, and refused when you later play from it.
 - Each recording is keyed to the build it was made on. When the game updates, the featured runs are re-verified on the new build and the ones that no longer reproduce are retired; your own new recordings are on the new build because you played them there.
