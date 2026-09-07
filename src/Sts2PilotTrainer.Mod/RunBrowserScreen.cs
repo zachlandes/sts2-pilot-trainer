@@ -368,20 +368,23 @@ internal static class RunBrowserScreen
     /// </summary>
     private static void Look(string code, bool fromMyRuns)
     {
+        long? surface = null;
         try
         {
             LibraryScreen.Dismiss();
-            var surface = LibraryScreen.Show(
+            var loadingSurface = LibraryScreen.Show(
                 LibraryCopy.CompendiumCard,
                 LibraryMarkup.Dim(LibraryCopy.LookingUpRunCode),
                 [],
                 LibraryCopy.Back,
                 back: static () => { });
+            surface = loadingSurface;
             var request = Interlocked.Increment(ref nextRequest);
             var task = RunLibrary.FindSharedAsync(code, out var scope);
             lock (PendingLock)
             {
-                PendingLookupRequests[request] = new LookupRequest(code, fromMyRuns, surface, scope);
+                PendingLookupRequests[request] = new LookupRequest(
+                    code, fromMyRuns, loadingSurface, scope);
                 PendingLookups[request] = task;
             }
             _ = task.ContinueWith(
@@ -393,6 +396,8 @@ internal static class RunBrowserScreen
         }
         catch (Exception ex)
         {
+            if (surface is { } ownedSurface && LibraryScreen.IsCurrent(ownedSurface))
+                LibraryScreen.Dismiss();
             RefuseLookup("could not look up that run code", ex, fromMyRuns);
         }
     }
