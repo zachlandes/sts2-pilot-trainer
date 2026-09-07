@@ -4,10 +4,10 @@ namespace Sts2PilotTrainer.Trainer.Tests;
 /// The plate under the game's own run history, state by state.
 ///
 /// The derivation is total, so these tests are written as a table: every state the
-/// design names has a case here, and the two structural rules are asserted in every
-/// one of them. A refused state keeps every row in place, and it says one thing about
-/// why. A plate that collapsed to nothing on a multiplayer run would pass a test that
-/// only checked the reason line.
+/// design's section 5 names has a case here, and the structural rules are asserted in
+/// every one of them. A refused state keeps the play-from row in place and says one
+/// thing about why; the ordinary state has no head line at all, because the history
+/// row's own record mark already says the run is recorded.
 /// </summary>
 public sealed class RunHistoryPlateTests
 {
@@ -15,16 +15,16 @@ public sealed class RunHistoryPlateTests
 
     private static RunHistoryFacts Facts(
         bool hasRecording = true,
-        bool multiplayer = false,
         bool continuous = true,
         bool? consoleUsed = null,
         string recordedBuild = Build,
         bool runInProgress = false,
         bool submitAvailable = false,
-        int? lastFight = 4,
-        int? lastFloor = 11) =>
-        new(hasRecording, multiplayer, continuous, consoleUsed, recordedBuild, Build,
-            runInProgress, submitAvailable, lastFight, lastFloor);
+        int? lastFloor = 11,
+        FloorKind lastFloorKind = FloorKind.Combat,
+        bool hasOtherFloors = true) =>
+        new(hasRecording, continuous, consoleUsed, recordedBuild, Build,
+            runInProgress, submitAvailable, lastFloor, lastFloorKind, hasOtherFloors);
 
     [Fact]
     public void ARunWithNoRecordingHasNoPlateAtAll()
@@ -33,26 +33,59 @@ public sealed class RunHistoryPlateTests
     }
 
     /// <summary>
-    /// The healthy state as a player reaches it today: both ways in offered, and the
-    /// Submit row refused because the flow it leads to is not built. The default here is
-    /// false for that reason - true is a value production never passes, and a test that
-    /// asserted this state's shape under it would be asserting about a screen nobody can
-    /// open.
+    /// The healthy state as a player reaches it today: the way in and the way to the
+    /// rest of the run offered, and the Submit row refused because the flow it leads to
+    /// is not built. The default here is false for that reason - true is a value
+    /// production never passes, and a test that asserted this state's shape under it
+    /// would be asserting about a screen nobody can open.
+    ///
+    /// It carries no head line, which is the settled rule: the history row's own record
+    /// mark already says the run is recorded, and a head repeating it would be the plate
+    /// introducing itself.
     /// </summary>
     [Fact]
-    public void ARecordedContinuousRunOnThisBuildOffersBothWaysIn()
+    public void ARecordedContinuousRunOnThisBuildOffersItsFloorAndSaysNothingAtItsHead()
     {
         var plate = RunHistoryPlate.For(Facts())!;
 
-        Assert.Equal(PlateMark.Recorded, plate.Mark);
-        Assert.Equal(LibraryCopy.PlateRecorded, plate.Head);
+        Assert.Null(plate.Mark);
+        Assert.Null(plate.Head);
         Assert.True(plate.Rows[0].Enabled);
         Assert.True(plate.Rows[1].Enabled);
         Assert.False(plate.Rows[2].Enabled);
         Assert.Equal(LibraryCopy.PlateSubmitComing, plate.Reason);
-        Assert.Equal("Play from fight 4", plate.Rows[0].Label);
-        Assert.Equal("Play from floor 11", plate.Rows[1].Label);
+        Assert.Equal("Play from floor 11 · combat", plate.Rows[0].Label);
+        Assert.Equal(LibraryCopy.ChooseAnotherFloor, plate.Rows[1].Label);
         Assert.Equal(LibraryCopy.SubmitThisRun, plate.Rows[2].Label);
+    }
+
+    /// <summary>
+    /// The sentence that a played-from run is not saved is said once, beside the rows,
+    /// and never as a head line - the way the shipped trainer says it beside its Enter
+    /// button. A plate whose rows are all refused says nothing: there it would read as
+    /// the reason they are.
+    /// </summary>
+    [Fact]
+    public void TheNotSavedSentenceIsSaidBesideTheRowsAndNeverAtTheHead()
+    {
+        var offered = RunHistoryPlate.For(Facts())!;
+        var refused = RunHistoryPlate.For(Facts(continuous: false))!;
+
+        Assert.Equal(LibraryCopy.NotSaved, offered.NotSaved);
+        Assert.Null(offered.Head);
+        Assert.Null(refused.NotSaved);
+    }
+
+    /// <summary>Rows name floors, never fights. No player has the fight-number concept
+    /// and the game's own screens count floors.</summary>
+    [Fact]
+    public void NoRowNamesAFight()
+    {
+        var plate = RunHistoryPlate.For(Facts())!;
+
+        Assert.All(
+            plate.Rows,
+            row => Assert.DoesNotContain("fight", row.Label, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>
@@ -65,8 +98,8 @@ public sealed class RunHistoryPlateTests
     {
         var plate = RunHistoryPlate.For(Facts(submitAvailable: true))!;
 
-        Assert.Equal(PlateMark.Recorded, plate.Mark);
-        Assert.Equal(LibraryCopy.PlateRecorded, plate.Head);
+        Assert.Null(plate.Mark);
+        Assert.Null(plate.Head);
         Assert.Null(plate.Reason);
         Assert.All(plate.Rows, row => Assert.True(row.Enabled));
     }
@@ -82,7 +115,7 @@ public sealed class RunHistoryPlateTests
     {
         var plate = RunHistoryPlate.For(Facts(consoleUsed: true))!;
 
-        Assert.Equal(PlateMark.Recorded, plate.Mark);
+        Assert.Null(plate.Head);
         Assert.True(plate.Rows[0].Enabled);
         Assert.True(plate.Rows[1].Enabled);
         Assert.False(plate.Rows[2].Enabled);
@@ -107,8 +140,8 @@ public sealed class RunHistoryPlateTests
 
     [Theory]
     [MemberData(nameof(RefusedStates))]
-    public void ARefusedStateKeepsEveryRowAndStatesOneReason(
-        RunHistoryFacts facts, PlateMark mark, string head, string reason)
+    public void ARefusedStateKeepsEveryRowAndStatesOneThing(
+        RunHistoryFacts facts, PlateMark? mark, string? head, string? reason)
     {
         var plate = RunHistoryPlate.For(facts)!;
 
@@ -119,63 +152,78 @@ public sealed class RunHistoryPlateTests
         Assert.All(plate.Rows, row => Assert.False(row.Enabled));
     }
 
-    public static TheoryData<RunHistoryFacts, PlateMark, string, string> RefusedStates() => new()
+    public static TheoryData<RunHistoryFacts, PlateMark?, string?, string?> RefusedStates() => new()
     {
         {
             Facts(continuous: false), PlateMark.Warning,
-            LibraryCopy.PlateRecordedWithAGap, LibraryCopy.PlateContinuityBroken
+            LibraryCopy.PlateCantBeReplayed, LibraryCopy.PlateContinuityBroken
         },
         {
-            Facts(recordedBuild: "v0.110.0"), PlateMark.RecordedMuted,
-            LibraryCopy.PlateRecordedOn("v0.110.0"), LibraryCopy.PlateOtherBuild(Build)
+            // Both versions in the head line, in the eligibility screen's red, and no
+            // reason underneath: the head line is the whole reason.
+            Facts(recordedBuild: "v0.110.0"), PlateMark.OtherVersion,
+            LibraryCopy.PlateRecordedOn("v0.110.0", Build), null
         },
         {
-            Facts(runInProgress: true), PlateMark.RecordedMuted,
-            LibraryCopy.PlateRecordedPlain, LibraryCopy.PlateDuringARun
-        },
-        {
-            Facts(hasRecording: false, multiplayer: true), PlateMark.Multiplayer,
-            LibraryCopy.PlateMultiplayer, LibraryCopy.PlateMultiplayerReason
+            // No head: nothing is wrong with the recording, this is just the wrong
+            // moment to be offered it.
+            Facts(runInProgress: true), null, null, LibraryCopy.PlateDuringARun
         },
     };
 
     /// <summary>
-    /// The recorder writes nothing for a multiplayer run, so the plate's own existence
-    /// there is the point: the game's history row is the game's, and the affordance's
-    /// place is held and explained so a player learns when it does work.
+    /// The continuity sentence names what happened in the player's own terms rather
+    /// than in the recorder's. "The game reloaded past a point already recorded" is a
+    /// fact about a journal; this is a fact about their run.
     /// </summary>
     [Fact]
-    public void AMultiplayerRunKeepsThePlateEvenThoughNothingRecordedIt()
+    public void AnIncompleteRecordingSaysWhatHappenedRatherThanWhatTheRecorderSaw()
     {
-        var plate = RunHistoryPlate.For(Facts(hasRecording: false, multiplayer: true));
+        var plate = RunHistoryPlate.For(Facts(continuous: false))!;
 
-        Assert.NotNull(plate);
+        Assert.Equal(
+            "Part of this run was played while Runmobile wasn't recording.", plate.Reason);
+    }
+
+    /// <summary>
+    /// A row cannot say "Play from floor 11" about a recording with no floor 11, so the
+    /// label drops the number rather than inventing one - and keeps its place.
+    /// </summary>
+    [Fact]
+    public void ARecordingThatProvesNoFloorNamesNoFloorAndStillHoldsTheRow()
+    {
+        var plate = RunHistoryPlate.For(Facts(lastFloor: null))!;
+
+        Assert.Equal(LibraryCopy.PlayFromAFloor, plate.Rows[0].Label);
+        Assert.False(plate.Rows[0].Enabled);
         Assert.Equal(3, plate.Rows.Count);
     }
 
     /// <summary>
-    /// A row cannot say "play from fight 4" about a recording with no fight 4, so the
-    /// label drops the number rather than inventing one - and keeps its place.
+    /// A floor whose kind nothing established is named by its number alone. The row and
+    /// the run view's own row are one sentence, so a floor named one way there is named
+    /// the same way here.
     /// </summary>
     [Fact]
-    public void ARecordingThatProvesNoFightNamesNoFightAndStillHoldsTheRow()
+    public void AFloorNothingEstablishedTheKindOfIsNamedByItsNumberAlone()
     {
-        var plate = RunHistoryPlate.For(Facts(lastFight: null, lastFloor: null))!;
+        var plate = RunHistoryPlate.For(Facts(lastFloorKind: FloorKind.Unknown))!;
 
-        Assert.Equal(LibraryCopy.PlayFromAFight, plate.Rows[0].Label);
-        Assert.Equal(LibraryCopy.PlayFromAFloor, plate.Rows[1].Label);
-        Assert.False(plate.Rows[0].Enabled);
-        Assert.False(plate.Rows[1].Enabled);
-        Assert.Equal(3, plate.Rows.Count);
+        Assert.Equal("Play from floor 11", plate.Rows[0].Label);
+        Assert.Equal(LibraryCopy.PlayFromFloor(11), plate.Rows[0].Label);
     }
 
-    /// <summary>Multiplayer is answered before the build question, because nothing
-    /// arriving later changes it and a "come back later" reading would be wrong.</summary>
+    /// <summary>
+    /// A row nothing is behind is not drawn. A run of one floor has no other floor to
+    /// choose, so the disclosure row is absent rather than refused - the same rule the
+    /// run view applies to Continue and Start the run over.
+    /// </summary>
     [Fact]
-    public void AMultiplayerRunOnAnotherBuildStillReadsAsMultiplayer()
+    public void ARunWithNoOtherFloorDoesNotOfferTheWayToChooseOne()
     {
-        var plate = RunHistoryPlate.For(Facts(multiplayer: true, recordedBuild: "v0.110.0"))!;
+        var plate = RunHistoryPlate.For(Facts(hasOtherFloors: false))!;
 
-        Assert.Equal(PlateMark.Multiplayer, plate.Mark);
+        Assert.DoesNotContain(plate.Rows, row => row.Kind == PlateRowKind.ChooseAnotherFloor);
+        Assert.Equal(2, plate.Rows.Count);
     }
 }

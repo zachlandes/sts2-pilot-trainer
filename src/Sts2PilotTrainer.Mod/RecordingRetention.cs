@@ -217,6 +217,50 @@ internal static class RecordingRetention
     }
 
     /// <summary>
+    /// Removes one recorded run, because the player pressed Remove this run on it, and
+    /// says whether anything went.
+    ///
+    /// The per-run counterpart of <see cref="PurgeNow"/>, and it goes through the same
+    /// two owners for the same reason: <see cref="RecordingLibrary"/> names which files
+    /// are that run's, and <see cref="RunmobileStore.Remove"/> is the one place
+    /// containment is checked. Nothing here picks its own targets.
+    ///
+    /// <para>The run the game can currently Continue is refused, and that is the same
+    /// rule the policy keeps rather than a second one: a journal deleted under a live
+    /// run is one the recorder picks up again and publishes as a run it watched from the
+    /// start. A player asking to remove it is asking for that, so this says no.</para>
+    ///
+    /// <para>It is not behind the once-per-profile latch and does not latch one. That
+    /// latch is for a standing policy applied as a profile is entered; this is a person
+    /// pressing a control on one run.</para>
+    /// </summary>
+    internal static bool RemoveRun(string runId)
+    {
+        if (string.IsNullOrWhiteSpace(runId))
+        {
+            throw new ArgumentException("A run is removed by its own run id.", nameof(runId));
+        }
+
+        lock (Gate)
+        {
+            var continuable = ContinuableRun.StartedUtc();
+            var recording = RecordingLibrary
+                .Index(RunmobileStore.ListFileNames(RunRecorder.RecordingsDirectory))
+                .FirstOrDefault(candidate => string.Equals(candidate.RunId, runId, StringComparison.Ordinal));
+            if (recording is null) return false;
+            if (continuable is { } live && recording.StartedUtc == live) return false;
+
+            var went = false;
+            foreach (var file in recording.FileNames)
+            {
+                went |= RunmobileStore.Remove($"{RunRecorder.RecordingsDirectory}/{file}");
+            }
+
+            return went;
+        }
+    }
+
+    /// <summary>
     /// Removes what <paramref name="settings"/> says to remove, and returns how many
     /// runs went.
     ///

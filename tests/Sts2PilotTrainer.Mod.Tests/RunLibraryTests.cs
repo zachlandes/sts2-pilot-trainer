@@ -217,12 +217,12 @@ public sealed class RunLibraryStoreTests : IDisposable
         Assert.Null(quietFacts.ConsoleUsed);
 
         var consolePlate = RunHistoryPlate.For(AsIfHere(consoleFacts))!;
-        Assert.Equal(PlateMark.Recorded, consolePlate.Mark);
-        Assert.False(consolePlate.Rows[2].Enabled);
+        Assert.Null(consolePlate.Head);
+        Assert.False(consolePlate.Rows[^1].Enabled);
         Assert.Equal(LibraryCopy.PlateConsoleUsed, consolePlate.Reason);
 
         var quietPlate = RunHistoryPlate.For(AsIfHere(quietFacts))!;
-        Assert.Equal(PlateMark.Recorded, quietPlate.Mark);
+        Assert.Null(quietPlate.Head);
         Assert.Equal(LibraryCopy.PlateSubmitComing, quietPlate.Reason);
     }
 
@@ -752,28 +752,29 @@ public sealed class RunViewRowMappingTests
         Assert.All(cold, row => Assert.Null(row.MarkTooltip));
     }
 
+    /// <summary>
+    /// Every second line the run view derived reaches the screen unchanged. The
+    /// play-from row's is the whole point of the single-row shape - it is what names the
+    /// selected floor and what it held - so a screen that dropped it would leave three
+    /// rows a player has to guess between.
+    /// </summary>
     [Fact]
     public void EveryRunViewRowReachesTheScreenCarryingItsSecondLine()
     {
-        var view = RunView.For(Recording(), RunProgress.Empty);
+        var view = RunView.For(Recording(), RunProgress.Empty, selectedFloor: 2);
 
         var rows = RunBrowserScreen.EnteringRows(view, "native-a");
 
         Assert.Equal(view.Rows.Select(row => row.Label), rows.Select(row => row.Label));
-        Assert.Equal(
-            [
-                LibraryCopy.PlayFromThisFightNote,
-                LibraryCopy.PlayFromThisFloorNote,
-                LibraryCopy.ContinueNote,
-                LibraryCopy.StartTheRunOverNote,
-            ],
-            rows.Select(row => row.Note));
+        Assert.Equal(view.Rows.Select(row => row.Note), rows.Select(row => row.Note));
+        Assert.Equal(LibraryCopy.FloorLine(2, FloorKind.Combat), rows[0].Note);
     }
 
-    /// <summary>A note says what a row does and a reason says why it is refused; a row
-    /// can carry both, and the refused first floor does.</summary>
+    /// <summary>A refused row's reason reaches the screen in place of the second line:
+    /// a row that gave both would be saying where it goes and that it does not go
+    /// there.</summary>
     [Fact]
-    public void ARefusedRowKeepsItsSecondLineBesideItsReason()
+    public void ARefusedRowCarriesItsReasonAndNoSecondLine()
     {
         var view = RunView.For(Recording(), RunProgress.Empty, selectedFloor: 1);
 
@@ -781,7 +782,7 @@ public sealed class RunViewRowMappingTests
             .Single(row => row.Label == LibraryCopy.PlayFromThisFloor);
 
         Assert.False(floor.Enabled);
-        Assert.Equal(LibraryCopy.PlayFromThisFloorNote, floor.Note);
+        Assert.Null(floor.Note);
         Assert.Equal(LibraryCopy.RunStartsHere, floor.Reason);
     }
 

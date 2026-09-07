@@ -18,13 +18,14 @@ public sealed class RunBrowserTests
         string id,
         RunOrigin origin = RunOrigin.Recent,
         RunVerdict verdict = RunVerdict.Passed,
-        bool? multiplayer = null,
         string build = Build,
-        DateTimeOffset? recorded = null) =>
+        DateTimeOffset? recorded = null,
+        int? lastFloorReplayed = null) =>
         new(
             id, origin, "NaveGreed", "CHARACTER.IRONCLAD", 10, build,
-            Fights: [1, 2, 3, 4, 5, 6], Outcome: "won", multiplayer, verdict,
-            FightsPlayed: [], recorded);
+            Fights: [1, 2, 3, 4, 5, 6], Floors: [2, 3, 4, 5, 6, 7], Outcome: "won", verdict,
+            Relics: [], DeckCount: 11, lastFloorReplayed,
+            Positions: [], Deck: null, Recorded: recorded);
 
     /// <summary>Every run actually drawn, in the order the groups draw them.</summary>
     private static IReadOnlyList<LibraryRun> Listed(RunBrowser browser) =>
@@ -41,18 +42,17 @@ public sealed class RunBrowserTests
     }
 
     /// <summary>
-    /// Three ways a run can be unplayable and one outcome: it is not in the list, in
+    /// Two ways a run can be unplayable and one outcome: it is not in the list, in
     /// any state, and the numeral under the list is what says so.
     /// </summary>
     [Theory]
-    [InlineData(RunVerdict.Absent, null)]
-    [InlineData(RunVerdict.Failed, null)]
-    [InlineData(RunVerdict.Passed, true)]
-    public void ARunThisGameCannotPlayHasNoRowAtAll(RunVerdict verdict, bool? multiplayer)
+    [InlineData(RunVerdict.Absent)]
+    [InlineData(RunVerdict.Failed)]
+    public void ARunThisGameCannotPlayHasNoRowAtAll(RunVerdict verdict)
     {
         var browser = RunBrowser.For(
             LibraryTab.Community,
-            [Run("shown"), Run("hidden", verdict: verdict, multiplayer: multiplayer)],
+            [Run("shown"), Run("hidden", verdict: verdict)],
             Build);
 
         Assert.Equal(["shown"], Listed(browser).Select(run => run.RunId));
@@ -62,15 +62,19 @@ public sealed class RunBrowserTests
     }
 
     /// <summary>
-    /// A recording that says nothing about being multiplayer is not reported as
-    /// single-player: the rule hides what was established and never what nobody asked.
+    /// The whole of why a run is hidden, and the one thing the tooltip may name is a
+    /// build. The recorder attaches to single-player runs only, so no other kind of run
+    /// ever reaches a list to be hidden from it.
     /// </summary>
     [Fact]
-    public void ARecordingThatSaysNothingAboutMultiplayerIsStillListed()
+    public void TheHiddenCountsTooltipNamesBuildsAndNothingElse()
     {
-        var browser = RunBrowser.For(LibraryTab.Community, [Run("quiet", multiplayer: null)], Build);
+        var browser = RunBrowser.For(
+            LibraryTab.Community, [Run("hidden", verdict: RunVerdict.Absent)], Build);
 
-        Assert.Single(Listed(browser));
+        Assert.Contains(Build, browser.NotShownTooltipBody, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "multiplayer", browser.NotShownTooltipBody, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -108,7 +112,7 @@ public sealed class RunBrowserTests
 
         var group = Assert.Single(browser.Groups);
         Assert.Null(group.Heading);
-        Assert.Equal("1 runs, 3 MB on this computer", browser.Footer);
+        Assert.Equal("1 runs · 3 MB on this computer", browser.Footer);
         Assert.Equal(LibraryCopy.MyRunsFooterAction, browser.FooterAction);
     }
 
@@ -130,7 +134,7 @@ public sealed class RunBrowserTests
             Build,
             myRunsBytes: 3 * 1024 * 1024);
 
-        Assert.Equal("2 runs, 3 MB on this computer", browser.Footer);
+        Assert.Equal("2 runs · 3 MB on this computer", browser.Footer);
         Assert.Equal(["mine"], Listed(browser).Select(run => run.RunId));
         Assert.Equal("1 not shown", browser.NotShownLabel);
     }
@@ -235,24 +239,6 @@ public sealed class RunBrowserTests
     }
 
     /// <summary>
-    /// A multiplayer run gets no "it may come back" note, because nothing arriving
-    /// later turns one into a single-player run. Answered before the build question so
-    /// a multiplayer run recorded on another build still reads as multiplayer.
-    /// </summary>
-    [Fact]
-    public void ACodeForAMultiplayerRunSaysWhatWillNeverChange()
-    {
-        var answer = RunBrowser.Lookup(
-            "party",
-            [Run("party", verdict: RunVerdict.Absent, multiplayer: true, build: "v0.110.0")],
-            Build);
-
-        Assert.Equal(LookupOutcome.Multiplayer, answer.Outcome);
-        Assert.Equal(LibraryCopy.LookupRefusedMultiplayer, answer.Body);
-        Assert.Null(answer.Note);
-    }
-
-    /// <summary>
     /// A run recorded on this very build that this game can no longer reproduce gets
     /// its own sentence. The build refusal would name one build twice and promise a
     /// verdict that already exists and already failed.
@@ -267,7 +253,6 @@ public sealed class RunBrowserTests
         Assert.Equal(LibraryCopy.LookupRefusedNoLongerMatches, answer.Body);
         Assert.Equal(LibraryCopy.LookupRefusedNoLongerMatchesNote, answer.Note);
         Assert.DoesNotContain(Build, answer.Body, StringComparison.Ordinal);
-        Assert.NotEqual(LibraryCopy.LookupRefusedMultiplayer, answer.Body);
     }
 
     /// <summary>
@@ -285,7 +270,6 @@ public sealed class RunBrowserTests
         Assert.Equal(LibraryCopy.LookupRefusedUnjudgedNote, answer.Note);
         Assert.DoesNotContain(Build, answer.Body, StringComparison.Ordinal);
         Assert.NotEqual(LibraryCopy.LookupRefusedNoLongerMatches, answer.Body);
-        Assert.NotEqual(LibraryCopy.LookupRefusedMultiplayer, answer.Body);
     }
 
     /// <summary>A run this game could not judge is no more in the list than one whose
@@ -326,17 +310,6 @@ public sealed class RunBrowserTests
             Listed(browser).Select(run => run.RunId));
     }
 
-    /// <summary>A multiplayer run stays a multiplayer run whatever its verdict says,
-    /// so that answer is reached first.</summary>
-    [Fact]
-    public void AMultiplayerRunIsAnsweredAsOneEvenWhenItsVerdictAlsoFailed()
-    {
-        var answer = RunBrowser.Lookup(
-            "party", [Run("party", verdict: RunVerdict.Failed, multiplayer: true)], Build);
-
-        Assert.Equal(LookupOutcome.Multiplayer, answer.Outcome);
-    }
-
     [Fact]
     public void ACodeForNothingSaysThatRatherThanRefusingARunThatDoesNotExist()
     {
@@ -355,19 +328,131 @@ public sealed class RunBrowserTests
     }
 
     /// <summary>
-    /// The pips under a run's fight count are how many of its fights this player has
-    /// stood in. Counted against the ordinals the recording proves rather than against
-    /// how many there are, so neither a stale ordinal from a longer recording nor one
-    /// the recording spent on a fight it stopped inside puts a pip under a fight
-    /// nothing offers.
+    /// The pane is the selected run, and the first run the list holds is selected when
+    /// nothing else is asked for - so the pane is never empty on a list that is not.
     /// </summary>
     [Fact]
-    public void ThePipsCountOnlyFightsThisRecordingHas()
+    public void ThePaneShowsTheSelectedRunAndTheFirstOneWhenNoneIsAskedFor()
     {
-        var run = Run("a") with { Fights = [1, 2, 4], FightsPlayed = [1, 3, 99] };
+        IReadOnlyList<LibraryRun> runs = [Run("a"), Run("b")];
 
-        Assert.Equal(1, run.PlayedCount);
-        Assert.Equal(3, run.FightCount);
+        Assert.Equal("a", RunBrowser.For(LibraryTab.Community, runs, Build).Pane!.Run.RunId);
+        Assert.Equal(
+            "b", RunBrowser.For(LibraryTab.Community, runs, Build, selectedEntryId: "b").Pane!.Run.RunId);
+    }
+
+    /// <summary>An exact selection reveals an otherwise hidden incompatible run.</summary>
+    [Fact]
+    public void SelectingAnIncompatibleRunClearsTheCompatibilityFilter()
+    {
+        var browser = RunBrowser.For(
+            LibraryTab.Community,
+            [Run("a"), Run("hidden", verdict: RunVerdict.Absent)],
+            Build,
+            selectedEntryId: "hidden");
+
+        Assert.Equal("hidden", browser.Pane!.Run.RunId);
+        Assert.False(browser.CompatibleOnly);
+    }
+
+    /// <summary>An empty list has no pane rather than an empty one.</summary>
+    [Fact]
+    public void AnEmptyListHasNoPane()
+    {
+        Assert.Null(RunBrowser.For(LibraryTab.Community, [], Build).Pane);
+    }
+
+    /// <summary>The pane's verdict line is the captain's wording, in the eligibility
+    /// screen's green, and it is the only thing the pane says about compatibility -
+    /// because the pane only ever shows a run this game can play.</summary>
+    [Fact]
+    public void ThePaneSaysTheRunWorksWithThisVersion()
+    {
+        var browser = RunBrowser.For(LibraryTab.Community, [Run("a")], Build);
+
+        Assert.Equal($"Works with your version · {Build}", browser.Pane!.Verdict);
+        Assert.Equal(LibraryCopy.OpenTheRun, browser.Pane.Open);
+    }
+
+    /// <summary>
+    /// Your own run's plate offers Submit and Remove this run; somebody else's offers
+    /// nothing until the save-run shape is built. Removing is the one thing here that
+    /// goes through the game's confirm, because it is the one that cannot be undone.
+    /// </summary>
+    [Fact]
+    public void TheMyRunsPlateOffersSubmitAndRemoveAndTheCommunityOneOffersNothingYet()
+    {
+        var mine = RunBrowser.For(LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine)], Build);
+        var theirs = RunBrowser.For(LibraryTab.Community, [Run("theirs")], Build);
+
+        Assert.Equal(
+            [PaneRowKind.Submit, PaneRowKind.Remove],
+            mine.Pane!.Plate.Select(row => row.Kind));
+        Assert.Equal(LibraryCopy.RemoveThisRun, mine.Pane.Plate[1].Label);
+        Assert.True(mine.Pane.Plate[1].Confirms);
+        Assert.False(mine.Pane.Plate[0].Confirms);
+        Assert.Empty(theirs.Pane!.Plate);
+    }
+
+    /// <summary>
+    /// The submit row leads to a flow outside this slice, so it is refused rather than
+    /// drawn as an offer nothing honours. One supplied fact turns it on and nothing
+    /// else about the plate moves.
+    /// </summary>
+    [Fact]
+    public void TheSubmitRowIsRefusedUntilTheFlowItLeadsToExists()
+    {
+        var without = RunBrowser.For(LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine)], Build);
+        var with = RunBrowser.For(
+            LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine)], Build, submitAvailable: true);
+
+        Assert.False(without.Pane!.Plate[0].Enabled);
+        Assert.True(with.Pane!.Plate[0].Enabled);
+        Assert.Equal(without.Pane.Plate.Count, with.Pane.Plate.Count);
+    }
+
+    /// <summary>
+    /// The save-run shape is gated on the captain's own call. Until it is confirmed
+    /// nothing draws a Save row, and nothing else on the surface moves - which is
+    /// exactly what the gate asks for.
+    /// </summary>
+    [Fact]
+    public void TheSaveRowIsOnlyDrawnWhereThatShapeIsBuilt()
+    {
+        var off = RunBrowser.For(LibraryTab.Community, [Run("theirs")], Build);
+        var on = RunBrowser.For(LibraryTab.Community, [Run("theirs")], Build, saveOffered: true);
+        var already = RunBrowser.For(
+            LibraryTab.Community, [Run("theirs")], Build, saveOffered: true, saved: true);
+
+        Assert.Empty(off.Pane!.Plate);
+        Assert.Equal(LibraryCopy.SaveToMyRuns, Assert.Single(on.Pane!.Plate).Label);
+        Assert.Equal(LibraryCopy.SavedToMyRuns, Assert.Single(already.Pane!.Plate).Label);
+    }
+
+    /// <summary>
+    /// The Last floor replayed column reads the last floor of this run the player
+    /// loaded, and is blank until there is one. Saving a run does not set it, so a run
+    /// nobody has stood in says nothing rather than zero.
+    /// </summary>
+    [Fact]
+    public void TheLastFloorReplayedColumnIsBlankUntilTheresOne()
+    {
+        Assert.Null(Run("cold").LastFloorReplayed);
+        Assert.Equal(6, Run("warm", lastFloorReplayed: 6).LastFloorReplayed);
+    }
+
+    /// <summary>
+    /// The run's own reach and how far this player has replayed are two facts, and the
+    /// row draws them in two places. Collapsing them would make a run somebody has
+    /// never opened look like one they finished.
+    /// </summary>
+    [Fact]
+    public void HowFarTheRunWentAndHowFarThisPlayerHasAreSeparate()
+    {
+        var run = Run("a", lastFloorReplayed: 3);
+
+        Assert.Equal(7, run.LastFloor);
+        Assert.Equal(3, run.LastFloorReplayed);
     }
 
     [Fact]

@@ -14,9 +14,14 @@ namespace Sts2PilotTrainer.Trainer;
 /// Two rules hold over everything here, and both are settled rather than stylistic.
 ///
 /// <para><b>One entering verb.</b> A player plays <em>from</em> a run: "Play from this
-/// fight", "Play from floor 6", "Continue: play from fight 4". No other verb enters a
-/// recording anywhere on this surface, because two of them would read as two different
-/// things happening.</para>
+/// floor", "Play from floor 6", "Continue from the next unplayed fight". No other verb
+/// enters a recording anywhere on this surface, because two of them would read as two
+/// different things happening.</para>
+///
+/// <para><b>No fight is named by number.</b> No player has that concept: the strip
+/// enumerates floors and the game's own screens count floors, so every row here names
+/// a floor. A fight ordinal travels on a row for the entry to use and is never
+/// written.</para>
 ///
 /// <para><b>The run noun.</b> What a player has is runs - Others, Mine, "{n} runs".
 /// "Recording", "manifest" and "journal" are this project's internal words for
@@ -65,10 +70,83 @@ public static class LibraryCopy
     public static string NotShown(int count) =>
         $"{count.ToString(CultureInfo.InvariantCulture)} not shown";
 
-    /// <inheritdoc cref="NotShown"/>
+    /// <summary>
+    /// The whole of why a run is not shown, and the one thing it may name is a build.
+    ///
+    /// There is nothing else to name: the recorder attaches to single-player runs only,
+    /// so no other kind of run ever reaches a list to be hidden from it.
+    /// </summary>
     public static string NotShownTooltip(string thisBuild) =>
-        "Recorded on a build your game can't play, or as a multiplayer run. They come back when a verdict " +
+        "Recorded on a build your game can't play. They come back when a verdict " +
         $"for {thisBuild} arrives; a run code still finds one.";
+
+    /// <summary>What the pane says about the selected run, in the eligibility screen's
+    /// green. The pane only ever shows a listed run, so this is all it says about
+    /// compatibility.</summary>
+    public static string WorksWithYourVersion(string thisBuild) =>
+        $"Works with your version · {thisBuild}";
+
+    /// <summary>The pane's ribbon, and the one way to the run view in either tab.</summary>
+    public const string OpenTheRun = "Open the run";
+
+    /// <summary>The column that says where in a run this player was working. Named for
+    /// a floor rather than a count of fights: not every use of a run is a fight, and a
+    /// floor is the unit the game and the strip already count.</summary>
+    public const string LastFloorReplayed = "Last floor replayed";
+
+    /// <summary>How many cards the run's deck holds, beside the relics at the pane's
+    /// top right. A count nobody recorded is not written at all rather than written as
+    /// zero.</summary>
+    public static string DeckCount(int cards) =>
+        $"{cards.ToString(CultureInfo.InvariantCulture)} cards";
+
+    /// <summary>The list's own header, inside the left pane: the columns it holds. It
+    /// sits over the list rather than over the screen, because a header belongs to the
+    /// thing it heads.</summary>
+    public static string ListHeader() => $"Run · {LastFloorReplayed}";
+
+    /// <summary>What a fight on the selected floor is against, under the run view's
+    /// strip. The enemy is interpolated; no sentence here names one.</summary>
+    public static string FightAgainst(string enemy) => $"Against {enemy}";
+
+    /// <summary>The health the selected position starts at.</summary>
+    public static string HealthAt(int hp, int maxHp) =>
+        $"{hp.ToString(CultureInfo.InvariantCulture)}/{maxHp.ToString(CultureInfo.InvariantCulture)} HP";
+
+    /// <summary>How the run ended, under the pane's identity. Interpolated from the
+    /// recording's own outcome.</summary>
+    public static string RunReached(int floor) =>
+        $"Reached floor {floor.ToString(CultureInfo.InvariantCulture)}";
+
+    /// <summary>The relics a row's strip had no room for.</summary>
+    public static string MoreRelics(int count) =>
+        $"+{count.ToString(CultureInfo.InvariantCulture)}";
+
+    /// <summary>Saves somebody else's run into My runs.</summary>
+    public const string SaveToMyRuns = "Save to My runs";
+
+    /// <inheritdoc cref="SaveToMyRuns"/>
+    public const string SavedToMyRuns = "Saved to My runs";
+
+    /// <summary>Takes a saved copy of somebody else's run back out of My runs.</summary>
+    public const string RemoveFromMyRuns = "Remove from My runs";
+
+    /// <summary>Removes one of the recorder's own runs, through the game's own confirm.
+    /// The per-run counterpart of the settings row's Remove all my runs.</summary>
+    public const string RemoveThisRun = "Remove this run";
+
+    /// <summary>What the confirm asks before it. It says what is not touched, because
+    /// what a player is afraid of when a mod offers to remove something is the run
+    /// history and the save beside it.</summary>
+    public const string RemoveThisRunBody =
+        "This removes the run Runmobile recorded. Your saves, profile and run history are not touched.";
+
+    /// <summary>The confirm's two ribbons. Removing is the affirmative and keeping is
+    /// the way out, which is what a player lands on.</summary>
+    public const string Remove = "Remove";
+
+    /// <inheritdoc cref="Remove"/>
+    public const string KeepIt = "Keep it";
 
     /// <summary>
     /// What the run-code field says before anything is typed in it.
@@ -112,7 +190,7 @@ public static class LibraryCopy
 
     /// <summary>What the player's own runs occupy, under the Mine list.</summary>
     public static string MyRunsFooter(int runs, string size) =>
-        $"{runs.ToString(CultureInfo.InvariantCulture)} runs, {size} on this computer";
+        $"{runs.ToString(CultureInfo.InvariantCulture)} runs · {size} on this computer";
 
     /// <summary>Where the count and the size are acted on. The footer carries no
     /// control of its own: removing runs is a setting, and two places to do it would
@@ -128,7 +206,7 @@ public static class LibraryCopy
     /// A player who typed a code asked about a specific run and is owed both the build
     /// it requires and the build currently running.
     /// </summary>
-    public const string LookupRefusedTitle = "Not playable on your game";
+    public const string LookupRefusedTitle = "Not playable on your version";
 
     /// <inheritdoc cref="LookupRefusedTitle"/>
     public static string LookupRefusedBuild(string recordedBuild, string thisBuild) =>
@@ -148,6 +226,10 @@ public static class LibraryCopy
     /// failed. It names what is true and diagnoses nothing: which prerequisite moved is
     /// the eligibility screen's to say, not a popup's.
     /// </summary>
+    /// <summary>A multiplayer run remains refused regardless of later verdicts.</summary>
+    public const string LookupRefusedMultiplayer =
+        "This run exists. It is a multiplayer run, and Runmobile plays single-player runs.";
+
     public const string LookupRefusedNoLongerMatches =
         "This run exists. It was recorded on your build, and your game no longer matches what it was " +
         "recorded under.";
@@ -174,11 +256,6 @@ public static class LibraryCopy
     /// for is a reading, and it is one this game takes again every time.</summary>
     public const string LookupRefusedUnjudgedNote = "It returns to the list once it can.";
 
-    /// <summary>The one refusal with no note: nothing arriving later makes a
-    /// multiplayer run into a single-player one.</summary>
-    public const string LookupRefusedMultiplayer =
-        "This run exists. It is a multiplayer run, and Runmobile plays single-player runs.";
-
     /// <summary>What a code that names nothing answers with.</summary>
     public const string LookupNotFoundTitle = "No run with that code";
 
@@ -199,39 +276,56 @@ public static class LibraryCopy
 
     // ── The run view ───────────────────────────────────────────────────────
 
-    /// <summary>Stands the player at the recorded start of the selected fight.</summary>
-    public const string PlayFromThisFight = "Play from this fight";
-
-    /// <inheritdoc cref="PlayFromThisFight"/>
-    public const string PlayFromThisFightNote = "from the fight's recorded start";
-
-    /// <summary>Stands the player at the selected floor's first screen, from where the
-    /// run is theirs.</summary>
+    /// <summary>
+    /// The one play-from row. Its label never changes; its second line does.
+    ///
+    /// One row rather than two, because a fight is one thing a floor can hold rather
+    /// than a thing beside it. Where it stands a player follows the floor's own kind:
+    /// a combat floor's fight start, and any other floor's entry.
+    /// </summary>
     public const string PlayFromThisFloor = "Play from this floor";
 
-    /// <inheritdoc cref="PlayFromThisFloor"/>
-    public const string PlayFromThisFloorNote = "from the floor's first screen";
-
-    /// <summary>The one row that does not depend on what is selected: the next fight
-    /// this player has not played from.</summary>
-    public static string ContinueAtFight(int fight) =>
-        $"Continue: play from fight {fight.ToString(CultureInfo.InvariantCulture)}";
-
-    /// <inheritdoc cref="ContinueAtFight"/>
-    public const string ContinueNote = "the next fight not yet played";
+    /// <summary>
+    /// The play-from row's second line: the selected floor and what it held.
+    ///
+    /// A kind nothing established is left unnamed rather than guessed, so the line then
+    /// reads "Floor 7" and stops. That is the honest answer for a floor whose recording
+    /// made no decision saying what was there.
+    /// </summary>
+    public static string FloorLine(int floor, FloorKind kind = FloorKind.Unknown)
+    {
+        var number = $"Floor {floor.ToString(CultureInfo.InvariantCulture)}";
+        return KindWord(kind) is { } word ? $"{number} · {word}" : number;
+    }
 
     /// <summary>
-    /// Moves the run view to another floor.
+    /// What a floor's kind is called on this surface, or null where nothing established
+    /// one.
     ///
-    /// Not in the accepted design, which selects a floor on the run strip. This screen
-    /// is drawn in the game's own popup and has no strip in it, so the same choice is
-    /// offered as a row; when the strip is drawn this row goes and nothing else about
-    /// the view changes.
+    /// Lower case, because it follows a floor number in one line rather than heading
+    /// anything: "Floor 3 · combat", "Floor 4 · shop", "Floor 11 · event".
     /// </summary>
-    public const string ChooseAFloor = "Choose a floor";
+    public static string? KindWord(FloorKind kind) => kind switch
+    {
+        FloorKind.Combat => "combat",
+        FloorKind.Shop => "shop",
+        FloorKind.Rest => "rest",
+        FloorKind.Event => "event",
+        FloorKind.Treasure => "treasure",
+        FloorKind.Unknown => null,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(kind), kind, "This surface has no word for it."),
+    };
 
-    /// <inheritdoc cref="ChooseAFloor"/>
-    public const string ChooseAFloorNote = "pick where in the run to stand";
+    /// <summary>
+    /// The one row that does not move with the selection: the next fight this player
+    /// has not played from.
+    ///
+    /// It names no fight number, which is the settled rule for everything on this
+    /// surface. Its second line is that fight's floor, and the drawing puts the enemy's
+    /// map icon beside it where the recording names one.
+    /// </summary>
+    public const string ContinueFromNextUnplayed = "Continue from the next unplayed fight";
 
     /// <summary>
     /// Walks the recording from its beginning, showing every decision on the game's own
@@ -240,37 +334,16 @@ public static class LibraryCopy
     /// Every way into a recorded run walks it from run start - <c>RecordedFightEntry</c>
     /// has one journey and every plan replays the recording's own decisions up to its
     /// boundary, with the transport revealing each. The rows differ only in where they
-    /// come to rest. This one always rests at fight 1; "Play from this fight" rests at
-    /// whichever fight the selected floor holds. So on fight 1's own floor the two are
-    /// one offer reached from two rows, and on every other floor they are different
+    /// come to rest. This one always rests at the run's first fight; the play-from row
+    /// rests wherever the strip is pointing. So on the first fight's own floor the two
+    /// are one offer reached from two rows, and on every other floor they are different
     /// destinations - which is what this row is for: it is the offer that does not move
     /// with the selection.
+    ///
+    /// <para>It carries no second line. One said nothing its label did not, and a second
+    /// line exists here only where it adds a fact the label lacks.</para>
     /// </summary>
     public const string StartTheRunOver = "Start the run over";
-
-    /// <summary>
-    /// This row's second line, and a deliberate departure from the design's own wording.
-    ///
-    /// The accepted design writes it "from run start, every choice shown". This row is
-    /// built on the fight-1 plan, which replays every recorded decision from run start
-    /// and then stands the player inside fight 1 - so a note that stopped at "every
-    /// choice shown" would name a destination the row does not go to, which is the defect
-    /// the clause was added to close. The other three second lines are the design's word
-    /// for word; this one is longer on purpose. Do not shorten it back without changing
-    /// where the row goes.
-    /// </summary>
-    public const string StartTheRunOverNote = "from run start, every choice shown, ending at fight 1";
-
-    /// <summary>One floor on the chooser, and what the recording proves about
-    /// it.</summary>
-    public static string FloorRow(int floor, int? fight) =>
-        fight is { } ordinal
-            ? $"Floor {floor.ToString(CultureInfo.InvariantCulture)} · fight " +
-              ordinal.ToString(CultureInfo.InvariantCulture)
-            : $"Floor {floor.ToString(CultureInfo.InvariantCulture)}";
-
-    /// <summary>Why a floor offers no fight to play from.</summary>
-    public const string NoFightOnThisFloor = "no fight starts on this floor";
 
     /// <summary>Why a fight the recording stops inside offers nothing: there is no
     /// finished recorded line for a player's own to be set beside.</summary>
@@ -280,46 +353,61 @@ public static class LibraryCopy
     /// starting the run over already puts you.</summary>
     public const string RunStartsHere = "the run starts here";
 
-    /// <summary>Said on the floor rows, and only there. From a floor entry nothing is
+    /// <summary>Said on the floor pane, and only there. From a floor entry nothing is
     /// compared, and a player who expected a comparison would be waiting for one that
     /// never comes.</summary>
     public const string FloorIsYours = "The run is yours from here.";
 
+    /// <summary>
+    /// Said once, beside the row that plays from a run, and never as a head line.
+    ///
+    /// The run noun rather than <see cref="TrainerCopy.NotSavedNote"/>'s fight, because
+    /// this surface plays from a floor as readily as from a fight and a sentence about
+    /// "this fight" would be wrong on half of them. It is the same load-bearing claim
+    /// that one makes: the run a row enters is constructed at the recording's identity
+    /// and is never written anywhere, and a player who thought it was theirs would go
+    /// looking for it afterwards.
+    ///
+    /// <para>It is drawn only where a play-from row is actually offered. A surface whose
+    /// rows are all refused has nothing to warn anybody about, and the sentence there
+    /// would read as a reason the rows are refused.</para>
+    /// </summary>
+    public const string NotSaved =
+        "Playing from a run is not saved and does not count toward your run history.";
+
     // ── The run-history plate ──────────────────────────────────────────────
 
-    /// <summary>A recorded run, whole, with nothing standing in its way.</summary>
-    public const string PlateRecorded = "Recorded, not saved, not counted";
+    /// <summary>
+    /// The head line of a recording the recorder lost sight of part way through.
+    ///
+    /// A head exists only where there is a status to state. The ordinary state has
+    /// none: the history row's own record mark already says the run is recorded, and a
+    /// head line repeating it would be the plate introducing itself.
+    /// </summary>
+    public const string PlateCantBeReplayed = "Can't be replayed";
 
-    /// <summary>A recorded run the recorder lost sight of part way through.</summary>
-    public const string PlateRecordedWithAGap = "Recorded, with a gap";
+    /// <summary>The head line of a recording this game cannot play, in the eligibility
+    /// screen's red. Both versions, because a player reading it needs to see which of
+    /// the two is theirs.</summary>
+    public static string PlateRecordedOn(string recordedBuild, string thisBuild) =>
+        $"Recorded on {recordedBuild} · your game is {thisBuild}";
 
-    /// <summary>A recorded run this game cannot play, described rather than
-    /// entered.</summary>
-    public static string PlateRecordedOn(string build) => $"Recorded on {build}";
+    /// <summary>The plate's play-from row, for the floor the run ended at, named with
+    /// its kind exactly as the run view's own row names a floor.</summary>
+    public static string PlayFromFloor(int floor, FloorKind kind = FloorKind.Unknown)
+    {
+        var number = $"Play from floor {floor.ToString(CultureInfo.InvariantCulture)}";
+        return KindWord(kind) is { } word ? $"{number} · {word}" : number;
+    }
 
-    /// <summary>A run the game has history for and the recorder never watched, because
-    /// Runmobile does not attach to a multiplayer game.</summary>
-    public const string PlateMultiplayer = "Multiplayer run";
-
-    /// <summary>A recorded run reached at a moment when nothing may be played
-    /// from.</summary>
-    public const string PlateRecordedPlain = "Recorded";
-
-    /// <summary>The plate's fight row, for the run's own last fight.</summary>
-    public static string PlayFromFight(int fight) =>
-        $"Play from fight {fight.ToString(CultureInfo.InvariantCulture)}";
-
-    /// <summary>The plate's floor row, for the last floor the run reached.</summary>
-    public static string PlayFromFloor(int floor) =>
-        $"Play from floor {floor.ToString(CultureInfo.InvariantCulture)}";
-
-    /// <summary>The fight row when the recording proves no fight to name. Kept in its
-    /// place and refused, because the affordance's position is how a player learns it
-    /// exists.</summary>
-    public const string PlayFromAFight = "Play from a fight";
-
-    /// <inheritdoc cref="PlayFromAFight"/>
+    /// <summary>The play-from row when the recording proves no floor to name. Kept in
+    /// its place and refused, because the affordance's position is how a player learns
+    /// it exists.</summary>
     public const string PlayFromAFloor = "Play from a floor";
+
+    /// <summary>Opens this run in the run view, a deeper screen about the same run, so
+    /// the game's own disclosure chevron is its glyph.</summary>
+    public const string ChooseAnotherFloor = "Choose another floor";
 
     /// <summary>Why a run cannot be submitted. Not why it cannot be played from: a
     /// console command changes what the run was, and submitting it would be publishing
@@ -330,14 +418,8 @@ public static class LibraryCopy
     public const string PlateSubmitComing = "Submitting runs is unavailable";
 
     /// <summary>Why nothing on a broken recording is offered.</summary>
-    public const string PlateContinuityBroken = "The game reloaded past a point already recorded.";
-
-    /// <summary>Why a recording made on another build is described and not
-    /// entered.</summary>
-    public static string PlateOtherBuild(string thisBuild) => $"Your game is {thisBuild}.";
-
-    /// <summary>Why a multiplayer run has no rows.</summary>
-    public const string PlateMultiplayerReason = "Runmobile plays single-player runs.";
+    public const string PlateContinuityBroken =
+        "Part of this run was played while Runmobile wasn't recording.";
 
     /// <summary>Why nothing is offered while a run is in progress. Play-from is after
     /// the fact, and this is the sentence that says so where a player would ask.</summary>

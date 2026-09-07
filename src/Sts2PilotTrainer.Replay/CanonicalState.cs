@@ -111,6 +111,16 @@ public sealed class CanonicalState
         return differences;
     }
 
+    /// <summary>
+    /// What separates the members of an ordered sequence field.
+    ///
+    /// Named here because it is read back as well as written: the library's surfaces
+    /// read a deck and a relic list out of a recording's own checkpoints, and a second
+    /// copy of this character would be a second thing to keep in step with the
+    /// projection.
+    /// </summary>
+    public const char SequenceSeparator = '|';
+
     public sealed class Builder
     {
         private readonly SortedDictionary<string, string> _fields = new(StringComparer.Ordinal);
@@ -135,7 +145,7 @@ public sealed class CanonicalState
         /// <summary>Adds an ordered sequence. Order is preserved because in this game it
         /// is state: hand order and draw order are outcomes of the shuffle stream.</summary>
         public Builder AddSequence(string field, IEnumerable<string> values) =>
-            Add(field, string.Join("|", values));
+            Add(field, string.Join(SequenceSeparator, values));
 
         public CanonicalState ToState() => new(_fields);
     }

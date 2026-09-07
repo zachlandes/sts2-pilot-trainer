@@ -1566,7 +1566,14 @@ internal static class RecordedFightRun
             rows.Add(new ScreenRow(choice.Rows[index].Row.Label, Enabled: true, () => ChoosePostFight(row)));
         }
 
-        LibraryScreen.Show(TrainerCopy.Name, string.Empty, rows, TrainerCopy.Leave, back: LeaveTheFight);
+        LibraryScreen.Show(new LibraryPage(
+            TrainerCopy.Name,
+            Tabs: [],
+            ListHeader: null,
+            rows,
+            Pane: null,
+            TrainerCopy.Leave,
+            Back: LeaveTheFight));
     }
 
     /// <summary>

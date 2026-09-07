@@ -49,26 +49,35 @@ public enum RunVerdict
 }
 
 /// <summary>
-/// One run as the library's surfaces read it: what the row says, and the two facts
-/// that decide whether it is in the list at all.
+/// One run as the library's surfaces read it: what the row says, and the one fact
+/// that decides whether it is in the list at all.
 ///
 /// It is a reading of a recording plus what only a host can supply - which list the
-/// run is in, what this build's verdict on it is, and which of its fights this player
-/// has played from. Nothing here is computed from a recording twice: the fights come
-/// from the boundaries the recording actually proves, which is the same list the run
-/// view's rows come from.
+/// run is in, what this build's verdict on it is, and which floor of it this player
+/// last loaded. Nothing here is computed from a recording twice: the fights and floors
+/// come from the boundaries the recording actually proves, which is the same list the
+/// run view's rows come from.
 ///
-/// <para><b>Two fields are three-valued on purpose.</b> <see cref="Multiplayer"/> is
-/// null when the recording does not say, because a recording written before the
-/// recorder could tell has no answer and a host reporting "single-player" it never
-/// established would be exactly the claim <c>AGENTS.md</c> forbids. The hidden rule
-/// hides an established multiplayer run and no other; it never hides a run for a
-/// question nobody asked. <see cref="Verdict"/> carries its own third answer for the
-/// same reason.</para>
+/// <para><see cref="Verdict"/> is three-valued past a pass on purpose: a run this
+/// game could not be read to judge is not a run that failed, and a surface reporting
+/// one as the other would be claiming a check it never saw.</para>
 /// </summary>
-/// <param name="Recorded">When the run was played, for ordering. Null when whoever
-/// built this could not read it, in which case the run sorts after everything that
-/// carries one rather than being given a made-up time.</param>
+/// <param name="Recorded">When the run was played, for ordering and for the row's
+/// clock. Null when whoever built this could not read it, in which case the run sorts
+/// after everything that carries one rather than being given a made-up time.</param>
+/// <param name="Relics">Every relic the run carried, in the order it found them. The
+/// strip on the row shows the first few by rarity and the pane shows them all.</param>
+/// <param name="DeckCount">How many cards the run's deck held where it ended, or null
+/// where the recording says nothing about it.</param>
+/// <param name="LastFloorReplayed">The last floor of this run this player loaded, or
+/// null when they have loaded none. Blank until there is one; saving a run does not
+/// set it.</param>
+/// <param name="Positions">Every floor the run reached and what it held, which is what
+/// the pane's run strip is drawn from. The same list the run view opens on, so a strip
+/// in the pane and a strip in the run view are one reading.</param>
+/// <param name="Deck">The deck where the run ended, as the pane's card tiles, or null
+/// where the recording says nothing about it. A gap, never a zero.</param>
+[method: JsonConstructor]
 public sealed record LibraryRun(
     string RunId,
     RunOrigin Origin,
@@ -77,16 +86,59 @@ public sealed record LibraryRun(
     int Ascension,
     string RecordedBuild,
     IReadOnlyList<int> Fights,
+    IReadOnlyList<int> Floors,
     string? Outcome,
-    bool? Multiplayer,
     RunVerdict Verdict,
-    IReadOnlyList<int> FightsPlayed,
-    DateTimeOffset? Recorded = null,
-    [property: JsonIgnore] string? ShareId = null,
-    [property: JsonIgnore] string? ShareCode = null)
+    IReadOnlyList<RunRelic> Relics,
+    int? DeckCount,
+    int? LastFloorReplayed,
+    IReadOnlyList<RunViewPosition> Positions,
+    IReadOnlyList<DeckTile>? Deck,
+    DateTimeOffset? Recorded = null)
 {
+    /// <summary>Whether the recording established that this was multiplayer.</summary>
+    public bool? Multiplayer { get; init; }
+
+    /// <summary>The fight ordinals this player has already played from.</summary>
+    public IReadOnlyList<int> FightsPlayed { get; init; } = [];
+
+    /// <summary>The sharing service's identity for this submission.</summary>
+    [JsonIgnore]
+    public string? ShareId { get; init; }
+
+    /// <summary>The sharing service's short lookup code for this submission.</summary>
+    [JsonIgnore]
+    public string? ShareCode { get; init; }
+
+    /// <summary>The row identity. Separate submissions of one recording remain separate rows.</summary>
     [JsonIgnore]
     public string EntryId => ShareId ?? RunId;
+
+    /// <summary>Compatibility constructor for callers that have not read pane details.</summary>
+    public LibraryRun(
+        string runId,
+        RunOrigin origin,
+        string? creator,
+        string character,
+        int ascension,
+        string recordedBuild,
+        IReadOnlyList<int> fights,
+        string? outcome,
+        bool? multiplayer,
+        RunVerdict verdict,
+        IReadOnlyList<int> fightsPlayed,
+        DateTimeOffset? recorded = null,
+        string? ShareId = null,
+        string? ShareCode = null)
+        : this(
+            runId, origin, creator, character, ascension, recordedBuild, fights, [], outcome,
+            verdict, [], null, null, [], null, recorded)
+    {
+        Multiplayer = multiplayer;
+        FightsPlayed = fightsPlayed;
+        this.ShareId = ShareId;
+        this.ShareCode = ShareCode;
+    }
 
     /// <summary>The outcome a recording of a won run carries.</summary>
     public const string WonOutcome = "won";
@@ -96,45 +148,46 @@ public sealed record LibraryRun(
     public bool Won => string.Equals(Outcome, WonOutcome, StringComparison.Ordinal);
 
     /// <summary>
-    /// Whether this run passes the ordinary compatibility filter.
+    /// Whether this run is in the list.
     ///
-    /// An established multiplayer run never passes. A run without a passing verdict
-    /// appears only when the compatibility filter is off; an exact code turns that
-    /// filter off and selects the disabled row.
+    /// The settled hidden rule, in one place. A run this build has no passing verdict
+    /// for is not listed, with no tickbox and no greyed row. A run code still finds
+    /// one, which is what <see cref="RunBrowser.Lookup"/> is for.
     /// </summary>
     public bool Listed => Verdict == RunVerdict.Passed && Multiplayer != true;
 
-    /// <summary>How many fights this run's recording proves a player can be stood at
-    /// the start of. The denominator under the row.</summary>
-    public int FightCount => Fights.Count;
-
-    /// <summary>
-    /// How many of this run's fights this player has already played from. The pips
-    /// under the fight count.
-    ///
-    /// Counted against the ordinals the recording proves rather than against how many
-    /// there are: a fight the recording stopped inside spends an ordinal and proves no
-    /// boundary, so the proved set can have a hole in it and a range test would put a
-    /// pip under a fight nothing offers.
-    /// </summary>
-    public int PlayedCount => FightsPlayed.Count(Fights.Contains);
+    /// <summary>The last floor the run itself reached, or null where the recording
+    /// proves none. The row's own reach, as distinct from how far this player has
+    /// replayed.</summary>
+    public int? LastFloor => Floors.Count == 0 ? null : Floors[^1];
 
     /// <summary>
     /// One run, read out of its recording.
     ///
-    /// The fights come from <see cref="ReplayManifest.Boundaries"/> rather than from
-    /// the action list, because a boundary is what a player can actually be stood at:
-    /// a fight the recording stops inside is a fight that happened and is not a place
-    /// to stand, and counting it would put a pip under a row nothing offers.
+    /// The fights and floors come from <see cref="ReplayManifest.Boundaries"/> rather
+    /// than from the action list, because a boundary is what a player can actually be
+    /// stood at: a fight the recording stops inside is a fight that happened and is not
+    /// a place to stand.
     /// </summary>
     public static LibraryRun From(
         ReplayManifest recording,
         RunOrigin origin,
         RunVerdict verdict,
-        IReadOnlyList<int>? fightsPlayed = null,
-        bool? multiplayer = null,
-        DateTimeOffset? recorded = null) =>
-        new(
+        int? lastFloorReplayed = null,
+        DateTimeOffset? recorded = null)
+    {
+        var floors = ProvedFloors(recording);
+        var last = floors.Count == 0
+            ? RunReading.Nothing
+            : RunReading.At(
+                recording,
+                recording.Boundaries
+                    .Where(boundary => boundary.IsFloorEntry && boundary.Floor == floors[^1])
+                    .Select(boundary => boundary.AfterSeq)
+                    .DefaultIfEmpty(-1)
+                    .Max());
+
+        return new LibraryRun(
             recording.RunId,
             origin,
             RecordingIdentity.CreatorOrNull(recording),
@@ -142,11 +195,37 @@ public sealed record LibraryRun(
             recording.Environment.Ascension.Value,
             recording.Environment.BuildVersion.Value,
             ProvedFights(recording),
+            floors,
             recording.Source.Native?.Outcome,
-            multiplayer,
             verdict,
-            fightsPlayed ?? [],
+            RunReading.RelicsFound(recording),
+            last.DeckCount,
+            lastFloorReplayed,
+            RunView.PositionsIn(recording),
+            last.Deck,
             recorded);
+    }
+
+    /// <summary>Compatibility reader for callers carrying fight progress and session kind.</summary>
+    public static LibraryRun From(
+        ReplayManifest recording,
+        RunOrigin origin,
+        RunVerdict verdict,
+        IReadOnlyList<int> fightsPlayed,
+        bool? multiplayer = null,
+        DateTimeOffset? recorded = null) =>
+        From(recording, origin, verdict, LastReplayedFloor(recording, fightsPlayed), recorded) with
+        {
+            Multiplayer = multiplayer,
+            FightsPlayed = fightsPlayed,
+        };
+
+    private static int? LastReplayedFloor(
+        ReplayManifest recording, IReadOnlyList<int> fightsPlayed) =>
+        RunView.PositionsIn(recording)
+            .Where(position => position.Fight is { } fight && fightsPlayed.Contains(fight))
+            .Select(position => (int?)position.Floor)
+            .LastOrDefault();
 
     /// <summary>Every fight of this recording a player could be stood at the start
     /// of.</summary>

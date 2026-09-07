@@ -3,15 +3,20 @@ using Sts2PilotTrainer.Replay;
 namespace Sts2PilotTrainer.Trainer.Tests;
 
 /// <summary>
-/// One run, opened: which places the recording proves and what each of them offers.
+/// One run, opened: which places the recording proves, what each of them held, and
+/// what the one play-from row says about the selected one.
 ///
 /// The thing being pinned is that no row offers somewhere the entry would refuse to
 /// stand a player. Every position comes from the recording's own boundaries, which is
 /// the same list <c>RecordedFightEntry</c> walks to, so a fight the recording stops
 /// inside has no row that would take somebody into it - and, separately, that the
-/// refusal a player reads distinguishes "there was no fight here" from "the recording
-/// does not reach the end of this one", because those are different facts and the
-/// recording carries enough to tell them apart.
+/// refusal a player reads distinguishes the run's own start from a fight the recording
+/// does not reach the end of, because those are different facts and the recording
+/// carries enough to tell them apart.
+///
+/// The second thing being pinned is the settled vocabulary: one play-from row rather
+/// than two, its second line naming the floor and its kind, and no fight named by
+/// number anywhere.
 /// </summary>
 public sealed class RunViewTests
 {
@@ -40,6 +45,14 @@ public sealed class RunViewTests
         Args = new Dictionary<string, string>(StringComparer.Ordinal) { ["hand_index"] = "0" },
     };
 
+    private static ActionRecord Decision(int seq, ActionVerb verb) => new()
+    {
+        Seq = seq,
+        Verb = verb,
+        Source = FactSource.Captured,
+        Args = new Dictionary<string, string>(StringComparer.Ordinal),
+    };
+
     /// <summary>Floors 1 to 3, with a finished fight on floor 2.</summary>
     private static ReplayManifest ThreeFloors() => Recording(
     [
@@ -47,6 +60,9 @@ public sealed class RunViewTests
         ReplayBoundary.CombatStart(fight: 1, afterSeq: 12, Digest("fight-1")),
         ReplayBoundary.FloorEntry(floor: 3, afterSeq: 20, Digest("floor-3")),
     ]);
+
+    private static RunViewRow PlayFrom(RunView view) =>
+        view.Rows.Single(row => row.Kind == RunViewRowKind.PlayFrom);
 
     /// <summary>
     /// A run does not arrive at the floor it begins on, so the recording proves no
@@ -72,35 +88,83 @@ public sealed class RunViewTests
         Assert.Null(positions[2].Fight);
     }
 
+    /// <summary>
+    /// One play-from row, not two. A fight is one thing a floor can hold rather than a
+    /// thing beside it, so there is one row whose label never changes and whose second
+    /// line names the selected floor and its kind.
+    /// </summary>
     [Fact]
-    public void AFloorWithAFinishedFightOffersEveryWayIn()
+    public void AFloorWithAFinishedFightOffersOnePlayFromRowNamingTheFloorAndItsKind()
     {
         var view = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 2);
 
         Assert.All(view.Rows, row => Assert.True(row.Enabled));
         Assert.Equal(
-            [
-                RunViewRowKind.PlayFromFight, RunViewRowKind.PlayFromFloor,
-                RunViewRowKind.Continue, RunViewRowKind.StartOver,
-            ],
+            [RunViewRowKind.PlayFrom, RunViewRowKind.Continue, RunViewRowKind.StartOver],
             view.Rows.Select(row => row.Kind));
-        Assert.Equal(1, view.Rows[0].Fight);
+
+        var row = PlayFrom(view);
+        Assert.Equal(LibraryCopy.PlayFromThisFloor, row.Label);
+        Assert.Equal(LibraryCopy.FloorLine(2, FloorKind.Combat), row.Note);
+        Assert.Equal(1, row.Fight);
+        Assert.Equal(2, row.Floor);
+    }
+
+    /// <summary>
+    /// The second line names what the floor held, and the kind is derived from the
+    /// recording's own decisions on it rather than from a room type nothing records.
+    /// </summary>
+    [Theory]
+    [InlineData(ActionVerb.ShopPurchase, FloorKind.Shop)]
+    [InlineData(ActionVerb.ChooseRestSiteOption, FloorKind.Rest)]
+    [InlineData(ActionVerb.ChooseEventOption, FloorKind.Event)]
+    [InlineData(ActionVerb.TakeChestRelic, FloorKind.Treasure)]
+    [InlineData(ActionVerb.SkipChestRelic, FloorKind.Treasure)]
+    public void ANonCombatFloorIsNamedByTheDecisionTheRecordingMadeOnIt(
+        ActionVerb verb, FloorKind kind)
+    {
+        var recording = Recording(
+            [ReplayBoundary.FloorEntry(floor: 2, afterSeq: 10, Digest("floor-2"))],
+            [Decision(11, verb)]);
+
+        var view = RunView.For(recording, RunProgress.Empty, selectedFloor: 2);
+
+        var row = PlayFrom(view);
+        Assert.True(row.Enabled);
+        Assert.Equal(LibraryCopy.FloorLine(2, kind), row.Note);
+        Assert.Null(row.Fight);
+    }
+
+    /// <summary>
+    /// A floor whose recording made no decision saying what was there is named by its
+    /// number and nothing else. Guessing a kind would put a word on screen nobody
+    /// established.
+    /// </summary>
+    [Fact]
+    public void AFloorNothingEstablishedTheKindOfIsNamedByItsNumberAlone()
+    {
+        var view = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 3);
+
+        var row = PlayFrom(view);
+        Assert.True(row.Enabled);
+        Assert.Equal(LibraryCopy.FloorLine(3), row.Note);
+        Assert.Null(LibraryCopy.KindWord(FloorKind.Unknown));
     }
 
     /// <summary>
     /// Starting over walks to fight 1's combat start, so it carries fight 1 - which is
-    /// what makes the row record the pip through the same path every other entering row
-    /// uses, and what makes it the same destination as "Play from this fight" there.
+    /// what makes the row record progress through the same path every other entering
+    /// row uses. It carries no second line: one said nothing its label did not.
     /// </summary>
     [Fact]
-    public void StartingOverNamesFightOneSoItRecordsThePipLikeEveryOtherWayIn()
+    public void StartingOverNamesFightOneAndCarriesNoSecondLine()
     {
         var view = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 1);
 
         var startOver = view.Rows.Single(row => row.Kind == RunViewRowKind.StartOver);
         Assert.Equal(1, startOver.Fight);
         Assert.Equal(LibraryCopy.StartTheRunOver, startOver.Label);
-        Assert.Equal(LibraryCopy.StartTheRunOverNote, startOver.Note);
+        Assert.Null(startOver.Note);
     }
 
     /// <summary>A boundary the recording does not prove is not drawn, so a recording
@@ -116,9 +180,10 @@ public sealed class RunViewTests
     }
 
     /// <summary>
-    /// A fight whose recording has been shown this sitting carries the mark on its
-    /// row, and only that fight; the row stays offered. The set is whoever drew the
-    /// comparison's, held in memory, so a view given nothing marks nothing.
+    /// A fight whose recording has been shown this sitting carries the mark on the
+    /// play-from row, and only when that fight is the selected one; the row stays
+    /// offered. The set is whoever drew the comparison's, held in memory, so a view
+    /// given nothing marks nothing.
     /// </summary>
     [Fact]
     public void AFightShownThisSittingIsMarkedAndStillOffered()
@@ -127,25 +192,14 @@ public sealed class RunViewTests
         var cold = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 2);
         var other = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 2, shownThisSitting: [2]);
 
-        var row = marked.Rows.Single(entry => entry.Kind == RunViewRowKind.PlayFromFight);
+        var row = PlayFrom(marked);
         Assert.True(row.ShownThisSitting);
         Assert.True(row.Enabled);
-        Assert.False(cold.Rows.Single(entry => entry.Kind == RunViewRowKind.PlayFromFight).ShownThisSitting);
-        Assert.False(other.Rows.Single(entry => entry.Kind == RunViewRowKind.PlayFromFight).ShownThisSitting);
-        Assert.All(marked.Rows.Where(entry => entry.Kind != RunViewRowKind.PlayFromFight),
+        Assert.False(PlayFrom(cold).ShownThisSitting);
+        Assert.False(PlayFrom(other).ShownThisSitting);
+        Assert.All(
+            marked.Rows.Where(entry => entry.Kind != RunViewRowKind.PlayFrom),
             entry => Assert.False(entry.ShownThisSitting));
-    }
-
-    /// <summary>A refused row keeps its place, because the row's position is how a
-    /// player learns the offer exists.</summary>
-    [Fact]
-    public void AFloorWithNoFightKeepsTheFightRowAndSaysWhyItIsRefused()
-    {
-        var view = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 3);
-
-        var row = view.Rows.Single(entry => entry.Kind == RunViewRowKind.PlayFromFight);
-        Assert.False(row.Enabled);
-        Assert.Equal(LibraryCopy.NoFightOnThisFloor, row.Reason);
     }
 
     /// <summary>
@@ -154,7 +208,7 @@ public sealed class RunViewTests
     /// and there is no completed recorded line for a player's own to be set beside.
     /// </summary>
     [Fact]
-    public void AFightTheRecordingDoesNotFinishIsRefusedForThatReasonAndNotForHavingNoFight()
+    public void AFightTheRecordingDoesNotFinishRefusesThePlayFromRowForThatReason()
     {
         var recording = Recording(
             [ReplayBoundary.FloorEntry(floor: 2, afterSeq: 10, Digest("floor-2"))],
@@ -162,21 +216,22 @@ public sealed class RunViewTests
 
         var view = RunView.For(recording, RunProgress.Empty, selectedFloor: 2);
 
-        var row = view.Rows.Single(entry => entry.Kind == RunViewRowKind.PlayFromFight);
+        var row = PlayFrom(view);
         Assert.False(row.Enabled);
         Assert.Equal(LibraryCopy.FightNotFinished, row.Reason);
+        Assert.Null(row.Note);
     }
 
     /// <summary>A run is not arrived at where it begins, so no floor entry proves it
-    /// and there is nowhere for the floor row to stand anybody.</summary>
+    /// and there is nowhere for the play-from row to stand anybody.</summary>
     [Fact]
-    public void TheRunsFirstFloorRefusesTheFloorRowBecauseTheRunStartsThere()
+    public void TheRunsFirstFloorRefusesThePlayFromRowBecauseTheRunStartsThere()
     {
         var view = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 1);
 
-        var floor = view.Rows.Single(entry => entry.Kind == RunViewRowKind.PlayFromFloor);
-        Assert.False(floor.Enabled);
-        Assert.Equal(LibraryCopy.RunStartsHere, floor.Reason);
+        var row = PlayFrom(view);
+        Assert.False(row.Enabled);
+        Assert.Equal(LibraryCopy.RunStartsHere, row.Reason);
     }
 
     /// <summary>
@@ -184,8 +239,8 @@ public sealed class RunViewTests
     /// carry the same <c>after_seq</c>, because entering the room is the action that
     /// starts the fight. A window that excluded the floor's own seq handed every fight
     /// to the floor before the one it happened on - the run-start row offered fight 1,
-    /// and pressing "Play from this fight" on floor 2 stood a player in a fight on
-    /// another floor than the row named.
+    /// and pressing the play-from row on floor 2 stood a player in a fight on another
+    /// floor than the row named.
     /// </summary>
     [Fact]
     public void AFightBelongsToTheFloorWhoseEntryCarriesTheSameSeq()
@@ -229,7 +284,32 @@ public sealed class RunViewTests
 
         var row = view.Rows.Single(entry => entry.Kind == RunViewRowKind.Continue);
         Assert.Equal(4, row.Fight);
-        Assert.Equal(LibraryCopy.ContinueAtFight(4), row.Label);
+    }
+
+    /// <summary>
+    /// Continue names no fight number. Its label is fixed and its second line is the
+    /// floor that fight is on, which is the unit the strip and the game's own screens
+    /// both count.
+    /// </summary>
+    [Fact]
+    public void ContinueNamesAFloorAndNeverAFightNumber()
+    {
+        var recording = Recording(
+        [
+            ReplayBoundary.FloorEntry(floor: 2, afterSeq: 5, Digest("floor-2")),
+            ReplayBoundary.CombatStart(fight: 1, afterSeq: 5, Digest("one")),
+            ReplayBoundary.FloorEntry(floor: 3, afterSeq: 9, Digest("floor-3")),
+            ReplayBoundary.CombatStart(fight: 2, afterSeq: 9, Digest("two")),
+        ]);
+
+        var view = RunView.For(recording, RunProgress.Empty.WithFightPlayed(Run, 1));
+
+        var row = view.Rows.Single(entry => entry.Kind == RunViewRowKind.Continue);
+        Assert.Equal(LibraryCopy.ContinueFromNextUnplayed, row.Label);
+        Assert.Equal(LibraryCopy.FloorLine(3), row.Note);
+        Assert.Equal(3, row.Floor);
+        Assert.Equal(2, row.Fight);
+        Assert.DoesNotContain("2", row.Label, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -238,22 +318,6 @@ public sealed class RunViewTests
         var view = RunView.For(ThreeFloors(), RunProgress.Empty);
 
         Assert.Equal(1, view.Selected!.Floor);
-    }
-
-    [Fact]
-    public void ContinueNamesTheNextFightThisPlayerHasNotPlayedFrom()
-    {
-        var recording = Recording(
-        [
-            ReplayBoundary.CombatStart(fight: 1, afterSeq: 5, Digest("one")),
-            ReplayBoundary.CombatStart(fight: 2, afterSeq: 9, Digest("two")),
-        ]);
-
-        var view = RunView.For(recording, RunProgress.Empty.WithFightPlayed(Run, 1));
-
-        var row = view.Rows.Single(entry => entry.Kind == RunViewRowKind.Continue);
-        Assert.Equal(LibraryCopy.ContinueAtFight(2), row.Label);
-        Assert.Equal(2, row.Fight);
     }
 
     /// <summary>A row offering a fight the recording does not have would be an offer
@@ -276,38 +340,120 @@ public sealed class RunViewTests
         var view = RunView.For(Recording(), RunProgress.Empty);
 
         Assert.Equal([1], view.Positions.Select(position => position.Floor));
-        Assert.Equal(0, view.FightCount);
         Assert.DoesNotContain(view.Rows, row => row.Kind == RunViewRowKind.Continue);
         Assert.DoesNotContain(view.Rows, row => row.Kind == RunViewRowKind.StartOver);
-        Assert.False(view.Rows.Single(row => row.Kind == RunViewRowKind.PlayFromFight).Enabled);
+        Assert.False(PlayFrom(view).Enabled);
     }
 
     /// <summary>
-    /// The run view and the row in the list count the same thing. Both count against
-    /// the ordinals the recording proves, so a progress record holding a fight this
-    /// recording does not have cannot make one screen say three and the other one.
+    /// The strip enumerates floors, one cell per place the run reached, with the
+    /// selected one ringed and the fights this player has stood in ticked. Nothing on
+    /// it is a fight number.
     /// </summary>
     [Fact]
-    public void TheRunViewAndTheListRowCountPlayedFightsTheSameWay()
+    public void TheStripIsOneCellPerFloorWithTheSelectedOneRingedAndPlayedOnesTicked()
+    {
+        var view = RunView.For(
+            ThreeFloors(), RunProgress.Empty.WithFightPlayed(Run, 1), selectedFloor: 3);
+
+        Assert.Equal([1, 2, 3], view.Strip.Select(cell => cell.Floor));
+        Assert.Equal([false, true, false], view.Strip.Select(cell => cell.Played));
+        Assert.Equal([false, false, true], view.Strip.Select(cell => cell.Selected));
+
+        // The run's own start is not a place to be stood, so its cell is drawn and not
+        // offered - the same rule the play-from row applies to it.
+        Assert.Equal([false, true, true], view.Strip.Select(cell => cell.Playable));
+    }
+
+    /// <summary>
+    /// The strip's playable cells and the play-from row agree, floor by floor. They are
+    /// one rule read twice, so a cell a strip draws as playable is a cell the row
+    /// offers.
+    /// </summary>
+    [Fact]
+    public void AStripCellIsPlayableExactlyWhereThePlayFromRowIsOffered()
     {
         var recording = Recording(
         [
-            ReplayBoundary.CombatStart(fight: 1, afterSeq: 5, Digest("one")),
-            ReplayBoundary.CombatStart(fight: 2, afterSeq: 9, Digest("two")),
-            ReplayBoundary.CombatStart(fight: 4, afterSeq: 20, Digest("four")),
-        ]);
-        var progress = RunProgress.Empty
-            .WithFightPlayed(Run, 1)
-            .WithFightPlayed(Run, 3)
-            .WithFightPlayed(Run, 99);
+            ReplayBoundary.FloorEntry(floor: 2, afterSeq: 10, Digest("floor-2")),
+            ReplayBoundary.FloorEntry(floor: 3, afterSeq: 20, Digest("floor-3")),
+        ],
+        [Combat(21)]);
 
-        var view = RunView.For(recording, progress);
-        var row = LibraryRun.From(
-            recording, RunOrigin.Mine, RunVerdict.Passed, progress.PlayedFrom(Run));
+        foreach (var floor in (int[])[1, 2, 3])
+        {
+            var view = RunView.For(recording, RunProgress.Empty, selectedFloor: floor);
+            var cell = view.Strip.Single(entry => entry.Floor == floor);
+            Assert.Equal(cell.Playable, PlayFrom(view).Enabled);
+        }
+    }
 
-        Assert.Equal([1], view.FightsPlayed);
-        Assert.Equal(row.PlayedCount, view.FightsPlayed.Count);
-        Assert.Equal(row.FightCount, view.FightCount);
+    /// <summary>
+    /// The deck and the relics come out of the recording's own checkpoints at the
+    /// selected position, and a position nothing was recorded at is a gap rather than
+    /// an empty deck.
+    /// </summary>
+    [Fact]
+    public void TheDeckIsReadAtTheSelectedPositionAndIsNullWhereNothingWasRecorded()
+    {
+        var recording = ThreeFloors() with
+        {
+            Checkpoints =
+            [
+                new Checkpoint
+                {
+                    Id = "floor-2-entry",
+                    AfterSeq = 10,
+                    Kind = ReplayBoundary.FloorEntryKind,
+                    Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+                    {
+                        ["player.deck"] = Fact<string>.Engine("CARD.STRIKE|CARD.STRIKE|CARD.BASH"),
+                        ["player.relics"] = Fact<string>.Engine("RELIC.BURNING_BLOOD"),
+                    },
+                },
+            ],
+        };
+
+        var atTwo = RunView.For(recording, RunProgress.Empty, selectedFloor: 2);
+        var atThree = RunView.For(recording, RunProgress.Empty, selectedFloor: 3);
+
+        Assert.Equal([("CARD.STRIKE", 2), ("CARD.BASH", 1)], atTwo.Deck!.Select(tile => (tile.CardId, tile.Count)));
+        Assert.Equal(3, atTwo.DeckCount);
+        Assert.Equal(["RELIC.BURNING_BLOOD"], atTwo.Relics.Select(relic => relic.Id));
+        Assert.Null(atThree.Deck);
+        Assert.Null(atThree.DeckCount);
+    }
+
+    /// <summary>
+    /// The sentence that a played-from run is not saved is said once, beside the rows,
+    /// and only where one of them would actually stand a player somewhere. On a screen
+    /// whose rows are all refused it would read as the reason they are.
+    /// </summary>
+    [Fact]
+    public void TheNotSavedSentenceIsSaidOnlyWhereARowWouldStandSomebodySomewhere()
+    {
+        var offered = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 2);
+        var nothing = RunView.For(Recording(), RunProgress.Empty);
+
+        Assert.Equal(LibraryCopy.NotSaved, offered.NotSaved);
+        Assert.Null(nothing.NotSaved);
+        Assert.All(nothing.Rows, row => Assert.False(row.Enabled));
+    }
+
+    /// <summary>
+    /// Every row about one floor carries what that floor held, so the drawing can mark
+    /// it without reading the row's sentence. Start the run over is about no one floor
+    /// and carries nothing.
+    /// </summary>
+    [Fact]
+    public void EveryRowAboutOneFloorCarriesWhatThatFloorHeld()
+    {
+        var view = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 2);
+
+        Assert.Equal(FloorKind.Combat, PlayFrom(view).Held);
+        Assert.Equal(
+            FloorKind.Unknown,
+            view.Rows.Single(row => row.Kind == RunViewRowKind.StartOver).Held);
     }
 
     /// <summary>Nothing is compared from a floor entry, and the sentence that says so

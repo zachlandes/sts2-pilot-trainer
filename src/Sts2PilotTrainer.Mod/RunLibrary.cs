@@ -63,7 +63,7 @@ internal static class RunLibrary
                 included,
                 RunOrigin.Included,
                 RunVerdicts.For(included, build),
-                progress.PlayedFrom(included.RunId)));
+                progress.LastFloorLoaded(included.RunId, LibraryRun.ProvedFloors(included))));
         }
 
         foreach (var stored in RunLibraryStore.MyRecordings())
@@ -72,7 +72,8 @@ internal static class RunLibrary
                 stored.Recording,
                 RunOrigin.Mine,
                 RunVerdicts.For(stored.Recording, build),
-                progress.PlayedFrom(stored.Recording.RunId),
+                progress.LastFloorLoaded(
+                    stored.Recording.RunId, LibraryRun.ProvedFloors(stored.Recording)),
                 recorded: stored.Started));
         }
 
