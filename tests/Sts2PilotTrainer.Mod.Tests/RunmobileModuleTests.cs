@@ -2,15 +2,11 @@ using System.Reflection;
 using HarmonyLib;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
-using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
 /// <summary>
 /// The seam between the shell and its features.
-///
-/// What is being tested is that the shell and module install only their own runtime
-/// boundaries, and that the surfaces a module contributes are the ones drawn.
 /// </summary>
 public sealed class RunmobileModuleTests
 {
@@ -18,25 +14,11 @@ public sealed class RunmobileModuleTests
     public void TheShellCarriesItsThreeFeatures()
     {
         Assert.Equal(
-            [CombatTrainerModule.Instance, RecorderModule.Instance, (IRunmobileModule)RunLibraryModule.Instance],
+            [RecordedFightModule.Instance, RecorderModule.Instance, (IRunmobileModule)RunLibraryModule.Instance],
             RunmobileMod.Modules);
         Assert.Equal(
-            ["Combat Trainer", "Recorder", "Run library"],
+            ["Recorded fights", "Recorder", "Run library"],
             RunmobileMod.Modules.Select(module => module.Name));
-    }
-
-    /// <summary>
-    /// The library's way in is the Compendium, not the singleplayer menu. A second card
-    /// there would offer to browse from the screen that starts runs, and
-    /// <c>ModeCard</c> refuses to draw two cards anyway - so a module contributing one
-    /// would take the Combat Trainer's card down with it.
-    /// </summary>
-    [Fact]
-    public void TheLibraryContributesNoSingleplayerCard()
-    {
-        Assert.Empty(RunLibraryModule.Instance.MenuCards);
-        Assert.Single(RunmobileMod.MenuCardsFrom(
-            [CombatTrainerModule.Instance, RunLibraryModule.Instance]));
     }
 
     [GameFact]
@@ -52,8 +34,8 @@ public sealed class RunmobileModuleTests
             .ToList();
         var ownership = RunmobileMod.ShellPatchClasses
             .Select(type => (Type: type, Owner: "Runmobile shell"))
-            .Concat(CombatTrainerModule.PatchClasses.Select(type =>
-                (Type: type, Owner: CombatTrainerModule.Instance.Name)))
+            .Concat(RecordedFightModule.PatchClasses.Select(type =>
+                (Type: type, Owner: RecordedFightModule.Instance.Name)))
             .Concat(RunRecorder.PatchClasses.Select(type =>
                 (Type: type, Owner: RecorderModule.Instance.Name)))
             .Concat(RecorderModule.PresencePatchClasses.Select(type =>
@@ -67,10 +49,10 @@ public sealed class RunmobileModuleTests
         Assert.Equal(
             annotated,
             ownership.Keys.OrderBy(type => type.FullName, StringComparer.Ordinal).ToList());
-        Assert.Equal("Runmobile shell", Assert.Single(ownership[typeof(ModeCard)]));
+        Assert.Equal("Runmobile shell", Assert.Single(ownership[typeof(SingleplayerMenuRetention)]));
         Assert.All(
-            CombatTrainerModule.PatchClasses,
-            type => Assert.Equal("Combat Trainer", Assert.Single(ownership[type])));
+            RecordedFightModule.PatchClasses,
+            type => Assert.Equal("Recorded fights", Assert.Single(ownership[type])));
         Assert.All(
             RunRecorder.PatchClasses,
             type => Assert.Equal("Recorder", Assert.Single(ownership[type])));
@@ -83,10 +65,10 @@ public sealed class RunmobileModuleTests
     }
 
     [GameFact]
-    public void InstallingTheCombatTrainerPatchesItsRuntimeBoundaries()
+    public void InstallingRecordedFightsPatchesItsRuntimeBoundaries()
     {
         _ = EngineHost.StartupPhase();
-        var harmony = new Harmony($"sts2-pilot-trainer.combat-trainer-test.{Guid.NewGuid():N}");
+        var harmony = new Harmony($"sts2-pilot-trainer.recorded-fights-test.{Guid.NewGuid():N}");
         var boundaries = new[]
         {
             GameMethod("MegaCrit.Sts2.Core.Runs.RunManager", "CleanUp"),
@@ -94,18 +76,14 @@ public sealed class RunmobileModuleTests
             GameMethod("MegaCrit.Sts2.Core.Multiplayer.Game.EventSynchronizer", "ChooseLocalOption"),
             GameMethod("MegaCrit.Sts2.Core.Runs.RunManager", "EnterMapCoord"),
         };
-        var renderer = GameMethod(
-            "MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSingleplayerSubmenu", "_Ready");
 
         try
         {
-            CombatTrainerModule.Instance.Install(harmony);
+            RecordedFightModule.Instance.Install(harmony);
 
             Assert.All(boundaries, boundary => Assert.Contains(
                 Harmony.GetPatchInfo(boundary)!.Owners,
                 owner => owner == harmony.Id));
-            var rendererOwners = Harmony.GetPatchInfo(renderer)?.Owners;
-            Assert.True(rendererOwners is null || !rendererOwners.Contains(harmony.Id));
         }
         finally
         {
@@ -140,18 +118,8 @@ public sealed class RunmobileModuleTests
         }
     }
 
-    /// <summary>
-    /// The shell patches the module card renderer and both card screens.
-    ///
-    /// The screens are the shell's rather than the recorder's because a card screen
-    /// being up is a fact about the game that the Combat Trainer's settle reads too.
-    /// Behind the recorder's patches it stopped being counted on a build the recorder
-    /// declines to watch, which is exactly the build the trainer is meant to carry on
-    /// through - and the trainer would go back to charging a player's thinking against
-    /// the engine's budget with nothing to say so.
-    /// </summary>
     [GameFact]
-    public void InstallingTheShellPatchesTheModuleCardRendererAndTheCardScreens()
+    public void InstallingTheShellPatchesRetentionAndCardScreens()
     {
         _ = EngineHost.StartupPhase();
         var harmony = new Harmony($"sts2-pilot-trainer.shell-test.{Guid.NewGuid():N}");
@@ -179,9 +147,9 @@ public sealed class RunmobileModuleTests
     }
 
     [Fact]
-    public void TheCombatTrainerIsEnabledAndCarriesItsRecording()
+    public void RecordedFightsAreEnabledAndCarryTheirRecording()
     {
-        var module = CombatTrainerModule.Instance;
+        var module = RecordedFightModule.Instance;
 
         Assert.True(module.Enabled, module.Refusal);
         Assert.Null(module.Refusal);
@@ -189,32 +157,9 @@ public sealed class RunmobileModuleTests
         Assert.NotEmpty(module.RecordedFights.Fights);
     }
 
-    /// <summary>
-    /// The card the menu draws is the module's, described by the module's own
-    /// recording. The shell knows a title, a node name and something to open, and
-    /// nothing about what a fight is.
-    /// </summary>
-    [Fact]
-    public void TheCombatTrainerContributesOneMenuCardDescribingItsRecording()
-    {
-        var card = Assert.Single(RunmobileMod.MenuCards);
-
-        Assert.Equal("CombatTrainerButton", card.NodeName);
-        Assert.Equal("Combat Trainer", card.Title);
-        Assert.Equal(
-            RecordingIdentity.Description(CombatTrainerModule.Instance.Recording), card.Description());
-    }
-
-    /// <summary>
-    /// A module that refused is skipped, by name, and never asked to install
-    /// anything or to describe a surface - the stub throws if it is. The modules
-    /// after it are installed anyway, which is the difference between this seam and
-    /// the single entry point it replaced.
-    /// </summary>
     [GameFact]
     public void ADisabledModuleIsSkippedAndTheOnesAroundItAreStillInstalled()
     {
-        // The shell says what it installed through the game's own logger.
         _ = EngineHost.StartupPhase();
 
         var installer = new RecordingModule();
@@ -222,14 +167,12 @@ public sealed class RunmobileModuleTests
 
         var modules = new IRunmobileModule[] { new StubModule(), installer };
         var installed = RunmobileMod.InstallModules(harmony, modules);
-        var card = Assert.Single(RunmobileMod.MenuCardsFrom(modules));
 
         Assert.Equal(["Recording"], installed);
         Assert.True(installer.Installed);
-        Assert.Equal("Recording", card.Title);
     }
 
-    private static System.Reflection.MethodInfo GameMethod(string typeName, string methodName)
+    private static MethodInfo GameMethod(string typeName, string methodName)
     {
         var game = AppDomain.CurrentDomain.GetAssemblies()
             .Single(assembly => assembly.GetName().Name == "sts2");
@@ -246,11 +189,6 @@ public sealed class RunmobileModuleTests
 
         public string? Refusal => null;
 
-        public IReadOnlyList<MenuCard> MenuCards =>
-        [
-            new MenuCard("RecordingButton", "Recording", () => "Record a run", () => { }),
-        ];
-
         public void Install(Harmony harmony) => Installed = true;
     }
 
@@ -261,9 +199,6 @@ public sealed class RunmobileModuleTests
         public bool Enabled => false;
 
         public string? Refusal => "there is nothing here";
-
-        public IReadOnlyList<MenuCard> MenuCards =>
-            throw new InvalidOperationException("A disabled module is never asked for its surfaces.");
 
         public void Install(Harmony harmony) =>
             throw new InvalidOperationException("A disabled module is never installed.");

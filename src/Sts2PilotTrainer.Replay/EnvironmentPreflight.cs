@@ -70,11 +70,7 @@ public static class EnvironmentPreflight
     /// player prerequisites the run's generation will read.
     /// </summary>
     public static PreflightResult Prerequisites(
-        EnvironmentIdentity expected, LocalPrerequisites actual, string sourceKind = "vod") =>
-        Prerequisites(expected, actual, requireHost: false, sourceKind);
-
-    private static PreflightResult Prerequisites(
-        EnvironmentIdentity expected, LocalPrerequisites actual, bool requireHost, string sourceKind = "vod")
+        EnvironmentIdentity expected, LocalPrerequisites actual, string sourceKind = "vod")
     {
         var fields = new List<PreflightField>
         {
@@ -92,7 +88,7 @@ public static class EnvironmentPreflight
             EvaluateSeedAlphabet(expected.Seed.Value),
             EvaluateSupportedMode(expected.GameMode.Value),
             EvaluateSourceMods(expected.Mods.Value, sourceKind),
-            EvaluateLocalMods(actual.Mods, requireHost),
+            EvaluateLocalMods(actual.Mods),
         };
 
         fields.AddRange(EvaluatePatchRoster(expected.Mods.Value, sourceKind));
@@ -157,22 +153,6 @@ public static class EnvironmentPreflight
     public static PreflightResult Combine(PreflightResult prerequisites, PreflightResult runIdentity) =>
         new(prerequisites.Matches && runIdentity.Matches,
             [.. prerequisites.Fields, .. runIdentity.Fields]);
-
-    /// <summary>
-    /// Both gates as a live host has to ask them: separably, and with the sequencing
-    /// recorded.
-    ///
-    /// Same rules, same order, no softening - <see cref="RunIdentity"/> still refuses
-    /// a null reading, and where a run exists its verdict still counts. What changes
-    /// is that the host can tell "you have not started the run yet" apart from "your
-    /// install cannot play this", which one combined field list cannot express. See
-    /// <see cref="LivePreflight"/>.
-    /// </summary>
-    public static LivePreflight LiveGame(
-        EnvironmentIdentity expected, LocalPrerequisites prerequisites, LocalRunReading? run,
-        string sourceKind = "vod") =>
-        new(Prerequisites(expected, prerequisites, requireHost: true, sourceKind), RunIdentity(expected, run),
-            run is not null, prerequisites);
 
     private static IEnumerable<PreflightField> EvaluateUnlocks(
         EnvironmentIdentity expected, LocalPrerequisites actual)
@@ -430,7 +410,7 @@ public static class EnvironmentPreflight
     /// different problem from somebody else's mod being present, and telling them
     /// apart is what stops a player being sent to disable mods they do not have.
     ///
-    /// It is the shell's id, not the Combat Trainer's: the Combat Trainer is one
+    /// It is the shell's id, not the recorded-fight journey's: the recorded-fight journey is one
     /// module inside the mod a player installs, and the mod list only ever shows the
     /// shell. See docs/in-game-host.md.</summary>
     private const string HostModId = "Runmobile";
@@ -441,7 +421,7 @@ public static class EnvironmentPreflight
     /// shown to anybody.</summary>
     private const string HostModName = "Runmobile";
 
-    private static PreflightField EvaluateLocalMods(IReadOnlyList<LocalMod> mods, bool requireHost)
+    private static PreflightField EvaluateLocalMods(IReadOnlyList<LocalMod> mods)
     {
         var active = mods.Where(mod => mod.Loaded).ToList();
         var hostIsTheOnlyActiveMod = active.Count == 1 &&
@@ -452,7 +432,7 @@ public static class EnvironmentPreflight
                                          AffectsGameplay: false,
                                          State: "Loaded",
                                      };
-        var permitted = hostIsTheOnlyActiveMod || !requireHost && active.Count == 0;
+        var permitted = hostIsTheOnlyActiveMod || active.Count == 0;
 
         // What is actually wrong, kept apart. A game whose only active mod is this one,
         // failed, has nothing to do with compatibility: telling that player to disable
@@ -478,13 +458,6 @@ public static class EnvironmentPreflight
 
         string Refusal()
         {
-            if (requireHost && active.Count == 0)
-            {
-                return $"The running game did not report {HostModName} as loaded, so its mod environment " +
-                       $"cannot be established. Restart the game with only {HostModName} enabled, and check " +
-                       "again.";
-            }
-
             if (hostFailedAlone) return $"{HostModName} failed to load. Restart the game and check again.";
 
             // Everything else is another mod actually being there - or, unreachably for

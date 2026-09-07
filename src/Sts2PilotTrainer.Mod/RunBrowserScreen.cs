@@ -247,7 +247,7 @@ internal static class RunBrowserScreen
 
             var view = RunView.For(
                 recording, RunLibraryStore.ReadProgress(), floor,
-                CombatTrainerModule.Instance.FightsShownThisSitting(recording.RunId));
+                RecordedFightModule.Instance.FightsShownThisSitting(recording.RunId));
             var rows = new List<ScreenRow>(EnteringRows(
                 view, entryId, RecordingIdentity.CreatorOrNull(recording)));
 
@@ -624,9 +624,7 @@ internal static class RunBrowserScreen
 /// The library's supporting text, in the game's own markup.
 ///
 /// One colour and one rule: everything this surface says under a row or under the
-/// list is supporting text, dimmer than the rows so the rows read first. It is the
-/// same colour <see cref="ScreenMarkup"/> uses for the same job, held separately
-/// because that file is the eligibility screen's layout rather than a palette.
+/// list is supporting text, dimmer than the rows so the rows read first.
 /// </summary>
 internal static class LibraryMarkup
 {

@@ -3,7 +3,7 @@ namespace Sts2PilotTrainer.Replay;
 /// <summary>
 /// Where the samples taken either side of a fight's actions go.
 ///
-/// <see cref="FightCapture"/> is the one that keeps a fight, and the Combat Trainer's
+/// <see cref="FightCapture"/> is the one that keeps a fight, and the recorded-fight journey's
 /// observer has fed it directly since there was only one thing watching a fight. The
 /// recorder watches the same actions for a different reason - it is keeping a whole
 /// run, of which this fight is a part - so the observer needs to be able to hand its

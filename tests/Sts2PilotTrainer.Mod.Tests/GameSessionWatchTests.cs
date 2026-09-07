@@ -17,8 +17,8 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// driven with - which is exactly what the two patches on the game's multiplayer setup
 /// do in the client.
 ///
-/// The latch is process-wide, so these must not run beside a test that asks the shell
-/// for its cards. What guarantees that is AssemblyInfo.cs's
+/// The latch is process-wide, so these must not run beside another test that observes
+/// the shell. What guarantees that is AssemblyInfo.cs's
 /// <c>[assembly: CollectionBehavior(DisableTestParallelization = true)]</c>, which
 /// serializes every test in this assembly.
 /// </summary>
@@ -42,19 +42,6 @@ public sealed class GameSessionWatchTests : IDisposable
         if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
     }
 
-    /// <summary>The passing half: an ordinary client, before any run, is one this mod
-    /// may draw its card in.</summary>
-    [GameFact]
-    public void OutsideAMultiplayerGameTheModDrawsWhatItsModulesContribute()
-    {
-        _ = EngineHost.StartupPhase();
-
-        Assert.Equal(RunSessionKind.NoRunInProgress, GameSessionWatch.Observed);
-        Assert.True(GameSessionWatch.MaySpeak);
-        Assert.Equal(RunmobileMod.MenuCardsFrom(RunmobileMod.Modules), RunmobileMod.MenuCards);
-        Assert.NotEmpty(RunmobileMod.MenuCards);
-    }
-
     /// <summary>
     /// In a multiplayer game the mod contributes no surface at all.
     ///
@@ -71,11 +58,6 @@ public sealed class GameSessionWatchTests : IDisposable
 
         Assert.Equal(RunSessionKind.MultiplayerKindUnread, GameSessionWatch.Observed);
         Assert.False(GameSessionWatch.MaySpeak);
-        Assert.Empty(RunmobileMod.MenuCards);
-
-        // And the modules are untouched: they are enabled and they still contribute.
-        // It is the shell that is not asking them.
-        Assert.NotEmpty(RunmobileMod.MenuCardsFrom(RunmobileMod.Modules));
     }
 
     /// <summary>
@@ -134,7 +116,6 @@ public sealed class GameSessionWatchTests : IDisposable
 
         Assert.Equal(RunSessionKind.NoRunInProgress, GameSessionWatch.Observed);
         Assert.True(GameSessionWatch.MaySpeak);
-        Assert.NotEmpty(RunmobileMod.MenuCards);
     }
 
     /// <summary>A recording live enough for the patches to reach, written the way a

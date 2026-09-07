@@ -149,18 +149,17 @@ public class EnvironmentPreflightTests
     [Fact]
     public void TheHostFailingAloneIsReportedAsItsOwnFailure()
     {
-        var result = EnvironmentPreflight.LiveGame(
+        var result = EnvironmentPreflight.Prerequisites(
             Environment(),
             Local() with
             {
                 Mods = [new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Failed")],
-            },
-            run: null);
+            });
 
-        Assert.False(result.Prerequisites.Matches);
+        Assert.False(result.Matches);
         Assert.Equal(
             "Runmobile failed to load. Restart the game and check again.",
-            Diagnostic(result.Prerequisites, "loaded_mod_environment"));
+            Diagnostic(result, "loaded_mod_environment"));
     }
 
     /// <summary>
@@ -170,7 +169,7 @@ public class EnvironmentPreflightTests
     [Fact]
     public void TheHostFailingBesideAnotherModIsStillReportedAsContamination()
     {
-        var result = EnvironmentPreflight.LiveGame(
+        var result = EnvironmentPreflight.Prerequisites(
             Environment(),
             Local() with
             {
@@ -179,13 +178,12 @@ public class EnvironmentPreflightTests
                     new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Failed"),
                     new LocalMod("baselib", "BaseLib", "3.4.5", false, "Loaded"),
                 ],
-            },
-            run: null);
+            });
 
-        Assert.False(result.Prerequisites.Matches);
+        Assert.False(result.Matches);
         Assert.Contains(
             "another active or failed mod",
-            Diagnostic(result.Prerequisites, "loaded_mod_environment"),
+            Diagnostic(result, "loaded_mod_environment"),
             StringComparison.Ordinal);
     }
 
@@ -197,7 +195,7 @@ public class EnvironmentPreflightTests
     [Fact]
     public void ADisabledModBesideAFailedHostDoesNotBecomeContamination()
     {
-        var result = EnvironmentPreflight.LiveGame(
+        var result = EnvironmentPreflight.Prerequisites(
             Environment(),
             Local() with
             {
@@ -206,27 +204,19 @@ public class EnvironmentPreflightTests
                     new LocalMod("Runmobile", "Runmobile", "0.1.0", false, "Failed"),
                     new LocalMod("baselib", "BaseLib", "3.4.5", false, "Disabled"),
                 ],
-            },
-            run: null);
+            });
 
         Assert.Equal(
             "Runmobile failed to load. Restart the game and check again.",
-            Diagnostic(result.Prerequisites, "loaded_mod_environment"));
+            Diagnostic(result, "loaded_mod_environment"));
     }
 
-    /// <summary>
-    /// A game reporting no mod at all is neither: nothing failed and nothing else is
-    /// there, so the host simply is not loaded and the sentence says so.
-    /// </summary>
     [Fact]
-    public void AGameThatReportsNoHostAtAllIsNotReportedAsAFailure()
+    public void AGameThatReportsNoModsPassesParity()
     {
-        var result = EnvironmentPreflight.LiveGame(Environment(), Local() with { Mods = [] }, run: null);
+        var result = EnvironmentPreflight.Prerequisites(Environment(), Local() with { Mods = [] });
 
-        Assert.Contains(
-            "did not report Runmobile as loaded",
-            Diagnostic(result.Prerequisites, "loaded_mod_environment"),
-            StringComparison.Ordinal);
+        Assert.True(result.Matches, Describe(result));
     }
 
     [Fact]

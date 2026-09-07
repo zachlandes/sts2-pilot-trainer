@@ -96,7 +96,7 @@ internal sealed class PlayerFightObserver : IDisposable
     /// <param name="sample">How to read the canonical state right now. Supplied rather
     /// than done here, because reading the game belongs to the engine and this class's
     /// one job is deciding <em>when</em> a reading is taken.</param>
-    /// <param name="sink">Where the samples go: the Combat Trainer hands over the
+    /// <param name="sink">Where the samples go: the recorded-fight journey hands over the
     /// fight's own capture, and the recorder hands over the run it is keeping. One
     /// observer either way, so a fight is watched the same whoever is watching.</param>
     /// <param name="fightEnded">Called once, on the game's own combat-ended event,

@@ -44,7 +44,7 @@ internal static class MyRunsSettings
     /// <summary>Label the confirm's buttons carry until this mod replaces them. Never
     /// shown: a DLL-only mod contributes no localization table, so the game's own keys
     /// stand in and the text is set directly. Same reason as
-    /// <see cref="TrainerScreen"/>.</summary>
+    /// another popup surface.</summary>
     private static LocString PlaceholderConfirmLabel => new("main_menu_ui", "GENERIC_POPUP.confirm");
 
     private static LocString PlaceholderCancelLabel => new("main_menu_ui", "GENERIC_POPUP.cancel");

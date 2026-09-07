@@ -1,25 +1,25 @@
 # The in-game host: what it proves, and what it does not
 
-The mod a player installs is **Runmobile**, and the Combat Trainer is one module
-inside it. `RunmobileMod` is the shell - the assembly resolver, the Harmony instance,
-adopting the running game, the write barrier and the store - and `IRunmobileModule`
-is the line between it and a feature. A module says whether it can run, installs its
-own patches and contributes its own surfaces; one that cannot establish what it needs
-is skipped by name in the game's log and the rest of the mod loads without it.
-Drawing the singleplayer-menu cards is the shell's: a module contributes `MenuCard`
-entries and `ModeCard` is a shell patch class, so a module that refuses cannot take
-another enabled module's card down with it.
+The mod a player installs is **Runmobile**, whose modules are recorded fights,
+recording and the run library. `RunmobileMod` is the shell - the assembly resolver,
+the Harmony instance, adopting the running game, the write barrier and the store -
+and `IRunmobileModule` is the line between it and a feature. A module says whether
+it can run, installs its own patches and contributes its own surfaces; one that
+cannot establish what it needs is skipped by name in the game's log and the rest of
+the mod loads without it.
+`SingleplayerMenuRetention` is a shell patch because retention applies even when
+nothing else can draw.
 So is `CardScreensUp`, whose two patch classes count the card screens up in front of
 the player: a screen being up is a fact about the game rather than about either
 feature, and both settles read it - the recorder's, to keep a reading off a decision
-somebody has not finished making, and the Combat Trainer's, so a prompt a played card
+somebody has not finished making, and the recorded-fight journey's, so a prompt a played card
 opens does not spend the engine's budget. Behind one feature's patches it would stop
 counting on a build that feature declines to watch, which is the build the other is
 meant to carry on through. What a screen answered is a feature's own business, and a
 module subscribes rather than patching the screens a second time.
 That promise is about a module which declares itself disabled: a module whose `Install` throws propagates out of the loop, aborts `Start` before the shell is marked started, and may leave its partial patches applied, which is a broken-build condition rather than a runtime one, and the failure-isolation lifecycle that would contain it is still not built.
 Shell ownership is paid for at the other end: `InstallShellPatches` treats a patch class Harmony cannot resolve as a broken build and lets it throw out of `Start`, so a game update that renames `NCardGridSelectionScreen.CardsSelected` or `NCardRewardSelectionScreen.OptionSelected` takes the whole mod down, where the same rename behind a module's own patches would disable only that module.
-`CombatTrainerModule` and `RecorderModule` are built. The run library is the third.
+`RecordedFightModule` and `RecorderModule` are built. The run library is the third.
 
 The retail proof below, up to and including S5, was gathered on the pre-rename `CombatTrainer` artifact.
 S3 of [the proof-of-concept path](proof-of-concept-path.md) answers one question — can this game play the recorded fight? — S4 adds the button that enters it, and S5 captures the fight the player then plays and shows it beside the recording's.
@@ -34,14 +34,6 @@ The S7 transport session predates the packaged arbiter: it installed the core Ru
 That session establishes discovery, initialization and a complete journey through the renamed shell, and its protected-files ledger is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp; it does not establish the newer publication package in retail.
 The game's own mod line naming `Runmobile` is photographed in that session's record, so the row no longer rests on the pre-rename `CombatTrainer` screenshots.
 The libraries and arbiter are built to ship together; there is no separately installed framework or runtime dependency, and no resource pack.
-
-**The eligibility answer comes from the same owner the arbiter uses.**
-`Preflight.EvaluateLiveHost` reads this process's game and judges it through
-`EnvironmentPreflight`, which has no game code and is tested on machines that do not
-own the game.
-The screen computes nothing: every row's state is a `PreflightField` the gate
-produced, and every sentence about a failure is that field's own diagnostic, shown
-word for word.
 
 **It reads the game and never writes to it.**
 The installed build, discovered mods, and supplied in-memory progress model are inputs to the fight offer; the player's saved profile is not.
@@ -140,29 +132,6 @@ and `RunManager.EnterMapCoord` — rather than on the buttons that usually reach
 A screen with its buttons hidden is a screen a controller, a hotkey or another mod can
 still drive; the command is the thing that would actually change the run.
 
-**The rows and the offer answer the same question.**
-Every rule is the one S3 shipped and every row label is the one it approved; what
-changed is which reading they are asked about. The screen asks
-`Preflight.EvaluateLiveHost` for the progress model the run is actually generated
-against - `RecordedFightEntry.SuppliedProgressFor`, the same rule the construction
-uses, which is the recorded player's own state where the recording carries one and
-the complete state where it does not - so each row states a requirement of the fight
-being offered rather than of a run nobody starts by hand. The unlocks, the acts and
-the ascension are supplied for that run, so they pass; the build, the build date, the
-content hash and the mod environment are read from this installation, because those
-are the ones no host can supply, and they still refuse.
-
-The row this matters for is the ascension. A profile whose ceiling is below the
-recording's does not stop the trainer constructing the run at the recording's
-ascension - `EnvironmentPreflight.EvaluateAscensionCeiling` said so before there was
-anything to offer, because a host constructing a run directly never consults that
-ceiling. Reporting it as unmet would put a red row above an offer it does not stop,
-which is a warning about nothing.
-
-The profile note goes with the reading it describes. It names the profile the rows
-were measured against, so it is shown only where a profile was read; over rows the
-host supplied, it would send a player to import progress that nothing here consults.
-
 **The fight is proved before it is handed over.**
 `BoundaryEquality` compares the live state against both readings of the boundary:
 every value the recording observed there, and the digest on the manifest's
@@ -236,7 +205,7 @@ Computed first on purpose, and held apart from the run in `RecordedFightRun.Ende
 `TrainerRunTeardown` therefore releases the run and keeps the ended fight when the fight is over, and the return to the main menu - the choice's Leave or the game's own Continue on its ending - is what finishes the journey.
 The loot a won fight offers stays visible under the choice and `LootLock` keeps it where it is: the reward buttons and the game's proceed are prefixed to do nothing while the fight is over, because those rows are the recording's next decisions and the choice is the only way on.
 Whether the run's persistent interface survives the game's ending decides where the choice is drawn - under the chip where it does, in the game's modal container where it does not - and `RecordedFightRun.OfferTheChoice` reads that live and logs which happened rather than assuming either.
-What the sitting remembers is `CombatTrainerModule`'s in-memory set of (run, fight) pairs shown this sitting, written nowhere: it draws the dot on a post-fight row already taken and the hollow-eye mark on the fight's row in the run view, and gates nothing.
+What the sitting remembers is `RecordedFightModule`'s in-memory set of (run, fight) pairs shown this sitting, written nowhere: it draws the dot on a post-fight row already taken and the hollow-eye mark on the fight's row in the run view, and gates nothing.
 Leaving through the game's menu instead records the abandoned notice during cleanup and shows it over the main menu once the return finishes.
 `FightResultPanel` draws it: the summary as figures in two columns, the turn chronology as the game's own card and potion art in the order they were played, and the chart of what each turn cost either side.
 The two lines are told apart by colour and by the shape of their chart markers, and the same two colours run through the columns, the card borders and the lines, so a column, an icon and a line read as one fighter.
@@ -288,7 +257,7 @@ lowers the write barrier on every one of those paths.
 
 **The recorder is that observer widened to a whole run, and it shares its parts.**
 `RunRecorder` in `Sts2PilotTrainer.Mod` attaches when a run starts, watches every decision the player makes, and writes a v6 native manifest under `user://Runmobile/recordings/` when the run ends.
-Inside a fight it hands the run to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink` in `Sts2PilotTrainer.Replay`: the trainer's sink is a `FightCapture` and the recorder's is an adapter onto the `RunCapture` that keeps the whole run.
+Inside a fight it hands the run to the same `PlayerFightObserver` the recorded-fight journey uses, through `IFightSampleSink` in `Sts2PilotTrainer.Replay`: the recorded-fight journey's sink is a `FightCapture` and the recorder's is an adapter onto the `RunCapture` that keeps the whole run.
 There is one observer, one settle rule and one set of rules about what a sample means, whichever feature is watching.
 The one question the two sinks answer differently is an action whose argument the observer could not resolve, which is why `IFightSampleSink` asks it rather than the observer deciding: a history missing an argument the format requires is a run nobody can replay, so the recorder refuses and keeps nothing for that action, while a fight being compared never reads that argument and the capture keeps the step.
 
@@ -961,7 +930,7 @@ And the moment is the singleplayer menu: the shell's own patch asks for retentio
 `RunmobileMod.EnsureAdopted` asks for it again, so the recorder's own first adopted moment is covered too, and asking twice costs nothing: it is applied once per save profile whoever asks.
 No journal is being appended to when it runs - the recorder opens one only after passing that same adoption gate, and it has let go of the run it was recording before the singleplayer menu can be reached again - so a removal can never race a journal.
 Retention runs whether or not the adoption succeeded, and where adoption is never attempted at all: its condition is the store's, a chosen save profile, and not the engine layer's verdict on whether this game can be read.
-So a build where the Combat Trainer and the recorder both decline, and a build the engine layer refuses to adopt, both still honour a purge and still enforce `keep_recent_runs`.
+So a build where the run library and the recorder both decline, and a build the engine layer refuses to adopt, both still honour a purge and still enforce `keep_recent_runs`.
 The policy is applied once per save profile rather than once per process: the store is resolved per operation and two profiles do not share a library, so a player who switches profile has their second profile's `settings.json` honoured against their second profile's recordings.
 It cannot be mod start: the game has no chosen save profile then, so the store cannot yet say whose files these are.
 

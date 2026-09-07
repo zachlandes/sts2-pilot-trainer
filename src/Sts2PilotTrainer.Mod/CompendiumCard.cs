@@ -16,7 +16,7 @@ namespace Sts2PilotTrainer.Mod;
 /// The Compendium is where the game already keeps the things you look at rather than
 /// play, which is what makes it the honest place for a library of runs. The button is
 /// a duplicate of the game's own Run History button rather than a control built from
-/// parts, for the reason <see cref="ModeCard"/> gives: the panel, the shader, the
+/// parts: the panel, the shader, the
 /// tween, the focus behaviour and the label font are MegaCrit's, and a hand-built
 /// lookalike is a worse copy of them that also drifts.
 ///

@@ -3,7 +3,7 @@ using System.Globalization;
 namespace Sts2PilotTrainer.Trainer;
 
 /// <summary>
-/// Every fixed word the Combat Trainer shows a player, in one place.
+/// Every fixed word the recorded-fight journey shows a player, in one place.
 ///
 /// One file so that "what does the mod say" is answerable by reading a file rather
 /// than by grepping a scene graph, and so that nothing can drift into inventing a
@@ -19,9 +19,8 @@ namespace Sts2PilotTrainer.Trainer;
 public static class TrainerCopy
 {
     /// <summary>The training feature's name, on its mode card and above its result
-    /// panel. Not the mod's name: a player installs Runmobile, and the Combat Trainer
-    /// is one module inside it. The mod list shows the shell, this shows the
-    /// feature.</summary>
+    /// panel. Not the mod's name: a player installs Runmobile, and this identifies
+    /// the teaching surface.</summary>
     public const string Name = "Combat Trainer";
 
     /// <summary>
@@ -42,12 +41,6 @@ public static class TrainerCopy
     /// <inheritdoc cref="FightFloor"/>
     public const string FightEnemy = "Sludge Spinner";
 
-    /// <summary>The mode card's description. The mod list's own line belongs to the
-    /// shell and lives in <c>Runmobile.json</c>.</summary>
-    public static string Description(string creator) =>
-        $"Fight {creator}'s {FightFloor} {FightEnemy} exactly as recorded, then compare your fight with " +
-        "the recording. Reads your game; never writes to it.";
-
     /// <summary>What this one recording is, under the screen's title.</summary>
     public static string Subtitle(string creator, string character, int ascension) =>
         string.Join(" · ",
@@ -56,24 +49,6 @@ public static class TrainerCopy
             $"Ascension {ascension.ToString(CultureInfo.InvariantCulture)}",
             FightFloor,
             FightEnemy);
-
-    // ── Standing in the recording's fight ───────────────────────────────────
-    //
-    // The wording below is the approved Direction A journey, with every
-    // recording-specific value interpolated rather than written down: the creator
-    // comes from the manifest's source record, the blessing and the node from the
-    // run the recording's own actions are about to act on, and the counter from how
-    // many decisions the recording made. Nothing here names this recording.
-
-    /// <summary>Offers the fight, on the eligibility screen.</summary>
-    public const string EnterButton = "Enter the fight";
-
-    /// <summary>Shown with <see cref="EnterButton"/>. Load-bearing rather than
-    /// reassuring: the run this enters is constructed at the recording's identity and
-    /// is never written anywhere, and a player who thought it was theirs would be
-    /// looking for it afterwards.</summary>
-    public const string NotSavedNote =
-        "This fight is not saved and does not count toward your run history.";
 
     // ── The playback transport ─────────────────────────────────────────────
     //
@@ -249,7 +224,7 @@ public static class TrainerCopy
 
     /// <summary>The run goes on and the hold is the player's. Absent until run-level
     /// continuation exists, and always absent on a loss.</summary>
-    public const string ContinueAsYou = "Continue as you";
+    public const string ContinueAsYou = "Continue";
 
     /// <summary>Discards the run and leaves the fight, as Done did.</summary>
     public const string Leave = "Leave";
@@ -303,39 +278,7 @@ public static class TrainerCopy
 
     public const string EventScreenName = "choice";
 
-    public const string PassHeadline = "Your game can play this fight as recorded.";
-
-    public const string FailHeadline = "Your game cannot play this fight as recorded yet.";
-
-    /// <summary>
-    /// The same verdict without the promise, for a shortfall nobody can fix.
-    ///
-    /// "Yet" is the load-bearing word above: it says the rows below are errands. Where
-    /// this build does not ship what the recording names, or could not be asked
-    /// because of that, there is no errand and the word would be a lie - the player's
-    /// game is working, and every hour they spent unlocking things would leave the
-    /// answer exactly where it is.
-    /// </summary>
-    public const string UnavailableHeadline =
-        "This build does not have what the recording needs, so it cannot play this fight.";
-
-    /// <summary>
-    /// Says which profile the unlock rows were measured against.
-    ///
-    /// Load-bearing rather than decorative: the game forks a separate profile for
-    /// modded play, so a player with a complete unmodded profile can fail these rows
-    /// and have no idea why. The remedy is the game's own import, which is why the
-    /// sentence names it.
-    /// </summary>
-    public const string ProfileNote =
-        "Checked against the profile the game uses when running modded. If your unmodded progress is " +
-        "missing here, import it from the profile select screen.";
-
     public const string BackButton = "Back";
-
-    /// <summary>The build the recording was made on, as the screen states it.</summary>
-    public static string RecordingLine(string buildVersion, string buildDateUtc) =>
-        $"Recorded on {buildVersion} ({buildDateUtc})";
 
     // ── The player's fight, compared with the recording's ───────────────────
     //

@@ -181,7 +181,7 @@ derive honestly is a gap in a line, never a zero.
 The result is drawn on request and never unbidden: after the fight the chip offers
 `PostFightChoice`'s rows and the panel is the first of them, a lost line compares
 (Lost against Won) rather than standing behind a notice, and which fights were shown
-this sitting is held in memory by `CombatTrainerModule` for the sitting and written
+this sitting is held in memory by `RecordedFightModule` for the sitting and written
 nowhere.
 
 **Where this is going, and what is runnable at each step, is
@@ -240,7 +240,7 @@ it may not implement.
 script here that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory (`mods` or `mods_STEAMTEST`); upgrades use temporary siblings there to replace the complete artifact without mixing versions, and remove the `CombatTrainer` directory the mod was installed under before the rename.
 
-**The run library is the third module, and browsing is after the fact.**
+**The run library is the entry module, and browsing is after the fact.**
 `RunLibraryModule` owns the Compendium button (`NCompendiumSubmenu`), the browser, one run opened, and the plate under the game's own run history (`NMapPointHistoryEntry.Released`).
 Two settled rules run through all of it and neither is a preference: a player plays *from* a run, one verb everywhere; and ordinary browsing hides a run this build has no passing verdict for, or an established multiplayer run.
 `LibraryRun.Listed` is that rule in one place, the visible `Compatible with your game version` filter defaults on, and the numeral under the list counts what it hid.
@@ -251,9 +251,9 @@ Where a player can be stood is the recording's own `boundaries[]`, read through 
 `RunProgress` under the store holds fight ordinals and nothing resumable - it is the pips and Continue's number, never a save.
 What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [docs/in-game-host.md](docs/in-game-host.md) owns what it draws and what the accepted design still wants.
 
-**The mod a player installs is `Runmobile`, and the Combat Trainer is one module inside it.**
+**The mod a player installs is `Runmobile`, and recorded fights, recording and the run library are its modules.**
 `RunmobileMod` is the shell and `IRunmobileModule` the line between it and a feature; a module says whether it can run, installs its own patches and contributes its own surfaces, and one that refuses does not take the rest of the mod with it.
-Whether this mod may draw anything at all is the shell's and never a feature's: `GameSessionWatch` observes a multiplayer game and `RunmobileMod.MayDraw` then says no to every surface - the menu cards, and equally a surface a module draws from its own Harmony patches, which is the path the cards' gate never sees.
+Whether this mod may draw anything at all is the shell's and never a feature's: `GameSessionWatch` observes a multiplayer game and `RunmobileMod.MayDraw` then says no to every surface, including a surface a module draws from its own Harmony patches.
 A module asks that gate rather than reading the session for itself, because whether a surface may be put in front of a player is not a feature's decision, and a no draws nothing at all - not a greyed control, not a popup saying why, not an indicator saying a run is not being recorded.
 Whether a run may be *recorded* is the other question and has the other answer: `RunRecorder.Attach` reads `GameSessionWatch.Observed` and asks `RunSession.MayBeRecorded` directly, which is the reading the recorder paragraph below requires.
 `RunmobileStore` is the only thing in the mod that writes, under `user://Runmobile/` scoped by the game's own resolved platform, account and profile - taken whole from `UserDataPathProvider`, never reassembled here, and never part of an exported recording's identity.
@@ -269,7 +269,7 @@ Moving the policy removes nothing where it stands and forgets that profile's ret
 What the second line promises is what `Apply` will do and not what the arithmetic says, so `OnDisk` asks `ContinuableRun` the way `Apply` asks it and the row leaves the continuable run out of the count.
 Whether the policy on it is the player's own sentence or the default shown in place of a file this build could not read travels with it as a fact, because a row that showed the unreadable-file sentinel would be stating a number nobody wrote, and one that claimed the usual policy stood would be stating a rule that is not in force - under an unreadable file nothing is removed of this mod's own accord, and the row says that instead.
 `RunmobileSettings.Set` refuses such a file through `Read` rather than through rules of its own, and every control that would write into it is refused with it, the removal included, because the purge records its request there before it takes anything.
-The patch asks for retention first and unconditionally, before it consults the modules' cards, and attempts adoption only where a module contributed a card it is about to draw - so a build on which every module declines never reaches adoption from there and still honours a purge, as does one the engine layer refuses to adopt, in every profile the player switches to.
+The singleplayer-menu patch asks for retention first and unconditionally, before any module surface can draw, and attempts adoption only where a module needs it - so a build on which every module declines never reaches adoption from there and still honours a purge, as does one the engine layer refuses to adopt, in every profile the player switches to.
 Retention's own condition is a chosen save profile and never the adoption verdict.
 Do not add a second writer, a second path rule, a second account-identity mechanism or a second thing that deletes; [docs/in-game-host.md](docs/in-game-host.md) owns the detail.
 
@@ -312,7 +312,7 @@ path that writes what the barrier suppresses.
 It records singleplayer runs only, and which kind of run this is is read - `LiveRun.ReadSession` off the game's own networking and player list, with `RunSession` owning what each `RunSessionKind` permits - never inferred from the name of the setup member the game called.
 A run the console was used in is kept whole, recorded to its end, and marked `source.native.integrity = "non-standard"` through `RunCapture.MarkNonStandard`, which the validator refuses for publication; `integrity` is the one field that says this.
 `RunRecorder` in the mod owns only what a pure class cannot: which game member is which decision, what its arguments are, and when the engine has settled enough to read.
-Inside a fight it hands over to the same `PlayerFightObserver` the Combat Trainer uses, through `IFightSampleSink`.
+Inside a fight it hands over to the same `PlayerFightObserver` the recorded-fight journey uses, through `IFightSampleSink`.
 The recorder refuses a run whose start it did not witness, marks `continuity = broken` when a resumed session's live state is not the state its journal last recorded, and never truncates.
 `source.native.integrity` is the one field that says whether a recording may ever be published, and it is required from format v6: `complete`, `non-standard` for a run the console was used in, or `unmapped` for a recorder that stopped at a decision it could not name, with what it met in `source.native.unmapped` - `RunCapture.MarkNonStandard` and `RunCapture.MarkUnmapped` are the only writers.
 A version-5 file states none, and `ManifestJson.MigrateFromVersion5` reads it as `complete` with `migrated_from_version = 5` beside it; that note is what excuses the `option_key` a version-5 recorder never read, and nothing else is ever excused by it.

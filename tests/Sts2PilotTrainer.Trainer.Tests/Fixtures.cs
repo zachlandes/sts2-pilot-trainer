@@ -155,40 +155,4 @@ internal static class Fixtures
             Checkpoints = [],
         };
 
-    /// <summary>
-    /// A reading of the state a host supplies rather than of anybody's save: every
-    /// category complete, no act locked, and no profile ascension ceiling to read.
-    /// What <c>LocalEnvironment.ReadPrerequisites</c> produces for the progress model
-    /// the trainer constructs the recording's run with.
-    /// </summary>
-    internal static LocalPrerequisites SuppliedPrerequisites() => Prerequisites() with
-    {
-        Unlocks = new UnlockInventory
-        {
-            Origin = "UnlockState.all, supplied by the host in place of the source player's profile",
-            FromPlayerProfile = false,
-            Categories =
-            [
-                new UnlockCategory("characters", 5, 5, []),
-                new UnlockCategory("relics", 143, 143, []),
-            ],
-        },
-        ProfileAscensionCeiling = null,
-    };
-
-    internal static EligibilityScreen Screen(
-        LocalPrerequisites? prerequisites = null,
-        LocalRunReading? run = null,
-        bool fightOffered = false,
-        EnvironmentIdentity? identity = null)
-    {
-        var recording = Recording(identity);
-        return EligibilityScreen.For(
-            recording,
-            EnvironmentPreflight.LiveGame(recording.Environment, prerequisites ?? Prerequisites(), run),
-            fightOffered);
-    }
-
-    internal static EligibilityRow Row(this EligibilityScreen screen, string startsWith) =>
-        screen.Rows.Single(row => row.Label.StartsWith(startsWith, StringComparison.Ordinal));
 }

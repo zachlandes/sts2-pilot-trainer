@@ -6,8 +6,8 @@ namespace Sts2PilotTrainer.Trainer;
 /// Every fixed word the run library shows a player, in one place.
 ///
 /// The library's counterpart of <see cref="TrainerCopy"/>, and separate from it for
-/// the reason that file gives for existing at all: it holds what the Combat Trainer
-/// says, and the Combat Trainer is one module of three. Splitting them keeps "what
+/// the reason that file gives for existing at all: it holds what the recorded-fight journey
+/// says, and the recorded-fight journey is one module of three. Splitting them keeps "what
 /// does this feature say" answerable by reading one file, and keeps a change to the
 /// trainer's wording from touching the library's.
 ///

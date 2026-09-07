@@ -45,10 +45,10 @@ internal static class RecorderPresenceRow
 
     private static readonly StringName LabelType = "Label";
 
-    /// <summary>The eligibility screen's warning hue, so the stopped row is drawn in
-    /// the colour that screen already uses for a prerequisite the player has to see
-    /// to.</summary>
-    private static readonly Color WarningColor = new(ScreenMarkup.NotMetColor);
+    /// <summary>The warning hue for a recording that stopped.</summary>
+    internal const string WarningColorHex = "#e0755a";
+
+    private static readonly Color WarningColor = new(WarningColorHex);
 
     /// <summary>
     /// The fill of the version overlay, where the row is added.

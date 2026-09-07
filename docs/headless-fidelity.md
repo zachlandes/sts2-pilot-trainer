@@ -198,7 +198,7 @@ for standard runs, which is exactly what retail computes for them. Daily and cus
 runs return false from the same method and get false here.
 
 This initialization belongs only to the headless arbiter.
-The in-game host calls `Preflight.EvaluateLiveHost` before presenting a player anything, and it must not embed this entry point, because `EngineHost.Start` enables test mode and installs the headless patches above inside its process.
+The in-game host calls `Preflight.Evaluate` before it constructs a recorded run, and it must not embed this entry point, because `EngineHost.Start` enables test mode and installs the headless patches above inside its process.
 It calls `EngineHost.AdoptRunningGame` instead, which takes the engine the client already has and refuses anything it cannot read honestly.
 Executable boundary tests verify that a console process and duplicate game assemblies are refused without changing the prepared game inputs or sandbox profile.
 The removed source-reference scan is not treated as evidence that the mod avoids `EngineHost.Start`.

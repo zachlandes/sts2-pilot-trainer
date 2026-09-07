@@ -38,7 +38,7 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal sealed class PlaybackTransportStrip
 {
-    internal const string RootName = "CombatTrainerTransport";
+    internal const string RootName = "RunmobilePlaybackTransport";
 
     // ── The palette ────────────────────────────────────────────────────────
     //

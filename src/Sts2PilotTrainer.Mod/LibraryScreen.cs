@@ -33,7 +33,7 @@ internal sealed record ScreenRow(
 /// The one way this module puts anything on screen: the game's own modal popup, with
 /// a body of text and a column of rows under it.
 ///
-/// Built out of the game's furniture for the reason <see cref="TrainerScreen"/> gives
+/// Built out of the game's furniture rather than assembled from Godot controls:
 /// for the eligibility screen - the panel, the fonts, the ribbons, their hotkeys and
 /// their controller focus are MegaCrit's, and a hand-built lookalike is a worse copy
 /// that also drifts. The rows are duplicates of the popup's own second ribbon, so a

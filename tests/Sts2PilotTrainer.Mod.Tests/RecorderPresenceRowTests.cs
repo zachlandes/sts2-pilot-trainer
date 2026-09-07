@@ -43,7 +43,7 @@ public sealed class RecorderPresenceRowTests
 
         Assert.True(row.Visible);
         Assert.Equal(RecorderCopy.RecordingStopped, row.Text);
-        Assert.Equal(new Color(ScreenMarkup.NotMetColor), row.ThemeColorOverride(FontColorEntry));
+        Assert.Equal(new Color(RecorderPresenceRow.WarningColorHex), row.ThemeColorOverride(FontColorEntry));
     }
 
     /// <summary>A broken watch that recovers back to the overlay's own colour is the

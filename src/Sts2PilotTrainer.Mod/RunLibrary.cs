@@ -534,11 +534,11 @@ internal static class RunLibrary
     /// <summary>
     /// The recordings that travel inside the mod.
     ///
-    /// The Combat Trainer's, because it is the module that ships one and reads it. A
+    /// The recorded-fight journey's, because it is the module that ships one and reads it. A
     /// second copy of that resource here would be a second thing to keep in step with
-    /// what the assembly actually carries, and a Combat Trainer that refused to read
+    /// what the assembly actually carries, and a recorded-fight journey that refused to read
     /// its own recording would be one this list quietly disagreed with.
     /// </summary>
     private static IReadOnlyList<ReplayManifest> Included() =>
-        CombatTrainerModule.Instance.Enabled ? [CombatTrainerModule.Instance.Recording] : [];
+        RecordedFightModule.Instance.Enabled ? [RecordedFightModule.Instance.Recording] : [];
 }

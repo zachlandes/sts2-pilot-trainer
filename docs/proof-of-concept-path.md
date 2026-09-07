@@ -200,9 +200,8 @@ This slice produced the pre-rename `CombatTrainer` mod that loaded in the shippe
   Another loads a duplicate game assembly and proves that state refuses before adoption.
   A third proves that adoption still refuses during essential initialization, before the model database and id-serialization cache have both finished.
   The fourth parses the mod manifest and verifies its non-gameplay, DLL-only, packless contract; no source-reference scan is presented as behavioural evidence.
-- `EnvironmentPreflight.LiveGame` and `Preflight.EvaluateLiveHost`: the same two gates,
-  kept separable, so "you have not started the run yet" is distinguishable from "your
-  install cannot play this" without softening either.
+- `EnvironmentPreflight.Prerequisites` and `Preflight.Evaluate`: the prerequisite
+  gate over the supplied progress model the recording will use.
 - `Sts2PilotTrainer.Trainer`: what the screen says, with no game code, so every row and
   every sentence has a test on a machine that does not own the game.
 
@@ -465,7 +464,7 @@ same kind, without a video and without a transcriber.
   a continued session publishes exactly what an uninterrupted one would have.
 - `RunRecorder` and `RecorderModule` in the mod: the hooks, the settle rule, and the
   translation from what the game announces into what the format records. Inside a
-  fight it hands over to the same `PlayerFightObserver` the Combat Trainer uses,
+  fight it hands over to the same `PlayerFightObserver` the recorded-fight journey uses,
   through `IFightSampleSink`. It never raises the write barrier - the player's own run
   saves normally - and it declines to attach while a trainer run is live.
 - `LiveRun` in the engine: the canonical state, its digest, the run's clock and start
