@@ -18,12 +18,92 @@ public static class Arbiter
     public static ArbiterOutcome Run(
         ReplayManifest manifest, int? stopAfterSeq = null,
         PlayerProgress? progress = null,
-        string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null)
+        string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null) =>
+        RunCore(manifest, stopAfterSeq, progress, gameModeOverride, modifierTypeNames, validate: true);
+
+    public static ArbiterOutcome RunDiscardedBranch(
+        ReplayManifest manifest, int branchIndex, PlayerProgress? progress = null)
     {
         var validation = ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
         {
             throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
+        }
+
+        var branches = manifest.Source.Native?.Discarded ?? [];
+        if (branchIndex < 0 || branchIndex >= branches.Count)
+        {
+            throw new ManifestException($"Discarded branch {branchIndex} does not exist.");
+        }
+
+        var branch = branches[branchIndex];
+        var finalAction = branch.Actions[^1];
+        var capturedFinalState = branch.Trace.Steps.Single(step => step.Seq == finalAction.Seq).After;
+        var branchManifest = manifest with
+        {
+            Source = manifest.Source with
+            {
+                Native = manifest.Source.Native! with { Discarded = null },
+            },
+            Actions =
+            [
+                .. manifest.Actions.Where(action => action.Seq <= branch.RollbackToSeq),
+                .. branch.Actions,
+            ],
+            Checkpoints = manifest.Checkpoints
+                .Where(checkpoint => checkpoint.AfterSeq <= branch.RollbackToSeq)
+                .ToList(),
+            Boundaries = [],
+            Verification = null,
+        };
+        var outcome = RunCore(branchManifest, null, progress, null, null, validate: false);
+        var replayedFinalState = outcome.Report.Trace?.Steps
+            .SingleOrDefault(step => step.Seq == finalAction.Seq)?.After;
+        var differences = ExactSampleDifferences(capturedFinalState, replayedFinalState);
+        if (differences.Count == 0) return outcome;
+
+        return outcome with
+        {
+            Report = outcome.Report with
+            {
+                Status = VerificationStatus.Rejected,
+                Diagnostics =
+                [
+                    .. outcome.Report.Diagnostics,
+                    $"discarded branch final state differs: {string.Join(", ", differences)}",
+                ],
+            },
+        };
+    }
+
+    private static IReadOnlyList<string> ExactSampleDifferences(
+        IReadOnlyDictionary<string, string> expected, IReadOnlyDictionary<string, string>? actual)
+    {
+        if (actual is null) return ["the replay produced no final sample"];
+
+        return expected.Keys
+            .Union(actual.Keys, StringComparer.Ordinal)
+            .OrderBy(field => field, StringComparer.Ordinal)
+            .Where(field => !expected.TryGetValue(field, out var expectedValue) ||
+                            !actual.TryGetValue(field, out var actualValue) ||
+                            !string.Equals(expectedValue, actualValue, StringComparison.Ordinal))
+            .Select(field =>
+                $"{field} captured='{expected.GetValueOrDefault(field, "<absent>")}' " +
+                $"engine='{actual.GetValueOrDefault(field, "<absent>")}'")
+            .ToList();
+    }
+
+    private static ArbiterOutcome RunCore(
+        ReplayManifest manifest, int? stopAfterSeq, PlayerProgress? progress,
+        string? gameModeOverride, IReadOnlyList<string>? modifierTypeNames, bool validate)
+    {
+        if (validate)
+        {
+            var validation = ManifestValidator.Validate(manifest);
+            if (!validation.IsValid)
+            {
+                throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
+            }
         }
 
         // The recording's own supplied state rather than everything-unlocked, because a

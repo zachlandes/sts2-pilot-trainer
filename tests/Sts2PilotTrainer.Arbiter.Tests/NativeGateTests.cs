@@ -54,6 +54,169 @@ public sealed class NativeGateTests
     }
 
     /// <summary>
+    /// A save and quit after decisions inside a fight produces the same replayable
+    /// history, with the attempted branch retained only as discarded evidence.
+    /// </summary>
+    [GameFact]
+    public void AMidFightSaveAndQuitRecordingPassesThePublicationGate()
+    {
+        var directory = Path.Combine(
+            Arbiter.RepoRoot, "build", "test-scratch", $"native-rollback-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var replayablePath = Path.Combine(
+                Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json");
+            var replayable = ManifestJson.Load(replayablePath);
+            var combatStart = replayable.Boundaries.Where(boundary => boundary.IsCombatStart).Skip(1).First();
+            var floorEntry = replayable.Boundaries.First(boundary =>
+                boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.AfterSeq == combatStart.AfterSeq);
+            var boundaryAction = replayable.Actions.Single(action => action.Seq == combatStart.AfterSeq);
+            var discardedAction = replayable.Actions.Single(action => action.Seq == combatStart.AfterSeq + 1);
+            var capturedPath = Path.Combine(directory, "captured-branch.replay.json");
+            var captured = Arbiter.Run(
+                "replay", replayablePath,
+                "--stop-after", discardedAction.Seq.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                "--out", capturedPath);
+            Assert.Equal(0, captured.ExitCode);
+            var capturedTrace = ManifestJson.Load(capturedPath).Verification!.Trace!;
+            var discarded = new DiscardedBranch
+            {
+                RollbackToSeq = combatStart.AfterSeq,
+                RollbackToDigest = floorEntry.Digest.Value,
+                Actions = [discardedAction],
+                Trace = new ReplayTrace
+                {
+                    Steps = capturedTrace.Steps
+                        .Where(step => step.Seq >= boundaryAction.Seq && step.Seq <= discardedAction.Seq)
+                        .ToList(),
+                },
+            };
+            var manifest = replayable with
+            {
+                Source = replayable.Source with
+                {
+                    Native = replayable.Source.Native! with { Discarded = [discarded] },
+                },
+            };
+            var path = Path.Combine(directory, "fixture.replay.json");
+            ManifestJson.Save(manifest, path);
+
+            var result = Arbiter.Run("gate", path, "--out", Path.Combine(directory, "evidence"));
+
+            Assert.True(result.ExitCode == 0, result.Output);
+            Assert.Contains("pass  discarded-branches", result.Output, StringComparison.Ordinal);
+            Assert.Contains("PUBLISHABLE", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
+
+            var lastStep = discarded.Trace.Steps[^1];
+            var wrongState = new Dictionary<string, string>(lastStep.After, StringComparer.Ordinal)
+            {
+                ["player.max_hp"] = "81",
+            };
+            var corrupted = discarded with
+            {
+                Trace = discarded.Trace with
+                {
+                    Steps =
+                    [
+                        .. discarded.Trace.Steps.Take(discarded.Trace.Steps.Count - 1),
+                        lastStep with { After = wrongState },
+                    ],
+                },
+            };
+            var corruptedManifest = replayable with
+            {
+                Source = replayable.Source with
+                {
+                    Native = replayable.Source.Native! with { Discarded = [corrupted] },
+                },
+            };
+            var corruptedPath = Path.Combine(directory, "corrupted.replay.json");
+            ManifestJson.Save(corruptedManifest, corruptedPath);
+
+            result = Arbiter.Run(
+                "replay", corruptedPath, "--discarded-branch", "0",
+                "--out", Path.Combine(directory, "corrupted-branch.json"));
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("discarded branch final state differs", result.Output, StringComparison.Ordinal);
+            Assert.Contains("player.max_hp captured='81' engine='80'", result.Output, StringComparison.Ordinal);
+
+            var omittedState = new Dictionary<string, string>(lastStep.After, StringComparer.Ordinal);
+            omittedState.Remove("player.max_hp");
+            var omitted = discarded with
+            {
+                Trace = discarded.Trace with
+                {
+                    Steps =
+                    [
+                        .. discarded.Trace.Steps.Take(discarded.Trace.Steps.Count - 1),
+                        lastStep with { After = omittedState },
+                    ],
+                },
+            };
+            var omittedManifest = replayable with
+            {
+                Source = replayable.Source with
+                {
+                    Native = replayable.Source.Native! with { Discarded = [omitted] },
+                },
+            };
+            var omittedPath = Path.Combine(directory, "omitted.replay.json");
+            ManifestJson.Save(omittedManifest, omittedPath);
+
+            result = Arbiter.Run(
+                "replay", omittedPath, "--discarded-branch", "0",
+                "--out", Path.Combine(directory, "omitted-branch.json"));
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("player.max_hp captured='<absent>' engine='80'", result.Output, StringComparison.Ordinal);
+
+            var nonCombatFloor = replayable.Boundaries.Single(boundary =>
+                boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.Floor == 4);
+            var nonCombatBoundary = replayable.Actions.Single(action => action.Seq == nonCombatFloor.AfterSeq);
+            var fabricatedActions = replayable.Actions
+                .Where(action => action.Seq is 31 or 32)
+                .ToList();
+            var fabricated = new DiscardedBranch
+            {
+                RollbackToSeq = nonCombatFloor.AfterSeq,
+                RollbackToDigest = nonCombatFloor.Digest.Value,
+                Actions = fabricatedActions,
+                Trace = new ReplayTrace
+                {
+                    Steps =
+                    [
+                        BranchStep(nonCombatBoundary, nonCombatFloor.Floor!.Value),
+                        .. fabricatedActions.Select(action => BranchStep(action, nonCombatFloor.Floor.Value)),
+                    ],
+                },
+            };
+            var fabricatedManifest = replayable with
+            {
+                Source = replayable.Source with
+                {
+                    Native = replayable.Source.Native! with { Discarded = [fabricated] },
+                },
+            };
+            var fabricatedPath = Path.Combine(directory, "fabricated.replay.json");
+            ManifestJson.Save(fabricatedManifest, fabricatedPath);
+
+            result = Arbiter.Run("gate", fabricatedPath, "--out", Path.Combine(directory, "fabricated-evidence"));
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("FAIL  discarded-branches", result.Output, StringComparison.Ordinal);
+            Assert.Contains("DISCARDED BRANCH REJECTED", result.Output, StringComparison.Ordinal);
+            Assert.Contains("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// And a video recording is still asked all of them, so the arm above is a branch
     /// rather than a removal.
     /// </summary>
@@ -100,6 +263,20 @@ public sealed class NativeGateTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    private static ReplayStep BranchStep(ActionRecord action, int floor) => new()
+    {
+        Seq = action.Seq,
+        Verb = action.Verb.ToString(),
+        Args = action.Args,
+        Before = new Dictionary<string, string>(StringComparer.Ordinal),
+        After = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["combat.outcome"] = "in_progress",
+            ["player.max_hp"] = "80",
+            ["run.total_floor"] = floor.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        },
+    };
 
     /// <summary>A recording, built the way the recorder builds one and written only
     /// into the scratch directory the gate is pointed at.</summary>

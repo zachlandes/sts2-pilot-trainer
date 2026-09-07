@@ -186,13 +186,9 @@ video, and carries no `source.run_start` or `source.run_summary` at all - those 
 a public video, and there is none.
 What it carries instead is `source.native.witnessed_run_start`, captured because it is
 a fact about the recorder's own session, and `source.native.continuity`.
-A recorder that joined a run already in progress did not see the run begin, and one
-that stopped and started again saw two stretches of a run and cannot know what
-happened between them; either way the history it wrote replays perfectly into a run
-that is not the one it describes.
-So the manifest is publishable and enterable only when the recorder witnessed the run
-start and its watch was `continuous`, which is the native half of the same rule and
-not a weaker one.
+A recorder that joined a run already in progress did not see the run begin, and a resumed recorder must account for the gap between sessions rather than assume nothing happened.
+The recorder's verified mid-fight rollback exception is owned by [the in-game host](in-game-host.md#producing-a-recording-and-checking-it).
+So the manifest is publishable and enterable only when the recorder witnessed the run start and its watch was `continuous`, which is the native half of the same rule and not a weaker one.
 
 `./scripts/arbiter validate <manifest> --show-rejections` demonstrates the gate
 refusing each way a provenance record can be wrong, and

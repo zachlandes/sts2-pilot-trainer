@@ -65,6 +65,18 @@ public sealed record RunCoverage
             .ThenBy(boundary => boundary.Kind, StringComparer.Ordinal),
     ];
 
+    /// <summary>Every fight that began after this floor was entered and before the next.</summary>
+    public IReadOnlyList<CoveredFight> FightsOn(CoveredFloor floor)
+    {
+        var nextFloorSeq = Floors
+            .Where(candidate => candidate.EnteredAfterSeq > floor.EnteredAfterSeq)
+            .Select(candidate => (int?)candidate.EnteredAfterSeq)
+            .Min();
+        return Fights.Where(fight =>
+            fight.CombatStartSeq >= floor.EnteredAfterSeq &&
+            (nextFloorSeq is null || fight.CombatStartSeq < nextFloorSeq)).ToList();
+    }
+
     /// <summary>
     /// Reads a trace into its fights and floors.
     ///

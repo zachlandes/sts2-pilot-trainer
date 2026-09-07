@@ -125,13 +125,11 @@ public sealed record ReplayStep
     public required IReadOnlyDictionary<string, string> After { get; init; }
 
     /// <summary>
-    /// Marks a step that happened and was then unwound - a line a player tried before
-    /// rewinding away from it.
+    /// Reserved marker for a step that happened and was then unwound.
     ///
-    /// Absent by default and read by nothing in these phases. It is here so that when
-    /// a rewind exists, a discarded branch can stay in the trace where it can be
-    /// looked at, rather than needing a format change or, worse, being dropped on the
-    /// floor to keep the trace looking linear.
+    /// Absent by default and read by nothing. Native mid-fight rollbacks instead keep
+    /// each branch in <see cref="NativeSource.Discarded"/>, with its own trace, because
+    /// that evidence must replay separately from the continued history.
     /// </summary>
     [JsonPropertyName("discarded")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

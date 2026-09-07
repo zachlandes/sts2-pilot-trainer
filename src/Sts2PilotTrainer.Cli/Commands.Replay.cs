@@ -223,6 +223,11 @@ internal static partial class Commands
         var statePath = Args.Value(args, "--state-out");
         var stateArtifact = statePath is null ? null : EvidenceArtifact.PreparePath(statePath);
         var manifest = ManifestJson.Load(manifestPath);
+        if (Args.Value(args, "--discarded-branch") is { } branchRaw)
+        {
+            return ReplayDiscardedBranch(
+                manifest, int.Parse(branchRaw, System.Globalization.CultureInfo.InvariantCulture), outArtifact);
+        }
         var stopAfter = Args.Value(args, "--stop-after") is { } raw
             ? int.Parse(raw, System.Globalization.CultureInfo.InvariantCulture)
             : (int?)null;
@@ -297,6 +302,52 @@ internal static partial class Commands
         }
 
         return report.Status is VerificationStatus.Verified or VerificationStatus.Partial ? 0 : 1;
+    }
+
+    private static int ReplayDiscardedBranch(
+        ReplayManifest manifest, int branchIndex, EvidenceArtifact? outArtifact)
+    {
+        var branch = manifest.Source.Native?.Discarded?.ElementAtOrDefault(branchIndex)
+            ?? throw new ManifestException($"Discarded branch {branchIndex} does not exist.");
+        var outcome = Arbiter.RunDiscardedBranch(
+            manifest, branchIndex, RecordedFightEntry.SuppliedProgressFor(manifest));
+        var report = outcome.Report;
+        var capturedCoverage = RunCoverage.Of(branch.Trace);
+        var capturedFloor = capturedCoverage.Floors.First(entry =>
+            entry.EnteredAfterSeq == branch.RollbackToSeq);
+        var capturedFight = capturedCoverage.FightsOn(capturedFloor).First();
+        var coverage = report.Trace is { } trace ? RunCoverage.Of(trace) : null;
+        var floor = coverage?.Floors.FirstOrDefault(entry => entry.EnteredAfterSeq == branch.RollbackToSeq);
+        var fight = floor is null ? null : coverage!.FightsOn(floor).FirstOrDefault();
+        var boundary = floor is null
+            ? null
+            : report.Boundaries.FirstOrDefault(candidate =>
+                candidate.Kind == ReplayBoundary.FloorEntryKind && candidate.Floor == floor.Floor &&
+                candidate.AfterSeq == branch.RollbackToSeq);
+        var passed = report.Status == VerificationStatus.Verified &&
+            fight?.CombatStartSeq == capturedFight.CombatStartSeq &&
+            boundary?.Digest.Source == FactSource.Engine &&
+            string.Equals(boundary.Digest.Value, branch.RollbackToDigest, StringComparison.Ordinal);
+        var diagnostic = passed
+            ? null
+            : "The discarded decisions did not reproduce a fight from their verified room-entry state.";
+
+        Console.WriteLine($"manifest : {manifest.RunId}");
+        Console.WriteLine($"branch   : {branchIndex}");
+        Console.WriteLine(passed ? "DISCARDED BRANCH VERIFIED" : "DISCARDED BRANCH REJECTED");
+        if (diagnostic is not null) Console.WriteLine(diagnostic);
+        foreach (var entry in report.Diagnostics) Console.WriteLine(entry);
+
+        outArtifact?.WriteAtomic(JsonSerializer.Serialize(new
+        {
+            schema = "sts2-pilot-trainer/discarded-branch-verification/v1",
+            manifest = manifest.RunId,
+            branch = branchIndex,
+            passed,
+            diagnostic,
+            report,
+        }, Json.Indented) + "\n");
+        return passed ? 0 : 1;
     }
 
     /// <summary>

@@ -34,10 +34,11 @@ public static class IngestionCorruption
     /// Damage to a native recording's account of itself.
     ///
     /// The first two are the native counterparts of the two checks that cannot move
-    /// downstream. A recorder that joined a run late, and one that stopped and
-    /// started again, both produce a history that replays perfectly against a run
-    /// that is not the one it describes. The third is the same shape reached another
-    /// way: a run the console was used in replays perfectly into a run nobody played.
+    /// downstream. A recorder that joined a run late, and one whose resumed watch
+    /// contains an unaccounted gap, both produce a history that replays perfectly
+    /// against a run that is not the one it describes. The third is the same shape
+    /// reached another way: a run the console was used in replays perfectly into a run
+    /// nobody played.
     /// </summary>
     public static IReadOnlyList<Case> Native =>
     [

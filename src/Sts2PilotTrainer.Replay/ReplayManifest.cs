@@ -221,9 +221,8 @@ public sealed record SourceProvenance
 /// <see cref="WitnessedRunStart"/> is the native counterpart of a video's run-start
 /// evidence: a history replayed from run start against a run the recorder joined
 /// half way through reconstructs a different run, and every other gate passes.
-/// <see cref="Continuity"/> is the counterpart of the end-of-run reading: a recorder
-/// that stopped and started again saw two stretches of a run and cannot know what
-/// happened between them.
+/// <see cref="Continuity"/> is the counterpart of the end-of-run reading: a resumed
+/// recorder must either account for the gap between sessions or mark the watch broken.
 /// </summary>
 public sealed record NativeSource
 {
@@ -298,6 +297,16 @@ public sealed record NativeSource
     public IReadOnlyList<UnmappedDecision>? Unmapped { get; init; }
 
     /// <summary>
+    /// Branches the player played after entering a fight and the game's own save
+    /// later rolled back. Kept as captured evidence and excluded from the continued
+    /// run's ordered history; the publication gate replays each branch separately
+    /// through its final captured state.
+    /// </summary>
+    [JsonPropertyName("discarded")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<DiscardedBranch>? Discarded { get; init; }
+
+    /// <summary>
     /// The oldest format this file was written in, when it was migrated from one.
     ///
     /// Written only by <c>arbiter migrate-manifest</c> and absent from a recording a
@@ -323,6 +332,27 @@ public sealed record NativeSource
     /// introduced a field, so that field's absence is the migration's rather than a
     /// recorder's omission.</summary>
     public bool PredatesVersion(int version) => MigratedFromVersion is { } from && from < version;
+}
+
+/// <summary>A recorded branch removed by the game's observed room-entry rollback.</summary>
+public sealed record DiscardedBranch
+{
+    /// <summary>The room-entry action the continued run returned to.</summary>
+    [JsonPropertyName("rollback_to_seq")]
+    public required int RollbackToSeq { get; init; }
+
+    /// <summary>The captured digest which both the journal boundary and resumed run held.</summary>
+    [JsonPropertyName("rollback_to_digest")]
+    public required string RollbackToDigest { get; init; }
+
+    /// <summary>The decisions observed after that boundary before the quit.</summary>
+    [JsonPropertyName("actions")]
+    public required IReadOnlyList<ActionRecord> Actions { get; init; }
+
+    /// <summary>The captured states showing where combat began and the complete final
+    /// sample the branch replay must match exactly.</summary>
+    [JsonPropertyName("trace")]
+    public required ReplayTrace Trace { get; init; }
 }
 
 public sealed record SyntheticSource

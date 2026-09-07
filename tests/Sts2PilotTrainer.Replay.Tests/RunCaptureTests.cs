@@ -242,23 +242,146 @@ public sealed class RunCaptureTests
     }
 
     [Fact]
-    public void ASessionThatResumesEarlierThanItLeftOffIsBrokenAndKeepsEverything()
+    public void AMidFightSaveAndQuitResumesContinuouslyAndMarksTheDiscardedBranch()
     {
-        var journal = Played().Journal;
+        var capture = RunCapture.Begin(Start());
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            InFight(2, turn: 1), Digest(1));
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
+            InFight(2, turn: 1, enemyHp: 30), Digest(2));
+        capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(3));
 
-        var resumed = RunCapture.Resume(journal, Digest(1));
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(1));
+
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Null(resumed.Refusal);
+        Assert.Equal(2, resumed.NextSeq);
+        Assert.NotNull(resumed.ResumptionRecord);
+
+        var persisted = RunJournal.Parse(resumed.Journal.Render());
+        var discarded = Assert.Single(persisted.Discarded);
+        Assert.Equal([2, 3], discarded.Entries.Select(entry => entry.Seq));
+
+        resumed.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
+            Won(2, hp: 58), Digest(4));
+
+        resumed = RunCapture.Resume(RunJournal.Parse(resumed.Journal.Render()), Digest(4));
+        Assert.Equal(3, resumed.NextSeq);
+        Assert.Single(resumed.Discarded);
+
+        resumed.Finish("abandoned");
+        var manifest = resumed.ToManifest();
+
+        Assert.Equal([0, 1, 2], manifest.Actions.Select(action => action.Seq));
+        Assert.Equal([2, 3], Assert.Single(manifest.Source.Native!.Discarded!).Actions.Select(action => action.Seq));
+        Assert.Equal(NativeSource.ContinuousContinuity, manifest.Source.Native.Continuity);
+        Assert.True(ManifestValidator.Validate(manifest).IsValid);
+    }
+
+    [Fact]
+    public void AMidFightRollbackRemainsValidWhenTheContinuedFightIsAbandoned()
+    {
+        var capture = Played();
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "3")),
+            InFight(3), Digest(5));
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
+            InFight(3, enemyHp: 30), Digest(6));
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        resumed.Finish("abandoned");
+        var verified = Verified(resumed);
+
+        var result = ManifestValidator.Validate(verified);
+
+        Assert.True(result.IsValid, result.Describe());
+        Assert.Contains(verified.Verification!.Boundaries, boundary =>
+            boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.AfterSeq == 5);
+        Assert.DoesNotContain(verified.Verification.Boundaries, boundary =>
+            boundary.IsCombatStart && boundary.AfterSeq == 5);
+    }
+
+    [Fact]
+    public void AnEventFightRollbackRemainsValidWhenTheContinuedFightIsAbandoned()
+    {
+        var capture = Played();
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "3")),
+            Floor(3), Digest(5));
+        capture.Record(
+            ActionVerb.ChooseEventOption,
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
+            InFight(3), Digest(6));
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
+            InFight(3, enemyHp: 30), Digest(7));
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        resumed.Record(
+            ActionVerb.ChooseEventOption,
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
+            InFight(3), Digest(6));
+        resumed.Finish("abandoned");
+        var verified = Verified(resumed);
+
+        var result = ManifestValidator.Validate(verified);
+
+        Assert.True(result.IsValid, result.Describe());
+        var discarded = Assert.Single(verified.Source.Native!.Discarded!);
+        Assert.Equal([6, 7], discarded.Actions.Select(action => action.Seq));
+        Assert.Contains(verified.Verification!.Trace!.Steps, step =>
+            step.Seq == 6 && step.After["combat.outcome"] == "in_progress");
+    }
+
+    [Fact]
+    public void AnEventFightRollbackRemainsValidWhenTheContinuedChoiceIsNotCombat()
+    {
+        var capture = Played();
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "3")),
+            Floor(3), Digest(5));
+        capture.Record(
+            ActionVerb.ChooseEventOption,
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
+            InFight(3), Digest(6));
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
+            InFight(3, enemyHp: 30), Digest(7));
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        resumed.Record(
+            ActionVerb.ChooseEventOption,
+            Args(("event_id", "EVENT.TEST"), ("option_index", "1"), ("option_key", "EVENT.SAFE")),
+            Floor(3), Digest(60));
+        resumed = RunCapture.Resume(RunJournal.Parse(resumed.Journal.Render()), Digest(60));
+        resumed.Finish("abandoned");
+        var verified = Verified(resumed);
+
+        var result = ManifestValidator.Validate(verified);
+
+        Assert.True(result.IsValid, result.Describe());
+        Assert.Single(RunCoverage.Of(verified.Verification!.Trace!).Fights);
+        var discarded = Assert.Single(verified.Source.Native!.Discarded!);
+        Assert.Contains(discarded.Trace.Steps, step =>
+            step.Seq == 6 && step.After["combat.outcome"] == "in_progress");
+    }
+
+    [Fact]
+    public void ASessionThatResumesAtAnEarlierNonFightBoundaryIsBroken()
+    {
+        var resumed = RunCapture.Resume(Played().Journal, Digest(0));
 
         Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
         Assert.Equal(RunCaptureState.Broken, resumed.State);
-        Assert.Contains("resumed this run at decision 1", resumed.Refusal!, StringComparison.Ordinal);
-        Assert.Contains("to decision 4", resumed.Refusal!, StringComparison.Ordinal);
-
-        // Nothing is truncated. What was seen stays seen, and it is the continuity that
-        // says the history is not this run's.
-        resumed.Finish("abandoned");
-        var manifest = resumed.ToManifest();
-        Assert.Equal(5, manifest.Actions.Count);
-        Assert.Equal(NativeSource.BrokenContinuity, manifest.Source.Native!.Continuity);
+        Assert.Contains("not the game's rollback of a live fight", resumed.Refusal!, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -695,6 +818,28 @@ public sealed class RunCaptureTests
             ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
             Won(2, hp: 58), Digest(4));
         return capture;
+    }
+
+    private static ReplayManifest Verified(RunCapture capture)
+    {
+        var manifest = capture.ToManifest();
+        return manifest with
+        {
+            Verification = new VerificationReport
+            {
+                Status = VerificationStatus.Verified,
+                ArbiterVersion = "test",
+                Preflight = new PreflightResult(true, []),
+                Trace = capture.Trace,
+                Boundaries =
+                [
+                    .. manifest.Boundaries.Select(boundary => boundary with
+                    {
+                        Digest = Fact<string>.Engine(boundary.Digest.Value),
+                    }),
+                ],
+            },
+        };
     }
 
     private static RunRecordingStart Start() => new()

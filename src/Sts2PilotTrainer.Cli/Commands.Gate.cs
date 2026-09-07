@@ -59,6 +59,7 @@ internal static partial class Commands
         // which are the two things no replay could establish afterwards. Every engine
         // condition below is the same for both kinds.
         var isNative = manifest.Source.Kind == "native";
+        var hasDiscardedBranches = manifest.Source.Native?.Discarded?.Count > 0;
         var conditions = new List<Condition>
         {
             new(
@@ -129,6 +130,10 @@ internal static partial class Commands
                 "The reconstructed history replays through the real engine and matches every observed value.",
                 SelfProcess.Run("replay", manifestPath, "--out", verifiedPath));
                 conditions.Add(reproduction);
+                if (hasDiscardedBranches)
+                {
+                    conditions.Add(DiscardedBranchesHold(manifestPath, manifest, outDir));
+                }
 
                 conditions.Add(reproduction.Passed
                     ? CoveredFightIsComplete(verifiedPath)
@@ -159,14 +164,14 @@ internal static partial class Commands
             }
             else
             {
-                AddSkippedEngineConditions(conditions, isNative);
+                AddSkippedEngineConditions(conditions, isNative, hasDiscardedBranches);
             }
         }
         else
         {
             conditions.Add(new Condition(
                 "environment", "The declared build and content hash match this machine, and the declared mode is supported.", false));
-            AddSkippedEngineConditions(conditions, isNative);
+            AddSkippedEngineConditions(conditions, isNative, hasDiscardedBranches);
         }
 
         Console.WriteLine($"manifest : {manifest.RunId}");
@@ -234,7 +239,8 @@ internal static partial class Commands
     /// reproduce, and it has not failed baselib-path, because the probe would refuse
     /// its manifest.
     /// </summary>
-    private static void AddSkippedEngineConditions(List<Condition> conditions, bool isNative)
+    private static void AddSkippedEngineConditions(
+        List<Condition> conditions, bool isNative, bool hasDiscardedBranches)
     {
         if (!isNative)
         {
@@ -253,10 +259,14 @@ internal static partial class Commands
             ]);
         }
 
+        conditions.Add(new Condition("reproduction",
+            "The reconstructed history replays through the real engine and matches every observed value.", false));
+        if (hasDiscardedBranches)
+        {
+            conditions.Add(new Condition("discarded-branches", DiscardedBranchesRequirement, false));
+        }
         conditions.AddRange(
     [
-        new Condition("reproduction",
-            "The reconstructed history replays through the real engine and matches every observed value.", false),
         new Condition("covered-fight", CoveredFightRequirement, false),
         new Condition("declared-boundaries", DeclaredBoundariesRequirement, false),
         new Condition("combat-boundary", CombatBoundaryRequirement, false),
@@ -269,6 +279,9 @@ internal static partial class Commands
     private const string RejectionRequirement =
         "Every required corruption applies, and corrupted and incomplete histories are refused.";
 
+    private const string DiscardedBranchesRequirement =
+        "Every discarded fight branch reproduces through the real engine from its verified room-entry state.";
+
     private const string CoveredFightRequirement =
         "The reproduced history covers a whole fight, from its combat start to the end of that fight.";
 
@@ -277,6 +290,27 @@ internal static partial class Commands
 
     private const string CombatBoundaryRequirement =
         "Every compatible boundary digest in the manifest matches the real-engine reproduction.";
+
+    private static Condition DiscardedBranchesHold(
+        string manifestPath, ReplayManifest manifest, string outDir)
+    {
+        var branches = manifest.Source.Native?.Discarded ?? [];
+        var failures = new List<string>();
+        for (var index = 0; index < branches.Count; index++)
+        {
+            var result = SelfProcess.Run(
+                "replay", manifestPath,
+                "--discarded-branch", index.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                "--out", Path.Combine(outDir, $"discarded-branch-{index}.json"));
+            if (result.ExitCode == 0) continue;
+
+            failures.Add(result.StandardOutput + result.StandardError);
+        }
+
+        return new Condition(
+            "discarded-branches", DiscardedBranchesRequirement, failures.Count == 0,
+            failures.Count == 0 ? null : string.Join("\n", failures));
+    }
 
     /// <summary>
     /// Whether the verified history covers a fight that finished.

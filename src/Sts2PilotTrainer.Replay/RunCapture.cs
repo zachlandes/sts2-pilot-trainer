@@ -50,12 +50,14 @@ public sealed record StateReading(IReadOnlyDictionary<string, string> State, str
 /// Two facts about a recording cannot be established downstream and are established
 /// here. A recorder that joined a run half way through has a history that replays
 /// perfectly into a different run, so <see cref="Begin"/> refuses a run whose start it
-/// did not witness. A recorder that stopped and started again saw two stretches of a
-/// run and cannot know what happened between them, so <see cref="Resume"/> compares
-/// the state the game resumed into against the state the journal last recorded and
-/// marks <see cref="Continuity"/> broken when they differ. Nothing is ever truncated:
-/// a broken recording keeps every decision it saw, and it is the refusal that says it
-/// is not this run's history, not the absence of data.
+/// did not witness. A recorder that resumes must account for the gap between sessions,
+/// so <see cref="Resume"/> compares the state the game resumed into against the state
+/// the journal last recorded and
+/// marks <see cref="Continuity"/> broken when they differ, except when the live state
+/// is the room-entry boundary of the fight the journal still held open. That is the
+/// game's observed save rollback: its later fight decisions remain as discarded
+/// evidence and recording resumes from the boundary. Every other mismatch stays a
+/// break rather than being repaired.
 ///
 /// Nothing here reads the game. Every reading arrives from the caller, which is what
 /// keeps every rule in this class testable on a machine that does not own the game.
@@ -82,6 +84,9 @@ public sealed class RunCapture
     private readonly Dictionary<int, string> _digests = [];
     private readonly Dictionary<int, int?> _clocks = [];
     private readonly List<string> _refusals = [];
+    private readonly List<DiscardedBranch> _discarded = [];
+    private readonly List<JournalDiscardedBranch> _journalDiscarded = [];
+    private readonly List<string> _journalRecords = [];
 
     private FightCapture? _fight;
     private JournalStop? _stop;
@@ -186,6 +191,12 @@ public sealed class RunCapture
     /// still being fought.</summary>
     public IReadOnlyList<FightCapture> Fights => _fights;
 
+    /// <summary>Observed fight branches removed by the game's room-entry rollback.</summary>
+    public IReadOnlyList<DiscardedBranch> Discarded => _discarded;
+
+    /// <summary>The rollback line a caller must append while attaching, if any.</summary>
+    public string? ResumptionRecord { get; private set; }
+
     /// <summary>The journal as it stands: the header, the opening reading, one entry
     /// per decision and one line per refusal. What a crash leaves behind.</summary>
     public RunJournal Journal => new()
@@ -199,6 +210,8 @@ public sealed class RunCapture
         Refusals = _refusals.ToList(),
         NonStandard = _nonStandard,
         Stop = _stop,
+        Discarded = _journalDiscarded.ToList(),
+        SerializedRecords = _journalRecords.ToList(),
     };
 
     private bool _nonStandard;
@@ -251,7 +264,9 @@ public sealed class RunCapture
             RunClockMs = start.RunClockMs,
         };
 
-        return new RunCapture(start, witnessedRunStart: true, NativeSource.ContinuousContinuity, opening);
+        var capture = new RunCapture(start, witnessedRunStart: true, NativeSource.ContinuousContinuity, opening);
+        capture._journalRecords.Add(RunJournal.RenderEntry(opening));
+        return capture;
     }
 
     /// <summary>
@@ -262,9 +277,10 @@ public sealed class RunCapture
     /// recorder stopped watching is the question: the journal's last entry carries the
     /// complete state digest of the moment it was written, and the live game carries
     /// the digest of the moment it resumed into. Equal means nothing happened in
-    /// between that the recorder missed. Anything else means it did, and the recording
-    /// is marked broken rather than repaired - a history missing decisions replays into
-    /// a different run while every value in it is individually true.
+    /// between that the recorder missed. A return to the entry of the fight the journal
+    /// still holds open is the game's observed save rollback, so the unwound decisions
+    /// are marked discarded and the replayable history resumes there. Anything else is
+    /// marked broken rather than repaired.
     /// </summary>
     /// <param name="journal">What the previous session wrote.</param>
     /// <param name="liveDigest">The complete canonical state digest of the run the
@@ -290,6 +306,8 @@ public sealed class RunCapture
         var capture = new RunCapture(
             start, journal.WitnessedRunStart, NativeSource.ContinuousContinuity, journal.Opening);
         foreach (var entry in journal.Decisions) capture.Replay(entry);
+        capture._journalDiscarded.AddRange(journal.Discarded);
+        capture._discarded.AddRange(journal.Discarded.Select(ToDiscardedBranch));
 
         // A stop is replayed into the same stopped state, before the digest is
         // compared: the recording ends where the recorder stopped, and the run the
@@ -315,13 +333,20 @@ public sealed class RunCapture
         {
             var rolledBackTo = capture.Journal.Entries
                 .LastOrDefault(entry => string.Equals(entry.Digest, liveDigest, StringComparison.Ordinal));
-            capture.Break(rolledBackTo is null
-                ? "The run this session resumed into is not one this recording ever saw. The recorder cannot " +
-                  "say what happened between the decision it last watched and the state the game came back in."
-                : $"The game resumed this run at decision " +
-                  $"{rolledBackTo.Seq.ToString(CultureInfo.InvariantCulture)}, and the recorder had watched it " +
-                  $"to decision {last.Seq.ToString(CultureInfo.InvariantCulture)}. The decisions between them " +
-                  "did not happen in the run being played now, so the history is not this run's.");
+            if (rolledBackTo is not null && capture.IsObservedFightRollback(rolledBackTo))
+            {
+                capture = capture.RollBack(rolledBackTo);
+            }
+            else
+            {
+                capture.Break(rolledBackTo is null
+                    ? "The run this session resumed into is not one this recording ever saw. The recorder cannot " +
+                      "say what happened between the decision it last watched and the state the game came back in."
+                    : $"The game resumed this run at decision " +
+                      $"{rolledBackTo.Seq.ToString(CultureInfo.InvariantCulture)}, and the recorder had watched it " +
+                      $"to decision {last.Seq.ToString(CultureInfo.InvariantCulture)}. This is not the game's " +
+                      "rollback of a live fight to its room-entry boundary, so the recorder cannot account for it.");
+            }
         }
 
         if (!journal.WitnessedRunStart)
@@ -331,8 +356,104 @@ public sealed class RunCapture
                 "does not start where the run did.");
         }
 
+        capture._journalRecords.Clear();
+        capture._journalRecords.AddRange(journal.SerializedRecords ??
+            journal.Entries.Select(RunJournal.RenderEntry));
+        if (capture.ResumptionRecord is { } resumption) capture._journalRecords.Add(resumption);
+        foreach (var reason in capture.Refusals.Skip(journal.Refusals.Count))
+        {
+            capture._journalRecords.Add(RunJournal.RenderRefusal(reason));
+        }
+
         return capture;
     }
+
+    /// <summary>
+    /// True only for the game's observed save behavior: the recording ended in a
+    /// live fight and the resumed digest is that same fight's entry decision.
+    /// </summary>
+    private bool IsObservedFightRollback(RunJournalEntry target)
+    {
+        var coverage = RunCoverage.Of(Trace);
+        var roomEntry = coverage.Floors.LastOrDefault();
+        var fight = roomEntry is null ? null : coverage.FightsOn(roomEntry).LastOrDefault();
+        return fight is { Finished: false } && roomEntry!.EnteredAfterSeq == target.Seq &&
+               _entries.Any(entry => entry.Seq > target.Seq);
+    }
+
+    private RunCapture RollBack(RunJournalEntry target)
+    {
+        var removed = _entries.Where(entry => entry.Seq > target.Seq).ToList();
+        var rollback = new JournalRollback
+        {
+            RollbackToSeq = target.Seq,
+            RollbackToDigest = target.Digest,
+            DiscardedFromSeq = removed[0].Seq,
+            DiscardedThroughSeq = removed[^1].Seq,
+        };
+
+        var rebuilt = new RunCapture(
+            new RunRecordingStart
+            {
+                RunId = RunId,
+                RecorderVersion = RecorderVersion,
+                Identity = Identity,
+                State = Opening.State,
+                Digest = Opening.Digest,
+                RunClockMs = Opening.RunClockMs,
+            },
+            WitnessedRunStart,
+            Continuity,
+            Opening);
+        foreach (var entry in _entries.Where(entry => entry.Seq <= target.Seq)) rebuilt.Replay(entry);
+        rebuilt._discarded.AddRange(_discarded);
+        rebuilt._journalDiscarded.AddRange(_journalDiscarded);
+        var discarded = new JournalDiscardedBranch(rollback, target, removed);
+        rebuilt._journalDiscarded.Add(discarded);
+        rebuilt._discarded.Add(ToDiscardedBranch(discarded));
+        foreach (var refusal in _refusals) rebuilt.Break(refusal);
+        if (_nonStandard)
+        {
+            rebuilt._nonStandard = true;
+            rebuilt.Integrity = NativeSource.NonStandardIntegrity;
+        }
+
+        rebuilt.ResumptionRecord = RunJournal.RenderRollback(rollback);
+        return rebuilt;
+    }
+
+    private static DiscardedBranch ToDiscardedBranch(JournalDiscardedBranch branch) => new()
+    {
+        RollbackToSeq = branch.Rollback.RollbackToSeq,
+        RollbackToDigest = branch.Rollback.RollbackToDigest,
+        Actions = branch.Entries.Select(entry =>
+        {
+            if (!Enum.TryParse<ActionVerb>(entry.Verb, out var verb))
+            {
+                throw new ManifestException($"A discarded journal decision names unknown verb '{entry.Verb}'.");
+            }
+
+            return new ActionRecord
+            {
+                Seq = entry.Seq,
+                Verb = verb,
+                Args = entry.Args,
+                Source = FactSource.Captured,
+                Evidence = FactEvidence.AtActionOrdinal(entry.Seq, entry.RunClockMs),
+            };
+        }).ToList(),
+        Trace = new ReplayTrace
+        {
+            Steps = branch.Entries.Prepend(branch.Boundary).Select(entry => new ReplayStep
+            {
+                Seq = entry.Seq,
+                Verb = entry.Verb,
+                Args = entry.Args,
+                Before = entry.Before ?? entry.State,
+                After = entry.State,
+            }).ToList(),
+        },
+    };
 
     /// <summary>
     /// Records one decision, the state it began from, and the settled state it left
@@ -397,6 +518,7 @@ public sealed class RunCapture
         };
 
         Append(entry, verb);
+        _journalRecords.Add(RunJournal.RenderEntry(entry));
         return entry;
     }
 
@@ -440,7 +562,9 @@ public sealed class RunCapture
 
         var stop = new JournalStop(decision, ReplayTrace.Sample(before.State), before.Digest);
         StopAt(stop);
-        return RunJournal.RenderStop(stop);
+        var line = RunJournal.RenderStop(stop);
+        _journalRecords.Add(line);
+        return line;
     }
 
     private void StopAt(JournalStop stop)
@@ -487,7 +611,9 @@ public sealed class RunCapture
     public string MarkBroken(string reason)
     {
         Break(reason);
-        return RunJournal.RenderRefusal(reason);
+        var line = RunJournal.RenderRefusal(reason);
+        _journalRecords.Add(line);
+        return line;
     }
 
     /// <summary>
@@ -517,12 +643,14 @@ public sealed class RunCapture
     /// the same way a decision does.</returns>
     public string MarkNonStandard()
     {
+        var line = RunJournal.RenderNonStandard();
+        if (!_nonStandard) _journalRecords.Add(line);
         _nonStandard = true;
         // A stopped recording stays 'unmapped': the stop names what was met and the
         // validator reads its entries beside that integrity, and either value refuses
         // publication. The mark is still on the journal for a later reader.
         if (_stop is null) Integrity = NativeSource.NonStandardIntegrity;
-        return RunJournal.RenderNonStandard();
+        return line;
     }
 
     /// <summary>
@@ -570,6 +698,7 @@ public sealed class RunCapture
                     Outcome = Outcome,
                     Integrity = Integrity,
                     Unmapped = _stop is { } stop ? [stop.Decision] : null,
+                    Discarded = _discarded.Count == 0 ? null : _discarded.ToList(),
                 },
             },
             Actions = _actions.ToList(),

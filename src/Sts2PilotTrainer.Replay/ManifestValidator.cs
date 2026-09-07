@@ -64,6 +64,7 @@ public static partial class ManifestValidator
 
         var maxActionOrdinal = manifest.Actions.Count - 1;
         ValidateSource(manifest.Source, manifest.Actions, problems);
+        ValidateDiscardedBranches(manifest, problems);
         var videoDurationMs = manifest.Source.Video is { DurationSeconds: > 0 } video
             ? checked(video.DurationSeconds * 1000)
             : 0;
@@ -509,7 +510,7 @@ public static partial class ManifestValidator
     /// evidence and <c>continuity</c> is the counterpart of the end-of-run reading.
     /// Both are refused here rather than deferred, for the same reason
     /// <c>AGENTS.md</c> gives for their video equivalents: a history recorded from
-    /// half way through a run, or from two disconnected stretches of one, replays
+    /// half way through a run, or with an unaccounted gap between sessions, replays
     /// perfectly and reconstructs a different run.
     ///
     /// <c>integrity</c> is the third fact of that kind, and it says whether the
@@ -623,6 +624,95 @@ public static partial class ManifestValidator
             }
         }
     }
+
+    private static void ValidateDiscardedBranches(ReplayManifest manifest, List<string> problems)
+    {
+        if (manifest.Source.Native?.Discarded is not { } branches) return;
+
+        var actions = manifest.Actions;
+        var verification = manifest.Verification is { Status: VerificationStatus.Verified, Trace: not null }
+            ? manifest.Verification
+            : null;
+
+        for (var branchIndex = 0; branchIndex < branches.Count; branchIndex++)
+        {
+            var branch = branches[branchIndex];
+            var path = $"source.native.discarded[{branchIndex.ToString(CultureInfo.InvariantCulture)}]";
+            if (branch.RollbackToSeq < 0 || branch.RollbackToSeq >= actions.Count)
+            {
+                problems.Add($"{path}.rollback_to_seq does not name a decision in the continued history.");
+            }
+            if (string.IsNullOrWhiteSpace(branch.RollbackToDigest))
+            {
+                problems.Add($"{path}.rollback_to_digest is empty.");
+            }
+            if (branch.Actions.Count == 0)
+            {
+                problems.Add($"{path}.actions is empty. A rollback without an observed decision discards nothing.");
+                continue;
+            }
+
+            for (var index = 0; index < branch.Actions.Count; index++)
+            {
+                var action = branch.Actions[index];
+                var expected = branch.RollbackToSeq + index + 1;
+                if (action.Seq != expected)
+                {
+                    problems.Add(
+                        $"{path}.actions[{index.ToString(CultureInfo.InvariantCulture)}] has seq={action.Seq}, " +
+                        $"expected {expected.ToString(CultureInfo.InvariantCulture)}.");
+                }
+                if (action.Source != FactSource.Captured || action.Evidence?.ActionOrdinal != action.Seq)
+                {
+                    problems.Add(
+                        $"{path}.actions[{index.ToString(CultureInfo.InvariantCulture)}] is not captured at its " +
+                        "own action ordinal.");
+                }
+                ValidateActionArguments(action, problems);
+            }
+
+            var traceSteps = branch.Trace.Steps.OrderBy(step => step.Seq).ToList();
+            var expectedActions = actions
+                .Where(action => action.Seq == branch.RollbackToSeq)
+                .Concat(branch.Actions)
+                .ToList();
+            if (traceSteps.Count != expectedActions.Count ||
+                traceSteps.Where((step, index) => !Matches(step, expectedActions[index])).Any())
+            {
+                problems.Add($"{path}.trace does not describe its rollback boundary and discarded actions.");
+            }
+
+            var branchCoverage = RunCoverage.Of(branch.Trace);
+            var floor = branchCoverage.Floors.FirstOrDefault(entry =>
+                entry.EnteredAfterSeq == branch.RollbackToSeq);
+            var fight = floor is null ? null : branchCoverage.FightsOn(floor).FirstOrDefault();
+            if (fight is null)
+            {
+                problems.Add($"{path}.trace does not show a fight beginning on the rollback floor.");
+            }
+
+            if (verification is null) continue;
+
+            var boundary = floor is null
+                ? null
+                : verification.Boundaries.FirstOrDefault(candidate =>
+                    candidate.Kind == ReplayBoundary.FloorEntryKind && candidate.Floor == floor.Floor &&
+                    candidate.AfterSeq == branch.RollbackToSeq);
+            if (boundary is null || boundary.Digest.Source != FactSource.Engine ||
+                !string.Equals(boundary.Digest.Value, branch.RollbackToDigest, StringComparison.Ordinal))
+            {
+                problems.Add(
+                    $"{path} does not identify the verified room-entry state it shares with the continued history.");
+            }
+        }
+    }
+
+    private static bool Matches(ReplayStep step, ActionRecord action) =>
+        step.Seq == action.Seq &&
+        string.Equals(step.Verb, action.Verb.ToString(), StringComparison.Ordinal) &&
+        step.Args.Count == action.Args.Count &&
+        step.Args.All(arg => action.Args.TryGetValue(arg.Key, out var value) &&
+                            string.Equals(arg.Value, value, StringComparison.Ordinal));
 
     /// <summary>
     /// What <c>source.native.integrity</c> may say, what has to travel with it, and the
