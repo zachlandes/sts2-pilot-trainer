@@ -163,7 +163,7 @@ internal static class Program
               in, including the step-by-step trace. --show-trace prints what changed at
               each step; see docs/comparison-direction.md for what the trace is for.
               --discarded-branch replays that branch from the recorded room-entry
-              state and refuses unless the engine reaches the captured fight.
+              state and refuses unless the fight and complete final sample match.
 
           determinism     <manifest> --runs <n>
               Replay the same manifest in n fresh processes and compare canonical state.

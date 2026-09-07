@@ -510,7 +510,7 @@ public static partial class ManifestValidator
     /// evidence and <c>continuity</c> is the counterpart of the end-of-run reading.
     /// Both are refused here rather than deferred, for the same reason
     /// <c>AGENTS.md</c> gives for their video equivalents: a history recorded from
-    /// half way through a run, or from two disconnected stretches of one, replays
+    /// half way through a run, or with an unaccounted gap between sessions, replays
     /// perfectly and reconstructs a different run.
     ///
     /// <c>integrity</c> is the third fact of that kind, and it says whether the

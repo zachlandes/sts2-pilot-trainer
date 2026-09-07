@@ -180,9 +180,8 @@ public sealed class RunCoverageTests
 }
 
 /// <summary>
-/// The marker a future rewind will use to keep a line a player tried and unwound.
-/// Nothing reads it in these phases; what it has to do now is be absent by default
-/// and survive a round trip, so that when a rewind exists the format does not move.
+/// The reserved per-step marker remains absent by default and survives a round trip.
+/// Native mid-fight rollbacks use their own discarded-branch trace instead.
 /// </summary>
 public sealed class DiscardedStepTests
 {

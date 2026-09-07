@@ -19,8 +19,8 @@ namespace Sts2PilotTrainer.Replay;
 /// identity, whether its start was witnessed, and each decision with the sampled
 /// state and complete state digest either side of it. <see cref="RunCapture.Resume"/>
 /// is the only reader that matters, and it rebuilds the capture rather than reading
-/// the journal as a result - so a session continued from the game's own save
-/// publishes exactly what an uninterrupted one would have.
+/// the journal as a result, preserving the replayable history and any discarded
+/// branch evidence established by a verified mid-fight rollback.
 ///
 /// The digests are why this is not merely a log. They are what lets a resumed session
 /// ask whether the run the game came back in is the run this journal describes,
@@ -64,8 +64,8 @@ public sealed record RunJournal
     /// raised them.
     ///
     /// On the file rather than derived, because a broken watch is the one fact about a
-    /// recording nothing downstream can establish. A session that resumed at a
-    /// rolled-back save, or that could not read a decision it saw, knows the history
+    /// recording nothing downstream can establish. A session that resumed into an
+    /// unaccounted state, or that could not read a decision it saw, knows the history
     /// has a hole in it; the session after it would read a journal whose last digest
     /// matches the live one and publish that hole as a continuous account of the run.
     /// </summary>

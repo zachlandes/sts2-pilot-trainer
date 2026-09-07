@@ -455,9 +455,9 @@ same kind, without a video and without a transcriber.
   It records the run's identity as captured facts, one captured action per decision, and a captured checkpoint and digest at every boundary `RunCoverage` finds.
   It refuses a run whose start it did not witness and applies the recorder's continuity contract on resume; [the in-game host](in-game-host.md#producing-a-recording-and-checking-it) owns that contract and its verified mid-fight rollback exception.
 - `RunJournal`: a header and a line per decision, appended as the run is played, so
-  finishing a write means finishing a line. A crash leaves a real recording of the
-  part of the run that happened. `RunCapture.Resume` rebuilds the capture from it, so
-  a continued session publishes exactly what an uninterrupted one would have.
+  finishing a write means finishing a line.
+  A crash leaves a real recording of the part of the run that happened.
+  `RunCapture.Resume` rebuilds the capture from it, preserving the same replayable history and any discarded branch evidence established by a verified mid-fight rollback.
 - `RunRecorder` and `RecorderModule` in the mod: the hooks, the settle rule, and the
   translation from what the game announces into what the format records. Inside a
   fight it hands over to the same `PlayerFightObserver` the recorded-fight journey uses,

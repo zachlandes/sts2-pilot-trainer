@@ -349,7 +349,8 @@ public sealed record DiscardedBranch
     [JsonPropertyName("actions")]
     public required IReadOnlyList<ActionRecord> Actions { get; init; }
 
-    /// <summary>The captured states showing where combat began on the discarded branch.</summary>
+    /// <summary>The captured states showing where combat began and the complete final
+    /// sample the branch replay must match exactly.</summary>
     [JsonPropertyName("trace")]
     public required ReplayTrace Trace { get; init; }
 }
