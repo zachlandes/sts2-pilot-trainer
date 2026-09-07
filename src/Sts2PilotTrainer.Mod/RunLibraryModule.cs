@@ -141,26 +141,34 @@ internal static class RunVerdicts
     /// <see cref="RunVerdict.Absent"/>, because a verdict nobody could reach and a
     /// verdict that does not exist are different facts, and the run code says which.
     /// </summary>
-    internal static RunVerdict For(ReplayManifest recording, string thisBuild)
+    internal static RunVerdict For(ReplayManifest recording, string thisBuild) =>
+        For(
+            recording.Environment,
+            recording.Source.Kind,
+            recording.RunId,
+            thisBuild);
+
+    internal static RunVerdict For(
+        EnvironmentIdentity environment, string sourceKind, string runId, string thisBuild)
     {
-        if (!string.Equals(recording.Environment.BuildVersion.Value, thisBuild, StringComparison.Ordinal))
+        if (!string.Equals(environment.BuildVersion.Value, thisBuild, StringComparison.Ordinal))
         {
             return RunVerdict.Absent;
         }
 
         try
         {
-            return Preflight.Evaluate(
-                recording.Environment,
-                RecordedFightEntry.SuppliedProgressFor(recording),
-                recording.Source.Kind).Matches
+            var progress = environment.Unlocks.Value.Inventory is { } inventory
+                ? PlayerProgress.Exact(inventory)
+                : PlayerProgress.AllUnlocked;
+            return Preflight.Evaluate(environment, progress, sourceKind).Matches
                 ? RunVerdict.Passed
                 : RunVerdict.Failed;
         }
         catch (Exception ex)
         {
             Log.Error(
-                $"[{RunmobileMod.ModId}] could not judge {recording.RunId} against this game, so it has no " +
+                $"[{RunmobileMod.ModId}] could not judge {runId} against this game, so it has no " +
                 $"verdict here: {ex.GetType().Name}: {ex.Message}", 2);
             return RunVerdict.Unjudged;
         }

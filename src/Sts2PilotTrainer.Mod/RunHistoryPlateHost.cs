@@ -52,6 +52,8 @@ internal static class RunHistoryPlateHost
 {
     private static readonly object PendingLock = new();
     private static readonly Dictionary<int, Task<SharedRun>> PendingShares = [];
+    private static readonly Dictionary<int, long> PendingShareSurfaces = [];
+    private static readonly HashSet<long> SubmittingSurfaces = [];
     private static int nextShare;
 
     /// <summary>
@@ -231,13 +233,18 @@ internal static class RunHistoryPlateHost
             LibraryMarkup.Dim(body),
             [],
             LibraryCopy.Back,
-            shareSubmitted: (name, description, displayName, consent) =>
-                Submit(id, name, description, displayName, consent));
+            shareSubmitted: (surface, name, description, displayName, consent) =>
+                Submit(surface, id, name, description, displayName, consent));
     }
 
     private static void Submit(
-        string runId, string name, string description, string displayName, bool consent)
+        long surface, string runId, string name, string description, string displayName, bool consent)
     {
+        lock (PendingLock)
+        {
+            if (!SubmittingSurfaces.Add(surface)) return;
+        }
+
         try
         {
             if (RunLibrary.RecordingFor(runId) is not { } recording)
@@ -245,7 +252,11 @@ internal static class RunHistoryPlateHost
             var request = Interlocked.Increment(ref nextShare);
             var task = RunLibrary.ShareAsync(
                 recording, new ShareSubmission(name, description, displayName, consent));
-            lock (PendingLock) PendingShares[request] = task;
+            lock (PendingLock)
+            {
+                PendingShares[request] = task;
+                PendingShareSurfaces[request] = surface;
+            }
             _ = task.ContinueWith(
                 static (_, value) => Callable.From(() => CompleteShare((int)value!)).CallDeferred(),
                 request,
@@ -255,6 +266,7 @@ internal static class RunHistoryPlateHost
         }
         catch (Exception ex)
         {
+            lock (PendingLock) SubmittingSurfaces.Remove(surface);
             LibraryScreen.Dismiss();
             LibraryScreen.Show(
                 LibraryCopy.SubmitThisRun,
@@ -271,12 +283,17 @@ internal static class RunHistoryPlateHost
     private static void CompleteShare(int request)
     {
         Task<SharedRun> task;
+        long surface;
         lock (PendingLock)
         {
             task = PendingShares[request];
+            surface = PendingShareSurfaces[request];
             PendingShares.Remove(request);
+            PendingShareSurfaces.Remove(request);
+            SubmittingSurfaces.Remove(surface);
         }
 
+        if (!LibraryScreen.IsCurrent(surface)) return;
         LibraryScreen.Dismiss();
         if (task.IsCompletedSuccessfully)
         {

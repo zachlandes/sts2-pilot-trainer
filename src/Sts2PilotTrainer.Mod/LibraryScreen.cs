@@ -69,6 +69,8 @@ internal sealed record ScreenRow(
 /// </summary>
 internal static class LibraryScreen
 {
+    private static long surface;
+
     /// <summary>The popup scene's own name for its content, resolved by the game's
     /// code the same way.</summary>
     private const string VerticalPopupPath = "VerticalPopup";
@@ -127,8 +129,9 @@ internal static class LibraryScreen
         Action<string>? codeSubmitted = null,
         string codePlaceholder = "",
         int page = 0,
-        Action<string, string, string, bool>? shareSubmitted = null)
+        Action<long, string, string, string, bool>? shareSubmitted = null)
     {
+        var shownSurface = Interlocked.Increment(ref surface);
         NGenericPopup? popup = null;
         NModalContainer? container = null;
         var added = false;
@@ -158,7 +161,7 @@ internal static class LibraryScreen
                 {
                     if (share is not null)
                     {
-                        shareSubmitted!(share.Name.Text, share.Description.Text,
+                        shareSubmitted!(shownSurface, share.Name.Text, share.Description.Text,
                             share.DisplayName.Text, share.Consent.ButtonPressed);
                     }
                     else if (back is not null)
@@ -454,7 +457,14 @@ internal static class LibraryScreen
     /// this first, rows and the run-code field alike, and this is the only place that
     /// knows which container it is.
     /// </summary>
-    internal static void Dismiss() => NModalContainer.Instance?.Clear();
+    internal static bool IsCurrent(long shownSurface) =>
+        Interlocked.Read(ref surface) == shownSurface;
+
+    internal static void Dismiss()
+    {
+        Interlocked.Increment(ref surface);
+        NModalContainer.Instance?.Clear();
+    }
 
     /// <summary>Shows the screen a ribbon returns to, with whatever is up taken down
     /// first, and says so rather than leaving a player on a screen that did not

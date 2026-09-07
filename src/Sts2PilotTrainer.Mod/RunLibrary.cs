@@ -119,15 +119,24 @@ internal static class RunLibrary
 
     internal static void AcceptIndex(IReadOnlyList<SharedRunSummary> index)
     {
-        SharedIndex.Clear();
+        var accepted = new Dictionary<string, SharedRunSummary>(StringComparer.Ordinal);
+        var build = ThisBuild();
         foreach (var item in index)
         {
-            var verdict = string.Equals(
-                item.Run.RecordedBuild, ThisBuild(), StringComparison.Ordinal)
-                ? RunVerdict.Passed
-                : RunVerdict.Absent;
-            SharedIndex[item.Code] = item with { Run = item.Run with { Verdict = verdict } };
+            if (!string.Equals(
+                item.Code, SharedRunIdentity.CodeFor(item.ShareId), StringComparison.Ordinal))
+            {
+                throw new ShareValidationException(
+                    "The run index contains an invalid sharing identity.");
+            }
+
+            var verdict = RunVerdicts.For(
+                item.Environment, item.SourceKind, item.Run.RunId, build);
+            accepted[item.Code] = item with { Run = item.Run with { Verdict = verdict } };
         }
+
+        SharedIndex.Clear();
+        foreach (var item in accepted) SharedIndex[item.Key] = item.Value;
         indexRequested = false;
         indexLoaded = true;
     }
@@ -206,8 +215,30 @@ internal static class RunLibrary
         return cached is null ? Sharing.FindAsync(wanted) : Task.FromResult<SharedRun?>(cached);
     }
 
-    internal static SharedRun AcceptShared(SharedRun found, bool exact = false)
+    internal static SharedRun AcceptShared(
+        SharedRun found, string? expectedCode = null, bool exact = false)
     {
+        var computedId = SharedRunIdentity.For(found.ManifestJson, found.Submission);
+        var computedCode = SharedRunIdentity.CodeFor(computedId);
+        if (!string.Equals(found.ShareId, computedId, StringComparison.Ordinal) ||
+            !string.Equals(found.Code, computedCode, StringComparison.Ordinal) ||
+            expectedCode is not null &&
+            !string.Equals(expectedCode.Trim(), found.Code, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ShareValidationException(
+                "The downloaded run does not match its advertised sharing identity.");
+        }
+
+        foreach (var advertised in SharedIndex.Values)
+        {
+            if (string.Equals(advertised.Code, found.Code, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(advertised.ShareId, found.ShareId, StringComparison.Ordinal))
+            {
+                throw new ShareValidationException(
+                    "The downloaded run does not match the run index entry.");
+            }
+        }
+
         var recording = ManifestJson.Deserialize(found.ManifestJson);
         var described = LibraryRun.From(
             recording,

@@ -97,6 +97,8 @@ arbiter_built="build/publish/sts2-arbiter/$rid"
 rm -rf "$arbiter_built"
 dotnet publish src/Sts2PilotTrainer.Cli/Sts2PilotTrainer.Cli.csproj \
   -c Release -r "$rid" --self-contained true --nologo -v quiet -o "$arbiter_built"
+dotnet run --project tools/Sts2PilotTrainer.Bootstrap --nologo -v quiet -- \
+  --out "$arbiter_built/lib"
 
 built="build/bin/Sts2PilotTrainer.Mod/Release/net9.0"
 

@@ -120,6 +120,8 @@ public sealed class ModHostBoundaryTests
             Assert.True(File.Exists(Path.Combine(
                 arbiterDirectory,
                 OperatingSystem.IsWindows() ? "sts2-arbiter.exe" : "sts2-arbiter")));
+            Assert.True(File.Exists(Path.Combine(arbiterDirectory, "lib", "prepared-assembly.json")));
+            Assert.True(File.Exists(Path.Combine(arbiterDirectory, "lib", "sts2.dll")));
 
             var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(installed, "Runmobile.json")))
                 .RootElement;

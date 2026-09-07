@@ -153,15 +153,25 @@ internal static class RunBrowserScreen
         }
 
         var failed = !task.IsCompletedSuccessfully;
-        if (!failed)
+        try
         {
-            RunLibrary.AcceptIndex(task.Result);
+            if (!failed) RunLibrary.AcceptIndex(task.Result);
         }
-        else
+        catch (Exception ex)
+        {
+            failed = true;
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not accept the run index: {ex.Message}", 2);
+        }
+
+        if (failed)
         {
             RunLibrary.RefuseIndex();
-            Log.Error($"[{RunmobileMod.ModId}] could not fetch the run index: " +
-                task.Exception?.GetBaseException().Message, 2);
+            if (!task.IsCompletedSuccessfully)
+            {
+                Log.Error($"[{RunmobileMod.ModId}] could not fetch the run index: " +
+                    task.Exception?.GetBaseException().Message, 2);
+            }
         }
 
         OpenTab(
@@ -352,29 +362,37 @@ internal static class RunBrowserScreen
 
         if (task.IsCompletedSuccessfully && task.Result is { } found)
         {
-            var shared = RunLibrary.AcceptShared(found, exact: true);
-            var lookup = RunBrowser.Lookup(
-                shared.Run.RunId, [shared.Run], RunLibrary.ThisBuild());
-            if (lookup.Outcome == LookupOutcome.Found)
+            try
             {
-                OpenRun(shared.Run.RunId);
+                var shared = RunLibrary.AcceptShared(found, state.Code, exact: true);
+                var lookup = RunBrowser.Lookup(
+                    shared.Run.RunId, [shared.Run], RunLibrary.ThisBuild());
+                if (lookup.Outcome == LookupOutcome.Found)
+                {
+                    OpenRun(shared.Run.RunId);
+                    return;
+                }
+
+                if (lookup.Outcome == LookupOutcome.IncompatibleBuild)
+                {
+                    OpenTab(LibraryTab.Community, compatibleOnly: false,
+                        selectedRunId: shared.Run.RunId);
+                    return;
+                }
+
+                var remoteBody = lookup.Note is { Length: > 0 } remoteNote
+                    ? $"{lookup.Body}\n\n{LibraryMarkup.Dim(remoteNote)}"
+                    : lookup.Body;
+                LibraryScreen.Show(
+                    lookup.Title, remoteBody, [], lookup.Back,
+                    back: () => OpenTab(LibraryTab.Community));
                 return;
             }
-
-            if (lookup.Outcome == LookupOutcome.IncompatibleBuild)
+            catch (Exception ex)
             {
-                OpenTab(LibraryTab.Community, compatibleOnly: false,
-                    selectedRunId: shared.Run.RunId);
+                Refuse("could not accept that run code", ex);
                 return;
             }
-
-            var remoteBody = lookup.Note is { Length: > 0 } remoteNote
-                ? $"{lookup.Body}\n\n{LibraryMarkup.Dim(remoteNote)}"
-                : lookup.Body;
-            LibraryScreen.Show(
-                lookup.Title, remoteBody, [], lookup.Back,
-                back: () => OpenTab(LibraryTab.Community));
-            return;
         }
 
         if (!task.IsCompletedSuccessfully)

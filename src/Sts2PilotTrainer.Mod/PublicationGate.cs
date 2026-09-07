@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
 
@@ -31,12 +30,12 @@ internal static class PublicationGate
                 "The installed local replay arbiter is unavailable, so this run was not sent.");
         }
 
-        var gameAssemblyDirectory = Path.GetDirectoryName(typeof(RunManager).Assembly.Location);
-        if (gameAssemblyDirectory is null)
+        var preparedAssemblyDirectory = Path.Combine(arbiterDirectory, "lib");
+        if (!File.Exists(Path.Combine(preparedAssemblyDirectory, "prepared-assembly.json")))
         {
             RecordingRetention.RemovePublicationWorkspace(storeRoot, workspace);
             throw new ShareValidationException(
-                "The game assembly directory could not be read, so this run was not sent.");
+                "The installed replay runtime is incomplete, so this run was not sent.");
         }
 
         return Task.Run(async () =>
@@ -46,11 +45,12 @@ internal static class PublicationGate
                 var start = new ProcessStartInfo
                 {
                     FileName = arbiter,
+                    WorkingDirectory = workspacePath,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
                 };
-                start.Environment["STS2_PILOT_TRAINER_LIB"] = gameAssemblyDirectory;
+                start.Environment["STS2_PILOT_TRAINER_LIB"] = preparedAssemblyDirectory;
                 start.Environment["STS2_PILOT_TRAINER_SANDBOX"] = sandboxPath;
                 start.Environment["STS2_PILOT_TRAINER_WORKSPACE"] = workspacePath;
                 start.ArgumentList.Add("gate");

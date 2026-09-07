@@ -86,6 +86,7 @@ internal static class RecordingRetention
             {
                 root = RunmobileStore.Root;
                 if (Applied.Contains(root)) return;
+                RunmobileStore.RemoveTree(root, "publication");
                 Apply(RunmobileSettings.Read(), ContinuableRun.StartedUtc());
             }
             catch (Exception ex)

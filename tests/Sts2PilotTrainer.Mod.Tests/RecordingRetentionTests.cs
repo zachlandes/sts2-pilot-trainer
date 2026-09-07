@@ -42,6 +42,16 @@ public sealed class RecordingRetentionTests : IDisposable
     }
 
     [Fact]
+    public void NextSafeRetentionPassRemovesAnInterruptedPublicationWorkspace()
+    {
+        RunmobileStore.Write("publication/abandoned/evidence/gate.json", "{}");
+
+        RecordingRetention.ApplyOnce();
+
+        Assert.False(Directory.Exists(RunmobileStore.PathOf("publication")));
+    }
+
+    [Fact]
     public void PublicationWorkspaceCleanupRemovesOnlyThatDerivedWorkspace()
     {
         RunmobileStore.Write("publication/request/evidence/gate.json", "{}");

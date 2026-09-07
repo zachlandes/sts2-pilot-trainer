@@ -305,6 +305,41 @@ public sealed class RunLibraryStoreTests : IDisposable
         Assert.True(RunLibraryStore.RecordFightPlayed("native-a", 1));
     }
 
+    [GameFact]
+    public void ADownloadedRecordingMustMatchItsAdvertisedImmutableIdentity()
+    {
+        var recording = Recording("shared-a");
+        var manifestJson = ManifestJson.Serialize(recording);
+        var submission = new ShareSubmission("Run", "", "Ada", true);
+        var shareId = SharedRunIdentity.For(manifestJson, submission);
+        var shared = new SharedRun(
+            shareId,
+            SharedRunIdentity.CodeFor(shareId),
+            ManifestJson.Serialize(recording with { RunId = "different-run" }),
+            submission,
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed),
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
+
+        var error = Assert.Throws<ShareValidationException>(() =>
+            RunLibrary.AcceptShared(shared, shared.Code));
+
+        Assert.Contains("advertised sharing identity", error.Message, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void LightweightIndexIdentityUsesTheEnvironmentPreflight()
+    {
+        var recording = Recording("shared-a");
+        var wrongEnvironment = recording.Environment with
+        {
+            ContentHash = recording.Environment.ContentHash with { Value = "different-content" },
+        };
+
+        Assert.Equal(
+            RunVerdict.Failed,
+            RunVerdicts.For(wrongEnvironment, recording.Source.Kind, recording.RunId, Build));
+    }
+
     private void Write(string name, string content) =>
         RunmobileStore.Write($"{RunLibraryStore.RecordingsDirectory}/{name}", content);
 

@@ -19,6 +19,14 @@ public sealed class RunSharingTests
 
         var indexEntry = Assert.Single(await service.IndexAsync());
         Assert.Equal(shared.ShareId, indexEntry.ShareId);
+        Assert.Equal(
+            manifest.Environment.BuildVersion.Value,
+            indexEntry.Environment.BuildVersion.Value);
+        Assert.Equal(
+            manifest.Environment.ContentHash.Value,
+            indexEntry.Environment.ContentHash.Value);
+        Assert.Equal(manifest.Environment.Mods.Value.Name, indexEntry.Environment.Mods.Value.Name);
+        Assert.Equal(manifest.Source.Kind, indexEntry.SourceKind);
         Assert.DoesNotContain(
             "manifestJson",
             System.Text.Json.JsonSerializer.Serialize(indexEntry),
@@ -28,6 +36,22 @@ public sealed class RunSharingTests
             shared.ShareId,
             (await service.SubmitAsync(ManifestJson.Serialize(manifest), request)).ShareId);
         Assert.Equal(12, shared.Code.Length);
+    }
+
+    [Fact]
+    public void SharingIdentityBindsEverySubmissionFieldWithoutDelimiterCollisions()
+    {
+        var manifest = ManifestJson.Serialize(Fixture());
+        var first = new ShareSubmission("one\ntwo", "three", "Ada", true);
+        var sameJoinedText = new ShareSubmission("one", "two\nthree", "Ada", true);
+        var consentChanged = first with { Cc0Consent = false };
+
+        Assert.NotEqual(
+            SharedRunIdentity.For(manifest, first),
+            SharedRunIdentity.For(manifest, sameJoinedText));
+        Assert.NotEqual(
+            SharedRunIdentity.For(manifest, first),
+            SharedRunIdentity.For(manifest, consentChanged));
     }
 
     [Fact]
