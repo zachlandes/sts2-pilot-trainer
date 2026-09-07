@@ -27,14 +27,20 @@ internal static class RecordedRun
     internal const string Seed = "SFXT47K77RFK";
 
     /// <summary>The recording, as the manifest a recorder would finalise at run end.</summary>
-    internal static ReplayManifest Manifest()
+    internal static ReplayManifest Manifest() => Manifest(midFightRollback: false);
+
+    internal static ReplayManifest ManifestWithMidFightRollback() => Manifest(midFightRollback: true);
+
+    private static ReplayManifest Manifest(bool midFightRollback)
     {
-        var capture = Captured();
+        var capture = Captured(midFightRollback);
         capture.Finish("abandoned");
         return capture.ToManifest();
     }
 
-    internal static RunCapture Captured()
+    internal static RunCapture Captured() => Captured(midFightRollback: false);
+
+    private static RunCapture Captured(bool midFightRollback)
     {
         var capture = RunCapture.Begin(new RunRecordingStart
         {
@@ -87,6 +93,23 @@ internal static class RecordedRun
             InFight(2, enemyHp: 30),
             Digest(5));
         capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(6));
+
+        if (midFightRollback)
+        {
+            capture = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(3));
+            capture.Record(
+                ActionVerb.PlayCard,
+                Play(Hand, played: 3),
+                InFight(2, enemyHp: 42),
+                Digest(4));
+            capture.Record(
+                ActionVerb.PlayCard,
+                Play(Hand, played: 2, targetIndex: 0),
+                InFight(2, enemyHp: 30),
+                Digest(5));
+            capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(6));
+        }
+
         capture.Record(
             ActionVerb.PlayCard,
             Play(Hand, played: 0, targetIndex: 0),

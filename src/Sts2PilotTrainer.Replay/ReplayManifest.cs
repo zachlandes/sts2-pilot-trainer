@@ -298,6 +298,15 @@ public sealed record NativeSource
     public IReadOnlyList<UnmappedDecision>? Unmapped { get; init; }
 
     /// <summary>
+    /// Branches the player played after entering a fight and the game's own save
+    /// later rolled back. Kept as captured evidence, but excluded from the ordered
+    /// history the arbiter replays because they did not happen in the continued run.
+    /// </summary>
+    [JsonPropertyName("discarded")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<DiscardedBranch>? Discarded { get; init; }
+
+    /// <summary>
     /// The oldest format this file was written in, when it was migrated from one.
     ///
     /// Written only by <c>arbiter migrate-manifest</c> and absent from a recording a
@@ -323,6 +332,22 @@ public sealed record NativeSource
     /// introduced a field, so that field's absence is the migration's rather than a
     /// recorder's omission.</summary>
     public bool PredatesVersion(int version) => MigratedFromVersion is { } from && from < version;
+}
+
+/// <summary>A recorded branch removed by the game's observed room-entry rollback.</summary>
+public sealed record DiscardedBranch
+{
+    /// <summary>The room-entry action the continued run returned to.</summary>
+    [JsonPropertyName("rollback_to_seq")]
+    public required int RollbackToSeq { get; init; }
+
+    /// <summary>The captured digest which both the journal boundary and resumed run held.</summary>
+    [JsonPropertyName("rollback_to_digest")]
+    public required string RollbackToDigest { get; init; }
+
+    /// <summary>The decisions observed after that boundary before the quit.</summary>
+    [JsonPropertyName("actions")]
+    public required IReadOnlyList<ActionRecord> Actions { get; init; }
 }
 
 public sealed record SyntheticSource

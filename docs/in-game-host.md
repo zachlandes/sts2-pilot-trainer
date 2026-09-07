@@ -336,8 +336,10 @@ A crash that cost one decision would then cost every decision after it.
 Whether that final line is a record or a fragment is one predicate both the repair and `Parse` ask, so the repair cannot delete what the reader would have kept, and a fragment cut back marks the recording broken with the decision it lost named.
 On resume, `RunCapture.Resume` rebuilds the capture from the journal and compares the state the game came back in against the state the journal last recorded.
 Equal means nothing happened in between that the recorder missed.
-Anything else marks the recording `continuity = broken` and it is refused for publication - nothing is truncated, because a history missing decisions replays into a different run while every value in it is individually true.
-Every refusal is appended to the journal as a line of its own, the moment it is raised, and `Resume` applies each one back.
+The one unequal state that remains continuous is the game's own save behavior after a quit during a live fight: the live digest must equal that same open fight's room-entry decision in the journal, and the journal must contain decisions observed after it.
+Those decisions remain in an append-only rollback record and in `source.native.discarded`, while the replayable history resumes at the room-entry decision; the fact that Continue was pressed establishes none of this.
+Any other mismatch marks the recording `continuity = broken` and it is refused for publication, because a history missing decisions replays into a different run while every value in it is individually true.
+Every rollback and refusal is appended to the journal as a line of its own, the moment it is established, and `Resume` applies each one back.
 Without that the break lives only in the session that decided on it: quit and continue once more and the next session finds a journal whose last digest is exactly the live one, sees nothing wrong, and publishes `continuity = continuous` over a hole - which is the one claim nothing downstream could check.
 
 **Where the recorder stops, it says so.**
@@ -888,7 +890,10 @@ The same file says how many runs are kept and how to remove them all; "Keeping r
 7. `./scripts/arbiter gate <that file>` is the verdict, and `./scripts/arbiter enter-fight <that file> --fight 2` stands the arbiter in its second fight.
 8. `./scripts/protected-files.sh compare before.ledger` reports what the session changed. The game's own saves, profile and run history are expected to change - the player really played a run - and everything of this mod's is under `user://Runmobile/`.
 
-To exercise continuity, quit to the main menu part way through a run and continue it from the game's own Continue. `[Runmobile] continuing the recording of <id> at decision N; continuity continuous` is the pass; a `continuity broken` line names what the recorder saw instead, and the recording is then refused for publication rather than repaired.
+To exercise continuity, quit to the main menu part way through a run and continue it from the game's own Continue.
+Outside a fight, `[Runmobile] continuing the recording of <id> at decision N; continuity continuous` is the pass.
+During a fight, Continue returns to that fight's room-entry boundary, the journal records the intervening decisions as discarded, and the same continuous line names the boundary's next decision.
+A `continuity broken` line names any other mismatch, and the recording is then refused for publication rather than repaired.
 
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory, either `mods` or the game's Steam test-branch variant `mods_STEAMTEST`.

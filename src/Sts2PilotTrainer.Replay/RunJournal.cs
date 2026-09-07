@@ -106,6 +106,12 @@ public sealed record RunJournal
     /// </summary>
     public JournalStop? Stop { get; init; }
 
+    /// <summary>Branches explicitly removed by observed room-entry rollbacks.</summary>
+    public IReadOnlyList<JournalDiscardedBranch> Discarded { get; init; } = [];
+
+    /// <summary>The journal's body in append order, retained across a resume.</summary>
+    internal IReadOnlyList<string>? SerializedRecords { get; init; }
+
     /// <summary>The reading taken before any decision.</summary>
     public RunJournalEntry Opening => Entries[0];
 
@@ -154,14 +160,19 @@ public sealed record RunJournal
             },
             Compact) + "\n";
 
+    /// <summary>The append-only receipt for an observed room-entry rollback.</summary>
+    public static string RenderRollback(JournalRollback rollback) =>
+        JsonSerializer.Serialize(new JournalRollbackLine { Rollback = rollback }, Compact) + "\n";
+
     /// <summary>The whole journal as it would be on disk. For a caller writing one in
     /// a single pass; a recorder appends instead.</summary>
-    public string Render() =>
-        RenderHeader() +
-        string.Concat(Entries.Select(RenderEntry)) +
-        string.Concat(Refusals.Select(RenderRefusal)) +
-        (NonStandard ? RenderNonStandard() : string.Empty) +
-        (Stop is { } stop ? RenderStop(stop) : string.Empty);
+    public string Render() => SerializedRecords is { } records
+        ? RenderHeader() + string.Concat(records)
+        : RenderHeader() +
+          string.Concat(Entries.Select(RenderEntry)) +
+          string.Concat(Refusals.Select(RenderRefusal)) +
+          (NonStandard ? RenderNonStandard() : string.Empty) +
+          (Stop is { } stop ? RenderStop(stop) : string.Empty);
 
     /// <summary>
     /// The journal brought back to a boundary an append may follow, or null when it is
@@ -212,12 +223,14 @@ public sealed record RunJournal
     /// kept.
     /// </summary>
     private static Exception? ReadRecord(
-        string line, out RunJournalEntry? entry, out string? refusal, out bool nonStandard, out JournalStop? stop)
+        string line, out RunJournalEntry? entry, out string? refusal, out bool nonStandard,
+        out JournalStop? stop, out JournalRollback? rollback)
     {
         entry = null;
         refusal = null;
         nonStandard = false;
         stop = null;
+        rollback = null;
         try
         {
             if (JsonSerializer.Deserialize<JournalRefusal>(line, Compact) is { Reason: not null } read)
@@ -245,6 +258,13 @@ public sealed record RunJournal
                 return null;
             }
 
+            if (JsonSerializer.Deserialize<JournalRollbackLine>(line, Compact) is { Rollback: not null } rewound)
+            {
+                ManifestJson.ValidateRequiredMembers(rewound.Rollback, "Run journal rollback");
+                rollback = rewound.Rollback;
+                return null;
+            }
+
             var value = JsonSerializer.Deserialize<RunJournalEntry>(line, Compact)
                 ?? throw new ManifestException("A run journal entry deserialized to null.");
             ManifestJson.ValidateRequiredMembers(value, "Run journal entry");
@@ -259,7 +279,7 @@ public sealed record RunJournal
     }
 
     private static bool ReadsAsARecord(string line) =>
-        line.Trim().Length > 0 && ReadRecord(line, out _, out _, out _, out _) is null;
+        line.Trim().Length > 0 && ReadRecord(line, out _, out _, out _, out _, out _) is null;
 
     /// <summary>
     /// Reads a journal back, refusing one this build cannot faithfully interpret.
@@ -295,11 +315,13 @@ public sealed record RunJournal
 
         var entries = new List<RunJournalEntry>();
         var refusals = new List<string>();
+        var discarded = new List<JournalDiscardedBranch>();
         var nonStandard = false;
         JournalStop? stop = null;
         for (var index = 1; index < lines.Count; index++)
         {
-            if (ReadRecord(lines[index], out var entry, out var refusal, out var marked, out var stopped)
+            if (ReadRecord(
+                    lines[index], out var entry, out var refusal, out var marked, out var stopped, out var rollback)
                 is { } unreadable)
             {
                 // The last line of a file a crash interrupted. Everything before it
@@ -309,6 +331,49 @@ public sealed record RunJournal
             }
 
             if (refusal is not null) refusals.Add(refusal);
+            else if (rollback is not null)
+            {
+                var boundaryIndex = entries.FindLastIndex(candidate =>
+                    candidate.Seq == rollback.RollbackToSeq &&
+                    string.Equals(candidate.Digest, rollback.RollbackToDigest, StringComparison.Ordinal));
+                if (boundaryIndex < 0 || boundaryIndex == entries.Count - 1)
+                {
+                    throw new ManifestException(
+                        "A run journal's rollback does not name an earlier decision and digest with decisions " +
+                        "after it. The recorder only writes one after observing the resumed run at that boundary.");
+                }
+
+                var trace = new ReplayTrace
+                {
+                    Steps = entries.Select(candidate => new ReplayStep
+                    {
+                        Seq = candidate.Seq,
+                        Verb = candidate.Verb,
+                        Args = candidate.Args,
+                        Before = candidate.Before ?? candidate.State,
+                        After = candidate.State,
+                    }).ToList(),
+                };
+                var coverage = RunCoverage.Of(trace);
+                var fight = coverage.Fights.LastOrDefault();
+                var roomEntry = coverage.Floors.LastOrDefault();
+                if (fight is not { Finished: false } || roomEntry?.EnteredAfterSeq != rollback.RollbackToSeq)
+                {
+                    throw new ManifestException(
+                        "A run journal's rollback is not to the room-entry decision before the fight its history " +
+                        "still held open. Only the game's observed mid-fight save rollback is continuous.");
+                }
+
+                var removed = entries.Skip(boundaryIndex + 1).ToList();
+                if (removed[0].Seq != rollback.DiscardedFromSeq || removed[^1].Seq != rollback.DiscardedThroughSeq)
+                {
+                    throw new ManifestException(
+                        "A run journal's rollback does not name exactly the decisions it discards.");
+                }
+
+                discarded.Add(new JournalDiscardedBranch(rollback, removed));
+                entries.RemoveRange(boundaryIndex + 1, removed.Count);
+            }
             else if (stopped is not null)
             {
                 if (stop is not null)
@@ -346,6 +411,8 @@ public sealed record RunJournal
             Refusals = refusals,
             NonStandard = nonStandard,
             Stop = stop,
+            Discarded = discarded,
+            SerializedRecords = NormalizeRecords(lines.Skip(1)),
         };
         journal.RequireReadable();
         return journal;
@@ -411,6 +478,30 @@ public sealed record RunJournal
         }
     }
 
+    private static IReadOnlyList<string> NormalizeRecords(IEnumerable<string> lines)
+    {
+        var records = new List<string>();
+        var sawNonStandard = false;
+        foreach (var line in lines)
+        {
+            bool isNonStandard;
+            try
+            {
+                isNonStandard = JsonSerializer.Deserialize<JournalNonStandard>(line, Compact)
+                    is { NonStandard: true };
+            }
+            catch (JsonException)
+            {
+                // Parse already established that only a truncated final line may be unreadable
+                continue;
+            }
+            if (isNonStandard && sawNonStandard) continue;
+            sawNonStandard |= isNonStandard;
+            records.Add(line + "\n");
+        }
+        return records;
+    }
+
     /// <summary>Compact and single-line, because every line of this file is appended
     /// on its own and read back on its own.</summary>
     internal static readonly JsonSerializerOptions Compact = new()
@@ -472,7 +563,33 @@ public sealed record RunJournal
         [JsonPropertyName("before_digest")]
         public string? BeforeDigest { get; init; }
     }
+
+    private sealed record JournalRollbackLine
+    {
+        [JsonPropertyName("rollback")]
+        public JournalRollback? Rollback { get; init; }
+    }
 }
+
+/// <summary>The boundary and range established when the live run resumed earlier.</summary>
+public sealed record JournalRollback
+{
+    [JsonPropertyName("rollback_to_seq")]
+    public required int RollbackToSeq { get; init; }
+
+    [JsonPropertyName("rollback_to_digest")]
+    public required string RollbackToDigest { get; init; }
+
+    [JsonPropertyName("discarded_from_seq")]
+    public required int DiscardedFromSeq { get; init; }
+
+    [JsonPropertyName("discarded_through_seq")]
+    public required int DiscardedThroughSeq { get; init; }
+}
+
+/// <summary>The journal entries one rollback removed from the continued history.</summary>
+public sealed record JournalDiscardedBranch(
+    JournalRollback Rollback, IReadOnlyList<RunJournalEntry> Entries);
 
 /// <summary>
 /// Where a recorder stopped: the decision it could not name, and the sampled state

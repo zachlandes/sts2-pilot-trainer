@@ -242,23 +242,57 @@ public sealed class RunCaptureTests
     }
 
     [Fact]
-    public void ASessionThatResumesEarlierThanItLeftOffIsBrokenAndKeepsEverything()
+    public void AMidFightSaveAndQuitResumesContinuouslyAndMarksTheDiscardedBranch()
     {
-        var journal = Played().Journal;
+        var capture = RunCapture.Begin(Start());
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            InFight(2, turn: 1), Digest(1));
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
+            InFight(2, turn: 1, enemyHp: 30), Digest(2));
+        capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(3));
 
-        var resumed = RunCapture.Resume(journal, Digest(1));
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(1));
+
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Null(resumed.Refusal);
+        Assert.Equal(2, resumed.NextSeq);
+        Assert.NotNull(resumed.ResumptionRecord);
+
+        var persisted = RunJournal.Parse(resumed.Journal.Render());
+        var discarded = Assert.Single(persisted.Discarded);
+        Assert.Equal([2, 3], discarded.Entries.Select(entry => entry.Seq));
+
+        resumed.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
+            Won(2, hp: 58), Digest(4));
+
+        resumed = RunCapture.Resume(RunJournal.Parse(resumed.Journal.Render()), Digest(4));
+        Assert.Equal(3, resumed.NextSeq);
+        Assert.Single(resumed.Discarded);
+
+        resumed.Finish("abandoned");
+        var manifest = resumed.ToManifest();
+
+        Assert.Equal([0, 1, 2], manifest.Actions.Select(action => action.Seq));
+        Assert.Equal([2, 3], Assert.Single(manifest.Source.Native!.Discarded!).Actions.Select(action => action.Seq));
+        Assert.Equal(NativeSource.ContinuousContinuity, manifest.Source.Native.Continuity);
+        Assert.True(ManifestValidator.Validate(manifest).IsValid);
+    }
+
+    [Fact]
+    public void ASessionThatResumesAtAnEarlierNonFightBoundaryIsBroken()
+    {
+        var resumed = RunCapture.Resume(Played().Journal, Digest(0));
 
         Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
         Assert.Equal(RunCaptureState.Broken, resumed.State);
-        Assert.Contains("resumed this run at decision 1", resumed.Refusal!, StringComparison.Ordinal);
-        Assert.Contains("to decision 4", resumed.Refusal!, StringComparison.Ordinal);
-
-        // Nothing is truncated. What was seen stays seen, and it is the continuity that
-        // says the history is not this run's.
-        resumed.Finish("abandoned");
-        var manifest = resumed.ToManifest();
-        Assert.Equal(5, manifest.Actions.Count);
-        Assert.Equal(NativeSource.BrokenContinuity, manifest.Source.Native!.Continuity);
+        Assert.Contains("not the game's rollback of a live fight", resumed.Refusal!, StringComparison.Ordinal);
     }
 
     /// <summary>

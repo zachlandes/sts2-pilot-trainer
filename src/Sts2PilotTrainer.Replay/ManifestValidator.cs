@@ -605,6 +605,7 @@ public static partial class ManifestValidator
         }
 
         ValidateIntegrity(native, actions.Count, problems);
+        ValidateDiscardedBranches(native, actions, problems);
 
         // The key beside the index, on every event option a recorder chose. Waived
         // only for a file that says it was written before the key existed: absent
@@ -620,6 +621,50 @@ public static partial class ManifestValidator
                     $"actions[{action.Seq}] ({action.Verb}) in a native recording names no option_key. A " +
                     "recorder reads the option's own key beside its position, which is what lets a build " +
                     "that reordered the options refuse rather than take whatever sits at that index.");
+            }
+        }
+    }
+
+    private static void ValidateDiscardedBranches(
+        NativeSource native, IReadOnlyList<ActionRecord> actions, List<string> problems)
+    {
+        if (native.Discarded is not { } branches) return;
+
+        for (var branchIndex = 0; branchIndex < branches.Count; branchIndex++)
+        {
+            var branch = branches[branchIndex];
+            var path = $"source.native.discarded[{branchIndex.ToString(CultureInfo.InvariantCulture)}]";
+            if (branch.RollbackToSeq < 0 || branch.RollbackToSeq >= actions.Count)
+            {
+                problems.Add($"{path}.rollback_to_seq does not name a decision in the continued history.");
+            }
+            if (string.IsNullOrWhiteSpace(branch.RollbackToDigest))
+            {
+                problems.Add($"{path}.rollback_to_digest is empty.");
+            }
+            if (branch.Actions.Count == 0)
+            {
+                problems.Add($"{path}.actions is empty. A rollback without an observed decision discards nothing.");
+                continue;
+            }
+
+            for (var index = 0; index < branch.Actions.Count; index++)
+            {
+                var action = branch.Actions[index];
+                var expected = branch.RollbackToSeq + index + 1;
+                if (action.Seq != expected)
+                {
+                    problems.Add(
+                        $"{path}.actions[{index.ToString(CultureInfo.InvariantCulture)}] has seq={action.Seq}, " +
+                        $"expected {expected.ToString(CultureInfo.InvariantCulture)}.");
+                }
+                if (action.Source != FactSource.Captured || action.Evidence?.ActionOrdinal != action.Seq)
+                {
+                    problems.Add(
+                        $"{path}.actions[{index.ToString(CultureInfo.InvariantCulture)}] is not captured at its " +
+                        "own action ordinal.");
+                }
+                ValidateActionArguments(action, problems);
             }
         }
     }

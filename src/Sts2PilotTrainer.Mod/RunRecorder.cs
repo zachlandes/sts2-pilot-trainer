@@ -387,6 +387,14 @@ internal sealed class RunRecorder : IDisposable
                 }
             }
 
+            // The rollback receipt makes the discarded branch survive another quit.
+            // Appended before the recorder is live, so no repeated sequence number
+            // can be written before the line that explains why it is legitimate.
+            if (capture.ResumptionRecord is { } resumption)
+            {
+                Append(journalPath, resumption);
+            }
+
             // A break this resume decided on is a fact only this session knows, and
             // the session after it would compare its own live digest against a
             // journal that says nothing about the hole. Appended before the

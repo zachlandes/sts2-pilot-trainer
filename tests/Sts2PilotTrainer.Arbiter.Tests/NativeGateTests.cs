@@ -54,6 +54,43 @@ public sealed class NativeGateTests
     }
 
     /// <summary>
+    /// A save and quit after decisions inside a fight produces the same replayable
+    /// history, with the attempted branch retained only as discarded evidence.
+    /// </summary>
+    [GameFact]
+    public void AMidFightSaveAndQuitRecordingPassesThePublicationGate()
+    {
+        var directory = Path.Combine(
+            Arbiter.RepoRoot, "build", "test-scratch", $"native-rollback-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var recorded = RecordedRun.ManifestWithMidFightRollback();
+            var replayable = ManifestJson.Load(Path.Combine(
+                Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json"));
+            var manifest = replayable with
+            {
+                Source = replayable.Source with
+                {
+                    Native = replayable.Source.Native! with { Discarded = recorded.Source.Native!.Discarded },
+                },
+            };
+            var path = Path.Combine(directory, "fixture.replay.json");
+            ManifestJson.Save(manifest, path);
+
+            var result = Arbiter.Run("gate", path, "--out", Path.Combine(directory, "evidence"));
+
+            Assert.True(result.ExitCode == 0, result.Output);
+            Assert.Contains("PUBLISHABLE", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// And a video recording is still asked all of them, so the arm above is a branch
     /// rather than a removal.
     /// </summary>
