@@ -77,6 +77,8 @@ internal sealed class MyRunsSettingsRow
     private const float RemoveWidth = 168f;
     private const float RemovePad = 14f;
     private const float RemoveHeight = 30f;
+    private const float FetchGap = 10f;
+    private const float FetchHeight = 30f;
 
     private const int LabelFontSize = 15;
     private const int NoteFontSize = 12;
@@ -94,6 +96,7 @@ internal sealed class MyRunsSettingsRow
     private readonly Label _reading;
     private readonly Label _detail;
     private readonly Button _remove;
+    private readonly Button _fetch;
 
     /// <summary>
     /// What the row currently says.
@@ -117,6 +120,7 @@ internal sealed class MyRunsSettingsRow
     /// end the policy had not reached.
     /// </summary>
     private int _keep;
+    private bool _fetchIndex;
 
     private MyRunsSettingsRow(Nodes nodes)
     {
@@ -129,8 +133,10 @@ internal sealed class MyRunsSettingsRow
         _reading = nodes.Reading;
         _detail = nodes.Detail;
         _remove = nodes.Remove;
+        _fetch = nodes.Fetch;
         _row = nodes.Row;
         _keep = nodes.Keep;
+        _fetchIndex = nodes.FetchRunIndex;
     }
 
     internal Control Root => _root;
@@ -142,6 +148,8 @@ internal sealed class MyRunsSettingsRow
     internal Button Fewer => _fewer;
 
     internal Button More => _more;
+
+    internal Button Fetch => _fetch;
 
     /// <summary>What the row is saying, for a host that has to ask rather than
     /// re-derive.</summary>
@@ -155,7 +163,8 @@ internal sealed class MyRunsSettingsRow
     /// both: the reading and its note are stacked, and the destructive control sits
     /// beside them rather than under them.
     /// </summary>
-    internal static float Height => LabelHeight + RuleGap + Math.Max(LabelHeight + NoteHeight, RemoveHeight);
+    internal static float Height =>
+        LabelHeight + RuleGap + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap + FetchHeight;
 
     /// <summary>
     /// Assembles the row.
@@ -173,11 +182,13 @@ internal sealed class MyRunsSettingsRow
     /// <param name="removePressed">What to do when the player asks for every run to
     /// go. Same rule: this raises it, and does not remove anything itself.</param>
     internal static MyRunsSettingsRow Build(
-        MyRunsRow row, int keep, float width, Font? font, Action<int> keepChanged, Action removePressed)
+        MyRunsRow row, int keep, bool fetchRunIndex, float width, Font? font,
+        Action<int> keepChanged, Action removePressed, Action<bool> fetchChanged)
     {
         ArgumentNullException.ThrowIfNull(row);
         ArgumentNullException.ThrowIfNull(keepChanged);
         ArgumentNullException.ThrowIfNull(removePressed);
+        ArgumentNullException.ThrowIfNull(fetchChanged);
 
         var root = new Control
         {
@@ -194,6 +205,7 @@ internal sealed class MyRunsSettingsRow
             Root = root,
             Row = row,
             Keep = keep,
+            FetchRunIndex = fetchRunIndex,
             KeepLabel = Add(root, Text("KeepLabel", LabelFontSize, Cream, font)),
             KeepNumeral = Add(root, Text("KeepNumeral", NumeralFontSize, Cream, font)),
             Rule = Add(root, new Line2D { Name = "Rule", DefaultColor = RuleLine, Width = 1f }),
@@ -204,6 +216,7 @@ internal sealed class MyRunsSettingsRow
         nodes.Fewer = Add(root, Pressable("Fewer", "−", font));
         nodes.More = Add(root, Pressable("More", "+", font));
         nodes.Remove = Add(root, Pressable("Remove", string.Empty, font));
+        nodes.Fetch = Add(root, Pressable("FetchRunIndex", string.Empty, font));
 
         var built = new MyRunsSettingsRow(nodes);
 
@@ -214,9 +227,9 @@ internal sealed class MyRunsSettingsRow
         built._fewer.Pressed += () => built.Step(-1, keepChanged);
         built._more.Pressed += () => built.Step(1, keepChanged);
         built._remove.Pressed += removePressed;
-
+        built._fetch.Pressed += () => fetchChanged(!built._fetchIndex);
         built.Layout(width, font);
-        built.Apply(row, keep);
+        built.Apply(row, keep, fetchRunIndex);
         return built;
     }
 
@@ -231,17 +244,21 @@ internal sealed class MyRunsSettingsRow
     /// passed rather than parsed back out of the numeral so the stepper's ends and the
     /// numeral can never be two different answers.
     /// </summary>
-    internal void Apply(MyRunsRow row, int keep)
+    internal void Apply(MyRunsRow row, int keep) => Apply(row, keep, _fetchIndex);
+
+    internal void Apply(MyRunsRow row, int keep, bool fetchRunIndex)
     {
         ArgumentNullException.ThrowIfNull(row);
         _row = row;
         _keep = keep;
+        _fetchIndex = fetchRunIndex;
 
         _keepLabel.Text = row.KeepLabel;
         _keepNumeral.Text = row.KeepNumeral;
         _reading.Text = row.Reading;
         _detail.Text = row.Detail;
         _remove.Text = row.RemoveLabel;
+        _fetch.Text = $"{LibraryCopy.FetchRunIndex}: {(fetchRunIndex ? "on" : "off")}";
 
         // The stepper refuses at its bottom rather than disappearing there, so the two
         // controls never move about under the player's aim. There is no top: a policy
@@ -249,10 +266,12 @@ internal sealed class MyRunsSettingsRow
         Refuse(_fewer, !row.KeepPressable || _keep <= MyRunsRow.MinimumKeep);
         Refuse(_more, !row.KeepPressable);
         Refuse(_remove, !row.RemovePressable);
+        Refuse(_fetch, !row.KeepPressable);
 
         Face(_fewer, !_fewer.Disabled);
         Face(_more, !_more.Disabled);
         Destructive(_remove, row.RemovePressable);
+        Face(_fetch, !_fetch.Disabled);
     }
 
     /// <summary>
@@ -299,6 +318,9 @@ internal sealed class MyRunsSettingsRow
         Place(_reading, 0f, lower, width - removeWidth - StepGap, LabelHeight);
         Place(_remove, width - removeWidth, lower + ((LabelHeight - RemoveHeight) / 2f), removeWidth, RemoveHeight);
         Place(_detail, 0f, lower + LabelHeight, width - removeWidth - StepGap, NoteHeight);
+
+        var fetchY = lower + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap;
+        Place(_fetch, 0f, fetchY, width, FetchHeight);
     }
 
     /// <summary>
@@ -459,6 +481,8 @@ internal sealed class MyRunsSettingsRow
 
         internal required int Keep { get; init; }
 
+        internal required bool FetchRunIndex { get; init; }
+
         internal required Label KeepLabel { get; init; }
 
         internal required Label KeepNumeral { get; init; }
@@ -474,5 +498,7 @@ internal sealed class MyRunsSettingsRow
         internal Button More { get; set; } = null!;
 
         internal Button Remove { get; set; } = null!;
+
+        internal Button Fetch { get; set; } = null!;
     }
 }

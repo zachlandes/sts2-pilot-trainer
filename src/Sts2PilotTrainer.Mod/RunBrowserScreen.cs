@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Godot;
 using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
@@ -16,14 +17,8 @@ namespace Sts2PilotTrainer.Mod;
 /// <c>RunLibrary</c> gathers the runs, <c>RunBrowser</c> and <c>RunView</c> decide
 /// what is offered, and this puts the rows on screen and calls the one entry there is.
 ///
-/// <para><b>The list never holds a run this game cannot play.</b> That rule lives in
-/// <c>LibraryRun.Listed</c> and reaches here as a shorter list plus a number; there is
-/// no control on this screen that turns it off, because it is not a preference. The
-/// run-code field is the one way to ask about a run that is not listed, and it answers
-/// with the game's own popup rather than by putting a row back.</para>
-///
 /// <para>What the accepted design draws and this does not: the run strip, the deck
-/// tiles, the relic row and the portrait; and the Community list's group headings,
+/// tiles, the relic row and the portrait; and the list's group headings,
 /// which are a summary line in the popup's body rather than headings between the rows,
 /// so the rows follow group order without each one saying which group it is in. Those
 /// are a scene this mod has no path to build, and what stands in for them is a row per
@@ -32,17 +27,35 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class RunBrowserScreen
 {
+    private static readonly object PendingLock = new();
+    private static readonly Dictionary<int, IndexRequest> PendingIndexRequests = [];
+    private static readonly Dictionary<int, Task<IReadOnlyList<SharedRunSummary>>> PendingIndexes = [];
+    private static readonly Dictionary<int, LookupRequest> PendingLookupRequests = [];
+    private static readonly Dictionary<int, Task<SharedRun?>> PendingLookups = [];
+    private static string? indexFailure;
+    private static string? indexFailureScope;
+    private static int nextRequest;
+
     /// <summary>Opens the library on the tab a player lands on: everybody's runs.</summary>
     internal static void Open() => OpenTab(LibraryTab.Community);
 
-    internal static void OpenTab(LibraryTab tab)
+    internal static void OpenTab(
+        LibraryTab tab, bool compatibleOnly = true, string? selectedEntryId = null,
+        bool skipIndexFetch = false)
     {
         try
         {
+            if (tab == LibraryTab.Community && !skipIndexFetch && RunLibrary.ShouldFetchIndex)
+            {
+                BeginIndexFetch((int)tab, compatibleOnly, selectedEntryId);
+                return;
+            }
+
             var build = RunLibrary.ThisBuild();
             var runs = RunLibrary.Runs();
             var browser = RunBrowser.For(
-                tab, runs, build, tab == LibraryTab.MyRuns ? RunLibraryStore.MyRunsBytes() : null);
+                tab, runs, build, tab == LibraryTab.MyRuns ? RunLibraryStore.MyRunsBytes() : null,
+                compatibleOnly, selectedEntryId);
 
             // Nothing captured here is a sibling assembly's type. A lambda in this
             // assembly becomes a class whose fields are what it captured, and the game
@@ -51,6 +64,7 @@ internal static class RunBrowserScreen
             // loading. ModAssemblyLoadOrderTests is what says so; see
             // docs/in-game-host.md.
             var community = tab == LibraryTab.Community;
+            var showCompatibleOnly = browser.CompatibleOnly;
             var rows = new List<ScreenRow>
             {
                 // Pinned: the way to the other tab is this screen's own navigation, and
@@ -62,16 +76,38 @@ internal static class RunBrowserScreen
                     Enabled: true,
                     () => OpenTab(community ? LibraryTab.MyRuns : LibraryTab.Community),
                     Pinned: true),
+                new(
+                    $"{(showCompatibleOnly ? "✓" : "□")} {LibraryCopy.CompatibleFilter}",
+                    Enabled: true,
+                    () => OpenTab(
+                        community ? LibraryTab.Community : LibraryTab.MyRuns,
+                        !showCompatibleOnly),
+                    Pinned: true),
             };
+            int? revealRow = null;
 
             foreach (var group in browser.Groups)
             {
                 foreach (var run in group.Runs)
                 {
-                    var runId = run.RunId;
+                    var entryId = run.EntryId;
+                    var shareCode = community ? run.ShareCode : null;
                     var mine = !community;
+                    var selected = string.Equals(
+                        browser.SelectedEntryId, entryId, StringComparison.Ordinal);
+                    var reason = run.Listed
+                        ? null
+                        : LibraryCopy.LookupRefusedBuild(run.RecordedBuild, build);
+                    if (selected) revealRow = rows.Count - 2;
                     rows.Add(new ScreenRow(
-                        RowLabel(run), Enabled: true, () => OpenRun(runId, fromMyRuns: mine)));
+                        $"{(selected ? "▶ " : string.Empty)}{RowLabel(run)}",
+                        Enabled: run.Listed,
+                        () =>
+                        {
+                            if (shareCode is { Length: > 0 }) Look(shareCode, mine);
+                            else OpenRun(entryId, fromMyRuns: mine);
+                        },
+                        Reason: reason));
                 }
             }
 
@@ -83,13 +119,109 @@ internal static class RunBrowserScreen
                 rows,
                 LibraryCopy.Back,
                 codeSubmitted: code => Look(code, !community),
-                codePlaceholder: LibraryCopy.RunCodeField);
+                codePlaceholder: LibraryCopy.RunCodeField,
+                revealRow: revealRow);
         }
         catch (Exception ex)
         {
             Refuse("could not open the run library", ex);
         }
     }
+
+    private static void BeginIndexFetch(int tab, bool compatibleOnly, string? selectedEntryId)
+    {
+        var surface = LibraryScreen.Show(
+            LibraryCopy.CompendiumCard,
+            LibraryMarkup.Dim(LibraryCopy.FetchingRunIndex),
+            [],
+            LibraryCopy.Back,
+            back: static () => { });
+        var request = Interlocked.Increment(ref nextRequest);
+        var task = RunLibrary.FetchIndexAsync(out var scope);
+        lock (PendingLock)
+        {
+            PendingIndexRequests[request] = new IndexRequest(
+                tab, compatibleOnly, selectedEntryId, surface, scope);
+            PendingIndexes[request] = task;
+        }
+        _ = task.ContinueWith(
+            static (_, value) => Callable.From(() => CompleteIndex((int)value!)).CallDeferred(),
+            request,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private static void CompleteIndex(int request)
+    {
+        Task<IReadOnlyList<SharedRunSummary>> task;
+        IndexRequest state;
+        lock (PendingLock)
+        {
+            task = PendingIndexes[request];
+            state = PendingIndexRequests[request];
+            PendingIndexes.Remove(request);
+            PendingIndexRequests.Remove(request);
+        }
+
+        if (!RunLibrary.IsCurrentSharingScope(state.Scope))
+        {
+            if (LibraryScreen.IsCurrent(state.Surface))
+            {
+                LibraryScreen.Dismiss();
+                OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedEntryId);
+            }
+            return;
+        }
+
+        var failed = !task.IsCompletedSuccessfully;
+        try
+        {
+            if (!failed)
+            {
+                if (!RunLibrary.AcceptIndex(task.Result, state.Scope))
+                {
+                    if (LibraryScreen.IsCurrent(state.Surface))
+                    {
+                        LibraryScreen.Dismiss();
+                        OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedEntryId);
+                    }
+                    return;
+                }
+                indexFailure = null;
+                indexFailureScope = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            failed = true;
+            indexFailure = LibraryCopy.FetchRunIndexFailed;
+            indexFailureScope = state.Scope;
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not accept the run index: {ex.Message}", 2);
+        }
+
+        if (failed)
+        {
+            RunLibrary.RefuseIndex(state.Scope);
+            indexFailure = LibraryCopy.FetchRunIndexFailed;
+            indexFailureScope = state.Scope;
+            if (!task.IsCompletedSuccessfully)
+            {
+                Log.Error($"[{RunmobileMod.ModId}] could not fetch the run index: " +
+                    task.Exception?.GetBaseException().Message, 2);
+            }
+        }
+
+        if (!LibraryScreen.IsCurrent(state.Surface)) return;
+        LibraryScreen.Dismiss();
+        OpenTab(
+            (LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedEntryId,
+            skipIndexFetch: failed);
+    }
+
+    private sealed record IndexRequest(
+        int Tab, bool CompatibleOnly, string? SelectedEntryId, long Surface, string Scope);
 
     /// <summary>
     /// One run, opened at a floor.
@@ -103,24 +235,25 @@ internal static class RunBrowserScreen
     /// and a captured sibling-assembly type stops the whole mod loading. See
     /// docs/in-game-host.md.
     /// </summary>
-    internal static void OpenRun(string runId, int? floor = null, bool fromMyRuns = false)
+    internal static void OpenRun(string entryId, int? floor = null, bool fromMyRuns = false)
     {
         try
         {
-            if (RunLibrary.RecordingFor(runId) is not { } recording)
+            if (RunLibrary.RecordingFor(entryId) is not { } recording)
             {
-                Refuse($"'{runId}' is not a run this library holds", null);
+                Refuse($"'{entryId}' is not a run this library holds", null);
                 return;
             }
 
             var view = RunView.For(
                 recording, RunLibraryStore.ReadProgress(), floor,
-                CombatTrainerModule.Instance.FightsShownThisSitting(runId));
-            var rows = new List<ScreenRow>(EnteringRows(view, runId, RecordingIdentity.CreatorOrNull(recording)));
+                CombatTrainerModule.Instance.FightsShownThisSitting(recording.RunId));
+            var rows = new List<ScreenRow>(EnteringRows(
+                view, entryId, RecordingIdentity.CreatorOrNull(recording)));
 
             if (view.Positions.Count > 1)
             {
-                var id = runId;
+                var id = entryId;
                 var mine = fromMyRuns;
                 rows.Add(new ScreenRow(
                     LibraryCopy.ChooseAFloor, Enabled: true, () => ChooseFloor(id, floor, mine)));
@@ -136,7 +269,7 @@ internal static class RunBrowserScreen
         }
         catch (Exception ex)
         {
-            Refuse($"could not open '{runId}'", ex);
+            Refuse($"could not open '{entryId}'", ex);
         }
     }
 
@@ -222,11 +355,11 @@ internal static class RunBrowserScreen
     /// described at all - and a code that names nothing says that instead of
     /// pretending the run does not exist.
     ///
-    /// The browser's own modal comes down first, once, because both exits open another
-    /// one and the container holds a single screen - the same rule
-    /// <c>LibraryScreen.Press</c> follows for every row, and this is the one way in that
-    /// does not go through a row. Both exits go back to the tab the code was typed on,
-    /// for the same reason every other nested screen does.
+    /// The browser's own modal becomes a loading surface while the request runs because
+    /// both exits open another one and the container holds a single screen. A completion
+    /// belongs to that surface and does nothing after the player leaves it. Both exits go
+    /// back to the tab the code was typed on, for the same reason every other nested
+    /// screen does.
     ///
     /// Guarded like every other way in here, and for a sharper reason: this is reached
     /// from a signal rather than from a row, so a throw would leave Godot's own dispatch
@@ -235,29 +368,122 @@ internal static class RunBrowserScreen
     /// </summary>
     private static void Look(string code, bool fromMyRuns)
     {
+        long? surface = null;
         try
         {
             LibraryScreen.Dismiss();
-            var answer = RunBrowser.Lookup(code, RunLibrary.Runs(), RunLibrary.ThisBuild());
-            if (!answer.Refused && answer.Run is { } found)
+            var loadingSurface = LibraryScreen.Show(
+                LibraryCopy.CompendiumCard,
+                LibraryMarkup.Dim(LibraryCopy.LookingUpRunCode),
+                [],
+                LibraryCopy.Back,
+                back: static () => { });
+            surface = loadingSurface;
+            var request = Interlocked.Increment(ref nextRequest);
+            var task = RunLibrary.FindSharedAsync(code, out var scope);
+            lock (PendingLock)
             {
-                OpenRun(found.RunId, fromMyRuns: fromMyRuns);
-                return;
+                PendingLookupRequests[request] = new LookupRequest(
+                    code, fromMyRuns, loadingSurface, scope);
+                PendingLookups[request] = task;
             }
-
-            var body = answer.Note is { Length: > 0 } note
-                ? $"{answer.Body}\n\n{LibraryMarkup.Dim(note)}"
-                : answer.Body;
-            var mine = fromMyRuns;
-            LibraryScreen.Show(
-                answer.Title, body, [], answer.Back,
-                back: () => OpenTab(mine ? LibraryTab.MyRuns : LibraryTab.Community));
+            _ = task.ContinueWith(
+                static (_, value) => Callable.From(() => CompleteLookup((int)value!)).CallDeferred(),
+                request,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
         catch (Exception ex)
         {
-            Refuse("could not look up that run code", ex);
+            if (surface is { } ownedSurface && LibraryScreen.IsCurrent(ownedSurface))
+                LibraryScreen.Dismiss();
+            RefuseLookup("could not look up that run code", ex, fromMyRuns);
         }
     }
+
+    private static void CompleteLookup(int request)
+    {
+        Task<SharedRun?> task;
+        LookupRequest state;
+        lock (PendingLock)
+        {
+            task = PendingLookups[request];
+            state = PendingLookupRequests[request];
+            PendingLookups.Remove(request);
+            PendingLookupRequests.Remove(request);
+        }
+
+        if (!RunLibrary.IsCurrentSharingScope(state.Scope))
+        {
+            if (LibraryScreen.IsCurrent(state.Surface))
+            {
+                LibraryScreen.Dismiss();
+                OpenTab(state.FromMyRuns ? LibraryTab.MyRuns : LibraryTab.Community);
+            }
+            return;
+        }
+        if (!LibraryScreen.IsCurrent(state.Surface)) return;
+        LibraryScreen.Dismiss();
+
+        if (task.IsCompletedSuccessfully && task.Result is { } found)
+        {
+            try
+            {
+                var shared = RunLibrary.AcceptShared(
+                    found, state.Code, expectedScope: state.Scope);
+                var lookup = RunBrowser.Lookup(
+                    shared.Run.EntryId, [shared.Run], RunLibrary.ThisBuild());
+                if (lookup.Outcome == LookupOutcome.Found)
+                {
+                    OpenRun(shared.Run.EntryId, fromMyRuns: state.FromMyRuns);
+                    return;
+                }
+
+                if (lookup.Outcome == LookupOutcome.IncompatibleBuild)
+                {
+                    OpenTab(LibraryTab.Community, compatibleOnly: false,
+                        selectedEntryId: shared.Run.EntryId);
+                    return;
+                }
+
+                var remoteBody = lookup.Note is { Length: > 0 } remoteNote
+                    ? $"{lookup.Body}\n\n{LibraryMarkup.Dim(remoteNote)}"
+                    : lookup.Body;
+                var backToMyRuns = state.FromMyRuns;
+                LibraryScreen.Show(
+                    lookup.Title, remoteBody, [], lookup.Back,
+                    back: () => OpenTab(backToMyRuns ? LibraryTab.MyRuns : LibraryTab.Community));
+                return;
+            }
+            catch (Exception ex)
+            {
+                RefuseLookup("could not accept that run code", ex, state.FromMyRuns);
+                return;
+            }
+        }
+
+        if (!task.IsCompletedSuccessfully)
+        {
+            RefuseLookup(
+                "could not look up that run code",
+                task.Exception?.GetBaseException(),
+                state.FromMyRuns);
+            return;
+        }
+
+        var fromMyRuns = state.FromMyRuns;
+        var answer = RunBrowser.Lookup(state.Code, [], RunLibrary.ThisBuild());
+
+        var body = answer.Note is { Length: > 0 } note
+            ? $"{answer.Body}\n\n{LibraryMarkup.Dim(note)}"
+            : answer.Body;
+        LibraryScreen.Show(
+            answer.Title, body, [], answer.Back,
+            back: () => OpenTab(fromMyRuns ? LibraryTab.MyRuns : LibraryTab.Community));
+    }
+
+    private sealed record LookupRequest(string Code, bool FromMyRuns, long Surface, string Scope);
 
     /// <summary>
     /// Stands the player where the row says, through the one entry there is.
@@ -268,14 +494,14 @@ internal static class RunBrowserScreen
     /// even entered - the run they are about to be put in is the recording's, and what
     /// happens in it is the comparison's business rather than this file's.
     /// </summary>
-    private static void Enter(string runId, int kind, int? fight, int? floor)
+    private static void Enter(string entryId, int kind, int? fight, int? floor)
     {
-        if (RunLibrary.RecordingFor(runId) is not { } recording)
+        if (RunLibrary.RecordingFor(entryId) is not { } recording)
         {
-            throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
+            throw new InvalidOperationException($"'{entryId}' is not a run this library holds.");
         }
 
-        if (fight is { } ordinal) RunLibraryStore.RecordFightPlayed(runId, ordinal);
+        if (fight is { } ordinal) RunLibraryStore.RecordFightPlayed(recording.RunId, ordinal);
 
         var plan = (RunViewRowKind)kind switch
         {
@@ -283,7 +509,7 @@ internal static class RunBrowserScreen
                 (IBoundaryPlan)FloorEntryPlan.For(recording, atFloor),
             _ when fight is { } atFight => RecordedFightPlan.For(recording, atFight),
             _ => throw new InvalidOperationException(
-                $"That row names no boundary of '{runId}', so there is nowhere to stand."),
+                $"That row names no boundary of '{entryId}', so there is nowhere to stand."),
         };
 
         _ = RecordedFightRun.Start(recording, plan);
@@ -311,6 +537,8 @@ internal static class RunBrowserScreen
         var body = new StringBuilder();
         body.Append(LibraryMarkup.Dim(
             browser.Tab == LibraryTab.Community ? LibraryCopy.CommunityTab : LibraryCopy.MyRunsTab));
+        body.Append('\n').Append(LibraryMarkup.Dim(
+            $"{LibraryCopy.CompatibleFilter}: {(browser.CompatibleOnly ? "on" : "off")}"));
         foreach (var group in browser.Groups.Where(group => group.Heading is { Length: > 0 }))
         {
             body.Append('\n').Append(LibraryMarkup.Dim(
@@ -322,6 +550,17 @@ internal static class RunBrowserScreen
         {
             body.Append("\n\n").Append(LibraryMarkup.Dim(hidden))
                 .Append('\n').Append(LibraryMarkup.Dim(browser.NotShownTooltipBody));
+        }
+
+        if (!RunLibrary.SharingAvailable)
+        {
+            body.Append("\n\n").Append(LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable));
+        }
+        else if (indexFailure is { Length: > 0 } failure &&
+                 indexFailureScope is { } failureScope &&
+                 RunLibrary.IsCurrentSharingScope(failureScope))
+        {
+            body.Append("\n\n").Append(LibraryMarkup.Dim(failure));
         }
 
         if (browser.Footer is { Length: > 0 } footer)
@@ -360,6 +599,18 @@ internal static class RunBrowserScreen
     /// would be the failure mode this project exists to prevent, at the one moment a
     /// player is deciding whether the mod works.
     /// </summary>
+    private static void RefuseLookup(string what, Exception? ex, bool fromMyRuns)
+    {
+        var detail = ex is null ? what : $"{what}: {ex.GetType().Name}: {ex.Message}";
+        Log.Error($"[{RunmobileMod.ModId}] {detail}", 2);
+        LibraryScreen.Show(
+            LibraryCopy.CompendiumCard,
+            LibraryMarkup.Dim(detail),
+            [],
+            LibraryCopy.Back,
+            back: () => OpenTab(fromMyRuns ? LibraryTab.MyRuns : LibraryTab.Community));
+    }
+
     private static void Refuse(string what, Exception? ex)
     {
         var detail = ex is null ? what : $"{what}: {ex.GetType().Name}: {ex.Message}";

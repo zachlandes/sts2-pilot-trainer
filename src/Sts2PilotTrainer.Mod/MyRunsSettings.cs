@@ -1,8 +1,10 @@
 using Godot;
+using HarmonyLib;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Multiplayer;
+using MegaCrit.Sts2.Core.Nodes.Screens.Settings;
 using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
@@ -28,8 +30,13 @@ namespace Sts2PilotTrainer.Mod;
 /// something happened, and a row that showed one anyway would be evidence nobody can
 /// check.</para>
 /// </summary>
+[HarmonyPatch(typeof(NSettingsScreen))]
 internal static class MyRunsSettings
 {
+    private const string ModdingButtonPath = "%ModdingButton";
+    private const float FallbackWidth = 520f;
+    private const float SectionGap = 12f;
+
     /// <summary>The popup scene's own name for its content, resolved the way the
     /// game's code resolves it.</summary>
     private const string VerticalPopupPath = "VerticalPopup";
@@ -43,6 +50,63 @@ internal static class MyRunsSettings
     private static LocString PlaceholderCancelLabel => new("main_menu_ui", "GENERIC_POPUP.cancel");
 
     private static MyRunsSettingsRow? _row;
+
+    [HarmonyPostfix]
+    [HarmonyPatch(nameof(NSettingsScreen._Ready))]
+    internal static void AddRow(NSettingsScreen __instance)
+    {
+        try
+        {
+            if (!RunmobileMod.MayDraw ||
+                __instance.FindChild(MyRunsSettingsRow.RootName, recursive: true, owned: false) is not null)
+            {
+                return;
+            }
+
+            var anchor = __instance.GetNodeOrNull<Control>(ModdingButtonPath);
+            if (anchor is null)
+            {
+                Log.Warn(
+                    $"[{RunmobileMod.ModId}] this build's settings screen has no '{ModdingButtonPath}' " +
+                    "to host Runmobile's settings; not adding them.", 2);
+                return;
+            }
+
+            Attach(anchor, GameFont.Of(__instance));
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not add Runmobile's settings: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    internal static MyRunsSettingsRow Attach(Control anchor, Font? font)
+    {
+        var parent = anchor.GetParent()
+            ?? throw new InvalidOperationException(
+                "This build's modding settings button has no parent to host Runmobile's settings.");
+        var width = anchor.Size.X > 0f
+            ? anchor.Size.X
+            : parent is Control host && host.Size.X > 0f
+                ? host.Size.X
+                : FallbackWidth;
+        var row = Build(width, font);
+        if (parent is not Container)
+        {
+            row.Root.Position = anchor.Position + new Vector2(0f, anchor.Size.Y + SectionGap);
+            if (parent is Control control)
+            {
+                control.CustomMinimumSize = new Vector2(
+                    control.CustomMinimumSize.X,
+                    Math.Max(control.CustomMinimumSize.Y, row.Root.Position.Y + MyRunsSettingsRow.Height));
+            }
+        }
+
+        parent.AddChild(row.Root);
+        return row;
+    }
 
     /// <summary>
     /// Builds the row against what is on the disk right now, wired to act on it.
@@ -60,8 +124,10 @@ internal static class MyRunsSettings
     internal static MyRunsSettingsRow Build(float width, Font? font)
     {
         var facts = OnDisk();
+        var settings = RunmobileSettings.Read();
         _row = MyRunsSettingsRow.Build(
-            MyRunsRow.For(facts), facts.Keep, width, font, Retain, AskToRemove);
+            MyRunsRow.For(facts), facts.Keep, settings.FetchRunIndex,
+            width, font, Retain, AskToRemove, SetFetchRunIndex);
         return _row;
     }
 
@@ -156,6 +222,24 @@ internal static class MyRunsSettings
     /// confirmation with a controller should be one press from leaving it, and the
     /// affirmative stays on the right because that is where the game puts its own.
     /// </summary>
+    private static void SetFetchRunIndex(bool fetch)
+    {
+        try
+        {
+            RunmobileSettings.SetFetchRunIndex(fetch);
+            if (_row is { } row)
+                row.Apply(row.Row, RunmobileSettings.Read().KeepRecentRuns, fetch);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not write whether the run index is fetched: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            if (_row is { } row) row.Apply(row.Row, RunmobileSettings.Read().KeepRecentRuns,
+                RunmobileSettings.Read().FetchRunIndex);
+        }
+    }
+
     private static void AskToRemove()
     {
         if (_row is not { } row) return;

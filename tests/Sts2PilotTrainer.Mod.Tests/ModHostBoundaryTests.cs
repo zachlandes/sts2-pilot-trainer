@@ -89,6 +89,147 @@ public sealed class ModHostBoundaryTests
         Assert.Equal("Runmobile", manifest.GetProperty("name").GetString());
     }
 
+    [Fact]
+    public void PackageOutputCannotBeRedirectedToAnExistingDirectory()
+    {
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-package-output-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(sandbox);
+        var sentinel = Path.Combine(sandbox, "keep.txt");
+        File.WriteAllText(sentinel, "keep");
+
+        try
+        {
+            var result = RunScript(
+                Path.Combine(Arbiter.RepoRoot, "scripts", "package-mod.sh"),
+                "--directory",
+                sandbox);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal("keep", File.ReadAllText(sentinel));
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void FailedPackagingRemovesStaleAndPartialDistributables()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-package-failure-{Guid.NewGuid():N}");
+        var scripts = Path.Combine(sandbox, "scripts");
+        Directory.CreateDirectory(scripts);
+        var packageScript = Path.Combine(scripts, "package-mod.sh");
+        var buildScript = Path.Combine(scripts, "build.sh");
+        File.Copy(
+            Path.Combine(Arbiter.RepoRoot, "scripts", "package-mod.sh"),
+            packageScript);
+        File.WriteAllText(buildScript, "#!/usr/bin/env bash\nexit 0\n");
+        File.SetUnixFileMode(
+            buildScript,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+        var output = Path.Combine(sandbox, "build", "distribution", $"Runmobile-{rid}");
+        var archive = output + ".tar.gz";
+        Directory.CreateDirectory(output);
+        File.WriteAllText(Path.Combine(output, "stale.txt"), "stale");
+        File.WriteAllText(archive, "stale");
+
+        try
+        {
+            var result = RunScript(packageScript);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.False(Directory.Exists(output));
+            Assert.False(File.Exists(archive));
+            Assert.False(Directory.Exists(Path.Combine(
+                sandbox, "build", "publish", "runmobile-package", rid)));
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void IncompletePackagePreservesTheWorkingInstallation()
+    {
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-partial-package-{Guid.NewGuid():N}");
+        var package = Path.Combine(sandbox, "package");
+        var mods = Path.Combine(sandbox, "mods");
+        var installed = Path.Combine(mods, "Runmobile");
+        Directory.CreateDirectory(package);
+        Directory.CreateDirectory(installed);
+        File.Copy(
+            Path.Combine(Arbiter.RepoRoot, "scripts", "install-package.sh"),
+            Path.Combine(package, "install.sh"));
+        File.WriteAllText(Path.Combine(package, "runtime-id"), "test-runtime");
+        File.WriteAllText(Path.Combine(installed, "working.txt"), "working");
+
+        try
+        {
+            var result = RunScript(Path.Combine(package, "install.sh"), "--mods-dir", mods);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal("working", File.ReadAllText(Path.Combine(installed, "working.txt")));
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void MissingInventoriedArbiterDependencyPreservesTheWorkingInstallation()
+    {
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-partial-arbiter-{Guid.NewGuid():N}");
+        var package = Path.Combine(sandbox, "package");
+        var payload = Path.Combine(package, "payload");
+        var arbiter = Path.Combine(payload, "arbiter");
+        var bootstrap = Path.Combine(package, "bootstrap");
+        var mods = Path.Combine(sandbox, "mods");
+        var installed = Path.Combine(mods, "Runmobile");
+        Directory.CreateDirectory(arbiter);
+        Directory.CreateDirectory(bootstrap);
+        Directory.CreateDirectory(installed);
+        File.Copy(
+            Path.Combine(Arbiter.RepoRoot, "scripts", "install-package.sh"),
+            Path.Combine(package, "install.sh"));
+        File.WriteAllText(Path.Combine(package, "runtime-id"), "test-runtime");
+        foreach (var file in new[]
+        {
+            "Runmobile.json",
+            "Runmobile.dll",
+            "Sts2PilotTrainer.Trainer.dll",
+            "Sts2PilotTrainer.Engine.dll",
+            "Sts2PilotTrainer.Replay.dll",
+            "Sts2PilotTrainer.IO.dll",
+        })
+        {
+            File.WriteAllText(Path.Combine(payload, file), "payload");
+        }
+        File.WriteAllText(Path.Combine(arbiter, "sts2-arbiter"), "arbiter");
+        File.WriteAllText(Path.Combine(bootstrap, "Sts2PilotTrainer.Bootstrap"), "bootstrap");
+        File.WriteAllText(
+            Path.Combine(package, "arbiter-files.txt"),
+            "./missing-runtime-file\n./sts2-arbiter\n");
+        File.WriteAllText(Path.Combine(installed, "working.txt"), "working");
+
+        try
+        {
+            var result = RunScript(Path.Combine(package, "install.sh"), "--mods-dir", mods);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal("working", File.ReadAllText(Path.Combine(installed, "working.txt")));
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
     [GameFact]
     public void TheBuiltModInstallsUnderTheIdLivePreflightAccepts()
     {
@@ -97,12 +238,15 @@ public sealed class ModHostBoundaryTests
         var former = Path.Combine(mods, "CombatTrainer");
         Directory.CreateDirectory(former);
         File.WriteAllText(Path.Combine(former, "leftover.txt"), "old");
+        var preparedReceipt = Path.Combine(Arbiter.RepoRoot, "build", "lib", "prepared-assembly.json");
+        var receiptBeforeInstall = File.ReadAllBytes(preparedReceipt);
 
         try
         {
             var result = RunInstaller(mods);
 
             Assert.Equal(0, result.ExitCode);
+            Assert.Equal(receiptBeforeInstall, File.ReadAllBytes(preparedReceipt));
             Assert.False(Directory.Exists(former));
             var installed = Path.Combine(mods, "Runmobile");
             Assert.Equal(
@@ -115,6 +259,20 @@ public sealed class ModHostBoundaryTests
                     "Sts2PilotTrainer.Trainer.dll",
                 ],
                 Directory.EnumerateFiles(installed).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+            var arbiterDirectory = Path.Combine(installed, "arbiter");
+            Assert.True(Directory.Exists(arbiterDirectory));
+            Assert.True(File.Exists(Path.Combine(
+                arbiterDirectory,
+                OperatingSystem.IsWindows() ? "sts2-arbiter.exe" : "sts2-arbiter")));
+            Assert.True(File.Exists(Path.Combine(arbiterDirectory, "lib", "prepared-assembly.json")));
+            Assert.True(File.Exists(Path.Combine(arbiterDirectory, "lib", "sts2.dll")));
+
+            var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+            var package = Path.Combine(Arbiter.RepoRoot, "build", "distribution", $"Runmobile-{rid}");
+            Assert.Equal(rid, File.ReadAllText(Path.Combine(package, "runtime-id")).Trim());
+            Assert.True(File.Exists(Path.Combine(package, "install.sh")));
+            Assert.True(Directory.Exists(Path.Combine(package, "bootstrap")));
+            Assert.False(Directory.Exists(Path.Combine(package, "payload", "arbiter", "lib")));
 
             var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(installed, "Runmobile.json")))
                 .RootElement;
@@ -202,17 +360,10 @@ public sealed class ModHostBoundaryTests
 
     private static Arbiter.Result RunInstaller(string modsDirectory, string? pathPrefix = null)
     {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "bash",
-            WorkingDirectory = Arbiter.RepoRoot,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        startInfo.ArgumentList.Add(Path.Combine(Arbiter.RepoRoot, "scripts", "install-mod.sh"));
-        startInfo.ArgumentList.Add("--mods-dir");
-        startInfo.ArgumentList.Add(modsDirectory);
+        var startInfo = ScriptStartInfo(
+            Path.Combine(Arbiter.RepoRoot, "scripts", "install-mod.sh"),
+            "--mods-dir",
+            modsDirectory);
         if (pathPrefix is not null)
         {
             startInfo.Environment["PATH"] =
@@ -250,6 +401,31 @@ public sealed class ModHostBoundaryTests
         }
 
         return new Arbiter.Result(process.ExitCode, output.Result, error.Result);
+    }
+
+    private static Arbiter.Result RunScript(string script, params string[] arguments)
+    {
+        using var process = Process.Start(ScriptStartInfo(script, arguments))!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        process.WaitForExit();
+        Task.WaitAll(output, error);
+        return new Arbiter.Result(process.ExitCode, output.Result, error.Result);
+    }
+
+    private static ProcessStartInfo ScriptStartInfo(string script, params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "bash",
+            WorkingDirectory = Arbiter.RepoRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        startInfo.ArgumentList.Add(script);
+        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+        return startInfo;
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]

@@ -55,7 +55,7 @@ internal static class AssemblyResolution
         var configured = Environment.GetEnvironmentVariable(LibDirVariable);
         if (!string.IsNullOrWhiteSpace(configured))
         {
-            var full = WorktreePath.Require(configured.Trim());
+            var full = RequirePreparedLibrary(configured.Trim());
             if (File.Exists(Path.Combine(full, "sts2.dll"))) return full;
             return null;
         }
@@ -67,12 +67,27 @@ internal static class AssemblyResolution
             {
                 if (File.Exists(Path.Combine(candidate, "sts2.dll")))
                 {
-                    return WorktreePath.Require(candidate);
+                    return RequirePreparedLibrary(candidate);
                 }
             }
             dir = Directory.GetParent(dir)?.FullName ?? "";
         }
 
         return null;
+    }
+
+    private static string RequirePreparedLibrary(string directory)
+    {
+        var full = Path.GetFullPath(directory);
+        var packaged = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "lib"));
+        if (string.Equals(
+            full,
+            packaged,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+        {
+            return PathContainment.RequireContained(AppContext.BaseDirectory, full);
+        }
+
+        return WorktreePath.Require(full);
     }
 }

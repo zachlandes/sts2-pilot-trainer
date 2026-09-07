@@ -100,13 +100,11 @@ public sealed class GameSessionWatchTests : IDisposable
             $"{RunLibraryStore.RecordingsDirectory}/native-a-20260906-120000.replay.json",
             ManifestJson.Serialize(recording));
 
-        Assert.True(RunLibrary.HasAnythingToShow());
         Assert.True(CompendiumCard.ShowsButton());
         Assert.NotNull(RunHistoryPlateHost.PlateFor(null, recording));
 
         GameSessionWatch.MultiplayerSessionSetUp();
 
-        Assert.True(RunLibrary.HasAnythingToShow());
         Assert.False(CompendiumCard.ShowsButton());
         Assert.Null(RunHistoryPlateHost.PlateFor(null, recording));
 

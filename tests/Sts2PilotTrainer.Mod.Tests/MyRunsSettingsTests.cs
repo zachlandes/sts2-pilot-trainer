@@ -95,6 +95,27 @@ public sealed class MyRunsSettingsTests : IDisposable
         Assert.Equal("2 runs · 1 KB", Label(row, "Reading").Text);
     }
 
+    [Fact]
+    public void TheProductionSettingsHostShowsAndPersistsTheFetchControl()
+    {
+        var host = new Control { Size = new Vector2(Width, 400f) };
+        var modding = new Button
+        {
+            Name = "ModdingButton",
+            Position = new Vector2(0f, 100f),
+            Size = new Vector2(Width, 30f),
+        };
+        host.AddChild(modding);
+
+        var row = MyRunsSettings.Attach(modding, font: null);
+
+        Assert.Same(host, row.Root.GetParent());
+        Assert.Equal("Fetch the run index: on", row.Fetch.Text);
+        row.Fetch.EmitPressed();
+        Assert.False(RunmobileSettings.Read().FetchRunIndex);
+        Assert.Equal("Fetch the run index: off", row.Fetch.Text);
+    }
+
     /// <summary>
     /// A disk that cannot be asked yet is a row rather than an exception.
     ///

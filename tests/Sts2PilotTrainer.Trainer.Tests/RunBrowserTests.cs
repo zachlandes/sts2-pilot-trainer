@@ -204,6 +204,36 @@ public sealed class RunBrowserTests
         Assert.NotNull(answer.Run);
     }
 
+    [Fact]
+    public void AnIncompatibleCodeRevealsItsDisabledRowOnTheLaterSortedPage()
+    {
+        var runs = Enumerable.Range(1, 49)
+            .Select(index => Run(
+                $"recent-{index:00}",
+                recorded: new DateTimeOffset(2026, 9, index % 28 + 1, 0, 0, 0, TimeSpan.Zero)))
+            .Append(Run(
+                "old",
+                verdict: RunVerdict.Absent,
+                build: "v0.110.0",
+                recorded: new DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero)))
+            .ToList();
+
+        var answer = RunBrowser.Lookup("old", runs, Build);
+        var browser = RunBrowser.For(
+            LibraryTab.Community, runs, Build, compatibleOnly: true,
+            selectedEntryId: answer.Run!.EntryId);
+        var sorted = Listed(browser).ToList();
+        var selected = sorted.FindIndex(run => run.EntryId == browser.SelectedEntryId);
+        var page = ScreenPage.Containing(sorted.Count, perPage: 8, selected, pinned: 2);
+
+        Assert.False(browser.CompatibleOnly);
+        Assert.False(sorted[selected].Listed);
+        Assert.True(page.Index > 0);
+        Assert.InRange(selected, page.First, page.First + page.Count - 1);
+        Assert.Contains("v0.110.0", answer.Body, StringComparison.Ordinal);
+        Assert.Contains(Build, answer.Body, StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// A multiplayer run gets no "it may come back" note, because nothing arriving
     /// later turns one into a single-player run. Answered before the build question so

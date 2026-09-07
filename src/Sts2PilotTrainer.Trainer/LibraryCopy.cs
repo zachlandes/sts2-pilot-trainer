@@ -18,8 +18,8 @@ namespace Sts2PilotTrainer.Trainer;
 /// recording anywhere on this surface, because two of them would read as two different
 /// things happening.</para>
 ///
-/// <para><b>The run noun.</b> What a player has is runs - Community, My runs, "{n}
-/// runs". "Recording", "manifest" and "journal" are this project's internal words for
+/// <para><b>The run noun.</b> What a player has is runs - Others, Mine, "{n} runs".
+/// "Recording", "manifest" and "journal" are this project's internal words for
 /// the file, and a player never sees one.</para>
 ///
 /// Every value a recording supplies is interpolated. A sentence here that named a
@@ -41,10 +41,10 @@ public static class LibraryCopy
     // ── The browser ────────────────────────────────────────────────────────
 
     /// <summary>Runs anybody made. The tab a player opens on.</summary>
-    public const string CommunityTab = "Community";
+    public const string CommunityTab = "Others";
 
     /// <summary>Runs of the player's own, which the recorder wrote.</summary>
-    public const string MyRunsTab = "My runs";
+    public const string MyRunsTab = "Mine";
 
     /// <summary>The recordings that travel inside the mod, present with no network
     /// and no index.</summary>
@@ -57,11 +57,10 @@ public static class LibraryCopy
     public const string RecentGroup = "Recent";
 
     /// <summary>
-    /// The one trace an incompatible run leaves: a count, under the list.
+    /// The count of runs hidden by compatibility and multiplayer rules.
     ///
-    /// Settled and not a filter. There is no tickbox for it and no greyed row, so a
-    /// run this game cannot play is simply not in the list - and this numeral is what
-    /// stops that being a silent disappearance.
+    /// The compatibility filter defaults on. Turning it off reveals disabled
+    /// incompatible rows; the numeral keeps every remaining omission visible.
     /// </summary>
     public static string NotShown(int count) =>
         $"{count.ToString(CultureInfo.InvariantCulture)} not shown";
@@ -74,16 +73,44 @@ public static class LibraryCopy
     /// <summary>
     /// What the run-code field says before anything is typed in it.
     ///
-    /// The code is the one way to ask about a run that is not in the list, which is
-    /// what makes the hidden rule bearable: a run this game cannot play is not shown
-    /// and is still findable by somebody who was sent it.
+    /// A code finds a run hidden by the default compatibility filter and selects it in
+    /// the list, so somebody who was sent one sees the run and why it is disabled.
     /// </summary>
     public const string RunCodeField = "Run code";
 
-    /// <summary>Leads to the submit flow, which is somewhere else.</summary>
-    public const string SubmitThisRun = "Submit this run";
+    public const string CompatibleFilter = "Compatible with your game version";
 
-    /// <summary>What the player's own runs occupy, under the My runs list.</summary>
+    public const string FetchRunIndex = "Fetch the run index";
+
+    public const string FetchingRunIndex = "Fetching the run index…";
+
+    public const string FetchRunIndexFailed =
+        "The run index could not be fetched. Direct run-code lookup is still available.";
+
+    public const string SharingServiceUnavailable =
+        "Online sharing is unavailable because no authorized service is configured.";
+
+    public const string LookingUpRunCode = "Looking up that run code…";
+
+    public const string SubmitThisRun = "Share this run";
+
+    public const string SharePrivacy = "No other personal information travels with this run.";
+
+    public const string ShareConsent = "I release this run under CC0.";
+
+    public const string ShareLocalValidation = "Validation runs locally before anything is sent.";
+
+    public const string ShareValidating = "Validating this run locally…";
+
+    public const string ShareNameField = "Run name (40 characters)";
+
+    public const string ShareDescriptionField = "Description (200 characters)";
+
+    public const string ShareDisplayNameField = "Display name (required for sharing)";
+
+    public const string ShareSubmit = "Share";
+
+    /// <summary>What the player's own runs occupy, under the Mine list.</summary>
     public static string MyRunsFooter(int runs, string size) =>
         $"{runs.ToString(CultureInfo.InvariantCulture)} runs, {size} on this computer";
 
@@ -97,10 +124,9 @@ public static class LibraryCopy
     /// <summary>
     /// What a run code answers with when it names a run this game cannot play.
     ///
-    /// The one place on the surface where an incompatible run is described at all. It
-    /// is a popup rather than a row because the list never holds one: a player who
-    /// typed a code asked about a specific run and is owed an answer, and a player who
-    /// did not is owed a list of runs that work.
+    /// The build sentence shown on an incompatible row selected by exact code.
+    /// A player who typed a code asked about a specific run and is owed both the build
+    /// it requires and the build currently running.
     /// </summary>
     public const string LookupRefusedTitle = "Not playable on your game";
 
@@ -158,7 +184,7 @@ public static class LibraryCopy
 
     /// <inheritdoc cref="LookupNotFoundTitle"/>
     public const string LookupNotFound =
-        "Nothing here is that run. Check the code, or open Community and pick a run from the list.";
+        "Nothing here is that run. Check the code, or open Others and pick a run from the list.";
 
     /// <summary>Leaves any of the lookup's answers.</summary>
     public const string Back = "Back";
@@ -300,10 +326,8 @@ public static class LibraryCopy
     /// a run nobody can reproduce.</summary>
     public const string PlateConsoleUsed = "A console command was used, so it can't be submitted.";
 
-    /// <summary>Why the submit row is refused while the flow it leads to is not built.
-    /// The row keeps its place for the reason every refused row here does: its position
-    /// is how a player learns the offer is coming.</summary>
-    public const string PlateSubmitComing = "Submitting runs is coming";
+    /// <summary>Why the submit row is refused when its host has no sharing service.</summary>
+    public const string PlateSubmitComing = "Submitting runs is unavailable";
 
     /// <summary>Why nothing on a broken recording is offered.</summary>
     public const string PlateContinuityBroken = "The game reloaded past a point already recorded.";

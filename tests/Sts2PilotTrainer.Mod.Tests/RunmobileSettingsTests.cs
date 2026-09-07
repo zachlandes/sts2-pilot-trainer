@@ -2,18 +2,18 @@ using System.Text.Json.Nodes;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
 /// <summary>
 /// What the player told this mod to do, read out of the store.
 ///
-/// There is no screen for it yet, so the file is the whole of the surface and its
-/// rules are the whole of the behaviour: an absent file is the default, a file this
-/// build cannot read means do nothing rather than being guessed at, and what the
-/// player wrote is what happens. Three sentences are sayable in it - record my runs,
-/// keep this many, remove them all - and the settings row writes the last two back
-/// where a player moves a control instead of typing.
+/// The file is the record behind the settings surface: an absent file is the default,
+/// a file this build cannot read means do nothing rather than being guessed at, and
+/// what the player wrote is what happens. Recording and the sharing-service endpoint
+/// remain file-only; the settings row writes the retention, removal, and index-fetch
+/// choices where a player moves a control instead of typing.
 ///
 /// Every write here edits the member it names and nothing else, which is the property
 /// most of the tests below are about: the rest of the document is the player's own
@@ -34,10 +34,12 @@ public sealed class RunmobileSettingsTests : IDisposable
 
         Directory.CreateDirectory(_root);
         RunmobileStore.UseRootForTesting(_root);
+        RunLibrary.ResetSharedRunsForTesting();
     }
 
     public void Dispose()
     {
+        RunLibrary.ResetSharedRunsForTesting();
         RunmobileStore.UseRootForTesting(null);
         var sandbox = _root[.._root.IndexOf("Runmobile", StringComparison.Ordinal)];
         if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
@@ -47,6 +49,43 @@ public sealed class RunmobileSettingsTests : IDisposable
     public void APlayerWhoHasNeverTouchedTheFileIsRecording()
     {
         Assert.True(RunmobileSettings.Read().RecordMyRuns);
+    }
+
+    [Fact]
+    public async Task NoSharingServiceConfigurationMakesNoNetworkOperationAvailable()
+    {
+        Assert.False(RunLibrary.SharingAvailable);
+        var fetch = await Assert.ThrowsAsync<ShareValidationException>(
+            () => RunLibrary.FetchIndexAsync());
+        var lookup = await Assert.ThrowsAsync<ShareValidationException>(
+            () => RunLibrary.FindSharedAsync("ABCDEF"));
+
+        Assert.Equal(LibraryCopy.SharingServiceUnavailable, fetch.Message);
+        Assert.Equal(LibraryCopy.SharingServiceUnavailable, lookup.Message);
+    }
+
+    [Fact]
+    public void AnAuthorizedSharingServiceConfigurationEnablesNetworkOperations()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","sharing_service_url":"https://runs.example.test/v1/"}""");
+
+        Assert.True(RunLibrary.SharingAvailable);
+    }
+
+    [Theory]
+    [InlineData("http://runs.example.test/v1/")]
+    [InlineData("https://credential@runs.example.test/v1/")]
+    public async Task AnUnauthorizedSharingServiceConfigurationMakesNoNetworkOperationAvailable(
+        string endpoint)
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","sharing_service_url":"{{endpoint}}"}""");
+
+        Assert.False(RunLibrary.SharingAvailable);
+        await Assert.ThrowsAsync<ShareValidationException>(() => RunLibrary.FetchIndexAsync());
     }
 
     [Fact]

@@ -52,7 +52,9 @@ namespace Sts2PilotTrainer.Mod;
 /// <para><b>Removing is a write and goes through the same gate.</b> A player owns the
 /// disk their recordings are on, so the store can be asked to take one back off it -
 /// through <see cref="Remove"/>, which names one file at a time and refuses a
-/// directory. Nothing here decides <em>which</em> files: that is
+/// directory. The temporary publication workspace is the sole directory-shaped
+/// exception and is removed through <see cref="RemoveTree"/> after the retention owner
+/// names that workspace. Nothing here decides <em>which</em> files: that is
 /// <c>RecordingRetention</c>'s, and it is deliberately somewhere else, because the one
 /// operation in this mod that cannot be undone should not also be the one that picks
 /// its own targets.</para>
@@ -225,6 +227,68 @@ internal static class RunmobileStore
         if (!File.Exists(path)) return false;
         File.Delete(path);
         return true;
+    }
+
+    internal static void RemoveTree(string root, string relativeDirectory)
+    {
+        var fullRoot = Path.GetFullPath(root);
+        var directory = ProtectedInstallPath.RequireUnprotected(
+            PathContainment.RequireContained(fullRoot, Path.Combine(fullRoot, relativeDirectory)));
+        if (Path.GetRelativePath(fullRoot, directory) == ".")
+            throw new PathContainmentException("The store cannot remove its own root.");
+        RejectLinkedComponents(fullRoot, directory);
+        if (!Directory.Exists(directory)) return;
+
+        var files = new List<string>();
+        var directories = new List<string>();
+        Audit(directory);
+        foreach (var file in files) File.Delete(CheckedEntry(file));
+        foreach (var child in directories.OrderByDescending(path => path.Length))
+            Directory.Delete(CheckedEntry(child));
+
+        string CheckedEntry(string path) => ProtectedInstallPath.RequireUnprotected(
+            PathContainment.RequireContained(directory, path));
+
+        static void RejectLinkedComponents(string allowedRoot, string path)
+        {
+            var relative = Path.GetRelativePath(allowedRoot, path);
+            var current = allowedRoot;
+            foreach (var component in relative.Split(
+                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries))
+            {
+                current = Path.Combine(current, component);
+                FileSystemInfo entry = Directory.Exists(current)
+                    ? new DirectoryInfo(current)
+                    : new FileInfo(current);
+                if (entry.LinkTarget is not null ||
+                    entry.Exists && (entry.Attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    throw new PathContainmentException(
+                        $"Linked path component '{entry.FullName}' cannot be removed.");
+                }
+
+                if (!entry.Exists) return;
+            }
+        }
+
+        void Audit(string current)
+        {
+            var checkedCurrent = CheckedEntry(current);
+            if ((File.GetAttributes(checkedCurrent) & FileAttributes.ReparsePoint) != 0)
+                throw new PathContainmentException($"Linked directory '{checkedCurrent}' cannot be removed.");
+            directories.Add(checkedCurrent);
+
+            foreach (var entry in Directory.EnumerateFileSystemEntries(checkedCurrent))
+            {
+                var checkedEntry = CheckedEntry(entry);
+                var attributes = File.GetAttributes(checkedEntry);
+                if ((attributes & FileAttributes.ReparsePoint) != 0)
+                    throw new PathContainmentException($"Linked entry '{checkedEntry}' cannot be removed.");
+                if ((attributes & FileAttributes.Directory) != 0) Audit(checkedEntry);
+                else files.Add(checkedEntry);
+            }
+        }
     }
 
     /// <summary>

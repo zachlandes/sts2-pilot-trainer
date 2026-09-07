@@ -28,11 +28,12 @@ S7's session did run the renamed shell, which is what establishes the row below;
 
 ## What it proves
 
-**Retail loading of the renamed artifact is established, mod list included.**
-The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
-The S7 transport session installed that package with `install-mod.sh`, launched the shipped client with it as the only enabled mod, and ran the whole watched journey through it - so discovery, initialization and a complete session through the renamed shell are shown, and the protected-files ledger of that session is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp.
+**Retail loading of the renamed core artifact is established, mod list included.**
+The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.dll`, the four project-owned libraries the host uses, and the self-contained local publication arbiter under `arbiter/`.
+The S7 transport session predates the packaged arbiter: it installed the core Runmobile payload with `install-mod.sh`, launched the shipped client with it as the only enabled mod, and ran the whole watched journey through it.
+That session establishes discovery, initialization and a complete journey through the renamed shell, and its protected-files ledger is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp; it does not establish the newer publication package in retail.
 The game's own mod line naming `Runmobile` is photographed in that session's record, so the row no longer rests on the pre-rename `CombatTrainer` screenshots.
-The libraries are built to ship together; there is no separately installed framework or runtime dependency, and no resource pack.
+The libraries and arbiter are built to ship together; there is no separately installed framework or runtime dependency, and no resource pack.
 
 **The eligibility answer comes from the same owner the arbiter uses.**
 `Preflight.EvaluateLiveHost` reads this process's game and judges it through
@@ -703,17 +704,13 @@ than guessing it.
 The third module, and the only one with a surface a player browses. What it offers and
 what it refuses is `Sts2PilotTrainer.Trainer`'s - `RunBrowser`, `RunView`,
 `RunHistoryPlate` and `LibraryCopy` - and every one of those is pure and tested without
-a game. What runs inside the client is the two patches below plus one drawing class.
+a game. What runs inside the client is the three patches below plus the drawing classes behind them.
 
-**Two hooks, and each is the honest one for its question.** `CompendiumCard` follows
-`NCompendiumSubmenu._Ready`, which is where the row is built and where every focus
-neighbour is assigned index by index, so a button added anywhere else exists and is
-unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides
-per-visit visibility, so "is there a run to show" is asked each time rather than once.
-`RunHistoryPlateHost` follows `NMapPointHistoryEntry._Ready` and connects the `Released`
-that entry already emits and nothing in the game listens to. One patch there rather than
-two: the entry carries both its own `FloorNum` and the `RunHistory` it belongs to, so
-nothing has to follow the screen's own selection to know which run a press is about.
+**Three hooks, and each is the honest one for its question.**
+`CompendiumCard` follows `NCompendiumSubmenu._Ready`, which is where the row is built and where every focus neighbour is assigned index by index, so a button added anywhere else exists and is unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides per-visit visibility, so "is there a run to show" is asked each time rather than once.
+`MyRunsSettings` follows `NSettingsScreen._Ready` and places its row beside `%ModdingButton`, the game's own modding settings entry point.
+`RunHistoryPlateHost` follows `NMapPointHistoryEntry._Ready` and connects the `Released` that entry already emits and nothing in the game listens to.
+One patch there rather than two: the entry carries both its own `FloorNum` and the `RunHistory` it belongs to, so nothing has to follow the screen's own selection to know which run a press is about.
 
 **Which recording is this run's is matched on four values, and ambiguity answers none.**
 The game's history and a recording both carry a seed, a character, an ascension and a
@@ -766,40 +763,30 @@ What holds the states apart meanwhile is that each one says what it is in words 
 Drawing the marks is a change to `LibraryScreen` and `TransportGlyphArt` and to nothing
 behind either.
 
-**The Compendium's question reads no manifest.** Whether the card appears is asked on
-every menu open, and answering it by building the library meant deserialising every
-recording on the player's disk and preflighting each one - fifty files at the retention
-default, on the game's own thread, exactly in the case where the answer is no.
-So `RunLibrary.HasAnythingToShow` judges the shipped recordings, which are in memory
-already and normally answer it outright, and otherwise reads the run ids out of the
-recorder's directory index: any finished recording is a reason to show the button.
-`RunLibrary.RecordingFor` resolves one run the same way - the id names the recording in
-the index, so pressing a row costs that recording's manifest and no other's, and a
-manifest whose own run id disagrees with its name answers nothing rather than answering
-with the wrong run.
+**The Compendium entry is present whenever the shell may draw.**
+The browser is the only route to automatic index retrieval and direct run-code lookup, so an empty local library and a disabled `Fetch the run index` setting cannot hide it.
+It reads no manifest and performs no network request merely to decide visibility.
+`RunLibrary.RecordingFor` resolves one run from the recorder's directory index - the id names the recording in the index, so pressing a row costs that recording's manifest and no other's, and a manifest whose own run id disagrees with its name answers nothing rather than answering with the wrong run.
 
-The promise that makes is one-directional and nothing stronger: the card never hides a
-run the list would hold, and it can show onto a list that turns out empty, which the
-browser then draws with the "{n} not shown" numeral underneath.
-That direction is the point rather than a compromise.
-The browser is the only thing that judges a recording and the card is the only way to the
-browser, so anything persisted that could hide the card could close the only path to
-judging again - a per-build verdict cache lived here for two rounds and did exactly that
-after a game update, and a cached "could not judge" would have repeated it, because that
-reading fails again on every open.
-Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup
-judge live, every time they open.
+The browser still judges every run before showing it, and an empty or unavailable index is shown on that surface rather than represented by removing the way in.
+Its player-facing tabs are Others and Mine; the Featured and Recent groups sit under Others.
+The visible `Compatible with your game version` filter defaults on and hides incompatible runs during ordinary browsing.
+Turning the filter off reveals incompatible runs as disabled rows.
+An exact code does that automatically, selects its run in the sorted position, and shows both the required build and the current build.
+Established multiplayer runs and incompatible runs still hidden by the filter remain counted.
+A transport failure is stated inside the browser while direct run-code lookup remains available.
+Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup judge live every time they open.
 
-**Two states the design names are derived and not reachable, for reasons outside this
+**One state the design names is derived and not reachable, for a reason outside this
 module.** The plate's console-command state - play rows offered, Submit refused, "A
-console command was used, so it can't be submitted." - is not one of them any more: the
+console command was used, so it can't be submitted." - is not that state any more: the
 recorder writes `source.native.integrity`, and `RunHistoryPlateHost.FactsFor` reads it
 through `NativeSource.StatesSomethingOtherThanComplete`, which owns the comparison.
 That reading answers `ConsoleUsed` null where a recording states no integrity at all, because
 absent is not a clean run under another name and a plate reporting one it never checked is the
 claim `AGENTS.md` forbids. From format v6 the field is required and a version-5 file reads as
 `complete` through the migration, so no manifest this build parses reaches that answer.
-The browser's multiplayer rule is the first that is still unreachable.
+The browser's multiplayer rule is the state that is still unreachable.
 `LibraryRun.Listed` hides an established multiplayer run and `RunBrowser.Lookup` answers a
 run code for one with the multiplayer body, both correctly, and nothing supplies the fact:
 `LibraryRun.Multiplayer` is null on every run the library builds, so neither arm is
@@ -810,23 +797,22 @@ hidden rule hides what was established and never a question nobody asked.
 The reading it waits on is a recording that says which kind of run it was, and no manifest
 field carries one: the recorder attaches to singleplayer runs only, so nothing writes a
 session kind for the library to read.
-Both arms become reachable when something does, with no change here.
+Both arms become reachable when something supplies that fact, with no change here.
 
-The Submit row is the second, and it is the one that shows.
-The flow it leads to is outside this slice by the design's own section 9.8, so
-`SubmitAvailable` is supplied false and the row is drawn refused with "Submitting runs is
-coming" rather than drawn as an offer nothing honours.
-That departs from section 5, which gives the healthy state no reason line, and the
-departure closes itself: when the submit flow lands the supplied fact turns true, the row
-is offered, the reason is null, and the state matches section 5 exactly with no other
-change here.
+The Submit row shows and is available only when this profile's `settings.json` names an authorized `sharing_service_url`; without one, the row stays in place refused and the browser says online sharing is unavailable.
+There is no built-in endpoint and no setting that automatically shares a run.
+A configured endpoint must be absolute HTTPS without embedded credentials, a query, or a fragment, and any other value makes no network request.
+The single popup shows the run's identity and integrity seals, takes a required name of at most 40 characters and an optional description of at most 200, and requires a display name for submission.
+It says no other personal information travels, requires explicit CC0 consent, and says validation runs locally before anything is sent.
+Only after that local publication gate passes does submitting send the complete manifest and the entered name, description, display name, and consent.
+Index fetching and exact-code lookup use that same configured service boundary; the `fetch_run_index` setting defaults on and controls index retrieval only.
 
 **What the accepted design draws and this does not.** The browser's parchment tabs, the
 run strip, the deck tiles, the relic row and the portrait; and the run-history plate hung
 flat under the game's pane. Those are scene work against furniture this mod has no path
 to instantiate or measure, so the same headings, the same rows, the same refusals and the
 same sentences are shown in the game's own modal instead. Named in the design's own
-terms: the Community list's grouping is a summary line in the popup's body over one flat
+terms: the Others list's grouping is a summary line in the popup's body over one flat
 row column rather than headed sections; the run strip with played fights ticked and the
 selected position ringed is a "Choose a floor" row; and the deck at the selected position
 and the fight pane are not drawn at all. The vocabulary, the offers and the rules are the
@@ -848,8 +834,8 @@ a captured `LibraryTab` has stopped this mod loading once already.
 Read out of v0.111.0 in a scratch decompile, ahead of building anything on them.
 Mechanism only: node paths and the lifecycle method a `[HarmonyPatch]` postfix would
 follow, in the shape the mode card already uses. Nothing here is a decision about what
-to draw. The Compendium and run-history hooks below are the ones the run library now
-uses; the settings screen's is still unbuilt.
+to draw.
+All three hooks below are the ones the run library now uses.
 
 **A card in the Compendium.** `NCompendiumSubmenu._Ready` is the hook. It resolves
 every entry by Godot unique name: a top row of four `NShortSubmenuButton`s
@@ -874,8 +860,7 @@ duplicating a tab node and a panel, adding both to the private `_tabs` dictionar
 connecting to that private method - all three reflectively. What the game does have is
 `NSettingsScreen._Ready`, which resolves `%ModdingButton` (an
 `NOpenModdingScreenButton`) along with `%Modding` and `%ModdingDivider`, and makes them
-visible only when modding is enabled. That is the game's own modding entry point and
-the cheaper hook by a wide margin.
+visible only when modding is enabled. That is the game's own modding entry point and the hook `MyRunsSettings` uses.
 
 **A run-history entry's `Released`.** `NMapPointHistoryEntry` is an
 `NClickableControl`, so it already emits `Released`; nothing in the game connects it.
@@ -890,7 +875,8 @@ floor identity a "play this fight" action would need - alongside its private
 
 ```bash
 ./scripts/build.sh                       # bootstrap the game assembly copy, build everything
-./scripts/install-mod.sh                 # build the mod and install it into the game's mods directory
+./scripts/package-mod.sh                 # build the distributable package without game content
+./scripts/install-mod.sh                 # package, prepare, and install the mod
 ./scripts/install-mod.sh --uninstall     # remove it again
 ./scripts/protected-files.sh snapshot before.ledger   # hash everything the mod must not change
 ./scripts/protected-files.sh compare  before.ledger   # ... and say what a session changed
@@ -964,7 +950,7 @@ A negative number is refused with a logged sentence naming the file and the valu
 Removing nothing survives only as an internal answer for a settings file this build cannot read - a sentence nobody could read is not somebody asking for their runs to be deleted, so recording off and deleting nothing fail in the same direction.
 
 `purge_my_runs` is the one-shot act: every recorded run is removed, and then the mod writes the member back to `false` so a purge is something a player did rather than a state they are left in.
-`keep_recent_runs` and `purge_my_runs` are the two members the mod writes, and each write edits the member it names: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
+`keep_recent_runs`, `purge_my_runs`, and `fetch_run_index` are the three members the mod writes, and each write edits the member it names: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
 A file that is there and is not a settings object is refused rather than written over, because reading one already means "record nothing" and overwriting it would discard what the player wrote in order to store what they meant to add to it.
 `godot.log` carries the receipt either way - `purged your recorded runs: N removed` for the act, `keeping your 50 most recent runs: N older one(s) removed` for the policy.
 
@@ -981,7 +967,7 @@ It cannot be mod start: the game has no chosen save profile then, so the store c
 
 ### The settings row, and the size figure
 
-Both members have a control now, and the whole of it is one row: `MyRunsSettingsRow` in the mod, drawn from `MyRunsRow` in `Sts2PilotTrainer.Trainer`, wired to the disk by `MyRunsSettings`.
+All three members have a control now, and the whole of it is one row: `MyRunsSettingsRow` in the mod, drawn from `MyRunsRow` in `Sts2PilotTrainer.Trainer`, wired to the disk by `MyRunsSettings`.
 It is a row and not a section.
 Where Runmobile's settings section hangs - `%ModdingButton` is the game's own modding entry point, and there is no Mods tab to extend - belongs to the run library along with everything else in it; this is one thing that section places, built whole so that placing it is all there is to do.
 Keeping it apart is also what lets it be assembled and asserted on in a process with no game, which `MyRunsSettingsRowTests` does node by node.

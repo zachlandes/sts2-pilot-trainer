@@ -70,6 +70,24 @@ public sealed class MyRunsSettingsRowTests
     }
 
     [Fact]
+    public void FetchSettingReportsTheNewStateAndRefusesWhenSettingsAreUnreadable()
+    {
+        bool? reported = null;
+        var row = Build(
+            new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 20),
+            fetchChanged: value => reported = value);
+
+        row.Fetch.EmitPressed();
+
+        Assert.False(reported);
+
+        row.Apply(MyRunsRow.For(new MyRunsFacts(
+            Runs: 0, Bytes: 0, Keep: 20, SettingsReadable: false)), 20, true);
+        Assert.True(row.Fetch.Disabled);
+        Assert.Equal(Control.FocusModeEnum.None, row.Fetch.FocusMode);
+    }
+
+    [Fact]
     public void TheStepperReportsTheNumberOnePressWouldMoveThePolicyTo()
     {
         var reported = new List<int>();
@@ -282,14 +300,17 @@ public sealed class MyRunsSettingsRowTests
     }
 
     private static MyRunsSettingsRow Build(
-        MyRunsFacts facts, Action<int>? keepChanged = null, Action? removePressed = null) =>
+        MyRunsFacts facts, Action<int>? keepChanged = null, Action? removePressed = null,
+        Action<bool>? fetchChanged = null) =>
         MyRunsSettingsRow.Build(
             MyRunsRow.For(facts),
             facts.Keep,
+            fetchRunIndex: true,
             Width,
             font: null,
             keepChanged ?? (_ => { }),
-            removePressed ?? (() => { }));
+            removePressed ?? (() => { }),
+            fetchChanged ?? (_ => throw new InvalidOperationException("Unexpected fetch press")));
 
     private static void Apply(MyRunsSettingsRow row, MyRunsFacts facts) =>
         row.Apply(MyRunsRow.For(facts), facts.Keep);

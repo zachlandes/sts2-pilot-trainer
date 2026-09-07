@@ -14,9 +14,9 @@ namespace Sts2PilotTrainer.Mod;
 /// The third module in the shell, and the one with the most surface. It owns four
 /// things and they are one screen rather than four features - a card in the
 /// Compendium, the browser behind it, one run opened, and the plate under the game's
-/// own run-history pane. All four speak the same vocabulary and obey the same two
-/// settled rules: a player plays <em>from</em> a run, and a run this game cannot play
-/// is not in the list at all.
+/// own run-history pane. All four speak the same vocabulary and obey the same rule:
+/// a player plays <em>from</em> a run. Compatibility is a visible filter that defaults
+/// on; exact-code lookup can clear it and select one disabled incompatible row.
 ///
 /// <para><b>After the fact, always.</b> Nothing here is reachable while a run is being
 /// played. The Compendium is a main-menu surface, and the run-history plate says so in
@@ -25,7 +25,7 @@ namespace Sts2PilotTrainer.Mod;
 /// a different one.</para>
 ///
 /// <para>What it establishes before installing anything is that this build still has
-/// the two members it hangs on. A library that silently failed to add its card would
+/// the members it hangs on. A library that silently failed to add its card would
 /// be a feature a player cannot find and cannot be told about, which is worse than a
 /// line in the log saying it is not there.</para>
 /// </summary>
@@ -41,6 +41,7 @@ internal sealed class RunLibraryModule : IRunmobileModule
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
         typeof(CompendiumCard),
+        typeof(MyRunsSettings),
         typeof(RunHistoryPlateHost.HistoryEntry),
     ];
 
@@ -141,26 +142,34 @@ internal static class RunVerdicts
     /// <see cref="RunVerdict.Absent"/>, because a verdict nobody could reach and a
     /// verdict that does not exist are different facts, and the run code says which.
     /// </summary>
-    internal static RunVerdict For(ReplayManifest recording, string thisBuild)
+    internal static RunVerdict For(ReplayManifest recording, string thisBuild) =>
+        For(
+            recording.Environment,
+            recording.Source.Kind,
+            recording.RunId,
+            thisBuild);
+
+    internal static RunVerdict For(
+        EnvironmentIdentity environment, string sourceKind, string runId, string thisBuild)
     {
-        if (!string.Equals(recording.Environment.BuildVersion.Value, thisBuild, StringComparison.Ordinal))
+        if (!string.Equals(environment.BuildVersion.Value, thisBuild, StringComparison.Ordinal))
         {
             return RunVerdict.Absent;
         }
 
         try
         {
-            return Preflight.Evaluate(
-                recording.Environment,
-                RecordedFightEntry.SuppliedProgressFor(recording),
-                recording.Source.Kind).Matches
+            var progress = environment.Unlocks.Value.Inventory is { } inventory
+                ? PlayerProgress.Exact(inventory)
+                : PlayerProgress.AllUnlocked;
+            return Preflight.Evaluate(environment, progress, sourceKind).Matches
                 ? RunVerdict.Passed
                 : RunVerdict.Failed;
         }
         catch (Exception ex)
         {
             Log.Error(
-                $"[{RunmobileMod.ModId}] could not judge {recording.RunId} against this game, so it has no " +
+                $"[{RunmobileMod.ModId}] could not judge {runId} against this game, so it has no " +
                 $"verdict here: {ex.GetType().Name}: {ex.Message}", 2);
             return RunVerdict.Unjudged;
         }
@@ -194,7 +203,7 @@ internal static class PatchTargets
     /// Both declaration styles are read here rather than one: a class attribute may
     /// carry the type and the method name together, the way the recorder writes them,
     /// or carry the type alone with the method name on each patched method, the way the
-    /// library's two classes are written. Reading only the first said nothing at all
+    /// library's patch classes are written. Reading only the first said nothing at all
     /// about the second, on every build.
     /// </summary>
     internal static IReadOnlyList<string> Targets(IReadOnlyList<Type> patchClasses)
@@ -227,7 +236,7 @@ internal static class PatchTargets
     ///
     /// One traversal for both questions, because "which declaration styles are checked"
     /// is the thing that has already been got wrong once here: a reader that saw only
-    /// class attributes reported the library's two patch classes clean on every build,
+    /// class attributes reported the library's patch classes clean on every build,
     /// and a second copy of this walk is a second place for that to happen.
     /// </summary>
     private static IEnumerable<(Type DeclaringType, HarmonyMethod Info)> Named(

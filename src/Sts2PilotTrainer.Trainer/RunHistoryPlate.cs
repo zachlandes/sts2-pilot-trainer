@@ -83,15 +83,6 @@ public sealed record RunHistoryFacts(
 /// learns the feature exists, and a plate that collapsed to nothing on a multiplayer
 /// run would teach them it does not.</para>
 ///
-/// <para><b>One state departs from the design, and closes itself.</b> Its section 5
-/// gives the healthy state - recorded, continuous, no run active - as three rows offered
-/// and no reason line. This build draws a reason line there, "Submitting runs is coming",
-/// because the flow the Submit row leads to is outside this slice and a row offering a
-/// destination that does not exist is the failure this project is built to refuse. It is
-/// one supplied fact and nothing else: when the submit flow lands,
-/// <see cref="RunHistoryFacts.SubmitAvailable"/> is true, the row is offered, the reason
-/// is null, and the state is section 5's exactly with no other change here.</para>
-///
 /// <para><b>The derivation is total.</b> Every combination of facts has an answer,
 /// including the absent one, and there is no other way to build a plate - which is the
 /// same rule <see cref="PlaybackTransport"/> holds for the transport, adopted here for

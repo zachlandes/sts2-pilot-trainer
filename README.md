@@ -56,14 +56,21 @@ Three of the gate's conditions need a video, game-mode, seed-topology and eviden
 A fourth, baselib-path, is not asked either, and a weaker check stands in for it: the loaded mods' own declaration that they do not affect gameplay, which the gate's artifact says out loud.
 The arbiter enters fight 2 of that recording headlessly and reproduces the recorded digest byte for byte.
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
-- **Coming soon:** a settings screen for recording, and a control that shows how much space recordings take and deletes all of them.
+Settings show how much space recordings take, how many are kept, remove them on request, and control whether the shared-run index is fetched; index fetching defaults on.
+No setting shares a run automatically.
+- **Coming soon:** a control for turning recording itself off.
 
 **Browse the runs and play from one.**
 The Compendium, which the game opens when no run is active, has a Runmobile button beside its own Run History.
-Two tabs: Community - the runs included with Runmobile, the featured ones and the recent ones, newest first - and My runs, your own recordings with a line under the list saying how many there are and what they take on this computer.
+Two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
 Open a run and it lists every place the recording proves you can be stood: from a fight's recorded start, from a floor's first screen, "Continue: play from fight N" for the next fight you have not played from, or from run start with every choice shown.
-A run your game version cannot reproduce, and a multiplayer run, is not in the list at all - no tickbox and no greyed row - and a muted "{n} not shown" underneath says how many were hidden and that a run code still finds one.
+The visible `Compatible with your game version` filter defaults on, hides incompatible runs during ordinary browsing, and leaves a muted "{n} not shown" count underneath.
+Turning the filter off reveals incompatible runs as disabled rows; entering an exact code does that automatically, selects its run in the sorted position, and shows both the build it requires and the current build.
+An established multiplayer run remains hidden.
 Your own finished runs are reachable a second way: the game's own run history carries a plate under its pane offering that run's last fight or last floor, and where it cannot offer them the rows stay in place with the reason on them - the recording has a gap in it, or it was made on another build, or a run is in progress.
+That plate also offers `Share this run` when the profile's `settings.json` names an authorized HTTPS sharing service; Runmobile has no built-in service, so otherwise the row says sharing is unavailable and sends nothing.
+The single sharing popup shows the run's identity and integrity seals, accepts a required run name of at most 40 characters and an optional description of at most 200, and requires a display name only when submitting.
+It says that no other personal information travels, requires explicit CC0 consent, and runs the full publication validation locally before sending the manifest and those entered fields.
 
 **One whole fight, no undo.**
 You play from the moment the fight began to the moment it ends.
@@ -112,7 +119,7 @@ Runmobile lets you play from the fight they played.
 ## Install
 
 - **Coming soon:** Steam Workshop, with a Nexus mirror.
-- Today, from source: `./scripts/install-mod.sh` builds the mod and puts it in the game's own mods directory; `--uninstall` removes it.
+- Today, from source: `./scripts/install-mod.sh` packages the mod, prepares its private replay runtime from the local game installation, and puts it in the game's own mods directory; `--uninstall` removes it.
   Launch the game through Steam, enable only Runmobile, and open Singleplayer.
 
 ## How it works, in one breath
@@ -213,7 +220,8 @@ Its user data is redirected to `build/sandbox`, it cannot see the retail `RunMan
 `Preflight.EvaluateLiveHost` is the API the in-game host calls before showing a player anything, and the mod is where it meets a real client:
 
 ```bash
-./scripts/install-mod.sh                # build the Runmobile mod into the game's own mods directory
+./scripts/package-mod.sh                # build the distributable package without game content
+./scripts/install-mod.sh                # package, prepare, and install Runmobile
 ./scripts/install-mod.sh --uninstall    # remove it
 ./scripts/arbiter adopt-live            # the refusal, from a process that is not a running game
 ```

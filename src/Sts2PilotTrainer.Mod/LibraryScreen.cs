@@ -69,6 +69,9 @@ internal sealed record ScreenRow(
 /// </summary>
 internal static class LibraryScreen
 {
+    private static long surface;
+    private static NGenericPopup? currentPopup;
+
     /// <summary>The popup scene's own name for its content, resolved by the game's
     /// code the same way.</summary>
     private const string VerticalPopupPath = "VerticalPopup";
@@ -118,7 +121,7 @@ internal static class LibraryScreen
     /// <param name="page">Which page of a column too long for the panel to draw. Zero is
     /// the first, and a caller never passes anything else - the Previous and Next rows
     /// re-show this same screen at the page either side.</param>
-    internal static void Show(
+    internal static long Show(
         string title,
         string body,
         IReadOnlyList<ScreenRow> rows,
@@ -126,11 +129,15 @@ internal static class LibraryScreen
         Action? back = null,
         Action<string>? codeSubmitted = null,
         string codePlaceholder = "",
-        int page = 0)
+        int page = 0,
+        Action<long, string, string, string, bool>? shareSubmitted = null,
+        int? revealRow = null)
     {
+        var shownSurface = Interlocked.Increment(ref surface);
         NGenericPopup? popup = null;
         NModalContainer? container = null;
         var added = false;
+        var shown = false;
         try
         {
             popup = NGenericPopup.Create()
@@ -150,23 +157,53 @@ internal static class LibraryScreen
             // Deferred for the reason Press clears first: the popup takes itself down
             // when the ribbon is pressed, and a screen shown inside the handler would be
             // the one it took down. Deferring puts the next screen after that.
+            var share = shareSubmitted is null ? null : AddShareFields(content);
             content.InitYesButton(
                 PlaceholderConfirm,
                 _ =>
                 {
-                    if (back is not null) Callable.From(() => Reopen(back)).CallDeferred();
+                    if (share is not null)
+                    {
+                        shareSubmitted!(shownSurface, share.Name.Text, share.Description.Text,
+                            share.DisplayName.Text, share.Consent.ButtonPressed);
+                    }
+                    else if (back is not null)
+                    {
+                        Callable.From(() => Reopen(back)).CallDeferred();
+                    }
+                    else
+                    {
+                        Dismiss();
+                    }
                 });
-            content.HideNoButton();
-            content.YesButton.SetText(backLabel);
+            content.YesButton.SetText(share is null ? backLabel : LibraryCopy.ShareSubmit);
+            if (share is null)
+            {
+                content.HideNoButton();
+            }
+            else
+            {
+                content.NoButton.Visible = true;
+                content.NoButton.SetText(backLabel);
+                content.NoButton.Connect(
+                    NClickableControl.SignalName.Released,
+                    Callable.From<NButton>(_ =>
+                    {
+                        if (back is not null) Callable.From(() => Reopen(back)).CallDeferred();
+                        else Dismiss();
+                    }));
+            }
 
             var field = codeSubmitted is null ? null : AddCodeField(content, codePlaceholder, codeSubmitted);
             var first = AddRows(
                 content,
                 rows,
-                field is null ? 0f : 1f,
+                share is not null ? 4f : field is null ? 0f : 1f,
                 page,
                 turned => Show(
-                    title, body, rows, backLabel, back, codeSubmitted, codePlaceholder, turned));
+                    title, body, rows, backLabel, back, codeSubmitted, codePlaceholder, turned,
+                    shareSubmitted),
+                revealRow);
 
             // Deferred: adding the modal updates the game's active screen context,
             // which decides what is focused. Grabbing focus before that has finished
@@ -174,6 +211,8 @@ internal static class LibraryScreen
             // screen half the players cannot use.
             var focus = first ?? (Control)content.YesButton;
             Callable.From(() => focus.GrabFocus()).CallDeferred();
+            currentPopup = popup;
+            shown = true;
         }
         catch (Exception ex)
         {
@@ -193,6 +232,8 @@ internal static class LibraryScreen
                 $"[{RunmobileMod.ModId}] could not show a library screen: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
+
+        return shown ? shownSurface : -1;
     }
 
     /// <summary>
@@ -213,7 +254,8 @@ internal static class LibraryScreen
         IReadOnlyList<ScreenRow> rows,
         float offsetSteps,
         int page,
-        Action<int> turnTo)
+        Action<int> turnTo,
+        int? revealRow)
     {
         if (rows.Count == 0) return null;
 
@@ -232,7 +274,9 @@ internal static class LibraryScreen
         var fits = (int)Math.Floor(room / step);
         var pinned = rows.Where(row => row.Pinned).ToList();
         var paged = rows.Where(row => !row.Pinned).ToList();
-        var slice = ScreenPage.For(paged.Count, fits, page, pinned.Count);
+        var slice = revealRow is { } selected
+            ? ScreenPage.Containing(paged.Count, fits, selected, pinned.Count)
+            : ScreenPage.For(paged.Count, fits, page, pinned.Count);
         var drawn = new List<ScreenRow>(pinned);
         drawn.AddRange(paged.Skip(slice.First).Take(slice.Count));
         if (slice.HasPrevious)
@@ -356,6 +400,53 @@ internal static class LibraryScreen
     /// borrowed from a label already on screen, the way the result panel borrows it,
     /// so the field reads as part of the game rather than as Godot's default sans.
     /// </summary>
+    private sealed record ShareFields(
+        LineEdit Name, LineEdit Description, LineEdit DisplayName, CheckBox Consent);
+
+    private static ShareFields AddShareFields(NVerticalPopup content)
+    {
+        var label = content.BodyLabel();
+        var x = content.NoButton.Position.X;
+        var y = label.Position.Y + label.Size.Y;
+        var width = label.Size.X;
+        var height = content.NoButton.Size.Y;
+        var font = GameFont.Of(content.GetTree()?.Root);
+
+        LineEdit Field(string name, string placeholder, int? limit, int step)
+        {
+            var field = new LineEdit
+            {
+                Name = name,
+                PlaceholderText = placeholder,
+                Position = new Vector2(x, y + (height * step)),
+                CustomMinimumSize = new Vector2(width, height),
+            };
+            if (limit is { } maximum) field.MaxLength = maximum;
+            if (font is not null) field.AddThemeFontOverride("font", font);
+            content.AddChild(field);
+            return field;
+        }
+
+        var name = Field(
+            "RunmobileShareName", LibraryCopy.ShareNameField,
+            ShareSubmission.NameCharacterLimit, 0);
+        var description = Field(
+            "RunmobileShareDescription", LibraryCopy.ShareDescriptionField,
+            ShareSubmission.DescriptionCharacterLimit, 1);
+        var displayName = Field(
+            "RunmobileShareDisplayName", LibraryCopy.ShareDisplayNameField, null, 2);
+        var consent = new CheckBox
+        {
+            Name = "RunmobileShareConsent",
+            Text = LibraryCopy.ShareConsent,
+            Position = new Vector2(x, y + (height * 3)),
+            CustomMinimumSize = new Vector2(width, height),
+        };
+        if (font is not null) consent.AddThemeFontOverride("font", font);
+        content.AddChild(consent);
+        return new ShareFields(name, description, displayName, consent);
+    }
+
     private static Control AddCodeField(
         NVerticalPopup content, string placeholder, Action<string> submitted)
     {
@@ -384,7 +475,25 @@ internal static class LibraryScreen
     /// this first, rows and the run-code field alike, and this is the only place that
     /// knows which container it is.
     /// </summary>
-    internal static void Dismiss() => NModalContainer.Instance?.Clear();
+    internal static bool IsCurrent(long shownSurface) =>
+        Interlocked.Read(ref surface) == shownSurface &&
+        currentPopup is { } popup &&
+        GodotObject.IsInstanceValid(popup) &&
+        popup.IsInsideTree();
+
+    internal static void Invalidate(long shownSurface)
+    {
+        if (Interlocked.Read(ref surface) != shownSurface) return;
+        Interlocked.Increment(ref surface);
+        currentPopup = null;
+    }
+
+    internal static void Dismiss()
+    {
+        Interlocked.Increment(ref surface);
+        currentPopup = null;
+        NModalContainer.Instance?.Clear();
+    }
 
     /// <summary>Shows the screen a ribbon returns to, with whatever is up taken down
     /// first, and says so rather than leaving a player on a screen that did not

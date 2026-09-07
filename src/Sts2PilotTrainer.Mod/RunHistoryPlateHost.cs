@@ -50,6 +50,13 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class RunHistoryPlateHost
 {
+    private static readonly object PendingLock = new();
+    private static readonly Dictionary<int, Task<SharedRun>> PendingShares = [];
+    private static readonly Dictionary<int, long> PendingShareSurfaces = [];
+    private static readonly Dictionary<int, string> PendingShareScopes = [];
+    private static readonly HashSet<long> SubmittingSurfaces = [];
+    private static int nextShare;
+
     /// <summary>
     /// Connects each run-history entry the game builds, once.
     ///
@@ -134,9 +141,6 @@ internal static class RunHistoryPlateHost
     /// field is required and a version-5 file reads as <c>complete</c> through the
     /// migration, so no manifest this build parses reaches that answer.</para>
     ///
-    /// <para>Whether there is a submit flow is this build's own answer and it is no:
-    /// section 9.8 puts the flow outside this slice, so the row is drawn refused with a
-    /// reason rather than drawn as an offer nothing honours.</para>
     /// </summary>
     internal static RunHistoryFacts FactsFor(RunHistory? history, ReplayManifest? recording) =>
         new(
@@ -149,7 +153,7 @@ internal static class RunHistoryPlateHost
             RecordedBuild: recording?.Environment.BuildVersion.Value ?? string.Empty,
             ThisBuild: RunLibrary.ThisBuild(),
             RunInProgress: LocalEnvironment.ReadStartedRun() is not null,
-            SubmitAvailable: false,
+            SubmitAvailable: RunLibrary.SharingAvailable,
             LastFight: LastOf(recording, LibraryRun.ProvedFights),
             LastFloor: LastOf(recording, LibraryRun.ProvedFloors));
 
@@ -172,22 +176,29 @@ internal static class RunHistoryPlateHost
         foreach (var row in plate.Rows)
         {
             var id = runId;
+            var kind = (int)row.Kind;
             var fight = row.Fight;
             var floor = row.Floor;
             rows.Add(new ScreenRow(
                 row.Label,
                 row.Enabled && id is not null,
-                () => Enter(id!, fight, floor)));
+                () => Act(id!, kind, fight, floor)));
         }
 
         return rows;
     }
 
-    private static void Enter(string runId, int? fight, int? floor)
+    private static void Act(string runId, int kind, int? fight, int? floor)
     {
         if (RunLibrary.RecordingFor(runId) is not { } recording)
         {
             throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
+        }
+
+        if ((PlateRowKind)kind == PlateRowKind.Submit)
+        {
+            ShowShare(recording);
+            return;
         }
 
         if (fight is { } ordinal)
@@ -205,6 +216,161 @@ internal static class RunHistoryPlateHost
 
         throw new InvalidOperationException(
             $"That row names no boundary of '{runId}', so there is nowhere to stand.");
+    }
+
+    private static void ShowShare(ReplayManifest recording)
+    {
+        var form = ShareRunForm.For(recording);
+        var id = recording.RunId;
+        var body = string.Join("\n", [
+            form.IdentitySeal,
+            form.IntegritySeal,
+            string.Empty,
+            form.Privacy,
+            form.LocalValidation,
+        ]);
+        LibraryScreen.Show(
+            LibraryCopy.SubmitThisRun,
+            LibraryMarkup.Dim(body),
+            [],
+            LibraryCopy.Back,
+            shareSubmitted: (surface, name, description, displayName, consent) =>
+                Submit(surface, id, name, description, displayName, consent));
+    }
+
+    private static void Submit(
+        long surface, string runId, string name, string description, string displayName, bool consent)
+    {
+        lock (PendingLock)
+        {
+            if (!SubmittingSurfaces.Add(surface)) return;
+        }
+
+        try
+        {
+            new ShareSubmission(name, description, displayName, consent).Validate();
+            if (RunLibrary.RecordingFor(runId) is null)
+                throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
+            LibraryScreen.Invalidate(surface);
+            Callable.From(() => BeginSubmit(
+                surface, runId, name, description, displayName, consent)).CallDeferred();
+        }
+        catch (Exception ex)
+        {
+            lock (PendingLock) SubmittingSurfaces.Remove(surface);
+            LibraryScreen.Invalidate(surface);
+            var message = ex.Message;
+            Callable.From(() => ShowSubmitFailure(runId, message)).CallDeferred();
+        }
+    }
+
+    private static void ShowSubmitFailure(string runId, string message)
+    {
+        LibraryScreen.Show(
+            LibraryCopy.SubmitThisRun,
+            LibraryMarkup.Dim(message),
+            [],
+            LibraryCopy.Back,
+            back: () =>
+            {
+                if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry);
+            });
+    }
+
+    private static void BeginSubmit(
+        long formSurface,
+        string runId,
+        string name,
+        string description,
+        string displayName,
+        bool consent)
+    {
+        var loadingSurface = LibraryScreen.Show(
+            LibraryCopy.SubmitThisRun,
+            LibraryMarkup.Dim(LibraryCopy.ShareValidating),
+            [],
+            LibraryCopy.Back,
+            back: static () => { });
+        try
+        {
+            if (RunLibrary.RecordingFor(runId) is not { } recording)
+                throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
+            var request = Interlocked.Increment(ref nextShare);
+            var task = RunLibrary.ShareAsync(
+                recording, new ShareSubmission(name, description, displayName, consent),
+                out var scope);
+            lock (PendingLock)
+            {
+                SubmittingSurfaces.Remove(formSurface);
+                SubmittingSurfaces.Add(loadingSurface);
+                PendingShares[request] = task;
+                PendingShareSurfaces[request] = loadingSurface;
+                PendingShareScopes[request] = scope;
+            }
+            _ = task.ContinueWith(
+                static (_, value) => Callable.From(() => CompleteShare((int)value!)).CallDeferred(),
+                request,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+        catch (Exception ex)
+        {
+            lock (PendingLock)
+            {
+                SubmittingSurfaces.Remove(formSurface);
+                SubmittingSurfaces.Remove(loadingSurface);
+            }
+            if (!LibraryScreen.IsCurrent(loadingSurface)) return;
+            LibraryScreen.Dismiss();
+            ShowSubmitFailure(runId, ex.Message);
+        }
+    }
+
+    private static void CompleteShare(int request)
+    {
+        Task<SharedRun> task;
+        long surface;
+        string scope;
+        lock (PendingLock)
+        {
+            task = PendingShares[request];
+            surface = PendingShareSurfaces[request];
+            scope = PendingShareScopes[request];
+            PendingShares.Remove(request);
+            PendingShareSurfaces.Remove(request);
+            PendingShareScopes.Remove(request);
+            SubmittingSurfaces.Remove(surface);
+        }
+
+        if (!RunLibrary.IsCurrentSharingScope(scope))
+        {
+            if (LibraryScreen.IsCurrent(surface)) LibraryScreen.Dismiss();
+            return;
+        }
+        SharedRun? shared = null;
+        Exception? failure = task.Exception?.GetBaseException();
+        if (task.IsCompletedSuccessfully)
+        {
+            try
+            {
+                shared = RunLibrary.AcceptShared(task.Result, expectedScope: scope);
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
+        }
+
+        if (!LibraryScreen.IsCurrent(surface)) return;
+        LibraryScreen.Dismiss();
+        LibraryScreen.Show(
+            LibraryCopy.SubmitThisRun,
+            LibraryMarkup.Dim(shared is null
+                ? failure?.Message ?? "Sharing was refused."
+                : $"Shared as {shared.Code}"),
+            [],
+            LibraryCopy.Back);
     }
 
     private static int? LastOf(

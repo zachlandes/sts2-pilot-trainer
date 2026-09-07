@@ -8,19 +8,13 @@ public enum LibraryTab
     MyRuns,
 }
 
-/// <summary>One headed run set in the list. A heading of null is the My runs list,
+/// <summary>One headed run set in the list. A heading of null is the Mine list,
 /// which is one set and does not head itself.</summary>
 public sealed record BrowserGroup(string? Heading, IReadOnlyList<LibraryRun> Runs);
 
 /// <summary>
 /// What the browser shows for one tab, derived from the runs a host could find and
 /// nothing else.
-///
-/// The whole of the settled compatibility rule lives here rather than in the drawing:
-/// a run this game cannot play is not in <see cref="Groups"/>, is counted in
-/// <see cref="NotShown"/>, and has no row anywhere in any state. There is no filter to
-/// turn off, because there is no filter - the rule is not a preference and a control
-/// for it would imply it was one.
 ///
 /// <para>The list is a projection. Nothing here reads a file, replays anything or
 /// decides a verdict; every run arrives with its verdict already established, which is
@@ -33,7 +27,9 @@ public sealed record RunBrowser(
     string? NotShownLabel,
     string NotShownTooltipBody,
     string? Footer,
-    string? FooterAction)
+    string? FooterAction,
+    bool CompatibleOnly = true,
+    string? SelectedEntryId = null)
 {
     /// <summary>
     /// The browser for one tab.
@@ -61,20 +57,29 @@ public sealed record RunBrowser(
         LibraryTab tab,
         IReadOnlyList<LibraryRun> runs,
         string thisBuild,
-        long? myRunsBytes = null)
+        long? myRunsBytes = null,
+        bool compatibleOnly = true,
+        string? selectedEntryId = null)
     {
         var mine = tab == LibraryTab.MyRuns;
         var inTab = runs.Where(run => (run.Origin == RunOrigin.Mine) == mine).ToList();
-        var listed = inTab.Where(run => run.Listed).ToList();
-        var hidden = inTab.Count - listed.Count;
+        var selected = selectedEntryId is null
+            ? null
+            : inTab.FirstOrDefault(run =>
+                string.Equals(run.EntryId, selectedEntryId, StringComparison.Ordinal));
+        if (selected is { Verdict: RunVerdict.Absent, Multiplayer: not true }) compatibleOnly = false;
 
+        var eligible = inTab.Where(run =>
+            run.Multiplayer != true && run.Verdict is RunVerdict.Passed or RunVerdict.Absent).ToList();
+        var visible = compatibleOnly ? eligible.Where(run => run.Listed).ToList() : eligible;
+        var hidden = inTab.Count - visible.Count;
         var groups = mine
-            ? Group(null, Newest(listed))
+            ? Group(null, Newest(visible))
             :
             [
-                .. Group(LibraryCopy.IncludedGroup, Newest(Of(listed, RunOrigin.Included))),
-                .. Group(LibraryCopy.FeaturedGroup, Of(listed, RunOrigin.Featured)),
-                .. Group(LibraryCopy.RecentGroup, Newest(Of(listed, RunOrigin.Recent))),
+                .. Group(LibraryCopy.IncludedGroup, Newest(Of(visible, RunOrigin.Included))),
+                .. Group(LibraryCopy.FeaturedGroup, Of(visible, RunOrigin.Featured)),
+                .. Group(LibraryCopy.RecentGroup, Newest(Of(visible, RunOrigin.Recent))),
             ];
 
         return new RunBrowser(
@@ -86,17 +91,18 @@ public sealed record RunBrowser(
             mine && myRunsBytes is { } bytes
                 ? LibraryCopy.MyRunsFooter(inTab.Count, LibraryCopy.Size(bytes))
                 : null,
-            mine && myRunsBytes is not null ? LibraryCopy.MyRunsFooterAction : null);
+            mine && myRunsBytes is not null ? LibraryCopy.MyRunsFooterAction : null,
+            compatibleOnly,
+            selected?.EntryId);
     }
 
     /// <summary>
     /// What a run code answers with.
     ///
-    /// The one surface on which a run this game cannot play is described at all, and
-    /// the reason it exists: a player who typed a code asked about one particular run,
-    /// and answering "no such run" about a run that plainly exists would be the library
-    /// lying to them. A player who did not type a code is owed a list of runs that
-    /// work, which is why nothing here puts a row in the list.
+    /// A player who typed a code asked about one particular run, and answering "no such
+    /// run" about a run that plainly exists would be the library lying to them.
+    /// An incompatible result clears the compatibility filter and selects its disabled
+    /// row; the other refusals remain popup answers.
     ///
     /// <para><b>The design specifies two refusals and this build answers four.</b> Its
     /// two are the build sentence with its sub-line and the multiplayer sentence with
@@ -129,7 +135,7 @@ public sealed record RunBrowser(
         }
 
         var run = runs.FirstOrDefault(candidate =>
-            string.Equals(candidate.RunId, wanted, StringComparison.OrdinalIgnoreCase));
+            string.Equals(candidate.EntryId, wanted, StringComparison.OrdinalIgnoreCase));
         if (run is null)
         {
             return new RunLookup(
@@ -195,7 +201,7 @@ public sealed record RunBrowser(
         .. runs
             .OrderByDescending(run => run.Recorded is not null)
             .ThenByDescending(run => run.Recorded ?? DateTimeOffset.MinValue)
-            .ThenBy(run => run.RunId, StringComparer.Ordinal),
+            .ThenBy(run => run.EntryId, StringComparer.Ordinal),
     ];
 }
 
@@ -235,7 +241,6 @@ public sealed record RunLookup(
 {
     public string Back => LibraryCopy.Back;
 
-    /// <summary>Whether this answer is a popup rather than a selection in the
-    /// list.</summary>
+    /// <summary>Whether this answer refuses entry into the run.</summary>
     public bool Refused => Outcome != LookupOutcome.Found;
 }

@@ -180,6 +180,16 @@ public sealed class ScreenPageTests
         Assert.Equal(Enumerable.Range(0, rows), seen);
     }
 
+    [Fact]
+    public void ASelectedLaterRowOpensOnThePageThatContainsIt()
+    {
+        var page = ScreenPage.Containing(rows: 50, perPage: 8, row: 37, pinned: 2);
+
+        Assert.True(page.Index > 0);
+        Assert.InRange(37, page.First, page.First + page.Count - 1);
+        Assert.True(page.Drawn <= 8);
+    }
+
     /// <summary>A panel with room for a page, but not once a row is pinned to it, is
     /// refused rather than drawing the pinned row over the ribbons.</summary>
     [Fact]

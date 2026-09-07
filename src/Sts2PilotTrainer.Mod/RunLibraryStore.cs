@@ -34,8 +34,8 @@ internal static class RunLibraryStore
     /// with when its run began.
     ///
     /// Every one of them is deserialized, which is what makes this expensive at the
-    /// retention default of fifty: a caller that only needs to know whether anything is
-    /// playable answers before it gets here. See <see cref="RunLibrary.HasAnythingToShow"/>.
+    /// retention default of fifty. The browser asks because it needs each run's facts;
+    /// the always-present Compendium entry does not.
     ///
     /// The time is the run's own start, read back out of the recording's name by the
     /// owner that composed it, rather than the file's timestamp on this disk. That is

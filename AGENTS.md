@@ -9,7 +9,8 @@ not released yet. See [README.md](README.md).
 
 ```bash
 ./scripts/build.sh          # bootstrap the game assembly copy, then build everything
-./scripts/install-mod.sh    # build the in-game mod and install it into the game's mods directory
+./scripts/package-mod.sh    # build the platform package without game content
+./scripts/install-mod.sh    # package and install the mod, preparing game inputs locally
 ./scripts/protected-files.sh snapshot <ledger>   # hash everything the mod must not change
 ./scripts/protected-files.sh compare  <ledger>   # ... and say what a session changed
 ./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && dotnet test sts2-pilot-trainer.sln -c Release
@@ -241,8 +242,11 @@ Its final state is exactly `Runmobile` under the selected supported game mod dir
 
 **The run library is the third module, and browsing is after the fact.**
 `RunLibraryModule` owns the Compendium button (`NCompendiumSubmenu`), the browser, one run opened, and the plate under the game's own run history (`NMapPointHistoryEntry.Released`).
-Two settled rules run through all of it and neither is a preference: a player plays *from* a run, one verb everywhere; and a run this build has no passing verdict for - or an established multiplayer run - is not in the list in any state, with no tickbox and no greyed row.
-`LibraryRun.Listed` is that rule in one place; the numeral under the list counts what it hid, and a run code still finds one, which is the only place an unplayable run is ever described.
+Two settled rules run through all of it and neither is a preference: a player plays *from* a run, one verb everywhere; and ordinary browsing hides a run this build has no passing verdict for, or an established multiplayer run.
+`LibraryRun.Listed` is that rule in one place, the visible `Compatible with your game version` filter defaults on, and the numeral under the list counts what it hid.
+Turning the filter off reveals incompatible runs as disabled rows, and an exact code does that automatically before selecting its run in the sorted position and naming both its required build and the current build.
+The player-facing tabs are Others and Mine; `LibraryTab.Community` and `LibraryTab.MyRuns` are internal names only.
+An online row's identity is its share id and code, while `RunId` remains the manifest's identity; two submissions of one run are two rows and each resolves through its own share.
 Where a player can be stood is the recording's own `boundaries[]`, read through `RunView`, so no row can offer somewhere `RecordedFightEntry` would refuse; `RecordedFightRun.Start` takes the plan, because there is still one playback path.
 `RunProgress` under the store holds fight ordinals and nothing resumable - it is the pips and Continue's number, never a save.
 What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [docs/in-game-host.md](docs/in-game-host.md) owns what it draws and what the accepted design still wants.
@@ -255,10 +259,11 @@ Whether a run may be *recorded* is the other question and has the other answer: 
 `RunmobileStore` is the only thing in the mod that writes, under `user://Runmobile/` scoped by the game's own resolved platform, account and profile - taken whole from `UserDataPathProvider`, never reassembled here, and never part of an exported recording's identity.
 `ProfileWriteBarrier` is a different thing and stays as it is: it suppresses the game's own writes during a trainer run.
 `./scripts/protected-files.sh` is how "nothing outside that subtree changed" is measured rather than asserted.
-Removing is a write and goes through the same gate - `RunmobileStore.Remove` names one file and refuses a directory - and *which* files is `RecordingRetention`'s, so the one operation that cannot be undone does not also pick its own targets.
+Removing is a write and goes through the same gate - `RunmobileStore.Remove` names one file and refuses a directory, while `RemoveTree` is reserved for the temporary publication workspace - and *which* files is `RecordingRetention`'s, so the one operation that cannot be undone does not also pick its own targets.
 The one recording it never names, under any policy, is the run the game can currently Continue: a journal deleted under a live run is one the recorder picks up again and publishes as a run it watched from the start.
 The player's `settings.json` says how many runs to keep and can ask for them all to be removed; both are `RecordingLibrary.Cull` with a different number, applied at the shell's singleplayer-menu patch and again at `RunmobileMod.EnsureAdopted`, because those are the first moment there is a profile and the last moment before any journal is open, once for each save profile the process plays as rather than once for the process.
-Both members also have a control, and it is one row rather than a section: `MyRunsRow` in `Sts2PilotTrainer.Trainer` derives every line the way `PlaybackTransport.For` derives the transport, `MyRunsSettingsRow` draws it, `MyRunsSettings` wires it to the disk, and the run library's own module is what will place it.
+The retention policy, removal request and index-fetch choice have controls, and they are one row rather than a section: `MyRunsRow` in `Sts2PilotTrainer.Trainer` derives every line the way `PlaybackTransport.For` derives the transport, `MyRunsSettingsRow` draws it, `MyRunsSettings` wires it to the disk, and the run library's own module places it beside the game's modding settings entry point.
+`sharing_service_url` in that profile-scoped file is the only authority for an outbound sharing request; there is no built-in endpoint, and without a valid absolute HTTPS value the UI says sharing is unavailable and sends nothing.
 Its size figure is a sum of `RunmobileStore.SizeOf` - a read through the same containment gate a write goes through - taken by `RecordingRetention.OnDisk`, because that is already the one place that knows where recordings live; pressing Remove is `RecordingRetention.PurgeNow`, which records the request before it removes anything and is not the once-per-profile policy.
 Moving the policy removes nothing where it stands and forgets that profile's retention latch through `RecordingRetention.ReapplyPolicyAtNextMenu`, so the next main menu applies what the row promised rather than the next launch; a store that cannot be asked is a fact on the facts and one refused line, never an exception out of `MyRunsSettings.Build`, and the only cause that line may name is the store's own `StoreNotReadyException` - no save profile chosen - because every other fault is one the row has not established.
 What the second line promises is what `Apply` will do and not what the arithmetic says, so `OnDisk` asks `ContinuableRun` the way `Apply` asks it and the row leaves the continuable run out of the count.
@@ -332,8 +337,8 @@ one reader, and a native recording names that build twice - in its mod set and a
 `source.native.recorder_version` - so the two have to be the same string. Do not add a
 second declaration; recordings written before this carry the old wrong value and are
 not edited to match.
-Two versions sit outside that on purpose. `Arbiter.Version` is the headless CLI's own,
-a separate artifact that is not in the mod archive, so `arbiter_version` in every
+Two versions sit outside that on purpose. `Arbiter.Version` is the packaged headless CLI's own,
+a separate executable inside the mod archive, so `arbiter_version` in every
 verification report is bumped deliberately rather than following a mod-only release -
 after a mod bump it still reads the arbiter's version, which is the point.
 `GodotStubs` has to keep `GodotSharp`'s identity for the game assembly's references to

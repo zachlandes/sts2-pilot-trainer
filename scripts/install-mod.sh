@@ -1,32 +1,12 @@
 #!/usr/bin/env bash
-# Builds the Runmobile mod and puts it where the game looks for mods.
-#
-# This is the one script in this repository that writes inside a Slay the Spire 2
-# installation. Its final state is exactly Runmobile under the selected supported
-# mod directory (mods or mods_STEAMTEST); upgrades use temporary siblings there so the
-# complete named file set replaces the old one. That is the game's own mod surface -
-# the same directory Steam Workshop installs into
-# - and there is no other: the game derives it from its executable's location and
-# offers no user-data alternative.
-#
-# Nothing outside the selected mod directory is touched, and nothing here reads or
-# writes a save, a profile or a run. --uninstall removes the final directory, and
-# the directory this mod was called CombatTrainer under before the rename, and
-# nothing more.
+# Builds the distributable Runmobile package, then installs it through its own installer.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
-mod_id="Runmobile"
-
-# What this mod was called before it was renamed. Only ever removed: an install that
-# left the old directory behind would put a second copy of this mod in the player's
-# mod list, and the game would report one of them as a duplicate.
-former_mod_id="CombatTrainer"
-uninstall=0
 mods_dir="${STS2_MODS_DIR:-}"
-
+uninstall=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --mods-dir) mods_dir="$2"; shift 2 ;;
@@ -35,132 +15,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$mods_dir" ]]; then
-  for candidate in \
-    "$HOME/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods" \
-    "$HOME/.steam/steam/steamapps/common/Slay the Spire 2/mods" \
-    "$HOME/.local/share/Steam/steamapps/common/Slay the Spire 2/mods" \
-    "/c/Program Files (x86)/Steam/steamapps/common/Slay the Spire 2/mods"
-  do
-    if [[ -d "$candidate" ]]; then mods_dir="$candidate"; break; fi
-  done
-fi
-
-if [[ -z "$mods_dir" ]]; then
-  cat >&2 <<'EOF'
-Could not find the game's mods directory.
-
-Pass one explicitly:
-  ./scripts/install-mod.sh --mods-dir <path>
-
-The path wanted is the directory the game loads mods from, e.g. on macOS
-  .../Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods
-EOF
-  exit 2
-fi
-
-# Refuse to write anywhere that is not a mods directory. Everything under this
-# script's hand is inside a directory somebody paid for.
-case "$(basename "$mods_dir")" in
-  mods|mods_STEAMTEST) ;;
-  *)
-    echo "Refusing to install into '$mods_dir': it is not a mods directory." >&2
-    exit 3
-    ;;
-esac
-
-target="$mods_dir/$mod_id"
-
 if [[ "$uninstall" == 1 ]]; then
-  removed=0
-  for directory in "$target" "$mods_dir/$former_mod_id"; do
-    if [[ -d "$directory" ]]; then
-      rm -rf "$directory"
-      echo "removed      : $directory"
-      removed=1
-    fi
-  done
-  if [[ "$removed" == 0 ]]; then
-    echo "nothing to remove at $target"
-  fi
-  exit 0
+  args=(--uninstall)
+  if [[ -n "$mods_dir" ]]; then args+=(--mods-dir "$mods_dir"); fi
+  exec scripts/install-package.sh "${args[@]}"
 fi
 
-dotnet build src/Sts2PilotTrainer.Mod/Sts2PilotTrainer.Mod.csproj -c Release --nologo -v quiet
-
-built="build/bin/Sts2PilotTrainer.Mod/Release/net9.0"
-
-# Named rather than globbed: what a mod ships is a decision, and a stray file that
-# appeared in an output directory is not a reason to put it in someone's game.
-files=(
-  "$mod_id.json"
-  "$mod_id.dll"
-  "Sts2PilotTrainer.Trainer.dll"
-  "Sts2PilotTrainer.Engine.dll"
-  "Sts2PilotTrainer.Replay.dll"
-  "Sts2PilotTrainer.IO.dll"
-)
-
-for file in "${files[@]}"; do
-  if [[ ! -f "$built/$file" ]]; then
-    echo "Build output is missing $file; refusing to install a partial mod." >&2
-    exit 4
-  fi
-done
-
-staging="$(mktemp -d "$mods_dir/.${mod_id}.install.XXXXXX")"
-backup=""
-former_backup=""
-replacement_started=0
-committed=0
-cleanup() {
-  if [[ -n "$staging" ]]; then
-    rm -rf "$staging"
-  fi
-  if [[ "$committed" == 0 ]]; then
-    if [[ "$replacement_started" == 1 ]]; then rm -rf "$target"; fi
-    if [[ -n "$backup" && ( -e "$backup" || -L "$backup" ) ]]; then
-      mv "$backup" "$target"
-    fi
-    if [[ -n "$former_backup" && ( -e "$former_backup" || -L "$former_backup" ) ]]; then
-      rm -rf "$mods_dir/$former_mod_id"
-      mv "$former_backup" "$mods_dir/$former_mod_id"
-    fi
-  else
-    if [[ -n "$backup" ]]; then rm -rf "$backup"; fi
-    if [[ -n "$former_backup" ]]; then rm -rf "$former_backup"; fi
-  fi
-}
-trap cleanup EXIT
-
-for file in "${files[@]}"; do
-  cp "$built/$file" "$staging/$file"
-done
-
-if [[ -e "$target" || -L "$target" ]]; then
-  backup="$(mktemp -d "$mods_dir/.${mod_id}.previous.XXXXXX")"
-  rmdir "$backup"
-  mv "$target" "$backup"
+rid="$(dotnet --info | awk '$1 == "RID:" {print $2; exit}')"
+if [[ -z "$rid" ]]; then
+  echo "Could not determine the current .NET runtime identifier." >&2
+  exit 4
 fi
-if [[ -e "$mods_dir/$former_mod_id" || -L "$mods_dir/$former_mod_id" ]]; then
-  former_backup="$(mktemp -d "$mods_dir/.${former_mod_id}.previous.XXXXXX")"
-  rmdir "$former_backup"
-  mv "$mods_dir/$former_mod_id" "$former_backup"
-fi
-replacement_started=1
-mv "$staging" "$target"
-staging=""
-committed=1
-if [[ -n "$backup" ]]; then
-  rm -rf "$backup"
-  backup=""
-fi
-if [[ -n "$former_backup" ]]; then
-  rm -rf "$former_backup"
-  former_backup=""
-  echo "removed      : $mods_dir/$former_mod_id (renamed to $mod_id)"
-fi
-trap - EXIT
-
-echo "installed    : ${#files[@]} files -> ${target/#$HOME/\~}"
-echo "next         : launch Slay the Spire 2, allow mod loading, then Singleplayer"
+package="build/distribution/Runmobile-$rid"
+./scripts/package-mod.sh
+args=()
+if [[ -n "$mods_dir" ]]; then args+=(--mods-dir "$mods_dir"); fi
+exec "$package/install.sh" "${args[@]}"

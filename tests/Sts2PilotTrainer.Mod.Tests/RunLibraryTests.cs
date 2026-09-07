@@ -34,10 +34,12 @@ public sealed class RunLibraryStoreTests : IDisposable
         _ = EngineHost.StartupPhase();
         Directory.CreateDirectory(_root);
         RunmobileStore.UseRootForTesting(_root);
+        RunLibrary.ResetSharedRunsForTesting();
     }
 
     public void Dispose()
     {
+        RunLibrary.ResetSharedRunsForTesting();
         RunmobileStore.UseRootForTesting(null);
         var sandbox = _root[.._root.IndexOf("Runmobile", StringComparison.Ordinal)];
         if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
@@ -118,29 +120,13 @@ public sealed class RunLibraryStoreTests : IDisposable
         Assert.Equal(["native-good"], recordings.Select(stored => stored.Recording.RunId));
     }
 
-    /// <summary>
-    /// The Compendium's question reads no manifest, and it never hides a run the list
-    /// would hold.
-    ///
-    /// Proved against a recording whose manifest this build cannot parse at all: nothing
-    /// that opened the file could say anything about the run, and the question still
-    /// answers yes from the run id in the recorder's directory index. That is the
-    /// one-directional promise - a stored recording shows the button whatever judging it
-    /// would say, and the browser is then the thing that judges. The opposite direction
-    /// is what must never happen: the browser is the only thing that judges and the
-    /// button is the only way to the browser, so a card hidden on a remembered negative
-    /// closes the way in for good, which is what a per-build verdict cache did here for
-    /// two rounds.
-    /// </summary>
+    /// <summary>The browser remains reachable when no local or bundled run can provide
+    /// its entry, because automatic index fetching and direct code lookup begin there.</summary>
     [GameFact]
-    public void AStoredRecordingShowsTheCardWithoutAnyManifestBeingRead()
+    public void AnEmptyLibraryStillShowsTheBrowserEntry()
     {
-        Write("native-a-20260906-120000.replay.json", "{\"manifest_version\": 9999}");
-
-        Assert.Equal(["native-a-20260906-120000"], RunLibraryStore.StoredRunIds());
-        Assert.Empty(RunLibraryStore.MyRecordings());
-        Assert.DoesNotContain(RunLibrary.Runs(), run => run.Origin == RunOrigin.Mine);
-        Assert.True(RunLibrary.HasAnythingToShow());
+        Assert.Empty(RunLibraryStore.StoredRunIds());
+        Assert.True(CompendiumCard.ShowsButton());
     }
 
     /// <summary>
@@ -305,6 +291,299 @@ public sealed class RunLibraryStoreTests : IDisposable
         Assert.True(RunLibraryStore.RecordFightPlayed("native-a", 1));
     }
 
+    [GameFact]
+    public void ADownloadedRecordingMustMatchItsAdvertisedImmutableIdentity()
+    {
+        var recording = Recording("shared-a");
+        var manifestJson = ManifestJson.Serialize(recording);
+        var submission = new ShareSubmission("Run", "", "Ada", true);
+        var shareId = SharedRunIdentity.For(manifestJson, submission);
+        var shared = new SharedRun(
+            shareId,
+            SharedRunIdentity.CodeFor(shareId),
+            ManifestJson.Serialize(recording with { RunId = "different-run" }),
+            submission,
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed),
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
+
+        var error = Assert.Throws<ShareValidationException>(() =>
+            RunLibrary.AcceptShared(shared, shared.Code));
+
+        Assert.Contains("advertised sharing identity", error.Message, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void ADownloadedRecordingWithoutValidSubmissionConsentIsRefused()
+    {
+        var recording = Recording("shared-a");
+        var manifestJson = ManifestJson.Serialize(recording);
+        var submission = new ShareSubmission("Run", "", "Ada", false);
+        var shareId = SharedRunIdentity.For(manifestJson, submission);
+        var shared = new SharedRun(
+            shareId,
+            SharedRunIdentity.CodeFor(shareId),
+            manifestJson,
+            submission,
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed),
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
+
+        var error = Assert.Throws<ShareValidationException>(() =>
+            RunLibrary.AcceptShared(shared, shared.Code));
+
+        Assert.Contains("CC0 consent", error.Message, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void IndexRefreshPreservesAnAcceptedExactCodeResult()
+    {
+        var recording = Recording($"exact-{Guid.NewGuid():N}");
+        var manifestJson = ManifestJson.Serialize(recording);
+        var submission = new ShareSubmission("Run", "", "Ada", true);
+        var shareId = SharedRunIdentity.For(manifestJson, submission);
+        var shared = new SharedRun(
+            shareId,
+            SharedRunIdentity.CodeFor(shareId),
+            manifestJson,
+            submission,
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Absent),
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
+
+        RunLibrary.AcceptShared(shared, shared.Code);
+        RunLibrary.AcceptIndex([]);
+
+        var listed = Assert.Single(RunLibrary.Runs(), run => run.EntryId == shared.ShareId);
+        Assert.Equal(shared.Code, listed.ShareCode);
+    }
+
+    [GameFact]
+    public void IndexRefreshCuratesVerifiedDownloadsWithoutReplacingTheirMetadataOrOrder()
+    {
+        var downloaded = Shared(Recording($"downloaded-{Guid.NewGuid():N}"));
+        var cachedOnly = Shared(Recording($"cached-{Guid.NewGuid():N}"));
+        var indexedOnly = Shared(Recording($"indexed-{Guid.NewGuid():N}"));
+        RunLibrary.AcceptShared(downloaded, downloaded.Code);
+        RunLibrary.AcceptShared(cachedOnly, cachedOnly.Code);
+        var currentTime = downloaded.SubmittedAt.AddDays(1);
+        var stale = SummaryFor(downloaded) with
+        {
+            Submission = downloaded.Submission with { DisplayName = "Wrong creator" },
+            Run = downloaded.Run with
+            {
+                Character = "CHARACTER.SILENT",
+                Fights = [99],
+            },
+            Environment = downloaded.Summary.Environment with
+            {
+                Character = downloaded.Summary.Environment.Character with
+                {
+                    Value = "CHARACTER.SILENT",
+                },
+            },
+            SubmittedAt = currentTime,
+            Featured = true,
+        };
+        var first = SummaryFor(indexedOnly) with { Featured = true };
+
+        RunLibrary.AcceptIndex([first, stale]);
+
+        var online = RunLibrary.Runs()
+            .Where(run => run.ShareId is not null)
+            .ToList();
+        Assert.Equal(
+            [indexedOnly.ShareId, downloaded.ShareId, cachedOnly.ShareId],
+            online.Select(run => run.ShareId));
+        var listed = online[1];
+        Assert.Equal(downloaded.Submission.DisplayName, listed.Creator);
+        Assert.Equal(downloaded.Run.Character, listed.Character);
+        Assert.Equal(downloaded.Run.Fights, listed.Fights);
+        Assert.Equal(RunOrigin.Featured, listed.Origin);
+        Assert.Equal(currentTime, listed.Recorded);
+
+        var reopened = RunLibrary.AcceptShared(downloaded, downloaded.Code);
+        Assert.Equal(downloaded.ManifestJson, reopened.ManifestJson);
+        Assert.Equal(downloaded.Submission, reopened.Submission);
+        Assert.Equal(RunOrigin.Featured, reopened.Run.Origin);
+        Assert.Equal(currentTime, reopened.Run.Recorded);
+    }
+
+    [GameFact]
+    public void SharedEntriesWithOneManifestRunIdRemainDistinct()
+    {
+        var first = Shared(Recording("same-run", "FIRSTSEED"));
+        var second = Shared(Recording("same-run", "SECONDSEED"));
+
+        RunLibrary.AcceptShared(first);
+        RunLibrary.AcceptShared(second);
+
+        var entries = RunLibrary.Runs()
+            .Where(run => run.EntryId == first.ShareId || run.EntryId == second.ShareId)
+            .ToList();
+        Assert.Equal(2, entries.Count);
+        Assert.Equal(
+            "FIRSTSEED",
+            RunLibrary.RecordingFor(first.ShareId)!.Environment.Seed.Value);
+        Assert.Equal(
+            "SECONDSEED",
+            RunLibrary.RecordingFor(second.ShareId)!.Environment.Seed.Value);
+    }
+
+    [GameFact]
+    public void SharingStateDoesNotCrossProfileOrEndpointBoundaries()
+    {
+        ConfigureEndpoint(_root, "https://one.example.test/v1/");
+        var shared = Shared(Recording($"scoped-{Guid.NewGuid():N}"));
+        var summary = SummaryFor(shared);
+        var firstScope = RunLibrary.CurrentSharingScope();
+        RunLibrary.AcceptIndex([summary]);
+        RunLibrary.AcceptShared(shared, expectedScope: firstScope);
+        Assert.False(RunLibrary.ShouldFetchIndex);
+
+        ConfigureEndpoint(_root, "https://two.example.test/v1/");
+        Assert.True(RunLibrary.SharingAvailable);
+        Assert.True(RunLibrary.ShouldFetchIndex);
+        Assert.DoesNotContain(RunLibrary.Runs(), run => run.EntryId == shared.ShareId);
+        Assert.False(RunLibrary.AcceptIndex([summary], firstScope));
+        Assert.Throws<ShareValidationException>(() =>
+            RunLibrary.AcceptShared(shared, expectedScope: firstScope));
+
+        var secondScope = RunLibrary.CurrentSharingScope();
+        RunLibrary.AcceptIndex([summary], secondScope);
+        Assert.False(RunLibrary.ShouldFetchIndex);
+        var secondProfile = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
+        Directory.CreateDirectory(secondProfile);
+        ConfigureEndpoint(secondProfile, "https://two.example.test/v1/");
+
+        Assert.True(RunLibrary.SharingAvailable);
+        Assert.True(RunLibrary.ShouldFetchIndex);
+        Assert.DoesNotContain(RunLibrary.Runs(), run => run.EntryId == shared.ShareId);
+    }
+
+    [GameFact]
+    public void DownloadedRunMustMatchManifestDerivedIndexMetadata()
+    {
+        var shared = Shared(Recording($"bound-{Guid.NewGuid():N}"));
+        var summary = SummaryFor(shared);
+        var differentEnvironment = summary.Environment with
+        {
+            Seed = summary.Environment.Seed with { Value = "DIFFERENT" },
+        };
+        IReadOnlyList<SharedRunSummary> mismatches =
+        [
+            summary with { Run = summary.Run with { RunId = "different-run" } },
+            summary with { Run = summary.Run with { Character = "CHARACTER.SILENT" } },
+            summary with { Run = summary.Run with { Fights = [1] } },
+            summary with { Run = summary.Run with { Outcome = LibraryRun.WonOutcome } },
+            summary with { Environment = differentEnvironment },
+            summary with { SourceKind = "video" },
+            summary with
+            {
+                Submission = summary.Submission with { Description = "Different" },
+            },
+        ];
+
+        foreach (var mismatch in mismatches)
+        {
+            RunLibrary.AcceptIndex([mismatch]);
+            var error = Assert.Throws<ShareValidationException>(() =>
+                RunLibrary.AcceptShared(shared, shared.Code));
+            Assert.Contains("run index entry", error.Message, StringComparison.Ordinal);
+        }
+    }
+
+    [GameFact]
+    public void DownloadedRunDoesNotTreatCurationAsManifestIdentity()
+    {
+        var shared = Shared(Recording($"curated-{Guid.NewGuid():N}"));
+        var advertised = SummaryFor(shared) with
+        {
+            SubmittedAt = shared.SubmittedAt.AddDays(1),
+            Featured = !shared.Featured,
+        };
+        RunLibrary.AcceptIndex([advertised]);
+
+        var accepted = RunLibrary.AcceptShared(shared, shared.Code);
+
+        Assert.Equal(shared.ShareId, accepted.ShareId);
+    }
+
+    [GameFact]
+    public void LightweightIndexIdentityUsesTheEnvironmentPreflight()
+    {
+        var recording = Recording("shared-a");
+        var wrongEnvironment = recording.Environment with
+        {
+            ContentHash = recording.Environment.ContentHash with { Value = "different-content" },
+        };
+
+        Assert.Equal(
+            RunVerdict.Failed,
+            RunVerdicts.For(wrongEnvironment, recording.Source.Kind, recording.RunId, Build));
+    }
+
+    [GameFact]
+    public void SharedProgressAndIndexAreScopedToTheCurrentProfile()
+    {
+        var runId = $"shared-progress-{Guid.NewGuid():N}";
+        var recording = Recording(runId);
+        var submission = new ShareSubmission("Run", "", "Ada", true);
+        var shareId = SharedRunIdentity.For(ManifestJson.Serialize(recording), submission);
+        var summary = new SharedRunSummary(
+            shareId,
+            SharedRunIdentity.CodeFor(shareId),
+            submission,
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed, [99]),
+            recording.Environment,
+            recording.Source.Kind,
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"),
+            Featured: false);
+
+        try
+        {
+            RunLibrary.AcceptIndex([summary]);
+            Assert.Empty(RunLibrary.Runs().Single(run => run.RunId == runId).FightsPlayed);
+
+            Assert.True(RunLibraryStore.RecordFightPlayed(runId, 2));
+            Assert.Equal([2], RunLibrary.Runs().Single(run => run.RunId == runId).FightsPlayed);
+
+            var secondProfile = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
+            Directory.CreateDirectory(secondProfile);
+            RunmobileStore.UseRootForTesting(secondProfile);
+            Assert.DoesNotContain(RunLibrary.Runs(), run => run.RunId == runId);
+        }
+        finally
+        {
+            RunmobileStore.UseRootForTesting(_root);
+            RunLibrary.AcceptIndex([]);
+        }
+    }
+
+    private static SharedRun Shared(ReplayManifest recording)
+    {
+        var manifestJson = ManifestJson.Serialize(recording);
+        var submission = new ShareSubmission("Run", "", "Ada", true);
+        var shareId = SharedRunIdentity.For(manifestJson, submission);
+        return new SharedRun(
+            shareId,
+            SharedRunIdentity.CodeFor(shareId),
+            manifestJson,
+            submission,
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Absent) with
+            {
+                Creator = submission.DisplayName,
+            },
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
+    }
+
+    private static SharedRunSummary SummaryFor(SharedRun shared) => shared.Summary;
+
+    private static void ConfigureEndpoint(string root, string endpoint)
+    {
+        RunmobileStore.UseRootForTesting(root);
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","sharing_service_url":"{{endpoint}}"}""");
+    }
+
     private void Write(string name, string content) =>
         RunmobileStore.Write($"{RunLibraryStore.RecordingsDirectory}/{name}", content);
 
@@ -354,6 +633,92 @@ public sealed class RunLibraryStoreTests : IDisposable
                 evidence),
         };
     }
+}
+
+public sealed class OnlineIndexTests
+{
+    [Fact]
+    public void FeaturedAndRecentUseTransportClassificationAndSubmissionTime()
+    {
+        var recording = RunLibraryStoreTests.BareRecording("source");
+        var featured = Summary(
+            recording,
+            Run("featured", RunOrigin.Mine, recorded: null),
+            submitted: "2026-09-01T00:00:00Z",
+            featured: true);
+        var newer = Summary(
+            recording,
+            Run("newer", RunOrigin.Featured, recorded: null),
+            submitted: "2026-09-03T00:00:00Z");
+        var older = Summary(
+            recording,
+            Run("older", RunOrigin.Mine, recorded: DateTimeOffset.MaxValue),
+            submitted: "2026-09-02T00:00:00Z");
+        var accepted = new[] { featured, older, newer }
+            .Select(item => RunLibrary.OnlineRun(item, RunVerdict.Passed))
+            .ToArray();
+
+        var browser = RunBrowser.For(LibraryTab.Community, accepted, "v0.111.0");
+
+        Assert.Equal(
+            [LibraryCopy.FeaturedGroup, LibraryCopy.RecentGroup],
+            browser.Groups.Select(group => group.Heading));
+        var acceptedFeatured = Assert.Single(browser.Groups[0].Runs);
+        Assert.Equal("featured", acceptedFeatured.RunId);
+        Assert.Equal("Ada", acceptedFeatured.Creator);
+        Assert.Equal(recording.Environment.Character.Value, acceptedFeatured.Character);
+        Assert.Equal(recording.Environment.Ascension.Value, acceptedFeatured.Ascension);
+        Assert.Equal(recording.Environment.BuildVersion.Value, acceptedFeatured.RecordedBuild);
+        Assert.Empty(acceptedFeatured.FightsPlayed);
+        Assert.Equal(["newer", "older"], browser.Groups[1].Runs.Select(run => run.RunId));
+    }
+
+    [Fact]
+    public void OnlineMetadataWithoutValidSubmissionConsentIsRefused()
+    {
+        var recording = RunLibraryStoreTests.BareRecording("source");
+        var summary = Summary(
+            recording,
+            Run("run", RunOrigin.Recent, recorded: null),
+            submitted: "2026-09-01T00:00:00Z") with
+        {
+            Submission = new ShareSubmission("Run", "", "Ada", false),
+        };
+
+        Assert.Throws<ShareValidationException>(() =>
+            RunLibrary.OnlineRun(summary, RunVerdict.Passed));
+    }
+
+    private static SharedRunSummary Summary(
+        ReplayManifest recording,
+        LibraryRun run,
+        string submitted,
+        bool featured = false) =>
+        new(
+            run.RunId,
+            run.RunId,
+            new ShareSubmission("Run", "", "Ada", true),
+            run,
+            recording.Environment,
+            recording.Source.Kind,
+            DateTimeOffset.Parse(submitted),
+            featured);
+
+    private static LibraryRun Run(
+        string runId, RunOrigin origin, DateTimeOffset? recorded) =>
+        new(
+            runId,
+            origin,
+            "Wrong creator",
+            "WRONG.CHARACTER",
+            99,
+            "wrong-build",
+            [1],
+            "won",
+            false,
+            RunVerdict.Unjudged,
+            [99],
+            recorded);
 }
 
 /// <summary>
@@ -458,6 +823,7 @@ public sealed class RunLibraryModuleTests
                 "NCompendiumSubmenu.OnSubmenuOpened",
                 "NCompendiumSubmenu._Ready",
                 "NMapPointHistoryEntry._Ready",
+                "NSettingsScreen._Ready",
             ],
             PatchTargets.Targets(RunLibraryModule.PatchClasses).Order(StringComparer.Ordinal));
         Assert.Empty(PatchTargets.Unresolvable(RunLibraryModule.PatchClasses));

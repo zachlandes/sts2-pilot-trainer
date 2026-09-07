@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Trainer;
@@ -80,8 +81,13 @@ public sealed record LibraryRun(
     bool? Multiplayer,
     RunVerdict Verdict,
     IReadOnlyList<int> FightsPlayed,
-    DateTimeOffset? Recorded = null)
+    DateTimeOffset? Recorded = null,
+    [property: JsonIgnore] string? ShareId = null,
+    [property: JsonIgnore] string? ShareCode = null)
 {
+    [JsonIgnore]
+    public string EntryId => ShareId ?? RunId;
+
     /// <summary>The outcome a recording of a won run carries.</summary>
     public const string WonOutcome = "won";
 
@@ -90,12 +96,11 @@ public sealed record LibraryRun(
     public bool Won => string.Equals(Outcome, WonOutcome, StringComparison.Ordinal);
 
     /// <summary>
-    /// Whether this run is in the list.
+    /// Whether this run passes the ordinary compatibility filter.
     ///
-    /// The settled hidden rule, in one place. A run this build has no passing verdict
-    /// for is not listed, and an established multiplayer run is not listed - with no
-    /// tickbox and no greyed row either way. A run code still finds both, which is what
-    /// <see cref="RunBrowser.Lookup"/> is for.
+    /// An established multiplayer run never passes. A run without a passing verdict
+    /// appears only when the compatibility filter is off; an exact code turns that
+    /// filter off and selects the disabled row.
     /// </summary>
     public bool Listed => Verdict == RunVerdict.Passed && Multiplayer != true;
 

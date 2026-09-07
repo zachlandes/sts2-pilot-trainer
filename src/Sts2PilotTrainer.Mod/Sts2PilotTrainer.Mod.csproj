@@ -10,8 +10,9 @@
        eligibility verdict comes from Preflight, the wording and row logic from
        Sts2PilotTrainer.Trainer, and this project draws the answer.
 
-       The published artifact is Runmobile.dll, its manifest and the four
-       project assemblies it uses; see docs/distribution.md.
+       The published artifact is Runmobile.dll, its manifest, the four
+       project assemblies it uses, the self-contained local arbiter and the
+       install-time preparation tool; see docs/distribution.md.
        ═══════════════════════════════════════════════════════════════════════ -->
   <PropertyGroup>
     <RootNamespace>Sts2PilotTrainer.Mod</RootNamespace>

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
@@ -15,33 +16,34 @@ namespace Sts2PilotTrainer.Mod;
 /// is shown - the hidden rule lives in <c>LibraryRun.Listed</c>, in one place, so
 /// "why is this run not in the list" has one field to look at.
 ///
-/// <para>Two sources today and the shape allows a third. The recordings that travel
-/// inside the mod are the Community tab's "Included with Runmobile" group and are
-/// there with no network and no index; the recorder's own output is My runs. Featured
-/// and Recent are the fetched index's groups, and until an index exists they are
-/// simply empty - which is what the browser draws when a group has nothing in it,
-/// rather than a placeholder saying so.</para>
-///
 /// <para><b>Nothing is cached, and only one of the two questions builds the list.</b>
 /// "Which runs are there" is <see cref="Runs"/>, and it is expensive on purpose: every
 /// recording is deserialized and judged live, every time it is asked, because the
 /// recorder writes into the library while the game is running and because a verdict is a
 /// reading of the whole environment rather than of the build alone. Everything a player
-/// is shown about whether a run plays comes from there and from nowhere else. "Is there
-/// anything at all" is <see cref="HasAnythingToShow"/>, which the Compendium asks on
-/// every menu open, and it reads no manifest: the shipped recordings are already in
-/// memory and are judged directly, and the player's own runs are answered from the run
-/// ids in the recorder's directory index alone.</para>
-///
-/// <para>The promise the cheap question makes is one-directional, and only that. It never
-/// hides a run the list would hold; it may show the button when the list turns out empty.
-/// That is the direction to be wrong in, because the browser is the only thing that
-/// judges and the button is the only way to the browser - anything remembered that could
-/// hide the button could hide the only path to judging again, and a persisted negative
-/// that never corrects itself is how this feature was once lost permanently.</para>
+/// is shown about whether a run plays comes from there and from nowhere else. The
+/// Compendium entry is always present while the shell may draw so an empty local library,
+/// a disabled automatic index fetch, or a transport failure never removes direct code
+/// lookup.</para>
 /// </summary>
 internal static class RunLibrary
 {
+    private static readonly Dictionary<string, SharedRunSummary> SharedIndex = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, SharedRun> SharedRecordings = new(StringComparer.Ordinal);
+    private static bool indexRequested;
+    private static bool indexLoaded;
+    private static IRunSharingApi? configuredSharing;
+    private static string? configuredSharingEndpoint;
+    private static string? sharingScope;
+    private static readonly object SharingLock = new();
+    private static int nextSubmission;
+    private static readonly object PendingSubmissionLock = new();
+    private static readonly Dictionary<int, string> PendingManifestJson = [];
+    private static readonly Dictionary<int, ShareSubmission> PendingSubmissions = [];
+    private static readonly Dictionary<int, string> PendingSharingEndpoints = [];
+    private static readonly Dictionary<int, string> PendingSharingScopes = [];
+    private static readonly Dictionary<int, TaskCompletionSource<SharedRun>> PendingSharingResults = [];
+
     /// <summary>
     /// Every run, listed or not, with the verdict that decides which.
     ///
@@ -50,6 +52,7 @@ internal static class RunLibrary
     /// </summary>
     internal static IReadOnlyList<LibraryRun> Runs()
     {
+        RefreshSharingScope();
         var build = ThisBuild();
         var progress = RunLibraryStore.ReadProgress();
         var runs = new List<LibraryRun>();
@@ -73,64 +76,451 @@ internal static class RunLibrary
                 recorded: stored.Started));
         }
 
+        var shared = new List<SharedRunSummary>();
+        var indexedShares = new HashSet<string>(StringComparer.Ordinal);
+        if (RunmobileSettings.Read().FetchRunIndex)
+        {
+            foreach (var item in SharedIndex.Values)
+            {
+                indexedShares.Add(item.ShareId);
+                if (SharedRecordings.TryGetValue(item.ShareId, out var downloaded))
+                {
+                    shared.Add(Curated(downloaded, item, build).Summary);
+                }
+                else
+                {
+                    shared.Add(item);
+                }
+            }
+        }
+        foreach (var item in SharedRecordings.Values)
+        {
+            if (!indexedShares.Contains(item.ShareId)) shared.Add(item.Summary);
+        }
+
+        foreach (var item in shared)
+        {
+            var verdict = RunVerdicts.For(
+                item.Environment, item.SourceKind, item.Run.RunId, build);
+            runs.Add(OnlineRun(item, verdict) with
+            {
+                FightsPlayed = progress.PlayedFrom(item.Run.RunId),
+            });
+        }
+
         return runs;
     }
 
-    /// <summary>
-    /// Whether the library has a single run to offer.
-    ///
-    /// The Compendium button asks this each time the menu opens. A button opening an
-    /// empty browser would be a promise the mod cannot keep on a game whose build no
-    /// run in it was recorded on.
-    ///
-    /// It reads no manifest, which is what makes it cheap enough to ask on a menu open
-    /// at all. The shipped recordings are in memory already and are judged the same way
-    /// the list judges them, so on an ordinary build they answer it outright. Only when
-    /// none of them is playable does it reach the player's own runs, and there it asks
-    /// the recorder's directory index and nothing more: any finished recording is a
-    /// reason to show the button.
-    ///
-    /// So the answer is one-directional rather than exact. It never hides a run the list
-    /// would hold, and it may show the button onto a list that turns out empty - a run
-    /// this game cannot play is one the browser then leaves out, with the numeral under
-    /// the list saying how many. That is the direction to be wrong in: the browser is the
-    /// only thing that judges and the button is the only way to the browser, so anything
-    /// that could hide the button could close the way in for good.
-    /// </summary>
-    internal static bool HasAnythingToShow()
+    internal static Task<IReadOnlyList<SharedRunSummary>> FetchIndexAsync() =>
+        FetchIndexAsync(out _);
+
+    internal static Task<IReadOnlyList<SharedRunSummary>> FetchIndexAsync(out string scope)
     {
-        try
+        var endpoint = RequireSharingEndpoint();
+        scope = CurrentSharingScope();
+        indexRequested = true;
+        return SharingAt(endpoint).IndexAsync();
+    }
+
+    internal static bool SharingAvailable => RefreshSharingScope() is not null;
+
+    internal static bool ShouldFetchIndex =>
+        SharingAvailable && !indexRequested && !indexLoaded && RunmobileSettings.Read().FetchRunIndex;
+
+    internal static void AcceptIndex(IReadOnlyList<SharedRunSummary> index) =>
+        AcceptIndex(index, CurrentSharingScope());
+
+    internal static bool AcceptIndex(IReadOnlyList<SharedRunSummary> index, string expectedScope)
+    {
+        RefreshSharingScope();
+        if (!IsCurrentSharingScope(expectedScope)) return false;
+        var accepted = new Dictionary<string, SharedRunSummary>(StringComparer.Ordinal);
+        foreach (var item in index)
         {
-            var build = ThisBuild();
-            foreach (var included in Included())
+            if (!string.Equals(
+                item.Code, SharedRunIdentity.CodeFor(item.ShareId), StringComparison.Ordinal))
             {
-                if (LibraryRun.From(included, RunOrigin.Included, RunVerdicts.For(included, build)).Listed)
-                {
-                    return true;
-                }
+                throw new ShareValidationException(
+                    "The run index contains an invalid sharing identity.");
             }
 
-            return RunLibraryStore.StoredRunIds().Count > 0;
+            if (accepted.Values.Any(acceptedItem =>
+                    string.Equals(acceptedItem.Code, item.Code, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ShareValidationException(
+                    "The run index assigns one sharing code to more than one run.");
+            }
+
+            accepted[item.ShareId] = item;
         }
-        catch (Exception ex)
+
+        SharedIndex.Clear();
+        foreach (var item in accepted) SharedIndex[item.Key] = item.Value;
+        indexRequested = false;
+        indexLoaded = true;
+        return true;
+    }
+
+    internal static LibraryRun OnlineRun(SharedRunSummary item, RunVerdict verdict)
+    {
+        item.Submission.Validate();
+        return item.Run with
         {
-            Log.Error(
-                $"[{RunmobileMod.ModId}] could not read the run library: {ex.GetType().Name}: {ex.Message}", 2);
-            return false;
-        }
+            Origin = item.Featured ? RunOrigin.Featured : RunOrigin.Recent,
+            Creator = item.Submission.DisplayName,
+            Character = item.Environment.Character.Value,
+            Ascension = item.Environment.Ascension.Value,
+            RecordedBuild = item.Environment.BuildVersion.Value,
+            Verdict = verdict,
+            FightsPlayed = [],
+            Recorded = item.SubmittedAt,
+            ShareId = item.ShareId,
+            ShareCode = item.Code,
+        };
+    }
+
+    private static SharedRun Curated(
+        SharedRun downloaded, SharedRunSummary indexed, string build)
+    {
+        var verified = downloaded.Summary with
+        {
+            SubmittedAt = indexed.SubmittedAt,
+            Featured = indexed.Featured,
+        };
+        var verdict = RunVerdicts.For(
+            verified.Environment, verified.SourceKind, verified.Run.RunId, build);
+        return downloaded with
+        {
+            SubmittedAt = indexed.SubmittedAt,
+            Featured = indexed.Featured,
+            Run = OnlineRun(verified, verdict),
+        };
+    }
+
+    internal static void RefuseIndex() => RefuseIndex(CurrentSharingScope());
+
+    internal static void RefuseIndex(string expectedScope)
+    {
+        RefreshSharingScope();
+        if (!IsCurrentSharingScope(expectedScope)) return;
+        indexRequested = false;
+        indexLoaded = false;
     }
 
     /// <summary>The recording behind one row, or null when nothing here is that run.
     /// Resolved by id through the directory index, so pressing a row costs that
     /// recording's manifest and no other's.</summary>
-    internal static ReplayManifest? RecordingFor(string runId)
+    internal static ReplayManifest? RecordingFor(string entryId)
     {
+        RefreshSharingScope();
+        var shared = SharedRecordings.Values.FirstOrDefault(item =>
+            string.Equals(item.ShareId, entryId, StringComparison.Ordinal));
+        if (shared is not null) return ManifestJson.Deserialize(shared.ManifestJson);
+
         foreach (var included in Included())
         {
-            if (string.Equals(included.RunId, runId, StringComparison.Ordinal)) return included;
+            if (string.Equals(included.RunId, entryId, StringComparison.Ordinal)) return included;
         }
 
-        return RunLibraryStore.RecordingFor(runId);
+        return RunLibraryStore.RecordingFor(entryId);
+    }
+
+    internal static Task<SharedRun?> FindSharedAsync(string code) =>
+        FindSharedAsync(code, out _);
+
+    internal static Task<SharedRun?> FindSharedAsync(string code, out string scope)
+    {
+        RefreshSharingScope();
+        scope = CurrentSharingScope();
+        var wanted = code.Trim();
+        var cached = SharedRecordings.Values.FirstOrDefault(item =>
+            string.Equals(item.Code, wanted, StringComparison.OrdinalIgnoreCase));
+        if (cached is not null) return Task.FromResult<SharedRun?>(cached);
+        return SharingAt(RequireSharingEndpoint()).FindAsync(wanted);
+    }
+
+    internal static SharedRun AcceptShared(
+        SharedRun found, string? expectedCode = null, string? expectedScope = null)
+    {
+        RefreshSharingScope();
+        if (expectedScope is not null && !IsCurrentSharingScope(expectedScope))
+            throw new ShareValidationException("The sharing profile changed before that request finished.");
+        found.Submission.Validate();
+        var computedId = SharedRunIdentity.For(found.ManifestJson, found.Submission);
+        var computedCode = SharedRunIdentity.CodeFor(computedId);
+        if (!string.Equals(found.ShareId, computedId, StringComparison.Ordinal) ||
+            !string.Equals(found.Code, computedCode, StringComparison.Ordinal) ||
+            expectedCode is not null &&
+            !string.Equals(expectedCode.Trim(), found.Code, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ShareValidationException(
+                "The downloaded run does not match its advertised sharing identity.");
+        }
+
+        if (SharedRecordings.TryGetValue(found.ShareId, out var downloaded))
+        {
+            var indexed = SharedIndex.TryGetValue(found.ShareId, out var current)
+                ? current
+                : downloaded.Summary;
+            return Curated(downloaded, indexed, ThisBuild());
+        }
+
+        var recording = ManifestJson.Deserialize(found.ManifestJson);
+        SharedIndex.TryGetValue(found.ShareId, out var advertised);
+        if (advertised is not null && !IndexDescribes(advertised, found, recording))
+        {
+            throw new ShareValidationException(
+                "The downloaded run does not match the run index entry.");
+        }
+
+        var described = LibraryRun.From(
+            recording,
+            found.Featured ? RunOrigin.Featured : RunOrigin.Recent,
+            RunVerdicts.For(recording, ThisBuild()),
+            fightsPlayed: [],
+            recorded: found.SubmittedAt) with
+        {
+            Creator = found.Submission.DisplayName,
+            ShareId = found.ShareId,
+            ShareCode = found.Code,
+        };
+        var local = found with { Run = described };
+        SharedRecordings[local.ShareId] = local;
+        return local;
+    }
+
+    internal static Task<SharedRun> ShareAsync(
+        ReplayManifest recording, ShareSubmission submission) =>
+        ShareAsync(recording, submission, out _);
+
+    internal static Task<SharedRun> ShareAsync(
+        ReplayManifest recording, ShareSubmission submission, out string scope)
+    {
+        submission.Validate();
+        var endpoint = RequireSharingEndpoint();
+        scope = CurrentSharingScope();
+        var gate = PublicationGate.RunAsync(recording);
+        var request = Interlocked.Increment(ref nextSubmission);
+        var result = new TaskCompletionSource<SharedRun>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        lock (PendingSubmissionLock)
+        {
+            PendingManifestJson[request] = ManifestJson.Serialize(recording);
+            PendingSubmissions[request] = submission;
+            PendingSharingEndpoints[request] = endpoint;
+            PendingSharingScopes[request] = scope;
+            PendingSharingResults[request] = result;
+        }
+        _ = gate.ContinueWith(
+            static (completed, value) =>
+            {
+                var request = (int)value!;
+                Godot.Callable.From(() => CompletePublicationGate(completed, request)).CallDeferred();
+            },
+            request,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+        return result.Task;
+    }
+
+    private static void CompletePublicationGate(Task<bool> completed, int request)
+    {
+        string manifestJson;
+        ShareSubmission submission;
+        string endpoint;
+        string scope;
+        TaskCompletionSource<SharedRun> result;
+        lock (PendingSubmissionLock)
+        {
+            manifestJson = PendingManifestJson[request];
+            submission = PendingSubmissions[request];
+            endpoint = PendingSharingEndpoints[request];
+            scope = PendingSharingScopes[request];
+            result = PendingSharingResults[request];
+            PendingManifestJson.Remove(request);
+            PendingSubmissions.Remove(request);
+            PendingSharingEndpoints.Remove(request);
+            PendingSharingScopes.Remove(request);
+            PendingSharingResults.Remove(request);
+        }
+
+        if (!completed.IsCompletedSuccessfully)
+        {
+            result.SetException(completed.Exception?.GetBaseException()
+                ?? new ShareValidationException("Local validation could not finish."));
+            return;
+        }
+        if (!completed.Result)
+        {
+            result.SetException(new ShareValidationException(
+                "Local validation did not pass, so the run was not sent."));
+            return;
+        }
+        if (!IsCurrentSharingScope(scope))
+        {
+            result.SetException(new ShareValidationException(
+                "The sharing profile changed before local validation finished, so the run was not sent."));
+            return;
+        }
+
+        Task<SharedRun> submissionTask;
+        try
+        {
+            submissionTask = SharingAt(endpoint).SubmitAsync(manifestJson, submission);
+        }
+        catch (Exception ex)
+        {
+            result.SetException(ex);
+            return;
+        }
+
+        _ = submissionTask.ContinueWith(
+            static (finished, value) => CompleteSubmission(finished, (TaskCompletionSource<SharedRun>)value!),
+            result,
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private static void CompleteSubmission(
+        Task<SharedRun> completed, TaskCompletionSource<SharedRun> result)
+    {
+        if (completed.IsCompletedSuccessfully)
+        {
+            result.SetResult(completed.Result);
+        }
+        else if (completed.IsCanceled)
+        {
+            result.SetCanceled();
+        }
+        else
+        {
+            result.SetException(completed.Exception?.GetBaseException()
+                ?? new ShareValidationException("Sharing could not finish."));
+        }
+    }
+
+    private static bool IndexDescribes(
+        SharedRunSummary advertised, SharedRun found, ReplayManifest recording)
+    {
+        var described = LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Unjudged);
+        return string.Equals(advertised.ShareId, found.ShareId, StringComparison.Ordinal) &&
+               advertised.Submission == found.Submission &&
+               string.Equals(advertised.Run.RunId, described.RunId, StringComparison.Ordinal) &&
+               string.Equals(
+                   advertised.Run.Creator, found.Submission.DisplayName, StringComparison.Ordinal) &&
+               string.Equals(advertised.Run.Character, described.Character, StringComparison.Ordinal) &&
+               advertised.Run.Ascension == described.Ascension &&
+               string.Equals(
+                   advertised.Run.RecordedBuild, described.RecordedBuild, StringComparison.Ordinal) &&
+               advertised.Run.Fights.SequenceEqual(described.Fights) &&
+               string.Equals(advertised.Run.Outcome, described.Outcome, StringComparison.Ordinal) &&
+               string.Equals(advertised.SourceKind, recording.Source.Kind, StringComparison.Ordinal) &&
+               string.Equals(
+                   JsonSerializer.Serialize(advertised.Environment, ManifestJson.Options),
+                   JsonSerializer.Serialize(recording.Environment, ManifestJson.Options),
+                   StringComparison.Ordinal);
+    }
+
+    private static string RequireSharingEndpoint() =>
+        RefreshSharingScope()
+        ?? throw new ShareValidationException(LibraryCopy.SharingServiceUnavailable);
+
+    private static string? ConfiguredSharingEndpoint()
+    {
+        var configured = RunmobileSettings.Read().SharingServiceUrl;
+        if (string.IsNullOrWhiteSpace(configured)) return null;
+        if (!Uri.TryCreate(configured, UriKind.Absolute, out var endpoint) ||
+            endpoint.Scheme != Uri.UriSchemeHttps ||
+            endpoint.UserInfo.Length > 0 ||
+            endpoint.Query.Length > 0 ||
+            endpoint.Fragment.Length > 0)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] settings.json does not name an authorized HTTPS sharing " +
+                "service, so no network request will be made.", 2);
+            return null;
+        }
+
+        return endpoint.AbsoluteUri.EndsWith("/", StringComparison.Ordinal)
+            ? endpoint.AbsoluteUri
+            : endpoint.AbsoluteUri + "/";
+    }
+
+    private static string? RefreshSharingScope()
+    {
+        var endpoint = ConfiguredSharingEndpoint();
+        string root;
+        try
+        {
+            root = RunmobileStore.Root;
+        }
+        catch (Exception)
+        {
+            root = string.Empty;
+        }
+
+        var current = $"{root}\n{endpoint}";
+        lock (SharingLock)
+        {
+            if (!string.Equals(sharingScope, current, StringComparison.Ordinal))
+            {
+                SharedIndex.Clear();
+                SharedRecordings.Clear();
+                indexRequested = false;
+                indexLoaded = false;
+                configuredSharing = null;
+                configuredSharingEndpoint = null;
+                sharingScope = current;
+            }
+        }
+
+        return endpoint;
+    }
+
+    internal static string CurrentSharingScope()
+    {
+        RefreshSharingScope();
+        lock (SharingLock) return sharingScope!;
+    }
+
+    internal static bool IsCurrentSharingScope(string expectedScope)
+    {
+        RefreshSharingScope();
+        lock (SharingLock)
+            return string.Equals(sharingScope, expectedScope, StringComparison.Ordinal);
+    }
+
+    private static IRunSharingApi SharingAt(string endpoint)
+    {
+        lock (SharingLock)
+        {
+            if (configuredSharing is null ||
+                !string.Equals(configuredSharingEndpoint, endpoint, StringComparison.Ordinal))
+            {
+                configuredSharing = new HttpRunSharingApi(new HttpClient(
+                    new HttpClientHandler { AllowAutoRedirect = false })
+                {
+                    BaseAddress = new Uri(endpoint),
+                    Timeout = TimeSpan.FromSeconds(10),
+                });
+                configuredSharingEndpoint = endpoint;
+            }
+
+            return configuredSharing;
+        }
+    }
+
+    internal static void ResetSharedRunsForTesting()
+    {
+        SharedIndex.Clear();
+        SharedRecordings.Clear();
+        indexRequested = false;
+        indexLoaded = false;
+        configuredSharing = null;
+        configuredSharingEndpoint = null;
+        sharingScope = null;
     }
 
     /// <summary>

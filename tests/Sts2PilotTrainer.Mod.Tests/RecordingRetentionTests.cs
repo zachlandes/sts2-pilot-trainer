@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.IO;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 
@@ -39,6 +40,72 @@ public sealed class RecordingRetentionTests : IDisposable
         RunmobileStore.UseRootForTesting(null);
         var sandbox = _root[.._root.IndexOf("Runmobile", StringComparison.Ordinal)];
         if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+    }
+
+    [Fact]
+    public void NextSafeRetentionPassRemovesAnInterruptedPublicationWorkspace()
+    {
+        RunmobileStore.Write("publication/abandoned/evidence/gate.json", "{}");
+
+        RecordingRetention.ApplyOnce();
+
+        Assert.False(Directory.Exists(RunmobileStore.PathOf("publication")));
+    }
+
+    [Fact]
+    public void RetentionLeavesAnActivePublicationWorkspaceAndRemovesAbandonedOnes()
+    {
+        RunmobileStore.Write("publication/active/evidence/gate.json", "{}");
+        RunmobileStore.Write("publication/abandoned/evidence/gate.json", "{}");
+        RecordingRetention.BeginPublicationWorkspace(_root, "publication/active");
+
+        RecordingRetention.ApplyOnce();
+
+        Assert.True(RunmobileStore.Exists("publication/active/evidence/gate.json"));
+        Assert.False(Directory.Exists(RunmobileStore.PathOf("publication/abandoned")));
+        RecordingRetention.RemovePublicationWorkspace(_root, "publication/active");
+    }
+
+    [Fact]
+    public void PublicationWorkspaceCleanupRemovesOnlyThatDerivedWorkspace()
+    {
+        RunmobileStore.Write("publication/request/evidence/gate.json", "{}");
+        RunmobileStore.Write("publication/other/evidence/gate.json", "{}");
+        RunmobileStore.Write("recordings/kept.replay.json", "{}");
+
+        RecordingRetention.RemovePublicationWorkspace(_root, "publication/request");
+
+        Assert.False(Directory.Exists(RunmobileStore.PathOf("publication/request")));
+        Assert.True(RunmobileStore.Exists("publication/other/evidence/gate.json"));
+        Assert.True(RunmobileStore.Exists("recordings/kept.replay.json"));
+    }
+
+    [Fact]
+    public void PublicationCleanupRefusesLinksIntoTheRecordingLibrary()
+    {
+        RunmobileStore.Write("recordings/kept.replay.json", "{}");
+        var workspace = RunmobileStore.PathOf("publication/request");
+        Directory.CreateDirectory(workspace);
+        Directory.CreateSymbolicLink(
+            Path.Combine(workspace, "recordings"),
+            RunmobileStore.PathOf("recordings"));
+
+        Assert.Throws<PathContainmentException>(() =>
+            RecordingRetention.RemovePublicationWorkspace(_root, "publication/request"));
+        Assert.True(RunmobileStore.Exists("recordings/kept.replay.json"));
+    }
+
+    [Fact]
+    public void PublicationCleanupRefusesLinkedPathComponents()
+    {
+        RunmobileStore.Write("recordings/kept.replay.json", "{}");
+        Directory.CreateSymbolicLink(
+            RunmobileStore.PathOf("publication"),
+            _root);
+
+        Assert.Throws<PathContainmentException>(() =>
+            RecordingRetention.RemovePublicationWorkspace(_root, "publication/recordings"));
+        Assert.True(RunmobileStore.Exists("recordings/kept.replay.json"));
     }
 
     [Fact]

@@ -11,23 +11,20 @@ namespace Sts2PilotTrainer.Mod;
 /// What the player has told Runmobile to do, read from
 /// <c>settings.json</c> in the store.
 ///
-/// The file is the record and a screen is a way of editing it. Two of these members
-/// have a control now - <c>MyRunsSettingsRow</c> draws the standing policy and the act -
-/// and both go through the writers below rather than keeping a second copy of the
-/// answer, so a player who edits the file by hand and a player who moves the control
-/// are saying the same thing in the same place. Whether to record has no control yet
-/// and is a line in this file.
+/// The file is the record and a screen is a way of editing it.
+/// Three of these members have a control now: <c>MyRunsSettingsRow</c> draws the standing policy, the removal act, and whether the shared-run index is fetched.
+/// All three go through the writers below rather than keeping a second copy of the answer, so a player who edits the file by hand and a player who moves the control are saying the same thing in the same place.
+/// Whether to record has no control yet and is a line in this file.
 ///
 /// Recording is on by default because the recorder is not released to players before
 /// that surface is: the default is what the person building this wants while it is
 /// being built, and it becomes a decision the moment somebody else can see it.
 ///
-/// Three things are said here and they are three different kinds of sentence. Whether
-/// to record is a standing choice. How many runs to keep is a standing policy, and it
-/// has a default rather than being unbounded because the recorder writes a real file
-/// per run and nothing else ever removed one. Asking for every run to be removed is a
-/// one-shot act: it is honoured once and then set to false, which is both how it stops
-/// repeating and how a player sees that it happened.
+/// Five things are said here and they are four different kinds of sentence.
+/// Whether to record and whether to fetch the shared-run index are standing choices.
+/// The sharing-service endpoint is the explicit authority for outbound transfer and has no default.
+/// How many runs to keep is a standing policy, and it has a default rather than being unbounded because the recorder writes a real file per run and nothing else ever removed one.
+/// Asking for every run to be removed is a one-shot act: it is honoured once and then set to false, which is both how it stops repeating and how a player sees that it happened.
 ///
 /// Every write here edits the member it names and leaves the rest of the document as
 /// the player wrote it. That is not tidiness: the rest of the file is their own text,
@@ -62,6 +59,13 @@ internal sealed record RunmobileSettings
     /// <summary>Whether every run the player plays is recorded.</summary>
     [JsonPropertyName("record_my_runs")]
     public bool RecordMyRuns { get; init; } = true;
+
+    /// <summary>Whether the shared-run index for Others is fetched. This never submits a run.</summary>
+    [JsonPropertyName("fetch_run_index")]
+    public bool FetchRunIndex { get; init; } = true;
+
+    [JsonPropertyName("sharing_service_url")]
+    public string? SharingServiceUrl { get; init; }
 
     /// <summary>
     /// How many of the player's most recent recorded runs are kept.
@@ -115,7 +119,14 @@ internal sealed record RunmobileSettings
     /// sentence nobody could read is not somebody asking for their runs to be deleted.
     /// </summary>
     private static RunmobileSettings DoNotRecord =>
-        new() { SchemaId = Schema, RecordMyRuns = false, KeepRecentRuns = KeepEveryRun, Readable = false };
+        new()
+        {
+            SchemaId = Schema,
+            RecordMyRuns = false,
+            FetchRunIndex = false,
+            KeepRecentRuns = KeepEveryRun,
+            Readable = false,
+        };
 
     /// <summary>
     /// The settings this session runs under.
@@ -227,6 +238,9 @@ internal sealed record RunmobileSettings
         Set("keep_recent_runs", keep);
     }
 
+    /// <summary>Writes only the network index preference. Sharing is always explicit.</summary>
+    internal static void SetFetchRunIndex(bool fetch) => Set("fetch_run_index", fetch);
+
     /// <summary>
     /// Writes one member of the player's file and leaves every other one exactly as
     /// they wrote it.
@@ -258,6 +272,8 @@ internal sealed record RunmobileSettings
             {
                 ["schema"] = Schema,
                 ["record_my_runs"] = Default.RecordMyRuns,
+                ["fetch_run_index"] = Default.FetchRunIndex,
+                ["sharing_service_url"] = Default.SharingServiceUrl,
                 ["keep_recent_runs"] = Default.KeepRecentRuns,
                 ["purge_my_runs"] = false,
             };
