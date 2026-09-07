@@ -343,7 +343,11 @@ internal static class RunHistoryPlateHost
             SubmittingSurfaces.Remove(surface);
         }
 
-        if (!RunLibrary.IsCurrentSharingScope(scope)) return;
+        if (!RunLibrary.IsCurrentSharingScope(scope))
+        {
+            if (LibraryScreen.IsCurrent(surface)) LibraryScreen.Dismiss();
+            return;
+        }
         SharedRun? shared = null;
         Exception? failure = task.Exception?.GetBaseException();
         if (task.IsCompletedSuccessfully)

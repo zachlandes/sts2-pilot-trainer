@@ -85,7 +85,7 @@ internal static class RunLibrary
                 indexedShares.Add(item.ShareId);
                 if (SharedRecordings.TryGetValue(item.ShareId, out var downloaded))
                 {
-                    shared.Add(Curated(downloaded, item).Summary);
+                    shared.Add(Curated(downloaded, item, build).Summary);
                 }
                 else
                 {
@@ -100,7 +100,9 @@ internal static class RunLibrary
 
         foreach (var item in shared)
         {
-            runs.Add(item.Run with
+            var verdict = RunVerdicts.For(
+                item.Environment, item.SourceKind, item.Run.RunId, build);
+            runs.Add(OnlineRun(item, verdict) with
             {
                 FightsPlayed = progress.PlayedFrom(item.Run.RunId),
             });
@@ -183,18 +185,21 @@ internal static class RunLibrary
         };
     }
 
-    private static SharedRun Curated(SharedRun downloaded, SharedRunSummary indexed)
+    private static SharedRun Curated(
+        SharedRun downloaded, SharedRunSummary indexed, string build)
     {
         var verified = downloaded.Summary with
         {
             SubmittedAt = indexed.SubmittedAt,
             Featured = indexed.Featured,
         };
+        var verdict = RunVerdicts.For(
+            verified.Environment, verified.SourceKind, verified.Run.RunId, build);
         return downloaded with
         {
             SubmittedAt = indexed.SubmittedAt,
             Featured = indexed.Featured,
-            Run = OnlineRun(verified, downloaded.Run.Verdict),
+            Run = OnlineRun(verified, verdict),
         };
     }
 
@@ -260,9 +265,10 @@ internal static class RunLibrary
 
         if (SharedRecordings.TryGetValue(found.ShareId, out var downloaded))
         {
-            return SharedIndex.TryGetValue(found.ShareId, out var indexed)
-                ? Curated(downloaded, indexed)
-                : downloaded;
+            var indexed = SharedIndex.TryGetValue(found.ShareId, out var current)
+                ? current
+                : downloaded.Summary;
+            return Curated(downloaded, indexed, ThisBuild());
         }
 
         var recording = ManifestJson.Deserialize(found.ManifestJson);
