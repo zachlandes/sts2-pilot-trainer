@@ -61,7 +61,7 @@ No setting shares a run automatically.
 - **Coming soon:** a control for turning recording itself off.
 
 **Browse the runs and play from one.**
-The Compendium, which the game opens when no run is active, has a Runmobile button beside its own Run History.
+The Compendium, which the game opens when no run is active, has a Runmobile button in its bottom row with Statistics and Run History.
 Two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
 Open a run and it lists every place the recording proves you can be stood: from a fight's recorded start, from a floor's first screen, "Continue: play from fight N" for the next fight you have not played from, or from run start with every choice shown.
 The visible `Compatible with your game version` filter defaults on, hides incompatible runs during ordinary browsing, and leaves a muted "{n} not shown" count underneath.

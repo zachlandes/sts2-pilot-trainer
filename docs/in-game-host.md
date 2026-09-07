@@ -29,7 +29,7 @@ S7's session did run the renamed shell, which is what establishes the row below;
 ## What it proves
 
 **Retail loading of the renamed core artifact is established, mod list included.**
-The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.pck` carrying the mod-list icon, `Runmobile.dll`, the four project-owned libraries the host uses, and the self-contained local publication arbiter under `arbiter/`.
+The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.pck` carrying the wagon icon shared by the mod list and Compendium entry, `Runmobile.dll`, the four project-owned libraries the host uses, and the self-contained local publication arbiter under `arbiter/`.
 The S7 transport session predates the packaged arbiter: it installed the core Runmobile payload with `install-mod.sh`, launched the shipped client with it as the only enabled mod, and ran the whole watched journey through it.
 That session establishes discovery, initialization and a complete journey through the renamed shell, and its protected-files ledger is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp; it does not establish the newer publication package in retail.
 The game's own mod line naming `Runmobile` is photographed in that session's record, so the row no longer rests on the pre-rename `CombatTrainer` screenshots.
@@ -679,7 +679,7 @@ what it refuses is `Sts2PilotTrainer.Trainer`'s - `RunBrowser`, `RunView`,
 a game. What runs inside the client is the three patches below plus the drawing classes behind them.
 
 **Three hooks, and each is the honest one for its question.**
-`CompendiumCard` follows `NCompendiumSubmenu._Ready`, which is where the row is built and where every focus neighbour is assigned index by index, so a button added anywhere else exists and is unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides per-visit visibility, so "is there a run to show" is asked each time rather than once.
+`CompendiumCard` follows `NCompendiumSubmenu._Ready`, which is where the row is built and where every focus neighbour is assigned index by index, so a button added anywhere else exists and is unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides per-visit visibility, so the shell's permission to draw is asked each time rather than once.
 `MyRunsSettings` follows `NSettingsScreen._Ready` and places its row beside `%ModdingButton`, the game's own modding settings entry point.
 `RunHistoryPlateHost` follows `NMapPointHistoryEntry._Ready` and connects the `Released` that entry already emits and nothing in the game listens to.
 One patch there rather than two: the entry carries both its own `FloorNum` and the `RunHistory` it belongs to, so nothing has to follow the screen's own selection to know which run a press is about.

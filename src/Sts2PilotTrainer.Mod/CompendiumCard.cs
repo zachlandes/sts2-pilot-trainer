@@ -23,9 +23,8 @@ namespace Sts2PilotTrainer.Mod;
 /// index by index, so a button added anywhere else exists and is unreachable on a
 /// controller. <c>OnSubmenuOpened</c> is where the game decides what is visible
 /// per-run - it hides Leaderboards unconditionally there and decides Run History and
-/// the Bestiary each time - so a button whose presence depends on what is installed
-/// belongs there rather than in <c>_Ready</c>, where it would be decided once and
-/// never again.
+/// the Bestiary each time - so the shell's permission to draw belongs there rather
+/// than in <c>_Ready</c>, where it would be decided once and never again.
 ///
 /// The game always hides Leaderboards when this submenu opens, so Runmobile occupies
 /// that existing slot instead of extending the authored row past the viewport. The
@@ -224,8 +223,8 @@ internal static class CompendiumCard
     }
 
     /// <summary>
-    /// Whether the button is there at all: the shell has to allow this mod a surface,
-    /// and the library has to have something behind the button.
+    /// Whether the button is there at all: the shell has to allow this mod a surface.
+    /// The browser itself remains useful even when no runs are currently listed.
     ///
     /// The shell is asked first and its answer is not a state to draw. A button greyed
     /// or a popup explaining itself would each be this mod speaking in a game it was

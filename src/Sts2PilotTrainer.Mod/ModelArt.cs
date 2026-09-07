@@ -9,8 +9,9 @@ namespace Sts2PilotTrainer.Mod;
 ///
 /// The result panel draws cards and potions as pictures, and the pictures are the
 /// game's: a card's portrait and a potion's bottle, loaded from the model database
-/// this process already has. Runmobile's one-resource pack is reserved for its
-/// mod-list icon, so this panel contributes no model artwork of its own.
+/// this process already has. Runmobile's one-resource pack contains only the wagon
+/// shared by its mod-list and Compendium entries, so this panel contributes no model
+/// artwork of its own.
 ///
 /// It answers null rather than guessing. A model id the database does not know, or
 /// art a build no longer has, is a picture this host cannot draw; the panel then
