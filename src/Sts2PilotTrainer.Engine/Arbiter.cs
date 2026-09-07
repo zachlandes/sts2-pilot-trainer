@@ -38,17 +38,7 @@ public static class Arbiter
 
         var branch = branches[branchIndex];
         var finalAction = branch.Actions[^1];
-        var finalState = branch.Trace.Steps.Single(step => step.Seq == finalAction.Seq).After;
-        var branchEnd = new Checkpoint
-        {
-            Id = $"discarded-branch-{branchIndex}-end",
-            AfterSeq = finalAction.Seq,
-            Kind = "discarded_branch_end",
-            Expect = finalState.ToDictionary(
-                field => field.Key,
-                field => Fact<string>.Captured(field.Value, finalAction.Evidence!),
-                StringComparer.Ordinal),
-        };
+        var capturedFinalState = branch.Trace.Steps.Single(step => step.Seq == finalAction.Seq).After;
         var branchManifest = manifest with
         {
             Source = manifest.Source with
@@ -60,15 +50,47 @@ public static class Arbiter
                 .. manifest.Actions.Where(action => action.Seq <= branch.RollbackToSeq),
                 .. branch.Actions,
             ],
-            Checkpoints =
-            [
-                .. manifest.Checkpoints.Where(checkpoint => checkpoint.AfterSeq <= branch.RollbackToSeq),
-                branchEnd,
-            ],
+            Checkpoints = manifest.Checkpoints
+                .Where(checkpoint => checkpoint.AfterSeq <= branch.RollbackToSeq)
+                .ToList(),
             Boundaries = [],
             Verification = null,
         };
-        return RunCore(branchManifest, null, progress, null, null, validate: false);
+        var outcome = RunCore(branchManifest, null, progress, null, null, validate: false);
+        var replayedFinalState = outcome.Report.Trace?.Steps
+            .SingleOrDefault(step => step.Seq == finalAction.Seq)?.After;
+        var differences = ExactSampleDifferences(capturedFinalState, replayedFinalState);
+        if (differences.Count == 0) return outcome;
+
+        return outcome with
+        {
+            Report = outcome.Report with
+            {
+                Status = VerificationStatus.Rejected,
+                Diagnostics =
+                [
+                    .. outcome.Report.Diagnostics,
+                    $"discarded branch final state differs: {string.Join(", ", differences)}",
+                ],
+            },
+        };
+    }
+
+    private static IReadOnlyList<string> ExactSampleDifferences(
+        IReadOnlyDictionary<string, string> expected, IReadOnlyDictionary<string, string>? actual)
+    {
+        if (actual is null) return ["the replay produced no final sample"];
+
+        return expected.Keys
+            .Union(actual.Keys, StringComparer.Ordinal)
+            .OrderBy(field => field, StringComparer.Ordinal)
+            .Where(field => !expected.TryGetValue(field, out var expectedValue) ||
+                            !actual.TryGetValue(field, out var actualValue) ||
+                            !string.Equals(expectedValue, actualValue, StringComparison.Ordinal))
+            .Select(field =>
+                $"{field} captured='{expected.GetValueOrDefault(field, "<absent>")}' " +
+                $"engine='{actual.GetValueOrDefault(field, "<absent>")}'")
+            .ToList();
     }
 
     private static ArbiterOutcome RunCore(

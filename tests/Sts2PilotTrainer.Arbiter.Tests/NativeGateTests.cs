@@ -65,13 +65,21 @@ public sealed class NativeGateTests
         Directory.CreateDirectory(directory);
         try
         {
-            var replayable = ManifestJson.Load(Path.Combine(
-                Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json"));
+            var replayablePath = Path.Combine(
+                Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json");
+            var replayable = ManifestJson.Load(replayablePath);
             var combatStart = replayable.Boundaries.Where(boundary => boundary.IsCombatStart).Skip(1).First();
             var floorEntry = replayable.Boundaries.First(boundary =>
                 boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.AfterSeq == combatStart.AfterSeq);
             var boundaryAction = replayable.Actions.Single(action => action.Seq == combatStart.AfterSeq);
             var discardedAction = replayable.Actions.Single(action => action.Seq == combatStart.AfterSeq + 1);
+            var capturedPath = Path.Combine(directory, "captured-branch.replay.json");
+            var captured = Arbiter.Run(
+                "replay", replayablePath,
+                "--stop-after", discardedAction.Seq.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                "--out", capturedPath);
+            Assert.Equal(0, captured.ExitCode);
+            var capturedTrace = ManifestJson.Load(capturedPath).Verification!.Trace!;
             var discarded = new DiscardedBranch
             {
                 RollbackToSeq = combatStart.AfterSeq,
@@ -79,11 +87,9 @@ public sealed class NativeGateTests
                 Actions = [discardedAction],
                 Trace = new ReplayTrace
                 {
-                    Steps =
-                    [
-                        BranchStep(boundaryAction, floorEntry.Floor!.Value),
-                        BranchStep(discardedAction, floorEntry.Floor.Value),
-                    ],
+                    Steps = capturedTrace.Steps
+                        .Where(step => step.Seq >= boundaryAction.Seq && step.Seq <= discardedAction.Seq)
+                        .ToList(),
                 },
             };
             var manifest = replayable with
@@ -134,8 +140,38 @@ public sealed class NativeGateTests
                 "--out", Path.Combine(directory, "corrupted-branch.json"));
 
             Assert.NotEqual(0, result.ExitCode);
-            Assert.Contains("checkpoint 'discarded-branch-0-end'", result.Output, StringComparison.Ordinal);
-            Assert.Contains("player.max_hp observed '81', engine produced '80'", result.Output, StringComparison.Ordinal);
+            Assert.Contains("discarded branch final state differs", result.Output, StringComparison.Ordinal);
+            Assert.Contains("player.max_hp captured='81' engine='80'", result.Output, StringComparison.Ordinal);
+
+            var omittedState = new Dictionary<string, string>(lastStep.After, StringComparer.Ordinal);
+            omittedState.Remove("player.max_hp");
+            var omitted = discarded with
+            {
+                Trace = discarded.Trace with
+                {
+                    Steps =
+                    [
+                        .. discarded.Trace.Steps.Take(discarded.Trace.Steps.Count - 1),
+                        lastStep with { After = omittedState },
+                    ],
+                },
+            };
+            var omittedManifest = replayable with
+            {
+                Source = replayable.Source with
+                {
+                    Native = replayable.Source.Native! with { Discarded = [omitted] },
+                },
+            };
+            var omittedPath = Path.Combine(directory, "omitted.replay.json");
+            ManifestJson.Save(omittedManifest, omittedPath);
+
+            result = Arbiter.Run(
+                "replay", omittedPath, "--discarded-branch", "0",
+                "--out", Path.Combine(directory, "omitted-branch.json"));
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("player.max_hp captured='<absent>' engine='80'", result.Output, StringComparison.Ordinal);
 
             var nonCombatFloor = replayable.Boundaries.Single(boundary =>
                 boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.Floor == 4);
