@@ -68,11 +68,23 @@ public sealed class NativeGateTests
             var replayable = ManifestJson.Load(Path.Combine(
                 Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json"));
             var combatStart = replayable.Boundaries.First(boundary => boundary.IsCombatStart);
+            var floorEntry = replayable.Boundaries.First(boundary =>
+                boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.AfterSeq == combatStart.AfterSeq);
+            var boundaryAction = replayable.Actions.Single(action => action.Seq == combatStart.AfterSeq);
+            var discardedAction = replayable.Actions.Single(action => action.Seq == combatStart.AfterSeq + 1);
             var discarded = new DiscardedBranch
             {
                 RollbackToSeq = combatStart.AfterSeq,
-                RollbackToDigest = combatStart.Digest.Value,
-                Actions = [replayable.Actions.Single(action => action.Seq == combatStart.AfterSeq + 1)],
+                RollbackToDigest = floorEntry.Digest.Value,
+                Actions = [discardedAction],
+                Trace = new ReplayTrace
+                {
+                    Steps =
+                    [
+                        BranchStep(boundaryAction, floorEntry.Floor!.Value),
+                        BranchStep(discardedAction, floorEntry.Floor.Value),
+                    ],
+                },
             };
             var manifest = replayable with
             {
@@ -143,6 +155,19 @@ public sealed class NativeGateTests
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    private static ReplayStep BranchStep(ActionRecord action, int floor) => new()
+    {
+        Seq = action.Seq,
+        Verb = action.Verb.ToString(),
+        Args = action.Args,
+        Before = new Dictionary<string, string>(StringComparer.Ordinal),
+        After = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["combat.outcome"] = "in_progress",
+            ["run.total_floor"] = floor.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        },
+    };
 
     /// <summary>A recording, built the way the recorder builds one and written only
     /// into the scratch directory the gate is pointed at.</summary>

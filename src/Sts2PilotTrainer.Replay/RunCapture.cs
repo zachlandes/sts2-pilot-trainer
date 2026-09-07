@@ -408,7 +408,7 @@ public sealed class RunCapture
         foreach (var entry in _entries.Where(entry => entry.Seq <= target.Seq)) rebuilt.Replay(entry);
         rebuilt._discarded.AddRange(_discarded);
         rebuilt._journalDiscarded.AddRange(_journalDiscarded);
-        var discarded = new JournalDiscardedBranch(rollback, removed);
+        var discarded = new JournalDiscardedBranch(rollback, target, removed);
         rebuilt._journalDiscarded.Add(discarded);
         rebuilt._discarded.Add(ToDiscardedBranch(discarded));
         foreach (var refusal in _refusals) rebuilt.Break(refusal);
@@ -442,6 +442,17 @@ public sealed class RunCapture
                 Evidence = FactEvidence.AtActionOrdinal(entry.Seq, entry.RunClockMs),
             };
         }).ToList(),
+        Trace = new ReplayTrace
+        {
+            Steps = [branch.Boundary, .. branch.Entries].Select(entry => new ReplayStep
+            {
+                Seq = entry.Seq,
+                Verb = entry.Verb,
+                Args = entry.Args,
+                Before = entry.Before ?? entry.State,
+                After = entry.State,
+            }).ToList(),
+        },
     };
 
     /// <summary>

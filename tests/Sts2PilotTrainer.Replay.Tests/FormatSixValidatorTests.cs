@@ -264,10 +264,10 @@ public sealed class FormatSixValidatorTests
                 {
                     Steps =
                     [
-                        TraceStep(-1, "none", 1),
-                        TraceStep(0, "none", 1),
-                        TraceStep(1, "in_progress", 2),
-                        TraceStep(2, "victory", 2),
+                        TraceStep(
+                            1, ActionVerb.MapMove.ToString(), manifest.Actions[1].Args, "in_progress", 2),
+                        TraceStep(
+                            2, ActionVerb.PlayCard.ToString(), discardedAction.Args, "victory", 2),
                     ],
                 },
                 Boundaries =
@@ -279,10 +279,12 @@ public sealed class FormatSixValidatorTests
         };
     }
 
-    private static ReplayStep TraceStep(int seq, string outcome, int floor) => new()
+    private static ReplayStep TraceStep(
+        int seq, string verb, IReadOnlyDictionary<string, string> args, string outcome, int floor) => new()
     {
         Seq = seq,
-        Verb = "test",
+        Verb = verb,
+        Args = args,
         Before = new Dictionary<string, string>(StringComparer.Ordinal),
         After = new Dictionary<string, string>(StringComparer.Ordinal)
         {

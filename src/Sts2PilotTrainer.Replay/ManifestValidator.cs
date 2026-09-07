@@ -630,10 +630,9 @@ public static partial class ManifestValidator
         if (manifest.Source.Native?.Discarded is not { } branches) return;
 
         var actions = manifest.Actions;
-        var verification = manifest.Verification is { Status: VerificationStatus.Verified, Trace: { } trace }
+        var verification = manifest.Verification is { Status: VerificationStatus.Verified, Trace: not null }
             ? manifest.Verification
             : null;
-        var coverage = verification is null ? null : RunCoverage.Of(trace);
 
         for (var branchIndex = 0; branchIndex < branches.Count; branchIndex++)
         {
@@ -672,23 +671,48 @@ public static partial class ManifestValidator
                 ValidateActionArguments(action, problems);
             }
 
+            var traceSteps = branch.Trace.Steps.OrderBy(step => step.Seq).ToList();
+            var expectedActions = actions
+                .Where(action => action.Seq == branch.RollbackToSeq)
+                .Concat(branch.Actions)
+                .ToList();
+            if (traceSteps.Count != expectedActions.Count ||
+                traceSteps.Where((step, index) => !Matches(step, expectedActions[index])).Any())
+            {
+                problems.Add($"{path}.trace does not describe its rollback boundary and discarded actions.");
+            }
+
+            var branchCoverage = RunCoverage.Of(branch.Trace);
+            var floor = branchCoverage.Floors.FirstOrDefault(entry =>
+                entry.EnteredAfterSeq == branch.RollbackToSeq);
+            var fight = floor is null ? null : branchCoverage.FightsOn(floor).FirstOrDefault();
+            if (fight is null)
+            {
+                problems.Add($"{path}.trace does not show a fight beginning on the rollback floor.");
+            }
+
             if (verification is null) continue;
 
-            var floor = coverage!.Floors.FirstOrDefault(entry => entry.EnteredAfterSeq == branch.RollbackToSeq);
-            var fight = floor is null ? null : coverage.FightsOn(floor).FirstOrDefault();
-            var boundary = fight is null
+            var boundary = floor is null
                 ? null
                 : verification.Boundaries.FirstOrDefault(candidate =>
-                    candidate.Kind == ReplayBoundary.FloorEntryKind && candidate.Floor == floor!.Floor &&
+                    candidate.Kind == ReplayBoundary.FloorEntryKind && candidate.Floor == floor.Floor &&
                     candidate.AfterSeq == branch.RollbackToSeq);
             if (boundary is null || boundary.Digest.Source != FactSource.Engine ||
                 !string.Equals(boundary.Digest.Value, branch.RollbackToDigest, StringComparison.Ordinal))
             {
                 problems.Add(
-                    $"{path} does not identify the verified room-entry state of a fight in the continued history.");
+                    $"{path} does not identify the verified room-entry state it shares with the continued history.");
             }
         }
     }
+
+    private static bool Matches(ReplayStep step, ActionRecord action) =>
+        step.Seq == action.Seq &&
+        string.Equals(step.Verb, action.Verb.ToString(), StringComparison.Ordinal) &&
+        step.Args.Count == action.Args.Count &&
+        step.Args.All(arg => action.Args.TryGetValue(arg.Key, out var value) &&
+                            string.Equals(arg.Value, value, StringComparison.Ordinal));
 
     /// <summary>
     /// What <c>source.native.integrity</c> may say, what has to travel with it, and the

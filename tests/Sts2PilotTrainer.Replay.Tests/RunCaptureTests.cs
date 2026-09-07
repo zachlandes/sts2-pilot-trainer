@@ -342,6 +342,39 @@ public sealed class RunCaptureTests
     }
 
     [Fact]
+    public void AnEventFightRollbackRemainsValidWhenTheContinuedChoiceIsNotCombat()
+    {
+        var capture = Played();
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "3")),
+            Floor(3), Digest(5));
+        capture.Record(
+            ActionVerb.ChooseEventOption,
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.FIGHT")),
+            InFight(3), Digest(6));
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
+            InFight(3, enemyHp: 30), Digest(7));
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), Digest(5));
+        resumed.Record(
+            ActionVerb.ChooseEventOption,
+            Args(("event_id", "EVENT.TEST"), ("option_index", "1"), ("option_key", "EVENT.SAFE")),
+            Floor(3), Digest(60));
+        resumed = RunCapture.Resume(RunJournal.Parse(resumed.Journal.Render()), Digest(60));
+        resumed.Finish("abandoned");
+        var verified = Verified(resumed);
+
+        var result = ManifestValidator.Validate(verified);
+
+        Assert.True(result.IsValid, result.Describe());
+        Assert.Single(RunCoverage.Of(verified.Verification!.Trace!).Fights);
+        var discarded = Assert.Single(verified.Source.Native!.Discarded!);
+        Assert.Contains(discarded.Trace.Steps, step =>
+            step.Seq == 6 && step.After["combat.outcome"] == "in_progress");
+    }
+
+    [Fact]
     public void ASessionThatResumesAtAnEarlierNonFightBoundaryIsBroken()
     {
         var resumed = RunCapture.Resume(Played().Journal, Digest(0));

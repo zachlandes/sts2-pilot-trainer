@@ -348,6 +348,10 @@ public sealed record DiscardedBranch
     /// <summary>The decisions observed after that boundary before the quit.</summary>
     [JsonPropertyName("actions")]
     public required IReadOnlyList<ActionRecord> Actions { get; init; }
+
+    /// <summary>The captured states showing where combat began on the discarded branch.</summary>
+    [JsonPropertyName("trace")]
+    public required ReplayTrace Trace { get; init; }
 }
 
 public sealed record SyntheticSource

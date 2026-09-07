@@ -371,7 +371,7 @@ public sealed record RunJournal
                         "A run journal's rollback does not name exactly the decisions it discards.");
                 }
 
-                discarded.Add(new JournalDiscardedBranch(rollback, removed));
+                discarded.Add(new JournalDiscardedBranch(rollback, entries[boundaryIndex], removed));
                 entries.RemoveRange(boundaryIndex + 1, removed.Count);
             }
             else if (stopped is not null)
@@ -589,7 +589,7 @@ public sealed record JournalRollback
 
 /// <summary>The journal entries one rollback removed from the continued history.</summary>
 public sealed record JournalDiscardedBranch(
-    JournalRollback Rollback, IReadOnlyList<RunJournalEntry> Entries);
+    JournalRollback Rollback, RunJournalEntry Boundary, IReadOnlyList<RunJournalEntry> Entries);
 
 /// <summary>
 /// Where a recorder stopped: the decision it could not name, and the sampled state
