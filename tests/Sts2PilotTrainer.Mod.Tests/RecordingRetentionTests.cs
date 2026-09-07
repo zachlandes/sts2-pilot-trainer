@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.IO;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 
@@ -76,6 +77,21 @@ public sealed class RecordingRetentionTests : IDisposable
 
         Assert.False(Directory.Exists(RunmobileStore.PathOf("publication/request")));
         Assert.True(RunmobileStore.Exists("publication/other/evidence/gate.json"));
+        Assert.True(RunmobileStore.Exists("recordings/kept.replay.json"));
+    }
+
+    [Fact]
+    public void PublicationCleanupRefusesLinksIntoTheRecordingLibrary()
+    {
+        RunmobileStore.Write("recordings/kept.replay.json", "{}");
+        var workspace = RunmobileStore.PathOf("publication/request");
+        Directory.CreateDirectory(workspace);
+        Directory.CreateSymbolicLink(
+            Path.Combine(workspace, "recordings"),
+            RunmobileStore.PathOf("recordings"));
+
+        Assert.Throws<PathContainmentException>(() =>
+            RecordingRetention.RemovePublicationWorkspace(_root, "publication/request"));
         Assert.True(RunmobileStore.Exists("recordings/kept.replay.json"));
     }
 

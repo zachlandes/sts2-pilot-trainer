@@ -46,6 +46,10 @@ for file in "${files[@]}"; do
 done
 
 cp -R "$work/arbiter" "$out_dir/payload/arbiter"
+(
+  cd "$out_dir/payload/arbiter"
+  find . -type f -print | LC_ALL=C sort
+) > "$out_dir/arbiter-files.txt"
 cp -R "$work/bootstrap" "$out_dir/bootstrap"
 cp scripts/install-package.sh "$out_dir/install.sh"
 chmod +x "$out_dir/install.sh"

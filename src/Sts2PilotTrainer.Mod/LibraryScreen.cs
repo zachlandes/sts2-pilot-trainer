@@ -70,6 +70,7 @@ internal sealed record ScreenRow(
 internal static class LibraryScreen
 {
     private static long surface;
+    private static NGenericPopup? currentPopup;
 
     /// <summary>The popup scene's own name for its content, resolved by the game's
     /// code the same way.</summary>
@@ -129,7 +130,8 @@ internal static class LibraryScreen
         Action<string>? codeSubmitted = null,
         string codePlaceholder = "",
         int page = 0,
-        Action<long, string, string, string, bool>? shareSubmitted = null)
+        Action<long, string, string, string, bool>? shareSubmitted = null,
+        int? revealRow = null)
     {
         var shownSurface = Interlocked.Increment(ref surface);
         NGenericPopup? popup = null;
@@ -200,7 +202,8 @@ internal static class LibraryScreen
                 page,
                 turned => Show(
                     title, body, rows, backLabel, back, codeSubmitted, codePlaceholder, turned,
-                    shareSubmitted));
+                    shareSubmitted),
+                revealRow);
 
             // Deferred: adding the modal updates the game's active screen context,
             // which decides what is focused. Grabbing focus before that has finished
@@ -208,6 +211,7 @@ internal static class LibraryScreen
             // screen half the players cannot use.
             var focus = first ?? (Control)content.YesButton;
             Callable.From(() => focus.GrabFocus()).CallDeferred();
+            currentPopup = popup;
             shown = true;
         }
         catch (Exception ex)
@@ -250,7 +254,8 @@ internal static class LibraryScreen
         IReadOnlyList<ScreenRow> rows,
         float offsetSteps,
         int page,
-        Action<int> turnTo)
+        Action<int> turnTo,
+        int? revealRow)
     {
         if (rows.Count == 0) return null;
 
@@ -269,7 +274,9 @@ internal static class LibraryScreen
         var fits = (int)Math.Floor(room / step);
         var pinned = rows.Where(row => row.Pinned).ToList();
         var paged = rows.Where(row => !row.Pinned).ToList();
-        var slice = ScreenPage.For(paged.Count, fits, page, pinned.Count);
+        var slice = revealRow is { } selected
+            ? ScreenPage.Containing(paged.Count, fits, selected, pinned.Count)
+            : ScreenPage.For(paged.Count, fits, page, pinned.Count);
         var drawn = new List<ScreenRow>(pinned);
         drawn.AddRange(paged.Skip(slice.First).Take(slice.Count));
         if (slice.HasPrevious)
@@ -466,11 +473,22 @@ internal static class LibraryScreen
     /// knows which container it is.
     /// </summary>
     internal static bool IsCurrent(long shownSurface) =>
-        Interlocked.Read(ref surface) == shownSurface;
+        Interlocked.Read(ref surface) == shownSurface &&
+        currentPopup is { } popup &&
+        GodotObject.IsInstanceValid(popup) &&
+        popup.IsInsideTree();
+
+    internal static void Invalidate(long shownSurface)
+    {
+        if (Interlocked.Read(ref surface) != shownSurface) return;
+        Interlocked.Increment(ref surface);
+        currentPopup = null;
+    }
 
     internal static void Dismiss()
     {
         Interlocked.Increment(ref surface);
+        currentPopup = null;
         NModalContainer.Instance?.Clear();
     }
 

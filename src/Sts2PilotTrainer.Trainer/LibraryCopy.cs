@@ -99,6 +99,8 @@ public static class LibraryCopy
 
     public const string ShareLocalValidation = "Validation runs locally before anything is sent.";
 
+    public const string ShareValidating = "Validating this run locally…";
+
     public const string ShareNameField = "Run name (40 characters)";
 
     public const string ShareDescriptionField = "Description (200 characters)";

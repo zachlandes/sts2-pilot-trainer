@@ -141,6 +141,55 @@ public sealed class ModHostBoundaryTests
         }
     }
 
+    [Fact]
+    public void MissingInventoriedArbiterDependencyPreservesTheWorkingInstallation()
+    {
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-partial-arbiter-{Guid.NewGuid():N}");
+        var package = Path.Combine(sandbox, "package");
+        var payload = Path.Combine(package, "payload");
+        var arbiter = Path.Combine(payload, "arbiter");
+        var bootstrap = Path.Combine(package, "bootstrap");
+        var mods = Path.Combine(sandbox, "mods");
+        var installed = Path.Combine(mods, "Runmobile");
+        Directory.CreateDirectory(arbiter);
+        Directory.CreateDirectory(bootstrap);
+        Directory.CreateDirectory(installed);
+        File.Copy(
+            Path.Combine(Arbiter.RepoRoot, "scripts", "install-package.sh"),
+            Path.Combine(package, "install.sh"));
+        File.WriteAllText(Path.Combine(package, "runtime-id"), "test-runtime");
+        foreach (var file in new[]
+        {
+            "Runmobile.json",
+            "Runmobile.dll",
+            "Sts2PilotTrainer.Trainer.dll",
+            "Sts2PilotTrainer.Engine.dll",
+            "Sts2PilotTrainer.Replay.dll",
+            "Sts2PilotTrainer.IO.dll",
+        })
+        {
+            File.WriteAllText(Path.Combine(payload, file), "payload");
+        }
+        File.WriteAllText(Path.Combine(arbiter, "sts2-arbiter"), "arbiter");
+        File.WriteAllText(Path.Combine(bootstrap, "Sts2PilotTrainer.Bootstrap"), "bootstrap");
+        File.WriteAllText(
+            Path.Combine(package, "arbiter-files.txt"),
+            "./missing-runtime-file\n./sts2-arbiter\n");
+        File.WriteAllText(Path.Combine(installed, "working.txt"), "working");
+
+        try
+        {
+            var result = RunScript(Path.Combine(package, "install.sh"), "--mods-dir", mods);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal("working", File.ReadAllText(Path.Combine(installed, "working.txt")));
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
     [GameFact]
     public void TheBuiltModInstallsUnderTheIdLivePreflightAccepts()
     {

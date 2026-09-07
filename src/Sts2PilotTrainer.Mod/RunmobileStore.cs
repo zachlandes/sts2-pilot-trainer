@@ -237,13 +237,33 @@ internal static class RunmobileStore
             throw new PathContainmentException("The store cannot remove its own root.");
         if (!Directory.Exists(directory)) return;
 
-        foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
-        {
-            File.Delete(ProtectedInstallPath.RequireUnprotected(
-                PathContainment.RequireContained(root, file)));
-        }
+        var files = new List<string>();
+        var directories = new List<string>();
+        Audit(directory);
+        foreach (var file in files) File.Delete(CheckedEntry(file));
+        foreach (var child in directories.OrderByDescending(path => path.Length))
+            Directory.Delete(CheckedEntry(child));
 
-        Directory.Delete(directory, recursive: true);
+        string CheckedEntry(string path) => ProtectedInstallPath.RequireUnprotected(
+            PathContainment.RequireContained(directory, path));
+
+        void Audit(string current)
+        {
+            var checkedCurrent = CheckedEntry(current);
+            if ((File.GetAttributes(checkedCurrent) & FileAttributes.ReparsePoint) != 0)
+                throw new PathContainmentException($"Linked directory '{checkedCurrent}' cannot be removed.");
+            directories.Add(checkedCurrent);
+
+            foreach (var entry in Directory.EnumerateFileSystemEntries(checkedCurrent))
+            {
+                var checkedEntry = CheckedEntry(entry);
+                var attributes = File.GetAttributes(checkedEntry);
+                if ((attributes & FileAttributes.ReparsePoint) != 0)
+                    throw new PathContainmentException($"Linked entry '{checkedEntry}' cannot be removed.");
+                if ((attributes & FileAttributes.Directory) != 0) Audit(checkedEntry);
+                else files.Add(checkedEntry);
+            }
+        }
     }
 
     /// <summary>

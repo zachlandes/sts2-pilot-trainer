@@ -247,6 +247,45 @@ internal static class RunHistoryPlateHost
 
         try
         {
+            new ShareSubmission(name, description, displayName, consent).Validate();
+            if (RunLibrary.RecordingFor(runId) is null)
+                throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
+            LibraryScreen.Invalidate(surface);
+            Callable.From(() => BeginSubmit(
+                surface, runId, name, description, displayName, consent)).CallDeferred();
+        }
+        catch (Exception ex)
+        {
+            lock (PendingLock) SubmittingSurfaces.Remove(surface);
+            LibraryScreen.Dismiss();
+            LibraryScreen.Show(
+                LibraryCopy.SubmitThisRun,
+                LibraryMarkup.Dim(ex.Message),
+                [],
+                LibraryCopy.Back,
+                back: () =>
+                {
+                    if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry);
+                });
+        }
+    }
+
+    private static void BeginSubmit(
+        long formSurface,
+        string runId,
+        string name,
+        string description,
+        string displayName,
+        bool consent)
+    {
+        var loadingSurface = LibraryScreen.Show(
+            LibraryCopy.SubmitThisRun,
+            LibraryMarkup.Dim(LibraryCopy.ShareValidating),
+            [],
+            LibraryCopy.Back,
+            back: static () => { });
+        try
+        {
             if (RunLibrary.RecordingFor(runId) is not { } recording)
                 throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
             var request = Interlocked.Increment(ref nextShare);
@@ -254,8 +293,10 @@ internal static class RunHistoryPlateHost
                 recording, new ShareSubmission(name, description, displayName, consent));
             lock (PendingLock)
             {
+                SubmittingSurfaces.Remove(formSurface);
+                SubmittingSurfaces.Add(loadingSurface);
                 PendingShares[request] = task;
-                PendingShareSurfaces[request] = surface;
+                PendingShareSurfaces[request] = loadingSurface;
             }
             _ = task.ContinueWith(
                 static (_, value) => Callable.From(() => CompleteShare((int)value!)).CallDeferred(),
@@ -266,7 +307,12 @@ internal static class RunHistoryPlateHost
         }
         catch (Exception ex)
         {
-            lock (PendingLock) SubmittingSurfaces.Remove(surface);
+            lock (PendingLock)
+            {
+                SubmittingSurfaces.Remove(formSurface);
+                SubmittingSurfaces.Remove(loadingSurface);
+            }
+            if (!LibraryScreen.IsCurrent(loadingSurface)) return;
             LibraryScreen.Dismiss();
             LibraryScreen.Show(
                 LibraryCopy.SubmitThisRun,

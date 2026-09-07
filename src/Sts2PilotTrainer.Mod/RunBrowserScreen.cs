@@ -83,6 +83,7 @@ internal static class RunBrowserScreen
                         !showCompatibleOnly),
                     Pinned: true),
             };
+            int? revealRow = null;
 
             foreach (var group in browser.Groups)
             {
@@ -96,6 +97,7 @@ internal static class RunBrowserScreen
                     var reason = run.Listed
                         ? null
                         : LibraryCopy.LookupRefusedBuild(run.RecordedBuild, build);
+                    if (selected) revealRow = rows.Count - 2;
                     rows.Add(new ScreenRow(
                         $"{(selected ? "▶ " : string.Empty)}{RowLabel(run)}",
                         Enabled: run.Listed,
@@ -116,7 +118,8 @@ internal static class RunBrowserScreen
                 rows,
                 LibraryCopy.Back,
                 codeSubmitted: code => Look(code, !community),
-                codePlaceholder: LibraryCopy.RunCodeField);
+                codePlaceholder: LibraryCopy.RunCodeField,
+                revealRow: revealRow);
         }
         catch (Exception ex)
         {

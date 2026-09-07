@@ -72,6 +72,20 @@ for file in "${payload_files[@]}"; do
     exit 4
   fi
 done
+if [[ ! -f "$package/arbiter-files.txt" ]]; then
+  echo "Package is missing its arbiter inventory; refusing a partial install." >&2
+  exit 4
+fi
+while IFS= read -r relative; do
+  case "$relative" in
+    ./*) ;;
+    *) echo "Package arbiter inventory contains an invalid path; refusing install." >&2; exit 4 ;;
+  esac
+  if [[ "$relative" == *"/../"* || "$relative" == "./.." || ! -f "$package/payload/arbiter/$relative" ]]; then
+    echo "Package arbiter payload is incomplete at $relative; refusing a partial install." >&2
+    exit 4
+  fi
+done < "$package/arbiter-files.txt"
 if [[ ! -f "$package/payload/arbiter/$arbiter" ]]; then
   echo "Package payload is missing $arbiter; refusing a partial install." >&2
   exit 4

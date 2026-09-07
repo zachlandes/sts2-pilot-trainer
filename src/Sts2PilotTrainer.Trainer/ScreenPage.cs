@@ -42,6 +42,21 @@ public sealed record ScreenPage(
     /// page, its own rows, and whichever of Previous and Next it offers.</summary>
     public int Drawn => Pinned + Count + (HasPrevious ? 1 : 0) + (HasNext ? 1 : 0);
 
+    /// <summary>The page containing <paramref name="row"/> after the column has been
+    /// divided under the same rules as <see cref="For"/>.</summary>
+    public static ScreenPage Containing(int rows, int perPage, int row, int pinned = 0)
+    {
+        if (row < 0 || row >= rows)
+        {
+            throw new ArgumentOutOfRangeException(nameof(row), row, "The selected row must be in the column.");
+        }
+
+        var first = For(rows, perPage, page: 0, pinned);
+        if (first.Pages == 1) return first;
+        var size = perPage - pinned - 2;
+        return For(rows, perPage, row / size, pinned);
+    }
+
     /// <summary>
     /// The page of a column of <paramref name="rows"/> rows in a panel that fits
     /// <paramref name="perPage"/> of them.
