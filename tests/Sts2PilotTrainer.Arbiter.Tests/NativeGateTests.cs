@@ -103,6 +103,40 @@ public sealed class NativeGateTests
             Assert.Contains("PUBLISHABLE", result.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("NOT PUBLISHABLE", result.Output, StringComparison.Ordinal);
 
+            var lastStep = discarded.Trace.Steps[^1];
+            var wrongState = new Dictionary<string, string>(lastStep.After, StringComparer.Ordinal)
+            {
+                ["player.max_hp"] = "81",
+            };
+            var corrupted = discarded with
+            {
+                Trace = discarded.Trace with
+                {
+                    Steps =
+                    [
+                        .. discarded.Trace.Steps.Take(discarded.Trace.Steps.Count - 1),
+                        lastStep with { After = wrongState },
+                    ],
+                },
+            };
+            var corruptedManifest = replayable with
+            {
+                Source = replayable.Source with
+                {
+                    Native = replayable.Source.Native! with { Discarded = [corrupted] },
+                },
+            };
+            var corruptedPath = Path.Combine(directory, "corrupted.replay.json");
+            ManifestJson.Save(corruptedManifest, corruptedPath);
+
+            result = Arbiter.Run(
+                "replay", corruptedPath, "--discarded-branch", "0",
+                "--out", Path.Combine(directory, "corrupted-branch.json"));
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains("checkpoint 'discarded-branch-0-end'", result.Output, StringComparison.Ordinal);
+            Assert.Contains("player.max_hp observed '81', engine produced '80'", result.Output, StringComparison.Ordinal);
+
             var nonCombatFloor = replayable.Boundaries.Single(boundary =>
                 boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.Floor == 4);
             var nonCombatBoundary = replayable.Actions.Single(action => action.Seq == nonCombatFloor.AfterSeq);
@@ -203,6 +237,7 @@ public sealed class NativeGateTests
         After = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["combat.outcome"] = "in_progress",
+            ["player.max_hp"] = "80",
             ["run.total_floor"] = floor.ToString(System.Globalization.CultureInfo.InvariantCulture),
         },
     };

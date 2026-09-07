@@ -37,6 +37,18 @@ public static class Arbiter
         }
 
         var branch = branches[branchIndex];
+        var finalAction = branch.Actions[^1];
+        var finalState = branch.Trace.Steps.Single(step => step.Seq == finalAction.Seq).After;
+        var branchEnd = new Checkpoint
+        {
+            Id = $"discarded-branch-{branchIndex}-end",
+            AfterSeq = finalAction.Seq,
+            Kind = "discarded_branch_end",
+            Expect = finalState.ToDictionary(
+                field => field.Key,
+                field => Fact<string>.Captured(field.Value, finalAction.Evidence!),
+                StringComparer.Ordinal),
+        };
         var branchManifest = manifest with
         {
             Source = manifest.Source with
@@ -48,9 +60,11 @@ public static class Arbiter
                 .. manifest.Actions.Where(action => action.Seq <= branch.RollbackToSeq),
                 .. branch.Actions,
             ],
-            Checkpoints = manifest.Checkpoints
-                .Where(checkpoint => checkpoint.AfterSeq <= branch.RollbackToSeq)
-                .ToList(),
+            Checkpoints =
+            [
+                .. manifest.Checkpoints.Where(checkpoint => checkpoint.AfterSeq <= branch.RollbackToSeq),
+                branchEnd,
+            ],
             Boundaries = [],
             Verification = null,
         };
