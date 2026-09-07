@@ -17,7 +17,12 @@ public sealed class RunSharingTests
 
         var shared = await service.SubmitAsync(ManifestJson.Serialize(manifest), request);
 
-        Assert.Equal(shared.ShareId, Assert.Single(await service.IndexAsync()).ShareId);
+        var indexEntry = Assert.Single(await service.IndexAsync());
+        Assert.Equal(shared.ShareId, indexEntry.ShareId);
+        Assert.DoesNotContain(
+            "manifestJson",
+            System.Text.Json.JsonSerializer.Serialize(indexEntry),
+            StringComparison.OrdinalIgnoreCase);
         Assert.Equal(shared.ShareId, (await service.FindAsync(shared.Code.ToLowerInvariant()))?.ShareId);
         Assert.Equal(
             shared.ShareId,

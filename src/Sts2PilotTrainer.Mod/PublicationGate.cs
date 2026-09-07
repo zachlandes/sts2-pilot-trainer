@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
 
@@ -6,28 +7,36 @@ namespace Sts2PilotTrainer.Mod;
 
 internal static class PublicationGate
 {
-    private const string ArbiterEnvironmentVariable = "RUNMOBILE_ARBITER";
-
     internal static Task<bool> RunAsync(ReplayManifest recording)
     {
         var id = Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture);
-        var relativeManifestPath = $"publication/{id}.candidate.replay.json";
+        var workspace = $"publication/{id}";
+        var storeRoot = RunmobileStore.Root;
+        var relativeManifestPath = $"{workspace}/candidate.replay.json";
         RunmobileStore.Write(relativeManifestPath, ManifestJson.Serialize(recording));
         var manifestPath = RunmobileStore.PathOf(relativeManifestPath);
-        var evidencePath = RunmobileStore.PathOf($"publication/{id}.evidence");
+        var workspacePath = RunmobileStore.PathOf(workspace);
+        var evidencePath = RunmobileStore.PathOf($"{workspace}/evidence");
+        var sandboxPath = RunmobileStore.PathOf($"{workspace}/sandbox");
 
-        var configured = Environment.GetEnvironmentVariable(ArbiterEnvironmentVariable);
-        var besideMod = Path.Combine(
-            Path.GetDirectoryName(typeof(PublicationGate).Assembly.Location)!, "sts2-arbiter.dll");
-        var repositoryArbiter = Path.Combine(Environment.CurrentDirectory, "scripts", "arbiter");
-        var arbiter = !string.IsNullOrWhiteSpace(configured)
-            ? configured
-            : File.Exists(besideMod) ? besideMod : repositoryArbiter;
+        var arbiterDirectory = Path.Combine(
+            Path.GetDirectoryName(typeof(PublicationGate).Assembly.Location)!, "arbiter");
+        var arbiter = Path.Combine(
+            arbiterDirectory,
+            OperatingSystem.IsWindows() ? "sts2-arbiter.exe" : "sts2-arbiter");
         if (!File.Exists(arbiter))
         {
-            RunmobileStore.Remove(relativeManifestPath);
+            RecordingRetention.RemovePublicationWorkspace(storeRoot, workspace);
             throw new ShareValidationException(
-                "The local replay arbiter is unavailable, so this run was not sent.");
+                "The installed local replay arbiter is unavailable, so this run was not sent.");
+        }
+
+        var gameAssemblyDirectory = Path.GetDirectoryName(typeof(RunManager).Assembly.Location);
+        if (gameAssemblyDirectory is null)
+        {
+            RecordingRetention.RemovePublicationWorkspace(storeRoot, workspace);
+            throw new ShareValidationException(
+                "The game assembly directory could not be read, so this run was not sent.");
         }
 
         return Task.Run(async () =>
@@ -36,15 +45,14 @@ internal static class PublicationGate
             {
                 var start = new ProcessStartInfo
                 {
-                    FileName = arbiter.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                        ? "dotnet"
-                        : arbiter,
+                    FileName = arbiter,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
                 };
-                if (arbiter.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-                    start.ArgumentList.Add(arbiter);
+                start.Environment["STS2_PILOT_TRAINER_LIB"] = gameAssemblyDirectory;
+                start.Environment["STS2_PILOT_TRAINER_SANDBOX"] = sandboxPath;
+                start.Environment["STS2_PILOT_TRAINER_WORKSPACE"] = workspacePath;
                 start.ArgumentList.Add("gate");
                 start.ArgumentList.Add(manifestPath);
                 start.ArgumentList.Add("--out");
@@ -60,7 +68,7 @@ internal static class PublicationGate
             }
             finally
             {
-                RunmobileStore.Remove(relativeManifestPath);
+                RecordingRetention.RemovePublicationWorkspace(storeRoot, workspace);
             }
         });
     }

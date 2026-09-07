@@ -42,6 +42,20 @@ public sealed class RecordingRetentionTests : IDisposable
     }
 
     [Fact]
+    public void PublicationWorkspaceCleanupRemovesOnlyThatDerivedWorkspace()
+    {
+        RunmobileStore.Write("publication/request/evidence/gate.json", "{}");
+        RunmobileStore.Write("publication/other/evidence/gate.json", "{}");
+        RunmobileStore.Write("recordings/kept.replay.json", "{}");
+
+        RecordingRetention.RemovePublicationWorkspace(_root, "publication/request");
+
+        Assert.False(Directory.Exists(RunmobileStore.PathOf("publication/request")));
+        Assert.True(RunmobileStore.Exists("publication/other/evidence/gate.json"));
+        Assert.True(RunmobileStore.Exists("recordings/kept.replay.json"));
+    }
+
+    [Fact]
     public void APolicyKeepsTheNewestRunsAndRemovesBothFilesOfTheRest()
     {
         Record(Older);

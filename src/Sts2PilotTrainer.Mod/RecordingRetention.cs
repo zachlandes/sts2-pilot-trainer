@@ -59,6 +59,11 @@ internal static class RecordingRetention
 
     private static readonly HashSet<string> Applied = new(StringComparer.Ordinal);
 
+    internal static void RemovePublicationWorkspace(string root, string relativeDirectory)
+    {
+        lock (Gate) RunmobileStore.RemoveTree(root, relativeDirectory);
+    }
+
     /// <summary>
     /// Applies the player's policy once for the save profile this game is running as,
     /// and says nothing at all when there was nothing to do.

@@ -25,6 +25,14 @@ public sealed record ShareSubmission(
     }
 }
 
+public sealed record SharedRunSummary(
+    string ShareId,
+    string Code,
+    ShareSubmission Submission,
+    LibraryRun Run,
+    DateTimeOffset SubmittedAt,
+    bool Featured = false);
+
 public sealed record SharedRun(
     string ShareId,
     string Code,
@@ -32,7 +40,11 @@ public sealed record SharedRun(
     ShareSubmission Submission,
     LibraryRun Run,
     DateTimeOffset SubmittedAt,
-    bool Featured = false);
+    bool Featured = false)
+{
+    public SharedRunSummary Summary =>
+        new(ShareId, Code, Submission, Run, SubmittedAt, Featured);
+}
 
 public sealed class ShareValidationException(string message) : Exception(message);
 
@@ -40,7 +52,7 @@ public interface IRunSharingApi
 {
     Task<SharedRun> SubmitAsync(
         string manifestJson, ShareSubmission submission, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<SharedRun>> IndexAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SharedRunSummary>> IndexAsync(CancellationToken cancellationToken = default);
     Task<SharedRun?> FindAsync(string code, CancellationToken cancellationToken = default);
 }
 
@@ -55,11 +67,11 @@ public sealed class HttpRunSharingApi(HttpClient client) : IRunSharingApi
         return await Read<SharedRun>(response, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<IReadOnlyList<SharedRun>> IndexAsync(
+    public async Task<IReadOnlyList<SharedRunSummary>> IndexAsync(
         CancellationToken cancellationToken = default)
     {
         using var response = await client.GetAsync("runs", cancellationToken).ConfigureAwait(false);
-        return await Read<List<SharedRun>>(response, cancellationToken).ConfigureAwait(false);
+        return await Read<List<SharedRunSummary>>(response, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<SharedRun?> FindAsync(
@@ -157,12 +169,13 @@ public sealed class DeterministicRunSharingServer(
         return result;
     }
 
-    private IReadOnlyList<SharedRun> Index() =>
+    private IReadOnlyList<SharedRunSummary> Index() =>
     [
-        .. shared.Values.Where(run => run.Featured),
+        .. shared.Values.Where(run => run.Featured).Select(run => run.Summary),
         .. shared.Values.Where(run => !run.Featured)
             .OrderByDescending(run => run.SubmittedAt)
-            .ThenBy(run => run.ShareId, StringComparer.Ordinal),
+            .ThenBy(run => run.ShareId, StringComparer.Ordinal)
+            .Select(run => run.Summary),
     ];
 
     private SharedRun? Find(string code) => shared.Values.SingleOrDefault(run =>

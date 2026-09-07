@@ -254,7 +254,7 @@ Whether a run may be *recorded* is the other question and has the other answer: 
 `RunmobileStore` is the only thing in the mod that writes, under `user://Runmobile/` scoped by the game's own resolved platform, account and profile - taken whole from `UserDataPathProvider`, never reassembled here, and never part of an exported recording's identity.
 `ProfileWriteBarrier` is a different thing and stays as it is: it suppresses the game's own writes during a trainer run.
 `./scripts/protected-files.sh` is how "nothing outside that subtree changed" is measured rather than asserted.
-Removing is a write and goes through the same gate - `RunmobileStore.Remove` names one file and refuses a directory - and *which* files is `RecordingRetention`'s, so the one operation that cannot be undone does not also pick its own targets.
+Removing is a write and goes through the same gate - `RunmobileStore.Remove` names one file and refuses a directory, while `RemoveTree` is reserved for the temporary publication workspace - and *which* files is `RecordingRetention`'s, so the one operation that cannot be undone does not also pick its own targets.
 The one recording it never names, under any policy, is the run the game can currently Continue: a journal deleted under a live run is one the recorder picks up again and publishes as a run it watched from the start.
 The player's `settings.json` says how many runs to keep and can ask for them all to be removed; both are `RecordingLibrary.Cull` with a different number, applied at the shell's singleplayer-menu patch and again at `RunmobileMod.EnsureAdopted`, because those are the first moment there is a profile and the last moment before any journal is open, once for each save profile the process plays as rather than once for the process.
 Both members also have a control, and it is one row rather than a section: `MyRunsRow` in `Sts2PilotTrainer.Trainer` derives every line the way `PlaybackTransport.For` derives the transport, `MyRunsSettingsRow` draws it, `MyRunsSettings` wires it to the disk, and the run library's own module is what will place it.
@@ -331,8 +331,8 @@ one reader, and a native recording names that build twice - in its mod set and a
 `source.native.recorder_version` - so the two have to be the same string. Do not add a
 second declaration; recordings written before this carry the old wrong value and are
 not edited to match.
-Two versions sit outside that on purpose. `Arbiter.Version` is the headless CLI's own,
-a separate artifact that is not in the mod archive, so `arbiter_version` in every
+Two versions sit outside that on purpose. `Arbiter.Version` is the packaged headless CLI's own,
+a separate executable inside the mod archive, so `arbiter_version` in every
 verification report is bumped deliberately rather than following a mod-only release -
 after a mod bump it still reads the arbiter's version, which is the point.
 `GodotStubs` has to keep `GodotSharp`'s identity for the game assembly's references to

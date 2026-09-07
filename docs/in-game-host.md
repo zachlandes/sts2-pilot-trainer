@@ -29,7 +29,7 @@ S7's session did run the renamed shell, which is what establishes the row below;
 ## What it proves
 
 **Retail loading of the renamed artifact is established, mod list included.**
-The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
+The build and installer produce `Runmobile` under the selected game mod directory with `Runmobile.json`, `Runmobile.dll`, the four project-owned libraries the host uses, and the self-contained local publication arbiter under `arbiter/`.
 The S7 transport session installed that package with `install-mod.sh`, launched the shipped client with it as the only enabled mod, and ran the whole watched journey through it - so discovery, initialization and a complete session through the renamed shell are shown, and the protected-files ledger of that session is clean outside `user://Runmobile/` apart from the mod's own installed assemblies, which carry the install's own timestamp.
 The game's own mod line naming `Runmobile` is photographed in that session's record, so the row no longer rests on the pre-rename `CombatTrainer` screenshots.
 The libraries are built to ship together; there is no separately installed framework or runtime dependency, and no resource pack.

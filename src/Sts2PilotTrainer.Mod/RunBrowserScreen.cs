@@ -29,7 +29,7 @@ internal static class RunBrowserScreen
 {
     private static readonly object PendingLock = new();
     private static readonly Dictionary<int, IndexRequest> PendingIndexRequests = [];
-    private static readonly Dictionary<int, Task<IReadOnlyList<SharedRun>>> PendingIndexes = [];
+    private static readonly Dictionary<int, Task<IReadOnlyList<SharedRunSummary>>> PendingIndexes = [];
     private static readonly Dictionary<int, LookupRequest> PendingLookupRequests = [];
     private static readonly Dictionary<int, Task<SharedRun?>> PendingLookups = [];
     private static int nextRequest;
@@ -38,11 +38,12 @@ internal static class RunBrowserScreen
     internal static void Open() => OpenTab(LibraryTab.Community);
 
     internal static void OpenTab(
-        LibraryTab tab, bool compatibleOnly = true, string? selectedRunId = null)
+        LibraryTab tab, bool compatibleOnly = true, string? selectedRunId = null,
+        bool skipIndexFetch = false)
     {
         try
         {
-            if (RunLibrary.ShouldFetchIndex)
+            if (!skipIndexFetch && RunLibrary.ShouldFetchIndex)
             {
                 BeginIndexFetch((int)tab, compatibleOnly, selectedRunId);
                 return;
@@ -87,6 +88,7 @@ internal static class RunBrowserScreen
                 foreach (var run in group.Runs)
                 {
                     var runId = run.RunId;
+                    var shareCode = community ? RunLibrary.ShareCodeFor(runId) : null;
                     var mine = !community;
                     var selected = string.Equals(
                         browser.SelectedRunId, run.RunId, StringComparison.Ordinal);
@@ -96,7 +98,11 @@ internal static class RunBrowserScreen
                     rows.Add(new ScreenRow(
                         $"{(selected ? "▶ " : string.Empty)}{RowLabel(run)}",
                         Enabled: run.Listed,
-                        () => OpenRun(runId, fromMyRuns: mine),
+                        () =>
+                        {
+                            if (shareCode is { Length: > 0 }) Look(shareCode, mine);
+                            else OpenRun(runId, fromMyRuns: mine);
+                        },
                         Reason: reason));
                 }
             }
@@ -136,7 +142,7 @@ internal static class RunBrowserScreen
 
     private static void CompleteIndex(int request)
     {
-        Task<IReadOnlyList<SharedRun>> task;
+        Task<IReadOnlyList<SharedRunSummary>> task;
         IndexRequest state;
         lock (PendingLock)
         {
@@ -146,17 +152,21 @@ internal static class RunBrowserScreen
             PendingIndexRequests.Remove(request);
         }
 
-        if (task.IsCompletedSuccessfully)
+        var failed = !task.IsCompletedSuccessfully;
+        if (!failed)
         {
             RunLibrary.AcceptIndex(task.Result);
         }
         else
         {
+            RunLibrary.RefuseIndex();
             Log.Error($"[{RunmobileMod.ModId}] could not fetch the run index: " +
                 task.Exception?.GetBaseException().Message, 2);
         }
 
-        OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedRunId);
+        OpenTab(
+            (LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedRunId,
+            skipIndexFetch: failed);
     }
 
     private sealed record IndexRequest(int Tab, bool CompatibleOnly, string? SelectedRunId);

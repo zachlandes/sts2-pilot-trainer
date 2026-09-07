@@ -36,11 +36,12 @@ video pipeline, not a channel. A manifest verified today stays readable regardle
 where anything is eventually published, and the tests for all of it run on a machine
 that does not own the game.
 
-**The eventual published artifact is small.**
+**The eventual published artifact carries the local arbiter it needs.**
 It contains `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries that the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
+It also contains a platform-specific, self-contained `arbiter/` directory so `Share this run` can apply the real publication gate in fresh processes without a repository checkout or a separately installed .NET runtime.
 It remains DLL-only in the game's packaging terms: `has_pck: false`, `dependencies: []`, `affects_gameplay: false`.
-Those four libraries ship with the mod; they are not runtime dependencies a player installs separately.
-Everything in this repository that could not go inside that archive — the prepared game-assembly copy, the video tooling, the bootstrap — is a build-time or proof-only concern and is kept out of the projects a mod would ship.
+The arbiter reads the player's installed game assemblies in place and routes engine writes into the profile-scoped Runmobile store; no game assembly is copied into the artifact.
+Everything else in this repository that could not go inside that archive — the video tooling and bootstrap — is a build-time or proof-only concern and is kept out of the published mod.
 See [dependencies](dependencies.md).
 
 **One version, and it is the mod manifest's.**
@@ -52,7 +53,7 @@ Those recordings are evidence of what happened and are not edited to match; `Run
 `VersionAgreementTests` and `RecorderVersionTests` assert it over every assembly of ours found beside the running test binary rather than a list they name, so a project added later is asked as soon as anything references it - the first suite covers the game-free set CI runs, the second the two that need the game.
 Two versions are deliberately outside the arrangement.
 `GodotStubs` is not ours: that assembly has to keep `GodotSharp`'s own identity for the game assembly's references to resolve.
-`Arbiter.Version` in `Sts2PilotTrainer.Engine` is the headless arbiter's own version, written into every verification report as `arbiter_version`, and it stays independent because the CLI is a separate artifact that no player installs.
+`Arbiter.Version` in `Sts2PilotTrainer.Engine` is the headless arbiter's own version, written into every verification report as `arbiter_version`, and it stays independent because the CLI is a separate executable even though Runmobile packages it for local publication checks.
 The consequence is intended and worth stating: bump the mod's version and `arbiter_version` still reads the arbiter's own until somebody bumps that too.
 
 ## What the installed mod writes

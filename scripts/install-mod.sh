@@ -88,6 +88,16 @@ fi
 
 dotnet build src/Sts2PilotTrainer.Mod/Sts2PilotTrainer.Mod.csproj -c Release --nologo -v quiet
 
+rid="$(dotnet --info | awk '$1 == "RID:" {print $2; exit}')"
+if [[ -z "$rid" ]]; then
+  echo "Could not determine the current .NET runtime identifier." >&2
+  exit 4
+fi
+arbiter_built="build/publish/sts2-arbiter/$rid"
+rm -rf "$arbiter_built"
+dotnet publish src/Sts2PilotTrainer.Cli/Sts2PilotTrainer.Cli.csproj \
+  -c Release -r "$rid" --self-contained true --nologo -v quiet -o "$arbiter_built"
+
 built="build/bin/Sts2PilotTrainer.Mod/Release/net9.0"
 
 # Named rather than globbed: what a mod ships is a decision, and a stray file that
@@ -107,6 +117,13 @@ for file in "${files[@]}"; do
     exit 4
   fi
 done
+
+arbiter_executable="sts2-arbiter"
+if [[ "$rid" == win-* ]]; then arbiter_executable="sts2-arbiter.exe"; fi
+if [[ ! -x "$arbiter_built/$arbiter_executable" && ! -f "$arbiter_built/$arbiter_executable" ]]; then
+  echo "Published arbiter is missing $arbiter_executable; refusing to install a partial mod." >&2
+  exit 4
+fi
 
 staging="$(mktemp -d "$mods_dir/.${mod_id}.install.XXXXXX")"
 backup=""
@@ -136,6 +153,8 @@ trap cleanup EXIT
 for file in "${files[@]}"; do
   cp "$built/$file" "$staging/$file"
 done
+mkdir "$staging/arbiter"
+cp -R "$arbiter_built/." "$staging/arbiter/"
 
 if [[ -e "$target" || -L "$target" ]]; then
   backup="$(mktemp -d "$mods_dir/.${mod_id}.previous.XXXXXX")"
@@ -162,5 +181,5 @@ if [[ -n "$former_backup" ]]; then
 fi
 trap - EXIT
 
-echo "installed    : ${#files[@]} files -> ${target/#$HOME/\~}"
+echo "installed    : Runmobile and local arbiter -> ${target/#$HOME/\~}"
 echo "next         : launch Slay the Spire 2, allow mod loading, then Singleplayer"

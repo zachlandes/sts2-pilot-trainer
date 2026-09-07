@@ -55,7 +55,7 @@ internal static class AssemblyResolution
         var configured = Environment.GetEnvironmentVariable(LibDirVariable);
         if (!string.IsNullOrWhiteSpace(configured))
         {
-            var full = WorktreePath.Require(configured.Trim());
+            var full = Path.GetFullPath(configured.Trim());
             if (File.Exists(Path.Combine(full, "sts2.dll"))) return full;
             return null;
         }

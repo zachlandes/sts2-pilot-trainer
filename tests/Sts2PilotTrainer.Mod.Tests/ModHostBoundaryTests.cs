@@ -115,6 +115,11 @@ public sealed class ModHostBoundaryTests
                     "Sts2PilotTrainer.Trainer.dll",
                 ],
                 Directory.EnumerateFiles(installed).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+            var arbiterDirectory = Path.Combine(installed, "arbiter");
+            Assert.True(Directory.Exists(arbiterDirectory));
+            Assert.True(File.Exists(Path.Combine(
+                arbiterDirectory,
+                OperatingSystem.IsWindows() ? "sts2-arbiter.exe" : "sts2-arbiter")));
 
             var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(installed, "Runmobile.json")))
                 .RootElement;

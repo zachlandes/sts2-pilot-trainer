@@ -52,7 +52,9 @@ namespace Sts2PilotTrainer.Mod;
 /// <para><b>Removing is a write and goes through the same gate.</b> A player owns the
 /// disk their recordings are on, so the store can be asked to take one back off it -
 /// through <see cref="Remove"/>, which names one file at a time and refuses a
-/// directory. Nothing here decides <em>which</em> files: that is
+/// directory. The temporary publication workspace is the sole directory-shaped
+/// exception and is removed through <see cref="RemoveTree"/> after the retention owner
+/// names that workspace. Nothing here decides <em>which</em> files: that is
 /// <c>RecordingRetention</c>'s, and it is deliberately somewhere else, because the one
 /// operation in this mod that cannot be undone should not also be the one that picks
 /// its own targets.</para>
@@ -225,6 +227,23 @@ internal static class RunmobileStore
         if (!File.Exists(path)) return false;
         File.Delete(path);
         return true;
+    }
+
+    internal static void RemoveTree(string root, string relativeDirectory)
+    {
+        var directory = ProtectedInstallPath.RequireUnprotected(
+            PathContainment.RequireContained(root, Path.Combine(root, relativeDirectory)));
+        if (directory == root)
+            throw new PathContainmentException("The store cannot remove its own root.");
+        if (!Directory.Exists(directory)) return;
+
+        foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories))
+        {
+            File.Delete(ProtectedInstallPath.RequireUnprotected(
+                PathContainment.RequireContained(root, file)));
+        }
+
+        Directory.Delete(directory, recursive: true);
     }
 
     /// <summary>

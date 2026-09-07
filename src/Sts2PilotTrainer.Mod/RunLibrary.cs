@@ -41,8 +41,10 @@ internal static class RunLibrary
         Timeout = TimeSpan.FromSeconds(10),
     });
 
-    private static readonly Dictionary<string, SharedRun> Shared = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, SharedRunSummary> SharedIndex = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, SharedRun> SharedRecordings = new(StringComparer.Ordinal);
     private static bool indexRequested;
+    private static bool indexLoaded;
     private static string? exactRunId;
     private static int nextSubmission;
     private static readonly object PendingSubmissionLock = new();
@@ -81,7 +83,7 @@ internal static class RunLibrary
         }
 
         var includeIndex = RunmobileSettings.Read().FetchRunIndex;
-        foreach (var item in Shared.Values)
+        foreach (var item in SharedIndex.Values)
         {
             if (!includeIndex &&
                 !string.Equals(item.Run.RunId, exactRunId, StringComparison.Ordinal))
@@ -106,19 +108,34 @@ internal static class RunLibrary
         return runs;
     }
 
-    internal static Task<IReadOnlyList<SharedRun>> FetchIndexAsync()
+    internal static Task<IReadOnlyList<SharedRunSummary>> FetchIndexAsync()
     {
         indexRequested = true;
         return Sharing.IndexAsync();
     }
 
     internal static bool ShouldFetchIndex =>
-        !indexRequested && RunmobileSettings.Read().FetchRunIndex;
+        !indexRequested && !indexLoaded && RunmobileSettings.Read().FetchRunIndex;
 
-    internal static void AcceptIndex(IReadOnlyList<SharedRun> index)
+    internal static void AcceptIndex(IReadOnlyList<SharedRunSummary> index)
     {
-        Shared.Clear();
-        foreach (var item in index) AcceptShared(item);
+        SharedIndex.Clear();
+        foreach (var item in index)
+        {
+            var verdict = string.Equals(
+                item.Run.RecordedBuild, ThisBuild(), StringComparison.Ordinal)
+                ? RunVerdict.Passed
+                : RunVerdict.Absent;
+            SharedIndex[item.Code] = item with { Run = item.Run with { Verdict = verdict } };
+        }
+        indexRequested = false;
+        indexLoaded = true;
+    }
+
+    internal static void RefuseIndex()
+    {
+        indexRequested = false;
+        indexLoaded = false;
     }
 
     /// <summary>
@@ -176,7 +193,7 @@ internal static class RunLibrary
         }
 
         if (RunLibraryStore.RecordingFor(runId) is { } local) return local;
-        var shared = Shared.Values.FirstOrDefault(item =>
+        var shared = SharedRecordings.Values.FirstOrDefault(item =>
             string.Equals(item.Run.RunId, runId, StringComparison.Ordinal));
         return shared is null ? null : ManifestJson.Deserialize(shared.ManifestJson);
     }
@@ -184,7 +201,7 @@ internal static class RunLibrary
     internal static Task<SharedRun?> FindSharedAsync(string code)
     {
         var wanted = code.Trim();
-        var cached = Shared.Values.FirstOrDefault(item =>
+        var cached = SharedRecordings.Values.FirstOrDefault(item =>
             string.Equals(item.Code, wanted, StringComparison.OrdinalIgnoreCase));
         return cached is null ? Sharing.FindAsync(wanted) : Task.FromResult<SharedRun?>(cached);
     }
@@ -202,10 +219,15 @@ internal static class RunLibrary
             Creator = found.Submission.DisplayName,
         };
         var local = found with { Run = described };
-        Shared[local.Code] = local;
+        SharedRecordings[local.Code] = local;
+        SharedIndex[local.Code] = local.Summary;
         if (exact) exactRunId = local.Run.RunId;
         return local;
     }
+
+    internal static string? ShareCodeFor(string runId) =>
+        SharedIndex.Values.FirstOrDefault(item =>
+            string.Equals(item.Run.RunId, runId, StringComparison.Ordinal))?.Code;
 
     internal static Task<SharedRun> ShareAsync(
         ReplayManifest recording, ShareSubmission submission)
