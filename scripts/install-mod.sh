@@ -27,7 +27,7 @@ if [[ -z "$rid" ]]; then
   exit 4
 fi
 package="build/distribution/Runmobile-$rid"
-./scripts/package-mod.sh --directory "$package"
+./scripts/package-mod.sh
 args=()
 if [[ -n "$mods_dir" ]]; then args+=(--mods-dir "$mods_dir"); fi
 exec "$package/install.sh" "${args[@]}"

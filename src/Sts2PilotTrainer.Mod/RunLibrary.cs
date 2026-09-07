@@ -112,6 +112,7 @@ internal static class RunLibrary
     {
         var accepted = new Dictionary<string, SharedRunSummary>(StringComparer.Ordinal);
         var build = ThisBuild();
+        var progress = RunLibraryStore.ReadProgress();
         foreach (var item in index)
         {
             if (!string.Equals(
@@ -123,7 +124,10 @@ internal static class RunLibrary
 
             var verdict = RunVerdicts.For(
                 item.Environment, item.SourceKind, item.Run.RunId, build);
-            accepted[item.Code] = item with { Run = OnlineRun(item, verdict) };
+            accepted[item.Code] = item with
+            {
+                Run = OnlineRun(item, verdict, progress.PlayedFrom(item.Run.RunId)),
+            };
         }
 
         SharedIndex.Clear();
@@ -132,7 +136,8 @@ internal static class RunLibrary
         indexLoaded = true;
     }
 
-    internal static LibraryRun OnlineRun(SharedRunSummary item, RunVerdict verdict)
+    internal static LibraryRun OnlineRun(
+        SharedRunSummary item, RunVerdict verdict, IReadOnlyList<int> fightsPlayed)
     {
         item.Submission.Validate();
         return item.Run with
@@ -143,6 +148,7 @@ internal static class RunLibrary
             Ascension = item.Environment.Ascension.Value,
             RecordedBuild = item.Environment.BuildVersion.Value,
             Verdict = verdict,
+            FightsPlayed = fightsPlayed,
             Recorded = item.SubmittedAt,
         };
     }

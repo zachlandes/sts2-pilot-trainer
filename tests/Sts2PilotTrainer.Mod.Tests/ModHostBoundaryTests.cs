@@ -89,6 +89,58 @@ public sealed class ModHostBoundaryTests
         Assert.Equal("Runmobile", manifest.GetProperty("name").GetString());
     }
 
+    [Fact]
+    public void PackageOutputCannotBeRedirectedToAnExistingDirectory()
+    {
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-package-output-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(sandbox);
+        var sentinel = Path.Combine(sandbox, "keep.txt");
+        File.WriteAllText(sentinel, "keep");
+
+        try
+        {
+            var result = RunScript(
+                Path.Combine(Arbiter.RepoRoot, "scripts", "package-mod.sh"),
+                "--directory",
+                sandbox);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal("keep", File.ReadAllText(sentinel));
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void IncompletePackagePreservesTheWorkingInstallation()
+    {
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-partial-package-{Guid.NewGuid():N}");
+        var package = Path.Combine(sandbox, "package");
+        var mods = Path.Combine(sandbox, "mods");
+        var installed = Path.Combine(mods, "Runmobile");
+        Directory.CreateDirectory(package);
+        Directory.CreateDirectory(installed);
+        File.Copy(
+            Path.Combine(Arbiter.RepoRoot, "scripts", "install-package.sh"),
+            Path.Combine(package, "install.sh"));
+        File.WriteAllText(Path.Combine(package, "runtime-id"), "test-runtime");
+        File.WriteAllText(Path.Combine(installed, "working.txt"), "working");
+
+        try
+        {
+            var result = RunScript(Path.Combine(package, "install.sh"), "--mods-dir", mods);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Equal("working", File.ReadAllText(Path.Combine(installed, "working.txt")));
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
     [GameFact]
     public void TheBuiltModInstallsUnderTheIdLivePreflightAccepts()
     {
@@ -216,17 +268,10 @@ public sealed class ModHostBoundaryTests
 
     private static Arbiter.Result RunInstaller(string modsDirectory, string? pathPrefix = null)
     {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "bash",
-            WorkingDirectory = Arbiter.RepoRoot,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        startInfo.ArgumentList.Add(Path.Combine(Arbiter.RepoRoot, "scripts", "install-mod.sh"));
-        startInfo.ArgumentList.Add("--mods-dir");
-        startInfo.ArgumentList.Add(modsDirectory);
+        var startInfo = ScriptStartInfo(
+            Path.Combine(Arbiter.RepoRoot, "scripts", "install-mod.sh"),
+            "--mods-dir",
+            modsDirectory);
         if (pathPrefix is not null)
         {
             startInfo.Environment["PATH"] =
@@ -264,6 +309,31 @@ public sealed class ModHostBoundaryTests
         }
 
         return new Arbiter.Result(process.ExitCode, output.Result, error.Result);
+    }
+
+    private static Arbiter.Result RunScript(string script, params string[] arguments)
+    {
+        using var process = Process.Start(ScriptStartInfo(script, arguments))!;
+        var output = process.StandardOutput.ReadToEndAsync();
+        var error = process.StandardError.ReadToEndAsync();
+        process.WaitForExit();
+        Task.WaitAll(output, error);
+        return new Arbiter.Result(process.ExitCode, output.Result, error.Result);
+    }
+
+    private static ProcessStartInfo ScriptStartInfo(string script, params string[] arguments)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "bash",
+            WorkingDirectory = Arbiter.RepoRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        startInfo.ArgumentList.Add(script);
+        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
+        return startInfo;
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]

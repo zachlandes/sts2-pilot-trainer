@@ -5,23 +5,17 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
 
-out_dir=""
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --directory) out_dir="$2"; shift 2 ;;
-    *) echo "unknown argument: $1" >&2; exit 2 ;;
-  esac
-done
+if [[ $# -gt 0 ]]; then
+  echo "package-mod.sh takes no arguments" >&2
+  exit 2
+fi
 
 rid="$(dotnet --info | awk '$1 == "RID:" {print $2; exit}')"
 if [[ -z "$rid" ]]; then
   echo "Could not determine the current .NET runtime identifier." >&2
   exit 4
 fi
-if [[ -z "$out_dir" ]]; then
-  out_dir="build/distribution/Runmobile-$rid"
-fi
-out_dir="$(mkdir -p "$(dirname "$out_dir")" && cd "$(dirname "$out_dir")" && pwd)/$(basename "$out_dir")"
+out_dir="build/distribution/Runmobile-$rid"
 
 ./scripts/build.sh
 

@@ -416,7 +416,7 @@ public sealed class OnlineIndexTests
             Run("older", RunOrigin.Mine, recorded: DateTimeOffset.MaxValue),
             submitted: "2026-09-02T00:00:00Z");
         var accepted = new[] { featured, older, newer }
-            .Select(item => RunLibrary.OnlineRun(item, RunVerdict.Passed))
+            .Select(item => RunLibrary.OnlineRun(item, RunVerdict.Passed, [2]))
             .ToArray();
 
         var browser = RunBrowser.For(LibraryTab.Community, accepted, "v0.111.0");
@@ -430,6 +430,7 @@ public sealed class OnlineIndexTests
         Assert.Equal(recording.Environment.Character.Value, acceptedFeatured.Character);
         Assert.Equal(recording.Environment.Ascension.Value, acceptedFeatured.Ascension);
         Assert.Equal(recording.Environment.BuildVersion.Value, acceptedFeatured.RecordedBuild);
+        Assert.Equal([2], acceptedFeatured.FightsPlayed);
         Assert.Equal(["newer", "older"], browser.Groups[1].Runs.Select(run => run.RunId));
     }
 
@@ -446,7 +447,7 @@ public sealed class OnlineIndexTests
         };
 
         Assert.Throws<ShareValidationException>(() =>
-            RunLibrary.OnlineRun(summary, RunVerdict.Passed));
+            RunLibrary.OnlineRun(summary, RunVerdict.Passed, []));
     }
 
     private static SharedRunSummary Summary(
@@ -477,7 +478,7 @@ public sealed class OnlineIndexTests
             "won",
             false,
             RunVerdict.Unjudged,
-            [],
+            [99],
             recorded);
 }
 

@@ -293,21 +293,27 @@ internal static class RunHistoryPlateHost
             SubmittingSurfaces.Remove(surface);
         }
 
-        if (!LibraryScreen.IsCurrent(surface)) return;
-        LibraryScreen.Dismiss();
+        SharedRun? shared = null;
+        Exception? failure = task.Exception?.GetBaseException();
         if (task.IsCompletedSuccessfully)
         {
-            LibraryScreen.Show(
-                LibraryCopy.SubmitThisRun,
-                LibraryMarkup.Dim($"Shared as {task.Result.Code}"),
-                [],
-                LibraryCopy.Back);
-            return;
+            try
+            {
+                shared = RunLibrary.AcceptShared(task.Result);
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
         }
 
+        if (!LibraryScreen.IsCurrent(surface)) return;
+        LibraryScreen.Dismiss();
         LibraryScreen.Show(
             LibraryCopy.SubmitThisRun,
-            LibraryMarkup.Dim(task.Exception?.GetBaseException().Message ?? "Sharing was refused."),
+            LibraryMarkup.Dim(shared is null
+                ? failure?.Message ?? "Sharing was refused."
+                : $"Shared as {shared.Code}"),
             [],
             LibraryCopy.Back);
     }

@@ -47,9 +47,35 @@ if [[ "$uninstall" == 1 ]]; then
   exit 0
 fi
 
+if [[ ! -f "$package/runtime-id" ]]; then
+  echo "Package is missing its runtime identity; refusing a partial install." >&2
+  exit 4
+fi
 rid="$(<"$package/runtime-id")"
 bootstrap="Sts2PilotTrainer.Bootstrap"
-if [[ "$rid" == win-* ]]; then bootstrap="$bootstrap.exe"; fi
+arbiter="sts2-arbiter"
+if [[ "$rid" == win-* ]]; then
+  bootstrap="$bootstrap.exe"
+  arbiter="$arbiter.exe"
+fi
+payload_files=(
+  "Runmobile.json"
+  "Runmobile.dll"
+  "Sts2PilotTrainer.Trainer.dll"
+  "Sts2PilotTrainer.Engine.dll"
+  "Sts2PilotTrainer.Replay.dll"
+  "Sts2PilotTrainer.IO.dll"
+)
+for file in "${payload_files[@]}"; do
+  if [[ ! -f "$package/payload/$file" ]]; then
+    echo "Package payload is missing $file; refusing a partial install." >&2
+    exit 4
+  fi
+done
+if [[ ! -f "$package/payload/arbiter/$arbiter" ]]; then
+  echo "Package payload is missing $arbiter; refusing a partial install." >&2
+  exit 4
+fi
 if [[ ! -f "$package/bootstrap/$bootstrap" ]]; then
   echo "Package is missing its local preparation tool; refusing a partial install." >&2
   exit 4
