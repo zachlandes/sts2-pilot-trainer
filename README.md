@@ -186,10 +186,9 @@ The selected VOD currently returns `PUBLISHABLE` on path-specific parity across 
 
 The standard is successful reproduction through the real engine, and no condition
 accepts a cheaper stand-in — not reader confidence, not arithmetic over the footage,
-not a screenshot of a mod list. Those are useful filters and they are not evidence:
-four of the ten history corruptions pass every arithmetic check available from the
-frames, and a run resumed from run history passes every check that is not about the
-recording itself.
+not a screenshot of a mod list.
+The gate compares the recording's hidden-state digest with the replay at every declared combat start, floor entry, and turn start they share; agreement at only the first fight is not publishable.
+Those are useful filters and they are not evidence: four of the ten history corruptions pass every arithmetic check available from the frames, and a run resumed from run history passes every check that is not about the recording itself.
 
 ## Running it
 

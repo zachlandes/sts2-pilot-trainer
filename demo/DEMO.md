@@ -1212,7 +1212,7 @@ manifest : navegreed-OJ-6QXhNgdg
   pass  reproduction     The reconstructed history replays through the real engine and matches every observed value.
   pass  covered-fight    The reproduced history covers a whole fight, from its combat start to the end of that fight.
   pass  declared-boundaries Every boundary the recording declares is one the verified history reaches, at the action it names.
-  pass  combat-boundary  The manifest's combat-start snapshot digest matches a fresh real-engine derivation.
+  pass  combat-boundary  Every compatible boundary digest in the manifest matches the real-engine reproduction.
   pass  determinism      Fresh processes produce byte-identical canonical state.
   pass  rejection        Every required corruption applies, and corrupted and incomplete histories are refused.
 

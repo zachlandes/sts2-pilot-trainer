@@ -370,9 +370,8 @@ first fight before it can offer a later one.
   decision a running game announces. `./scripts/arbiter engine-commands` prints it,
   including the one verb that maps onto nothing here and the reason beside it.
 - A digest at every boundary the history passes, not only at its first fight.
-  `RunCoverage` derives *where* the boundaries are, as a rule over the history with no
-  engine; what each one holds needs a replay, so `migrate-manifest --derive-boundaries`
-  writes the digest that replay produced and refuses if the history does not reproduce.
+  `RunCoverage` derives *where* the boundaries are, as a rule over the history with no engine; what each one holds needs a replay, so `migrate-manifest --derive-boundaries` writes the digest that replay produced and refuses if the history does not reproduce.
+  At publication, `gate` compares every declared digest with the verified replay's boundary of the same kind and coordinate, so a later divergence cannot pass on the first fight's agreement.
   The validator holds `boundaries[]` to the closed set of kinds a host dispatches on.
 - Entry at any boundary. `BoundarySelector` is the one reader of a boundary
   coordinate and the one place a coordinate becomes a plan, however it was spelled:
