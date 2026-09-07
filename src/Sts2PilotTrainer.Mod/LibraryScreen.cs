@@ -120,7 +120,7 @@ internal static class LibraryScreen
     /// <param name="page">Which page of a column too long for the panel to draw. Zero is
     /// the first, and a caller never passes anything else - the Previous and Next rows
     /// re-show this same screen at the page either side.</param>
-    internal static void Show(
+    internal static long Show(
         string title,
         string body,
         IReadOnlyList<ScreenRow> rows,
@@ -135,6 +135,7 @@ internal static class LibraryScreen
         NGenericPopup? popup = null;
         NModalContainer? container = null;
         var added = false;
+        var shown = false;
         try
         {
             popup = NGenericPopup.Create()
@@ -167,6 +168,10 @@ internal static class LibraryScreen
                     else if (back is not null)
                     {
                         Callable.From(() => Reopen(back)).CallDeferred();
+                    }
+                    else
+                    {
+                        Dismiss();
                     }
                 });
             content.YesButton.SetText(share is null ? backLabel : LibraryCopy.ShareSubmit);
@@ -203,6 +208,7 @@ internal static class LibraryScreen
             // screen half the players cannot use.
             var focus = first ?? (Control)content.YesButton;
             Callable.From(() => focus.GrabFocus()).CallDeferred();
+            shown = true;
         }
         catch (Exception ex)
         {
@@ -222,6 +228,8 @@ internal static class LibraryScreen
                 $"[{RunmobileMod.ModId}] could not show a library screen: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
+
+        return shown ? shownSurface : -1;
     }
 
     /// <summary>

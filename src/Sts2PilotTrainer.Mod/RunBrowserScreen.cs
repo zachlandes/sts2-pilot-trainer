@@ -32,6 +32,7 @@ internal static class RunBrowserScreen
     private static readonly Dictionary<int, Task<IReadOnlyList<SharedRunSummary>>> PendingIndexes = [];
     private static readonly Dictionary<int, LookupRequest> PendingLookupRequests = [];
     private static readonly Dictionary<int, Task<SharedRun?>> PendingLookups = [];
+    private static string? indexFailure;
     private static int nextRequest;
 
     /// <summary>Opens the library on the tab a player lands on: everybody's runs.</summary>
@@ -125,11 +126,18 @@ internal static class RunBrowserScreen
 
     private static void BeginIndexFetch(int tab, bool compatibleOnly, string? selectedRunId)
     {
+        var surface = LibraryScreen.Show(
+            LibraryCopy.CompendiumCard,
+            LibraryMarkup.Dim(LibraryCopy.FetchingRunIndex),
+            [],
+            LibraryCopy.Back,
+            back: static () => { });
         var request = Interlocked.Increment(ref nextRequest);
         var task = RunLibrary.FetchIndexAsync();
         lock (PendingLock)
         {
-            PendingIndexRequests[request] = new IndexRequest(tab, compatibleOnly, selectedRunId);
+            PendingIndexRequests[request] = new IndexRequest(
+                tab, compatibleOnly, selectedRunId, surface);
             PendingIndexes[request] = task;
         }
         _ = task.ContinueWith(
@@ -155,11 +163,16 @@ internal static class RunBrowserScreen
         var failed = !task.IsCompletedSuccessfully;
         try
         {
-            if (!failed) RunLibrary.AcceptIndex(task.Result);
+            if (!failed)
+            {
+                RunLibrary.AcceptIndex(task.Result);
+                indexFailure = null;
+            }
         }
         catch (Exception ex)
         {
             failed = true;
+            indexFailure = LibraryCopy.FetchRunIndexFailed;
             Log.Error(
                 $"[{RunmobileMod.ModId}] could not accept the run index: {ex.Message}", 2);
         }
@@ -167,6 +180,7 @@ internal static class RunBrowserScreen
         if (failed)
         {
             RunLibrary.RefuseIndex();
+            indexFailure = LibraryCopy.FetchRunIndexFailed;
             if (!task.IsCompletedSuccessfully)
             {
                 Log.Error($"[{RunmobileMod.ModId}] could not fetch the run index: " +
@@ -174,12 +188,15 @@ internal static class RunBrowserScreen
             }
         }
 
+        if (!LibraryScreen.IsCurrent(state.Surface)) return;
+        LibraryScreen.Dismiss();
         OpenTab(
             (LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedRunId,
             skipIndexFetch: failed);
     }
 
-    private sealed record IndexRequest(int Tab, bool CompatibleOnly, string? SelectedRunId);
+    private sealed record IndexRequest(
+        int Tab, bool CompatibleOnly, string? SelectedRunId, long Surface);
 
     /// <summary>
     /// One run, opened at a floor.
@@ -312,11 +329,11 @@ internal static class RunBrowserScreen
     /// described at all - and a code that names nothing says that instead of
     /// pretending the run does not exist.
     ///
-    /// The browser's own modal comes down first, once, because both exits open another
-    /// one and the container holds a single screen - the same rule
-    /// <c>LibraryScreen.Press</c> follows for every row, and this is the one way in that
-    /// does not go through a row. Both exits go back to the tab the code was typed on,
-    /// for the same reason every other nested screen does.
+    /// The browser's own modal becomes a loading surface while the request runs because
+    /// both exits open another one and the container holds a single screen. A completion
+    /// belongs to that surface and does nothing after the player leaves it. Both exits go
+    /// back to the tab the code was typed on, for the same reason every other nested
+    /// screen does.
     ///
     /// Guarded like every other way in here, and for a sharper reason: this is reached
     /// from a signal rather than from a row, so a throw would leave Godot's own dispatch
@@ -328,11 +345,17 @@ internal static class RunBrowserScreen
         try
         {
             LibraryScreen.Dismiss();
+            var surface = LibraryScreen.Show(
+                LibraryCopy.CompendiumCard,
+                LibraryMarkup.Dim(LibraryCopy.LookingUpRunCode),
+                [],
+                LibraryCopy.Back,
+                back: static () => { });
             var request = Interlocked.Increment(ref nextRequest);
             var task = RunLibrary.FindSharedAsync(code);
             lock (PendingLock)
             {
-                PendingLookupRequests[request] = new LookupRequest(code, fromMyRuns);
+                PendingLookupRequests[request] = new LookupRequest(code, fromMyRuns, surface);
                 PendingLookups[request] = task;
             }
             _ = task.ContinueWith(
@@ -344,7 +367,7 @@ internal static class RunBrowserScreen
         }
         catch (Exception ex)
         {
-            Refuse("could not look up that run code", ex);
+            RefuseLookup("could not look up that run code", ex, fromMyRuns);
         }
     }
 
@@ -359,6 +382,9 @@ internal static class RunBrowserScreen
             PendingLookups.Remove(request);
             PendingLookupRequests.Remove(request);
         }
+
+        if (!LibraryScreen.IsCurrent(state.Surface)) return;
+        LibraryScreen.Dismiss();
 
         if (task.IsCompletedSuccessfully && task.Result is { } found)
         {
@@ -390,14 +416,17 @@ internal static class RunBrowserScreen
             }
             catch (Exception ex)
             {
-                Refuse("could not accept that run code", ex);
+                RefuseLookup("could not accept that run code", ex, state.FromMyRuns);
                 return;
             }
         }
 
         if (!task.IsCompletedSuccessfully)
         {
-            Refuse("could not look up that run code", task.Exception?.GetBaseException());
+            RefuseLookup(
+                "could not look up that run code",
+                task.Exception?.GetBaseException(),
+                state.FromMyRuns);
             return;
         }
 
@@ -417,7 +446,7 @@ internal static class RunBrowserScreen
             back: () => OpenTab(fromMyRuns ? LibraryTab.MyRuns : LibraryTab.Community));
     }
 
-    private sealed record LookupRequest(string Code, bool FromMyRuns);
+    private sealed record LookupRequest(string Code, bool FromMyRuns, long Surface);
 
     /// <summary>
     /// Stands the player where the row says, through the one entry there is.
@@ -486,6 +515,11 @@ internal static class RunBrowserScreen
                 .Append('\n').Append(LibraryMarkup.Dim(browser.NotShownTooltipBody));
         }
 
+        if (indexFailure is { Length: > 0 } failure)
+        {
+            body.Append("\n\n").Append(LibraryMarkup.Dim(failure));
+        }
+
         if (browser.Footer is { Length: > 0 } footer)
         {
             body.Append("\n\n").Append(LibraryMarkup.Dim(footer));
@@ -522,6 +556,18 @@ internal static class RunBrowserScreen
     /// would be the failure mode this project exists to prevent, at the one moment a
     /// player is deciding whether the mod works.
     /// </summary>
+    private static void RefuseLookup(string what, Exception? ex, bool fromMyRuns)
+    {
+        var detail = ex is null ? what : $"{what}: {ex.GetType().Name}: {ex.Message}";
+        Log.Error($"[{RunmobileMod.ModId}] {detail}", 2);
+        LibraryScreen.Show(
+            LibraryCopy.CompendiumCard,
+            LibraryMarkup.Dim(detail),
+            [],
+            LibraryCopy.Back,
+            back: () => OpenTab(fromMyRuns ? LibraryTab.MyRuns : LibraryTab.Community));
+    }
+
     private static void Refuse(string what, Exception? ex)
     {
         var detail = ex is null ? what : $"{what}: {ex.GetType().Name}: {ex.Message}";

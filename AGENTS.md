@@ -9,7 +9,8 @@ not released yet. See [README.md](README.md).
 
 ```bash
 ./scripts/build.sh          # bootstrap the game assembly copy, then build everything
-./scripts/install-mod.sh    # build the in-game mod and install it into the game's mods directory
+./scripts/package-mod.sh    # build the platform package without game content
+./scripts/install-mod.sh    # package and install the mod, preparing game inputs locally
 ./scripts/protected-files.sh snapshot <ledger>   # hash everything the mod must not change
 ./scripts/protected-files.sh compare  <ledger>   # ... and say what a session changed
 ./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && dotnet test sts2-pilot-trainer.sln -c Release

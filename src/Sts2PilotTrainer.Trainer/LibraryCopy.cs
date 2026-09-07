@@ -84,6 +84,13 @@ public static class LibraryCopy
 
     public const string FetchRunIndex = "Fetch the run index";
 
+    public const string FetchingRunIndex = "Fetching the run index…";
+
+    public const string FetchRunIndexFailed =
+        "The run index could not be fetched. Direct run-code lookup is still available.";
+
+    public const string LookingUpRunCode = "Looking up that run code…";
+
     public const string SubmitThisRun = "Share this run";
 
     public const string SharePrivacy = "No other personal information travels with this run.";

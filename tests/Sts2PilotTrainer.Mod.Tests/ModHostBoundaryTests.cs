@@ -123,6 +123,13 @@ public sealed class ModHostBoundaryTests
             Assert.True(File.Exists(Path.Combine(arbiterDirectory, "lib", "prepared-assembly.json")));
             Assert.True(File.Exists(Path.Combine(arbiterDirectory, "lib", "sts2.dll")));
 
+            var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+            var package = Path.Combine(Arbiter.RepoRoot, "build", "distribution", $"Runmobile-{rid}");
+            Assert.Equal(rid, File.ReadAllText(Path.Combine(package, "runtime-id")).Trim());
+            Assert.True(File.Exists(Path.Combine(package, "install.sh")));
+            Assert.True(Directory.Exists(Path.Combine(package, "bootstrap")));
+            Assert.False(Directory.Exists(Path.Combine(package, "payload", "arbiter", "lib")));
+
             var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(installed, "Runmobile.json")))
                 .RootElement;
             var declared = manifest.GetProperty("id").GetString()!;

@@ -58,11 +58,30 @@ internal static class RecordingRetention
     private static readonly Lock Gate = new();
 
     private static readonly HashSet<string> Applied = new(StringComparer.Ordinal);
+    private static readonly HashSet<string> ActivePublicationWorkspaces = new(StringComparer.Ordinal);
+
+    internal static void BeginPublicationWorkspace(string root, string relativeDirectory)
+    {
+        lock (Gate) ActivePublicationWorkspaces.Add(PublicationKey(root, relativeDirectory));
+    }
 
     internal static void RemovePublicationWorkspace(string root, string relativeDirectory)
     {
-        lock (Gate) RunmobileStore.RemoveTree(root, relativeDirectory);
+        lock (Gate)
+        {
+            try
+            {
+                RunmobileStore.RemoveTree(root, relativeDirectory);
+            }
+            finally
+            {
+                ActivePublicationWorkspaces.Remove(PublicationKey(root, relativeDirectory));
+            }
+        }
     }
+
+    private static string PublicationKey(string root, string relativeDirectory) =>
+        Path.Combine(root, relativeDirectory);
 
     /// <summary>
     /// Applies the player's policy once for the save profile this game is running as,
@@ -86,7 +105,7 @@ internal static class RecordingRetention
             {
                 root = RunmobileStore.Root;
                 if (Applied.Contains(root)) return;
-                RunmobileStore.RemoveTree(root, "publication");
+                RemoveAbandonedPublicationWorkspaces(root);
                 Apply(RunmobileSettings.Read(), ContinuableRun.StartedUtc());
             }
             catch (Exception ex)
@@ -99,6 +118,23 @@ internal static class RecordingRetention
 
             Applied.Add(root);
         }
+    }
+
+    private static void RemoveAbandonedPublicationWorkspaces(string root)
+    {
+        const string publication = "publication";
+        var directory = RunmobileStore.PathOf(publication);
+        if (!Directory.Exists(directory)) return;
+
+        foreach (var workspace in Directory.EnumerateDirectories(directory))
+        {
+            var relative = $"{publication}/{Path.GetFileName(workspace)}";
+            if (!ActivePublicationWorkspaces.Contains(PublicationKey(root, relative)))
+                RunmobileStore.RemoveTree(root, relative);
+        }
+
+        if (!Directory.EnumerateFileSystemEntries(directory).Any())
+            RunmobileStore.RemoveTree(root, publication);
     }
 
     /// <summary>
@@ -274,6 +310,10 @@ internal static class RecordingRetention
     /// mod calls it: a player's process applies each profile's policy once.</summary>
     internal static void ForgetForTesting()
     {
-        lock (Gate) Applied.Clear();
+        lock (Gate)
+        {
+            Applied.Clear();
+            ActivePublicationWorkspaces.Clear();
+        }
     }
 }

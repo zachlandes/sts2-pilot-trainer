@@ -99,13 +99,9 @@ internal static class CompendiumCard
     }
 
     /// <summary>
-    /// Decides, each time the Compendium opens, whether the library has anything to
-    /// show.
-    ///
-    /// Asked here rather than once at <c>_Ready</c> because the answer changes while
-    /// the game is running: a player finishes a run, the recorder writes it, and the
-    /// library has a run it did not have when the menu was built. This is the same
-    /// place the game re-decides Run History and the Bestiary for the same reason.
+    /// Decides, each time the Compendium opens, whether the shell permits this surface.
+    /// The browser stays reachable with an empty local library and with automatic index
+    /// fetching disabled because direct run-code lookup is still available.
     /// </summary>
     [HarmonyPostfix]
     [HarmonyPatch(nameof(NCompendiumSubmenu.OnSubmenuOpened))]
@@ -217,7 +213,7 @@ internal static class CompendiumCard
     /// or a popup explaining itself would each be this mod speaking in a game it was
     /// told to stay out of, so silence here means the button is simply not there.
     /// </summary>
-    internal static bool ShowsButton() => RunmobileMod.MayDraw && RunLibrary.HasAnythingToShow();
+    internal static bool ShowsButton() => RunmobileMod.MayDraw;
 
     /// <summary>
     /// The library button this Compendium already has, wherever in the submenu's own

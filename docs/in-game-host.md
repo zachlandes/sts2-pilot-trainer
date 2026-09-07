@@ -766,27 +766,13 @@ What holds the states apart meanwhile is that each one says what it is in words 
 Drawing the marks is a change to `LibraryScreen` and `TransportGlyphArt` and to nothing
 behind either.
 
-**The Compendium's question reads no manifest.** Whether the card appears is asked on
-every menu open, and answering it by building the library meant deserialising every
-recording on the player's disk and preflighting each one - fifty files at the retention
-default, on the game's own thread, exactly in the case where the answer is no.
-So `RunLibrary.HasAnythingToShow` judges the shipped recordings, which are in memory
-already and normally answer it outright, and otherwise reads the run ids out of the
-recorder's directory index: any finished recording is a reason to show the button.
-`RunLibrary.RecordingFor` resolves one run the same way - the id names the recording in
-the index, so pressing a row costs that recording's manifest and no other's, and a
-manifest whose own run id disagrees with its name answers nothing rather than answering
-with the wrong run.
+**The Compendium entry is present whenever the shell may draw.**
+The browser is the only route to automatic index retrieval and direct run-code lookup, so an empty local library and a disabled `Fetch the run index` setting cannot hide it.
+It reads no manifest and performs no network request merely to decide visibility.
+`RunLibrary.RecordingFor` resolves one run from the recorder's directory index - the id names the recording in the index, so pressing a row costs that recording's manifest and no other's, and a manifest whose own run id disagrees with its name answers nothing rather than answering with the wrong run.
 
-The promise that makes is one-directional and nothing stronger: the card never hides a
-run the list would hold, and it can show onto a list that turns out empty, which the
-browser then draws with the "{n} not shown" numeral underneath.
-That direction is the point rather than a compromise.
-The browser is the only thing that judges a recording and the card is the only way to the
-browser, so anything persisted that could hide the card could close the only path to
-judging again - a per-build verdict cache lived here for two rounds and did exactly that
-after a game update, and a cached "could not judge" would have repeated it, because that
-reading fails again on every open.
+The browser still judges every run before showing it, and an empty or unavailable index is shown on that surface rather than represented by removing the way in.
+A transport failure is stated inside the browser while direct run-code lookup remains available.
 Nothing is remembered about a verdict now; `RunBrowser`'s list and the run-code lookup
 judge live, every time they open.
 

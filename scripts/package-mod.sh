@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Builds the platform-specific Runmobile package without copying game content into it.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+
+out_dir=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --directory) out_dir="$2"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+rid="$(dotnet --info | awk '$1 == "RID:" {print $2; exit}')"
+if [[ -z "$rid" ]]; then
+  echo "Could not determine the current .NET runtime identifier." >&2
+  exit 4
+fi
+if [[ -z "$out_dir" ]]; then
+  out_dir="build/distribution/Runmobile-$rid"
+fi
+out_dir="$(mkdir -p "$(dirname "$out_dir")" && cd "$(dirname "$out_dir")" && pwd)/$(basename "$out_dir")"
+
+./scripts/build.sh
+
+work="build/publish/runmobile-package/$rid"
+rm -rf "$work" "$out_dir"
+mkdir -p "$work/arbiter" "$work/bootstrap" "$out_dir/payload"
+
+dotnet publish src/Sts2PilotTrainer.Cli/Sts2PilotTrainer.Cli.csproj \
+  -c Release -r "$rid" --self-contained true --nologo -v quiet -o "$work/arbiter"
+dotnet publish tools/Sts2PilotTrainer.Bootstrap/Sts2PilotTrainer.Bootstrap.csproj \
+  -c Release -r "$rid" --self-contained true --nologo -v quiet -o "$work/bootstrap"
+
+built="build/bin/Sts2PilotTrainer.Mod/Release/net9.0"
+files=(
+  "Runmobile.json"
+  "Runmobile.dll"
+  "Sts2PilotTrainer.Trainer.dll"
+  "Sts2PilotTrainer.Engine.dll"
+  "Sts2PilotTrainer.Replay.dll"
+  "Sts2PilotTrainer.IO.dll"
+)
+for file in "${files[@]}"; do
+  if [[ ! -f "$built/$file" ]]; then
+    echo "Build output is missing $file; refusing to package a partial mod." >&2
+    exit 4
+  fi
+  cp "$built/$file" "$out_dir/payload/$file"
+done
+
+cp -R "$work/arbiter" "$out_dir/payload/arbiter"
+cp -R "$work/bootstrap" "$out_dir/bootstrap"
+cp scripts/install-package.sh "$out_dir/install.sh"
+chmod +x "$out_dir/install.sh"
+printf '%s\n' "$rid" > "$out_dir/runtime-id"
+archive="$out_dir.tar.gz"
+rm -f "$archive"
+tar -czf "$archive" -C "$out_dir" .
+
+echo "packaged     : $out_dir"
+echo "archive      : $archive"

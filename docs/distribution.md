@@ -40,9 +40,11 @@ that does not own the game.
 It contains `Runmobile.json`, `Runmobile.dll`, and the four project-owned libraries that the host uses: `Sts2PilotTrainer.Trainer.dll`, `Sts2PilotTrainer.Engine.dll`, `Sts2PilotTrainer.Replay.dll`, and `Sts2PilotTrainer.IO.dll`.
 It also contains a platform-specific, self-contained `arbiter/` directory so `Share this run` can apply the real publication gate in fresh processes without a repository checkout or a separately installed .NET runtime.
 It remains DLL-only in the game's packaging terms: `has_pck: false`, `dependencies: []`, `affects_gameplay: false`.
-The installer prepares a private, receipted copy of the player's own game assemblies under `arbiter/lib/` and routes engine writes into the profile-scoped Runmobile store.
+`./scripts/package-mod.sh` produces the distributable archive with a self-contained preparation tool and `install.sh` beside the mod payload.
+After extraction, `./install.sh` installs that payload without a repository checkout or a system .NET runtime.
+That installer prepares a private, receipted copy of the player's own game assemblies under `arbiter/lib/` and routes engine writes into the profile-scoped Runmobile store before atomically replacing the installed mod.
 The published archive contains no game assembly; the prepared copy is made locally from the installation during install.
-Everything else in this repository that could not go inside that archive — the video tooling and bootstrap — is a build-time or proof-only concern and is kept out of the published mod.
+Everything else in this repository that could not go inside that archive — including the video tooling — is a build-time or proof-only concern and is kept out of the published mod.
 See [dependencies](dependencies.md).
 
 **One version, and it is the mod manifest's.**

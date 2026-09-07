@@ -118,29 +118,13 @@ public sealed class RunLibraryStoreTests : IDisposable
         Assert.Equal(["native-good"], recordings.Select(stored => stored.Recording.RunId));
     }
 
-    /// <summary>
-    /// The Compendium's question reads no manifest, and it never hides a run the list
-    /// would hold.
-    ///
-    /// Proved against a recording whose manifest this build cannot parse at all: nothing
-    /// that opened the file could say anything about the run, and the question still
-    /// answers yes from the run id in the recorder's directory index. That is the
-    /// one-directional promise - a stored recording shows the button whatever judging it
-    /// would say, and the browser is then the thing that judges. The opposite direction
-    /// is what must never happen: the browser is the only thing that judges and the
-    /// button is the only way to the browser, so a card hidden on a remembered negative
-    /// closes the way in for good, which is what a per-build verdict cache did here for
-    /// two rounds.
-    /// </summary>
+    /// <summary>The browser remains reachable when no local or bundled run can provide
+    /// its entry, because automatic index fetching and direct code lookup begin there.</summary>
     [GameFact]
-    public void AStoredRecordingShowsTheCardWithoutAnyManifestBeingRead()
+    public void AnEmptyLibraryStillShowsTheBrowserEntry()
     {
-        Write("native-a-20260906-120000.replay.json", "{\"manifest_version\": 9999}");
-
-        Assert.Equal(["native-a-20260906-120000"], RunLibraryStore.StoredRunIds());
-        Assert.Empty(RunLibraryStore.MyRecordings());
-        Assert.DoesNotContain(RunLibrary.Runs(), run => run.Origin == RunOrigin.Mine);
-        Assert.True(RunLibrary.HasAnythingToShow());
+        Assert.Empty(RunLibraryStore.StoredRunIds());
+        Assert.True(CompendiumCard.ShowsButton());
     }
 
     /// <summary>
