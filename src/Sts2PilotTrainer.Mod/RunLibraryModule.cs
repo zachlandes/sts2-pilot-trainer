@@ -25,7 +25,7 @@ namespace Sts2PilotTrainer.Mod;
 /// a different one.</para>
 ///
 /// <para>What it establishes before installing anything is that this build still has
-/// the two members it hangs on. A library that silently failed to add its card would
+/// the members it hangs on. A library that silently failed to add its card would
 /// be a feature a player cannot find and cannot be told about, which is worse than a
 /// line in the log saying it is not there.</para>
 /// </summary>
@@ -41,6 +41,7 @@ internal sealed class RunLibraryModule : IRunmobileModule
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
         typeof(CompendiumCard),
+        typeof(MyRunsSettings),
         typeof(RunHistoryPlateHost.HistoryEntry),
     ];
 
@@ -202,7 +203,7 @@ internal static class PatchTargets
     /// Both declaration styles are read here rather than one: a class attribute may
     /// carry the type and the method name together, the way the recorder writes them,
     /// or carry the type alone with the method name on each patched method, the way the
-    /// library's two classes are written. Reading only the first said nothing at all
+    /// library's patch classes are written. Reading only the first said nothing at all
     /// about the second, on every build.
     /// </summary>
     internal static IReadOnlyList<string> Targets(IReadOnlyList<Type> patchClasses)
@@ -235,7 +236,7 @@ internal static class PatchTargets
     ///
     /// One traversal for both questions, because "which declaration styles are checked"
     /// is the thing that has already been got wrong once here: a reader that saw only
-    /// class attributes reported the library's two patch classes clean on every build,
+    /// class attributes reported the library's patch classes clean on every build,
     /// and a second copy of this walk is a second place for that to happen.
     /// </summary>
     private static IEnumerable<(Type DeclaringType, HarmonyMethod Info)> Named(

@@ -703,17 +703,13 @@ than guessing it.
 The third module, and the only one with a surface a player browses. What it offers and
 what it refuses is `Sts2PilotTrainer.Trainer`'s - `RunBrowser`, `RunView`,
 `RunHistoryPlate` and `LibraryCopy` - and every one of those is pure and tested without
-a game. What runs inside the client is the two patches below plus one drawing class.
+a game. What runs inside the client is the three patches below plus the drawing classes behind them.
 
-**Two hooks, and each is the honest one for its question.** `CompendiumCard` follows
-`NCompendiumSubmenu._Ready`, which is where the row is built and where every focus
-neighbour is assigned index by index, so a button added anywhere else exists and is
-unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides
-per-visit visibility, so "is there a run to show" is asked each time rather than once.
-`RunHistoryPlateHost` follows `NMapPointHistoryEntry._Ready` and connects the `Released`
-that entry already emits and nothing in the game listens to. One patch there rather than
-two: the entry carries both its own `FloorNum` and the `RunHistory` it belongs to, so
-nothing has to follow the screen's own selection to know which run a press is about.
+**Three hooks, and each is the honest one for its question.**
+`CompendiumCard` follows `NCompendiumSubmenu._Ready`, which is where the row is built and where every focus neighbour is assigned index by index, so a button added anywhere else exists and is unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides per-visit visibility, so "is there a run to show" is asked each time rather than once.
+`MyRunsSettings` follows `NSettingsScreen._Ready` and places its row beside `%ModdingButton`, the game's own modding settings entry point.
+`RunHistoryPlateHost` follows `NMapPointHistoryEntry._Ready` and connects the `Released` that entry already emits and nothing in the game listens to.
+One patch there rather than two: the entry carries both its own `FloorNum` and the `RunHistory` it belongs to, so nothing has to follow the screen's own selection to know which run a press is about.
 
 **Which recording is this run's is matched on four values, and ambiguity answers none.**
 The game's history and a recording both carry a seed, a character, an ascension and a
@@ -834,8 +830,8 @@ a captured `LibraryTab` has stopped this mod loading once already.
 Read out of v0.111.0 in a scratch decompile, ahead of building anything on them.
 Mechanism only: node paths and the lifecycle method a `[HarmonyPatch]` postfix would
 follow, in the shape the mode card already uses. Nothing here is a decision about what
-to draw. The Compendium and run-history hooks below are the ones the run library now
-uses; the settings screen's is still unbuilt.
+to draw.
+All three hooks below are the ones the run library now uses.
 
 **A card in the Compendium.** `NCompendiumSubmenu._Ready` is the hook. It resolves
 every entry by Godot unique name: a top row of four `NShortSubmenuButton`s
@@ -860,8 +856,7 @@ duplicating a tab node and a panel, adding both to the private `_tabs` dictionar
 connecting to that private method - all three reflectively. What the game does have is
 `NSettingsScreen._Ready`, which resolves `%ModdingButton` (an
 `NOpenModdingScreenButton`) along with `%Modding` and `%ModdingDivider`, and makes them
-visible only when modding is enabled. That is the game's own modding entry point and
-the cheaper hook by a wide margin.
+visible only when modding is enabled. That is the game's own modding entry point and the hook `MyRunsSettings` uses.
 
 **A run-history entry's `Released`.** `NMapPointHistoryEntry` is an
 `NClickableControl`, so it already emits `Released`; nothing in the game connects it.
@@ -950,7 +945,7 @@ A negative number is refused with a logged sentence naming the file and the valu
 Removing nothing survives only as an internal answer for a settings file this build cannot read - a sentence nobody could read is not somebody asking for their runs to be deleted, so recording off and deleting nothing fail in the same direction.
 
 `purge_my_runs` is the one-shot act: every recorded run is removed, and then the mod writes the member back to `false` so a purge is something a player did rather than a state they are left in.
-`keep_recent_runs` and `purge_my_runs` are the two members the mod writes, and each write edits the member it names: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
+`keep_recent_runs`, `purge_my_runs`, and `fetch_run_index` are the three members the mod writes, and each write edits the member it names: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
 A file that is there and is not a settings object is refused rather than written over, because reading one already means "record nothing" and overwriting it would discard what the player wrote in order to store what they meant to add to it.
 `godot.log` carries the receipt either way - `purged your recorded runs: N removed` for the act, `keeping your 50 most recent runs: N older one(s) removed` for the policy.
 
@@ -967,7 +962,7 @@ It cannot be mod start: the game has no chosen save profile then, so the store c
 
 ### The settings row, and the size figure
 
-Both members have a control now, and the whole of it is one row: `MyRunsSettingsRow` in the mod, drawn from `MyRunsRow` in `Sts2PilotTrainer.Trainer`, wired to the disk by `MyRunsSettings`.
+All three members have a control now, and the whole of it is one row: `MyRunsSettingsRow` in the mod, drawn from `MyRunsRow` in `Sts2PilotTrainer.Trainer`, wired to the disk by `MyRunsSettings`.
 It is a row and not a section.
 Where Runmobile's settings section hangs - `%ModdingButton` is the game's own modding entry point, and there is no Mods tab to extend - belongs to the run library along with everything else in it; this is one thing that section places, built whole so that placing it is all there is to do.
 Keeping it apart is also what lets it be assembled and asserted on in a process with no game, which `MyRunsSettingsRowTests` does node by node.

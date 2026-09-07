@@ -621,6 +621,7 @@ public sealed class RunLibraryModuleTests
                 "NCompendiumSubmenu.OnSubmenuOpened",
                 "NCompendiumSubmenu._Ready",
                 "NMapPointHistoryEntry._Ready",
+                "NSettingsScreen._Ready",
             ],
             PatchTargets.Targets(RunLibraryModule.PatchClasses).Order(StringComparer.Ordinal));
         Assert.Empty(PatchTargets.Unresolvable(RunLibraryModule.PatchClasses));

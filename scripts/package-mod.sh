@@ -16,11 +16,23 @@ if [[ -z "$rid" ]]; then
   exit 4
 fi
 out_dir="build/distribution/Runmobile-$rid"
+archive="$out_dir.tar.gz"
+work="build/publish/runmobile-package/$rid"
+rm -rf "$work" "$out_dir"
+rm -f "$archive"
+cleanup() {
+  status=$?
+  trap - EXIT
+  if [[ "$status" -ne 0 ]]; then
+    rm -rf "$work" "$out_dir" || true
+    rm -f "$archive" || true
+  fi
+  exit "$status"
+}
+trap cleanup EXIT
 
 ./scripts/build.sh
 
-work="build/publish/runmobile-package/$rid"
-rm -rf "$work" "$out_dir"
 mkdir -p "$work/arbiter" "$work/bootstrap" "$out_dir/payload"
 
 dotnet publish src/Sts2PilotTrainer.Cli/Sts2PilotTrainer.Cli.csproj \
@@ -54,9 +66,8 @@ cp -R "$work/bootstrap" "$out_dir/bootstrap"
 cp scripts/install-package.sh "$out_dir/install.sh"
 chmod +x "$out_dir/install.sh"
 printf '%s\n' "$rid" > "$out_dir/runtime-id"
-archive="$out_dir.tar.gz"
-rm -f "$archive"
 tar -czf "$archive" -C "$out_dir" .
+trap - EXIT
 
 echo "packaged     : $out_dir"
 echo "archive      : $archive"

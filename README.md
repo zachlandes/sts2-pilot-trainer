@@ -56,7 +56,8 @@ Three of the gate's conditions need a video, game-mode, seed-topology and eviden
 A fourth, baselib-path, is not asked either, and a weaker check stands in for it: the loaded mods' own declaration that they do not affect gameplay, which the gate's artifact says out loud.
 The arbiter enters fight 2 of that recording headlessly and reproduces the recorded digest byte for byte.
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
-- **Coming soon:** a settings screen for recording, and a control that shows how much space recordings take and deletes all of them.
+Settings show how much space recordings take, how many are kept, remove them on request, and control whether the shared-run index is fetched.
+- **Coming soon:** a control for turning recording itself off.
 
 **Browse the runs and play from one.**
 The Compendium, which the game opens when no run is active, has a Runmobile button beside its own Run History.

@@ -11,23 +11,19 @@ namespace Sts2PilotTrainer.Mod;
 /// What the player has told Runmobile to do, read from
 /// <c>settings.json</c> in the store.
 ///
-/// The file is the record and a screen is a way of editing it. Two of these members
-/// have a control now - <c>MyRunsSettingsRow</c> draws the standing policy and the act -
-/// and both go through the writers below rather than keeping a second copy of the
-/// answer, so a player who edits the file by hand and a player who moves the control
-/// are saying the same thing in the same place. Whether to record has no control yet
-/// and is a line in this file.
+/// The file is the record and a screen is a way of editing it.
+/// Three of these members have a control now: <c>MyRunsSettingsRow</c> draws the standing policy, the removal act, and whether the shared-run index is fetched.
+/// All three go through the writers below rather than keeping a second copy of the answer, so a player who edits the file by hand and a player who moves the control are saying the same thing in the same place.
+/// Whether to record has no control yet and is a line in this file.
 ///
 /// Recording is on by default because the recorder is not released to players before
 /// that surface is: the default is what the person building this wants while it is
 /// being built, and it becomes a decision the moment somebody else can see it.
 ///
-/// Three things are said here and they are three different kinds of sentence. Whether
-/// to record is a standing choice. How many runs to keep is a standing policy, and it
-/// has a default rather than being unbounded because the recorder writes a real file
-/// per run and nothing else ever removed one. Asking for every run to be removed is a
-/// one-shot act: it is honoured once and then set to false, which is both how it stops
-/// repeating and how a player sees that it happened.
+/// Four things are said here and they are three different kinds of sentence.
+/// Whether to record and whether to fetch the shared-run index are standing choices.
+/// How many runs to keep is a standing policy, and it has a default rather than being unbounded because the recorder writes a real file per run and nothing else ever removed one.
+/// Asking for every run to be removed is a one-shot act: it is honoured once and then set to false, which is both how it stops repeating and how a player sees that it happened.
 ///
 /// Every write here edits the member it names and leaves the rest of the document as
 /// the player wrote it. That is not tidiness: the rest of the file is their own text,

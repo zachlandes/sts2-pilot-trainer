@@ -114,6 +114,46 @@ public sealed class ModHostBoundaryTests
     }
 
     [Fact]
+    public void FailedPackagingRemovesStaleAndPartialDistributables()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-package-failure-{Guid.NewGuid():N}");
+        var scripts = Path.Combine(sandbox, "scripts");
+        Directory.CreateDirectory(scripts);
+        var packageScript = Path.Combine(scripts, "package-mod.sh");
+        var buildScript = Path.Combine(scripts, "build.sh");
+        File.Copy(
+            Path.Combine(Arbiter.RepoRoot, "scripts", "package-mod.sh"),
+            packageScript);
+        File.WriteAllText(buildScript, "#!/usr/bin/env bash\nexit 0\n");
+        File.SetUnixFileMode(
+            buildScript,
+            UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+        var output = Path.Combine(sandbox, "build", "distribution", $"Runmobile-{rid}");
+        var archive = output + ".tar.gz";
+        Directory.CreateDirectory(output);
+        File.WriteAllText(Path.Combine(output, "stale.txt"), "stale");
+        File.WriteAllText(archive, "stale");
+
+        try
+        {
+            var result = RunScript(packageScript);
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.False(Directory.Exists(output));
+            Assert.False(File.Exists(archive));
+            Assert.False(Directory.Exists(Path.Combine(
+                sandbox, "build", "publish", "runmobile-package", rid)));
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
+    [Fact]
     public void IncompletePackagePreservesTheWorkingInstallation()
     {
         var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-partial-package-{Guid.NewGuid():N}");
