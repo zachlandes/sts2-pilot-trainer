@@ -529,7 +529,7 @@ internal static class RunLibrary
     /// Read from the game rather than remembered, because it is the one value the whole
     /// hidden rule turns on and a stale copy of it would hide the wrong runs.
     /// </summary>
-    internal static string ThisBuild() => GameIdentity.Read().BuildVersion;
+    internal static string ThisBuild() => GameIdentity.ReadForCurrentEngine().BuildVersion;
 
     /// <summary>
     /// The recordings that travel inside the mod.

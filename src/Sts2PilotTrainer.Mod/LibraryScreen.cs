@@ -152,11 +152,17 @@ internal static class LibraryScreen
             label.BbcodeEnabled = true;
             label.MinFontSize = MinimumBodyFontSize;
             label.ScrollActive = true;
+            // Set before text: FitContent updates the minimum from the sentence, and
+            // switching it off afterwards leaves that oversized minimum until a frame
+            // the synchronous row measurement does not wait for.
+            label.FitContent = false;
             content.SetText(title, body);
 
             // Deferred for the reason Press clears first: the popup takes itself down
             // when the ribbon is pressed, and a screen shown inside the handler would be
             // the one it took down. Deferring puts the next screen after that.
+            var rowOffset = shareSubmitted is not null ? 4f : codeSubmitted is null ? 0f : 1f;
+            ReserveRowRoom(content, rows, rowOffset);
             var share = shareSubmitted is null ? null : AddShareFields(content);
             content.InitYesButton(
                 PlaceholderConfirm,
@@ -198,7 +204,7 @@ internal static class LibraryScreen
             var first = AddRows(
                 content,
                 rows,
-                share is not null ? 4f : field is null ? 0f : 1f,
+                rowOffset,
                 page,
                 turned => Show(
                     title, body, rows, backLabel, back, codeSubmitted, codePlaceholder, turned,
@@ -237,6 +243,43 @@ internal static class LibraryScreen
     }
 
     /// <summary>
+    /// Bounds the popup's scrolling body above the controls that follow it.
+    ///
+    /// The rich-text label grows to its content before this mod adds anything. Without
+    /// an explicit bound, a long browser summary moves the measured row start below the
+    /// popup's own ribbons and leaves a negative number of places. The bound is derived
+    /// from those ribbons and row heights, not from a viewport constant.
+    /// </summary>
+    private static void ReserveRowRoom(
+        NVerticalPopup content, IReadOnlyList<ScreenRow> rows, float offsetSteps)
+    {
+        if (rows.Count == 0) return;
+
+        var label = content.BodyLabel();
+        var prototype = content.NoButton;
+        var step = prototype.Size.Y * (rows.Any(row => row.Note is { Length: > 0 })
+            ? NotedRowStep
+            : RowStep);
+        if (step <= 0f) return;
+
+        var pinned = rows.Count(row => row.Pinned);
+        var paged = rows.Count - pinned;
+        var places = pinned + Math.Min(ScreenPage.MinimumPerPage, paged);
+        var bottom = prototype.Position.Y - (step * places) -
+                     (prototype.Size.Y * RowStep * offsetSteps);
+        var height = bottom - label.Position.Y;
+        if (height <= 0f)
+        {
+            throw new InvalidOperationException(
+                "This build's popup has no room for the library body and its row controls.");
+        }
+
+        label.FitContent = false;
+        label.CustomMinimumSize = new Vector2(label.CustomMinimumSize.X, 0f);
+        label.Size = new Vector2(label.Size.X, Math.Min(label.Size.Y, height));
+    }
+
+    /// <summary>
     /// Lays the rows out under the body and joins them into one focus column.
     ///
     /// Returns the first row a player can press, which is where focus goes: a screen
@@ -262,7 +305,6 @@ internal static class LibraryScreen
         var prototype = content.NoButton;
         var label = content.BodyLabel();
         var noted = rows.Any(row => row.Note is { Length: > 0 });
-        var top = label.Position.Y + label.Size.Y + (prototype.Size.Y * RowStep * offsetSteps);
         var step = prototype.Size.Y * (noted ? NotedRowStep : RowStep);
         if (step <= 0f)
         {
@@ -270,10 +312,16 @@ internal static class LibraryScreen
                 "This build's popup ribbon has no measurable height, so a row column cannot be laid out.");
         }
 
-        var room = prototype.Position.Y - top;
-        var fits = (int)Math.Floor(room / step);
         var pinned = rows.Where(row => row.Pinned).ToList();
         var paged = rows.Where(row => !row.Pinned).ToList();
+        var required = pinned.Count + Math.Min(ScreenPage.MinimumPerPage, paged.Count);
+        var naturalTop = label.Position.Y + label.Size.Y +
+                         (prototype.Size.Y * RowStep * offsetSteps);
+        // One pixel keeps floating-point division from flooring an exact authored
+        // number of steps to one fewer place.
+        var top = Math.Min(naturalTop, prototype.Position.Y - (step * required) - 1f);
+        var room = prototype.Position.Y - top;
+        var fits = (int)Math.Floor(room / step);
         var slice = revealRow is { } selected
             ? ScreenPage.Containing(paged.Count, fits, selected, pinned.Count)
             : ScreenPage.For(paged.Count, fits, page, pinned.Count);

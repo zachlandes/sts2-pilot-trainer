@@ -69,12 +69,7 @@ public static class LocalEnvironment
         EnvironmentIdentity expected, PlayerProgress? progress = null)
     {
         progress ??= PlayerProgress.AllUnlocked;
-        // Which reading answers "what build is this" depends on how the engine got
-        // here. Inside the retail client there is no prepared copy and no bootstrap
-        // receipt to consult; the running process is the authority on itself.
-        var identity = EngineHost.Origin == EngineOrigin.RunningGame
-            ? GameIdentity.ReadFromRunningGame()
-            : GameIdentity.Read();
+        var identity = GameIdentity.ReadForCurrentEngine();
 
         // A reading, so a state this build cannot build is reported rather than
         // thrown: the screen that exists to say why a recording cannot be replayed
