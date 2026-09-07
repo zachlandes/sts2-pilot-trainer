@@ -129,24 +129,51 @@ public sealed class RunSharingTests
     {
         var incompatible = new LibraryRun(
             "run", RunOrigin.Recent, "Ada", "Ironclad", 0, "v0.110.0", [1], "won",
-            false, RunVerdict.Absent, [], DateTimeOffset.Parse("2026-09-01T00:00:00Z"));
+            false, RunVerdict.Absent, [], DateTimeOffset.Parse("2026-09-01T00:00:00Z"),
+            ShareId: "share-id", ShareCode: "ABC123");
         var shared = new SharedRun("id", "ABC123", "{}",
             new ShareSubmission("Run", "", "Ada", true), incompatible,
             DateTimeOffset.Parse("2026-09-07T00:00:00Z"));
 
         var initial = RunBrowser.For(LibraryTab.Community, [shared.Run], "v0.111.0");
         var found = RunBrowser.For(
-            LibraryTab.Community, [shared.Run], "v0.111.0", selectedRunId: "run");
+            LibraryTab.Community, [shared.Run], "v0.111.0", selectedEntryId: "share-id");
 
         Assert.True(initial.CompatibleOnly);
         Assert.Empty(initial.Groups);
         Assert.False(found.CompatibleOnly);
-        Assert.Equal("run", found.SelectedRunId);
+        Assert.Equal("share-id", found.SelectedEntryId);
         Assert.Equal(incompatible, Assert.Single(Assert.Single(found.Groups).Runs));
-        var lookup = RunBrowser.Lookup("run", [incompatible], "v0.111.0");
+        var lookup = RunBrowser.Lookup("share-id", [incompatible], "v0.111.0");
         Assert.Equal(LookupOutcome.IncompatibleBuild, lookup.Outcome);
         Assert.Contains("v0.110.0", lookup.Body);
         Assert.Contains("v0.111.0", lookup.Body);
+    }
+
+    [Fact]
+    public void SharedEntriesWithOneManifestRunIdSelectBySharingIdentity()
+    {
+        var first = new LibraryRun(
+            "same-run", RunOrigin.Recent, "Ada", "Ironclad", 0, "v0.110.0", [1], "won",
+            false, RunVerdict.Absent, [], DateTimeOffset.Parse("2026-09-01T00:00:00Z"),
+            ShareId: "first-share", ShareCode: "FIRST");
+        var second = first with
+        {
+            Creator = "Grace",
+            ShareId = "second-share",
+            ShareCode = "SECOND",
+        };
+
+        var browser = RunBrowser.For(
+            LibraryTab.Community, [first, second], "v0.111.0",
+            compatibleOnly: true, selectedEntryId: second.EntryId);
+
+        Assert.False(browser.CompatibleOnly);
+        Assert.Equal(2, Assert.Single(browser.Groups).Runs.Count);
+        Assert.Equal(second.EntryId, browser.SelectedEntryId);
+        Assert.Equal(second, Assert.Single(
+            Assert.Single(browser.Groups).Runs,
+            run => run.EntryId == browser.SelectedEntryId));
     }
 
     [Fact]

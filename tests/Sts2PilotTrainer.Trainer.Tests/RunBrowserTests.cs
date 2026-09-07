@@ -220,9 +220,10 @@ public sealed class RunBrowserTests
 
         var answer = RunBrowser.Lookup("old", runs, Build);
         var browser = RunBrowser.For(
-            LibraryTab.Community, runs, Build, compatibleOnly: true, selectedRunId: answer.Run!.RunId);
+            LibraryTab.Community, runs, Build, compatibleOnly: true,
+            selectedEntryId: answer.Run!.EntryId);
         var sorted = Listed(browser).ToList();
-        var selected = sorted.FindIndex(run => run.RunId == browser.SelectedRunId);
+        var selected = sorted.FindIndex(run => run.EntryId == browser.SelectedEntryId);
         var page = ScreenPage.Containing(sorted.Count, perPage: 8, selected, pinned: 2);
 
         Assert.False(browser.CompatibleOnly);

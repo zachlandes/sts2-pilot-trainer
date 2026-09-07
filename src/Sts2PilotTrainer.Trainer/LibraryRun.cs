@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Trainer;
@@ -80,8 +81,13 @@ public sealed record LibraryRun(
     bool? Multiplayer,
     RunVerdict Verdict,
     IReadOnlyList<int> FightsPlayed,
-    DateTimeOffset? Recorded = null)
+    DateTimeOffset? Recorded = null,
+    [property: JsonIgnore] string? ShareId = null,
+    [property: JsonIgnore] string? ShareCode = null)
 {
+    [JsonIgnore]
+    public string EntryId => ShareId ?? RunId;
+
     /// <summary>The outcome a recording of a won run carries.</summary>
     public const string WonOutcome = "won";
 

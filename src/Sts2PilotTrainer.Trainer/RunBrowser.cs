@@ -29,7 +29,7 @@ public sealed record RunBrowser(
     string? Footer,
     string? FooterAction,
     bool CompatibleOnly = true,
-    string? SelectedRunId = null)
+    string? SelectedEntryId = null)
 {
     /// <summary>
     /// The browser for one tab.
@@ -59,13 +59,14 @@ public sealed record RunBrowser(
         string thisBuild,
         long? myRunsBytes = null,
         bool compatibleOnly = true,
-        string? selectedRunId = null)
+        string? selectedEntryId = null)
     {
         var mine = tab == LibraryTab.MyRuns;
         var inTab = runs.Where(run => (run.Origin == RunOrigin.Mine) == mine).ToList();
-        var selected = selectedRunId is null
+        var selected = selectedEntryId is null
             ? null
-            : inTab.FirstOrDefault(run => string.Equals(run.RunId, selectedRunId, StringComparison.Ordinal));
+            : inTab.FirstOrDefault(run =>
+                string.Equals(run.EntryId, selectedEntryId, StringComparison.Ordinal));
         if (selected is { Verdict: RunVerdict.Absent, Multiplayer: not true }) compatibleOnly = false;
 
         var eligible = inTab.Where(run =>
@@ -92,7 +93,7 @@ public sealed record RunBrowser(
                 : null,
             mine && myRunsBytes is not null ? LibraryCopy.MyRunsFooterAction : null,
             compatibleOnly,
-            selected?.RunId);
+            selected?.EntryId);
     }
 
     /// <summary>
@@ -134,7 +135,7 @@ public sealed record RunBrowser(
         }
 
         var run = runs.FirstOrDefault(candidate =>
-            string.Equals(candidate.RunId, wanted, StringComparison.OrdinalIgnoreCase));
+            string.Equals(candidate.EntryId, wanted, StringComparison.OrdinalIgnoreCase));
         if (run is null)
         {
             return new RunLookup(
@@ -200,7 +201,7 @@ public sealed record RunBrowser(
         .. runs
             .OrderByDescending(run => run.Recorded is not null)
             .ThenByDescending(run => run.Recorded ?? DateTimeOffset.MinValue)
-            .ThenBy(run => run.RunId, StringComparer.Ordinal),
+            .ThenBy(run => run.EntryId, StringComparer.Ordinal),
     ];
 }
 

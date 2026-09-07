@@ -40,14 +40,14 @@ internal static class RunBrowserScreen
     internal static void Open() => OpenTab(LibraryTab.Community);
 
     internal static void OpenTab(
-        LibraryTab tab, bool compatibleOnly = true, string? selectedRunId = null,
+        LibraryTab tab, bool compatibleOnly = true, string? selectedEntryId = null,
         bool skipIndexFetch = false)
     {
         try
         {
             if (!skipIndexFetch && RunLibrary.ShouldFetchIndex)
             {
-                BeginIndexFetch((int)tab, compatibleOnly, selectedRunId);
+                BeginIndexFetch((int)tab, compatibleOnly, selectedEntryId);
                 return;
             }
 
@@ -55,7 +55,7 @@ internal static class RunBrowserScreen
             var runs = RunLibrary.Runs();
             var browser = RunBrowser.For(
                 tab, runs, build, tab == LibraryTab.MyRuns ? RunLibraryStore.MyRunsBytes() : null,
-                compatibleOnly, selectedRunId);
+                compatibleOnly, selectedEntryId);
 
             // Nothing captured here is a sibling assembly's type. A lambda in this
             // assembly becomes a class whose fields are what it captured, and the game
@@ -90,11 +90,11 @@ internal static class RunBrowserScreen
             {
                 foreach (var run in group.Runs)
                 {
-                    var runId = run.RunId;
-                    var shareCode = community ? RunLibrary.ShareCodeFor(runId) : null;
+                    var entryId = run.EntryId;
+                    var shareCode = community ? run.ShareCode : null;
                     var mine = !community;
                     var selected = string.Equals(
-                        browser.SelectedRunId, run.RunId, StringComparison.Ordinal);
+                        browser.SelectedEntryId, entryId, StringComparison.Ordinal);
                     var reason = run.Listed
                         ? null
                         : LibraryCopy.LookupRefusedBuild(run.RecordedBuild, build);
@@ -105,7 +105,7 @@ internal static class RunBrowserScreen
                         () =>
                         {
                             if (shareCode is { Length: > 0 }) Look(shareCode, mine);
-                            else OpenRun(runId, fromMyRuns: mine);
+                            else OpenRun(entryId, fromMyRuns: mine);
                         },
                         Reason: reason));
                 }
@@ -128,7 +128,7 @@ internal static class RunBrowserScreen
         }
     }
 
-    private static void BeginIndexFetch(int tab, bool compatibleOnly, string? selectedRunId)
+    private static void BeginIndexFetch(int tab, bool compatibleOnly, string? selectedEntryId)
     {
         var surface = LibraryScreen.Show(
             LibraryCopy.CompendiumCard,
@@ -141,7 +141,7 @@ internal static class RunBrowserScreen
         lock (PendingLock)
         {
             PendingIndexRequests[request] = new IndexRequest(
-                tab, compatibleOnly, selectedRunId, surface, scope);
+                tab, compatibleOnly, selectedEntryId, surface, scope);
             PendingIndexes[request] = task;
         }
         _ = task.ContinueWith(
@@ -169,7 +169,7 @@ internal static class RunBrowserScreen
             if (LibraryScreen.IsCurrent(state.Surface))
             {
                 LibraryScreen.Dismiss();
-                OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedRunId);
+                OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedEntryId);
             }
             return;
         }
@@ -184,7 +184,7 @@ internal static class RunBrowserScreen
                     if (LibraryScreen.IsCurrent(state.Surface))
                     {
                         LibraryScreen.Dismiss();
-                        OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedRunId);
+                        OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedEntryId);
                     }
                     return;
                 }
@@ -216,12 +216,12 @@ internal static class RunBrowserScreen
         if (!LibraryScreen.IsCurrent(state.Surface)) return;
         LibraryScreen.Dismiss();
         OpenTab(
-            (LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedRunId,
+            (LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedEntryId,
             skipIndexFetch: failed);
     }
 
     private sealed record IndexRequest(
-        int Tab, bool CompatibleOnly, string? SelectedRunId, long Surface, string Scope);
+        int Tab, bool CompatibleOnly, string? SelectedEntryId, long Surface, string Scope);
 
     /// <summary>
     /// One run, opened at a floor.
@@ -235,24 +235,25 @@ internal static class RunBrowserScreen
     /// and a captured sibling-assembly type stops the whole mod loading. See
     /// docs/in-game-host.md.
     /// </summary>
-    internal static void OpenRun(string runId, int? floor = null, bool fromMyRuns = false)
+    internal static void OpenRun(string entryId, int? floor = null, bool fromMyRuns = false)
     {
         try
         {
-            if (RunLibrary.RecordingFor(runId) is not { } recording)
+            if (RunLibrary.RecordingFor(entryId) is not { } recording)
             {
-                Refuse($"'{runId}' is not a run this library holds", null);
+                Refuse($"'{entryId}' is not a run this library holds", null);
                 return;
             }
 
             var view = RunView.For(
                 recording, RunLibraryStore.ReadProgress(), floor,
-                CombatTrainerModule.Instance.FightsShownThisSitting(runId));
-            var rows = new List<ScreenRow>(EnteringRows(view, runId, RecordingIdentity.CreatorOrNull(recording)));
+                CombatTrainerModule.Instance.FightsShownThisSitting(recording.RunId));
+            var rows = new List<ScreenRow>(EnteringRows(
+                view, entryId, RecordingIdentity.CreatorOrNull(recording)));
 
             if (view.Positions.Count > 1)
             {
-                var id = runId;
+                var id = entryId;
                 var mine = fromMyRuns;
                 rows.Add(new ScreenRow(
                     LibraryCopy.ChooseAFloor, Enabled: true, () => ChooseFloor(id, floor, mine)));
@@ -268,7 +269,7 @@ internal static class RunBrowserScreen
         }
         catch (Exception ex)
         {
-            Refuse($"could not open '{runId}'", ex);
+            Refuse($"could not open '{entryId}'", ex);
         }
     }
 
@@ -427,17 +428,17 @@ internal static class RunBrowserScreen
                 var shared = RunLibrary.AcceptShared(
                     found, state.Code, expectedScope: state.Scope);
                 var lookup = RunBrowser.Lookup(
-                    shared.Run.RunId, [shared.Run], RunLibrary.ThisBuild());
+                    shared.Run.EntryId, [shared.Run], RunLibrary.ThisBuild());
                 if (lookup.Outcome == LookupOutcome.Found)
                 {
-                    OpenRun(shared.Run.RunId, fromMyRuns: state.FromMyRuns);
+                    OpenRun(shared.Run.EntryId, fromMyRuns: state.FromMyRuns);
                     return;
                 }
 
                 if (lookup.Outcome == LookupOutcome.IncompatibleBuild)
                 {
                     OpenTab(LibraryTab.Community, compatibleOnly: false,
-                        selectedRunId: shared.Run.RunId);
+                        selectedEntryId: shared.Run.EntryId);
                     return;
                 }
 
@@ -467,12 +468,7 @@ internal static class RunBrowserScreen
         }
 
         var fromMyRuns = state.FromMyRuns;
-        var answer = RunBrowser.Lookup(state.Code, RunLibrary.Runs(), RunLibrary.ThisBuild());
-        if (!answer.Refused && answer.Run is { } local)
-        {
-            OpenRun(local.RunId, fromMyRuns: state.FromMyRuns);
-            return;
-        }
+        var answer = RunBrowser.Lookup(state.Code, [], RunLibrary.ThisBuild());
 
         var body = answer.Note is { Length: > 0 } note
             ? $"{answer.Body}\n\n{LibraryMarkup.Dim(note)}"
@@ -493,14 +489,14 @@ internal static class RunBrowserScreen
     /// even entered - the run they are about to be put in is the recording's, and what
     /// happens in it is the comparison's business rather than this file's.
     /// </summary>
-    private static void Enter(string runId, int kind, int? fight, int? floor)
+    private static void Enter(string entryId, int kind, int? fight, int? floor)
     {
-        if (RunLibrary.RecordingFor(runId) is not { } recording)
+        if (RunLibrary.RecordingFor(entryId) is not { } recording)
         {
-            throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
+            throw new InvalidOperationException($"'{entryId}' is not a run this library holds.");
         }
 
-        if (fight is { } ordinal) RunLibraryStore.RecordFightPlayed(runId, ordinal);
+        if (fight is { } ordinal) RunLibraryStore.RecordFightPlayed(recording.RunId, ordinal);
 
         var plan = (RunViewRowKind)kind switch
         {
@@ -508,7 +504,7 @@ internal static class RunBrowserScreen
                 (IBoundaryPlan)FloorEntryPlan.For(recording, atFloor),
             _ when fight is { } atFight => RecordedFightPlan.For(recording, atFight),
             _ => throw new InvalidOperationException(
-                $"That row names no boundary of '{runId}', so there is nowhere to stand."),
+                $"That row names no boundary of '{entryId}', so there is nowhere to stand."),
         };
 
         _ = RecordedFightRun.Start(recording, plan);

@@ -84,24 +84,10 @@ internal static class RunLibrary
 
         foreach (var item in shared.Values)
         {
-            var duplicate = false;
-            foreach (var run in runs)
+            runs.Add(item.Run with
             {
-                if (run.Origin != RunOrigin.Mine &&
-                    string.Equals(run.RunId, item.Run.RunId, StringComparison.Ordinal))
-                {
-                    duplicate = true;
-                    break;
-                }
-            }
-
-            if (!duplicate)
-            {
-                runs.Add(item.Run with
-                {
-                    FightsPlayed = progress.PlayedFrom(item.Run.RunId),
-                });
-            }
+                FightsPlayed = progress.PlayedFrom(item.Run.RunId),
+            });
         }
 
         return runs;
@@ -143,7 +129,14 @@ internal static class RunLibrary
 
             var verdict = RunVerdicts.For(
                 item.Environment, item.SourceKind, item.Run.RunId, build);
-            accepted[item.Code] = item with
+            if (accepted.Values.Any(acceptedItem =>
+                    string.Equals(acceptedItem.Code, item.Code, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ShareValidationException(
+                    "The run index assigns one sharing code to more than one run.");
+            }
+
+            accepted[item.ShareId] = item with
             {
                 Run = OnlineRun(item, verdict),
             };
@@ -169,6 +162,8 @@ internal static class RunLibrary
             Verdict = verdict,
             FightsPlayed = [],
             Recorded = item.SubmittedAt,
+            ShareId = item.ShareId,
+            ShareCode = item.Code,
         };
     }
 
@@ -185,18 +180,19 @@ internal static class RunLibrary
     /// <summary>The recording behind one row, or null when nothing here is that run.
     /// Resolved by id through the directory index, so pressing a row costs that
     /// recording's manifest and no other's.</summary>
-    internal static ReplayManifest? RecordingFor(string runId)
+    internal static ReplayManifest? RecordingFor(string entryId)
     {
         RefreshSharingScope();
+        var shared = SharedRecordings.Values.FirstOrDefault(item =>
+            string.Equals(item.ShareId, entryId, StringComparison.Ordinal));
+        if (shared is not null) return ManifestJson.Deserialize(shared.ManifestJson);
+
         foreach (var included in Included())
         {
-            if (string.Equals(included.RunId, runId, StringComparison.Ordinal)) return included;
+            if (string.Equals(included.RunId, entryId, StringComparison.Ordinal)) return included;
         }
 
-        if (RunLibraryStore.RecordingFor(runId) is { } local) return local;
-        var shared = SharedRecordings.Values.FirstOrDefault(item =>
-            string.Equals(item.Run.RunId, runId, StringComparison.Ordinal));
-        return shared is null ? null : ManifestJson.Deserialize(shared.ManifestJson);
+        return RunLibraryStore.RecordingFor(entryId);
     }
 
     internal static Task<SharedRun?> FindSharedAsync(string code) =>
@@ -248,19 +244,12 @@ internal static class RunLibrary
             recorded: found.SubmittedAt) with
         {
             Creator = found.Submission.DisplayName,
+            ShareId = found.ShareId,
+            ShareCode = found.Code,
         };
         var local = found with { Run = described };
-        SharedRecordings[local.Code] = local;
+        SharedRecordings[local.ShareId] = local;
         return local;
-    }
-
-    internal static string? ShareCodeFor(string runId)
-    {
-        RefreshSharingScope();
-        return SharedRecordings.Values.FirstOrDefault(item =>
-            string.Equals(item.Run.RunId, runId, StringComparison.Ordinal))?.Code
-            ?? SharedIndex.Values.FirstOrDefault(item =>
-                string.Equals(item.Run.RunId, runId, StringComparison.Ordinal))?.Code;
     }
 
     internal static Task<SharedRun> ShareAsync(
@@ -416,7 +405,8 @@ internal static class RunLibrary
             if (configuredSharing is null ||
                 !string.Equals(configuredSharingEndpoint, endpoint, StringComparison.Ordinal))
             {
-                configuredSharing = new HttpRunSharingApi(new HttpClient
+                configuredSharing = new HttpRunSharingApi(new HttpClient(
+                    new HttpClientHandler { AllowAutoRedirect = false })
                 {
                     BaseAddress = new Uri(endpoint),
                     Timeout = TimeSpan.FromSeconds(10),

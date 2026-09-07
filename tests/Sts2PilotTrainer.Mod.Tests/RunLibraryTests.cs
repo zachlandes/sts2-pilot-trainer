@@ -351,8 +351,29 @@ public sealed class RunLibraryStoreTests : IDisposable
         RunLibrary.AcceptShared(shared, shared.Code);
         RunLibrary.AcceptIndex([]);
 
-        Assert.Contains(RunLibrary.Runs(), run => run.RunId == recording.RunId);
-        Assert.Equal(shared.Code, RunLibrary.ShareCodeFor(recording.RunId));
+        var listed = Assert.Single(RunLibrary.Runs(), run => run.EntryId == shared.ShareId);
+        Assert.Equal(shared.Code, listed.ShareCode);
+    }
+
+    [GameFact]
+    public void SharedEntriesWithOneManifestRunIdRemainDistinct()
+    {
+        var first = Shared(Recording("same-run", "FIRSTSEED"));
+        var second = Shared(Recording("same-run", "SECONDSEED"));
+
+        RunLibrary.AcceptShared(first);
+        RunLibrary.AcceptShared(second);
+
+        var entries = RunLibrary.Runs()
+            .Where(run => run.EntryId == first.ShareId || run.EntryId == second.ShareId)
+            .ToList();
+        Assert.Equal(2, entries.Count);
+        Assert.Equal(
+            "FIRSTSEED",
+            RunLibrary.RecordingFor(first.ShareId)!.Environment.Seed.Value);
+        Assert.Equal(
+            "SECONDSEED",
+            RunLibrary.RecordingFor(second.ShareId)!.Environment.Seed.Value);
     }
 
     [GameFact]
@@ -369,7 +390,7 @@ public sealed class RunLibraryStoreTests : IDisposable
         ConfigureEndpoint(_root, "https://two.example.test/v1/");
         Assert.True(RunLibrary.SharingAvailable);
         Assert.True(RunLibrary.ShouldFetchIndex);
-        Assert.Null(RunLibrary.ShareCodeFor(shared.Run.RunId));
+        Assert.DoesNotContain(RunLibrary.Runs(), run => run.EntryId == shared.ShareId);
         Assert.False(RunLibrary.AcceptIndex([summary], firstScope));
         Assert.Throws<ShareValidationException>(() =>
             RunLibrary.AcceptShared(shared, expectedScope: firstScope));
@@ -383,7 +404,7 @@ public sealed class RunLibraryStoreTests : IDisposable
 
         Assert.True(RunLibrary.SharingAvailable);
         Assert.True(RunLibrary.ShouldFetchIndex);
-        Assert.Null(RunLibrary.ShareCodeFor(shared.Run.RunId));
+        Assert.DoesNotContain(RunLibrary.Runs(), run => run.EntryId == shared.ShareId);
     }
 
     [GameFact]
