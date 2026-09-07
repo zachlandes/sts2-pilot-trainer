@@ -251,6 +251,17 @@ public sealed class FormatSixValidatorTests
                             RollbackToSeq = rollbackToSeq,
                             RollbackToDigest = rollbackDigest,
                             Actions = [discardedAction],
+                            Trace = new ReplayTrace
+                            {
+                                Steps =
+                                [
+                                    TraceStep(
+                                        1, ActionVerb.MapMove.ToString(), manifest.Actions[1].Args,
+                                        "in_progress", 2),
+                                    TraceStep(
+                                        2, ActionVerb.PlayCard.ToString(), discardedAction.Args, "victory", 2),
+                                ],
+                            },
                         },
                     ],
                 },

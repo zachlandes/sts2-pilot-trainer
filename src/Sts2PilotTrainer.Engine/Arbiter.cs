@@ -18,12 +18,56 @@ public static class Arbiter
     public static ArbiterOutcome Run(
         ReplayManifest manifest, int? stopAfterSeq = null,
         PlayerProgress? progress = null,
-        string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null)
+        string? gameModeOverride = null, IReadOnlyList<string>? modifierTypeNames = null) =>
+        RunCore(manifest, stopAfterSeq, progress, gameModeOverride, modifierTypeNames, validate: true);
+
+    public static ArbiterOutcome RunDiscardedBranch(
+        ReplayManifest manifest, int branchIndex, PlayerProgress? progress = null)
     {
         var validation = ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
         {
             throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
+        }
+
+        var branches = manifest.Source.Native?.Discarded ?? [];
+        if (branchIndex < 0 || branchIndex >= branches.Count)
+        {
+            throw new ManifestException($"Discarded branch {branchIndex} does not exist.");
+        }
+
+        var branch = branches[branchIndex];
+        var branchManifest = manifest with
+        {
+            Source = manifest.Source with
+            {
+                Native = manifest.Source.Native! with { Discarded = null },
+            },
+            Actions =
+            [
+                .. manifest.Actions.Where(action => action.Seq <= branch.RollbackToSeq),
+                .. branch.Actions,
+            ],
+            Checkpoints = manifest.Checkpoints
+                .Where(checkpoint => checkpoint.AfterSeq <= branch.RollbackToSeq)
+                .ToList(),
+            Boundaries = [],
+            Verification = null,
+        };
+        return RunCore(branchManifest, null, progress, null, null, validate: false);
+    }
+
+    private static ArbiterOutcome RunCore(
+        ReplayManifest manifest, int? stopAfterSeq, PlayerProgress? progress,
+        string? gameModeOverride, IReadOnlyList<string>? modifierTypeNames, bool validate)
+    {
+        if (validate)
+        {
+            var validation = ManifestValidator.Validate(manifest);
+            if (!validation.IsValid)
+            {
+                throw new ManifestException("Manifest is not valid:\n" + validation.Describe());
+            }
         }
 
         // The recording's own supplied state rather than everything-unlocked, because a

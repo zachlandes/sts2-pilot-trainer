@@ -157,11 +157,13 @@ internal static class Program
               the game-free tests that read it.
 
           replay          <manifest> [--out <path>] [--state-out <path>] [--stop-after <seq>]
-                                     [--progress <model>] [--show-trace]
+                                     [--progress <model>] [--show-trace] [--discarded-branch <index>]
               Replay the manifest's ordered action history from run start and check
               every checkpoint. Writes the manifest back with its verification filled
               in, including the step-by-step trace. --show-trace prints what changed at
               each step; see docs/comparison-direction.md for what the trace is for.
+              --discarded-branch replays that branch from the recorded room-entry
+              state and refuses unless the engine reaches the captured fight.
 
           determinism     <manifest> --runs <n>
               Replay the same manifest in n fresh processes and compare canonical state.

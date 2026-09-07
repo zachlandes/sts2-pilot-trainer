@@ -303,7 +303,7 @@ public sealed class RunCaptureTests
         var result = ManifestValidator.Validate(verified);
 
         Assert.True(result.IsValid, result.Describe());
-        Assert.Contains(verified.Verification.Boundaries, boundary =>
+        Assert.Contains(verified.Verification!.Boundaries, boundary =>
             boundary.Kind == ReplayBoundary.FloorEntryKind && boundary.AfterSeq == 5);
         Assert.DoesNotContain(verified.Verification.Boundaries, boundary =>
             boundary.IsCombatStart && boundary.AfterSeq == 5);

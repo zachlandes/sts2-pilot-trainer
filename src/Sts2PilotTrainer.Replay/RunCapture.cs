@@ -444,7 +444,7 @@ public sealed class RunCapture
         }).ToList(),
         Trace = new ReplayTrace
         {
-            Steps = [branch.Boundary, .. branch.Entries].Select(entry => new ReplayStep
+            Steps = branch.Entries.Prepend(branch.Boundary).Select(entry => new ReplayStep
             {
                 Seq = entry.Seq,
                 Verb = entry.Verb,
