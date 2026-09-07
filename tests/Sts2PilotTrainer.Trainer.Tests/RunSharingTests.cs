@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http.Json;
 using System.Reflection;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
@@ -36,6 +38,31 @@ public sealed class RunSharingTests
             shared.ShareId,
             (await service.SubmitAsync(ManifestJson.Serialize(manifest), request)).ShareId);
         Assert.Equal(12, shared.Code.Length);
+    }
+
+    [Fact]
+    public async Task SubmissionRefusesAResponseForAnotherManifestOrSubmission()
+    {
+        var manifestJson = ManifestJson.Serialize(Fixture());
+        var submitted = new ShareSubmission("Submitted", "", "Ada", true);
+        var returnedSubmission = submitted with { Name = "Somebody else's" };
+        var returnedId = SharedRunIdentity.For(manifestJson, returnedSubmission);
+        var returned = new SharedRun(
+            returnedId,
+            SharedRunIdentity.CodeFor(returnedId),
+            manifestJson,
+            returnedSubmission,
+            LibraryRun.From(Fixture(), RunOrigin.Recent, RunVerdict.Passed),
+            DateTimeOffset.Parse("2026-09-07T12:00:00Z"));
+        var service = new HttpRunSharingApi(new HttpClient(new FixedResponse(returned))
+        {
+            BaseAddress = new Uri("http://run-sharing.test/"),
+        });
+
+        var error = await Assert.ThrowsAsync<ShareValidationException>(() =>
+            service.SubmitAsync(manifestJson, submitted));
+
+        Assert.Contains("different run", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -82,6 +109,19 @@ public sealed class RunSharingTests
             ManifestJson.Serialize(Fixture()),
             new ShareSubmission(name, description, displayName, consent)));
         Assert.Empty(await service.IndexAsync());
+    }
+
+    [Fact]
+    public async Task SubmissionAcceptsAnUncappedNonemptyDisplayName()
+    {
+        var displayName = new string('A', 200);
+        var service = Service(_ => true);
+
+        var shared = await service.SubmitAsync(
+            ManifestJson.Serialize(Fixture()),
+            new ShareSubmission("Run", "", displayName, true));
+
+        Assert.Equal(displayName, shared.Submission.DisplayName);
     }
 
     [Fact]
@@ -181,6 +221,16 @@ public sealed class RunSharingTests
         {
             BaseAddress = new Uri("http://run-sharing.test/"),
         });
+    }
+
+    private sealed class FixedResponse(SharedRun shared) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(shared),
+            });
     }
 
     private static ReplayManifest Fixture()

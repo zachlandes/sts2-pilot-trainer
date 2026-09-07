@@ -75,6 +75,20 @@ public static class SharedRunIdentity
         return shareId[..12].ToUpperInvariant();
     }
 
+    public static void RequireMatch(
+        SharedRun shared, string manifestJson, ShareSubmission submission)
+    {
+        var expectedId = For(manifestJson, submission);
+        var responseId = For(shared.ManifestJson, shared.Submission);
+        if (!string.Equals(shared.ShareId, expectedId, StringComparison.Ordinal) ||
+            !string.Equals(responseId, expectedId, StringComparison.Ordinal) ||
+            !string.Equals(shared.Code, CodeFor(expectedId), StringComparison.Ordinal))
+        {
+            throw new ShareValidationException(
+                "The sharing service returned a different run than the one submitted.");
+        }
+    }
+
     private sealed record IdentityPayload(string ManifestJson, ShareSubmission Submission);
 }
 
@@ -94,7 +108,9 @@ public sealed class HttpRunSharingApi(HttpClient client) : IRunSharingApi
         submission.Validate();
         using var response = await client.PostAsJsonAsync(
             "runs", new ShareRequest(manifestJson, submission), cancellationToken).ConfigureAwait(false);
-        return await Read<SharedRun>(response, cancellationToken).ConfigureAwait(false);
+        var shared = await Read<SharedRun>(response, cancellationToken).ConfigureAwait(false);
+        SharedRunIdentity.RequireMatch(shared, manifestJson, submission);
+        return shared;
     }
 
     public async Task<IReadOnlyList<SharedRunSummary>> IndexAsync(

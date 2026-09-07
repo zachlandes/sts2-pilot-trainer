@@ -405,16 +405,16 @@ internal static class LibraryScreen
         var height = content.NoButton.Size.Y;
         var font = GameFont.Of(content.GetTree()?.Root);
 
-        LineEdit Field(string name, string placeholder, int limit, int step)
+        LineEdit Field(string name, string placeholder, int? limit, int step)
         {
             var field = new LineEdit
             {
                 Name = name,
                 PlaceholderText = placeholder,
-                MaxLength = limit,
                 Position = new Vector2(x, y + (height * step)),
                 CustomMinimumSize = new Vector2(width, height),
             };
+            if (limit is { } maximum) field.MaxLength = maximum;
             if (font is not null) field.AddThemeFontOverride("font", font);
             content.AddChild(field);
             return field;
@@ -424,7 +424,7 @@ internal static class LibraryScreen
         var description = Field(
             "RunmobileShareDescription", LibraryCopy.ShareDescriptionField, 200, 1);
         var displayName = Field(
-            "RunmobileShareDisplayName", LibraryCopy.ShareDisplayNameField, 40, 2);
+            "RunmobileShareDisplayName", LibraryCopy.ShareDisplayNameField, null, 2);
         var consent = new CheckBox
         {
             Name = "RunmobileShareConsent",
