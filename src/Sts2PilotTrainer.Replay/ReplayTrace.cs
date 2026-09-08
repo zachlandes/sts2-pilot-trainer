@@ -54,7 +54,6 @@ public sealed record ReplayTrace
         "player.deck",
         "player.relics",
         "player.potions",
-        "run.act_index",
         "run.act_floor",
         "run.total_floor",
         // Where on the map the run stands. A floor arrival is proved by the coordinate
