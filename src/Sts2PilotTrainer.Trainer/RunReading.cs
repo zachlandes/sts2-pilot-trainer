@@ -58,20 +58,37 @@ public sealed record RunReading(
             ? Nothing
             : At(recording, recording.Checkpoints.Max(checkpoint => checkpoint.AfterSeq));
 
-    /// <summary>The last act index a checkpoint establishes, in player-facing numbering.</summary>
-    public static int? ActReached(ReplayManifest recording) =>
-        recording.Checkpoints
-            .Select(checkpoint => checkpoint.Expect.TryGetValue("run.act_index", out var act) &&
-                                  int.TryParse(
-                                      act.Value, NumberStyles.Integer, CultureInfo.InvariantCulture,
-                                      out var index) && index >= 0
-                ? (int?)(index + 1)
-                : null)
-            .OfType<int>()
-            .DefaultIfEmpty()
-            .Max() is var reached && reached > 0
-                ? reached
-                : null;
+    /// <summary>The last act the recording establishes, in player-facing numbering.</summary>
+    public static int ActReached(ReplayManifest recording)
+    {
+        var reached = 1;
+        foreach (var checkpoint in recording.Checkpoints)
+        {
+            if (checkpoint.Expect.TryGetValue("run.act_index", out var act) &&
+                int.TryParse(
+                    act.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var index) &&
+                index >= 0)
+            {
+                reached = Math.Max(reached, index + 1);
+            }
+        }
+
+        foreach (var action in recording.Actions)
+        {
+            if (action.Verb == ActionVerb.MapMove &&
+                action.Args.TryGetValue("act", out var act) &&
+                int.TryParse(act, NumberStyles.Integer, CultureInfo.InvariantCulture, out var index) &&
+                index >= 0)
+            {
+                reached = Math.Max(reached, index + 1);
+            }
+        }
+
+        reached = Math.Max(
+            reached,
+            recording.Actions.Count(action => action.Verb == ActionVerb.ProceedToNextAct) + 1);
+        return reached;
+    }
 
     /// <summary>
     /// What the recording's checkpoints say at one action of the history.

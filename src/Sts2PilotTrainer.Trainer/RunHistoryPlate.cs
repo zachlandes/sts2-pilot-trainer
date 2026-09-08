@@ -99,15 +99,7 @@ public sealed record RunHistoryFacts(
 /// including the absent one, and there is no other way to build a plate - which is the
 /// same rule <see cref="PlaybackTransport"/> holds for the transport, adopted here for
 /// the same reason it was adopted there.</para>
-///
-/// <para><b>One state departs from the design, and closes itself.</b> Its section 5
-/// gives the healthy state - recorded, continuous, no run active - as three rows offered
-/// and no reason line. This build draws a reason line there, "Submitting runs is coming",
-/// because the flow the Submit row leads to is outside this slice and a row offering a
-/// destination that does not exist is the failure this project is built to refuse. It is
-/// one supplied fact and nothing else: when the submit flow lands,
-/// <see cref="RunHistoryFacts.SubmitAvailable"/> is true, the row is offered, the reason
-/// is null, and the state is section 5's exactly with no other change here.</para>
+
 /// </summary>
 /// <param name="Mark">The head's mark, or null in the ordinary state, which has no
 /// head.</param>

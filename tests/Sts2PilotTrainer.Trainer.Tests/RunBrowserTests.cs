@@ -399,9 +399,8 @@ public sealed class RunBrowserTests
     }
 
     /// <summary>
-    /// The submit row leads to a flow outside this slice, so it is refused rather than
-    /// drawn as an offer nothing honours. One supplied fact turns it on and nothing
-    /// else about the plate moves.
+    /// The submit row is refused unless the host establishes that sharing is available.
+    /// One supplied fact turns it on and nothing else about the plate moves.
     /// </summary>
     [Fact]
     public void TheSubmitRowIsRefusedUntilTheFlowItLeadsToExists()

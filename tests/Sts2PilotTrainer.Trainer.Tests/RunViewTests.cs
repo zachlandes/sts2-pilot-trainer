@@ -321,6 +321,18 @@ public sealed class RunViewTests
         Assert.Equal(1, view.Selected!.Floor);
     }
 
+    [Fact]
+    public void ASharedEntryReadsProgressUnderItsOwnIdentity()
+    {
+        const string share = "shared-entry";
+        var progress = RunProgress.Empty.WithFightPlayed(share, 1);
+
+        var view = RunView.For(ThreeFloors(), progress, progressId: share);
+
+        Assert.True(view.Strip.Single(cell => cell.Floor == 2).Played);
+        Assert.DoesNotContain(view.Rows, row => row.Kind == RunViewRowKind.Continue);
+    }
+
     /// <summary>A row offering a fight the recording does not have would be an offer
     /// nothing could honour, so it is absent rather than refused.</summary>
     [Fact]

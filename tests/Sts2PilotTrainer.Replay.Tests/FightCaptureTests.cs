@@ -32,7 +32,7 @@ public sealed class FightCaptureTests
             FloorEntryPlan.RequiredBoundaryFields,
             field => Assert.True(sample.ContainsKey(field), field));
         Assert.Equal("r1c3", sample["run.map_coord"]);
-        Assert.False(sample.ContainsKey("run.act_index"));
+        Assert.Equal("0", sample["run.act_index"]);
     }
 
     /// <summary>

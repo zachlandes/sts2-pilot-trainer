@@ -146,23 +146,27 @@ public sealed record RunView(
     /// <param name="shownThisSitting">The fights of this recording whose line has been
     /// shown this sitting. Held in memory by whoever draws the comparison and never
     /// written, so a later launch passes nothing and every fight is cold again.</param>
+    /// <param name="progressId">The library entry whose progress this view displays.</param>
     public static RunView For(
         ReplayManifest recording, RunProgress progress, int? selectedFloor = null,
-        IReadOnlyCollection<int>? shownThisSitting = null)
+        IReadOnlyCollection<int>? shownThisSitting = null, string? progressId = null)
     {
+        var progressKey = progressId ?? recording.RunId;
         var positions = PositionsIn(recording);
         var selected = selectedFloor is { } floor
             ? positions.FirstOrDefault(position => position.Floor == floor)
             : positions.FirstOrDefault();
         var fights = LibraryRun.ProvedFights(recording);
-        var played = progress.PlayedFrom(recording.RunId).Where(fights.Contains).ToList();
+        var played = progress.PlayedFrom(progressKey).Where(fights.Contains).ToList();
 
         // Read once and handed to the rows, so the pane and the play-from row's own
         // enemy cannot be two readings of the same place.
         var reading = selected is null
             ? RunReading.Nothing
             : RunReading.At(recording, selected.AfterSeq);
-        var rows = RowsFor(recording, progress, positions, selected, fights, reading, shownThisSitting ?? []);
+        var rows = RowsFor(
+            recording, progress, progressKey, positions, selected, fights, reading,
+            shownThisSitting ?? []);
 
         return new RunView(
             recording.RunId,
@@ -270,13 +274,14 @@ public sealed record RunView(
     /// truncated recording offers fewer rows rather than a row that refuses.
     /// </summary>
     private static IReadOnlyList<RunViewRow> RowsFor(
-        ReplayManifest recording, RunProgress progress, IReadOnlyList<RunViewPosition> positions,
-        RunViewPosition? selected, IReadOnlyList<int> fights, RunReading reading,
+        ReplayManifest recording, RunProgress progress, string progressId,
+        IReadOnlyList<RunViewPosition> positions, RunViewPosition? selected,
+        IReadOnlyList<int> fights, RunReading reading,
         IReadOnlyCollection<int> shownThisSitting)
     {
         var rows = new List<RunViewRow> { PlayFromRow(selected, reading, shownThisSitting) };
 
-        if (progress.ContinueAt(recording.RunId, fights) is { } next)
+        if (progress.ContinueAt(progressId, fights) is { } next)
         {
             var at = positions.FirstOrDefault(position => position.Fight == next);
             rows.Add(new RunViewRow(

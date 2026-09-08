@@ -66,6 +66,20 @@ public sealed class RunReadingTests
         Assert.Equal(2, run.ActReached);
     }
 
+    [Fact]
+    public void ExistingRecordingsDeriveTheActReachedFromRecordedDecisions()
+    {
+        var moved = Action(4, ActionVerb.MapMove) with
+        {
+            Args = new Dictionary<string, string>(StringComparer.Ordinal) { ["act"] = "1" },
+        };
+        var transitioned = Action(5, ActionVerb.ProceedToNextAct);
+
+        Assert.Equal(2, RunReading.ActReached(With([], [moved])));
+        Assert.Equal(2, RunReading.ActReached(With([], [transitioned])));
+        Assert.Equal(1, RunReading.ActReached(With([])));
+    }
+
     /// <summary>A field no checkpoint carries is a gap. A deck of null and a deck of
     /// nothing are different answers, and only one of them is a claim.</summary>
     [Fact]

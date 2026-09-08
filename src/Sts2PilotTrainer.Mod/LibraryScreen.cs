@@ -96,7 +96,9 @@ internal sealed record LibraryPage(
     string? Body = null,
     string? ListFooter = null,
     string? ListFooterTooltip = null,
-    int Page = 0);
+    int Page = 0,
+    int? SelectedRow = null,
+    Action<long, string, string, string, bool>? ShareSubmitted = null);
 
 /// <summary>
 /// The library's parchment furniture: the game's own panel, with the design's screen
@@ -216,19 +218,45 @@ internal static class LibraryScreen
             content.SetText(page.Title, page.Body ?? string.Empty);
             ReservePageRoom(content, page);
 
-            // Deferred for the reason Press clears first: the panel takes itself down
-            // when the ribbon is pressed, and a screen shown inside the handler would be
-            // the one it took down. Deferring puts the next screen after that.
+            ShareFields? share = null;
             content.InitYesButton(
                 PlaceholderConfirm,
                 _ =>
                 {
-                    if (page.Back is { } back) Callable.From(() => Reopen(back)).CallDeferred();
+                    if (share is not null)
+                    {
+                        page.ShareSubmitted!(
+                            shownSurface, share.Name.Text, share.Description.Text,
+                            share.DisplayName.Text, share.Consent.ButtonPressed);
+                    }
+                    else if (page.Back is { } back)
+                    {
+                        Callable.From(() => Reopen(back)).CallDeferred();
+                    }
+                    else
+                    {
+                        Dismiss();
+                    }
                 });
-            content.HideNoButton();
-            content.YesButton.SetText(page.BackLabel);
+            content.YesButton.SetText(page.ShareSubmitted is null ? page.BackLabel : LibraryCopy.ShareSubmit);
+            if (page.ShareSubmitted is null)
+            {
+                content.HideNoButton();
+            }
+            else
+            {
+                content.InitNoButton(
+                    PlaceholderConfirm,
+                    _ =>
+                    {
+                        if (page.Back is { } back) Callable.From(() => Reopen(back)).CallDeferred();
+                        else Dismiss();
+                    });
+                content.NoButton.SetText(page.BackLabel);
+            }
 
             var area = AreaOf(content);
+            if (page.ShareSubmitted is not null) share = AddShareFields(content, area);
             var bandControls = new List<Control>();
             var band = AddBand(content, page, area, bandControls);
             if (page.Tabs.Count > 0 && page.ListFooter is null)
@@ -271,14 +299,15 @@ internal static class LibraryScreen
                 first ??= paneFocus;
             }
 
-            var bodyFocus = first ?? (Control)content.YesButton;
+            var bodyFocus = first ?? share?.Name ?? (Control)content.YesButton;
             JoinBand(bandControls, bodyFocus, content);
+            if (share is not null) JoinForm(share, content);
 
             // Deferred: adding the modal updates the game's active screen context,
             // which decides what is focused. Grabbing focus before that has finished
             // loses it, and a screen nothing can be reached on from a controller is a
             // screen half the players cannot use.
-            var focus = first ?? bandControls.FirstOrDefault() ?? (Control)content.YesButton;
+            var focus = first ?? share?.Name ?? bandControls.FirstOrDefault() ?? (Control)content.YesButton;
             Callable.From(() => focus.GrabFocus()).CallDeferred();
             currentPopup = popup;
         }
@@ -554,21 +583,32 @@ internal static class LibraryScreen
         var fits = (int)Math.Floor((bottom - top) / step);
         var pinned = rows.Where(row => row.Pinned).ToList();
         var paged = rows.Where(row => !row.Pinned).ToList();
-        var slice = ScreenPage.For(paged.Count, fits, page.Page, pinned.Count);
+        var requestedPage = page.Page;
+        if (page.SelectedRow is { } selectedRow &&
+            selectedRow >= 0 && selectedRow < rows.Count && !rows[selectedRow].Pinned)
+        {
+            var pagedRow = rows.Take(selectedRow).Count(row => !row.Pinned);
+            requestedPage = ScreenPage.Containing(
+                paged.Count, fits, pagedRow, pinned.Count).Index;
+        }
+
+        var slice = ScreenPage.For(paged.Count, fits, requestedPage, pinned.Count);
         var drawn = new List<ScreenRow>(pinned);
         drawn.AddRange(paged.Skip(slice.First).Take(slice.Count));
         if (slice.HasPrevious)
         {
             var previous = slice.Index - 1;
             drawn.Add(new ScreenRow(
-                LibraryCopy.PreviousPage, Enabled: true, () => Show(page with { Page = previous })));
+                LibraryCopy.PreviousPage, Enabled: true,
+                () => Show(page with { Page = previous, SelectedRow = null })));
         }
 
         if (slice.HasNext)
         {
             var next = slice.Index + 1;
             drawn.Add(new ScreenRow(
-                LibraryCopy.NextPage, Enabled: true, () => Show(page with { Page = next })));
+                LibraryCopy.NextPage, Enabled: true,
+                () => Show(page with { Page = next, SelectedRow = null })));
         }
 
         var placed = new List<Control>();
@@ -865,6 +905,54 @@ internal static class LibraryScreen
     /// borrowed from a label already on screen, the way the result panel borrows it,
     /// so the field reads as part of the game rather than as Godot's default sans.
     /// </summary>
+    private sealed record ShareFields(
+        LineEdit Name, LineEdit Description, LineEdit DisplayName, CheckBox Consent)
+    {
+        internal IReadOnlyList<Control> Controls => [Name, Description, DisplayName, Consent];
+    }
+
+    private static ShareFields AddShareFields(NVerticalPopup content, Rect2 at)
+    {
+        var height = content.NoButton.Size.Y;
+        var font = GameFont.Of(content.GetTree()?.Root);
+
+        LineEdit Field(string name, string placeholder, int? limit, int step)
+        {
+            var field = new LineEdit
+            {
+                Name = name,
+                PlaceholderText = placeholder,
+                Position = new Vector2(at.Position.X, at.Position.Y + (height * step)),
+                CustomMinimumSize = new Vector2(at.Size.X, height),
+                FocusMode = Control.FocusModeEnum.All,
+            };
+            if (limit is { } maximum) field.MaxLength = maximum;
+            if (font is not null) field.AddThemeFontOverride("font", font);
+            content.AddChild(field);
+            return field;
+        }
+
+        var name = Field(
+            "RunmobileShareName", LibraryCopy.ShareNameField,
+            ShareSubmission.NameCharacterLimit, 0);
+        var description = Field(
+            "RunmobileShareDescription", LibraryCopy.ShareDescriptionField,
+            ShareSubmission.DescriptionCharacterLimit, 1);
+        var displayName = Field(
+            "RunmobileShareDisplayName", LibraryCopy.ShareDisplayNameField, null, 2);
+        var consent = new CheckBox
+        {
+            Name = "RunmobileShareConsent",
+            Text = LibraryCopy.ShareConsent,
+            Position = new Vector2(at.Position.X, at.Position.Y + (height * 3)),
+            CustomMinimumSize = new Vector2(at.Size.X, height),
+            FocusMode = Control.FocusModeEnum.All,
+        };
+        if (font is not null) consent.AddThemeFontOverride("font", font);
+        content.AddChild(consent);
+        return new ShareFields(name, description, displayName, consent);
+    }
+
     private static LineEdit AddCodeField(
         NVerticalPopup content, string placeholder, Action<string> submitted, Rect2 at)
     {
@@ -898,6 +986,13 @@ internal static class LibraryScreen
         currentPopup is { } popup &&
         GodotObject.IsInstanceValid(popup) &&
         popup.IsInsideTree();
+
+    internal static void Invalidate(long shownSurface)
+    {
+        if (Interlocked.Read(ref surface) != shownSurface) return;
+        Interlocked.Increment(ref surface);
+        currentPopup = null;
+    }
 
     internal static void Dismiss()
     {
@@ -951,6 +1046,22 @@ internal static class LibraryScreen
     /// is not a stop on the way down, and pointing a neighbour at one would strand a
     /// player mid-column.
     /// </summary>
+    private static void JoinForm(ShareFields share, NVerticalPopup content)
+    {
+        var controls = share.Controls;
+        for (var index = 0; index < controls.Count; index++)
+        {
+            controls[index].FocusNeighborTop =
+                (index > 0 ? controls[index - 1] : controls[index]).GetPath();
+            controls[index].FocusNeighborBottom = index + 1 < controls.Count
+                ? controls[index + 1].GetPath()
+                : content.YesButton.GetPath();
+        }
+
+        content.YesButton.FocusNeighborTop = controls[^1].GetPath();
+        content.NoButton.FocusNeighborTop = controls[^1].GetPath();
+    }
+
     private static void JoinBand(
         IReadOnlyList<Control> controls, Control body, NVerticalPopup content)
     {

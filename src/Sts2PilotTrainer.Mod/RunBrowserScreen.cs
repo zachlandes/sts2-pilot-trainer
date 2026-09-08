@@ -73,20 +73,29 @@ internal static class RunBrowserScreen
                 build,
                 community ? null : RunLibraryStore.MyRunsBytes(),
                 compatibleOnly,
-                selectedEntryId: selected);
+                selectedEntryId: selected,
+                submitAvailable: RunLibrary.SharingAvailable);
+
+            var rows = ListRows(browser, community);
+            var selectedRow = rows
+                .Select((row, index) => (row, index))
+                .Where(item => item.row.Selected)
+                .Select(item => (int?)item.index)
+                .FirstOrDefault();
 
             LibraryScreen.Show(new LibraryPage(
                 LibraryCopy.CompendiumCard,
                 Tabs(community, browser.CompatibleOnly),
                 $"{LibraryCopy.ListHeader()}\n{(browser.CompatibleOnly ? "✓" : "□")} {LibraryCopy.CompatibleFilter}",
-                ListRows(browser, community),
+                rows,
                 Pane(browser, community),
                 LibraryCopy.Back,
                 CodeSubmitted: code => Look(code, !community),
                 CodePlaceholder: LibraryCopy.RunCodeField,
                 Body: null,
                 ListFooter: BrowserFooter(browser),
-                ListFooterTooltip: browser.NotShownTooltipBody));
+                ListFooterTooltip: browser.NotShownTooltipBody,
+                SelectedRow: selectedRow));
         }
         catch (Exception ex)
         {
@@ -301,7 +310,8 @@ internal static class RunBrowserScreen
 
             var view = RunView.For(
                 recording, RunLibraryStore.ReadProgress(), floor,
-                RecordedFightModule.Instance.FightsShownThisSitting(runId));
+                RecordedFightModule.Instance.FightsShownThisSitting(runId),
+                progressId: runId);
 
             var id = runId;
             var mine = fromMyRuns;
@@ -598,24 +608,30 @@ internal static class RunBrowserScreen
                 $"That row names no boundary of '{runId}', so there is nowhere to stand."),
         };
 
-        _ = RecordedFightRun.Start(recording, plan);
+        _ = RecordedFightRun.Start(recording, plan, runId);
     }
 
     /// <summary>
     /// The plate's rows, pressed.
     ///
-    /// Submit leads to a flow outside this slice and its row is refused until that
-    /// lands, so nothing here honours it. Removing is the one thing on this surface
-    /// that cannot be undone, so it goes through the game's own confirm and then
+    /// Submit opens the existing sharing flow. Removing is the one thing on this
+    /// surface that cannot be undone, so it goes through the game's own confirm and then
     /// through <c>RecordingRetention</c>, which is the one owner of which files a run's
     /// are and the one thing that refuses to remove the run the game can continue.
     /// </summary>
     private static void PressPlate(string runId, int kind)
     {
+        if ((PaneRowKind)kind == PaneRowKind.Submit)
+        {
+            if (RunLibrary.RecordingFor(runId) is not { } recording)
+                throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
+            RunHistoryPlateHost.ShowShare(recording);
+            return;
+        }
+
         if ((PaneRowKind)kind != PaneRowKind.Remove)
         {
-            throw new InvalidOperationException(
-                "That plate row leads somewhere this build has not got, so there is nothing to press.");
+            throw new InvalidOperationException("That plate row has no action in this build.");
         }
 
         var id = runId;

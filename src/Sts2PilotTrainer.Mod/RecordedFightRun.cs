@@ -38,6 +38,7 @@ namespace Sts2PilotTrainer.Mod;
 internal static class RecordedFightRun
 {
     private static RecordedFightEntry? _entry;
+    private static string? _progressRunId;
     private static PlayerFightObserver? _observer;
     private static FightResultScreen? _resultAfterMainMenu;
 
@@ -215,7 +216,8 @@ internal static class RecordedFightRun
     /// with a different destination. There is no second playback path, which is what
     /// keeps the transport, the deviation lock and the write isolation the same
     /// wherever a player entered from.</param>
-    internal static async Task Start(ReplayManifest recording, IBoundaryPlan plan)
+    internal static async Task Start(
+        ReplayManifest recording, IBoundaryPlan plan, string? progressRunId = null)
     {
         if (Phase != JourneyPhase.None)
         {
@@ -226,6 +228,7 @@ internal static class RecordedFightRun
         // Raised before the run exists rather than after, so there is no moment in
         // which a trainer run could reach a write.
         ProfileWriteBarrier.Raise();
+        _progressRunId = progressRunId ?? recording.RunId;
         Transition(JourneyPhase.Starting);
 
         RecordedFightEntry? entry = null;
@@ -909,7 +912,8 @@ internal static class RecordedFightRun
         {
             // Asked for by name - "the result is shown" - so this is an explicit
             // reveal and the sitting remembers it as one, whatever the result says.
-            if (_entry is { } entry) MarkShownThisSitting(entry.Manifest.RunId, entry.Plan.Fight);
+            if (_entry is { } entry)
+                MarkShownThisSitting(_progressRunId ?? entry.Manifest.RunId, entry.Plan.Fight);
 
             _resultAfterMainMenu = FightResultScreen.Left();
             _ = LeaveTheRun(keepTheResult: true);
@@ -1597,7 +1601,7 @@ internal static class RecordedFightRun
             switch (action)
             {
                 case PostFightAction.ShowTheComparison:
-                    MarkShownThisSitting(ended.Manifest.RunId, ended.Fight);
+                    MarkShownThisSitting(_progressRunId ?? ended.Manifest.RunId, ended.Fight);
                     ShowTransport();
                     PrefightScreen.ShowResult(ended.Screen, ReturnToTheChoice);
                     break;
@@ -1783,6 +1787,7 @@ internal static class RecordedFightRun
         _entry = null;
         _observer = null;
         _afterTheFight = null;
+        _progressRunId = null;
         _authorising = false;
         _playing = false;
         _committing = false;
