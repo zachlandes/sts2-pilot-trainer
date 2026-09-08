@@ -29,13 +29,14 @@ namespace Sts2PilotTrainer.Mod;
 /// row that drills in, the bin on one that removes. Null draws none.</param>
 /// <param name="Selected">Whether this row is the one the pane is showing. Drawn, so a
 /// player can see which of a list of fifty the pane belongs to.</param>
+/// <param name="ActReached">The recording-derived value under the Act reached column.</param>
 /// <param name="Trailing">What the row says at its right-hand end, in the teal that
 /// means "something you did": the Last floor replayed column.</param>
 internal sealed record ScreenRow(
     string Label, bool Enabled, Action Press, string? Note = null, string? Reason = null,
     bool Pinned = false, string? MarkTooltip = null, LibraryGlyph? Glyph = null,
-    bool Selected = false, string? Trailing = null, string? Character = null,
-    bool Heading = false);
+    bool Selected = false, string? ActReached = null, string? Trailing = null,
+    string? Character = null, bool Heading = false);
 
 /// <summary>One parchment tab across the top band.</summary>
 internal sealed record ScreenTab(string Label, bool Current, Action Press);
@@ -53,6 +54,7 @@ internal sealed record ScreenTab(string Label, bool Current, Action Press);
 /// is against, the health it starts at, the floor pane's one sentence.</param>
 /// <param name="Plate">The flat plate under the pane. Rows, drawn as ribbons.</param>
 /// <param name="Ribbon">The pane's own way forward - "Open the run" - or null.</param>
+/// <param name="VerdictPassed">Whether the verdict is affirmative.</param>
 internal sealed record ScreenPane(
     string Heading,
     string? Subtitle,
@@ -64,7 +66,8 @@ internal sealed record ScreenPane(
     string? Verdict,
     IReadOnlyList<string> Facts,
     IReadOnlyList<ScreenRow> Plate,
-    ScreenRow? Ribbon);
+    ScreenRow? Ribbon,
+    bool VerdictPassed = true);
 
 /// <summary>
 /// What one library screen is: the band, the list, and the pane beside it.
@@ -226,7 +229,8 @@ internal static class LibraryScreen
             content.YesButton.SetText(page.BackLabel);
 
             var area = AreaOf(content);
-            var band = AddBand(content, page, area);
+            var bandControls = new List<Control>();
+            var band = AddBand(content, page, area, bandControls);
             if (page.Tabs.Count > 0 && page.ListFooter is null)
             {
                 // Separate a short browser composition without displacing paged My runs
@@ -267,11 +271,14 @@ internal static class LibraryScreen
                 first ??= paneFocus;
             }
 
+            var bodyFocus = first ?? (Control)content.YesButton;
+            JoinBand(bandControls, bodyFocus, content);
+
             // Deferred: adding the modal updates the game's active screen context,
             // which decides what is focused. Grabbing focus before that has finished
             // loses it, and a screen nothing can be reached on from a controller is a
             // screen half the players cannot use.
-            var focus = first ?? (Control)content.YesButton;
+            var focus = first ?? bandControls.FirstOrDefault() ?? (Control)content.YesButton;
             Callable.From(() => focus.GrabFocus()).CallDeferred();
             currentPopup = popup;
         }
@@ -427,7 +434,8 @@ internal static class LibraryScreen
     /// Returns where the band ends, which is where the panes begin. A screen with
     /// neither draws nothing and the panes start at the top of the area.
     /// </summary>
-    private static float AddBand(NVerticalPopup content, LibraryPage page, Rect2 area)
+    private static float AddBand(
+        NVerticalPopup content, LibraryPage page, Rect2 area, List<Control> focusable)
     {
         if (page.Tabs.Count == 0 && page.CodeSubmitted is null) return area.Position.Y;
 
@@ -462,6 +470,7 @@ internal static class LibraryScreen
                 button.Connect(
                     NClickableControl.SignalName.Released,
                     Callable.From<NButton>(_ => Reopen(press)));
+                focusable.Add(button);
             }
 
             at += tabWidth * 1.04f;
@@ -470,11 +479,11 @@ internal static class LibraryScreen
         if (page.CodeSubmitted is { } submitted)
         {
             at += 90f;
-            AddCodeField(
+            focusable.Add(AddCodeField(
                 content,
                 page.CodePlaceholder,
                 submitted,
-                new Rect2(at, area.Position.Y, Math.Max(tabWidth, area.End.X - at), height));
+                new Rect2(at, area.Position.Y, Math.Max(tabWidth, area.End.X - at), height)));
         }
 
         return area.Position.Y + (height * 1.65f);
@@ -624,6 +633,7 @@ internal static class LibraryScreen
         if (row.Character is { Length: > 0 } character) AddCharacterPortrait(button, character);
         if (row.Selected) AddSelectionRing(button);
         if (SupportingText(row) is { } supporting) AddNote(content, button, supporting);
+        if (row.ActReached is { Length: > 0 } actReached) AddActReached(content, button, actReached);
         if (row.Trailing is { Length: > 0 } trailing) AddTrailing(content, button, trailing);
         if (row.Glyph is { } glyph) AddGlyph(button, glyph, LibraryPalette.Muted);
         if (row.MarkTooltip is { Length: > 0 } tooltip) AddMark(button, tooltip);
@@ -717,6 +727,24 @@ internal static class LibraryScreen
     /// about the person rather than the run, and blank rather than zero where they have
     /// loaded nothing - the caller passes null and no label is drawn.
     /// </summary>
+    private static void AddActReached(NVerticalPopup content, Control row, string text)
+    {
+        var label = new Label
+        {
+            Name = $"{row.Name}ActReached",
+            Text = text,
+            Position = new Vector2(row.Size.X * 0.42f, (row.Size.Y - NoteFontSize) / 2f),
+            CustomMinimumSize = new Vector2(row.Size.X * 0.18f, 0f),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+
+        if (GameFont.Of(content.GetTree()?.Root) is { } font) label.AddThemeFontOverride("font", font);
+        label.AddThemeFontSizeOverride("font_size", NoteFontSize);
+        label.AddThemeColorOverride("font_color", LibraryPalette.Ink);
+        row.AddChild(label);
+    }
+
     private static void AddTrailing(NVerticalPopup content, Control row, string text)
     {
         var label = new Label
@@ -837,7 +865,7 @@ internal static class LibraryScreen
     /// borrowed from a label already on screen, the way the result panel borrows it,
     /// so the field reads as part of the game rather than as Godot's default sans.
     /// </summary>
-    private static void AddCodeField(
+    private static LineEdit AddCodeField(
         NVerticalPopup content, string placeholder, Action<string> submitted, Rect2 at)
     {
         var field = new LineEdit
@@ -846,6 +874,7 @@ internal static class LibraryScreen
             PlaceholderText = placeholder,
             Position = at.Position,
             CustomMinimumSize = at.Size,
+            FocusMode = Control.FocusModeEnum.All,
         };
 
         if (GameFont.Of(content.GetTree()?.Root) is { } font) field.AddThemeFontOverride("font", font);
@@ -853,6 +882,7 @@ internal static class LibraryScreen
         field.Connect(
             LineEdit.SignalName.TextSubmitted,
             Callable.From<string>(text => submitted(text)));
+        return field;
     }
 
     /// <summary>
@@ -921,6 +951,27 @@ internal static class LibraryScreen
     /// is not a stop on the way down, and pointing a neighbour at one would strand a
     /// player mid-column.
     /// </summary>
+    private static void JoinBand(
+        IReadOnlyList<Control> controls, Control body, NVerticalPopup content)
+    {
+        if (controls.Count == 0) return;
+
+        for (var index = 0; index < controls.Count; index++)
+        {
+            controls[index].FocusNeighborLeft =
+                controls[index > 0 ? index - 1 : 0].GetPath();
+            controls[index].FocusNeighborRight =
+                controls[index + 1 < controls.Count ? index + 1 : index].GetPath();
+            controls[index].FocusNeighborBottom = body.GetPath();
+        }
+
+        body.FocusNeighborTop = controls[0].GetPath();
+        if (ReferenceEquals(body, content.YesButton))
+        {
+            content.YesButton.FocusNeighborTop = controls[^1].GetPath();
+        }
+    }
+
     private static void JoinColumn(IReadOnlyList<Control> rows, NVerticalPopup content)
     {
         var focusable = rows.Where(row => row.FocusMode != Control.FocusModeEnum.None).ToList();

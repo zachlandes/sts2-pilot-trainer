@@ -531,7 +531,10 @@ public sealed class RunLibraryStoreTests : IDisposable
             shareId,
             SharedRunIdentity.CodeFor(shareId),
             submission,
-            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed, [99]),
+            LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed, [99]) with
+            {
+                Floors = [2, 6],
+            },
             recording.Environment,
             recording.Source.Kind,
             DateTimeOffset.Parse("2026-09-07T12:00:00Z"),
@@ -542,8 +545,11 @@ public sealed class RunLibraryStoreTests : IDisposable
             RunLibrary.AcceptIndex([summary]);
             Assert.Empty(RunLibrary.Runs().Single(run => run.RunId == runId).FightsPlayed);
 
-            Assert.True(RunLibraryStore.RecordFightPlayed(runId, 2));
-            Assert.Equal([2], RunLibrary.Runs().Single(run => run.RunId == runId).FightsPlayed);
+            Assert.True(RunLibraryStore.RecordFightPlayed(shareId, 2));
+            Assert.True(RunLibraryStore.RecordFloorLoaded(shareId, 6));
+            var progressed = RunLibrary.Runs().Single(run => run.RunId == runId);
+            Assert.Equal([2], progressed.FightsPlayed);
+            Assert.Equal(6, progressed.LastFloorReplayed);
 
             var secondProfile = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
             Directory.CreateDirectory(secondProfile);

@@ -294,8 +294,10 @@ public sealed record RunView(
         // and a recording that proves no fight 1 has nowhere for it to come to rest.
         if (fights.Contains(1))
         {
+            var start = positions.FirstOrDefault(position => position.Fight == 1);
             rows.Add(new RunViewRow(
-                RunViewRowKind.StartOver, LibraryCopy.StartTheRunOver, null, Enabled: true, Fight: 1));
+                RunViewRowKind.StartOver, LibraryCopy.StartTheRunOver, null,
+                Enabled: true, Fight: 1, Floor: start?.Floor));
         }
 
         return rows;

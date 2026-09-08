@@ -99,6 +99,9 @@ public sealed record LibraryRun(
     /// <summary>Whether the recording established that this was multiplayer.</summary>
     public bool? Multiplayer { get; init; }
 
+    /// <summary>The last act the recording reached, in player-facing numbering.</summary>
+    public int? ActReached { get; init; }
+
     /// <summary>The fight ordinals this player has already played from.</summary>
     public IReadOnlyList<int> FightsPlayed { get; init; } = [];
 
@@ -177,15 +180,7 @@ public sealed record LibraryRun(
         DateTimeOffset? recorded = null)
     {
         var floors = ProvedFloors(recording);
-        var last = floors.Count == 0
-            ? RunReading.Nothing
-            : RunReading.At(
-                recording,
-                recording.Boundaries
-                    .Where(boundary => boundary.IsFloorEntry && boundary.Floor == floors[^1])
-                    .Select(boundary => boundary.AfterSeq)
-                    .DefaultIfEmpty(-1)
-                    .Max());
+        var last = RunReading.Latest(recording);
 
         return new LibraryRun(
             recording.RunId,
@@ -203,7 +198,10 @@ public sealed record LibraryRun(
             lastFloorReplayed,
             RunView.PositionsIn(recording),
             last.Deck,
-            recorded);
+            recorded)
+        {
+            ActReached = RunReading.ActReached(recording),
+        };
     }
 
     /// <summary>Compatibility reader for callers carrying fight progress and session kind.</summary>

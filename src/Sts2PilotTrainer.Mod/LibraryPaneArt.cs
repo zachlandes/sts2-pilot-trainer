@@ -97,7 +97,7 @@ internal static class LibraryPaneArt
         {
             y = LibraryScreen.AddLine(
                 content, verdict, new Vector2(at.Position.X, y), at.Size.X,
-                LibraryPalette.Green, LineFontSize);
+                pane.VerdictPassed ? LibraryPalette.Green : LibraryPalette.Red, LineFontSize);
         }
 
         return AddPlate(content, pane, new Vector2(at.Position.X, y), at.Size.X, at.End.Y);

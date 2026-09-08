@@ -50,6 +50,22 @@ public sealed class RunReadingTests
         Assert.Equal(4, reading.DeckCount);
     }
 
+    [Fact]
+    public void TheLibraryUsesTheLatestCheckpointForTheEndOfRunDeckAndAct()
+    {
+        var recording = With(
+        [
+            At(4, ("player.deck", "CARD.STRIKE"), ("run.act_index", "0")),
+            At(9, ("player.deck", "CARD.STRIKE|CARD.BASH"), ("run.act_index", "1")),
+        ]);
+
+        var run = LibraryRun.From(recording, RunOrigin.Recent, RunVerdict.Passed);
+
+        Assert.Equal([("CARD.STRIKE", 1), ("CARD.BASH", 1)], run.Deck!.Select(t => (t.CardId, t.Count)));
+        Assert.Equal(2, run.DeckCount);
+        Assert.Equal(2, run.ActReached);
+    }
+
     /// <summary>A field no checkpoint carries is a gap. A deck of null and a deck of
     /// nothing are different answers, and only one of them is a claim.</summary>
     [Fact]

@@ -3,12 +3,9 @@ namespace Sts2PilotTrainer.Trainer.Tests;
 /// <summary>
 /// The list, and the one rule that decides what is in it.
 ///
-/// Most of what is pinned here is the settled hidden rule, from both directions: a run
-/// this game cannot play is not in the list in any state - not greyed, not behind a
-/// tickbox, not anywhere - and it is still counted, still described by its code, and
-/// still the same run afterwards. The tests are written that way on purpose. A future
-/// change that "helpfully" showed an incompatible run disabled would pass a test that
-/// only checked the count.
+/// Most of what is pinned here is the settled hidden rule, from both directions.
+/// A run this game cannot play is hidden by default, remains counted, and appears only
+/// as a disabled row when the visible filter or an exact code reveals it.
 /// </summary>
 public sealed class RunBrowserTests
 {
@@ -20,12 +17,16 @@ public sealed class RunBrowserTests
         RunVerdict verdict = RunVerdict.Passed,
         string build = Build,
         DateTimeOffset? recorded = null,
-        int? lastFloorReplayed = null) =>
-        new(
+        int? lastFloorReplayed = null,
+        int? actReached = null) =>
+        new LibraryRun(
             id, origin, "NaveGreed", "CHARACTER.IRONCLAD", 10, build,
             Fights: [1, 2, 3, 4, 5, 6], Floors: [2, 3, 4, 5, 6, 7], Outcome: "won", verdict,
             Relics: [], DeckCount: 11, lastFloorReplayed,
-            Positions: [], Deck: null, Recorded: recorded);
+            Positions: [], Deck: null, Recorded: recorded)
+        {
+            ActReached = actReached,
+        };
 
     /// <summary>Every run actually drawn, in the order the groups draw them.</summary>
     private static IReadOnlyList<LibraryRun> Listed(RunBrowser browser) =>
@@ -42,8 +43,8 @@ public sealed class RunBrowserTests
     }
 
     /// <summary>
-    /// Two ways a run can be unplayable and one outcome: it is not in the list, in
-    /// any state, and the numeral under the list is what says so.
+    /// Two ways a run can be unplayable and one default outcome: it is not in the list,
+    /// and the numeral under the list is what says so.
     /// </summary>
     [Theory]
     [InlineData(RunVerdict.Absent)]
@@ -341,18 +342,21 @@ public sealed class RunBrowserTests
             "b", RunBrowser.For(LibraryTab.Community, runs, Build, selectedEntryId: "b").Pane!.Run.RunId);
     }
 
-    /// <summary>An exact selection reveals an otherwise hidden incompatible run.</summary>
+    /// <summary>An exact selection reveals an incompatible run without allowing entry.</summary>
     [Fact]
-    public void SelectingAnIncompatibleRunClearsTheCompatibilityFilter()
+    public void SelectingAnIncompatibleRunDisablesItsOpenRibbon()
     {
         var browser = RunBrowser.For(
             LibraryTab.Community,
-            [Run("a"), Run("hidden", verdict: RunVerdict.Absent)],
+            [Run("a"), Run("hidden", verdict: RunVerdict.Absent, build: "v0.110.0")],
             Build,
             selectedEntryId: "hidden");
 
         Assert.Equal("hidden", browser.Pane!.Run.RunId);
         Assert.False(browser.CompatibleOnly);
+        Assert.False(browser.Pane.OpenEnabled);
+        Assert.Contains("v0.110.0", browser.Pane.Verdict, StringComparison.Ordinal);
+        Assert.Contains(Build, browser.Pane.Verdict, StringComparison.Ordinal);
     }
 
     /// <summary>An empty list has no pane rather than an empty one.</summary>
@@ -412,24 +416,6 @@ public sealed class RunBrowserTests
     }
 
     /// <summary>
-    /// The save-run shape is gated on the captain's own call. Until it is confirmed
-    /// nothing draws a Save row, and nothing else on the surface moves - which is
-    /// exactly what the gate asks for.
-    /// </summary>
-    [Fact]
-    public void TheSaveRowIsOnlyDrawnWhereThatShapeIsBuilt()
-    {
-        var off = RunBrowser.For(LibraryTab.Community, [Run("theirs")], Build);
-        var on = RunBrowser.For(LibraryTab.Community, [Run("theirs")], Build, saveOffered: true);
-        var already = RunBrowser.For(
-            LibraryTab.Community, [Run("theirs")], Build, saveOffered: true, saved: true);
-
-        Assert.Empty(off.Pane!.Plate);
-        Assert.Equal(LibraryCopy.SaveToMyRuns, Assert.Single(on.Pane!.Plate).Label);
-        Assert.Equal(LibraryCopy.SavedToMyRuns, Assert.Single(already.Pane!.Plate).Label);
-    }
-
-    /// <summary>
     /// The Last floor replayed column reads the last floor of this run the player
     /// loaded, and is blank until there is one. Saving a run does not set it, so a run
     /// nobody has stood in says nothing rather than zero.
@@ -439,6 +425,16 @@ public sealed class RunBrowserTests
     {
         Assert.Null(Run("cold").LastFloorReplayed);
         Assert.Equal(6, Run("warm", lastFloorReplayed: 6).LastFloorReplayed);
+    }
+
+    [Fact]
+    public void TheActReachedColumnCarriesTheRecordingDerivedValue()
+    {
+        var run = Run("act-two", actReached: 2);
+
+        var act = Assert.IsType<int>(run.ActReached);
+        Assert.Equal(2, act);
+        Assert.Equal("Act 2", LibraryCopy.ActReached(act));
     }
 
     /// <summary>

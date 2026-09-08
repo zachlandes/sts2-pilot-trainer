@@ -52,6 +52,27 @@ public sealed record RunReading(
     /// the number beside the deck and the deck itself cannot disagree.</summary>
     public int? DeckCount => Deck?.Sum(tile => tile.Count);
 
+    /// <summary>What the latest checkpoint in the recording says.</summary>
+    public static RunReading Latest(ReplayManifest recording) =>
+        recording.Checkpoints.Count == 0
+            ? Nothing
+            : At(recording, recording.Checkpoints.Max(checkpoint => checkpoint.AfterSeq));
+
+    /// <summary>The last act index a checkpoint establishes, in player-facing numbering.</summary>
+    public static int? ActReached(ReplayManifest recording) =>
+        recording.Checkpoints
+            .Select(checkpoint => checkpoint.Expect.TryGetValue("run.act_index", out var act) &&
+                                  int.TryParse(
+                                      act.Value, NumberStyles.Integer, CultureInfo.InvariantCulture,
+                                      out var index) && index >= 0
+                ? (int?)(index + 1)
+                : null)
+            .OfType<int>()
+            .DefaultIfEmpty()
+            .Max() is var reached && reached > 0
+                ? reached
+                : null;
+
     /// <summary>
     /// What the recording's checkpoints say at one action of the history.
     ///

@@ -105,6 +105,10 @@ public static class LibraryCopy
     /// thing it heads.</summary>
     public static string ListHeader() => $"Run · Act reached · {LastFloorReplayed}";
 
+    /// <summary>The last act the recording reached.</summary>
+    public static string ActReached(int act) =>
+        $"Act {act.ToString(CultureInfo.InvariantCulture)}";
+
     /// <summary>What a fight on the selected floor is against, under the run view's
     /// strip. The enemy is interpolated; no sentence here names one.</summary>
     public static string FightAgainst(string enemy) => $"Against {enemy}";
@@ -121,15 +125,6 @@ public static class LibraryCopy
     /// <summary>The relics a row's strip had no room for.</summary>
     public static string MoreRelics(int count) =>
         $"+{count.ToString(CultureInfo.InvariantCulture)}";
-
-    /// <summary>Saves somebody else's run into My runs.</summary>
-    public const string SaveToMyRuns = "Save to My runs";
-
-    /// <inheritdoc cref="SaveToMyRuns"/>
-    public const string SavedToMyRuns = "Saved to My runs";
-
-    /// <summary>Takes a saved copy of somebody else's run back out of My runs.</summary>
-    public const string RemoveFromMyRuns = "Remove from My runs";
 
     /// <summary>Removes one of the recorder's own runs, through the game's own confirm.
     /// The per-run counterpart of the settings row's Remove all my runs.</summary>

@@ -105,7 +105,8 @@ internal static class RunLibrary
                 item.Environment, item.SourceKind, item.Run.RunId, build);
             runs.Add(OnlineRun(item, verdict) with
             {
-                FightsPlayed = progress.PlayedFrom(item.Run.RunId),
+                FightsPlayed = progress.PlayedFrom(item.ShareId),
+                LastFloorReplayed = progress.LastFloorLoaded(item.ShareId, item.Run.Floors),
             });
         }
 

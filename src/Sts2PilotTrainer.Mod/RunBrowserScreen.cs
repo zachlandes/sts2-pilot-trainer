@@ -16,11 +16,10 @@ namespace Sts2PilotTrainer.Mod;
 /// <c>RunBrowser</c> and <c>RunView</c> decide what is offered, and this puts it on
 /// screen and calls the one entry there is.
 ///
-/// <para><b>The list never holds a run this game cannot play.</b> That rule lives in
-/// <c>LibraryRun.Listed</c> and reaches here as a shorter list plus a number; there is
-/// no control on this screen that turns it off, because it is not a preference. The
-/// run-code field is the one way to ask about a run that is not listed, and it answers
-/// with the game's own popup rather than by putting a row back.</para>
+/// <para><b>Ordinary browsing hides a run this game cannot play.</b> That rule lives in
+/// <c>LibraryRun.Listed</c> and reaches here as a shorter list plus a number.
+/// The visible compatibility control can reveal those runs only as disabled rows, and
+/// the run-code field does the same for an exact incompatible result.</para>
 ///
 /// <para><b>The run view is reached one way.</b> The pane's "Open the run" ribbon, in
 /// either tab. Back returns to the browser with the same run still selected, so the
@@ -221,6 +220,7 @@ internal static class RunBrowserScreen
                     Glyph: run.Won ? LibraryGlyph.Crown : LibraryGlyph.CrownStruck,
                     Selected: browser.Pane is not null &&
                               string.Equals(browser.Pane.Run.EntryId, runId, StringComparison.Ordinal),
+                    ActReached: run.ActReached is { } act ? LibraryCopy.ActReached(act) : null,
                     Trailing: run.LastFloorReplayed is { } floor
                         ? floor.ToString(CultureInfo.InvariantCulture)
                         : null,
@@ -271,7 +271,10 @@ internal static class RunBrowserScreen
             // replayed is the list's own column, so the two are not both here.
             pane.Run.LastFloor is { } reached ? [LibraryCopy.RunReached(reached)] : [],
             plate,
-            new ScreenRow(pane.Open, Enabled: true, () => OpenRun(runId, fromMyRuns: mine)));
+            new ScreenRow(
+                pane.Open, pane.OpenEnabled, () => OpenRun(runId, fromMyRuns: mine),
+                Reason: pane.OpenEnabled ? null : pane.Verdict),
+            VerdictPassed: pane.Run.Listed);
     }
 
     /// <summary>
@@ -493,7 +496,7 @@ internal static class RunBrowserScreen
                     shared.Run.EntryId, [shared.Run], RunLibrary.ThisBuild());
                 if (lookup.Outcome == LookupOutcome.Found)
                 {
-                    OpenRun(shared.Run.EntryId, fromMyRuns: state.FromMyRuns);
+                    OpenTab(LibraryTab.Community, selected: shared.Run.EntryId);
                     return;
                 }
 

@@ -22,9 +22,6 @@ public enum PaneRowKind
     /// per-run counterpart of the settings row's Remove all my runs.</summary>
     Remove,
 
-    /// <summary>Saves somebody else's run into My runs, or unsaves it. Present only
-    /// where the save-run shape is built.</summary>
-    Save,
 }
 
 /// <summary>One row of the flat plate under the browser's pane.</summary>
@@ -41,35 +38,29 @@ public sealed record PaneRow(PaneRowKind Kind, string Label, bool Enabled, bool 
 /// here is computed: every value is a field a checkpoint carries or a boundary the
 /// recording proves.
 /// </summary>
-/// <param name="Description">The run's own description, clipped by the drawing with
-/// the whole text as the game's tooltip, or null where the recording carries
-/// none.</param>
-/// <param name="Verdict">"Works with your version · {build}", in the eligibility
-/// green. The pane only ever shows a listed run, so this is the one thing it says
-/// about compatibility.</param>
+/// <param name="Verdict">Whether this build has a passing verdict for the run.</param>
 /// <param name="Open">The ribbon that opens the run view. The one way there, in either
 /// tab.</param>
+/// <param name="OpenEnabled">Whether that ribbon can be pressed.</param>
 public sealed record RunPane(
     LibraryRun Run,
     IReadOnlyList<RunRelic> Relics,
     IReadOnlyList<DeckTile>? Deck,
     int? DeckCount,
     IReadOnlyList<RunStripCell> Strip,
-    string? Description,
     string Verdict,
     string Open,
+    bool OpenEnabled,
     IReadOnlyList<PaneRow> Plate);
 
 /// <summary>
 /// What the browser shows for one tab, derived from the runs a host could find and
 /// nothing else.
 ///
-/// The whole of the settled compatibility rule lives here rather than in the drawing:
-/// a run this game cannot play is not in <see cref="Groups"/>, is counted in
-/// <see cref="NotShown"/>, and has no row anywhere in any state. There is no filter to
-/// turn off, because there is no filter - the rule is not a preference and a control
-/// for it would imply it was one. An incompatible run is described in one place and
-/// never entered: the run-code popup.
+/// The whole of the settled compatibility rule lives here rather than in the drawing.
+/// A run this game cannot play is hidden by default and counted in <see cref="NotShown"/>.
+/// Turning the visible filter off reveals it as a disabled row, and an exact code does
+/// the same before selecting that run.
 ///
 /// <para>The list is a projection. Nothing here reads a file, replays anything or
 /// decides a verdict; every run arrives with its verdict already established, which is
@@ -112,10 +103,6 @@ public sealed record RunBrowser(
     /// run still being played: its journal is sized and its manifest does not exist
     /// yet, so it is in the megabytes and not in the count. The size covers everything
     /// the settings purge would remove.</param>
-    /// <param name="saveOffered">Whether the save-run shape is built. False draws no
-    /// Save row and nothing else on the surface moves, which is exactly what the
-    /// design's own gate asks for.</param>
-    /// <param name="saved">Whether the selected run is already saved into My runs.</param>
     public static RunBrowser For(
         LibraryTab tab,
         IReadOnlyList<LibraryRun> runs,
@@ -123,10 +110,7 @@ public sealed record RunBrowser(
         long? myRunsBytes = null,
         bool compatibleOnly = true,
         string? selectedEntryId = null,
-        bool submitAvailable = false,
-        bool saveOffered = false,
-        bool saved = false,
-        IReadOnlyDictionary<string, string>? descriptions = null)
+        bool submitAvailable = false)
     {
         var mine = tab == LibraryTab.MyRuns;
         var inTab = runs.Where(run => (run.Origin == RunOrigin.Mine) == mine).ToList();
@@ -162,7 +146,7 @@ public sealed record RunBrowser(
             groups,
             run is null
                 ? null
-                : PaneFor(run, thisBuild, submitAvailable, saveOffered, saved, descriptions),
+                : PaneFor(run, thisBuild, submitAvailable),
             hidden,
             hidden > 0 ? LibraryCopy.NotShown(hidden) : null,
             LibraryCopy.NotShownTooltip(thisBuild),
@@ -183,8 +167,7 @@ public sealed record RunBrowser(
     /// is the one thing on this surface that cannot be undone.
     /// </summary>
     private static RunPane PaneFor(
-        LibraryRun run, string thisBuild, bool submitAvailable, bool saveOffered, bool saved,
-        IReadOnlyDictionary<string, string>? descriptions)
+        LibraryRun run, string thisBuild, bool submitAvailable)
     {
         var plate = new List<PaneRow>();
         if (run.Origin == RunOrigin.Mine)
@@ -192,13 +175,6 @@ public sealed record RunBrowser(
             plate.Add(new PaneRow(PaneRowKind.Submit, LibraryCopy.SubmitThisRun, submitAvailable));
             plate.Add(new PaneRow(
                 PaneRowKind.Remove, LibraryCopy.RemoveThisRun, Enabled: true, Confirms: true));
-        }
-        else if (saveOffered)
-        {
-            plate.Add(new PaneRow(
-                PaneRowKind.Save,
-                saved ? LibraryCopy.SavedToMyRuns : LibraryCopy.SaveToMyRuns,
-                Enabled: true));
         }
 
         return new RunPane(
@@ -219,23 +195,20 @@ public sealed record RunBrowser(
                     Selected: false,
                     position.Playable)),
             ],
-            descriptions is not null &&
-            descriptions.TryGetValue(run.RunId, out var description) && description.Length > 0
-                ? description
-                : null,
-            LibraryCopy.WorksWithYourVersion(thisBuild),
+            run.Listed
+                ? LibraryCopy.WorksWithYourVersion(thisBuild)
+                : LibraryCopy.LookupRefusedBuild(run.RecordedBuild, thisBuild),
             LibraryCopy.OpenTheRun,
+            run.Listed,
             plate);
     }
 
     /// <summary>
     /// What a run code answers with.
     ///
-    /// The one surface on which a run this game cannot play is described at all, and
-    /// the reason it exists: a player who typed a code asked about one particular run,
-    /// and answering "no such run" about a run that plainly exists would be the library
-    /// lying to them. A player who did not type a code is owed a list of runs that
-    /// work, which is why nothing here puts a row in the list.
+    /// A player who typed a code asked about one particular run, and answering "no such
+    /// run" about a run that plainly exists would be the library lying to them.
+    /// An incompatible result can be selected as a disabled row with its refusal intact.
     ///
     /// <para><b>The design specifies one refusal and this build answers three.</b> Its
     /// one is the build sentence with its sub-line, and it is here word for word. The

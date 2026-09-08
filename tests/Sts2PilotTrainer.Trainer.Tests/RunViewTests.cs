@@ -152,17 +152,18 @@ public sealed class RunViewTests
     }
 
     /// <summary>
-    /// Starting over walks to fight 1's combat start, so it carries fight 1 - which is
-    /// what makes the row record progress through the same path every other entering
-    /// row uses. It carries no second line: one said nothing its label did not.
+    /// Starting over walks to fight 1's combat start, so it carries both the fight and
+    /// its floor through the same progress path every other entering row uses. It
+    /// carries no second line: one said nothing its label did not.
     /// </summary>
     [Fact]
-    public void StartingOverNamesFightOneAndCarriesNoSecondLine()
+    public void StartingOverNamesFightOneAndItsFloorAndCarriesNoSecondLine()
     {
         var view = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 1);
 
         var startOver = view.Rows.Single(row => row.Kind == RunViewRowKind.StartOver);
         Assert.Equal(1, startOver.Fight);
+        Assert.Equal(2, startOver.Floor);
         Assert.Equal(LibraryCopy.StartTheRunOver, startOver.Label);
         Assert.Null(startOver.Note);
     }
