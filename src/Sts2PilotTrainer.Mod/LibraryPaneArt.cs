@@ -56,7 +56,7 @@ internal static class LibraryPaneArt
         var y = at.Position.Y;
         y = LibraryScreen.AddLine(
             content, pane.Heading, new Vector2(at.Position.X, y), at.Size.X,
-            LibraryPalette.Ink, HeadingFontSize);
+            LibraryPalette.Muted, HeadingFontSize);
 
         if (pane.Subtitle is { Length: > 0 } subtitle)
         {
@@ -128,15 +128,16 @@ internal static class LibraryPaneArt
             var position = new Vector2(at.X + (column * size * 1.15f), y);
             if (ModelArt.Of(id) is { } icon)
             {
+                // Ignore intrinsic size before assigning art or Godot keeps the texture's minimum
                 var art = new TextureRect
                 {
                     Name = $"RunmobileRelic{index.ToString(CultureInfo.InvariantCulture)}",
+                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                     Texture = icon,
                     Position = position,
+                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                     Size = new Vector2(size, size),
                     CustomMinimumSize = new Vector2(size, size),
-                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                     // The game's own tooltip is the relic's, and it needs the mouse.
                     MouseFilter = Control.MouseFilterEnum.Stop,
                     ClipContents = true,
@@ -273,15 +274,16 @@ internal static class LibraryPaneArt
 
             if (ModelArt.Of(card.CardId) is { } portrait)
             {
+                // Ignore intrinsic size before assigning art or Godot keeps the texture's minimum
                 var art = new TextureRect
                 {
                     Name = $"RunmobileCard{index.ToString(CultureInfo.InvariantCulture)}",
+                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                     Texture = portrait,
                     Position = position,
+                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                     Size = new Vector2(tile * 0.92f, height * 0.74f),
                     CustomMinimumSize = new Vector2(tile * 0.92f, height * 0.74f),
-                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
-                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                     MouseFilter = Control.MouseFilterEnum.Stop,
                     ClipContents = true,
                     TooltipText = text,

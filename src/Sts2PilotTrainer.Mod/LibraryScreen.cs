@@ -128,12 +128,10 @@ internal sealed record LibraryPage(
 /// added, so the keys stay with the two ribbons and the rows are reached the way every
 /// other list in this game is reached - by focus.</para>
 ///
-/// <para>Every position here is measured from the game's own nodes rather than
-/// written down: the content area is what lies between the panel's body label and its
-/// ribbons, the two panes split its width, the step between rows is a row's own
-/// height, and how many rows a page holds is the space between top and bottom divided
-/// by that step. A build that changes the panel's layout changes all of them with
-/// it.</para>
+/// <para>The library expands the native parchment inside the game's logical canvas.
+/// Its content area lies between the body label and the bottom ribbons; the panes
+/// split that area and pagination measures the space remaining after the header
+/// and footer. The paper and its controls share the same expanded bounds.</para>
 ///
 /// <para><b>A list longer than the panel is paged, never drawn past it.</b> The rows
 /// are absolutely positioned siblings rather than a scrolling list, so a column of
@@ -262,17 +260,6 @@ internal static class LibraryScreen
             if (page.ShareSubmitted is not null) share = AddShareFields(content, area);
             var bandControls = new List<Control>();
             var band = AddBand(content, page, area, bandControls);
-            if (page.Tabs.Count > 0 && page.ListFooter is null)
-            {
-                // Separate a short browser composition without displacing paged My runs
-                band += area.Size.Y * 0.1f;
-            }
-            else if (page.Rows.Count > 0 &&
-                     page.Pane is { Plate.Count: 0, Ribbon: null })
-            {
-                // Balance the opened run instead of pinning its short columns to the header
-                band += area.Size.Y * 0.14f;
-            }
 
             var listWidth = page.Pane is null ? area.Size.X : area.Size.X * ListShare;
             var first = AddRows(
@@ -286,7 +273,7 @@ internal static class LibraryScreen
                     band,
                     area.Size.X - listWidth - seam,
                     area.End.Y - band);
-                AddDivider(content, area.Position.X + listWidth + (seam / 2f), area.Position.Y, area.End.Y);
+                AddDivider(content, area.Position.X + listWidth + (seam / 2f), band, area.End.Y);
 
                 // The list keeps focus where it has any: it is the way in, and a screen
                 // that opened on the pane's own ribbon would put the way forward ahead
@@ -407,7 +394,10 @@ internal static class LibraryScreen
     {
         // Keep the one-column popup centred while making room for both panes
         var oldSize = content.Size;
-        var newSize = new Vector2(oldSize.X * 1.65f, oldSize.Y * 1.2f);
+        var newSize = new Vector2(1200f, 850f);
+        // The native root is a TextureRect; keep-aspect leaves the paper behind its controls
+        content.Set("expand_mode", (int)TextureRect.ExpandModeEnum.IgnoreSize);
+        content.Set("stretch_mode", (int)TextureRect.StretchModeEnum.Scale);
         content.Position -= (newSize - oldSize) / 2f;
         content.Size = newSize;
 
@@ -415,9 +405,9 @@ internal static class LibraryScreen
         header.Size = new Vector2(newSize.X, header.Size.Y);
 
         var description = content.BodyLabel();
-        description.Position = new Vector2(140f, description.Position.Y);
+        description.Position = new Vector2(70f, description.Position.Y);
         description.Size = new Vector2(
-            newSize.X - 280f,
+            newSize.X - 140f,
             newSize.Y - description.Position.Y - content.YesButton.Size.Y - 12f);
 
         var buttonY = newSize.Y - content.YesButton.Size.Y;
@@ -565,7 +555,7 @@ internal static class LibraryScreen
         if (page.ListHeader is { Length: > 0 } header)
         {
             AddLine(content, header, new Vector2(at.Position.X, top), at.Size.X, LibraryPalette.Muted, NoteFontSize);
-            top += prototype.Size.Y * 0.9f;
+            top += 28f;
         }
 
         var placed = new List<Control>();
@@ -573,7 +563,7 @@ internal static class LibraryScreen
         {
             var checkbox = AddFilter(content, filter, new Vector2(at.Position.X, top), at.Size.X);
             placed.Add(checkbox);
-            top += prototype.Size.Y;
+            top += 40f;
         }
 
         var bottom = at.End.Y;
@@ -583,7 +573,7 @@ internal static class LibraryScreen
             // not showing, so it sits with the list rather than in the band. The whole
             // reason is the tooltip, because a numeral is what a player scans and a
             // sentence is what they ask for.
-            bottom -= content.NoButton.Size.Y;
+            bottom -= 28f;
             AddLine(
                 content, footer, new Vector2(at.Position.X, bottom), at.Size.X,
                 LibraryPalette.Muted, NoteFontSize, tooltip: page.ListFooterTooltip);
@@ -620,11 +610,13 @@ internal static class LibraryScreen
                 () => Show(page with { Page = next, SelectedRow = null })));
         }
 
+        var rowTop = top;
         for (var index = 0; index < drawn.Count; index++)
         {
             var button = AddRow(
                 content, drawn[index], $"RunmobileRow{index.ToString(System.Globalization.CultureInfo.InvariantCulture)}",
-                new Vector2(at.Position.X, top + (step * index)), at.Size.X);
+                new Vector2(at.Position.X, rowTop), at.Size.X);
+            rowTop += drawn[index].Heading ? 32f : step;
             if (button is not null) placed.Add(button);
         }
 
@@ -641,8 +633,8 @@ internal static class LibraryScreen
             Text = filter.Label,
             ButtonPressed = filter.Checked,
             Position = at,
-            Size = new Vector2(width, content.NoButton.Size.Y),
-            CustomMinimumSize = new Vector2(width, content.NoButton.Size.Y),
+            Size = new Vector2(width, 32f),
+            CustomMinimumSize = new Vector2(width, 32f),
             FocusMode = Control.FocusModeEnum.All,
         };
         if (GameFont.Of(content.GetTree()?.Root) is { } font)
@@ -673,7 +665,22 @@ internal static class LibraryScreen
         button.Position = at;
         button.Size = new Vector2(width, button.Size.Y);
         button.CustomMinimumSize = new Vector2(width, button.Size.Y);
-        var text = row.Character is null ? row.Label : $"          {row.Label}";
+        foreach (var part in new[] { "%Visuals", "%Image", "%Outline" })
+        {
+            var visual = button.GetNode<Control>(part);
+            visual.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
+            if (visual is TextureRect texture)
+            {
+                texture.ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize;
+                texture.StretchMode = TextureRect.StretchModeEnum.Scale;
+            }
+        }
+        var rowLabel = button.GetNode<Control>("%Label");
+        rowLabel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.TopLeft);
+        rowLabel.Position = new Vector2(row.Character is null ? 12f : 64f, 0f);
+        rowLabel.Size = new Vector2(
+            row.Character is null ? width - 24f : width * 0.42f - 64f, button.Size.Y);
+        var text = row.Label;
         button.SetText(text);
 
         // Refit after Godot propagates the widened ribbon into its child label
@@ -809,7 +816,7 @@ internal static class LibraryScreen
 
         if (GameFont.Of(content.GetTree()?.Root) is { } font) label.AddThemeFontOverride("font", font);
         label.AddThemeFontSizeOverride("font_size", NoteFontSize);
-        label.AddThemeColorOverride("font_color", LibraryPalette.Ink);
+        label.AddThemeColorOverride("font_color", LibraryPalette.Muted);
         row.AddChild(label);
     }
 
@@ -883,6 +890,7 @@ internal static class LibraryScreen
         var label = new Label
         {
             Name = "RunmobileLine",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
             Text = text,
             Position = at,
             CustomMinimumSize = new Vector2(width, 0f),
@@ -892,7 +900,6 @@ internal static class LibraryScreen
                 : Control.MouseFilterEnum.Ignore,
             TooltipText = tooltip ?? string.Empty,
             HorizontalAlignment = alignment,
-            AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
 
         if (GameFont.Of(content.GetTree()?.Root) is { } font) label.AddThemeFontOverride("font", font);
