@@ -56,6 +56,14 @@ internal static class LibraryPaneArt
 
         internal int RowOf(int index) => index / Columns;
 
+        internal int LeftOf(int index) => index > 0 ? index - 1 : index;
+
+        internal int RightOf(int index, int count) => index + 1 < count ? index + 1 : index;
+
+        internal int Above(int index) => index >= Columns ? index - Columns : index;
+
+        internal int Below(int index, int count) => index + Columns < count ? index + Columns : index;
+
         internal float RowOffset(int index, int count, float width)
         {
             var first = RowOf(index) * Columns;
@@ -109,7 +117,8 @@ internal static class LibraryPaneArt
                 HorizontalAlignment.Right);
         }
 
-        y = AddStrip(content, pane, new Vector2(at.Position.X, y), at.Size.X);
+        var strip = AddStrip(content, pane, new Vector2(at.Position.X, y), at.Size.X);
+        y = strip.Bottom;
         // Keep the deck in the opened-run pane when browser actions need its room
         if (pane.Plate.Count == 0)
             y = AddDeck(content, pane, new Vector2(at.Position.X, y), at.Size.X);
@@ -128,7 +137,9 @@ internal static class LibraryPaneArt
                 pane.VerdictPassed ? LibraryPalette.Green : LibraryPalette.Red, LineFontSize);
         }
 
-        return AddPlate(content, pane, new Vector2(at.Position.X, y), at.Size.X, at.End.Y);
+        var plateFocus = AddPlate(
+            content, pane, new Vector2(at.Position.X, y), at.Size.X, at.End.Y);
+        return strip.Focus ?? plateFocus;
     }
 
     /// <summary>
@@ -195,11 +206,13 @@ internal static class LibraryPaneArt
     /// the strip says what the run did, and where a player can be stood is the rows'
     /// answer.
     /// </summary>
-    private static float AddStrip(NVerticalPopup content, ScreenPane pane, Vector2 at, float width)
+    private static (float Bottom, Control? Focus) AddStrip(
+        NVerticalPopup content, ScreenPane pane, Vector2 at, float width)
     {
-        if (pane.Strip.Count == 0) return at.Y;
+        if (pane.Strip.Count == 0) return (at.Y, null);
 
         var layout = LayoutStrip(pane.Strip.Count, width);
+        var controls = new List<Control>();
         for (var index = 0; index < pane.Strip.Count; index++)
         {
             var floor = pane.Strip[index];
@@ -273,9 +286,20 @@ internal static class LibraryPaneArt
                 number.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 () => select(number));
             box.AddChild(press);
+            controls.Add(press);
         }
 
-        return at.Y + (layout.Rows * layout.Height * StripRowStep);
+        for (var index = 0; index < controls.Count; index++)
+        {
+            controls[index].FocusNeighborLeft = controls[layout.LeftOf(index)].GetPath();
+            controls[index].FocusNeighborRight = controls[layout.RightOf(index, controls.Count)].GetPath();
+            controls[index].FocusNeighborTop = controls[layout.Above(index)].GetPath();
+            controls[index].FocusNeighborBottom = controls[layout.Below(index, controls.Count)].GetPath();
+        }
+
+        return (
+            at.Y + (layout.Rows * layout.Height * StripRowStep),
+            controls.FirstOrDefault());
     }
 
     /// <summary>
