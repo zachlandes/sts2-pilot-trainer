@@ -65,7 +65,7 @@ The Compendium, which the game opens when no run is active, has a Runmobile butt
 Its parchment browser has two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
 Each run row shows its character, act reached and leading relics, while the selected run's pane adds its complete relics, recorded deck count and a strip of the floors it reached.
 Opening that run makes the strip selectable and offers **Play from this floor**, **Continue** to the next unplayed fight, and **Start the run over** wherever the recording proves each entry point.
-Long run strips page through fixed-width cells and open on the page containing the selected or last replayed floor.
+Long run strips page through fixed-width cells, open on the page containing the selected or last replayed floor, and let a focused Previous or Next control use the game's keyboard or controller confirm or select binding.
 [demo/RUNMOBILE-LIBRARY.md](demo/RUNMOBILE-LIBRARY.md) shows the parchment library in the retail client.
 The visible `Compatible with your game version` filter defaults on, hides incompatible runs during ordinary browsing, and leaves a muted "{n} not shown" count underneath.
 Turning the filter off reveals incompatible runs as disabled rows; entering an exact code does that automatically, selects its run in the sorted position, and shows both the build it requires and the current build.

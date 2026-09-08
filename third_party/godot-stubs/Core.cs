@@ -4,6 +4,8 @@ namespace Godot;
 
 public class GodotObject
 {
+    private readonly Dictionary<string, List<Callable>> _connections = [];
+
     public class SignalName { }
 
     public static bool IsInstanceValid(GodotObject? obj) => obj != null;
@@ -17,8 +19,22 @@ public class GodotObject
     // that offered only two made patching one of them fail to resolve the method
     // rather than fail to find the type - a defect that only appears when a patch is
     // installed and says nothing about which argument is missing.
-    public Error Connect(StringName signal, Callable callable, uint flags = 0) => Error.Ok;
-    public void Disconnect(StringName signal, Callable callable) { }
+    public Error Connect(StringName signal, Callable callable, uint flags = 0)
+    {
+        if (!_connections.TryGetValue(signal, out var connections))
+        {
+            connections = [];
+            _connections.Add(signal, connections);
+        }
+
+        connections.Add(callable);
+        return Error.Ok;
+    }
+
+    public void Disconnect(StringName signal, Callable callable)
+    {
+        if (_connections.TryGetValue(signal, out var connections)) connections.Remove(callable);
+    }
 
     // ToSignal - must be on GodotObject (not Node) to match real Godot
     public SignalAwaiter ToSignal(GodotObject source, StringName signal)
@@ -26,7 +42,15 @@ public class GodotObject
         return new SignalAwaiter();
     }
 
-    public Error EmitSignal(StringName signal, params Variant[] args) => Error.Ok;
+    public Error EmitSignal(StringName signal, params Variant[] args)
+    {
+        if (_connections.TryGetValue(signal, out var connections))
+        {
+            foreach (var callable in connections.ToArray()) callable.Call(args);
+        }
+
+        return Error.Ok;
+    }
 
     // Bridge methods overridden in generated code
     protected virtual void SaveGodotObjectData(GodotSerializationInfo info) { }

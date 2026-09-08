@@ -743,7 +743,8 @@ The last two places of a paged list become Previous and Next rows, and focus joi
 The scrolling body is bounded first to reserve the measured controls below it, and room for fewer than a page is refused rather than allowing a row to overlap the popup's ribbons.
 A browser with no listed runs still keeps its tab band, compatibility control and direct code lookup without inventing empty rows.
 The run strip uses the same paging contract with a readable minimum cell width.
-It opens on the page containing the selected floor, or the last replayed floor when no floor is selected, and gives its Previous and Next controls the same mouse and controller path as its floor cells.
+It opens on the page containing the selected floor, or the last replayed floor when no floor is selected.
+Its Previous and Next controls take focus and explicitly accept the game's confirm and select actions, so the retail keyboard and controller bindings page the strip as well as a mouse press.
 Paging is presentation: `RunBrowser` and `RunView` still return every row and floor, while `LibraryScreen` and `LibraryPaneArt` decide which page is visible.
 
 **The plate's marks and rows are derived, then drawn without re-deciding them.**

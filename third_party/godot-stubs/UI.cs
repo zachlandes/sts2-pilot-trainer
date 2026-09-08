@@ -46,6 +46,7 @@ public partial class Control : CanvasItem
     public Rect2 GetRect() => new(Position, Size);
     public void GrabFocus() { }
     public void ReleaseFocus() { }
+    public void AcceptEvent() { }
     public bool HasFocus() => false;
     public Viewport? GetViewport() => null;
     public Font GetThemeFont(StringName name, StringName themeType) => new();
@@ -333,7 +334,8 @@ public class AudioStreamPlayer : Node
 // Input
 public class InputEvent : Resource
 {
-    public virtual bool IsActionPressed(StringName action, bool allowEcho = false) => false;
+    public virtual bool IsActionPressed(
+        StringName action, bool allowEcho = false, bool exactMatch = false) => false;
     public virtual bool IsActionReleased(StringName action) => false;
     public bool IsPressed() => false;
     public bool IsReleased() => true;
