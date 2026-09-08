@@ -625,7 +625,9 @@ internal static class RunBrowserScreen
         {
             if (RunLibrary.RecordingFor(runId) is not { } recording)
                 throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
-            RunHistoryPlateHost.ShowShare(recording);
+            var selectedId = runId;
+            RunHistoryPlateHost.ShowShare(
+                recording, () => OpenTab(LibraryTab.MyRuns, selected: selectedId));
             return;
         }
 

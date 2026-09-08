@@ -52,6 +52,7 @@ internal static class RunHistoryPlateHost
     private static readonly Dictionary<int, Task<SharedRun>> PendingShares = [];
     private static readonly Dictionary<int, long> PendingShareSurfaces = [];
     private static readonly Dictionary<int, string> PendingShareScopes = [];
+    private static readonly Dictionary<int, Action> PendingShareBacks = [];
     private static readonly HashSet<long> SubmittingSurfaces = [];
     private static int nextShare;
 
@@ -286,7 +287,7 @@ internal static class RunHistoryPlateHost
         _ = RecordedFightRun.Start(recording, FloorEntryPlan.For(recording, atFloor));
     }
 
-    internal static void ShowShare(ReplayManifest recording)
+    internal static void ShowShare(ReplayManifest recording, Action? back = null)
     {
         var form = ShareRunForm.For(recording);
         var id = recording.RunId;
@@ -304,13 +305,15 @@ internal static class RunHistoryPlateHost
             Rows: [],
             Pane: null,
             LibraryCopy.Back,
+            Back: back,
             Body: LibraryMarkup.Dim(body),
             ShareSubmitted: (surface, name, description, displayName, consent) =>
-                Submit(surface, id, name, description, displayName, consent)));
+                Submit(surface, id, name, description, displayName, consent, back)));
     }
 
     private static void Submit(
-        long surface, string runId, string name, string description, string displayName, bool consent)
+        long surface, string runId, string name, string description, string displayName, bool consent,
+        Action? back)
     {
         lock (PendingLock)
         {
@@ -324,18 +327,18 @@ internal static class RunHistoryPlateHost
                 throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
             LibraryScreen.Invalidate(surface);
             Callable.From(() => BeginSubmit(
-                surface, runId, name, description, displayName, consent)).CallDeferred();
+                surface, runId, name, description, displayName, consent, back)).CallDeferred();
         }
         catch (Exception ex)
         {
             lock (PendingLock) SubmittingSurfaces.Remove(surface);
             LibraryScreen.Invalidate(surface);
             var message = ex.Message;
-            Callable.From(() => ShowSubmitFailure(runId, message)).CallDeferred();
+            Callable.From(() => ShowSubmitFailure(runId, message, back)).CallDeferred();
         }
     }
 
-    private static void ShowSubmitFailure(string runId, string message)
+    private static void ShowSubmitFailure(string runId, string message, Action? back)
     {
         LibraryScreen.Show(new LibraryPage(
             LibraryCopy.SubmitThisRun,
@@ -346,7 +349,7 @@ internal static class RunHistoryPlateHost
             LibraryCopy.Back,
             Back: () =>
             {
-                if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry);
+                if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry, back);
             },
             Body: LibraryMarkup.Dim(message)));
     }
@@ -357,7 +360,8 @@ internal static class RunHistoryPlateHost
         string name,
         string description,
         string displayName,
-        bool consent)
+        bool consent,
+        Action? back)
     {
         var loadingSurface = LibraryScreen.Show(new LibraryPage(
             LibraryCopy.SubmitThisRun,
@@ -383,6 +387,7 @@ internal static class RunHistoryPlateHost
                 PendingShares[request] = task;
                 PendingShareSurfaces[request] = loadingSurface;
                 PendingShareScopes[request] = scope;
+                if (back is not null) PendingShareBacks[request] = back;
             }
             _ = task.ContinueWith(
                 static (_, value) => Callable.From(() => CompleteShare((int)value!)).CallDeferred(),
@@ -400,7 +405,7 @@ internal static class RunHistoryPlateHost
             }
             if (!LibraryScreen.IsCurrent(loadingSurface)) return;
             LibraryScreen.Dismiss();
-            ShowSubmitFailure(runId, ex.Message);
+            ShowSubmitFailure(runId, ex.Message, back);
         }
     }
 
@@ -409,14 +414,17 @@ internal static class RunHistoryPlateHost
         Task<SharedRun> task;
         long surface;
         string scope;
+        Action? back;
         lock (PendingLock)
         {
             task = PendingShares[request];
             surface = PendingShareSurfaces[request];
             scope = PendingShareScopes[request];
+            PendingShareBacks.TryGetValue(request, out back);
             PendingShares.Remove(request);
             PendingShareSurfaces.Remove(request);
             PendingShareScopes.Remove(request);
+            PendingShareBacks.Remove(request);
             SubmittingSurfaces.Remove(surface);
         }
 
@@ -449,6 +457,7 @@ internal static class RunHistoryPlateHost
             Rows: [],
             Pane: null,
             LibraryCopy.Back,
+            Back: back,
             Body: LibraryMarkup.Dim(shared is null
                 ? failure?.Message ?? "Sharing was refused."
                 : $"Shared as {shared.Code}")));
