@@ -46,6 +46,34 @@ internal static class LibraryPaneArt
     /// <summary>How many card tiles a row of the deck holds before it wraps.</summary>
     private const int TilesPerRow = 8;
 
+    private const float MinimumStripPitch = 28f;
+    private const float StripRowStep = 1.55f;
+
+    internal readonly record struct StripLayout(
+        int Columns, int Rows, float Pitch, float Cell, float Height)
+    {
+        internal int ColumnOf(int index) => index % Columns;
+
+        internal int RowOf(int index) => index / Columns;
+
+        internal float RowOffset(int index, int count, float width)
+        {
+            var first = RowOf(index) * Columns;
+            var cells = Math.Min(Columns, count - first);
+            return (width - (cells * Pitch)) / 2f;
+        }
+    }
+
+    internal static StripLayout LayoutStrip(int count, float width)
+    {
+        var columns = Math.Max(1, Math.Min(count, (int)Math.Floor(width / MinimumStripPitch)));
+        var pitch = width / columns;
+        var cell = Math.Min(pitch * 0.9f, LineFontSize * 2.8f) * CellShare;
+        var height = cell / CellShare;
+        var rows = (count + columns - 1) / columns;
+        return new StripLayout(columns, rows, pitch, cell, height);
+    }
+
     /// <summary>
     /// Draws the pane into the area it was given, and returns the first control a
     /// player can press there - which is where focus goes when the list has nothing
@@ -171,36 +199,37 @@ internal static class LibraryPaneArt
     {
         if (pane.Strip.Count == 0) return at.Y;
 
-        var pitch = width / pane.Strip.Count;
-        var cell = Math.Min(pitch * 0.9f, LineFontSize * 2.8f) * CellShare;
-        var height = cell / CellShare;
+        var layout = LayoutStrip(pane.Strip.Count, width);
         for (var index = 0; index < pane.Strip.Count; index++)
         {
             var floor = pane.Strip[index];
+            var x = at.X + layout.RowOffset(index, pane.Strip.Count, width) +
+                    (layout.ColumnOf(index) * layout.Pitch);
+            var y = at.Y + (layout.RowOf(index) * layout.Height * StripRowStep);
             var box = new Control
             {
                 Name = $"RunmobileStrip{floor.Floor.ToString(CultureInfo.InvariantCulture)}",
-                Position = new Vector2(at.X + (index * pitch), at.Y),
-                Size = new Vector2(pitch, height),
-                CustomMinimumSize = new Vector2(pitch, height),
+                Position = new Vector2(x, y),
+                Size = new Vector2(layout.Pitch, layout.Height),
+                CustomMinimumSize = new Vector2(layout.Pitch, layout.Height),
                 MouseFilter = Control.MouseFilterEnum.Ignore,
                 TooltipText = LibraryCopy.FloorLine(floor.Floor, floor.Kind),
             };
             content.AddChild(box);
 
-            var inset = (height - cell) / 2f;
+            var inset = (layout.Height - layout.Cell) / 2f;
             var kind = LibraryGlyphArt.Of(
                 LibraryGlyphArt.For(floor.Kind),
                 "Kind",
-                cell,
+                layout.Cell,
                 floor.Playable ? LibraryPalette.Line : LibraryPalette.Line with { A = 0.45f });
-            kind.Position = new Vector2((pitch - cell) / 2f, inset);
+            kind.Position = new Vector2((layout.Pitch - layout.Cell) / 2f, inset);
             box.AddChild(kind);
             LibraryScreen.AddLine(
                 content,
                 floor.Floor.ToString(CultureInfo.InvariantCulture),
-                new Vector2(at.X + (index * pitch), at.Y + (height * 0.72f)),
-                pitch,
+                new Vector2(x, y + (layout.Height * 0.72f)),
+                layout.Pitch,
                 LibraryPalette.Muted,
                 LineFontSize - 3,
                 HorizontalAlignment.Center);
@@ -208,15 +237,19 @@ internal static class LibraryPaneArt
             // Filled, over the cell: it is something this player did.
             if (floor.Played)
             {
-                var tick = LibraryGlyphArt.Of(LibraryGlyph.Played, "Played", cell * 0.7f, LibraryPalette.Teal);
-                tick.Position = new Vector2((pitch - (cell * 0.7f)) / 2f, inset + (cell * 0.35f));
+                var tick = LibraryGlyphArt.Of(
+                    LibraryGlyph.Played, "Played", layout.Cell * 0.7f, LibraryPalette.Teal);
+                tick.Position = new Vector2(
+                    (layout.Pitch - (layout.Cell * 0.7f)) / 2f,
+                    inset + (layout.Cell * 0.35f));
                 box.AddChild(tick);
             }
 
             if (floor.Selected)
             {
-                var ring = LibraryGlyphArt.Of(LibraryGlyph.Selected, "Selected", height, LibraryPalette.Ink);
-                ring.Position = new Vector2((pitch - height) / 2f, 0f);
+                var ring = LibraryGlyphArt.Of(
+                    LibraryGlyph.Selected, "Selected", layout.Height, LibraryPalette.Ink);
+                ring.Position = new Vector2((layout.Pitch - layout.Height) / 2f, 0f);
                 box.AddChild(ring);
             }
 
@@ -242,7 +275,7 @@ internal static class LibraryPaneArt
             box.AddChild(press);
         }
 
-        return at.Y + (height * 1.55f);
+        return at.Y + (layout.Rows * layout.Height * StripRowStep);
     }
 
     /// <summary>
