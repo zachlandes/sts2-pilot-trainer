@@ -14,9 +14,9 @@ namespace Sts2PilotTrainer.Trainer;
 /// Two rules hold over everything here, and both are settled rather than stylistic.
 ///
 /// <para><b>One entering verb.</b> A player plays <em>from</em> a run: "Play from this
-/// floor", "Play from floor 6", "Continue from the next unplayed fight". No other verb
-/// enters a recording anywhere on this surface, because two of them would read as two
-/// different things happening.</para>
+/// floor", "Play from floor 6", "Continue". No other verb enters a recording
+/// anywhere on this surface, because two of them would read as two different things
+/// happening.</para>
 ///
 /// <para><b>No fight is named by number.</b> No player has that concept: the strip
 /// enumerates floors and the game's own screens count floors, so every row here names
@@ -103,7 +103,7 @@ public static class LibraryCopy
     /// <summary>The list's own header, inside the left pane: the columns it holds. It
     /// sits over the list rather than over the screen, because a header belongs to the
     /// thing it heads.</summary>
-    public static string ListHeader() => $"Run · {LastFloorReplayed}";
+    public static string ListHeader() => $"Run · Act reached · {LastFloorReplayed}";
 
     /// <summary>What a fight on the selected floor is against, under the run view's
     /// strip. The enemy is interpolated; no sentence here names one.</summary>
@@ -325,7 +325,7 @@ public static class LibraryCopy
     /// surface. Its second line is that fight's floor, and the drawing puts the enemy's
     /// map icon beside it where the recording names one.
     /// </summary>
-    public const string ContinueFromNextUnplayed = "Continue from the next unplayed fight";
+    public const string ContinueFromNextUnplayed = "Continue";
 
     /// <summary>
     /// Walks the recording from its beginning, showing every decision on the game's own

@@ -691,14 +691,12 @@ the same character at the same ascension on the same build are indistinguishable
 honest answer is no recording rather than the first of them - a plate offering the wrong
 run's fights would stand somebody in a fight they never had.
 
-**The row column is duplicated from the popup's own second ribbon, and gives up its
-hotkeys immediately.** `NHotkeyManager` is a stack, so five rows all binding confirm
-would mean the key pressing whichever was pushed last rather than the one a player is
-looking at. Each duplicate is disconnected as it is added; the keys stay with the two
-ribbons and the rows are reached by focus. `LibraryScreen` measures every position from
-the game's own nodes - the column starts under the popup's body label, steps by a row's
-own height, and holds as many rows as fit between the two - so a build that changes the
-popup's layout changes all three with it.
+**The parchment browser is one measured page with a list and selected-run pane.**
+The browser duplicates the popup's own second ribbon for its tabs and rows, then gives each duplicate's hotkeys up immediately.
+`NHotkeyManager` is a stack, so five rows all binding confirm would mean the key pressing whichever was pushed last rather than the one a player is looking at.
+The keys stay with the panel's ribbon and the rows are reached by focus.
+`LibraryScreen` measures the band, the list, the divider, the selected-run pane and the flat plate from the game's own panel nodes, so a build that changes the popup's layout moves the library with it.
+`LibraryPaneArt` owns both the browser pane and the opened-run pane, including the run strip, relic icons and card portraits.
 
 **A column longer than the panel is paged rather than drawn past it.** The rows are
 absolutely positioned siblings, not a scrolling list, so a run of a real length or a
@@ -781,18 +779,11 @@ It says no other personal information travels, requires explicit CC0 consent, an
 Only after that local publication gate passes does submitting send the complete manifest and the entered name, description, display name, and consent.
 Index fetching and exact-code lookup use that same configured service boundary; the `fetch_run_index` setting defaults on and controls index retrieval only.
 
-**What the accepted design draws and this does not.** The browser's parchment tabs, the
-run strip, the deck tiles, the relic row and the portrait; and the run-history plate hung
-flat under the game's pane. Those are scene work against furniture this mod has no path
-to instantiate or measure, so the same headings, the same rows, the same refusals and the
-same sentences are shown in the game's own modal instead. Named in the design's own
-terms: the Others list's grouping is a summary line in the popup's body over one flat
-row column rather than headed sections; the run strip with played fights ticked and the
-selected position ringed is a "Choose a floor" row; and the deck at the selected position
-and the fight pane are not drawn at all. The vocabulary, the offers and the rules are the
-design's exactly; only the furniture is smaller. Changing that is a change to
-`LibraryScreen` and `RunBrowserScreen` and to nothing behind them, and is filed as
-run-library-parchment-furniture.
+**The accepted parchment design is the implemented furniture.**
+The browser draws parchment tabs, headed groups, the two-line filter header, character portraits, the selected run's act reached, the run strip, relic icons and the recorded deck count.
+The opened run uses the same pane drawing, adds deck tiles where the recording carries them, and keeps the selected floor ringed and loaded floors ticked.
+`RunHistoryPlateArt` hangs the flat plate beneath the game's own history pane.
+The list keeps the settled compatibility filter and online sharing behavior rather than introducing another owner for either.
 
 **A screen opened from another goes back to it.** The container holds one modal, so every
 step replaces the last, and the ribbon would otherwise drop a player out of the library

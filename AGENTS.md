@@ -249,7 +249,7 @@ The player-facing tabs are Others and Mine; `LibraryTab.Community` and `LibraryT
 An online row's identity is its share id and code, while `RunId` remains the manifest's identity; two submissions of one run are two rows and each resolves through its own share.
 Where a player can be stood is the recording's own `boundaries[]`, read through `RunView`, so no row can offer somewhere `RecordedFightEntry` would refuse; `RecordedFightRun.Start` takes the plan, because there is still one playback path.
 `RunProgress` under the store holds fight ordinals and nothing resumable - it is the pips and Continue's number, never a save.
-What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [docs/in-game-host.md](docs/in-game-host.md) owns what it draws and what the accepted design still wants.
+What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [docs/in-game-host.md](docs/in-game-host.md) owns the accepted parchment design it draws.
 
 **The mod a player installs is `Runmobile`, and recorded fights, recording and the run library are its modules.**
 `RunmobileMod` is the shell and `IRunmobileModule` the line between it and a feature; a module says whether it can run, installs its own patches and contributes its own surfaces, and one that refuses does not take the rest of the mod with it.

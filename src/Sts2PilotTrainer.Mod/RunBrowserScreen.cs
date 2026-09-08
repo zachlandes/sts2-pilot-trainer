@@ -85,8 +85,8 @@ internal static class RunBrowserScreen
                 LibraryCopy.Back,
                 CodeSubmitted: code => Look(code, !community),
                 CodePlaceholder: LibraryCopy.RunCodeField,
-                Body: Footer(browser),
-                ListFooter: browser.NotShownLabel,
+                Body: null,
+                ListFooter: BrowserFooter(browser),
                 ListFooterTooltip: browser.NotShownTooltipBody));
         }
         catch (Exception ex)
@@ -203,7 +203,8 @@ internal static class RunBrowserScreen
         {
             if (group.Heading is { Length: > 0 } heading)
             {
-                rows.Add(new ScreenRow(heading, Enabled: false, () => { }));
+                rows.Add(new ScreenRow(
+                    heading, Enabled: false, () => { }, Heading: true));
             }
 
             foreach (var run in group.Runs)
@@ -653,10 +654,10 @@ internal static class RunBrowserScreen
 
     private static string RowLabel(LibraryRun run)
     {
-        var parts = new List<string> { ModelIdNames.Display(run.Character) };
-        if (run.Creator is { Length: > 0 } creator) parts.Insert(0, creator);
-        parts.Add($"Ascension {run.Ascension.ToString(CultureInfo.InvariantCulture)}");
-        return string.Join(" · ", parts);
+        var identity = run.Creator is { Length: > 0 } creator
+            ? creator
+            : ModelIdNames.Display(run.Character);
+        return $"{identity} · A{run.Ascension.ToString(CultureInfo.InvariantCulture)}";
     }
 
     /// <summary>A row's second line: what the run carried, in the relic strip's own
@@ -690,13 +691,16 @@ internal static class RunBrowserScreen
     /// <summary>The My runs footer, which is the one thing this screen says under the
     /// list rather than beside it. It carries no control: removing runs is a setting,
     /// and two places to do it would be two places to get it wrong.</summary>
-    private static string? Footer(RunBrowser browser)
+    private static string? BrowserFooter(RunBrowser browser)
     {
-        if (browser.Footer is not { Length: > 0 } footer) return null;
+        var parts = new List<string>();
+        if (browser.NotShownLabel is { Length: > 0 } hidden) parts.Add(hidden);
+        if (browser.Footer is { Length: > 0 } footer) parts.Add(footer);
 
+        var summary = string.Join(" · ", parts);
         return browser.FooterAction is { Length: > 0 } action
-            ? LibraryMarkup.Dim($"{footer} · {action}")
-            : LibraryMarkup.Dim(footer);
+            ? string.IsNullOrEmpty(summary) ? action : $"{summary}\n{action}"
+            : string.IsNullOrEmpty(summary) ? null : summary;
     }
 
     /// <summary>

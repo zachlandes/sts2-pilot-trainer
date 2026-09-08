@@ -34,7 +34,8 @@ namespace Sts2PilotTrainer.Mod;
 internal sealed record ScreenRow(
     string Label, bool Enabled, Action Press, string? Note = null, string? Reason = null,
     bool Pinned = false, string? MarkTooltip = null, LibraryGlyph? Glyph = null,
-    bool Selected = false, string? Trailing = null, string? Character = null);
+    bool Selected = false, string? Trailing = null, string? Character = null,
+    bool Heading = false);
 
 /// <summary>One parchment tab across the top band.</summary>
 internal sealed record ScreenTab(string Label, bool Current, Action Press);
@@ -163,7 +164,7 @@ internal static class LibraryScreen
 
     /// <summary>The same, on a screen whose rows carry a second line: the note is drawn
     /// in the gap, so the gap has to hold it.</summary>
-    private const float NotedRowStep = 1.55f;
+    private const float NotedRowStep = 1.35f;
 
     /// <summary>How far under a row its second line sits, as a multiple of the row's own
     /// height. A row occupies its whole height, so anything under one clears it.</summary>
@@ -204,11 +205,13 @@ internal static class LibraryScreen
             added = true;
 
             var content = popup.GetNode<NVerticalPopup>(VerticalPopupPath);
+            ExpandForLibrary(content);
             var label = content.BodyLabel();
             label.BbcodeEnabled = true;
             label.MinFontSize = MinimumBodyFontSize;
             label.ScrollActive = true;
             content.SetText(page.Title, page.Body ?? string.Empty);
+            ReservePageRoom(content, page);
 
             // Deferred for the reason Press clears first: the panel takes itself down
             // when the ribbon is pressed, and a screen shown inside the handler would be
@@ -348,6 +351,42 @@ internal static class LibraryScreen
         }
     }
 
+    /// <summary>Expands the retail popup to hold the library's two-pane furniture.</summary>
+    private static void ExpandForLibrary(NVerticalPopup content)
+    {
+        // Keep the one-column popup centred while making room for both panes
+        var oldSize = content.Size;
+        var newSize = new Vector2(oldSize.X * 1.65f, oldSize.Y * 1.2f);
+        content.Position -= (newSize - oldSize) / 2f;
+        content.Size = newSize;
+
+        var header = content.GetNode<Control>("Header");
+        header.Size = new Vector2(newSize.X, header.Size.Y);
+
+        var description = content.BodyLabel();
+        description.Position = new Vector2(140f, description.Position.Y);
+        description.Size = new Vector2(
+            newSize.X - 280f,
+            newSize.Y - description.Position.Y - content.YesButton.Size.Y - 12f);
+
+        var buttonY = newSize.Y - content.YesButton.Size.Y;
+        content.NoButton.Position = new Vector2(70f, buttonY);
+        content.YesButton.Position = new Vector2(newSize.X - content.YesButton.Size.X - 70f, buttonY);
+    }
+
+    /// <summary>Bounds the popup's scrolling body above the library furniture.</summary>
+    private static void ReservePageRoom(NVerticalPopup content, LibraryPage page)
+    {
+        if (page.Rows.Count == 0 && page.Pane is null && page.Tabs.Count == 0) return;
+
+        var label = content.BodyLabel();
+        label.FitContent = false;
+        label.CustomMinimumSize = new Vector2(label.CustomMinimumSize.X, 0f);
+        label.Size = new Vector2(
+            label.Size.X,
+            string.IsNullOrEmpty(page.Body) ? 0f : Math.Min(label.Size.Y, content.NoButton.Size.Y));
+    }
+
     /// <summary>
     /// The content area, measured from the panel's own nodes: what lies between the
     /// body label and the ribbons, as wide as the label.
@@ -382,7 +421,7 @@ internal static class LibraryScreen
 
         var prototype = content.NoButton;
         var height = prototype.Size.Y;
-        var tabWidth = prototype.Size.X;
+        var tabWidth = Math.Min(prototype.Size.X, area.Size.X * 0.21f);
         var at = area.Position.X;
         foreach (var tab in page.Tabs)
         {
@@ -391,6 +430,8 @@ internal static class LibraryScreen
 
             button.SetText(tab.Label);
             button.Position = new Vector2(at, area.Position.Y);
+            button.Size = new Vector2(tabWidth, button.Size.Y);
+            button.CustomMinimumSize = button.Size;
             button.Visible = true;
 
             // The current tab is not pressable: pressing the tab you are on would
@@ -408,7 +449,7 @@ internal static class LibraryScreen
                 var press = tab.Press;
                 button.Connect(
                     NClickableControl.SignalName.Released,
-                    Callable.From<NButton>(_ => Act(tab.Label, press)));
+                    Callable.From<NButton>(_ => Reopen(press)));
             }
 
             at += tabWidth * 1.04f;
@@ -416,6 +457,7 @@ internal static class LibraryScreen
 
         if (page.CodeSubmitted is { } submitted)
         {
+            at += 24f;
             AddCodeField(
                 content,
                 page.CodePlaceholder,
@@ -460,7 +502,7 @@ internal static class LibraryScreen
         if (rows.Count == 0) return null;
 
         var prototype = content.NoButton;
-        var noted = rows.Any(row => row.Note is { Length: > 0 });
+        var noted = rows.Any(row => SupportingText(row) is not null);
         var step = prototype.Size.Y * (noted ? NotedRowStep : RowStep);
         if (step <= 0f)
         {
@@ -530,14 +572,24 @@ internal static class LibraryScreen
     internal static Control? AddRow(
         NVerticalPopup content, ScreenRow row, string name, Vector2 at, float width)
     {
+        if (row.Heading)
+        {
+            AddLine(content, row.Label, at, width, LibraryPalette.Muted, NoteFontSize);
+            return null;
+        }
+
         var button = Duplicate(content, content.NoButton, name);
         if (button is null) return null;
 
-        var label = row.Reason is { Length: > 0 } reason ? $"{row.Label} — {reason}" : row.Label;
-        button.SetText(row.Character is null ? label : $"     {label}");
         button.Position = at;
         button.Size = new Vector2(width, button.Size.Y);
         button.CustomMinimumSize = new Vector2(width, button.Size.Y);
+        var text = row.Character is null ? row.Label : $"          {row.Label}";
+        button.SetText(text);
+
+        // Refit after Godot propagates the widened ribbon into its child label
+        // SetTextAutoSize otherwise measures the narrow prototype and shrinks actions
+        Callable.From(() => button.SetText(text)).CallDeferred();
         button.Visible = true;
 
         if (row.Enabled)
@@ -559,12 +611,21 @@ internal static class LibraryScreen
 
         if (row.Character is { Length: > 0 } character) AddCharacterPortrait(button, character);
         if (row.Selected) AddSelectionRing(button);
-        if (row.Note is { Length: > 0 } note) AddNote(content, button, note);
+        if (SupportingText(row) is { } supporting) AddNote(content, button, supporting);
         if (row.Trailing is { Length: > 0 } trailing) AddTrailing(content, button, trailing);
         if (row.Glyph is { } glyph) AddGlyph(button, glyph, LibraryPalette.Muted);
         if (row.MarkTooltip is { Length: > 0 } tooltip) AddMark(button, tooltip);
         return button;
     }
+
+    /// <summary>Keeps a refusal's reason under the row rather than shrinking its action.</summary>
+    private static string? SupportingText(ScreenRow row) => (row.Note, row.Reason) switch
+    {
+        ({ Length: > 0 } note, { Length: > 0 } reason) => $"{note} · {reason}",
+        ({ Length: > 0 } note, _) => note,
+        (_, { Length: > 0 } reason) => reason,
+        _ => null,
+    };
 
     /// <summary>Draws the retail character-select portrait beside a run row.</summary>
     private static void AddCharacterPortrait(Control row, string character)
@@ -706,13 +767,15 @@ internal static class LibraryScreen
         NVerticalPopup content, string text, Vector2 at, float width, Color colour, int size,
         HorizontalAlignment alignment = HorizontalAlignment.Left, string? tooltip = null)
     {
+        var lineCount = text.Count(character => character == '\n') + 1;
+        var height = size * 1.3f * lineCount;
         var label = new Label
         {
             Name = "RunmobileLine",
             Text = text,
             Position = at,
             CustomMinimumSize = new Vector2(width, 0f),
-            Size = new Vector2(width, size * 1.3f),
+            Size = new Vector2(width, height),
             MouseFilter = tooltip is { Length: > 0 }
                 ? Control.MouseFilterEnum.Stop
                 : Control.MouseFilterEnum.Ignore,
@@ -725,7 +788,7 @@ internal static class LibraryScreen
         label.AddThemeFontSizeOverride("font_size", size);
         label.AddThemeColorOverride("font_color", colour);
         content.AddChild(label);
-        return at.Y + (size * 1.45f);
+        return at.Y + (size * 1.45f * lineCount);
     }
 
     /// <summary>
@@ -746,6 +809,7 @@ internal static class LibraryScreen
         button.Name = name;
         content.AddChild(button);
         button.DisconnectHotkeys();
+        button.FocusMode = Control.FocusModeEnum.All;
         button.IsYes = false;
         return button;
     }
@@ -803,14 +867,14 @@ internal static class LibraryScreen
     private static void Reopen(Action back)
     {
         Dismiss();
-        Act("go back", back);
+        Callable.From(() => Act("go back", back)).CallDeferred();
     }
 
     /// <summary>Runs a row's action with the modal taken down first.</summary>
     internal static void Press(ScreenRow row)
     {
         Dismiss();
-        Act(row.Label, row.Press);
+        Callable.From(() => Act(row.Label, row.Press)).CallDeferred();
     }
 
     /// <summary>

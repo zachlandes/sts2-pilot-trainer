@@ -44,7 +44,7 @@ internal static class LibraryPaneArt
     private const float CellShare = 0.62f;
 
     /// <summary>How many card tiles a row of the deck holds before it wraps.</summary>
-    private const int TilesPerRow = 6;
+    private const int TilesPerRow = 8;
 
     /// <summary>
     /// Draws the pane into the area it was given, and returns the first control a
@@ -82,7 +82,9 @@ internal static class LibraryPaneArt
         }
 
         y = AddStrip(content, pane, new Vector2(at.Position.X, y), at.Size.X);
-        y = AddDeck(content, pane, new Vector2(at.Position.X, y), at.Size.X);
+        // Keep the deck in the opened-run pane when browser actions need its room
+        if (pane.Plate.Count == 0)
+            y = AddDeck(content, pane, new Vector2(at.Position.X, y), at.Size.X);
 
         foreach (var fact in pane.Facts)
         {
@@ -137,6 +139,7 @@ internal static class LibraryPaneArt
                     StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                     // The game's own tooltip is the relic's, and it needs the mouse.
                     MouseFilter = Control.MouseFilterEnum.Stop,
+                    ClipContents = true,
                     TooltipText = ModelIdNames.Display(id),
                 };
                 content.AddChild(art);
@@ -149,7 +152,7 @@ internal static class LibraryPaneArt
             }
         }
 
-        return y + (size * 1.4f);
+        return y + (size * 1.85f);
     }
 
     /// <summary>
@@ -168,7 +171,7 @@ internal static class LibraryPaneArt
         if (pane.Strip.Count == 0) return at.Y;
 
         var pitch = width / pane.Strip.Count;
-        var cell = Math.Min(pitch * 0.9f, LineFontSize * 2.2f) * CellShare;
+        var cell = Math.Min(pitch * 0.9f, LineFontSize * 2.8f) * CellShare;
         var height = cell / CellShare;
         for (var index = 0; index < pane.Strip.Count; index++)
         {
@@ -192,6 +195,14 @@ internal static class LibraryPaneArt
                 floor.Playable ? LibraryPalette.Line : LibraryPalette.Line with { A = 0.45f });
             kind.Position = new Vector2((pitch - cell) / 2f, inset);
             box.AddChild(kind);
+            LibraryScreen.AddLine(
+                content,
+                floor.Floor.ToString(CultureInfo.InvariantCulture),
+                new Vector2(at.X + (index * pitch), at.Y + (height * 0.72f)),
+                pitch,
+                LibraryPalette.Muted,
+                LineFontSize - 3,
+                HorizontalAlignment.Center);
 
             // Filled, over the cell: it is something this player did.
             if (floor.Played)
@@ -228,7 +239,7 @@ internal static class LibraryPaneArt
             box.AddChild(press);
         }
 
-        return at.Y + (height * 1.4f);
+        return at.Y + (height * 1.55f);
     }
 
     /// <summary>
@@ -244,7 +255,7 @@ internal static class LibraryPaneArt
         if (pane.Deck is not { Count: > 0 } deck) return at.Y;
 
         var tile = width / TilesPerRow;
-        var height = tile * 1.2f;
+        var height = tile * 0.82f;
         var y = at.Y;
         for (var index = 0; index < deck.Count; index++)
         {
@@ -270,6 +281,7 @@ internal static class LibraryPaneArt
                     ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                     StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
                     MouseFilter = Control.MouseFilterEnum.Stop,
+                    ClipContents = true,
                     TooltipText = text,
                 };
                 content.AddChild(art);
