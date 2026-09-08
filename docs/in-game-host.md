@@ -650,11 +650,10 @@ Two things follow from it that are not about card screens.
 
 The first is that a verification which photographs behaviour the host cannot produce is a
 check that cannot fail.
-Whatever the two hosts do differently has to be stated as a difference somewhere, and
-`RunDriver.VerbsIssuedInsideARunningGame` is where this one is; `RecordedFightVerbAgreementTests`
-holds it against what a walk to a recording's first fight can contain, and needs no game
-installed to do it, which is the point - the run that would otherwise catch this is one
-only a person with the client can make.
+Whatever the two hosts do differently has to be stated as a difference somewhere, and `RunDriver.VerbsIssuedInsideARunningGame` is where this one is.
+`RecordedFightVerbAgreementTests` holds that declaration against the committed fixture's walk to its first fight and proves the known `SelectCardFromScreen` shape remains covered.
+It does not establish that every possible first-fight prefix is supported; bundle and relic answers remain refused in the client because their prompt stand-ins are headless-only.
+The test needs no game installed, which is the point - the run that would otherwise catch this is one only a person with the client can make.
 
 The second is the rule the fix is written to: a screen the recording opened and the
 recording answered is not the player's, whatever it looks like from the driver.

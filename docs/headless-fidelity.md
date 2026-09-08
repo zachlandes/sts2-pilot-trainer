@@ -165,15 +165,14 @@ undecided relic when the room is left and says nothing, so a history that omitte
 decision would replay into the state of one that declined it. A map move or an act
 transition that would leave either decision unmade is refused.
 
-**None of these stand-ins is installed inside the retail client.**
-The same `RunDriver` runs there, walking a constructed run through the recording's decisions before its fight, and in there each of these is on a player's screen: answering one would take a decision away from somebody who was looking at it, and the client opens its own chest through `NTreasureRoom.OpenChest`.
-So the driver installs no selector, no rewards delegate and no chest opening when the engine's origin is a running game, and
-narrows itself to the verbs that reach a decision before a fight - the opening
-blessing, an event option, a map move, and the card selections those two can queue.
-Every other verb refuses there, including the combat ones, because the fight is the
-player's. See [the in-game host](in-game-host.md).
+**The headless stand-ins are not installed for the run's lifetime inside the retail client.**
+The same `RunDriver` runs there, walking a constructed run through the recording's decisions before its fight, and most of these surfaces are on a player's screen: answering one would take a decision away from somebody who was looking at it, and the client opens its own chest through `NTreasureRoom.OpenChest`.
+So the driver installs no rewards delegate, chest opening or `ScreenStandIns` there, and narrows itself to the opening blessing, an event option, a map move and `SelectCardFromScreen` when one of those decisions queued it.
+Bundle and relic selections still refuse because the prompt stand-ins that consume them are headless-only.
+Every other verb refuses there, including the combat ones, because the fight is the player's.
+See [the in-game host](in-game-host.md).
 
-**The card screen is the one stand-in that is not the player's, and it took a shipped defect to see it.**
+**The card-screen selector is the one scoped exception, and it took a shipped defect to see it.**
 A screen an opening blessing opens was opened by the recording and answered by the recording; until the boundary the player is watching rather than deciding, so answering it is not taking anything from them.
 The driver learned to queue those selections for the headless host without the client learning to issue them, so a recording whose blessing removes, transforms or upgrades a card replayed, verified, passed the gate and then aborted in the client at the step after the player had watched the blessing being made.
 So in the client the selector is pushed for the one step that queued an answer and released as soon as the engine has taken it, by `RunDriver.SettleAnyCardScreenTheLastStepOpened`.

@@ -215,7 +215,7 @@ the prompt itself by `ScreenStandIns`, headlessly only. None of them decides any
 and each refuses where the manifest is silent.
 The card screen is also the in-game host's when the recording opened and answered it, so in the retail client the selector is pushed only for the step that queued the answer and released as soon as the engine takes it.
 The two hosts differ only in when that answer arrives - inline headlessly and on a later frame in the client - and `docs/headless-fidelity.md` owns the mechanism.
-Do not narrow the verbs one host issues without holding them against what a walk to a recording's first fight can contain; `RunDriver.VerbsIssuedInsideARunningGame` states the set once and `RecordedFightVerbAgreementTests` holds it.
+Do not narrow the verbs one host issues without holding them against a recorded walk to its first fight; `RunDriver.VerbsIssuedInsideARunningGame` states the set once and `RecordedFightVerbAgreementTests` holds the committed fixture against it.
 
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the

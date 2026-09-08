@@ -15,11 +15,13 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// not go away when the arbiter learned the verb; it moved, from an honest refusal
 /// before anybody had invested anything to the worst place a refusal can happen.
 ///
-/// So the claim here is the agreement itself rather than either half of it: every verb
-/// the walk to the recording's first fight can contain has to be one the driver will
-/// issue inside a running game. Nothing about this needs the game to be installed - it
-/// is two declarations held against each other - which is the point, because the run
-/// that would catch it otherwise is one only a person with the client can make.
+/// So the claim here is the agreement for the committed fixture rather than either
+/// half of it: every verb on that walk to the first fight has to be one the driver will
+/// issue inside a running game. This is a sentinel for the known card-screen shape,
+/// not proof that every possible prefix is supported; bundle and relic prompts remain
+/// headless-only. Nothing about this needs the game to be installed - it is two
+/// declarations held against each other - which is the point, because the run that
+/// would catch this otherwise is one only a person with the client can make.
 /// </summary>
 public sealed class RecordedFightVerbAgreementTests
 {

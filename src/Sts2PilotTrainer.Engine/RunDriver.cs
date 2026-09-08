@@ -64,12 +64,11 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// <summary>
     /// The verbs this driver will issue inside a running retail client.
     ///
-    /// Everything before the fight, and nothing in it. Two reasons, and both are
-    /// about not taking something away from the player: the decisions before a fight
-    /// are the recording's and the fight is theirs, and the stand-ins this driver
-    /// installs for the loot and the chest exist because a headless process has no UI
-    /// - the retail client has one, and intercepting it would answer a screen the
-    /// player was looking at. See docs/headless-fidelity.md.
+    /// The supported decisions before the fight, and nothing in it. The list is
+    /// deliberately narrower than every verb a headless prefix can contain: bundle
+    /// and relic prompts require headless-only stand-ins and refuse here. The fight is
+    /// the player's, and intercepting one of its screens would take away a decision
+    /// they were looking at. See docs/headless-fidelity.md.
     ///
     /// <see cref="ActionVerb.SelectCardFromScreen"/> is here for a reason that reads
     /// like an exception and is not one. It is not a decision made in the fight and it
@@ -90,9 +89,9 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     ];
 
     /// <summary>
-    /// The same list, for a test that has to hold it against what a boundary plan's
-    /// prefix can contain. Exposed rather than duplicated: two copies of this set is
-    /// how the client came to refuse a verb the arbiter had started issuing.
+    /// The same list, for a test that holds it against the committed fixture's
+    /// boundary prefix. Exposed rather than duplicated: two copies of this set is how
+    /// the client came to refuse a verb the arbiter had started issuing.
     /// </summary>
     public static IReadOnlyList<ActionVerb> VerbsIssuedInsideARunningGame => VerbsAllowedInRunningGame;
 
