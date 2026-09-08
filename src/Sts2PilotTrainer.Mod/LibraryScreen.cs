@@ -164,11 +164,11 @@ internal static class LibraryScreen
 
     /// <summary>The same, on a screen whose rows carry a second line: the note is drawn
     /// in the gap, so the gap has to hold it.</summary>
-    private const float NotedRowStep = 1.35f;
+    private const float NotedRowStep = 1.55f;
 
     /// <summary>How far under a row its second line sits, as a multiple of the row's own
     /// height. A row occupies its whole height, so anything under one clears it.</summary>
-    private const float NoteDrop = 1.02f;
+    private const float NoteDrop = 1.12f;
 
     /// <summary>The second line is supporting text and reads after the row, so it is
     /// smaller and dimmer than the label the game drew.</summary>
@@ -227,6 +227,18 @@ internal static class LibraryScreen
 
             var area = AreaOf(content);
             var band = AddBand(content, page, area);
+            if (page.Tabs.Count > 0 && page.ListFooter is null)
+            {
+                // Separate a short browser composition without displacing paged My runs
+                band += area.Size.Y * 0.1f;
+            }
+            else if (page.Rows.Count > 0 &&
+                     page.Pane is { Plate.Count: 0, Ribbon: null })
+            {
+                // Balance the opened run instead of pinning its short columns to the header
+                band += area.Size.Y * 0.14f;
+            }
+
             var listWidth = page.Pane is null ? area.Size.X : area.Size.X * ListShare;
             var first = AddRows(
                 content, page, new Rect2(area.Position.X, band, listWidth, area.End.Y - band));
@@ -421,7 +433,7 @@ internal static class LibraryScreen
 
         var prototype = content.NoButton;
         var height = prototype.Size.Y;
-        var tabWidth = Math.Min(prototype.Size.X, area.Size.X * 0.21f);
+        var tabWidth = Math.Min(prototype.Size.X, area.Size.X * 0.17f);
         var at = area.Position.X;
         foreach (var tab in page.Tabs)
         {
@@ -457,7 +469,7 @@ internal static class LibraryScreen
 
         if (page.CodeSubmitted is { } submitted)
         {
-            at += 24f;
+            at += 90f;
             AddCodeField(
                 content,
                 page.CodePlaceholder,
@@ -465,7 +477,7 @@ internal static class LibraryScreen
                 new Rect2(at, area.Position.Y, Math.Max(tabWidth, area.End.X - at), height));
         }
 
-        return area.Position.Y + (height * 1.45f);
+        return area.Position.Y + (height * 1.65f);
     }
 
     /// <summary>The line between the panes. It runs the whole height of the content
@@ -744,6 +756,9 @@ internal static class LibraryScreen
             Text = note,
             Position = new Vector2(0f, row.Size.Y * NoteDrop),
             CustomMinimumSize = new Vector2(row.Size.X, 0f),
+            Size = new Vector2(row.Size.X, NoteFontSize * 1.3f),
+            ClipText = true,
+            TooltipText = note,
             MouseFilter = Control.MouseFilterEnum.Ignore,
             HorizontalAlignment = HorizontalAlignment.Center,
         };

@@ -661,8 +661,8 @@ internal static class RunBrowserScreen
     }
 
     /// <summary>A row's second line: what the run carried, in the relic strip's own
-    /// order, and how far it went. Written rather than drawn, because a list row is one
-    /// duplicated ribbon and the relic icons belong to the pane.</summary>
+    /// order. Written rather than drawn, because a list row is one duplicated ribbon
+    /// and the relic icons belong to the pane.</summary>
     private static string? RowNote(LibraryRun run)
     {
         var strip = RelicStrip.ForRow(run.Relics, RelicRarities.Of);
@@ -674,7 +674,6 @@ internal static class RunBrowserScreen
         }
 
         if (run.DeckCount is { } cards) parts.Add(LibraryCopy.DeckCount(cards));
-        if (run.LastFloor is { } floor) parts.Add(LibraryCopy.RunReached(floor));
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
