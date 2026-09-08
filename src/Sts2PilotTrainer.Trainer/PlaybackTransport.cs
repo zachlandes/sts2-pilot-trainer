@@ -913,6 +913,9 @@ public sealed record PlaybackTransport(
     /// rows is the sentence the design replaced.</param>
     private static string Describe(string creator, PrefightChoice choice, bool name = true) => choice switch
     {
+        PrefightChoice.Blessing { CardsPicked.Count: > 0 } blessing => name
+            ? TrainerCopy.BlessingWithCardsCaption(creator, blessing.RelicModelId, blessing.CardsPicked)
+            : TrainerCopy.BlessingWithCardsLedgerRow(blessing.RelicModelId, blessing.CardsPicked),
         PrefightChoice.Blessing blessing => name
             ? TrainerCopy.BlessingCaption(creator, blessing.RelicModelId)
             : TrainerCopy.BlessingLedgerRow(blessing.RelicModelId),

@@ -212,6 +212,12 @@ public static class CardScreenAnswers
 
     public static bool Answers(ActionVerb verb) => Array.IndexOf(Verbs, verb) >= 0;
 
+    /// <summary>
+    /// Whether this action answers a screen an earlier decision opened, rather than
+    /// representing a separately revealable decision.
+    /// </summary>
+    public static bool IsAnAnswer(ActionRecord action) => Answers(action.Verb);
+
     public static IReadOnlyList<ActionRecord> After(IEnumerable<ActionRecord> actions, int seq) =>
         actions
             .OrderBy(action => action.Seq)

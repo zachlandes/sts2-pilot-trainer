@@ -632,6 +632,45 @@ The pump's own docstring had already named the failure - "a batch settled togeth
 give two decisions one state and put the second one's effects on the first" - and this
 arrived by a route the pump could not see.
 
+## One the arbiter learned and the host did not
+
+Different in kind from the traps above and worth its own heading, because nothing about
+the client caused it.
+The headless driver learned to answer the card screen an opening blessing opens - from the
+recording's own selections, correctly - and the verbs the in-game host issues stayed as
+they were.
+So a recording whose blessing removes, transforms or upgrades a card began to replay,
+verify and pass the publication gate, and then aborted in the retail client at the step
+after the player had watched the blessing being made.
+Nothing was fixed by that change and nothing was broken by it: the refusal simply moved,
+from publication - before anybody had invested anything - to the worst place a refusal can
+happen.
+
+Two things follow from it that are not about card screens.
+
+The first is that a verification which photographs behaviour the host cannot produce is a
+check that cannot fail.
+Whatever the two hosts do differently has to be stated as a difference somewhere, and `RunDriver.VerbsIssuedInsideARunningGame` is where this one is.
+`RecordedFightVerbAgreementTests` holds that declaration against the committed fixture's walk to its first fight and proves the known `SelectCardFromScreen` shape remains covered.
+It does not establish that every possible first-fight prefix is supported; bundle and relic answers remain refused in the client because their prompt stand-ins are headless-only.
+The test needs no game installed, which is the point - the run that would otherwise catch this is one only a person with the client can make.
+
+The second is the rule the fix is written to: a screen the recording opened and the
+recording answered is not the player's, whatever it looks like from the driver.
+Until the boundary the player is watching rather than deciding.
+So the selector is pushed for the one step that queued an answer and released as soon as
+the engine has taken it, and it cannot reach the fight - the last decision before a
+boundary is a map move, or an event option that starts its room's fight, and neither
+queues anything.
+`docs/headless-fidelity.md` owns the mechanism and the two hosts' different timing;
+what belongs here is that the client resumes the engine's continuation on a later frame,
+so `RecordedFightRun` waits for the engine to have taken the answer rather than for a
+length of time - the same rule as everywhere else on this page - and the step's own
+refusal, one step later, is what a screen that never asks still gets.
+Because that screen is never drawn, the decision that opened it carries the card in its
+caption; that sentence is the only place the card is said, and a caption naming only the
+relic would leave a deck that quietly lost a card with nothing having said which.
+
 ## The surfaces, and why they are the game's own
 
 **The mode card is a duplicate of the game's Custom Run card**, renamed and rewired.

@@ -129,6 +129,23 @@ internal static class RecordedFightRun
     private const double EndingTheFightSeconds = 2.0;
 
     /// <summary>
+    /// How long to give the engine to take the card the recording picked off the screen
+    /// a decision opened, before giving up on it.
+    ///
+    /// The wait exists because of where the two hosts differ. Headlessly the engine's
+    /// continuation runs inline, so the screen is answered inside the call that opened
+    /// it and there is nothing to wait for; in the client that continuation is resumed
+    /// on a later frame, so a host that read the answer on the frame it made the
+    /// decision would refuse a correct run for being a frame early. Short, because the
+    /// engine has no work to do here beyond resuming - it is a frame or two, not an
+    /// animation.
+    /// </summary>
+    private const double AnsweringTheScreenSeconds = 5.0;
+
+    /// <summary>How often that wait looks at what it is waiting for.</summary>
+    private const double AnsweringTheScreenPollSeconds = 0.05;
+
+    /// <summary>
     /// Where the journey has got to, held as a number.
     ///
     /// An <c>int</c> for the reason <see cref="_speedIndex"/> records: the phase enum
@@ -245,7 +262,7 @@ internal static class RecordedFightRun
             SweepWhileTheGameIsBetweenScreens();
             Log.Info(
                 $"[{RunmobileMod.ModId}] constructed {creator}'s run; watching " +
-                $"{entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)} recorded " +
+                $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)} recorded " +
                 "decision(s) before the fight", 2);
             ArriveWhenTheGameHasFinishedMoving();
         }
@@ -313,7 +330,7 @@ internal static class RecordedFightRun
         {
             if (_lookingBackAt is { } step)
             {
-                _lookingBackAt = step < entry.StepsTaken ? step + 1 : null;
+                _lookingBackAt = step < entry.DecisionsMade ? step + 1 : null;
                 if (_lookingBackAt is null) Relight();
                 ShowTransport();
                 return;
@@ -342,12 +359,12 @@ internal static class RecordedFightRun
     /// </summary>
     private static void Back()
     {
-        if (_entry is not { } entry || entry.StepsTaken == 0) return;
+        if (_entry is not { } entry || entry.DecisionsMade == 0) return;
 
         try
         {
             Pause();
-            _lookingBackAt = _lookingBackAt is { } step ? Math.Max(1, step - 1) : entry.StepsTaken;
+            _lookingBackAt = _lookingBackAt is { } step ? Math.Max(1, step - 1) : entry.DecisionsMade;
             ShowTransport();
         }
         catch (Exception ex)
@@ -665,8 +682,8 @@ internal static class RecordedFightRun
 
         Log.Info(
             $"[{RunmobileMod.ModId}] arrived at decision " +
-            $"{(entry.StepsTaken + 1).ToString(CultureInfo.InvariantCulture)} of " +
-            $"{entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)}; " +
+            $"{(entry.DecisionsMade + 1).ToString(CultureInfo.InvariantCulture)} of " +
+            $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)}; " +
             $"{options.ToString(CultureInfo.InvariantCulture)} option(s), nothing lit", 2);
 
         ShowTransport();
@@ -692,8 +709,8 @@ internal static class RecordedFightRun
         _lit = true;
         Log.Info(
             $"[{RunmobileMod.ModId}] revealed decision " +
-            $"{(entry.StepsTaken + 1).ToString(CultureInfo.InvariantCulture)} of " +
-            $"{entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)}: {what}", 2);
+            $"{(entry.DecisionsMade + 1).ToString(CultureInfo.InvariantCulture)} of " +
+            $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)}: {what}", 2);
 
         ShowTransport();
         if (_playing) HoldThenCommit();
@@ -1032,8 +1049,8 @@ internal static class RecordedFightRun
         Identity(entry.Manifest, entry.NextStep),
         Shown,
         Phase == JourneyPhase.Watching && !entry.AtBoundary ? entry.DescribeNextStep() : null,
-        entry.StepsTaken,
-        entry.Plan.PrefixActions.Count,
+        entry.DecisionsMade,
+        entry.Decisions,
         entry.AtBoundary,
         _arrived,
         _lit,
@@ -1158,7 +1175,7 @@ internal static class RecordedFightRun
     {
         var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
 
-        var step = entry.StepsTaken + 1;
+        var step = entry.DecisionsMade + 1;
         _authorising = true;
         try
         {
@@ -1167,13 +1184,18 @@ internal static class RecordedFightRun
             Log.Info(
                 $"[{RunmobileMod.ModId}] made recorded decision " +
                 $"{step.ToString(CultureInfo.InvariantCulture)} of " +
-                $"{entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)}", 2);
+                $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)}", 2);
 
             // The engine's own task for the decision, where it has one. Awaiting the
             // game's task is the one kind of waiting this host can do: the game
             // completes it when the work is done. The authorisation is still held,
             // because a screen's command does most of its work inside this task.
             if (entry.Pending is { } pending) await pending;
+
+            // The recording's own answers to a card screen that decision opened, still
+            // under the same authorisation: the engine takes them inside the call the
+            // decision made, so they belong to that decision rather than being new ones.
+            await MakeTheAnswersThatDecisionAlreadyGave(entry);
         }
         finally
         {
@@ -1183,6 +1205,43 @@ internal static class RecordedFightRun
         if (!StillOurs(entry)) return;
 
         CarryOnPastAnyScreenWaitingToProceed();
+    }
+
+    /// <summary>
+    /// Executes the recording's answers to a card screen the decision just made
+    /// opened, once the engine has actually taken them.
+    ///
+    /// Never revealed and never held on. The engine answers such a screen from the
+    /// recording inside the call that opens it, so by the time these steps run the
+    /// screen has gone and the card is already removed, transformed or upgraded - there
+    /// is nothing on the game's own screen for a reveal to point at, and a hold would
+    /// be holding on nothing. What the player is shown instead is the decision that
+    /// opened it, and its caption names the card; see <c>TrainerCopy</c>.
+    ///
+    /// The wait is for the engine rather than for a length of time, for the reason
+    /// <see cref="AnsweringTheScreenSeconds"/> records. A screen that never asks is
+    /// refused by the step itself, in its own words, raised where this journey can
+    /// report it.
+    /// </summary>
+    private static async Task MakeTheAnswersThatDecisionAlreadyGave(RecordedFightEntry entry)
+    {
+        if (!entry.NextStepAnswersAScreenAlreadyOpened) return;
+
+        var took = await WaitUntil(
+            () => !entry.ACardScreenAnswerIsOutstanding,
+            LetTheGameRun(AnsweringTheScreenSeconds),
+            () => LetTheGameRun(AnsweringTheScreenPollSeconds));
+
+        if (!StillOurs(entry)) return;
+
+        Log.Info(
+            $"[{RunmobileMod.ModId}] the screen that decision opened " +
+            $"{(took ? "took" : "did not take")} the recording's answer", 2);
+
+        // Executed whether or not the wait succeeded: the step's own refusal names the
+        // cards nothing consumed, which is a better sentence than any this wait could
+        // write, and it is raised from the same place every other refusal is.
+        while (!entry.AtBoundary && entry.NextStepAnswersAScreenAlreadyOpened) entry.AdvanceOneStep();
     }
 
     /// <summary>

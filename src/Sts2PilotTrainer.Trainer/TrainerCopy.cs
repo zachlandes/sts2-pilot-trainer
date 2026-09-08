@@ -125,6 +125,23 @@ public static class TrainerCopy
 
     public static string BlessingLedgerRow(string relicModelId) => ModelIdNames.Display(relicModelId);
 
+    /// <summary>
+    /// The same row for a blessing whose relic opened a card screen, naming what came
+    /// off it.
+    ///
+    /// The screen itself is never on the player's own screen - the recording answers it
+    /// inside the engine call the blessing makes - so this line is the only place the
+    /// card is said. It says the cards and not what happened to them: whether the relic
+    /// removed, transformed or upgraded them is the relic's own name to carry, and a
+    /// row that guessed the verb would be stating something nobody read.
+    /// </summary>
+    public static string BlessingWithCardsLedgerRow(string relicModelId, IReadOnlyList<string> cards) =>
+        $"{ModelIdNames.Display(relicModelId)}, {NameCards(cards)}";
+
+    /// <summary>The cards a screen took, in the order they were picked.</summary>
+    private static string NameCards(IReadOnlyList<string> cards) =>
+        string.Join(" and ", cards.Select(ModelIdNames.Display));
+
     public static string MapMoveLedgerRow(string nodeType, string columnPosition) =>
         $"{ModelIdNames.Display(nodeType)} node, {columnPosition} column";
 
@@ -193,6 +210,13 @@ public static class TrainerCopy
     /// <summary>What the recording did at its opening event.</summary>
     public static string BlessingCaption(string creator, string relicModelId) =>
         $"{creator} took {ModelIdNames.Display(relicModelId)}";
+
+    /// <summary>The same, where the relic opened a card screen and the recording
+    /// picked off it. See <see cref="BlessingWithCardsLedgerRow"/> for why the card is
+    /// named here at all.</summary>
+    public static string BlessingWithCardsCaption(
+        string creator, string relicModelId, IReadOnlyList<string> cards) =>
+        $"{creator} took {ModelIdNames.Display(relicModelId)} and chose {NameCards(cards)}";
 
     /// <summary>What the recording did on the map.</summary>
     public static string MapMoveCaption(string creator, string nodeType, string columnPosition) =>

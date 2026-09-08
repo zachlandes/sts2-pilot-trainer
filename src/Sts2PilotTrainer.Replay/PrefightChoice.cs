@@ -15,8 +15,20 @@ namespace Sts2PilotTrainer.Replay;
 /// </summary>
 public abstract record PrefightChoice(int Seq)
 {
-    /// <summary>An opening blessing, named by the relic the chosen option grants.</summary>
-    public sealed record Blessing(int Seq, string RelicModelId) : PrefightChoice(Seq);
+    /// <summary>
+    /// An opening blessing, named by the relic the chosen option grants and by the
+    /// cards the recording picked off the screen that relic opened.
+    ///
+    /// The cards are usually none. Where there are any, saying so is not decoration:
+    /// the screen is answered from the recording inside the engine call the blessing
+    /// makes, so nobody watching ever sees it, and a caption that named only the relic
+    /// would leave a deck that quietly lost a card with nothing having said which.
+    /// </summary>
+    public sealed record Blessing(int Seq, string RelicModelId, IReadOnlyList<string> CardsPicked)
+        : PrefightChoice(Seq)
+    {
+        public Blessing(int seq, string relicModelId) : this(seq, relicModelId, []) { }
+    }
 
     /// <summary>
     /// A move to a map node, named by the kind of node and where it sits.
