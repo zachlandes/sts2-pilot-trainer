@@ -86,8 +86,7 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     private static readonly ActionVerb[] VerbsAllowedInRunningGame =
     [
         ActionVerb.ChooseNeowBlessing, ActionVerb.ChooseEventOption, ActionVerb.MapMove,
-        ActionVerb.SelectCardFromScreen, ActionVerb.SelectBundleFromScreen,
-        ActionVerb.SelectRelicFromScreen,
+        ActionVerb.SelectCardFromScreen,
     ];
 
     /// <summary>

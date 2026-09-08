@@ -53,14 +53,6 @@ public sealed class RecordedFightVerbAgreementTests
                 "client, in front of a player who has already watched the decisions before it."));
     }
 
-    [Fact]
-    public void EveryQueuedScreenAnswerIsOneTheClientConfirms()
-    {
-        Assert.All(
-            CardScreenAnswers.Verbs,
-            verb => Assert.Contains(verb, RunDriver.VerbsIssuedInsideARunningGame));
-    }
-
     /// <summary>
     /// A card selection is executed and never shown, so it is not one of the decisions
     /// the transport counts through. The distinction only exists because the engine

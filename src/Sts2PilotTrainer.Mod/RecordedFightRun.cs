@@ -682,8 +682,8 @@ internal static class RecordedFightRun
 
         Log.Info(
             $"[{RunmobileMod.ModId}] arrived at decision " +
-            $"{(entry.StepsTaken + 1).ToString(CultureInfo.InvariantCulture)} of " +
-            $"{entry.Plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)}; " +
+            $"{(entry.DecisionsMade + 1).ToString(CultureInfo.InvariantCulture)} of " +
+            $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)}; " +
             $"{options.ToString(CultureInfo.InvariantCulture)} option(s), nothing lit", 2);
 
         ShowTransport();

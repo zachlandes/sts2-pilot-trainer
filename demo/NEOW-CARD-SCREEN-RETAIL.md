@@ -54,7 +54,7 @@ neow-card-screen-current-singleplayer.png
 
 ![470e1efe-2026-09-08](470e1efe-2026-09-08.png)
 
-The regression runs the same fixture through the client-shaped driver path and asserts that the card answer is consumed inside the blessing call rather than exposed as another transport decision.
+The regression checks that the client accepts every verb in the fixture’s walk to the first fight and excludes its card-screen answer from the transport decision count.
 
 ```bash
 set -o pipefail; dotnet test ../tests/Sts2PilotTrainer.Mod.Tests/Sts2PilotTrainer.Mod.Tests.csproj -c Release --no-build --filter FullyQualifiedName~RecordedFightVerbAgreementTests --logger 'console;verbosity=minimal' 2>&1 | sed -E 's#Test run for .*/([^/]+) \(#Test run for \1 (#; s/Duration: [0-9]+ ms/Duration: <elapsed> ms/'
@@ -67,5 +67,5 @@ VSTest version 17.12.0 (arm64)
 Starting test execution, please wait...
 A total of 1 test files matched the specified pattern.
 
-Passed!  - Failed:     0, Passed:     3, Skipped:     0, Total:     3, Duration: <elapsed> ms - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
+Passed!  - Failed:     0, Passed:     2, Skipped:     0, Total:     2, Duration: <elapsed> ms - Sts2PilotTrainer.Mod.Tests.dll (net9.0)
 ```
