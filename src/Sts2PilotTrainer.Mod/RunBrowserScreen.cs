@@ -34,6 +34,8 @@ internal static class RunBrowserScreen
     private static readonly Dictionary<int, Task<IReadOnlyList<SharedRunSummary>>> PendingIndexes = [];
     private static readonly Dictionary<int, LookupRequest> PendingLookupRequests = [];
     private static readonly Dictionary<int, Task<SharedRun?>> PendingLookups = [];
+    private static string? indexFailure;
+    private static string? indexFailureScope;
     private static int nextRequest;
 
     /// <summary>Opens the library on the tab a player lands on: everybody's runs.</summary>
@@ -98,7 +100,7 @@ internal static class RunBrowserScreen
                         !compatibleOnly)),
                 CodeSubmitted: code => Look(code, !community),
                 CodePlaceholder: LibraryCopy.RunCodeField,
-                Body: null,
+                Body: BrowserStatus(),
                 ListFooter: BrowserFooter(browser),
                 ListFooterTooltip: browser.NotShownTooltipBody,
                 SelectedRow: selectedRow));
@@ -169,17 +171,35 @@ internal static class RunBrowserScreen
         var failed = !task.IsCompletedSuccessfully;
         try
         {
-            if (!failed && !RunLibrary.AcceptIndex(task.Result, state.Scope)) return;
+            if (!failed)
+            {
+                if (!RunLibrary.AcceptIndex(task.Result, state.Scope))
+                {
+                    if (LibraryScreen.IsCurrent(state.Surface))
+                    {
+                        LibraryScreen.Dismiss();
+                        OpenTab((LibraryTab)state.Tab, state.CompatibleOnly, state.SelectedEntryId);
+                    }
+                    return;
+                }
+
+                indexFailure = null;
+                indexFailureScope = null;
+            }
         }
         catch (Exception ex)
         {
             failed = true;
+            indexFailure = LibraryCopy.FetchRunIndexFailed;
+            indexFailureScope = state.Scope;
             Log.Error($"[{RunmobileMod.ModId}] could not accept the run index: {ex.Message}", 2);
         }
 
         if (failed)
         {
             RunLibrary.RefuseIndex(state.Scope);
+            indexFailure = LibraryCopy.FetchRunIndexFailed;
+            indexFailureScope = state.Scope;
             if (!task.IsCompletedSuccessfully)
             {
                 Log.Error($"[{RunmobileMod.ModId}] could not fetch the run index: " +
@@ -196,6 +216,18 @@ internal static class RunBrowserScreen
 
     private sealed record IndexRequest(
         int Tab, bool CompatibleOnly, string? SelectedEntryId, long Surface, string Scope);
+
+    private static string? BrowserStatus()
+    {
+        if (!RunLibrary.SharingAvailable)
+            return LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable);
+
+        return indexFailure is { Length: > 0 } failure &&
+               indexFailureScope is { } scope &&
+               RunLibrary.IsCurrentSharingScope(scope)
+            ? LibraryMarkup.Dim(failure)
+            : null;
+    }
 
     /// <summary>
     /// The list, one row per run, in the groups the browser put them in.
