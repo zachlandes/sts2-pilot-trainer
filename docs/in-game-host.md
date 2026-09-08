@@ -698,39 +698,19 @@ The keys stay with the panel's ribbon and the rows are reached by focus.
 `LibraryScreen` measures the band, the list, the divider, the selected-run pane and the flat plate from the game's own panel nodes, so a build that changes the popup's layout moves the library with it.
 `LibraryPaneArt` owns both the browser pane and the opened-run pane, including the run strip, relic icons and card portraits.
 
-**A column longer than the panel is paged rather than drawn past it.** The rows are
-absolutely positioned siblings, not a scrolling list, so a run of a real length or a
-player's fifty stored runs would put most of the column off the screen and leave a
-controller walking down into rows nobody can see.
-`ScreenPage` in `Sts2PilotTrainer.Trainer` says which slice is on screen, from the row
-count and the measured room and nothing else; the last two places of a paged page go to
-Previous and Next, which are rows like any other, and focus is joined across what is drawn
-and nothing else.
-The measurement is the only thing that decides how many rows are drawn: the scrolling body is bounded first to reserve the measured controls below it, and room for fewer than a page is refused by `ScreenPage.For` rather than raised to the minimum, because a page of three in room for two and a half is a row over the popup's own ribbons.
-A browser with no listed runs needs only its pinned tab and compatibility controls rather than an empty three-row page beside them.
-A row may be pinned instead of paged - it is drawn above the page's own rows on every
-page and spends one of the page's places, so pinning shrinks the page rather than pushing
-its last row past the panel. The browser's way to its other tab is the one pinned row
-today: it is that screen's own navigation, the ribbon there closes the library outright,
-and an ordinary row carrying it would be gone from every page after the first.
-Paging is presentation: `RunBrowser` and `RunView` return every row they always did, and
-only the drawing decides what a player is looking at.
+**Long lists and run strips page rather than becoming unreadable or leaving the panel.**
+Browser rows are absolutely positioned siblings, not a scrolling list, so `ScreenPage` in `Sts2PilotTrainer.Trainer` derives the visible slice from the row count and measured room.
+The last two places of a paged list become Previous and Next rows, and focus joins only the controls on screen.
+The scrolling body is bounded first to reserve the measured controls below it, and room for fewer than a page is refused rather than allowing a row to overlap the popup's ribbons.
+A browser with no listed runs still keeps its tab band, compatibility control and direct code lookup without inventing empty rows.
+The run strip uses the same paging contract with a readable minimum cell width.
+It opens on the page containing the selected floor, or the last replayed floor when no floor is selected, and gives its Previous and Next controls the same mouse and controller path as its floor cells.
+Paging is presentation: `RunBrowser` and `RunView` still return every row and floor, while `LibraryScreen` and `LibraryPaneArt` decide which page is visible.
 
-**The plate's marks are derived and not drawn.** `RunHistoryPlate` answers a `PlateMark`
-for every state - the record mark, the record mark muted, the warning mark - and nothing
-inside the client puts one on screen.
-Two separate reasons, and both are furniture rather than a decision about what a player
-is owed.
-The design's record mark belongs at a *run* row's end, and the game builds one
-`NMapPointHistoryEntry` per map point of the one run it is showing, so this patch has no
-per-run row to hang it on.
-The plate itself is the game's own popup, whose head is a plain string; a mark beside it
-would be a positioned control carrying art `TransportGlyphArt` does not have, because
-that family is the transport's and no record mark is in it.
-What holds the states apart meanwhile is that each one says what it is in words -
-"Recorded, not saved, not counted", "Recorded, with a gap", "Recorded on {build}".
-Drawing the marks is a change to `LibraryScreen` and `TransportGlyphArt` and to nothing
-behind either.
+**The plate's marks and rows are derived, then drawn without re-deciding them.**
+`RunHistoryPlate` supplies a warning mark only for a refusal that has a status heading; the ordinary recorded state has neither a repeated heading nor a mark.
+`RunHistoryPlateArt` draws that heading and mark above the flat rows, using the eligibility red for another-build refusals and muted ink for other warnings.
+It also draws the chevron on Choose another floor, while every sentence, enabled state and row choice remains the pure derivation's answer.
 
 **The Compendium entry is present whenever the shell may draw.**
 It occupies the authored slot the game leaves when it hides Leaderboards, so the three visible bottom destinations remain inside the viewport and in the game's controller focus chain.
@@ -785,14 +765,11 @@ The opened run uses the same pane drawing, adds deck tiles where the recording c
 `RunHistoryPlateArt` hangs the flat plate beneath the game's own history pane.
 The list keeps the settled compatibility filter and online sharing behavior rather than introducing another owner for either.
 
-**A screen opened from another goes back to it.** The container holds one modal, so every
-step replaces the last, and the ribbon would otherwise drop a player out of the library
-from wherever they had got to. Each screen is handed the way back as an argument -
-`LibraryScreen.Show`'s `back` - rather than a stack being kept: the run view returns to
-the tab it was opened from, the floor chooser to the run at the floor it was standing on,
-and only the browser itself, which is the screen a player enters on, closes the library.
-The tab travels as a bool because the way back ends up in a lambda's captured fields, and
-a captured `LibraryTab` has stopped this mod loading once already.
+**A screen opened from another goes back to it.**
+The container holds one modal, so every step replaces the last, and the ribbon would otherwise drop a player out of the library from wherever they had got to.
+Each `LibraryPage` carries its way back rather than relying on a modal stack: an opened run returns to the tab and selection that opened it, and the submit flow returns to its selected Mine run.
+Only the browser itself, which is the screen a player enters on, closes the library.
+The tab travels as a bool because the way back ends up in a lambda's captured fields, and a captured `LibraryTab` has stopped this mod loading once already.
 
 ## Three surfaces, and the hook each one needs
 
