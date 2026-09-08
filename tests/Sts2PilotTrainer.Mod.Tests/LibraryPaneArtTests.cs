@@ -1,3 +1,6 @@
+using Godot;
+using MegaCrit.Sts2.Core.ControllerInput;
+using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -45,5 +48,23 @@ public sealed class LibraryPaneArtTests
         Assert.True(layout.HasPrevious);
         Assert.True(layout.HasNext);
         Assert.Equal(16, layout.NextSlot);
+    }
+
+    [Fact]
+    public void StripPageButtonActivatesFromRetailKeyboardActions()
+    {
+        _ = EngineHost.StartupPhase();
+        var presses = 0;
+        var button = LibraryPaneArt.AddStripPageButton(
+            new Control(), "Previous", "Previous", "‹", Vector2.Zero, 28f, 28f,
+            () => presses++);
+
+        foreach (var action in new[] { MegaInput.confirm, MegaInput.select })
+        {
+            var input = new InputEventAction { Action = action, Pressed = true };
+            button.EmitSignal("gui_input", Variant.From<InputEvent>(input));
+        }
+
+        Assert.Equal(2, presses);
     }
 }

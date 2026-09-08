@@ -120,6 +120,11 @@ public class InputEventJoypadMotion : InputEvent
 public class InputEventAction : InputEvent
 {
     public StringName Action { get; set; } = "";
+    public bool Pressed { get; set; }
+
+    public override bool IsActionPressed(
+        StringName action, bool allowEcho = false, bool exactMatch = false) =>
+        Pressed && Action == action;
 }
 
 // Error enum

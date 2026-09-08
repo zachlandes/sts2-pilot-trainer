@@ -1,5 +1,6 @@
 using System.Globalization;
 using Godot;
+using MegaCrit.Sts2.Core.ControllerInput;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
 using MegaCrit.Sts2.Core.Nodes.Multiplayer;
@@ -231,7 +232,8 @@ internal static class LibraryPaneArt
                 content, LibraryCopy.PreviousPage, "Previous", "‹",
                 new Vector2(at.X + layout.Offset, at.Y),
                 layout.Pitch, layout.Height,
-                () => previousPage(layout.Index - 1)));
+                () => LibraryScreen.Navigate(
+                    LibraryCopy.PreviousPage, () => previousPage(layout.Index - 1))));
         }
 
         for (var index = layout.First; index < layout.First + layout.Count; index++)
@@ -309,7 +311,8 @@ internal static class LibraryPaneArt
                 new Vector2(
                     at.X + layout.Offset + (layout.NextSlot * layout.Pitch), at.Y),
                 layout.Pitch, layout.Height,
-                () => nextPage(layout.Index + 1)));
+                () => LibraryScreen.Navigate(
+                    LibraryCopy.NextPage, () => nextPage(layout.Index + 1))));
         }
 
         for (var index = 0; index < controls.Count; index++)
@@ -347,8 +350,8 @@ internal static class LibraryPaneArt
         box.AddChild(label);
     }
 
-    private static Button AddStripPageButton(
-        NVerticalPopup content, string tooltip, string direction, string text, Vector2 at,
+    internal static Button AddStripPageButton(
+        Control content, string tooltip, string direction, string text, Vector2 at,
         float width, float height, Action press)
     {
         var button = new Button
@@ -361,10 +364,19 @@ internal static class LibraryPaneArt
             CustomMinimumSize = new Vector2(width, height),
             TooltipText = tooltip,
         };
-        if (GameFont.Of(content.GetTree()?.Root) is { } font)
+        if (content.IsInsideTree() && GameFont.Of(content.GetTree()?.Root) is { } font)
             button.AddThemeFontOverride("font", font);
         button.AddThemeFontSizeOverride("font_size", LineFontSize + 4);
-        button.Pressed += () => LibraryScreen.Navigate(tooltip, press);
+        button.Pressed += press;
+        button.Connect(
+            "gui_input",
+            Callable.From<InputEvent>(input =>
+            {
+                if (!input.IsActionPressed(MegaInput.confirm) &&
+                    !input.IsActionPressed(MegaInput.select)) return;
+                button.AcceptEvent();
+                press();
+            }));
         content.AddChild(button);
         return button;
     }
