@@ -85,11 +85,17 @@ internal static class RunBrowserScreen
 
             LibraryScreen.Show(new LibraryPage(
                 LibraryCopy.CompendiumCard,
-                Tabs(community, browser.CompatibleOnly),
-                $"{LibraryCopy.ListHeader()}\n{(browser.CompatibleOnly ? "✓" : "□")} {LibraryCopy.CompatibleFilter}",
+                Tabs(community),
+                LibraryCopy.ListHeader(),
                 rows,
                 Pane(browser, community),
                 LibraryCopy.Back,
+                ListFilter: new ScreenFilter(
+                    LibraryCopy.CompatibleFilter,
+                    browser.CompatibleOnly,
+                    () => OpenTab(
+                        community ? LibraryTab.Community : LibraryTab.MyRuns,
+                        !compatibleOnly)),
                 CodeSubmitted: code => Look(code, !community),
                 CodePlaceholder: LibraryCopy.RunCodeField,
                 Body: null,
@@ -106,16 +112,10 @@ internal static class RunBrowserScreen
     /// <summary>The two parchment tabs across the band. The one you are on is drawn at
     /// full weight and takes no press; the other crosses to itself with nothing
     /// selected, because a run of one tab is not a run of the other.</summary>
-    private static IReadOnlyList<ScreenTab> Tabs(bool community, bool compatibleOnly) =>
+    private static IReadOnlyList<ScreenTab> Tabs(bool community) =>
     [
         new(LibraryCopy.CommunityTab, community, () => OpenTab(LibraryTab.Community)),
         new(LibraryCopy.MyRunsTab, !community, () => OpenTab(LibraryTab.MyRuns)),
-        new(
-            compatibleOnly ? "Compatible ✓" : "Compatible □",
-            Current: false,
-            () => OpenTab(
-                community ? LibraryTab.Community : LibraryTab.MyRuns,
-                !compatibleOnly)),
     ];
 
     private static void BeginIndexFetch(int tab, bool compatibleOnly, string? selectedEntryId)
@@ -207,6 +207,7 @@ internal static class RunBrowserScreen
     private static IReadOnlyList<ScreenRow> ListRows(RunBrowser browser, bool community)
     {
         var rows = new List<ScreenRow>();
+        var compatibleOnly = browser.CompatibleOnly;
         foreach (var group in browser.Groups)
         {
             if (group.Heading is { Length: > 0 } heading)
@@ -224,6 +225,7 @@ internal static class RunBrowserScreen
                     Enabled: run.Listed,
                     () => OpenTab(
                         mine ? LibraryTab.MyRuns : LibraryTab.Community,
+                        compatibleOnly,
                         selected: runId),
                     Note: RowNote(run),
                     Glyph: run.Won ? LibraryGlyph.Crown : LibraryGlyph.CrownStruck,
@@ -253,6 +255,7 @@ internal static class RunBrowserScreen
 
         var runId = pane.Run.EntryId;
         var mine = !community;
+        var compatibleOnly = browser.CompatibleOnly;
         var plate = new List<ScreenRow>();
         foreach (var row in pane.Plate)
         {
@@ -281,7 +284,8 @@ internal static class RunBrowserScreen
             pane.Run.LastFloor is { } reached ? [LibraryCopy.RunReached(reached)] : [],
             plate,
             new ScreenRow(
-                pane.Open, pane.OpenEnabled, () => OpenRun(runId, fromMyRuns: mine),
+                pane.Open, pane.OpenEnabled, () => OpenRun(
+                    runId, fromMyRuns: mine, compatibleOnly: compatibleOnly),
                 Reason: pane.OpenEnabled ? null : pane.Verdict),
             VerdictPassed: pane.Run.Listed);
     }
@@ -298,7 +302,8 @@ internal static class RunBrowserScreen
     /// and a captured sibling-assembly type stops the whole mod loading. See
     /// docs/in-game-host.md.
     /// </summary>
-    internal static void OpenRun(string runId, int? floor = null, bool fromMyRuns = false)
+    internal static void OpenRun(
+        string runId, int? floor = null, bool fromMyRuns = false, bool compatibleOnly = true)
     {
         try
         {
@@ -320,10 +325,11 @@ internal static class RunBrowserScreen
                 Tabs: [],
                 ListHeader: null,
                 EnteringRows(view, runId, RecordingIdentity.CreatorOrNull(recording)),
-                ViewPane(recording, view, runId, fromMyRuns),
+                ViewPane(recording, view, runId, fromMyRuns, compatibleOnly),
                 LibraryCopy.Back,
                 Back: () => OpenTab(
                     mine ? LibraryTab.MyRuns : LibraryTab.Community,
+                    compatibleOnly,
                     selected: id)));
         }
         catch (Exception ex)
@@ -341,7 +347,8 @@ internal static class RunBrowserScreen
     /// screen is for. It carries no ribbon and no plate: every offer here is a row.
     /// </summary>
     private static ScreenPane ViewPane(
-        ReplayManifest recording, RunView view, string runId, bool fromMyRuns)
+        ReplayManifest recording, RunView view, string runId, bool fromMyRuns,
+        bool compatibleOnly)
     {
         var facts = new List<string>();
         if (view.Reading.Enemies.FirstOrDefault() is { } enemy)
@@ -368,7 +375,7 @@ internal static class RunBrowserScreen
             view.Deck,
             view.DeckCount,
             view.Strip,
-            SelectFloor: atFloor => OpenRun(id, atFloor, mine),
+            SelectFloor: atFloor => OpenRun(id, atFloor, mine, compatibleOnly),
             Verdict: null,
             facts,
             Plate: [],

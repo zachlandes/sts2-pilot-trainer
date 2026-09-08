@@ -41,6 +41,8 @@ internal sealed record ScreenRow(
 /// <summary>One parchment tab across the top band.</summary>
 internal sealed record ScreenTab(string Label, bool Current, Action Press);
 
+internal sealed record ScreenFilter(string Label, bool Checked, Action Toggle);
+
 /// <summary>
 /// The right-hand pane: the selected run, in the run-history screen's own language.
 /// </summary>
@@ -90,6 +92,7 @@ internal sealed record LibraryPage(
     IReadOnlyList<ScreenRow> Rows,
     ScreenPane? Pane,
     string BackLabel,
+    ScreenFilter? ListFilter = null,
     Action? Back = null,
     Action<string>? CodeSubmitted = null,
     string CodePlaceholder = "",
@@ -549,8 +552,6 @@ internal static class LibraryScreen
     private static Control? AddRows(NVerticalPopup content, LibraryPage page, Rect2 at)
     {
         var rows = page.Rows;
-        if (rows.Count == 0) return null;
-
         var prototype = content.NoButton;
         var noted = rows.Any(row => SupportingText(row) is not null);
         var step = prototype.Size.Y * (noted ? NotedRowStep : RowStep);
@@ -565,6 +566,14 @@ internal static class LibraryScreen
         {
             AddLine(content, header, new Vector2(at.Position.X, top), at.Size.X, LibraryPalette.Muted, NoteFontSize);
             top += prototype.Size.Y * 0.9f;
+        }
+
+        var placed = new List<Control>();
+        if (page.ListFilter is { } filter)
+        {
+            var checkbox = AddFilter(content, filter, new Vector2(at.Position.X, top), at.Size.X);
+            placed.Add(checkbox);
+            top += prototype.Size.Y;
         }
 
         var bottom = at.End.Y;
@@ -611,7 +620,6 @@ internal static class LibraryScreen
                 () => Show(page with { Page = next, SelectedRow = null })));
         }
 
-        var placed = new List<Control>();
         for (var index = 0; index < drawn.Count; index++)
         {
             var button = AddRow(
@@ -622,6 +630,26 @@ internal static class LibraryScreen
 
         JoinColumn(placed, content);
         return placed.FirstOrDefault(control => control.FocusMode != Control.FocusModeEnum.None);
+    }
+
+    private static CheckBox AddFilter(
+        NVerticalPopup content, ScreenFilter filter, Vector2 at, float width)
+    {
+        var checkbox = new CheckBox
+        {
+            Name = "RunmobileListFilter",
+            Text = filter.Label,
+            ButtonPressed = filter.Checked,
+            Position = at,
+            Size = new Vector2(width, content.NoButton.Size.Y),
+            CustomMinimumSize = new Vector2(width, content.NoButton.Size.Y),
+            FocusMode = Control.FocusModeEnum.All,
+        };
+        if (GameFont.Of(content.GetTree()?.Root) is { } font)
+            checkbox.AddThemeFontOverride("font", font);
+        checkbox.Pressed += () => Navigate(filter.Label, filter.Toggle);
+        content.AddChild(checkbox);
+        return checkbox;
     }
 
     /// <summary>
@@ -1004,18 +1032,16 @@ internal static class LibraryScreen
     /// <summary>Shows the screen a ribbon returns to, with whatever is up taken down
     /// first, and says so rather than leaving a player on a screen that did not
     /// change.</summary>
-    private static void Reopen(Action back)
+    private static void Reopen(Action back) => Navigate("go back", back);
+
+    internal static void Navigate(string label, Action action)
     {
         Dismiss();
-        Callable.From(() => Act("go back", back)).CallDeferred();
+        Callable.From(() => Act(label, action)).CallDeferred();
     }
 
     /// <summary>Runs a row's action with the modal taken down first.</summary>
-    internal static void Press(ScreenRow row)
-    {
-        Dismiss();
-        Callable.From(() => Act(row.Label, row.Press)).CallDeferred();
-    }
+    internal static void Press(ScreenRow row) => Navigate(row.Label, row.Press);
 
     /// <summary>
     /// Runs one of this screen's actions and says what failed rather than letting it

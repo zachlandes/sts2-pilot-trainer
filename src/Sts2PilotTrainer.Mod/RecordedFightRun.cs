@@ -875,6 +875,7 @@ internal static class RecordedFightRun
             // come back as the recording's first fight.
             var recording = _afterTheFight?.Manifest ?? _entry?.Manifest;
             var plan = _afterTheFight?.Plan ?? _entry?.Plan;
+            var progressRunId = _progressRunId;
 
             // The attempt is being discarded rather than left, so the result the
             // teardown queues for it is dropped before the return that would show it.
@@ -885,7 +886,8 @@ internal static class RecordedFightRun
             // Only once the menu is back: the game's own return task completing is the
             // signal the run it is tearing down has gone, and building the next run
             // over it is building it on the old one.
-            if (recording is not null && plan is not null) await Start(recording, plan);
+            if (recording is not null && plan is not null)
+                await Start(recording, plan, progressRunId);
         }
         catch (Exception ex)
         {

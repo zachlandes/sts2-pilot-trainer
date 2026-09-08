@@ -235,7 +235,9 @@ internal static class LibraryPaneArt
                 TooltipText = box.TooltipText,
             };
             box.MouseFilter = Control.MouseFilterEnum.Pass;
-            press.Pressed += () => select(number);
+            press.Pressed += () => LibraryScreen.Navigate(
+                number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                () => select(number));
             box.AddChild(press);
         }
 
