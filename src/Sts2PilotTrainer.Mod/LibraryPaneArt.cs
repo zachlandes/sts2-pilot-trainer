@@ -47,39 +47,33 @@ internal static class LibraryPaneArt
     private const int TilesPerRow = 8;
 
     private const float MinimumStripPitch = 28f;
-    private const float StripRowStep = 1.55f;
+    private const float StripBottomSpace = 1.55f;
 
     internal readonly record struct StripLayout(
-        int Columns, int Rows, float Pitch, float Cell, float Height)
+        int First, int Count, bool HasPrevious, bool HasNext, int Index, int Pages,
+        float Pitch, float Cell, float Height, float Offset)
     {
-        internal int ColumnOf(int index) => index % Columns;
+        internal int SlotOf(int index) => (HasPrevious ? 1 : 0) + index - First;
 
-        internal int RowOf(int index) => index / Columns;
-
-        internal int LeftOf(int index) => index > 0 ? index - 1 : index;
-
-        internal int RightOf(int index, int count) => index + 1 < count ? index + 1 : index;
-
-        internal int Above(int index) => index >= Columns ? index - Columns : index;
-
-        internal int Below(int index, int count) => index + Columns < count ? index + Columns : index;
-
-        internal float RowOffset(int index, int count, float width)
-        {
-            var first = RowOf(index) * Columns;
-            var cells = Math.Min(Columns, count - first);
-            return (width - (cells * Pitch)) / 2f;
-        }
+        internal int NextSlot => (HasPrevious ? 1 : 0) + Count;
     }
 
-    internal static StripLayout LayoutStrip(int count, float width)
+    internal static StripLayout LayoutStrip(
+        int count, float width, int anchor, int? requestedPage = null)
     {
-        var columns = Math.Max(1, Math.Min(count, (int)Math.Floor(width / MinimumStripPitch)));
-        var pitch = width / columns;
+        var places = Math.Max(
+            ScreenPage.MinimumPerPage,
+            (int)Math.Floor(width / MinimumStripPitch));
+        var page = requestedPage is { } requested
+            ? ScreenPage.For(count, places, requested)
+            : ScreenPage.Containing(count, places, anchor);
+        var pitch = page.Pages == 1 ? width / page.Count : width / places;
         var cell = Math.Min(pitch * 0.9f, LineFontSize * 2.8f) * CellShare;
         var height = cell / CellShare;
-        var rows = (count + columns - 1) / columns;
-        return new StripLayout(columns, rows, pitch, cell, height);
+        var offset = (width - (page.Drawn * pitch)) / 2f;
+        return new StripLayout(
+            page.First, page.Count, page.HasPrevious, page.HasNext, page.Index,
+            page.Pages, pitch, cell, height, offset);
     }
 
     /// <summary>
@@ -139,6 +133,12 @@ internal static class LibraryPaneArt
 
         var plateFocus = AddPlate(
             content, pane, new Vector2(at.Position.X, y), at.Size.X, at.End.Y);
+        if (strip.Last is { } stripLast && plateFocus is not null)
+        {
+            stripLast.FocusNeighborBottom = plateFocus.GetPath();
+            plateFocus.FocusNeighborTop = stripLast.GetPath();
+        }
+
         return strip.Focus ?? plateFocus;
     }
 
@@ -196,9 +196,9 @@ internal static class LibraryPaneArt
     }
 
     /// <summary>
-    /// The run strip, full width: one cell per floor the run reached, in the floor's
-    /// own glyph, with a tick over the ones this player has stood in and a ring round
-    /// the selected one.
+    /// The run strip, full width: one readable page of the floors the run reached, in
+    /// each floor's own glyph, with a tick over the ones this player has stood in and a
+    /// ring round the selected one.
     ///
     /// A cell is pressable where the pane can move the selection - the run view's strip
     /// can, and the browser pane's cannot, because a pane's one way forward is its
@@ -206,19 +206,39 @@ internal static class LibraryPaneArt
     /// the strip says what the run did, and where a player can be stood is the rows'
     /// answer.
     /// </summary>
-    private static (float Bottom, Control? Focus) AddStrip(
+    private static (float Bottom, Control? Focus, Control? Last) AddStrip(
         NVerticalPopup content, ScreenPane pane, Vector2 at, float width)
     {
-        if (pane.Strip.Count == 0) return (at.Y, null);
+        if (pane.Strip.Count == 0) return (at.Y, null, null);
 
-        var layout = LayoutStrip(pane.Strip.Count, width);
-        var controls = new List<Control>();
+        var anchor = 0;
         for (var index = 0; index < pane.Strip.Count; index++)
         {
+            if (pane.Strip[index].Selected)
+            {
+                anchor = index;
+                break;
+            }
+
+            if (pane.Strip[index].Played) anchor = index;
+        }
+
+        var layout = LayoutStrip(pane.Strip.Count, width, anchor, pane.StripPage);
+        var controls = new List<Control>();
+        if (layout.HasPrevious && pane.SelectStripPage is { } previousPage)
+        {
+            controls.Add(AddStripPageButton(
+                content, LibraryCopy.PreviousPage, "Previous", "‹",
+                new Vector2(at.X + layout.Offset, at.Y),
+                layout.Pitch, layout.Height,
+                () => previousPage(layout.Index - 1)));
+        }
+
+        for (var index = layout.First; index < layout.First + layout.Count; index++)
+        {
             var floor = pane.Strip[index];
-            var x = at.X + layout.RowOffset(index, pane.Strip.Count, width) +
-                    (layout.ColumnOf(index) * layout.Pitch);
-            var y = at.Y + (layout.RowOf(index) * layout.Height * StripRowStep);
+            var x = at.X + layout.Offset + (layout.SlotOf(index) * layout.Pitch);
+            var y = at.Y;
             var box = new Control
             {
                 Name = $"RunmobileStrip{floor.Floor.ToString(CultureInfo.InvariantCulture)}",
@@ -238,14 +258,7 @@ internal static class LibraryPaneArt
                 floor.Playable ? LibraryPalette.Line : LibraryPalette.Line with { A = 0.45f });
             kind.Position = new Vector2((layout.Pitch - layout.Cell) / 2f, inset);
             box.AddChild(kind);
-            LibraryScreen.AddLine(
-                content,
-                floor.Floor.ToString(CultureInfo.InvariantCulture),
-                new Vector2(x, y + (layout.Height * 0.72f)),
-                layout.Pitch,
-                LibraryPalette.Muted,
-                LineFontSize - 3,
-                HorizontalAlignment.Center);
+            AddStripNumber(content, box, floor.Floor, layout);
 
             // Filled, over the cell: it is something this player did.
             if (floor.Played)
@@ -289,17 +302,71 @@ internal static class LibraryPaneArt
             controls.Add(press);
         }
 
+        if (layout.HasNext && pane.SelectStripPage is { } nextPage)
+        {
+            controls.Add(AddStripPageButton(
+                content, LibraryCopy.NextPage, "Next", "›",
+                new Vector2(
+                    at.X + layout.Offset + (layout.NextSlot * layout.Pitch), at.Y),
+                layout.Pitch, layout.Height,
+                () => nextPage(layout.Index + 1)));
+        }
+
         for (var index = 0; index < controls.Count; index++)
         {
-            controls[index].FocusNeighborLeft = controls[layout.LeftOf(index)].GetPath();
-            controls[index].FocusNeighborRight = controls[layout.RightOf(index, controls.Count)].GetPath();
-            controls[index].FocusNeighborTop = controls[layout.Above(index)].GetPath();
-            controls[index].FocusNeighborBottom = controls[layout.Below(index, controls.Count)].GetPath();
+            controls[index].FocusNeighborLeft =
+                controls[index > 0 ? index - 1 : index].GetPath();
+            controls[index].FocusNeighborRight =
+                controls[index + 1 < controls.Count ? index + 1 : index].GetPath();
+            controls[index].FocusNeighborTop = controls[index].GetPath();
+            controls[index].FocusNeighborBottom = controls[index].GetPath();
         }
 
         return (
-            at.Y + (layout.Rows * layout.Height * StripRowStep),
-            controls.FirstOrDefault());
+            at.Y + (layout.Height * StripBottomSpace),
+            controls.FirstOrDefault(),
+            controls.LastOrDefault());
+    }
+
+    private static void AddStripNumber(
+        NVerticalPopup content, Control box, int floor, StripLayout layout)
+    {
+        var label = new Label
+        {
+            Name = $"{box.Name}Floor",
+            Text = floor.ToString(CultureInfo.InvariantCulture),
+            Position = new Vector2(0f, layout.Height * 0.72f),
+            Size = new Vector2(layout.Pitch, LineFontSize * 1.3f),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        if (GameFont.Of(content.GetTree()?.Root) is { } font)
+            label.AddThemeFontOverride("font", font);
+        label.AddThemeFontSizeOverride("font_size", LineFontSize - 3);
+        label.AddThemeColorOverride("font_color", LibraryPalette.Muted);
+        box.AddChild(label);
+    }
+
+    private static Button AddStripPageButton(
+        NVerticalPopup content, string tooltip, string direction, string text, Vector2 at,
+        float width, float height, Action press)
+    {
+        var button = new Button
+        {
+            Name = $"RunmobileStrip{direction}",
+            Flat = true,
+            Text = text,
+            Position = at,
+            Size = new Vector2(width, height),
+            CustomMinimumSize = new Vector2(width, height),
+            TooltipText = tooltip,
+        };
+        if (GameFont.Of(content.GetTree()?.Root) is { } font)
+            button.AddThemeFontOverride("font", font);
+        button.AddThemeFontSizeOverride("font_size", LineFontSize + 4);
+        button.Pressed += () => LibraryScreen.Navigate(tooltip, press);
+        content.AddChild(button);
+        return button;
     }
 
     /// <summary>

@@ -56,7 +56,7 @@ internal static class RunBrowserScreen
     /// </summary>
     internal static void OpenTab(
         LibraryTab tab, bool compatibleOnly = true, string? selected = null,
-        bool skipIndexFetch = false)
+        bool skipIndexFetch = false, int? stripPage = null)
     {
         try
         {
@@ -90,7 +90,7 @@ internal static class RunBrowserScreen
                 Tabs(community),
                 LibraryCopy.ListHeader(),
                 rows,
-                Pane(browser, community),
+                Pane(browser, community, stripPage),
                 LibraryCopy.Back,
                 ListFilter: new ScreenFilter(
                     LibraryCopy.CompatibleFilter,
@@ -281,7 +281,7 @@ internal static class RunBrowserScreen
     /// what keeps "which rows does a My-runs pane carry" answerable by reading
     /// <c>RunBrowser</c>.
     /// </summary>
-    private static ScreenPane? Pane(RunBrowser browser, bool community)
+    private static ScreenPane? Pane(RunBrowser browser, bool community, int? stripPage)
     {
         if (browser.Pane is not { } pane) return null;
 
@@ -310,6 +310,13 @@ internal static class RunBrowserScreen
             // The pane's strip does not move a selection: a pane's one way forward is
             // its ribbon, and a strip that selected here would be a second run view.
             SelectFloor: null,
+            StripPage: stripPage,
+            SelectStripPage: page => OpenTab(
+                mine ? LibraryTab.MyRuns : LibraryTab.Community,
+                compatibleOnly,
+                selected: runId,
+                skipIndexFetch: true,
+                stripPage: page),
             pane.Verdict,
             // The pane says how far the run itself went; how far this player has
             // replayed is the list's own column, so the two are not both here.
@@ -335,7 +342,8 @@ internal static class RunBrowserScreen
     /// docs/in-game-host.md.
     /// </summary>
     internal static void OpenRun(
-        string runId, int? floor = null, bool fromMyRuns = false, bool compatibleOnly = true)
+        string runId, int? floor = null, bool fromMyRuns = false, bool compatibleOnly = true,
+        int? stripPage = null)
     {
         try
         {
@@ -357,7 +365,7 @@ internal static class RunBrowserScreen
                 Tabs: [],
                 ListHeader: null,
                 EnteringRows(view, runId, RecordingIdentity.CreatorOrNull(recording)),
-                ViewPane(recording, view, runId, fromMyRuns, compatibleOnly),
+                ViewPane(recording, view, runId, fromMyRuns, compatibleOnly, stripPage),
                 LibraryCopy.Back,
                 Back: () => OpenTab(
                     mine ? LibraryTab.MyRuns : LibraryTab.Community,
@@ -380,7 +388,7 @@ internal static class RunBrowserScreen
     /// </summary>
     private static ScreenPane ViewPane(
         ReplayManifest recording, RunView view, string runId, bool fromMyRuns,
-        bool compatibleOnly)
+        bool compatibleOnly, int? stripPage)
     {
         var facts = new List<string>();
         if (view.Reading.Enemies.FirstOrDefault() is { } enemy)
@@ -400,6 +408,7 @@ internal static class RunBrowserScreen
 
         var id = runId;
         var mine = fromMyRuns;
+        var selectedFloor = view.Selected?.Floor;
         return new ScreenPane(
             ModelIdNames.Display(recording.Environment.Character.Value),
             RecordingIdentity.CreatorOrNull(recording),
@@ -408,6 +417,9 @@ internal static class RunBrowserScreen
             view.DeckCount,
             view.Strip,
             SelectFloor: atFloor => OpenRun(id, atFloor, mine, compatibleOnly),
+            StripPage: stripPage,
+            SelectStripPage: page => OpenRun(
+                id, selectedFloor, mine, compatibleOnly, page),
             Verdict: null,
             facts,
             Plate: [],

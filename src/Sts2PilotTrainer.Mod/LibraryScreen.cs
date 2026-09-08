@@ -65,6 +65,8 @@ internal sealed record ScreenPane(
     int? DeckCount,
     IReadOnlyList<RunStripCell> Strip,
     Action<int>? SelectFloor,
+    int? StripPage,
+    Action<int>? SelectStripPage,
     string? Verdict,
     IReadOnlyList<string> Facts,
     IReadOnlyList<ScreenRow> Plate,

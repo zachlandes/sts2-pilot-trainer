@@ -5,37 +5,45 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 public sealed class LibraryPaneArtTests
 {
     [Fact]
-    public void FullRunStripWrapsIntoReadableRows()
+    public void FullRunStripPagesIntoReadableWindows()
     {
         const int floors = 50;
         const float width = 500f;
 
-        var layout = LibraryPaneArt.LayoutStrip(floors, width);
+        var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0);
 
-        Assert.Equal(17, layout.Columns);
-        Assert.Equal(3, layout.Rows);
+        Assert.Equal(15, layout.Count);
+        Assert.Equal(4, layout.Pages);
+        Assert.False(layout.HasPrevious);
+        Assert.True(layout.HasNext);
         Assert.True(layout.Pitch >= 28f);
         Assert.True(layout.Cell >= 16f);
-        Assert.Equal(0f, layout.RowOffset(0, floors, width));
-        Assert.True(layout.RowOffset(49, floors, width) > 0f);
+        Assert.Equal(15, layout.NextSlot);
     }
 
     [Fact]
-    public void FullRunStripFocusReachesEveryFloor()
+    public void FullRunStripOpensOnTheAnchoredPage()
     {
-        const int floors = 50;
-        var layout = LibraryPaneArt.LayoutStrip(floors, 500f);
-        var visited = new List<int>();
-        var index = 0;
+        var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49);
 
-        while (!visited.Contains(index))
-        {
-            visited.Add(index);
-            index = layout.RightOf(index, floors);
-        }
+        Assert.Equal(3, layout.Index);
+        Assert.Equal(45, layout.First);
+        Assert.Equal(5, layout.Count);
+        Assert.True(layout.HasPrevious);
+        Assert.False(layout.HasNext);
+        Assert.Equal(1, layout.SlotOf(45));
+    }
 
-        Assert.Equal(Enumerable.Range(0, floors), visited);
-        Assert.Equal(layout.Columns, layout.Below(0, floors));
-        Assert.Equal(0, layout.Above(layout.Columns));
+    [Fact]
+    public void FullRunStripCanMoveToAnAdjacentPage()
+    {
+        var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, requestedPage: 1);
+
+        Assert.Equal(1, layout.Index);
+        Assert.Equal(15, layout.First);
+        Assert.Equal(15, layout.Count);
+        Assert.True(layout.HasPrevious);
+        Assert.True(layout.HasNext);
+        Assert.Equal(16, layout.NextSlot);
     }
 }
