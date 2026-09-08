@@ -8,13 +8,59 @@ public enum LibraryTab
     MyRuns,
 }
 
-/// <summary>One headed run set in the list. A heading of null is the Mine list,
+/// <summary>One headed run set in the list. A heading of null is the My runs list,
 /// which is one set and does not head itself.</summary>
 public sealed record BrowserGroup(string? Heading, IReadOnlyList<LibraryRun> Runs);
+
+/// <summary>Which offer a row of the pane's plate is.</summary>
+public enum PaneRowKind
+{
+    /// <summary>Leads to the submit flow, which is somewhere else.</summary>
+    Submit,
+
+    /// <summary>Removes one of the recorder's own runs, through the game's confirm. The
+    /// per-run counterpart of the settings row's Remove all my runs.</summary>
+    Remove,
+
+}
+
+/// <summary>One row of the flat plate under the browser's pane.</summary>
+/// <param name="Confirms">Whether pressing it opens the game's own confirm first.
+/// Removing is the one thing here that cannot be undone.</param>
+public sealed record PaneRow(PaneRowKind Kind, string Label, bool Enabled, bool Confirms = false);
+
+/// <summary>
+/// The selected run as the browser's right-hand pane shows it: who it is, what it
+/// carried, how far it went, and the one way into it.
+///
+/// It is the run-history screen's own language - identity, relics, the deck as card
+/// tiles, the run strip - read out of the recording rather than out of a save. Nothing
+/// here is computed: every value is a field a checkpoint carries or a boundary the
+/// recording proves.
+/// </summary>
+/// <param name="Verdict">Whether this build has a passing verdict for the run.</param>
+/// <param name="Open">The ribbon that opens the run view. The one way there, in either
+/// tab.</param>
+/// <param name="OpenEnabled">Whether that ribbon can be pressed.</param>
+public sealed record RunPane(
+    LibraryRun Run,
+    IReadOnlyList<RunRelic> Relics,
+    IReadOnlyList<DeckTile>? Deck,
+    int? DeckCount,
+    IReadOnlyList<RunStripCell> Strip,
+    string Verdict,
+    string Open,
+    bool OpenEnabled,
+    IReadOnlyList<PaneRow> Plate);
 
 /// <summary>
 /// What the browser shows for one tab, derived from the runs a host could find and
 /// nothing else.
+///
+/// The whole of the settled compatibility rule lives here rather than in the drawing.
+/// A run this game cannot play is hidden by default and counted in <see cref="NotShown"/>.
+/// Turning the visible filter off reveals it as a disabled row, and an exact code does
+/// the same before selecting that run.
 ///
 /// <para>The list is a projection. Nothing here reads a file, replays anything or
 /// decides a verdict; every run arrives with its verdict already established, which is
@@ -23,6 +69,7 @@ public sealed record BrowserGroup(string? Heading, IReadOnlyList<LibraryRun> Run
 public sealed record RunBrowser(
     LibraryTab Tab,
     IReadOnlyList<BrowserGroup> Groups,
+    RunPane? Pane,
     int NotShown,
     string? NotShownLabel,
     string NotShownTooltipBody,
@@ -32,11 +79,14 @@ public sealed record RunBrowser(
     string? SelectedEntryId = null)
 {
     /// <summary>
-    /// The browser for one tab.
+    /// The browser for one tab, with one run selected.
     ///
     /// <paramref name="runs"/> is everything a host could find, listed and hidden
     /// alike: the hidden ones have to arrive here to be counted, which is why this
     /// filters rather than being handed a filtered list.
+    ///
+    /// <paramref name="selected"/> null selects the first run the list holds, so the
+    /// pane is never empty on a list that is not.
     /// </summary>
     /// <param name="myRunsBytes">What the player's own runs occupy on this computer,
     /// or null when nobody read it. The footer is drawn only with a reading behind it,
@@ -59,7 +109,8 @@ public sealed record RunBrowser(
         string thisBuild,
         long? myRunsBytes = null,
         bool compatibleOnly = true,
-        string? selectedEntryId = null)
+        string? selectedEntryId = null,
+        bool submitAvailable = false)
     {
         var mine = tab == LibraryTab.MyRuns;
         var inTab = runs.Where(run => (run.Origin == RunOrigin.Mine) == mine).ToList();
@@ -73,6 +124,7 @@ public sealed record RunBrowser(
             run.Multiplayer != true && run.Verdict is RunVerdict.Passed or RunVerdict.Absent).ToList();
         var visible = compatibleOnly ? eligible.Where(run => run.Listed).ToList() : eligible;
         var hidden = inTab.Count - visible.Count;
+
         var groups = mine
             ? Group(null, Newest(visible))
             :
@@ -82,9 +134,19 @@ public sealed record RunBrowser(
                 .. Group(LibraryCopy.RecentGroup, Newest(Of(visible, RunOrigin.Recent))),
             ];
 
+        var shown = groups.SelectMany(group => group.Runs).ToList();
+        var run = selected is null
+            ? shown.FirstOrDefault()
+            : shown.FirstOrDefault(candidate =>
+                string.Equals(candidate.EntryId, selected.EntryId, StringComparison.Ordinal))
+              ?? shown.FirstOrDefault();
+
         return new RunBrowser(
             tab,
             groups,
+            run is null
+                ? null
+                : PaneFor(run, thisBuild, submitAvailable),
             hidden,
             hidden > 0 ? LibraryCopy.NotShown(hidden) : null,
             LibraryCopy.NotShownTooltip(thisBuild),
@@ -97,17 +159,60 @@ public sealed record RunBrowser(
     }
 
     /// <summary>
+    /// The pane for one run, and the plate under it.
+    ///
+    /// The plate's rows are the tab's and the run's origin, not a preference: your own
+    /// run offers Submit and Remove this run, and somebody else's offers the save row
+    /// where that shape is built. Removing goes through the game's confirm, because it
+    /// is the one thing on this surface that cannot be undone.
+    /// </summary>
+    private static RunPane PaneFor(
+        LibraryRun run, string thisBuild, bool submitAvailable)
+    {
+        var plate = new List<PaneRow>();
+        if (run.Origin == RunOrigin.Mine)
+        {
+            plate.Add(new PaneRow(PaneRowKind.Submit, LibraryCopy.SubmitThisRun, submitAvailable));
+            plate.Add(new PaneRow(
+                PaneRowKind.Remove, LibraryCopy.RemoveThisRun, Enabled: true, Confirms: true));
+        }
+
+        return new RunPane(
+            run,
+            RelicStrip.ForPane(run.Relics),
+            run.Deck,
+            run.DeckCount,
+            [
+                // The pane's strip shows the run rather than a place in it: nothing is
+                // selected here, because selecting a position is the run view's job and
+                // this pane's one way forward is the Open the run ribbon. The last
+                // floor this player loaded is ticked, which is the same fact the list's
+                // own column names.
+                .. run.Positions.Select(position => new RunStripCell(
+                    position.Floor,
+                    position.Kind,
+                    Played: run.LastFloorReplayed == position.Floor,
+                    Selected: false,
+                    position.Playable)),
+            ],
+            run.Listed
+                ? LibraryCopy.WorksWithYourVersion(thisBuild)
+                : LibraryCopy.LookupRefusedBuild(run.RecordedBuild, thisBuild),
+            LibraryCopy.OpenTheRun,
+            run.Listed,
+            plate);
+    }
+
+    /// <summary>
     /// What a run code answers with.
     ///
     /// A player who typed a code asked about one particular run, and answering "no such
     /// run" about a run that plainly exists would be the library lying to them.
-    /// An incompatible result clears the compatibility filter and selects its disabled
-    /// row; the other refusals remain popup answers.
+    /// An incompatible result can be selected as a disabled row with its refusal intact.
     ///
-    /// <para><b>The design specifies two refusals and this build answers four.</b> Its
-    /// two are the build sentence with its sub-line and the multiplayer sentence with
-    /// none, and both are here word for word. The two added are
-    /// <see cref="LookupOutcome.NoLongerMatches"/> and
+    /// <para><b>The design specifies one refusal and this build answers three.</b> Its
+    /// one is the build sentence with its sub-line, and it is here word for word. The
+    /// two added are <see cref="LookupOutcome.NoLongerMatches"/> and
     /// <see cref="LookupOutcome.CouldNotJudge"/>, and neither elaborates on the design -
     /// each exists to stop a sentence that would have been false. A run recorded on this
     /// very build that failed its preflight, or that this game could not be read to
@@ -143,11 +248,7 @@ public sealed record RunBrowser(
                 LibraryCopy.LookupNotFoundTitle, LibraryCopy.LookupNotFound, null);
         }
 
-        // Narrowest first, so each refusal is answered by the thing most nearly true of
-        // it. Multiplayer heads the list because it is the answer nothing arriving later
-        // changes: a build verdict can turn up tomorrow and a multiplayer run stays a
-        // multiplayer run. Then the two same-build answers, both of which the build
-        // sentence at the end would report by naming one build twice.
+        // Multiplayer stays refused regardless of a later compatibility verdict.
         if (run.Multiplayer == true)
         {
             return new RunLookup(
@@ -155,6 +256,8 @@ public sealed record RunBrowser(
                 LibraryCopy.LookupRefusedTitle, LibraryCopy.LookupRefusedMultiplayer, null);
         }
 
+        // The two same-build answers come before the build sentence, which would
+        // otherwise report either of them by naming one build twice.
         if (run.Verdict == RunVerdict.Unjudged)
         {
             return new RunLookup(
@@ -201,15 +304,18 @@ public sealed record RunBrowser(
         .. runs
             .OrderByDescending(run => run.Recorded is not null)
             .ThenByDescending(run => run.Recorded ?? DateTimeOffset.MinValue)
-            .ThenBy(run => run.EntryId, StringComparer.Ordinal),
+            .ThenBy(run => run.RunId, StringComparer.Ordinal),
     ];
 }
 
-/// <summary>What a run code found. Five refusals and one hit, because a player who
+/// <summary>What a run code found. Four refusals and one hit, because a player who
 /// typed a code is owed which of them it was.</summary>
 public enum LookupOutcome
 {
     Found,
+
+    /// <summary>An established multiplayer recording cannot be played from.</summary>
+    Multiplayer,
 
     /// <summary>Recorded on a build this game is not, and waiting on a verdict for
     /// this one.</summary>
@@ -225,7 +331,6 @@ public enum LookupOutcome
     /// </summary>
     CouldNotJudge,
 
-    Multiplayer,
     NotFound,
 }
 
@@ -241,6 +346,7 @@ public sealed record RunLookup(
 {
     public string Back => LibraryCopy.Back;
 
-    /// <summary>Whether this answer refuses entry into the run.</summary>
+    /// <summary>Whether this answer is a popup rather than a selection in the
+    /// list.</summary>
     public bool Refused => Outcome != LookupOutcome.Found;
 }

@@ -1,0 +1,445 @@
+{
+  "publication_gate": "PUBLISHABLE",
+  "suite_note": "Mod, Replay and Trainer completed without skips. The initial concurrent Arbiter run hit its 15-minute session bound; the isolated rerun passed under a 30-minute bound.",
+  "hosted_skip_tests_in_local_arbiter_rerun": {
+    "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.DerivesEveryBoundaryTheReplayReached": {
+      "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.DerivesEveryBoundaryTheReplayReached": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.EntersAFightAfterTheFirstAndNamesTheBoundaryItReached": {
+      "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.EntersAFightAfterTheFirstAndNamesTheBoundaryItReached": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.RefusesACoordinateTheHistoryNeverReachesAndSaysWhatItDoesPass": {
+      "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.RefusesACoordinateTheHistoryNeverReachesAndSaysWhatItDoesPass": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.RefusesAFloorTheRecordingNeverArrivedOn": {
+      "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.RefusesAFloorTheRecordingNeverArrivedOn": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.RefusesToRewriteABoundaryThisBuildDerivesDifferently": {
+      "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.RefusesToRewriteABoundaryThisBuildDerivesDifferently": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.SnapshotsATurnBoundaryWhoseOwnActionOpensACardScreen": {
+      "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.SnapshotsATurnBoundaryWhoseOwnActionOpensACardScreen": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.SnapshotsTheBoundaryAskedForByItsOwnCoordinate": {
+      "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.SnapshotsTheBoundaryAskedForByItsOwnCoordinate(coordinate: \"combat_start:2\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.SnapshotsTheBoundaryAskedForByItsOwnCoordinate(coordinate: \"turn_start:2.3\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.SnapshotsTheBoundaryAskedForByItsOwnCoordinate(coordinate: \"floor_entry:7\")": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.StandsAtAFloorArrivalRatherThanInAFight": {
+      "Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.StandsAtAFloorArrivalRatherThanInAFight": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.ComparesTwoCompletedLinesOfTheSameFight": {
+      "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.ComparesTwoCompletedLinesOfTheSameFight": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.ProjectsTheRecordedFightAsOneCompletedSide": {
+      "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.ProjectsTheRecordedFightAsOneCompletedSide": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.RefusesToProjectAHistoryWhoseFightNeverFinishes": {
+      "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.RefusesToProjectAHistoryWhoseFightNeverFinishes": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.TheBoundaryCheckDoesNotRefuseTheSameFightUnderAnotherName": {
+      "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.TheBoundaryCheckDoesNotRefuseTheSameFightUnderAnotherName": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.TheGeneratedFixtureCarriesItsFightToAVictoryTheCanonicalStateCanSee": {
+      "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.TheGeneratedFixtureCarriesItsFightToAVictoryTheCanonicalStateCanSee": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.TheSummarysHealthOutcomeAndTheTurnDetailsLossesAreDifferentMeasurements": {
+      "Sts2PilotTrainer.Arbiter.Tests.CombatComparisonTests.TheSummarysHealthOutcomeAndTheTurnDetailsLossesAreDifferentMeasurements": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.CombatSnapshotTests.MaterialisesTheCombatStartSnapshotAndBoundsTheCoveredHistory": {
+      "Sts2PilotTrainer.Arbiter.Tests.CombatSnapshotTests.MaterialisesTheCombatStartSnapshotAndBoundsTheCoveredHistory": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.CombatSnapshotTests.RefusesAnOutOfWorktreeSnapshotCacheBeforeWriting": {
+      "Sts2PilotTrainer.Arbiter.Tests.CombatSnapshotTests.RefusesAnOutOfWorktreeSnapshotCacheBeforeWriting": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.CombatSnapshotTests.ReusesTheSnapshotOnASecondRunAndKeysItToTheHistoryThatProducedIt": {
+      "Sts2PilotTrainer.Arbiter.Tests.CombatSnapshotTests.ReusesTheSnapshotOnASecondRunAndKeysItToTheHistoryThatProducedIt": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.EngineCommandTableTests.EveryMappedMemberStillExistsOnThisBuildAndEveryVerbIsAccountedFor": {
+      "Sts2PilotTrainer.Arbiter.Tests.EngineCommandTableTests.EveryMappedMemberStillExistsOnThisBuildAndEveryVerbIsAccountedFor": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.EngineCommandTableTests.EveryVerbInTheFormatIsNamedInTheListing": {
+      "Sts2PilotTrainer.Arbiter.Tests.EngineCommandTableTests.EveryVerbInTheFormatIsNamedInTheListing": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.ARecordersOwnExactStateIsCheckedAgainstThisBuildAndPasses": {
+      "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.ARecordersOwnExactStateIsCheckedAgainstThisBuildAndPasses": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.ARecordingNamingContentThisBuildLacksIsRefusedWithNoErrandToRun": {
+      "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.ARecordingNamingContentThisBuildLacksIsRefusedWithNoErrandToRun": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.ARunIsNeverConstructedAgainstAStateThisBuildCannotBuild": {
+      "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.ARunIsNeverConstructedAgainstAStateThisBuildCannotBuild": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.ASmallerStateGeneratesADifferentRunAndIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.ASmallerStateGeneratesADifferentRunAndIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.AStateBuiltFromTheTripleReproducesTheRunTheCompleteStateProduces": {
+      "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.AStateBuiltFromTheTripleReproducesTheRunTheCompleteStateProduces": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.AnIdThisBuildDoesNotShipIsReportedAsAShortfallRatherThanDropped": {
+      "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.AnIdThisBuildDoesNotShipIsReportedAsAShortfallRatherThanDropped": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.ThePreflightReadingEnumeratesWhatThisBuildShips": {
+      "Sts2PilotTrainer.Arbiter.Tests.ExactUnlockStateTests.ThePreflightReadingEnumeratesWhatThisBuildShips": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.CachesAFloorArrivalOnlyOnceARestoreHasReproducedIt": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.CachesAFloorArrivalOnlyOnceARestoreHasReproducedIt": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.DoesNotAnswerForARecordingWhoseHistoryHasBeenDamaged": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.DoesNotAnswerForARecordingWhoseHistoryHasBeenDamaged": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput(option: \"--out\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput(option: \"--cache\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput(option: \"--control\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput(option: \"--save\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput(option: \"--floor\")": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesAnArrivalWhereTheOnlyCombatIsAFightThatAlreadyEnded": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesAnArrivalWhereTheOnlyCombatIsAFightThatAlreadyEnded": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesAnotherFloorsSaveAtThisArrival": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesAnotherFloorsSaveAtThisArrival": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesToRestoreAgainstAProgressModelTheSnapshotDoesNotAnswerFor": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesToRestoreAgainstAProgressModelTheSnapshotDoesNotAnswerFor": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesToSnapshotAFightsBoundary": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesToSnapshotAFightsBoundary": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesToSnapshotAFloorTheRecordingDidNotArriveOn": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesToSnapshotAFloorTheRecordingDidNotArriveOn": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesToStopAfterOneDecisionWhenThereAreNoneLeftToMake": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RefusesToStopAfterOneDecisionWhenThereAreNoneLeftToMake": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.ReplaysWhenNoSnapshotHasBeenMaterialised": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.ReplaysWhenNoSnapshotHasBeenMaterialised": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RestoringReachesTheSameBoundaryAsWalkingToIt": {
+      "Sts2PilotTrainer.Arbiter.Tests.FloorEntrySnapshotTests.RestoringReachesTheSameBoundaryAsWalkingToIt": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.AVersionFiveNativeManifestGainsItsIntegrityAndTheNoteThatItWasMigrated": {
+      "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.AVersionFiveNativeManifestGainsItsIntegrityAndTheNoteThatItWasMigrated": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.AVersionFiveVideoManifestGainsTheVersionAndNoIntegrity": {
+      "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.AVersionFiveVideoManifestGainsTheVersionAndNoIntegrity": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.CreatesAnOutputDirectoryThatDoesNotExistYet": {
+      "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.CreatesAnOutputDirectoryThatDoesNotExistYet": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.LeavesAnAlreadyCurrentManifestAloneWhenRewritingItInPlace": {
+      "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.LeavesAnAlreadyCurrentManifestAloneWhenRewritingItInPlace": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.RewritesInPlaceWithoutLosingTheManifestItRead": {
+      "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.RewritesInPlaceWithoutLosingTheManifestItRead": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.WritesTheOutputEvenWhenTheInputIsAlreadyCurrent": {
+      "Sts2PilotTrainer.Arbiter.Tests.MigrateManifestTests.WritesTheOutputEvenWhenTheInputIsAlreadyCurrent": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.NativeEvidenceTests.TheLongerNativeRecordingIsPublishableWithEveryControlApplied": {
+      "Sts2PilotTrainer.Arbiter.Tests.NativeEvidenceTests.TheLongerNativeRecordingIsPublishableWithEveryControlApplied": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.NativeEvidenceTests.TheLongerNativeRecordingsSecondFightIsEnteredAtTheDigestItRecorded": {
+      "Sts2PilotTrainer.Arbiter.Tests.NativeEvidenceTests.TheLongerNativeRecordingsSecondFightIsEnteredAtTheDigestItRecorded": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.NativeEvidenceTests.TheShortNativeRecordingIsRefusedOnlyForTheControlsItsRunCannotSupply": {
+      "Sts2PilotTrainer.Arbiter.Tests.NativeEvidenceTests.TheShortNativeRecordingIsRefusedOnlyForTheControlsItsRunCannotSupply": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.NativeGateTests.AMidFightSaveAndQuitRecordingPassesThePublicationGate": {
+      "Sts2PilotTrainer.Arbiter.Tests.NativeGateTests.AMidFightSaveAndQuitRecordingPassesThePublicationGate": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.NativeGateTests.ANativeRecordingIsNeverAskedTheQuestionsThatNeedAVideo": {
+      "Sts2PilotTrainer.Arbiter.Tests.NativeGateTests.ANativeRecordingIsNeverAskedTheQuestionsThatNeedAVideo": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.NativeGateTests.AVideoRecordingIsStillAskedEveryOneOfThem": {
+      "Sts2PilotTrainer.Arbiter.Tests.NativeGateTests.AVideoRecordingIsStillAskedEveryOneOfThem": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PlayerFightTests.PlayingTheRecordingThroughTheCaptureComparesIdenticalToItsReplay": {
+      "Sts2PilotTrainer.Arbiter.Tests.PlayerFightTests.PlayingTheRecordingThroughTheCaptureComparesIdenticalToItsReplay": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PlayerFightTests.TheShippedRecordedFightIsTheEnginesOwnReplayOfTheManifest": {
+      "Sts2PilotTrainer.Arbiter.Tests.PlayerFightTests.TheShippedRecordedFightIsTheEnginesOwnReplayOfTheManifest": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ADemoRunStartedAtTheManifestsIdentityIsReadBackAndMatches": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ADemoRunStartedAtTheManifestsIdentityIsReadBackAndMatches": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ARunStartedAtADifferentIdentityIsRefusedOnThatDimension": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ARunStartedAtADifferentIdentityIsRefusedOnThatDimension(option: \"--acts\", value: \"ACT.OVERGROWTH,ACT.HIVE,ACT.GLORY\", expectedField: \"run_acts\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ARunStartedAtADifferentIdentityIsRefusedOnThatDimension(option: \"--ascension\", value: \"9\", expectedField: \"run_ascension\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ARunStartedAtADifferentIdentityIsRefusedOnThatDimension(option: \"--character\", value: \"CHARACTER.SILENT\", expectedField: \"run_character\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ARunStartedAtADifferentIdentityIsRefusedOnThatDimension(option: \"--game-mode\", value: \"custom\", expectedField: \"run_game_mode\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ARunStartedAtADifferentIdentityIsRefusedOnThatDimension(option: \"--seed\", value: \"SFXT47K77RFX\", expectedField: \"run_seed\")": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.AnEnvironmentWithNothingUnlockedIsRefusedCategoryByCategory": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.AnEnvironmentWithNothingUnlockedIsRefusedCategoryByCategory": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ManifestFieldsAreComparedAgainstTheEngineAndNotAgainstThemselves": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ManifestFieldsAreComparedAgainstTheEngineAndNotAgainstThemselves": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.NoActiveRunIsRefusedByDefault": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.NoActiveRunIsRefusedByDefault": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.NoRefusalOffersToChangeTheSaveOrTheInstall": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.NoRefusalOffersToChangeTheSaveOrTheInstall": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.PreflightLiveRefusesASubstitutedUnlockModel": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.PreflightLiveRefusesASubstitutedUnlockModel(progress: \"none-unlocked\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.PreflightLiveRefusesASubstitutedUnlockModel(progress: \"all-unlocked\")": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ReplayRefusesRatherThanRunningUnderAnIncompleteUnlockState": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ReplayRefusesRatherThanRunningUnderAnIncompleteUnlockState": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.TheActVariantIsCaughtEvenThoughTheMapIsIdentical": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.TheActVariantIsCaughtEvenThoughTheMapIsIdentical": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.TheHostSuppliedCompleteUnlockStateSatisfiesTheManifest": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.TheHostSuppliedCompleteUnlockStateSatisfiesTheManifest": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ThisHostsOwnProfileIsReadAndFailsTheAscensionPrerequisite": {
+      "Sts2PilotTrainer.Arbiter.Tests.PreflightTests.ThisHostsOwnProfileIsReadAndFailsTheAscensionPrerequisite": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.BaseLibReachabilityDetectorRejectsItsInjectedAffectedCall": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.BaseLibReachabilityDetectorRejectsItsInjectedAffectedCall": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.BaseLibReachabilityRefusesAMismatchedEnvironment": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.BaseLibReachabilityRefusesAMismatchedEnvironment": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.FailedGeneratedFixtureClearsAnEarlierManifest": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.FailedGeneratedFixtureClearsAnEarlierManifest": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.FailedReplayClearsAnEarlierCanonicalState": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.FailedReplayClearsAnEarlierCanonicalState": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.ModeDiscriminationDetectsItsBehaviorChangingControl": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.ModeDiscriminationDetectsItsBehaviorChangingControl": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.ParentFailureClearsAnEarlierPublishableGateArtifact": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.ParentFailureClearsAnEarlierPublishableGateArtifact": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.ProvenanceRefusalSkipsPreflightAndEveryEngineCondition": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.ProvenanceRefusalSkipsPreflightAndEveryEngineCondition": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.PublishesOnModeParityWithoutEstablishingTheSourceMode": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.PublishesOnModeParityWithoutEstablishingTheSourceMode": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RecordsTheStandardItAppliedAlongsideTheVerdict": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RecordsTheStandardItAppliedAlongsideTheVerdict": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RefusesLaterDigestDivergenceAtEveryBoundaryKind": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RefusesLaterDigestDivergenceAtEveryBoundaryKind": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RefusesPublicationWhenRequiredEngineInitializationFails": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RefusesPublicationWhenRequiredEngineInitializationFails": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RefusesSyntheticEngineFixturesAsPublicationEvidence": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RefusesSyntheticEngineFixturesAsPublicationEvidence": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RefusesWhenTheEnvironmentDoesNotMatch": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RefusesWhenTheEnvironmentDoesNotMatch": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RequiresEveryNegativeControlToApplyAtPublication": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RequiresEveryNegativeControlToApplyAtPublication": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RequiresTheManifestSeedToMatchTheBoundVodMap": {
+      "Sts2PilotTrainer.Arbiter.Tests.PublicationGateTests.RequiresTheManifestSeedToMatchTheBoundVodMap": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.ConstructsTheRecordingsRunAndStandsInItsFightAtTheRecordedBoundary": {
+      "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.ConstructsTheRecordingsRunAndStandsInItsFightAtTheRecordedBoundary": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.EachDecisionNamesWhereItLandsOnTheGamesOwnScreen": {
+      "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.EachDecisionNamesWhereItLandsOnTheGamesOwnScreen": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.RefusesAControlThatDoesNotReachTheDecisionsBeforeTheFight": {
+      "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.RefusesAControlThatDoesNotReachTheDecisionsBeforeTheFight": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.RefusesAFightThatOpenedDifferentlyFromTheRecordings": {
+      "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.RefusesAFightThatOpenedDifferentlyFromTheRecordings": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.RefusesToJudgeTheBoundaryBeforeEveryRecordedDecisionIsMade": {
+      "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.RefusesToJudgeTheBoundaryBeforeEveryRecordedDecisionIsMade": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.TheLiveStateAtTheBoundaryIsTheCachedCombatStartSnapshot": {
+      "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.TheLiveStateAtTheBoundaryIsTheCachedCombatStartSnapshot": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.TheRecordingsDecisionsAreExecutedInOrderAndCaptionedFromTheRun": {
+      "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.TheRecordingsDecisionsAreExecutedInOrderAndCaptionedFromTheRun": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.TheSuppliedProgressReachesTheRunAndNeverTheProfile": {
+      "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.TheSuppliedProgressReachesTheRunAndNeverTheProfile": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.TheTransportOffersLookingBackOnlyOnceThereIsSomethingBehind": {
+      "Sts2PilotTrainer.Arbiter.Tests.RecordedFightEntryTests.TheTransportOffersLookingBackOnlyOnceThereIsSomethingBehind": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RelicRewardTests.ARelicClaimIsCheckedByIdAgainstWhatTheLootScreenOffers": {
+      "Sts2PilotTrainer.Arbiter.Tests.RelicRewardTests.ARelicClaimIsCheckedByIdAgainstWhatTheLootScreenOffers": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.EveryCorruptedHistoryIsRejectedAndTheUncorruptedOneIsNot": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.EveryCorruptedHistoryIsRejectedAndTheUncorruptedOneIsNot": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.EveryNegativeControlAppliesToTheReconstructedHistoryAndIsRejected": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.EveryNegativeControlAppliesToTheReconstructedHistoryAndIsRejected": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.EveryRestoredRetailBranchTakesRetailsPath": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.EveryRestoredRetailBranchTakesRetailsPath": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.FailedDeterminismRunClearsAnEarlierIdenticalResult": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.FailedDeterminismRunClearsAnEarlierIdenticalResult": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.IngestionFailureDoesNotCountAsArbiterRejection": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.IngestionFailureDoesNotCountAsArbiterRejection": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.MissingRejectedStateIsReportedAsUnavailable": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.MissingRejectedStateIsReportedAsUnavailable": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.NativeRecordingReproducesEveryBoundaryItCaptured": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.NativeRecordingReproducesEveryBoundaryItCaptured(fileName: \"native-3LACFJ5NJ371-20260906-015901.replay.json\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.NativeRecordingReproducesEveryBoundaryItCaptured(fileName: \"native-9F8CY60C5BK7-20260906-005737.replay.json\")": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.PreflightAcceptsACompleteVanillaEnvironment": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.PreflightAcceptsACompleteVanillaEnvironment": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.PreflightAcceptsTheAuditedSourceToolingIdentity": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.PreflightAcceptsTheAuditedSourceToolingIdentity": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.PreflightRefusesAManifestFromADifferentBuild": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.PreflightRefusesAManifestFromADifferentBuild": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.PreflightRefusesAManifestWithADifferentContentHash": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.PreflightRefusesAManifestWithADifferentContentHash": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.ReorderingIsCaughtAtTheFirstDivergentCheckpoint": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.ReorderingIsCaughtAtTheFirstDivergentCheckpoint": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.ReplayRefusesAMapMoveNamingADifferentAct": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.ReplayRefusesAMapMoveNamingADifferentAct": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.ReplayRefusesATargetForACardThatDoesNotConsumeIt": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.ReplayRefusesATargetForACardThatDoesNotConsumeIt": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.ReplayRefusesAnUnreachableMapJump": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.ReplayRefusesAnUnreachableMapJump": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.ReplayingTwiceInFreshProcessesProducesByteIdenticalState": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.ReplayingTwiceInFreshProcessesProducesByteIdenticalState": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.SyntheticReplayReproducesEveryPinnedEngineCheckpoint": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTests.SyntheticReplayReproducesEveryPinnedEngineCheckpoint": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTraceTests.ARejectedReplayStillKeepsWhatHappenedBeforeItDiverged": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTraceTests.ARejectedReplayStillKeepsWhatHappenedBeforeItDiverged": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTraceTests.AVerifiedReplayKeepsAStepForEveryActionAndTheStateBeforeItRan": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTraceTests.AVerifiedReplayKeepsAStepForEveryActionAndTheStateBeforeItRan": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTraceTests.PermanentCardRemovalIsRepresentable": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTraceTests.PermanentCardRemovalIsRepresentable": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTraceTests.TheCombatSummaryProjectionIsDerivable": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTraceTests.TheCombatSummaryProjectionIsDerivable": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.ReplayTraceTests.TheTurnChronologyProjectionIsDerivable": {
+      "Sts2PilotTrainer.Arbiter.Tests.ReplayTraceTests.TheTurnChronologyProjectionIsDerivable": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.APartialReplayCannotConsumeSelectionsOutsideItsHistory": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.APartialReplayCannotConsumeSelectionsOutsideItsHistory(stopAfter: 16, suppliedSelections: 1)": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.AScreenThatWantsMoreCardsThanTheManifestSuppliesIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.AScreenThatWantsMoreCardsThanTheManifestSuppliesIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ASelectionNoScreenAskedForIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ASelectionNoScreenAskedForIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.AWonFightPutsItsLootOnOfferWithoutBeingAsked": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.AWonFightPutsItsLootOnOfferWithoutBeingAsked": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ChoosingAnEventOptionOutsideAnEventRoomIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ChoosingAnEventOptionOutsideAnEventRoomIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ChoosingAnOptionInADifferentEventIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ChoosingAnOptionInADifferentEventIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ClaimingARelicTheLootScreenDoesNotOfferIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ClaimingARelicTheLootScreenDoesNotOfferIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ClaimingARewardNoOneIsOfferingIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ClaimingARewardNoOneIsOfferingIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ClaimingARewardOutsideThisHistoryIsRefusedAtIngestion": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.ClaimingARewardOutsideThisHistoryIsRefusedAtIngestion": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.FreshProcessesReachTheSameTwoEnemyBoundary": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.FreshProcessesReachTheSameTwoEnemyBoundary": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.LeavingARoomWithLootStillOnOfferIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.LeavingARoomWithLootStillOnOfferIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.PickingACardTheScreenDoesNotOfferAtThatPositionIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.PickingACardTheScreenDoesNotOfferAtThatPositionIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.SkippingALootScreenNobodyIsShowingIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.SkippingALootScreenNobodyIsShowingIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.TakingACardFromAPositionTheRewardDoesNotHaveIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.TakingACardFromAPositionTheRewardDoesNotHaveIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.TakingACardTheRewardDidNotOfferAtThatPositionIsRefused": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.TakingACardTheRewardDidNotOfferAtThatPositionIsRefused": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.TheActionAtTheStopPointStillGetsTheSelectionsTheManifestSuppliesForIt": {
+      "Sts2PilotTrainer.Arbiter.Tests.RewardAndScreenVerbTests.TheActionAtTheStopPointStillGetsTheSelectionsTheManifestSuppliesForIt": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RuntimeBoundaryTests.RefusesAnOutOfWorktreeEvidenceOutput": {
+      "Sts2PilotTrainer.Arbiter.Tests.RuntimeBoundaryTests.RefusesAnOutOfWorktreeEvidenceOutput": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.RuntimeBoundaryTests.RefusesAnOutOfWorktreePreparedLibraryOverride": {
+      "Sts2PilotTrainer.Arbiter.Tests.RuntimeBoundaryTests.RefusesAnOutOfWorktreePreparedLibraryOverride": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.AWrongSingleCandidateReturnsFailure": {
+      "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.AWrongSingleCandidateReturnsFailure": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.BoundSeedEvidenceRefusesAnObservationFromAnotherAct": {
+      "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.BoundSeedEvidenceRefusesAnObservationFromAnotherAct": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.BoundSeedEvidenceRefusesDifferentDeclaredActs": {
+      "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.BoundSeedEvidenceRefusesDifferentDeclaredActs": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.BoundSeedEvidenceRequiresARejectedAlternativeCandidate": {
+      "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.BoundSeedEvidenceRequiresARejectedAlternativeCandidate": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.CandidateCoordinatorRejectsAnOperationalFailureInsteadOfReadingAStaleResult": {
+      "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.CandidateCoordinatorRejectsAnOperationalFailureInsteadOfReadingAStaleResult": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.ExactlyOneCandidateSeedReproducesTheMapTheVideoShows": {
+      "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.ExactlyOneCandidateSeedReproducesTheMapTheVideoShows": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.RejectsATraversingCandidateBeforeTouchingItsDerivedPath": {
+      "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.RejectsATraversingCandidateBeforeTouchingItsDerivedPath": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.SingleCandidateFailureClearsEarlierResultArtifacts": {
+      "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.SingleCandidateFailureClearsEarlierResultArtifacts": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.TheMatchingSeedIsTheOneTheManifestRecords": {
+      "Sts2PilotTrainer.Arbiter.Tests.SeedVerificationTests.TheMatchingSeedIsTheOneTheManifestRecords": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.ConcurrentProbesPublishOneCoherentArtifactSet": {
+      "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.ConcurrentProbesPublishOneCoherentArtifactSet": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.MeasuresTheSaveRoundTripAgainstStatesThatBothCarryTheActRoomSet": {
+      "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.MeasuresTheSaveRoundTripAgainstStatesThatBothCarryTheActRoomSet": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.RefusesAValueOptionFollowedByAnotherFlagBeforeCreatingOutput": {
+      "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.RefusesAValueOptionFollowedByAnotherFlagBeforeCreatingOutput": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput": {
+      "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput(option: \"--control\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput(option: \"--save\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput(option: \"--phase\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput(option: \"--stop-after\")": "Passed",
+      "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.RefusesAValueOptionWithoutAValueBeforeCreatingOutput(option: \"--out\")": "Passed"
+    },
+    "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.RefusesTwoStatesThatAgreeBecauseNeitherCarriesTheActRoomSet": {
+      "Sts2PilotTrainer.Arbiter.Tests.SnapshotRestoreProbeTests.RefusesTwoStatesThatAgreeBecauseNeitherCarriesTheActRoomSet": "Passed"
+    }
+  }
+}

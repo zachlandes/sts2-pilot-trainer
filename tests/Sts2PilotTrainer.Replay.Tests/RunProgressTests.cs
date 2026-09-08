@@ -111,21 +111,29 @@ public sealed class RunProgressTests
     }
 
     /// <summary>
-    /// The record survives a round trip, and what is on disk is fight ordinals. A
-    /// future change that put a run state, a deck or a seed position in here would
-    /// fail this test, which is the point of asserting the file rather than the object.
+    /// The record survives a round trip, and what is on disk is fight ordinals and a
+    /// floor number. A future change that put a run state, a deck or a seed position in
+    /// here would fail this test, which is the point of asserting the file rather than
+    /// the object.
     /// </summary>
     [Fact]
-    public void TheWrittenRecordHoldsFightOrdinalsAndNothingResumable()
+    public void TheWrittenRecordHoldsOrdinalsAndAFloorAndNothingResumable()
     {
-        var written = RunProgress.Empty.WithFightPlayed(Run, 1).WithFightPlayed(Run, 3).Write();
+        var written = RunProgress.Empty
+            .WithFightPlayed(Run, 1)
+            .WithFightPlayed(Run, 3)
+            .WithFloorLoaded(Run, 6)
+            .Write();
 
         Assert.Contains(RunProgress.Schema, written, StringComparison.Ordinal);
         Assert.Contains("fights_played", written, StringComparison.Ordinal);
         using var parsed = System.Text.Json.JsonDocument.Parse(written);
         var members = parsed.RootElement.EnumerateObject().Select(member => member.Name).ToList();
-        Assert.Equal(["schema", "fights_played"], members);
-        Assert.Equal([1, 3], RunProgress.Read(written).PlayedFrom(Run));
+        Assert.Equal(["schema", "fights_played", "last_floor"], members);
+
+        var read = RunProgress.Read(written);
+        Assert.Equal([1, 3], read.PlayedFrom(Run));
+        Assert.Equal(6, read.LastFloorLoaded(Run, [2, 6]));
     }
 
     [Fact]
@@ -147,5 +155,79 @@ public sealed class RunProgressTests
             RunProgress.Read("""{"schema":"sts2-pilot-trainer/run-progress/v9","fights_played":{}}"""));
 
         Assert.Contains(RunProgress.Schema, refusal.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The last floor a player loaded, which is the browser's Last floor replayed
+    /// column and nothing else. Blank until there is one: a run nobody has stood in
+    /// says nothing rather than floor zero.
+    /// </summary>
+    [Fact]
+    public void TheLastFloorLoadedIsBlankUntilAPlayerLoadsOne()
+    {
+        var progress = RunProgress.Empty.WithFloorLoaded(Run, 6);
+
+        Assert.Null(RunProgress.Empty.LastFloorLoaded(Run, [2, 6, 9]));
+        Assert.Equal(6, progress.LastFloorLoaded(Run, [2, 6, 9]));
+    }
+
+    /// <summary>
+    /// It says where they were, not how far they ever got, so loading an earlier floor
+    /// replaces a later one.
+    /// </summary>
+    [Fact]
+    public void LoadingAnEarlierFloorReplacesALaterOne()
+    {
+        var progress = RunProgress.Empty.WithFloorLoaded(Run, 9).WithFloorLoaded(Run, 3);
+
+        Assert.Equal(3, progress.LastFloorLoaded(Run, [3, 9]));
+    }
+
+    /// <summary>A floor this recording does not have is not one of this run's: a record
+    /// written against a longer recording would otherwise put a floor in the column the
+    /// run does not hold.</summary>
+    [Fact]
+    public void AFloorTheRecordingNoLongerHasIsNotWhereTheyWere()
+    {
+        var progress = RunProgress.Empty.WithFloorLoaded(Run, 40);
+
+        Assert.Null(progress.LastFloorLoaded(Run, [2, 6, 9]));
+    }
+
+    /// <summary>Recording the same floor twice changes nothing, so a caller can decide
+    /// whether a write is worth the disk.</summary>
+    [Fact]
+    public void RecordingTheSameFloorTwiceReturnsTheSameRecord()
+    {
+        var progress = RunProgress.Empty.WithFloorLoaded(Run, 6);
+
+        Assert.Same(progress, progress.WithFloorLoaded(Run, 6));
+    }
+
+    [Fact]
+    public void AFloorIsNumberedFromOneTheWayABoundaryIs()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => RunProgress.Empty.WithFloorLoaded(Run, 0));
+        Assert.Throws<ArgumentException>(() => RunProgress.Empty.WithFloorLoaded("  ", 1));
+    }
+
+    /// <summary>
+    /// A version-1 record is read rather than refused, and it names no floor.
+    ///
+    /// This is the one direction worth the exception: a v1 file's fight ordinals mean
+    /// exactly what they mean now, so refusing it would throw away real progress to
+    /// avoid inventing a floor - and no floor is invented, because the column is blank
+    /// until the player loads one. It is written back as the current schema.
+    /// </summary>
+    [Fact]
+    public void AVersionOneRecordIsReadAndNamesNoFloor()
+    {
+        var progress = RunProgress.Read(
+            "{\"schema\":\"" + RunProgress.SchemaV1 +
+            "\",\"fights_played\":{\"" + Run + "\":[1,3]}}");
+
+        Assert.Equal([1, 3], progress.PlayedFrom(Run));
+        Assert.Empty(progress.LastFloor);
+        Assert.Contains(RunProgress.Schema, progress.Write(), StringComparison.Ordinal);
     }
 }

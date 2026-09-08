@@ -2,6 +2,7 @@ using System.Reflection;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
+using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
 using MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen;
 using MegaCrit.Sts2.Core.Runs;
@@ -29,24 +30,21 @@ namespace Sts2PilotTrainer.Mod;
 /// because a surface that would be wrong if the game changed should say what it
 /// believes rather than assume it.</para>
 ///
-/// <para>What the accepted design draws and this does not: a flat plate hung under the
-/// pane, following the rows down. That is a scene this mod has no path to lay out
-/// against furniture it cannot measure, so the same head, the same rows and the same
-/// reason are shown in the game's own modal instead. Every sentence and every rule is
-/// <see cref="RunHistoryPlate"/>'s.</para>
+/// <para><b>A flat plate in the game's own tree, not a modal.</b> It is inserted as the
+/// next sibling after the run-history pane, so a parent that lays its children out
+/// moves the rows below it down rather than having the plate drawn over them; a parent
+/// that does not is measured and the plate is positioned under the pane. Either way the
+/// history screen is still the screen a player is on - a modal here would have covered
+/// the run they pressed on with a panel about it.</para>
 ///
-/// <para><b>The marks are derived and not drawn, and that is a gap rather than a
-/// decision.</b> <see cref="RunHistoryPlate.Mark"/> answers for every state and nothing
-/// here puts a glyph on screen, for two separate reasons. The design's record mark
-/// belongs at a <em>run</em> row's end and the game builds one
-/// <c>NMapPointHistoryEntry</c> per map point of one run, so this patch has no per-run
-/// row to hang it on. And the plate is drawn in the game's own popup, whose head is a
-/// plain string: a mark beside it would be a positioned control carrying art the mod's
-/// glyph family does not have - it is the transport's set, and no record mark is in it.
-/// Both are the same furniture-and-art gap the modal already stands in for, and the
-/// states stay distinguishable because every one of them says what it is in words.
-/// Drawing them is a change to <see cref="LibraryScreen"/> and to
-/// <c>TransportGlyphArt</c>, and to nothing behind either.</para>
+/// <para><b>One plate at a time, and it belongs to the entry that is showing.</b> A
+/// second press replaces the first, because the plate is about the run under the
+/// cursor and two of them would be two answers to one question.</para>
+///
+/// <para><b>No head line in the ordinary state.</b> The history row's own record mark
+/// already says the run is recorded. What a head there is, and its mark, is
+/// <see cref="RunHistoryPlate"/>'s answer, and it is drawn with the library's own
+/// glyph family - the warning triangle in the eligibility screen's colours.</para>
 /// </summary>
 internal static class RunHistoryPlateHost
 {
@@ -54,6 +52,7 @@ internal static class RunHistoryPlateHost
     private static readonly Dictionary<int, Task<SharedRun>> PendingShares = [];
     private static readonly Dictionary<int, long> PendingShareSurfaces = [];
     private static readonly Dictionary<int, string> PendingShareScopes = [];
+    private static readonly Dictionary<int, Action> PendingShareBacks = [];
     private static readonly HashSet<long> SubmittingSurfaces = [];
     private static int nextShare;
 
@@ -90,20 +89,34 @@ internal static class RunHistoryPlateHost
         }
     }
 
+    /// <summary>What this mod has hung under the pane, so a second press replaces the
+    /// first rather than stacking. Held as the node itself, and every read checks it is
+    /// still in the tree - the history screen frees its children when it changes run,
+    /// and a reference to a freed node is not a plate.</summary>
+    private static Control? _plate;
+
     /// <summary>Shows the plate for the run one history entry belongs to.</summary>
     private static void Show(NMapPointHistoryEntry entry)
     {
         try
         {
+            Clear();
             var history = HistoryOf(entry);
             var recording = history is null ? null : RecordingFor(history);
             if (PlateFor(history, recording) is not { } plate) return;
 
-            LibraryScreen.Show(
-                plate.Head,
-                plate.Reason is { Length: > 0 } reason ? LibraryMarkup.Dim(reason) : string.Empty,
-                Rows(plate, recording),
-                LibraryCopy.Back);
+            var pane = PaneOf(entry);
+            if (pane?.GetParent() is not Node parent) return;
+
+            _plate = RunHistoryPlateArt.Build(parent, plate, Rows(plate, recording), pane.Size.X);
+
+            // Immediately after the pane, so a parent that lays its children out puts
+            // the plate between the pane and whatever follows it - which is what makes
+            // the rows below move down rather than be covered. A parent that lays
+            // nothing out ignores this and the plate keeps the position it was built
+            // with, under the pane.
+            parent.MoveChild(_plate, pane.GetIndex() + 1);
+            _plate.Position = new Vector2(pane.Position.X, pane.Position.Y + pane.Size.Y);
         }
         catch (Exception ex)
         {
@@ -111,6 +124,32 @@ internal static class RunHistoryPlateHost
                 $"[{RunmobileMod.ModId}] could not read this run's recording: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
+    }
+
+    /// <summary>Takes down whatever this mod has hung under the pane.</summary>
+    private static void Clear()
+    {
+        if (_plate is { } plate && GodotObject.IsInstanceValid(plate)) plate.QueueFreeSafely();
+        _plate = null;
+    }
+
+    /// <summary>
+    /// The pane the plate hangs under: the run-history screen's own map-point history,
+    /// which is the node the pressed entry is inside.
+    ///
+    /// Found by walking up from the entry rather than by looking the screen up, for the
+    /// reason there is one patch here rather than two: the entry a player pressed knows
+    /// which pane it is in, and a second reading of which screen is up could disagree
+    /// with it.
+    /// </summary>
+    private static Control? PaneOf(NMapPointHistoryEntry entry)
+    {
+        for (Node? node = entry; node is not null; node = node.GetParent())
+        {
+            if (node is NMapPointHistory pane) return pane;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -128,10 +167,10 @@ internal static class RunHistoryPlateHost
     /// What is true of the run the history is showing, each part read from whatever
     /// established it.
     ///
-    /// The multiplayer answer comes from the game's own history rather than from a
-    /// recording, and that is the point: there is no recording of a multiplayer run to
-    /// read, because the recorder does not attach to one. Continuity and the recorded
-    /// build come from the recording, which is the only thing that witnessed them.
+    /// Continuity and the recorded build come from the recording, which is the only
+    /// thing that witnessed them; what the run's last floor held is derived from the
+    /// recording's own decisions on it, through the same <c>FloorKinds</c> the run view
+    /// reads, so a floor named one thing here and another there is impossible.
     ///
     /// <para>Whether a console command was used is the recording's own answer, read
     /// through <c>NativeSource.StatesSomethingOtherThanComplete</c> - the owner of that
@@ -142,10 +181,15 @@ internal static class RunHistoryPlateHost
     /// migration, so no manifest this build parses reaches that answer.</para>
     ///
     /// </summary>
-    internal static RunHistoryFacts FactsFor(RunHistory? history, ReplayManifest? recording) =>
-        new(
+    internal static RunHistoryFacts FactsFor(RunHistory? history, ReplayManifest? recording)
+    {
+        var positions = recording is null
+            ? []
+            : RunView.PositionsIn(recording);
+        var last = positions.LastOrDefault(position => !position.IsRunStart);
+
+        return new RunHistoryFacts(
             HasRecording: recording is not null,
-            Multiplayer: history is not null && history.Players.Count > 1,
             Continuous: recording?.Source.Native?.IsContinuous ?? false,
             ConsoleUsed: recording?.Source.Native is { Integrity: not null } native
                 ? native.StatesSomethingOtherThanComplete
@@ -154,8 +198,10 @@ internal static class RunHistoryPlateHost
             ThisBuild: RunLibrary.ThisBuild(),
             RunInProgress: LocalEnvironment.ReadStartedRun() is not null,
             SubmitAvailable: RunLibrary.SharingAvailable,
-            LastFight: LastOf(recording, LibraryRun.ProvedFights),
-            LastFloor: LastOf(recording, LibraryRun.ProvedFloors));
+            LastFloor: last?.Floor,
+            LastFloorKind: last?.Kind ?? FloorKind.Unknown,
+            HasOtherFloors: positions.Count > 1);
+    }
 
     /// <summary>
     /// The plate's rows as this screen presses them.
@@ -176,20 +222,38 @@ internal static class RunHistoryPlateHost
         foreach (var row in plate.Rows)
         {
             var id = runId;
-            var kind = (int)row.Kind;
-            var fight = row.Fight;
             var floor = row.Floor;
+            var kind = (int)row.Kind;
             rows.Add(new ScreenRow(
                 row.Label,
                 row.Enabled && id is not null,
-                () => Act(id!, kind, fight, floor)));
+                () => Press(id!, kind, floor),
+                // The disclosure chevron on the row that drills in, because it opens a
+                // deeper screen about the same run rather than going somewhere else.
+                Glyph: row.Kind == PlateRowKind.ChooseAnotherFloor ? LibraryGlyph.Chevron : null));
         }
 
         return rows;
     }
 
-    private static void Act(string runId, int kind, int? fight, int? floor)
+    /// <summary>
+    /// What one plate row does.
+    ///
+    /// Nothing captured is a sibling assembly's type, which is why the row's kind
+    /// travels as an int: a lambda here becomes a class whose fields are what it
+    /// captured, and the game enumerates this assembly's types one phase before it can
+    /// resolve a sibling. See docs/in-game-host.md;
+    /// <c>ModAssemblyLoadOrderTests</c> is what actually says so.
+    /// </summary>
+    private static void Press(string runId, int kind, int? floor)
     {
+        Clear();
+        if ((PlateRowKind)kind == PlateRowKind.ChooseAnotherFloor)
+        {
+            RunBrowserScreen.OpenRun(runId, floor, fromMyRuns: true);
+            return;
+        }
+
         if (RunLibrary.RecordingFor(runId) is not { } recording)
         {
             throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
@@ -201,6 +265,18 @@ internal static class RunHistoryPlateHost
             return;
         }
 
+        if (floor is not { } atFloor)
+        {
+            throw new InvalidOperationException(
+                $"That row names no boundary of '{runId}', so there is nowhere to stand.");
+        }
+
+        // Where a floor holds a fight the recording finished, the entry is that fight's
+        // start - the same rule the run view's single play-from row follows, so a floor
+        // named the same way on both surfaces stands a player in the same place.
+        RunLibraryStore.RecordFloorLoaded(runId, atFloor);
+        var fight = RunView.PositionsIn(recording)
+            .FirstOrDefault(position => position.Floor == atFloor)?.Fight;
         if (fight is { } ordinal)
         {
             RunLibraryStore.RecordFightPlayed(runId, ordinal);
@@ -208,17 +284,10 @@ internal static class RunHistoryPlateHost
             return;
         }
 
-        if (floor is { } atFloor)
-        {
-            _ = RecordedFightRun.Start(recording, FloorEntryPlan.For(recording, atFloor));
-            return;
-        }
-
-        throw new InvalidOperationException(
-            $"That row names no boundary of '{runId}', so there is nowhere to stand.");
+        _ = RecordedFightRun.Start(recording, FloorEntryPlan.For(recording, atFloor));
     }
 
-    private static void ShowShare(ReplayManifest recording)
+    internal static void ShowShare(ReplayManifest recording, Action? back = null)
     {
         var form = ShareRunForm.For(recording);
         var id = recording.RunId;
@@ -229,17 +298,22 @@ internal static class RunHistoryPlateHost
             form.Privacy,
             form.LocalValidation,
         ]);
-        LibraryScreen.Show(
+        LibraryScreen.Show(new LibraryPage(
             LibraryCopy.SubmitThisRun,
-            LibraryMarkup.Dim(body),
-            [],
+            Tabs: [],
+            ListHeader: null,
+            Rows: [],
+            Pane: null,
             LibraryCopy.Back,
-            shareSubmitted: (surface, name, description, displayName, consent) =>
-                Submit(surface, id, name, description, displayName, consent));
+            Back: back,
+            Body: LibraryMarkup.Dim(body),
+            ShareSubmitted: (surface, name, description, displayName, consent) =>
+                Submit(surface, id, name, description, displayName, consent, back)));
     }
 
     private static void Submit(
-        long surface, string runId, string name, string description, string displayName, bool consent)
+        long surface, string runId, string name, string description, string displayName, bool consent,
+        Action? back)
     {
         lock (PendingLock)
         {
@@ -253,28 +327,31 @@ internal static class RunHistoryPlateHost
                 throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
             LibraryScreen.Invalidate(surface);
             Callable.From(() => BeginSubmit(
-                surface, runId, name, description, displayName, consent)).CallDeferred();
+                surface, runId, name, description, displayName, consent, back)).CallDeferred();
         }
         catch (Exception ex)
         {
             lock (PendingLock) SubmittingSurfaces.Remove(surface);
             LibraryScreen.Invalidate(surface);
             var message = ex.Message;
-            Callable.From(() => ShowSubmitFailure(runId, message)).CallDeferred();
+            Callable.From(() => ShowSubmitFailure(runId, message, back)).CallDeferred();
         }
     }
 
-    private static void ShowSubmitFailure(string runId, string message)
+    private static void ShowSubmitFailure(string runId, string message, Action? back)
     {
-        LibraryScreen.Show(
+        LibraryScreen.Show(new LibraryPage(
             LibraryCopy.SubmitThisRun,
-            LibraryMarkup.Dim(message),
-            [],
+            Tabs: [],
+            ListHeader: null,
+            Rows: [],
+            Pane: null,
             LibraryCopy.Back,
-            back: () =>
+            Back: () =>
             {
-                if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry);
-            });
+                if (RunLibrary.RecordingFor(runId) is { } retry) ShowShare(retry, back);
+            },
+            Body: LibraryMarkup.Dim(message)));
     }
 
     private static void BeginSubmit(
@@ -283,14 +360,18 @@ internal static class RunHistoryPlateHost
         string name,
         string description,
         string displayName,
-        bool consent)
+        bool consent,
+        Action? back)
     {
-        var loadingSurface = LibraryScreen.Show(
+        var loadingSurface = LibraryScreen.Show(new LibraryPage(
             LibraryCopy.SubmitThisRun,
-            LibraryMarkup.Dim(LibraryCopy.ShareValidating),
-            [],
+            Tabs: [],
+            ListHeader: null,
+            Rows: [],
+            Pane: null,
             LibraryCopy.Back,
-            back: static () => { });
+            Back: static () => { },
+            Body: LibraryMarkup.Dim(LibraryCopy.ShareValidating)));
         try
         {
             if (RunLibrary.RecordingFor(runId) is not { } recording)
@@ -306,6 +387,7 @@ internal static class RunHistoryPlateHost
                 PendingShares[request] = task;
                 PendingShareSurfaces[request] = loadingSurface;
                 PendingShareScopes[request] = scope;
+                if (back is not null) PendingShareBacks[request] = back;
             }
             _ = task.ContinueWith(
                 static (_, value) => Callable.From(() => CompleteShare((int)value!)).CallDeferred(),
@@ -323,7 +405,7 @@ internal static class RunHistoryPlateHost
             }
             if (!LibraryScreen.IsCurrent(loadingSurface)) return;
             LibraryScreen.Dismiss();
-            ShowSubmitFailure(runId, ex.Message);
+            ShowSubmitFailure(runId, ex.Message, back);
         }
     }
 
@@ -332,14 +414,17 @@ internal static class RunHistoryPlateHost
         Task<SharedRun> task;
         long surface;
         string scope;
+        Action? back;
         lock (PendingLock)
         {
             task = PendingShares[request];
             surface = PendingShareSurfaces[request];
             scope = PendingShareScopes[request];
+            PendingShareBacks.TryGetValue(request, out back);
             PendingShares.Remove(request);
             PendingShareSurfaces.Remove(request);
             PendingShareScopes.Remove(request);
+            PendingShareBacks.Remove(request);
             SubmittingSurfaces.Remove(surface);
         }
 
@@ -348,6 +433,7 @@ internal static class RunHistoryPlateHost
             if (LibraryScreen.IsCurrent(surface)) LibraryScreen.Dismiss();
             return;
         }
+
         SharedRun? shared = null;
         Exception? failure = task.Exception?.GetBaseException();
         if (task.IsCompletedSuccessfully)
@@ -364,18 +450,18 @@ internal static class RunHistoryPlateHost
 
         if (!LibraryScreen.IsCurrent(surface)) return;
         LibraryScreen.Dismiss();
-        LibraryScreen.Show(
+        LibraryScreen.Show(new LibraryPage(
             LibraryCopy.SubmitThisRun,
-            LibraryMarkup.Dim(shared is null
+            Tabs: [],
+            ListHeader: null,
+            Rows: [],
+            Pane: null,
+            LibraryCopy.Back,
+            Back: back,
+            Body: LibraryMarkup.Dim(shared is null
                 ? failure?.Message ?? "Sharing was refused."
-                : $"Shared as {shared.Code}"),
-            [],
-            LibraryCopy.Back);
+                : $"Shared as {shared.Code}")));
     }
-
-    private static int? LastOf(
-        ReplayManifest? recording, Func<ReplayManifest, IReadOnlyList<int>> proved) =>
-        recording is null ? null : proved(recording).Cast<int?>().LastOrDefault();
 
     /// <summary>The four things the game's own history and a recording both carry and
     /// both mean the same way. Read off the history once, so what a recording is matched

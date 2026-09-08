@@ -62,12 +62,15 @@ No setting shares a run automatically.
 
 **Browse the runs and play from one.**
 The Compendium, which the game opens when no run is active, has a Runmobile button in its bottom row with Statistics and Run History.
-Two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
-Open a run and it lists every place the recording proves you can be stood: from a fight's recorded start, from a floor's first screen, "Continue: play from fight N" for the next fight you have not played from, or from run start with every choice shown.
+Its parchment browser has two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
+Each run row shows its character, act reached and leading relics, while the selected run's pane adds its complete relics, recorded deck count and a strip of the floors it reached.
+Opening that run makes the strip selectable and offers **Play from this floor**, **Continue** to the next unplayed fight, and **Start the run over** wherever the recording proves each entry point.
+Long run strips page through fixed-width cells and open on the page containing the selected or last replayed floor.
+[demo/RUNMOBILE-LIBRARY.md](demo/RUNMOBILE-LIBRARY.md) shows the parchment library in the retail client.
 The visible `Compatible with your game version` filter defaults on, hides incompatible runs during ordinary browsing, and leaves a muted "{n} not shown" count underneath.
 Turning the filter off reveals incompatible runs as disabled rows; entering an exact code does that automatically, selects its run in the sorted position, and shows both the build it requires and the current build.
 An established multiplayer run remains hidden.
-Your own finished runs are reachable a second way: the game's own run history carries a plate under its pane offering that run's last fight or last floor, and where it cannot offer them the rows stay in place with the reason on them - the recording has a gap in it, or it was made on another build, or a run is in progress.
+Your own finished runs are reachable a second way: the game's own run history carries a plate under its pane offering the last floor or the opened run's other floors, and where it cannot offer them the rows stay in place with the reason on them - the recording has a gap in it, it was made on another build, or a run is in progress.
 That plate also offers `Share this run` when the profile's `settings.json` names an authorized HTTPS sharing service; Runmobile has no built-in service, so otherwise the row says sharing is unavailable and sends nothing.
 The single sharing popup shows the run's identity and integrity seals, accepts a required run name of at most 40 characters and an optional description of at most 200, and requires a display name only when submitting.
 It says that no other personal information travels, requires explicit CC0 consent, and runs the full publication validation locally before sending the manifest and those entered fields.
@@ -226,7 +229,7 @@ The in-game host reads the client through `Preflight.Evaluate` before it constru
 ./scripts/arbiter adopt-live            # the refusal, from a process that is not a running game
 ```
 
-The Compendium opens the run library, where a player opens a recorded run and chooses **Play from this fight**, **Play from this floor**, **Continue**, or **Start the run over**.
+The Compendium opens the run library, where a player selects a floor from the run strip and chooses **Play from this floor**, **Continue**, or **Start the run over**.
 The resulting journey makes the recording's decisions and hands over only after the live boundary matches the manifest's observed fields and snapshot digest.
 Winning the fight shows the visual result panel with the player's fight beside the recording's: compact summary figures, card and potion art by turn, and a chart of enemy and player health lost each turn.
 The two lines stay distinct by colour and marker shape, and the panel states differences without scoring either line or giving a verdict.

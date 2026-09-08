@@ -38,6 +38,7 @@ namespace Sts2PilotTrainer.Mod;
 internal static class RecordedFightRun
 {
     private static RecordedFightEntry? _entry;
+    private static string? _progressRunId;
     private static PlayerFightObserver? _observer;
     private static FightResultScreen? _resultAfterMainMenu;
 
@@ -232,7 +233,8 @@ internal static class RecordedFightRun
     /// with a different destination. There is no second playback path, which is what
     /// keeps the transport, the deviation lock and the write isolation the same
     /// wherever a player entered from.</param>
-    internal static async Task Start(ReplayManifest recording, IBoundaryPlan plan)
+    internal static async Task Start(
+        ReplayManifest recording, IBoundaryPlan plan, string? progressRunId = null)
     {
         if (Phase != JourneyPhase.None)
         {
@@ -243,6 +245,7 @@ internal static class RecordedFightRun
         // Raised before the run exists rather than after, so there is no moment in
         // which a trainer run could reach a write.
         ProfileWriteBarrier.Raise();
+        _progressRunId = progressRunId ?? recording.RunId;
         Transition(JourneyPhase.Starting);
 
         RecordedFightEntry? entry = null;
@@ -889,6 +892,7 @@ internal static class RecordedFightRun
             // come back as the recording's first fight.
             var recording = _afterTheFight?.Manifest ?? _entry?.Manifest;
             var plan = _afterTheFight?.Plan ?? _entry?.Plan;
+            var progressRunId = _progressRunId;
 
             // The attempt is being discarded rather than left, so the result the
             // teardown queues for it is dropped before the return that would show it.
@@ -899,7 +903,8 @@ internal static class RecordedFightRun
             // Only once the menu is back: the game's own return task completing is the
             // signal the run it is tearing down has gone, and building the next run
             // over it is building it on the old one.
-            if (recording is not null && plan is not null) await Start(recording, plan);
+            if (recording is not null && plan is not null)
+                await Start(recording, plan, progressRunId);
         }
         catch (Exception ex)
         {
@@ -926,7 +931,8 @@ internal static class RecordedFightRun
         {
             // Asked for by name - "the result is shown" - so this is an explicit
             // reveal and the sitting remembers it as one, whatever the result says.
-            if (_entry is { } entry) MarkShownThisSitting(entry.Manifest.RunId, entry.Plan.Fight);
+            if (_entry is { } entry)
+                MarkShownThisSitting(_progressRunId ?? entry.Manifest.RunId, entry.Plan.Fight);
 
             _resultAfterMainMenu = FightResultScreen.Left();
             _ = LeaveTheRun(keepTheResult: true);
@@ -1625,7 +1631,14 @@ internal static class RecordedFightRun
             rows.Add(new ScreenRow(choice.Rows[index].Row.Label, Enabled: true, () => ChoosePostFight(row)));
         }
 
-        LibraryScreen.Show(TrainerCopy.Name, string.Empty, rows, TrainerCopy.Leave, back: LeaveTheFight);
+        LibraryScreen.Show(new LibraryPage(
+            TrainerCopy.Name,
+            Tabs: [],
+            ListHeader: null,
+            rows,
+            Pane: null,
+            TrainerCopy.Leave,
+            Back: LeaveTheFight));
     }
 
     /// <summary>
@@ -1649,7 +1662,7 @@ internal static class RecordedFightRun
             switch (action)
             {
                 case PostFightAction.ShowTheComparison:
-                    MarkShownThisSitting(ended.Manifest.RunId, ended.Fight);
+                    MarkShownThisSitting(_progressRunId ?? ended.Manifest.RunId, ended.Fight);
                     ShowTransport();
                     PrefightScreen.ShowResult(ended.Screen, ReturnToTheChoice);
                     break;
@@ -1835,6 +1848,7 @@ internal static class RecordedFightRun
         _entry = null;
         _observer = null;
         _afterTheFight = null;
+        _progressRunId = null;
         _authorising = false;
         _playing = false;
         _committing = false;

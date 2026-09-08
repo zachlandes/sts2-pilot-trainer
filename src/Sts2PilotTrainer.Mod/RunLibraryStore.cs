@@ -169,6 +169,34 @@ internal static class RunLibraryStore
         }
     }
 
+    /// <summary>
+    /// Records that this player has loaded one floor of one recording, and says whether
+    /// anything changed.
+    ///
+    /// The same rules as <see cref="RecordFightPlayed"/>: nothing here is load-bearing
+    /// for a replay, so a write that fails is logged and swallowed rather than taking a
+    /// player out of the floor they were about to be stood on. Losing it blanks the
+    /// Last floor replayed column and nothing else.
+    /// </summary>
+    internal static bool RecordFloorLoaded(string runId, int floor)
+    {
+        try
+        {
+            var progress = ReadProgress();
+            var updated = progress.WithFloorLoaded(runId, floor);
+            if (ReferenceEquals(updated, progress)) return false;
+            RunmobileStore.Write(RunProgress.FileName, updated.Write());
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not record the floor loaded in {runId}: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            return false;
+        }
+    }
+
     private static string? ManifestNameOf(RecordingFiles recording) =>
         recording.FileNames.FirstOrDefault(name =>
             name.EndsWith(RecordingLibrary.ManifestExtension, StringComparison.Ordinal));

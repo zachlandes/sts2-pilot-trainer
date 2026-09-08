@@ -25,12 +25,33 @@ internal static class ModelArt
     /// redraws the same handful of cards, and <c>ModelDb.AllCards</c> is a scan.</summary>
     private static readonly Dictionary<string, Texture2D?> Known = new(StringComparer.Ordinal);
 
-    /// <summary>The prefix of a potion's model id. Cards and potions live in
-    /// different collections, and the id says which.</summary>
+    /// <summary>The prefixes that say which collection an id lives in. Cards, potions
+    /// and relics are three collections, and the id is what says which to walk.</summary>
     private const string PotionPrefix = "POTION.";
 
-    /// <summary>The artwork for a card or potion model id, or null where this build
-    /// has none.</summary>
+    /// <inheritdoc cref="PotionPrefix"/>
+    private const string RelicPrefix = "RELIC.";
+
+    /// <summary>The character-select portrait for a character model id.</summary>
+    internal static Texture2D? CharacterPortrait(string modelId)
+    {
+        try
+        {
+            return ModelDb.AllCharacters
+                .FirstOrDefault(character => character.Id.ToString() == modelId)
+                ?.CharacterSelectIcon;
+        }
+        catch (Exception ex)
+        {
+            Log.Warn(
+                $"[{RunmobileMod.ModId}] has no character portrait for '{modelId}': " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            return null;
+        }
+    }
+
+    /// <summary>The artwork for a card, potion or relic model id, or null where this
+    /// build has none.</summary>
     internal static Texture2D? Of(string modelId)
     {
         if (Known.TryGetValue(modelId, out var known)) return known;
@@ -40,7 +61,9 @@ internal static class ModelArt
         {
             art = modelId.StartsWith(PotionPrefix, StringComparison.Ordinal)
                 ? ModelDb.AllPotions.FirstOrDefault(potion => potion.Id.ToString() == modelId)?.Image
-                : ModelDb.AllCards.FirstOrDefault(card => card.Id.ToString() == modelId)?.Portrait;
+                : modelId.StartsWith(RelicPrefix, StringComparison.Ordinal)
+                    ? ModelDb.AllRelics.FirstOrDefault(relic => relic.Id.ToString() == modelId)?.Icon
+                    : ModelDb.AllCards.FirstOrDefault(card => card.Id.ToString() == modelId)?.Portrait;
         }
         catch (Exception ex)
         {
