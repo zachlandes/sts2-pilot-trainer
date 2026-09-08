@@ -533,7 +533,7 @@ public sealed class RecordedFightEntry : IDisposable
         if (!AtBoundary)
         {
             throw new EngineException(
-                $"{Plan.PrefixActions.Count - StepsTaken} of the recording's decisions before " +
+                $"{Decisions - DecisionsMade} of the recording's decisions before " +
                 $"{Plan.Describe()} have not been made yet, so there is nothing to compare against.");
         }
 

@@ -330,7 +330,7 @@ internal static class RecordedFightRun
         {
             if (_lookingBackAt is { } step)
             {
-                _lookingBackAt = step < entry.StepsTaken ? step + 1 : null;
+                _lookingBackAt = step < entry.DecisionsMade ? step + 1 : null;
                 if (_lookingBackAt is null) Relight();
                 ShowTransport();
                 return;
@@ -359,12 +359,12 @@ internal static class RecordedFightRun
     /// </summary>
     private static void Back()
     {
-        if (_entry is not { } entry || entry.StepsTaken == 0) return;
+        if (_entry is not { } entry || entry.DecisionsMade == 0) return;
 
         try
         {
             Pause();
-            _lookingBackAt = _lookingBackAt is { } step ? Math.Max(1, step - 1) : entry.StepsTaken;
+            _lookingBackAt = _lookingBackAt is { } step ? Math.Max(1, step - 1) : entry.DecisionsMade;
             ShowTransport();
         }
         catch (Exception ex)
