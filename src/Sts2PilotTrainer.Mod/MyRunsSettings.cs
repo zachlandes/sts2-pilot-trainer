@@ -97,9 +97,11 @@ internal static class MyRunsSettings
     /// hand.</para>
     ///
     /// <para>The fallback is for a build whose settings screen is not laid out by
-    /// containers at all: there the row is positioned under the anchor and the parent is
-    /// grown to hold it, which is all that can be done without knowing the column's
-    /// shape.</para>
+    /// containers at all: there the entry is the host, the row is positioned under the
+    /// anchor inside it, and the host is grown to hold it - which is all that can be done
+    /// without a column to insert into. It refuses nothing, because a settings screen
+    /// shaped differently is a row in the wrong place rather than a screen that must not
+    /// open.</para>
     /// </summary>
     internal static MyRunsSettingsRow Attach(Control anchor, Font? font)
     {
@@ -122,14 +124,14 @@ internal static class MyRunsSettings
             return row;
         }
 
-        var parent = entry.GetParent()
-            ?? throw new InvalidOperationException(
-                "This build's modding settings entry has no column to host Runmobile's settings.");
-        row.Root.Position = entry.Position + new Vector2(0f, entry.Size.Y + SectionGap);
+        // No column above the entry: the entry is the host, and the row is placed under
+        // the anchor inside it. This is the shape a settings screen laid out without
+        // containers has, and it is what the row's own assembly test builds.
+        row.Root.Position = anchor.Position + new Vector2(0f, anchor.Size.Y + SectionGap);
         entry.CustomMinimumSize = new Vector2(
             entry.CustomMinimumSize.X,
             Math.Max(entry.CustomMinimumSize.Y, row.Root.Position.Y + MyRunsSettingsRow.Height));
-        parent.AddChild(row.Root);
+        entry.AddChild(row.Root);
         return row;
     }
 
