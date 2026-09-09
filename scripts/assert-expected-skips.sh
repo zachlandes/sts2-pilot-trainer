@@ -14,7 +14,8 @@
 # when they differ. It catches structural drift only - a test appearing in or
 # disappearing from the skip set. A test that is already skipped here and is broken
 # inside stays invisible to it, and stays the local gate's job: ./scripts/build.sh
-# && dotnet test sts2-pilot-trainer.sln, which runs everything.
+# && ./scripts/fetch-baselib-parity.sh && ./scripts/test-session.sh, which runs
+# everything and refuses an incomplete session.
 #
 #   ./scripts/assert-expected-skips.sh            check
 #   ./scripts/assert-expected-skips.sh --update   rewrite the expected list

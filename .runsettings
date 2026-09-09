@@ -5,13 +5,22 @@
   TestSessionTimeout is here because a deadlocked test used to hang the suite
   indefinitely rather than fail it: nothing in dotnet test, the CI job or the local
   gate bounds a test run, so a stuck reader waits for as long as anybody lets it.
-  Fifteen minutes is three times the whole solution suite on a machine with the game
-  prepared, measured at 4m57s, and the game-free CI job is under a second of that.
-  A run past this bound is not a slow machine, it is a hang, and a hang
-  that fails is worth more than one nobody can interrupt.
+
+  Forty-five minutes, because the bound has to clear a loaded machine and not just an
+  idle one. The Arbiter session took 14m06s idle and 17m05s with other work running
+  beside it, which aborted the fifteen-minute bound this used to carry - and an
+  aborted run is a failure the whole suite pays for, not a slow one. Headroom is
+  cheap here and a false abort is not.
+
+  A run past this bound is not a slow machine, it is a hang, and a hang that fails is
+  worth more than one nobody can interrupt. Raise the bound rather than removing it.
+
+  What an abort is worth is a separate question, and ./scripts/test-session.sh owns
+  it: `dotnet test` reports an aborted run as "Passed!" with a partial total, so the
+  verdict for a session comes from that script and never from the printed count.
 -->
 <RunSettings>
   <RunConfiguration>
-    <TestSessionTimeout>900000</TestSessionTimeout>
+    <TestSessionTimeout>2700000</TestSessionTimeout>
   </RunConfiguration>
 </RunSettings>

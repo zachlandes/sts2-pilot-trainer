@@ -1,8 +1,8 @@
 using System.Reflection;
 using Godot;
 using HarmonyLib;
-using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Helpers;
+using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
 using MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen;
 using MegaCrit.Sts2.Core.Runs;

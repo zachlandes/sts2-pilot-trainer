@@ -13,7 +13,7 @@ not released yet. See [README.md](README.md).
 ./scripts/install-mod.sh    # package and install the mod, preparing game inputs locally
 ./scripts/protected-files.sh snapshot <ledger>   # hash everything the mod must not change
 ./scripts/protected-files.sh compare  <ledger>   # ... and say what a session changed
-./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && dotnet test sts2-pilot-trainer.sln -c Release
+./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && ./scripts/test-session.sh   # the suite, with one verdict
 ./scripts/arbiter gate manifests/navegreed-OJ-6QXhNgdg.replay.json   # the whole standard, one verdict
 ./scripts/arbiter <command> # gate | validate | preflight | preflight-live | adopt-live |
                             # verify-seed | replay | determinism | negative-controls |
@@ -35,7 +35,13 @@ tests drive, and bootstrapping alone leaves every test that drives it skipped.
 Every test run is bounded by `TestSessionTimeout` in `.runsettings`, wired in from
 `Directory.Build.props` so it applies however `dotnet test` was started. A run that
 exceeds it aborts with a non-zero exit rather than hanging: a deadlocked test used to
-wait for as long as anybody let it. Raise the bound rather than removing it.
+wait for as long as anybody let it. Raise the bound rather than removing it;
+`.runsettings` records the rationale for the current bound.
+**Read the verdict from `./scripts/test-session.sh`, never from the printed totals.**
+`dotnet test` can report an aborted session as `Passed!` with a partial count. The
+script refuses a non-zero exit or an abort marker, suppresses that misleading success,
+and prints its verdict last. `TestSessionVerdictTests` holds it to that against a real
+timed-out session.
 `scripts/arbiter` goes through `dotnet <dll>` rather
 than the generated apphost, which needs `DOTNET_ROOT` that a Homebrew install does
 not set.
@@ -146,7 +152,7 @@ to prevent.
 
 **What CI cannot run is recorded by name.** On a runner without the game, the 141
 tests named in `scripts/expected-hosted-skips.txt` skip out of
-`Sts2PilotTrainer.Arbiter.Tests`' 210 and the job still reports success.
+`Sts2PilotTrainer.Arbiter.Tests`' 217 and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift

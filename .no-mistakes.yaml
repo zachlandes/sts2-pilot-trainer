@@ -27,8 +27,13 @@
 # scripts/fetch-baselib-parity.sh is the one part that reaches the network, and
 # only when its digest-pinned copy is missing or wrong; a gate that cannot reach
 # GitHub could not push either way.
+#
+# The session runs through ./scripts/test-session.sh rather than `dotnet test`
+# directly, because `dotnet test` prints "Passed!" with a partial total for a run it
+# aborted and only the exit code disagrees. The script decides the verdict from
+# whether the session completed and says so in its last line.
 commands:
-  test: "./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && dotnet test sts2-pilot-trainer.sln -c Release --nologo"
+  test: "./scripts/build.sh && ./scripts/fetch-baselib-parity.sh && ./scripts/test-session.sh"
   lint: "./scripts/bootstrap.sh && dotnet build sts2-pilot-trainer.sln -c Release --nologo -warnaserror"
   format: "./scripts/bootstrap.sh && dotnet format sts2-pilot-trainer.sln --verify-no-changes"
 
