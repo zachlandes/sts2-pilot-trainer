@@ -199,13 +199,13 @@ public class BootstrapSafetyTests
         {
             ["sts2.dll"] = "archived-patched-bytes",
             ["0Harmony.dll"] = "same-harmony",
-            ["release_info.json"] = "same-release-info",
+            ["release_info.json.copy"] = "same-release-info",
         });
         var current = new Dictionary<string, string>
         {
             ["sts2.dll"] = "new-patched-bytes",
             ["0Harmony.dll"] = "same-harmony",
-            ["release_info.json"] = "same-release-info",
+            ["release_info.json.copy"] = "same-release-info",
         };
 
         Sts2PilotTrainer.Bootstrap.Program.RefuseDriftedArchive(
@@ -260,6 +260,40 @@ public class BootstrapSafetyTests
         Assert.Contains("unknown", error.Message, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The installer copies the prepared set into the player's mods folder as
+    /// <c>Runmobile/arbiter/lib</c>, and the retail client walks that folder
+    /// recursively reading every <c>*.json</c> as a mod manifest.
+    /// <c>MegaCrit.Sts2.Core.Modding.ModManager.ReadModManifest</c> logs an error -
+    /// with a stack trace, and an error-level Sentry breadcrumb - for any JSON there
+    /// with no <c>id</c> but a <c>name</c>, <c>author</c>, <c>description</c> or
+    /// <c>version</c>. The game's own release_info.json has a version and no id, so a
+    /// prepared copy under that name complained on every single launch.
+    ///
+    /// Asked of the real prepared directory rather than a fixture: what ships is what
+    /// the bootstrap wrote, and a claim about the shipped set has to be asked of it.
+    /// </summary>
+    [GameFact]
+    public void PreparedSetCarriesNoJsonTheGamesModScannerWouldReadAsAManifest()
+    {
+        var libDir = Path.Combine(Arbiter.RepoRoot, "build", "lib");
+
+        foreach (var path in Directory.GetFiles(libDir, "*.json", SearchOption.AllDirectories))
+        {
+            using var stream = File.OpenRead(path);
+            Assert.False(
+                LooksLikeAModManifestMissingItsId(JsonDocument.Parse(stream).RootElement),
+                $"{Path.GetRelativePath(libDir, path)} ships inside the mod, where the game reads it as a " +
+                "mod manifest missing its id and logs an error on every launch. Give it a name that does " +
+                "not end in .json.");
+        }
+
+        Assert.True(
+            File.Exists(Path.Combine(libDir, "release_info.json.copy")),
+            "The prepared release info is absent, so the engine cannot report the build it is running. " +
+            "Renaming it is the fix here; removing it is not.");
+    }
+
     private static string WriteArchiveReceipt(IReadOnlyDictionary<string, string> outputHashes)
     {
         var directory = ScratchDirectory("archive-receipt");
@@ -311,6 +345,20 @@ public class BootstrapSafetyTests
 
     private static readonly Sts2PilotTrainer.Bootstrap.Program.InstalledIdentity PreparedIdentity =
         new("v0.111.0", "2026.01.01", "same-commit", "main", 123);
+
+    /// <summary>
+    /// <c>ModManager.ReadModManifest</c>'s own test, restated over the raw JSON: no
+    /// id, and at least one field a manifest carries. A property present but null
+    /// deserializes to null there, so it does not count here either.
+    /// </summary>
+    private static bool LooksLikeAModManifestMissingItsId(JsonElement json) =>
+        json.ValueKind == JsonValueKind.Object &&
+        !HasValue(json, "id") &&
+        (HasValue(json, "name") || HasValue(json, "author") ||
+         HasValue(json, "description") || HasValue(json, "version"));
+
+    private static bool HasValue(JsonElement json, string property) =>
+        json.TryGetProperty(property, out var value) && value.ValueKind != JsonValueKind.Null;
 
     private static string OutsideThisWorktree(string name) =>
         Path.GetFullPath(Path.Combine(Arbiter.RepoRoot, "..", $"{name}-{Guid.NewGuid():N}"));
