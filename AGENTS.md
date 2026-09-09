@@ -35,7 +35,10 @@ tests drive, and bootstrapping alone leaves every test that drives it skipped.
 Every test run is bounded by `TestSessionTimeout` in `.runsettings`, wired in from
 `Directory.Build.props` so it applies however `dotnet test` was started. A run that
 exceeds it aborts with a non-zero exit rather than hanging: a deadlocked test used to
-wait for as long as anybody let it. Raise the bound rather than removing it.
+wait for as long as anybody let it. Raise the bound and re-measure it rather than
+removing it, and keep the margin real - an aborted run still prints `Passed!` with a
+smaller total, because tests it never reached are not failures, so a bound a healthy run
+can hit fails in the one direction nobody reads.
 `scripts/arbiter` goes through `dotnet <dll>` rather
 than the generated apphost, which needs `DOTNET_ROOT` that a Homebrew install does
 not set.
@@ -213,7 +216,8 @@ third from the manifest. Three prompts the `ICardSelector` seam does not reach -
 bundle screen, the relic screen and the Crystal Sphere's screen - are stood in for at
 the prompt itself by `ScreenStandIns`, headlessly only. None of them decides anything,
 and each refuses where the manifest is silent.
-The card screen an opening blessing opens is the one the retail client draws rather than answers: no selector is pushed there at all, the game puts up its own `NDeckCardSelectScreen`, and the recording's card is lit on it and pressed like every other decision before the fight.
+The card screen an opening blessing opens is the one the retail client draws rather than answers: no selector is pushed there at all, the game puts up its own screen, and the recording's card is lit on it and pressed like every other decision before the fight.
+Which screen that is belongs to the relic - a removal opens `NDeckCardSelectScreen` and a transform opens `NDeckTransformSelectScreen`, through different commands with differently named confirm buttons - so `RecordedCardScreen` is written to the `NCardGridSelectionScreen` base they share and never to one of them.
 `RecordedCardScreen` is the one reader and presser of that screen, so the card the reveal lights is the card the commit presses, and the recorded `option_index` indexes the list the engine handed the screen rather than the sorted grid a player sees.
 That makes the two hosts differ in whether the screen is drawn, so whether a recorded answer is a decision somebody watches is `RunDriver.ShowsTheAnswerBeingGiven` and nothing re-derives it - the counting, the captions and the reveal all ask it.
 `docs/headless-fidelity.md` owns the mechanism.
