@@ -89,14 +89,15 @@ internal sealed class PlaybackTransportStrip
     private const float PipPitch = 11f;
     private const float IdentityWidth = 128f;
 
-    private const int CreatorFontSize = 15;
-    private const int TitleFontSize = 11;
-    private const int CounterFontSize = 12;
-    private const int SpeedFontSize = 12;
-    private const int MenuFontSize = 14;
-    private const int TipTitleFontSize = 13;
-    private const int TipBodyFontSize = 12;
-    private const int NoteFontSize = 12;
+    /// <summary>
+    /// The size the design's own text was drawn at, at <see cref="ReferenceHeight"/>.
+    ///
+    /// Every box in the design was measured around text this size, so it is what the
+    /// game's own size is compared against: a client whose text is larger gets a tag
+    /// larger in the same proportion rather than the design's boxes with bigger words
+    /// spilling out of them.
+    /// </summary>
+    private const float ReferenceTextSize = 15f;
 
     /// <summary>How tall a line of text is as a multiple of its font size. Used only
     /// where there is no font to measure with, which is every test here.</summary>
@@ -129,7 +130,10 @@ internal sealed class PlaybackTransportStrip
     private readonly Control _tipPlate;
     private readonly Label _tipTitle;
     private readonly Label _tipBody;
-    private readonly Font? _font;
+    /// <summary>The game's own text where this tag hangs, and the roles the tag's own
+    /// lines take from it: the creator at the game's size, the counter and every sentence
+    /// a step below it, the video title a step below that.</summary>
+    private readonly GameTextStyle _text;
 
     private Vector2 _viewport;
     private Vector2 _anchor;
@@ -177,7 +181,7 @@ internal sealed class PlaybackTransportStrip
 
     private Func<string>? _tipBodySource;
 
-    private PlaybackTransportStrip(Nodes nodes, Vector2 viewport, Vector2 anchor, Font? font)
+    private PlaybackTransportStrip(Nodes nodes, Vector2 viewport, Vector2 anchor, GameTextStyle text)
     {
         _root = nodes.Root;
         _plateFill = nodes.PlateFill;
@@ -206,10 +210,11 @@ internal sealed class PlaybackTransportStrip
         _tipPlate = nodes.TipPlate;
         _tipTitle = nodes.TipTitle;
         _tipBody = nodes.TipBody;
-        _font = font;
+        _text = text;
         _viewport = viewport;
         _anchor = anchor;
-        _unit = viewport.Y / ReferenceHeight;
+
+        _unit = Unit(text, viewport);
         _state = nodes.State;
         _surface = nodes.State.Surface;
     }
@@ -248,10 +253,11 @@ internal sealed class PlaybackTransportStrip
     /// the bottom of the top bar's own widgets, and the right edge of the game's meta
     /// cluster. Passed in rather than measured here, because that furniture is the
     /// game's and this class draws in a process that may have none.</param>
-    /// <param name="font">The font the game's own labels use, or null to leave the
-    /// theme's default in place.</param>
+    /// <param name="text">The font and size the game draws the top bar's own text at,
+    /// which is what every word on this tag is drawn at and what the tag is scaled
+    /// by.</param>
     internal static PlaybackTransportStrip Build(
-        PlaybackTransport state, Vector2 viewport, Vector2 anchor, Font? font,
+        PlaybackTransport state, Vector2 viewport, Vector2 anchor, GameTextStyle text,
         Action back, Action play, Action step, Action speed, Action identity)
     {
         var root = new Control
@@ -265,7 +271,8 @@ internal sealed class PlaybackTransportStrip
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
 
-        var unit = viewport.Y / ReferenceHeight;
+        var unit = Unit(text, viewport);
+        var note = text.Supporting;
         var nodes = new Nodes
         {
             Root = root,
@@ -276,9 +283,9 @@ internal sealed class PlaybackTransportStrip
             PinLeft = Add(root, new Polygon2D { Name = "PinLeft", Color = Gold }),
             PinRight = Add(root, new Polygon2D { Name = "PinRight", Color = Gold }),
             Mark = Add(root, new Control { Name = "Mark", MouseFilter = Control.MouseFilterEnum.Ignore }),
-            Creator = Add(root, Text("Creator", CreatorFontSize, Cream, font)),
-            Title = Add(root, Text("VideoTitle", TitleFontSize, Muted, font)),
-            Numerals = Add(root, Text("Counter", CounterFontSize, Muted, font)),
+            Creator = Add(root, Text("Creator", text, Cream)),
+            Title = Add(root, Text("VideoTitle", text.Annotation, Muted)),
+            Numerals = Add(root, Text("Counter", note, Muted)),
             Pips = Add(root, new Control { Name = "Pips", MouseFilter = Control.MouseFilterEnum.Ignore }),
             HoldTrack = Add(root, Stroke("HoldTrack", HoldTrack, 2.4f * unit)),
             HoldFill = Add(root, Stroke("Hold", Teal, 2.4f * unit)),
@@ -292,13 +299,13 @@ internal sealed class PlaybackTransportStrip
             Name = "NotePlate",
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
-        nodes.NoteText = Add(nodes.Note, Wrapping(Text("NoteText", NoteFontSize, Muted, font)));
+        nodes.NoteText = Add(nodes.Note, Wrapping(Text("NoteText", note, Muted)));
 
-        nodes.Speed = Add(root, Pressable("Speed", font, speed));
-        nodes.SpeedLabel = Add(nodes.Speed, Text("SpeedLabel", SpeedFontSize, Muted, font));
-        nodes.Back = Add(root, Pressable("Back", font, back));
-        nodes.Play = Add(root, Pressable("Play", font, play));
-        nodes.Step = Add(root, Pressable("Step", font, step));
+        nodes.Speed = Add(root, Pressable("Speed", text, speed));
+        nodes.SpeedLabel = Add(nodes.Speed, Text("SpeedLabel", note, Muted));
+        nodes.Back = Add(root, Pressable("Back", text, back));
+        nodes.Play = Add(root, Pressable("Play", text, play));
+        nodes.Step = Add(root, Pressable("Step", text, step));
 
         nodes.Tip = Add(root, Plated("Tooltip"));
 
@@ -309,10 +316,10 @@ internal sealed class PlaybackTransportStrip
             Name = "TooltipPlate",
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
-        nodes.TipTitle = Add(nodes.Tip, Text("TooltipTitle", TipTitleFontSize, Cream, font));
-        nodes.TipBody = Add(nodes.Tip, Wrapping(Text("TooltipBody", TipBodyFontSize, TipBody, font)));
+        nodes.TipTitle = Add(nodes.Tip, Text("TooltipTitle", note, Cream));
+        nodes.TipBody = Add(nodes.Tip, Wrapping(Text("TooltipBody", note, TipBody)));
 
-        var strip = new PlaybackTransportStrip(nodes, viewport, anchor, font);
+        var strip = new PlaybackTransportStrip(nodes, viewport, anchor, text);
 
         // The identity block is a control too, because pressing it opens the video at
         // the moment being shown. Its hit area is the two lines of text, so it is a
@@ -580,7 +587,7 @@ internal sealed class PlaybackTransportStrip
         // what cut the sentence off after "what was cho" in the client.
         var inset = 12 * _unit;
         var textWidth = width - (2 * inset);
-        var noteHeight = WrappedHeight(state.Note, NoteFontSize, textWidth, fallbackLines: 2) + (16 * _unit);
+        var noteHeight = WrappedHeight(state.Note, _text.Supporting.Size, textWidth, fallbackLines: 2) + (16 * _unit);
 
         var noteTop = top + height + (6 * _unit);
         _hangingBottom = noteTop + noteHeight;
@@ -662,7 +669,7 @@ internal sealed class PlaybackTransportStrip
                 _ledger.AddChild(picture);
             }
 
-            var label = Text($"Ledger{row.Number}", MenuFontSize, colour, _font);
+            var label = Text($"Ledger{row.Number}", _text, colour);
             label.Text = row.Label;
             Place(label, 62 * _unit, rowTop, width - (86 * _unit), rowHeight);
             _ledger.AddChild(label);
@@ -727,13 +734,13 @@ internal sealed class PlaybackTransportStrip
                 _menu.AddChild(art);
             }
 
-            var button = Pressable($"MenuRow{index}", _font, () => Choose(chosen));
+            var button = Pressable($"MenuRow{index}", _text, () => Choose(chosen));
             button.Flat = true;
             button.Disabled = !row.Enabled;
             Place(button, 0, rowTop, menuWidth, rowHeight);
             _menu.AddChild(button);
 
-            var label = Text($"MenuRow{index}.Label", MenuFontSize, colour, _font);
+            var label = Text($"MenuRow{index}.Label", _text, colour);
             label.Text = row.Label;
             Place(label, 40 * _unit, rowTop, menuWidth - (56 * _unit), rowHeight);
             _menu.AddChild(label);
@@ -1089,7 +1096,7 @@ internal sealed class PlaybackTransportStrip
         var width = 250 * _unit;
         var inset = 12 * _unit;
         var bodyTop = 24 * _unit;
-        var bodyHeight = WrappedHeight(body, TipBodyFontSize, width - (2 * inset), fallbackLines: 2);
+        var bodyHeight = WrappedHeight(body, _text.Supporting.Size, width - (2 * inset), fallbackLines: 2);
         var height = bodyTop + bodyHeight + (8 * _unit);
 
         // Below the control and pulled back on screen, never over the tag itself:
@@ -1158,7 +1165,19 @@ internal sealed class PlaybackTransportStrip
         return child;
     }
 
-    private static Button Pressable(string name, Font? font, Action pressed)
+    /// <summary>
+    /// How much larger the tag is drawn than the design it was measured as.
+    ///
+    /// Whichever is larger: the window the design was measured against, or the game's own
+    /// type. Both are 1 at the design's reference, so a client drawing text at the size
+    /// the design assumed gets the design unchanged; one drawing it larger gets the whole
+    /// tag in proportion, because a tag that grew its words and not its boxes is a tag
+    /// with the words outside it.
+    /// </summary>
+    private static float Unit(GameTextStyle text, Vector2 viewport) =>
+        Math.Max(text.Size / ReferenceTextSize, viewport.Y / ReferenceHeight);
+
+    private static Button Pressable(string name, GameTextStyle text, Action pressed)
     {
         var button = new Button
         {
@@ -1168,12 +1187,12 @@ internal sealed class PlaybackTransportStrip
             FocusMode = Control.FocusModeEnum.All,
         };
 
-        if (font is not null) button.AddThemeFontOverride("font", font);
+        text.ApplyTo(button);
         button.Pressed += () => pressed();
         return button;
     }
 
-    private static Label Text(string name, int size, Color colour, Font? font)
+    private static Label Text(string name, GameTextStyle style, Color colour)
     {
         var label = new Label
         {
@@ -1183,8 +1202,7 @@ internal sealed class PlaybackTransportStrip
             ClipText = true,
         };
 
-        if (font is not null) label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", size);
+        style.ApplyTo(label);
         label.AddThemeColorOverride(FontColour, colour);
         return label;
     }
@@ -1242,9 +1260,9 @@ internal sealed class PlaybackTransportStrip
     /// </summary>
     private float WrappedHeight(string text, int fontSize, float width, int fallbackLines)
     {
-        if (_font is null) return fallbackLines * LineHeight * fontSize;
+        if (_text.Font is not { } font) return fallbackLines * LineHeight * fontSize;
 
-        return _font.GetMultilineStringSize(
+        return font.GetMultilineStringSize(
             text,
             HorizontalAlignment.Left,
             width,

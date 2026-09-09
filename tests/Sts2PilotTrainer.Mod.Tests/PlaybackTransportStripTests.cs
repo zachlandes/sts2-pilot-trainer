@@ -605,6 +605,39 @@ public sealed class PlaybackTransportStripTests
         Assert.Equal(tagRight, chip.Max(point => point.X), 1);
     }
 
+    /// <summary>
+    /// The tag is drawn at the game's own text size, and grows with it.
+    ///
+    /// Both halves matter. The words are the game's, so a client drawing larger text
+    /// gets larger words; and the tag was measured around text of one size, so it grows
+    /// with them rather than keeping the design's boxes and letting the identity block
+    /// spill out of its own plate.
+    /// </summary>
+    [Fact]
+    public void TheTagIsDrawnAtTheGamesOwnSizeAndGrowsWithIt()
+    {
+        var state = Revealing(MapMove, 2, noteShown: true);
+
+        var small = BuildAt(state, 15);
+        var large = BuildAt(state, 30);
+
+        Assert.Equal(15, Label(small, "Creator").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(30, Label(large, "Creator").GetThemeFontSize("font_size", "Label"));
+        Assert.True(Width(large) > Width(small));
+        Assert.True(Label(large, "Creator").Size.Y > Label(small, "Creator").Size.Y);
+    }
+
+    private static float Width(PlaybackTransportStrip strip)
+    {
+        var plate = Find<Polygon2D>(strip.Root, "Plate").Polygon;
+        return plate.Max(point => point.X) - plate.Min(point => point.X);
+    }
+
+    private static PlaybackTransportStrip BuildAt(PlaybackTransport state, int size) =>
+        PlaybackTransportStrip.Build(
+            state, Surface, Anchor, new GameTextStyle(null, size),
+            back: () => { }, play: () => { }, step: () => { }, speed: () => { }, identity: () => { });
+
     /// <summary>The pips are a picture of the journey, and they stop being drawn when
     /// there are too many to read at a glance.</summary>
     [Fact]
@@ -1099,7 +1132,7 @@ public sealed class PlaybackTransportStripTests
 
     private static PlaybackTransportStrip Build(PlaybackTransport state) =>
         PlaybackTransportStrip.Build(
-            state, Surface, Anchor, font: null,
+            state, Surface, Anchor, GameTextStyle.Fallback,
             back: () => { }, play: () => { }, step: () => { }, speed: () => { }, identity: () => { });
 
     private static Label Label(PlaybackTransportStrip strip, string name) => Find<Label>(strip.Root, name);

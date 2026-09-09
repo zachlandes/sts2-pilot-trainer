@@ -304,7 +304,33 @@ public partial class Control
         else FocusExited?.Invoke();
     }
 
-    public void AddThemeFontOverride(StringName name, Font font) { }
+    private readonly Dictionary<string, Font> _fontOverrides = [];
+
+    private readonly Dictionary<string, int> _fontSizeOverrides = [];
+
+    public void AddThemeFontOverride(StringName name, Font font) => _fontOverrides[name.ToString()] = font;
+
+    public void AddThemeFontSizeOverride(StringName name, int fontSize) =>
+        _fontSizeOverrides[name.ToString()] = fontSize;
+
+    public bool HasThemeFontOverride(StringName name) => _fontOverrides.ContainsKey(name.ToString());
+
+    /// <summary>
+    /// Godot: the override where one is set, and the theme's own font otherwise.
+    ///
+    /// Backed rather than answering a fresh font every time, because the mod now reads a
+    /// native label's font and size to size its own text with, and a stub that forgot
+    /// what was set on a control could not tell a control wearing the game's type from
+    /// one wearing Godot's - which is the whole distinction that reading rests on.
+    /// </summary>
+    public Font GetThemeFont(StringName name, StringName themeType) =>
+        _fontOverrides.TryGetValue(name.ToString(), out var font) ? font : new Font();
+
+    /// <inheritdoc cref="GetThemeFont"/>
+    /// <remarks>16 is Godot's own default label size, which is what a control with no
+    /// override of its own is drawn at.</remarks>
+    public int GetThemeFontSize(StringName name, StringName themeType) =>
+        _fontSizeOverrides.TryGetValue(name.ToString(), out var size) ? size : 16;
 
     private readonly Dictionary<string, Color> _colorOverrides = [];
 

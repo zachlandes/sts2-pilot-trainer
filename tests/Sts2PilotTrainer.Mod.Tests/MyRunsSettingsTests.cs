@@ -63,7 +63,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         RecordingRetention.ApplyOnce();
         Assert.Equal(4, RunmobileStore.ListFileNames(Recordings).Count);
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
         row.Fewer.EmitPressed();
 
         Assert.Equal("1", Label(row, "KeepNumeral").Text);
@@ -88,7 +88,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         Record(Older);
         Record(Newest);
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
         row.Fewer.EmitPressed();
 
         Assert.Equal(4, RunmobileStore.ListFileNames(Recordings).Count);
@@ -107,7 +107,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         };
         host.AddChild(modding);
 
-        var row = MyRunsSettings.Attach(modding, font: null);
+        var row = MyRunsSettings.Attach(modding, GameTextStyle.Fallback);
 
         Assert.Same(host, row.Root.GetParent());
         Assert.Equal("Fetch the run index: on", row.Fetch.Text);
@@ -171,7 +171,7 @@ public sealed class MyRunsSettingsTests : IDisposable
                 "This game has not chosen a save profile yet, so Runmobile cannot tell whose files these " +
                 "would be."));
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
 
         Assert.Equal("Your runs are read once you have chosen a save profile", Label(row, "Reading").Text);
         Assert.Equal(string.Empty, Label(row, "Detail").Text);
@@ -192,7 +192,7 @@ public sealed class MyRunsSettingsTests : IDisposable
     {
         RunmobileStore.UseRootProviderForTesting(() => string.Empty);
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
 
         Assert.Equal("Your runs could not be read; the game's log says why", Label(row, "Reading").Text);
         Assert.Equal(string.Empty, Label(row, "Detail").Text);
@@ -214,7 +214,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         ContinuableRun.UseReaderForTesting(
             () => throw new InvalidOperationException("This game has a saved run it could not read."));
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
 
         Assert.Equal("Your runs could not be read; the game's log says why", Label(row, "Reading").Text);
         Assert.True(row.Remove.Disabled);
@@ -233,7 +233,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         Record(Newest);
         ContinuableRun.UseReaderForTesting(() => RecordingLibrary.Index([$"{Newest}.journal.jsonl"])[0].StartedUtc);
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
 
         Assert.Equal(
             "1 older run will be removed at the main menu · user://Runmobile/recordings",

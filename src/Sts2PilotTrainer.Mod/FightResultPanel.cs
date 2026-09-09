@@ -79,10 +79,16 @@ internal static class FightResultPanel
     /// at the end of a column is not read as a label on the column beside it.</summary>
     private const float ColumnGutter = 16f;
 
-    private const int TitleFontSize = 26;
-    private const int FigureFontSize = 20;
-    private const int LabelFontSize = 15;
-    private const int SmallFontSize = 12;
+    /// <summary>
+    /// The size this panel's own labels were drawn at when its measurements were taken.
+    ///
+    /// Every box below was laid out around text this size, so it is what the game's own
+    /// size is compared against: a client drawing larger text gets the same panel in the
+    /// same proportions, one size larger, rather than these boxes with bigger words
+    /// spilling out of them. It is the panel's ordinary label and not its title, because
+    /// the ordinary label is what most of the panel is.
+    /// </summary>
+    private const float ReferenceTextSize = 15f;
 
     /// <summary>
     /// Assembles the panel.
@@ -91,20 +97,28 @@ internal static class FightResultPanel
     /// <param name="viewport">The size of the surface it is drawn over.</param>
     /// <param name="art">The game's artwork for a model id, or null where a build has
     /// none. Injected so the panel assembles in a process with no model database.</param>
-    /// <param name="font">The font the game's own labels use, or null to leave the
-    /// theme's default in place.</param>
+    /// <param name="text">The font and size the game draws its own text at on the screen
+    /// this panel is put over. The panel's four tiers are taken from it and the whole
+    /// layout is scaled with it.</param>
     /// <param name="done">What the one button does.</param>
     internal static FightResultPanelNodes Build(
-        FightResultScreen screen, Vector2 viewport, Func<string, Texture2D?> art, Font? font, Action done)
+        FightResultScreen screen, Vector2 viewport, Func<string, Texture2D?> art, GameTextStyle text, Action done)
     {
-        var painter = new Painter(art, font);
+        var painter = new Painter(art, text);
+        var u = painter.Unit;
+        var pad = Pad * u;
+        var header = HeaderHeight * u;
+        var footer = FooterHeight * u;
 
         // A comparison fills a panel; a notice is one sentence and a button, and a
         // sentence adrift in the middle of a panel this size reads as a page that
         // failed to load.
-        var width = Math.Min(screen.HasComparison ? MaxPanelWidth : NoticePanelWidth, viewport.X - (2 * ScreenMargin));
+        var width = Math.Min(
+            (screen.HasComparison ? MaxPanelWidth : NoticePanelWidth) * u,
+            viewport.X - (2 * ScreenMargin * u));
         var height = Math.Min(
-            screen.HasComparison ? MaxPanelHeight : NoticePanelHeight, viewport.Y - (2 * ScreenMargin));
+            (screen.HasComparison ? MaxPanelHeight : NoticePanelHeight) * u,
+            viewport.Y - (2 * ScreenMargin * u));
 
         var root = new Control
         {
@@ -124,33 +138,33 @@ internal static class FightResultPanel
         panel.Name = NodeName("Panel");
         root.AddChild(panel);
 
-        painter.Text(panel, "Title", screen.Title, Pad, 18, width - (2 * Pad), 34, TitleFontSize, TitleText);
+        painter.Text(panel, "Title", screen.Title, pad, 18 * u, width - (2 * pad), 34 * u, painter.Title, TitleText);
 
         Button button;
         if (!screen.HasComparison)
         {
             painter.Wrapped(
-                panel, "Notice", screen.Notice, Pad, 66, width - (2 * Pad), height - 66 - FooterHeight,
-                LabelFontSize, PrimaryText);
+                panel, "Notice", screen.Notice, pad, 66 * u, width - (2 * pad), height - (66 * u) - footer,
+                painter.Label, PrimaryText);
             button = painter.DoneButton(screen.DoneButton, width, height, done);
             panel.AddChild(button);
             return new FightResultPanelNodes(root, button);
         }
 
         painter.Text(
-            panel, "SameBoundaryNote", screen.SameBoundaryNote, Pad, 56, width - (2 * Pad), 20,
-            SmallFontSize, DimText);
+            panel, "SameBoundaryNote", screen.SameBoundaryNote, pad, 56 * u, width - (2 * pad), 20 * u,
+            painter.Small, DimText);
 
-        var columnWidth = (width - (3 * Pad)) / 2;
-        var right = Pad + columnWidth + Pad;
-        var content = height - HeaderHeight - FooterHeight;
+        var columnWidth = (width - (3 * pad)) / 2;
+        var right = pad + columnWidth + pad;
+        var content = height - header - footer;
 
-        var divider = Box(Rule, Pad + columnWidth + (Pad / 2), HeaderHeight, 1, content);
+        var divider = Box(Rule, pad + columnWidth + (pad / 2), header, 1, content);
         divider.Name = NodeName("Divider");
         panel.AddChild(divider);
 
-        painter.Summary(panel, screen, Pad, HeaderHeight, columnWidth, content);
-        painter.Chronology(panel, screen, right, HeaderHeight, columnWidth, content);
+        painter.Summary(panel, screen, pad, header, columnWidth, content);
+        painter.Chronology(panel, screen, right, header, columnWidth, content);
         button = painter.DoneButton(screen.DoneButton, width, height, done);
         panel.AddChild(button);
         return new FightResultPanelNodes(root, button);
@@ -180,8 +194,30 @@ internal static class FightResultPanel
     /// Everything that needs the font and the artwork to draw, in one place so that
     /// neither has to be threaded through every helper.
     /// </summary>
-    private sealed class Painter(Func<string, Texture2D?> art, Font? font)
+    private sealed class Painter(Func<string, Texture2D?> art, GameTextStyle text)
     {
+        /// <summary>How much larger the game draws its text than this panel's
+        /// measurements assumed. Every box here is multiplied by it, so the panel keeps
+        /// its proportions and grows around its words.</summary>
+        internal float Unit { get; } = text.Size / ReferenceTextSize;
+
+        /// <summary>
+        /// The panel's four tiers, anchored on the game's own size.
+        ///
+        /// The ordinary label is the anchor because it is what most of the panel is, and
+        /// the other three keep the accepted design's own spacing around it: the figures
+        /// are a heading over their labels, the panel's title is a heading over those,
+        /// and the caveats and axes are the step below. Changing the panel's hierarchy is
+        /// a redesign and is not what reading the game's size is for.
+        /// </summary>
+        internal GameTextStyle Title { get; } = text.Heading.Heading;
+
+        internal GameTextStyle Figure { get; } = text.Heading;
+
+        internal GameTextStyle Label { get; } = text;
+
+        internal GameTextStyle Small { get; } = text.Supporting;
+
         /// <summary>
         /// The summary: the two lines named once, then the compared figures under
         /// them, then the caveats.
@@ -200,18 +236,19 @@ internal static class FightResultPanel
             Legend(panel, "Legend.You", screen.Columns[0], YouLine, YouFill, yours, y, columnWidth);
             Legend(panel, "Legend.Them", screen.Columns[1], TheirLine, TheirFill, theirs, y, columnWidth);
 
-            var notes = (26f * screen.Notes.Count) + 18;
-            var rowHeight = Math.Min(44f, (height - 36 - notes) / Math.Max(1, screen.Rows.Count));
-            var row = y + 36;
+            var notes = (26f * Unit * screen.Notes.Count) + (18 * Unit);
+            var rowHeight = Math.Min(
+                44f * Unit, (height - (36 * Unit) - notes) / Math.Max(1, screen.Rows.Count));
+            var row = y + (36 * Unit);
             foreach (var figure in screen.Rows)
             {
                 var value = figure.Matches ? DimText : TitleText;
                 Text(panel, $"Figure.{figure.Label}", figure.Label, x, row, labelWidth, rowHeight,
-                    LabelFontSize, figure.Matches ? DimText : SecondaryText);
+                    Label, figure.Matches ? DimText : SecondaryText);
                 Text(panel, $"Figure.{figure.Label}.Yours", figure.Yours, yours, row, columnWidth, rowHeight,
-                    FigureFontSize, value, HorizontalAlignment.Center);
+                    Figure, value, HorizontalAlignment.Center);
                 Text(panel, $"Figure.{figure.Label}.Theirs", figure.Theirs, theirs, row, columnWidth, rowHeight,
-                    FigureFontSize, value, HorizontalAlignment.Center);
+                    Figure, value, HorizontalAlignment.Center);
 
                 var rule = Box(Rule, x, row + rowHeight - 1, width, 1);
                 rule.Name = NodeName($"Figure.{figure.Label}.Rule");
@@ -222,11 +259,11 @@ internal static class FightResultPanel
             // The caveats follow the figures rather than sitting at the foot of the
             // column: each is a rule about how to read the numbers above it, and a
             // caveat marooned under a gap reads as a footnote to nothing.
-            var note = row + 18;
+            var note = row + (18 * Unit);
             for (var index = 0; index < screen.Notes.Count; index++)
             {
-                Wrapped(panel, $"Note.{index}", screen.Notes[index], x, note, width, 26, SmallFontSize, DimText);
-                note += 26;
+                Wrapped(panel, $"Note.{index}", screen.Notes[index], x, note, width, 26 * Unit, Small, DimText);
+                note += 26 * Unit;
             }
         }
 
@@ -240,15 +277,15 @@ internal static class FightResultPanel
         private void Legend(
             Control panel, string name, string label, Color line, Color fill, float x, float y, float width)
         {
-            var swatch = Box(line, x + 10, y + 8, 14, 14);
+            var swatch = Box(line, x + (10 * Unit), y + (8 * Unit), 14 * Unit, 14 * Unit);
             swatch.Name = NodeName($"{name}.Swatch");
             panel.AddChild(swatch);
 
-            var inside = Box(fill, x + 12, y + 10, 10, 10);
+            var inside = Box(fill, x + (12 * Unit), y + (10 * Unit), 10 * Unit, 10 * Unit);
             inside.Name = NodeName($"{name}.Swatch.Inside");
             panel.AddChild(inside);
 
-            Text(panel, name, label, x + 30, y, width - 30, 30, LabelFontSize, line);
+            Text(panel, name, label, x + (30 * Unit), y, width - (30 * Unit), 30 * Unit, Label, line);
         }
 
         /// <summary>
@@ -257,33 +294,35 @@ internal static class FightResultPanel
         /// </summary>
         internal void Chronology(Control panel, FightResultScreen screen, float x, float y, float width, float height)
         {
-            var chartHeight = Math.Min(250f, height * 0.46f);
-            var rows = height - chartHeight - 30;
-            var turnWidth = 46f;
+            var chartHeight = Math.Min(250f * Unit, height * 0.46f);
+            var rows = height - chartHeight - (30 * Unit);
+            var turnWidth = 46f * Unit;
             var columnWidth = (width - turnWidth) / 2;
             var yours = x + turnWidth;
             var theirs = yours + columnWidth;
 
-            Text(panel, "Chronology", screen.TurnDetailHeading, x, y, width, 20, LabelFontSize, SecondaryText);
-            Text(panel, "Chronology.Turn", screen.Chart.TurnLabel, x, y + 24, turnWidth, 18, SmallFontSize, DimText);
-            Text(panel, "Chronology.You", screen.Columns[0], yours, y + 24, columnWidth, 18, SmallFontSize, YouLine);
-            Text(panel, "Chronology.Them", screen.Columns[1], theirs + ColumnGutter, y + 24, columnWidth, 18,
-                SmallFontSize, TheirText);
+            Text(panel, "Chronology", screen.TurnDetailHeading, x, y, width, 20 * Unit, Label, SecondaryText);
+            Text(panel, "Chronology.Turn", screen.Chart.TurnLabel, x, y + (24 * Unit), turnWidth, 18 * Unit,
+                Small, DimText);
+            Text(panel, "Chronology.You", screen.Columns[0], yours, y + (24 * Unit), columnWidth, 18 * Unit,
+                Small, YouLine);
+            Text(panel, "Chronology.Them", screen.Columns[1], theirs + (ColumnGutter * Unit), y + (24 * Unit),
+                columnWidth, 18 * Unit, Small, TheirText);
 
-            var rowHeight = Math.Min(44f, (rows - 46) / Math.Max(1, screen.Turns.Count));
+            var rowHeight = Math.Min(44f * Unit, (rows - (46 * Unit)) / Math.Max(1, screen.Turns.Count));
 
             // A long fight gets more rows in the same space, and a card drawn at its
             // full height would then be drawn over the turn below it.
-            var card = Math.Min(CardHeight, rowHeight - 6);
-            var row = y + 46;
+            var card = Math.Min(CardHeight * Unit, rowHeight - (6 * Unit));
+            var row = y + (46 * Unit);
             foreach (var turn in screen.Turns)
             {
                 Text(panel, $"Turn.{turn.Turn}", turn.Turn.ToString(CultureInfo.InvariantCulture),
-                    x, row, turnWidth, rowHeight, LabelFontSize, SecondaryText);
+                    x, row, turnWidth, rowHeight, Label, SecondaryText);
                 Side(panel, $"Turn.{turn.Turn}.Yours", turn.Yours, screen.FightOverLabel, YouLine, YouFill,
-                    yours, row, columnWidth - ColumnGutter, rowHeight, card);
+                    yours, row, columnWidth - (ColumnGutter * Unit), rowHeight, card);
                 Side(panel, $"Turn.{turn.Turn}.Theirs", turn.Theirs, screen.FightOverLabel, TheirLine, TheirFill,
-                    theirs + ColumnGutter, row, columnWidth - ColumnGutter, rowHeight, card);
+                    theirs + (ColumnGutter * Unit), row, columnWidth - (ColumnGutter * Unit), rowHeight, card);
                 row += rowHeight;
             }
 
@@ -300,31 +339,31 @@ internal static class FightResultPanel
         {
             if (side is null)
             {
-                Text(panel, $"{name}.FightOver", fightOver, x, y, width, height, SmallFontSize, DimText);
+                Text(panel, $"{name}.FightOver", fightOver, x, y, width, height, Small, DimText);
                 return;
             }
 
             var cardWidth = cardHeight * CardWidth / CardHeight;
-            var potion = Math.Min(PotionSize, cardHeight);
+            var potion = Math.Min(PotionSize * Unit, cardHeight);
             var chip = x;
             foreach (var card in side.CardModelIds)
             {
                 Chip(panel, $"{name}.Card.{card}", card, line, fill, chip, y + ((height - cardHeight) / 2),
                     cardWidth, cardHeight);
-                chip += cardWidth + ChipGap;
+                chip += cardWidth + (ChipGap * Unit);
             }
 
             foreach (var spent in side.PotionModelIds)
             {
                 Chip(panel, $"{name}.Potion.{spent}", spent, line, fill, chip, y + ((height - potion) / 2),
                     potion, potion);
-                chip += potion + ChipGap;
+                chip += potion + (ChipGap * Unit);
             }
 
             // The turn's own cost, beside what was played. The same number the chart's
             // lower plot draws, where a player reads it while looking at the cards.
-            Text(panel, $"{name}.HealthLost", Loss(side.HealthLost), x + width - 46, y, 42, height,
-                LabelFontSize, side.HealthLost > 0 ? line : DimText, HorizontalAlignment.Right);
+            Text(panel, $"{name}.HealthLost", Loss(side.HealthLost), x + width - (46 * Unit), y, 42 * Unit, height,
+                Label, side.HealthLost > 0 ? line : DimText, HorizontalAlignment.Right);
         }
 
         /// <summary>
@@ -335,29 +374,29 @@ internal static class FightResultPanel
         /// </summary>
         private void Chart(Control panel, FightResultChart chart, float x, float y, float width, float height)
         {
-            Text(panel, "Chart", chart.Heading, x, y, width, 20, LabelFontSize, SecondaryText);
+            Text(panel, "Chart", chart.Heading, x, y, width, 20 * Unit, Label, SecondaryText);
             if (!chart.HasTurns) return;
 
-            var plotLeft = x + 128;
-            var plotWidth = width - 128;
+            var plotLeft = x + (128 * Unit);
+            var plotWidth = width - (128 * Unit);
             // What is left once the heading, the gap between the plots, the turn axis
             // and the lane the potions sit in have taken their share.
-            var plotHeight = (height - 92) / 2;
+            var plotHeight = (height - (92 * Unit)) / 2;
 
             Plot(panel, "Chart.Enemy", chart, point => point.EnemyHealthLost, chart.EnemyMeasureLabel,
-                x, y + 26, plotLeft, plotWidth, plotHeight);
+                x, y + (26 * Unit), plotLeft, plotWidth, plotHeight);
             Plot(panel, "Chart.Player", chart, point => point.HealthLost, chart.PlayerMeasureLabel,
-                x, y + 26 + plotHeight + 8, plotLeft, plotWidth, plotHeight);
+                x, y + (26 * Unit) + plotHeight + (8 * Unit), plotLeft, plotWidth, plotHeight);
 
-            var axis = y + 26 + (2 * plotHeight) + 22;
-            Text(panel, "Chart.TurnAxis", chart.TurnLabel, x, axis, 108, 20, SmallFontSize, DimText,
+            var axis = y + (26 * Unit) + (2 * plotHeight) + (22 * Unit);
+            Text(panel, "Chart.TurnAxis", chart.TurnLabel, x, axis, 108 * Unit, 20 * Unit, Small, DimText,
                 HorizontalAlignment.Right);
             for (var index = 0; index < chart.Turns.Count; index++)
             {
                 var at = X(plotLeft, plotWidth, index, chart.Turns.Count);
                 Text(panel, $"Chart.Turn.{chart.Turns[index]}", chart.Turns[index].ToString(CultureInfo.InvariantCulture),
-                    at - 14, axis, 28, 20, SmallFontSize, SecondaryText, HorizontalAlignment.Center);
-                Potions(panel, chart, index, at, axis + 20);
+                    at - (14 * Unit), axis, 28 * Unit, 20 * Unit, Small, SecondaryText, HorizontalAlignment.Center);
+                Potions(panel, chart, index, at, axis + (20 * Unit));
             }
         }
 
@@ -366,10 +405,10 @@ internal static class FightResultPanel
             Control panel, string name, FightResultChart chart, Func<FightResultPoint, int?> measure, string label,
             float x, float y, float plotLeft, float plotWidth, float height)
         {
-            Text(panel, name, label, x, y + (height / 2) - 10, 108, 20, SmallFontSize, DimText,
+            Text(panel, name, label, x, y + (height / 2) - (10 * Unit), 108 * Unit, 20 * Unit, Small, DimText,
                 HorizontalAlignment.Right);
 
-            var baseline = Box(Rule, plotLeft - 8, y + height, plotWidth + 8, 1);
+            var baseline = Box(Rule, plotLeft - (8 * Unit), y + height, plotWidth + (8 * Unit), 1);
             baseline.Name = NodeName($"{name}.Baseline");
             panel.AddChild(baseline);
 
@@ -412,28 +451,28 @@ internal static class FightResultPanel
             {
                 Name = NodeName(name),
                 Points = plotted.Select(point => point.At).ToArray(),
-                Width = 2.5f,
+                Width = 2.5f * Unit,
                 DefaultColor = color,
             };
             panel.AddChild(line);
 
             foreach (var (turn, value, at) in plotted)
             {
-                var dot = Box(color, at.X - 4, at.Y - 4, 8, 8);
+                var dot = Box(color, at.X - (4 * Unit), at.Y - (4 * Unit), 8 * Unit, 8 * Unit);
                 dot.Name = NodeName($"{name}.Point.{turn}");
                 // The recording's markers are turned forty-five degrees. Two lines
                 // that differ only in colour are one colour-blind player away from
                 // being the same line.
                 if (marker)
                 {
-                    dot.PivotOffset = new Vector2(4, 4);
+                    dot.PivotOffset = new Vector2(4 * Unit, 4 * Unit);
                     dot.Rotation = float.Pi / 4;
                 }
 
                 panel.AddChild(dot);
                 Text(panel, $"{name}.Value.{turn}", value.ToString(CultureInfo.InvariantCulture),
-                    at.X - 20, marker ? at.Y + 4 : at.Y - 22, 40, 18, SmallFontSize, color,
-                    HorizontalAlignment.Center);
+                    at.X - (20 * Unit), marker ? at.Y + (4 * Unit) : at.Y - (22 * Unit), 40 * Unit, 18 * Unit,
+                    Small, color, HorizontalAlignment.Center);
             }
         }
 
@@ -441,7 +480,7 @@ internal static class FightResultPanel
         /// bordered by the line that spent them.</summary>
         private void Potions(Control panel, FightResultChart chart, int index, float at, float y)
         {
-            var lane = at - (PotionSize / 2);
+            var lane = at - (PotionSize * Unit / 2);
             foreach (var (series, color, fill) in new[]
                      {
                          (chart.Yours, YouLine, YouFill), (chart.Theirs, TheirLine, TheirFill),
@@ -451,8 +490,8 @@ internal static class FightResultPanel
                 {
                     Chip(
                         panel, $"Chart.Potion.{series.Points[index].Turn}.{series.Label}.{potion}", potion, color,
-                        fill, lane, y, PotionSize, PotionSize);
-                    lane += PotionSize + ChipGap;
+                        fill, lane, y, PotionSize * Unit, PotionSize * Unit);
+                    lane += (PotionSize * Unit) + (ChipGap * Unit);
                 }
             }
         }
@@ -497,7 +536,11 @@ internal static class FightResultPanel
                 return;
             }
 
-            Wrapped(panel, $"{name}.Name", ModelIdNames.Display(modelId), x + 1, y + 1, width - 2, height - 2, 9, line);
+            // The smallest thing on the panel: a card's name standing in for art this
+            // build has not got, inside a chip the size of a card.
+            Wrapped(
+                panel, $"{name}.Name", ModelIdNames.Display(modelId), x + 1, y + 1,
+                width - 2, height - 2, Small.Annotation, line);
         }
 
         /// <summary>The one control on the panel, and the one thing left to do.</summary>
@@ -507,8 +550,9 @@ internal static class FightResultPanel
             {
                 Name = NodeName("Done"),
                 Text = label,
-                Position = new Vector2(width - Pad - 176, height - FooterHeight + 12),
-                Size = new Vector2(176, 46),
+                Position = new Vector2(
+                    width - (Pad * Unit) - (176 * Unit), height - (FooterHeight * Unit) + (12 * Unit)),
+                Size = new Vector2(176 * Unit, 46 * Unit),
                 FocusMode = Control.FocusModeEnum.All,
             };
 
@@ -523,17 +567,16 @@ internal static class FightResultPanel
             button.AddThemeColorOverride("font_color", PanelFill);
             button.AddThemeColorOverride("font_hover_color", PanelFill);
             button.AddThemeColorOverride("font_pressed_color", PanelFill);
-            button.AddThemeFontSizeOverride("font_size", LabelFontSize + 3);
-            if (font is not null) button.AddThemeFontOverride("font", font);
+            Figure.ApplyTo(button);
             button.Pressed += () => done();
             return button;
         }
 
         internal Label Text(
-            Control panel, string name, string text, float x, float y, float width, float height, int size,
-            Color color, HorizontalAlignment alignment = HorizontalAlignment.Left)
+            Control panel, string name, string line, float x, float y, float width, float height,
+            GameTextStyle style, Color color, HorizontalAlignment alignment = HorizontalAlignment.Left)
         {
-            var label = Styled(name, text, size, color);
+            var label = Styled(name, line, style, color);
             label.HorizontalAlignment = alignment;
             label.VerticalAlignment = VerticalAlignment.Center;
             // A figure or a label that would not fit is cut off inside its own box
@@ -544,10 +587,10 @@ internal static class FightResultPanel
         }
 
         internal Label Wrapped(
-            Control panel, string name, string text, float x, float y, float width, float height, int size,
-            Color color)
+            Control panel, string name, string line, float x, float y, float width, float height,
+            GameTextStyle style, Color color)
         {
-            var label = Styled(name, text, size, color);
+            var label = Styled(name, line, style, color);
             label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             Place(panel, label, x, y, width, height);
             return label;
@@ -572,20 +615,19 @@ internal static class FightResultPanel
             panel.AddChild(label);
         }
 
-        private Label Styled(string name, string text, int size, Color color)
+        private static Label Styled(string name, string line, GameTextStyle style, Color color)
         {
             var label = new Label
             {
                 Name = NodeName(name),
-                Text = text,
+                Text = line,
                 MouseFilter = Control.MouseFilterEnum.Ignore,
             };
 
-            // The font is the game's own, taken from a label already on screen. Its
-            // size and colour are ours, because the game's sizes are the sizes of its
-            // own screens rather than of a table of figures.
-            if (font is not null) label.AddThemeFontOverride("font", font);
-            label.AddThemeFontSizeOverride("font_size", size);
+            // Both the font and the size are the game's own, taken from a label already
+            // on screen: the panel's four tiers are steps off that one reading, so a
+            // table of figures over the game's art reads at the game's own scale.
+            style.ApplyTo(label);
             label.AddThemeColorOverride("font_color", color);
             return label;
         }

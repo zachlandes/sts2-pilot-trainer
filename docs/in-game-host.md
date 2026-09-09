@@ -752,6 +752,9 @@ plate.** `NDebugInfoLabelManager.UpdateText` fills a `VBoxContainer` of three
 right-aligned labels sharing one font and size - build, date and seed, then MODDED -
 and `RecorderPresenceRow.VersionOverlay` postfixes that method to add a sibling label
 under the MODDED one, copying its font and size rather than styling one of its own.
+That copy is now every surface's rule rather than this row's exception: `GameText` in
+the mod reads a native element's font and size, and `docs/mod-ui-direction.md` owns
+which element each surface asks and the three roles derived around it.
 `RecorderPresence.For` derives what it says and its colour from exactly
 `RunRecorder.Active` and `RunCapture.State`; the row is re-derived every frame, because
 the recorder attaches after the overlay is built and a watch can break at any decision.

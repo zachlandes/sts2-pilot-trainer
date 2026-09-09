@@ -34,12 +34,6 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class LibraryPaneArt
 {
-    /// <summary>How tall the identity line is, as a share of a ribbon's height.</summary>
-    private const int HeadingFontSize = 21;
-
-    /// <summary>Supporting lines: the subtitle, the facts, the verdict.</summary>
-    private const int LineFontSize = 15;
-
     /// <summary>How big a strip cell is, as a share of the strip's own height. The
     /// selected ring is drawn in the rest of it.</summary>
     private const float CellShare = 0.62f;
@@ -60,7 +54,7 @@ internal static class LibraryPaneArt
     }
 
     internal static StripLayout LayoutStrip(
-        int count, float width, int anchor, int? requestedPage = null)
+        int count, float width, int anchor, int lineSize, int? requestedPage = null)
     {
         var places = Math.Max(
             ScreenPage.MinimumPerPage,
@@ -69,7 +63,7 @@ internal static class LibraryPaneArt
             ? ScreenPage.For(count, places, requested)
             : ScreenPage.Containing(count, places, anchor);
         var pitch = page.Pages == 1 ? width / page.Count : width / places;
-        var cell = Math.Min(pitch * 0.9f, LineFontSize * 2.8f) * CellShare;
+        var cell = Math.Min(pitch * 0.9f, lineSize * 2.8f) * CellShare;
         var height = cell / CellShare;
         var offset = (width - (page.Drawn * pitch)) / 2f;
         return new StripLayout(
@@ -84,22 +78,27 @@ internal static class LibraryPaneArt
     /// </summary>
     internal static Control? Add(NVerticalPopup content, ScreenPane pane, Rect2 at)
     {
+        // The popup's own body copy, and the steps around it. The identity line is a
+        // heading over the pane and not over the screen - the parchment's own title
+        // above it is the screen's - so it is the step above the body rather than the
+        // popup's header, which would put two titles on one parchment.
+        var line = content.BodyText();
         var y = at.Position.Y;
         y = LibraryScreen.AddLine(
             content, pane.Heading, new Vector2(at.Position.X, y), at.Size.X,
-            LibraryPalette.Muted, HeadingFontSize);
+            LibraryPalette.Muted, line.Heading);
 
         if (pane.Subtitle is { Length: > 0 } subtitle)
         {
             y = LibraryScreen.AddLine(
                 content, subtitle, new Vector2(at.Position.X, y), at.Size.X,
-                LibraryPalette.Muted, LineFontSize);
+                LibraryPalette.Muted, line);
         }
 
         // Relics and the deck count top right, which is where the accepted layout puts
         // them: they are what the run carried, read across the top rather than down the
         // pane.
-        y = AddRelics(content, pane, new Vector2(at.Position.X, y), at.Size.X);
+        y = AddRelics(content, pane, new Vector2(at.Position.X, y), at.Size.X, line);
         if (pane.DeckCount is { } cards)
         {
             y = LibraryScreen.AddLine(
@@ -108,28 +107,28 @@ internal static class LibraryPaneArt
                 new Vector2(at.Position.X, y),
                 at.Size.X,
                 LibraryPalette.Muted,
-                LineFontSize,
+                line,
                 HorizontalAlignment.Right);
         }
 
-        var strip = AddStrip(content, pane, new Vector2(at.Position.X, y), at.Size.X);
+        var strip = AddStrip(content, pane, new Vector2(at.Position.X, y), at.Size.X, line);
         y = strip.Bottom;
         // Keep the deck in the opened-run pane when browser actions need its room
         if (pane.Plate.Count == 0)
-            y = AddDeck(content, pane, new Vector2(at.Position.X, y), at.Size.X);
+            y = AddDeck(content, pane, new Vector2(at.Position.X, y), at.Size.X, line);
 
         foreach (var fact in pane.Facts)
         {
             y = LibraryScreen.AddLine(
                 content, fact, new Vector2(at.Position.X, y), at.Size.X,
-                LibraryPalette.Muted, LineFontSize);
+                LibraryPalette.Muted, line);
         }
 
         if (pane.Verdict is { Length: > 0 } verdict)
         {
             y = LibraryScreen.AddLine(
                 content, verdict, new Vector2(at.Position.X, y), at.Size.X,
-                pane.VerdictPassed ? LibraryPalette.Green : LibraryPalette.Red, LineFontSize);
+                pane.VerdictPassed ? LibraryPalette.Green : LibraryPalette.Red, line);
         }
 
         var plateFocus = AddPlate(
@@ -152,11 +151,12 @@ internal static class LibraryPaneArt
     /// scanning happens. A relic this build has no icon for is written by name instead,
     /// so the pane never has a hole where a relic was.
     /// </summary>
-    private static float AddRelics(NVerticalPopup content, ScreenPane pane, Vector2 at, float width)
+    private static float AddRelics(
+        NVerticalPopup content, ScreenPane pane, Vector2 at, float width, GameTextStyle line)
     {
         if (pane.Relics.Count == 0) return at.Y;
 
-        var size = LineFontSize * 1.7f;
+        var size = line.Size * 1.7f;
         var perRow = Math.Max(1, (int)Math.Floor(width / (size * 1.15f)));
         var y = at.Y;
         for (var index = 0; index < pane.Relics.Count; index++)
@@ -189,7 +189,7 @@ internal static class LibraryPaneArt
             {
                 LibraryScreen.AddLine(
                     content, ModelIdNames.Display(id), position, size * 1.1f,
-                    LibraryPalette.Muted, LineFontSize - 3);
+                    LibraryPalette.Muted, line.Supporting);
             }
         }
 
@@ -208,7 +208,7 @@ internal static class LibraryPaneArt
     /// answer.
     /// </summary>
     private static (float Bottom, Control? Focus, Control? Last) AddStrip(
-        NVerticalPopup content, ScreenPane pane, Vector2 at, float width)
+        NVerticalPopup content, ScreenPane pane, Vector2 at, float width, GameTextStyle line)
     {
         if (pane.Strip.Count == 0) return (at.Y, null, null);
 
@@ -224,14 +224,14 @@ internal static class LibraryPaneArt
             if (pane.Strip[index].Played) anchor = index;
         }
 
-        var layout = LayoutStrip(pane.Strip.Count, width, anchor, pane.StripPage);
+        var layout = LayoutStrip(pane.Strip.Count, width, anchor, line.Size, pane.StripPage);
         var controls = new List<Control>();
         if (layout.HasPrevious && pane.SelectStripPage is { } previousPage)
         {
             controls.Add(AddStripPageButton(
                 content, LibraryCopy.PreviousPage, "Previous", "‹",
                 new Vector2(at.X + layout.Offset, at.Y),
-                layout.Pitch, layout.Height,
+                layout.Pitch, layout.Height, line.Heading,
                 () => LibraryScreen.Navigate(
                     LibraryCopy.PreviousPage, () => previousPage(layout.Index - 1))));
         }
@@ -260,7 +260,7 @@ internal static class LibraryPaneArt
                 floor.Playable ? LibraryPalette.Line : LibraryPalette.Line with { A = 0.45f });
             kind.Position = new Vector2((layout.Pitch - layout.Cell) / 2f, inset);
             box.AddChild(kind);
-            AddStripNumber(content, box, floor.Floor, layout);
+            AddStripNumber(box, floor.Floor, layout, line.Supporting);
 
             // Filled, over the cell: it is something this player did.
             if (floor.Played)
@@ -310,7 +310,7 @@ internal static class LibraryPaneArt
                 content, LibraryCopy.NextPage, "Next", "›",
                 new Vector2(
                     at.X + layout.Offset + (layout.NextSlot * layout.Pitch), at.Y),
-                layout.Pitch, layout.Height,
+                layout.Pitch, layout.Height, line.Heading,
                 () => LibraryScreen.Navigate(
                     LibraryCopy.NextPage, () => nextPage(layout.Index + 1))));
         }
@@ -331,28 +331,28 @@ internal static class LibraryPaneArt
             controls.LastOrDefault());
     }
 
+    /// <summary>The floor's number inside its own cell: a mark on a glyph rather than a
+    /// line of the pane's text, so it takes the step below the pane's own.</summary>
     private static void AddStripNumber(
-        NVerticalPopup content, Control box, int floor, StripLayout layout)
+        Control box, int floor, StripLayout layout, GameTextStyle style)
     {
         var label = new Label
         {
             Name = $"{box.Name}Floor",
             Text = floor.ToString(CultureInfo.InvariantCulture),
             Position = new Vector2(0f, layout.Height * 0.72f),
-            Size = new Vector2(layout.Pitch, LineFontSize * 1.3f),
+            Size = new Vector2(layout.Pitch, style.Size * 1.3f),
             MouseFilter = Control.MouseFilterEnum.Ignore,
             HorizontalAlignment = HorizontalAlignment.Center,
         };
-        if (GameFont.Of(content.GetTree()?.Root) is { } font)
-            label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", LineFontSize - 3);
+        style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", LibraryPalette.Muted);
         box.AddChild(label);
     }
 
     internal static Button AddStripPageButton(
         Control content, string tooltip, string direction, string text, Vector2 at,
-        float width, float height, Action press)
+        float width, float height, GameTextStyle style, Action press)
     {
         var button = new Button
         {
@@ -364,9 +364,7 @@ internal static class LibraryPaneArt
             CustomMinimumSize = new Vector2(width, height),
             TooltipText = tooltip,
         };
-        if (content.IsInsideTree() && GameFont.Of(content.GetTree()?.Root) is { } font)
-            button.AddThemeFontOverride("font", font);
-        button.AddThemeFontSizeOverride("font_size", LineFontSize + 4);
+        style.ApplyTo(button);
         button.Pressed += press;
         button.Connect(
             "gui_input",
@@ -389,7 +387,8 @@ internal static class LibraryPaneArt
     /// frame, because "no deck was recorded here" and "the deck was empty" are different
     /// facts and a frame would state the second.
     /// </summary>
-    private static float AddDeck(NVerticalPopup content, ScreenPane pane, Vector2 at, float width)
+    private static float AddDeck(
+        NVerticalPopup content, ScreenPane pane, Vector2 at, float width, GameTextStyle line)
     {
         if (pane.Deck is not { Count: > 0 } deck) return at.Y;
 
@@ -436,14 +435,14 @@ internal static class LibraryPaneArt
                         position with { Y = position.Y + (height * 0.76f) },
                         tile * 0.92f,
                         LibraryPalette.Muted,
-                        LineFontSize - 3,
+                        line.Supporting,
                         HorizontalAlignment.Center);
                 }
             }
             else
             {
                 LibraryScreen.AddLine(
-                    content, text, position, tile * 0.92f, LibraryPalette.Muted, LineFontSize - 3);
+                    content, text, position, tile * 0.92f, LibraryPalette.Muted, line.Supporting);
             }
         }
 

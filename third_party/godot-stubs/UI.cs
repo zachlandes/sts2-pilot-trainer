@@ -49,12 +49,8 @@ public partial class Control : CanvasItem
     public void AcceptEvent() { }
     public bool HasFocus() => false;
     public Viewport? GetViewport() => null;
-    public Font GetThemeFont(StringName name, StringName themeType) => new();
-    public int GetThemeFontSize(StringName name, StringName themeType) => 16;
     public int GetThemeConstant(StringName name, StringName themeType) => 0;
-    public bool HasThemeFontOverride(StringName name) => false;
     public bool HasThemeFont(StringName name, StringName themeType) => true;
-    public void AddThemeFontSizeOverride(StringName name, int fontSize) { }
 
     public virtual void _GuiInput(InputEvent @event) { }
 

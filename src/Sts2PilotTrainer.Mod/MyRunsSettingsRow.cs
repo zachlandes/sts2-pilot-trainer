@@ -67,28 +67,33 @@ internal sealed class MyRunsSettingsRow
     private static readonly Color DisabledEdge = Rgb(0x2e, 0x2a, 0x2c);
     private static readonly Color Dim = Rgb(0x6a, 0x62, 0x59);
 
-    // ── The layout, in the design's own reference units ─────────────────────
+    // ── The layout, as multiples of the text in it ──────────────────────────
+    //
+    // Every box here is a multiple of the settings screen's own text size rather than a
+    // number, because that size is the game's and changes with the player's window. A
+    // row written in constants was a row that fitted one window: the words were the
+    // game's neighbours' and the boxes around them were not.
 
-    private const float LabelHeight = 22f;
-    private const float NoteHeight = 18f;
-    private const float RuleGap = 14f;
-    private const float StepSize = 24f;
-    private const float StepGap = 6f;
-    private const float NumeralWidth = 34f;
-    private const float RemoveWidth = 168f;
-    private const float RemovePad = 14f;
-    private const float RemoveHeight = 30f;
-    private const float FetchGap = 10f;
-    private const float FetchHeight = 30f;
-    private const float MainMenuGap = 6f;
-    private const float MainMenuHeight = 30f;
-
-    private const int LabelFontSize = 15;
-    private const int NoteFontSize = 12;
-    private const int NumeralFontSize = 15;
-    private const int RemoveFontSize = 13;
+    private const float LabelHeightRatio = 1.5f;
+    private const float NoteHeightRatio = 1.5f;
+    private const float RuleGapRatio = 0.95f;
+    private const float StepSizeRatio = 1.6f;
+    private const float StepGapRatio = 0.4f;
+    private const float NumeralWidthRatio = 2.3f;
+    private const float RemoveWidthRatio = 11.2f;
+    private const float RemovePadRatio = 0.95f;
+    private const float RemoveHeightRatio = 2f;
+    private const float FetchGapRatio = 0.7f;
+    private const float FetchHeightRatio = 2f;
+    private const float MainMenuGapRatio = 0.4f;
+    private const float MainMenuHeightRatio = 2f;
 
     private static readonly StringName FontColour = "font_color";
+
+    /// <summary>The settings screen's own text, and the roles this row derives from it:
+    /// its two sentences at the screen's size, the note under them one step down, and
+    /// the destructive control's word smaller again because it sits inside a box.</summary>
+    private readonly GameTextStyle _text;
 
     private readonly Control _root;
     private readonly Label _keepLabel;
@@ -142,6 +147,7 @@ internal sealed class MyRunsSettingsRow
         _row = nodes.Row;
         _keep = nodes.Keep;
         _fetchIndex = nodes.FetchRunIndex;
+        _text = nodes.Text;
     }
 
     internal Control Root => _root;
@@ -165,6 +171,18 @@ internal sealed class MyRunsSettingsRow
     internal MyRunsRow Row => _row;
 
     /// <summary>
+    /// Takes a new width after the settings column has laid the row out.
+    /// </summary>
+    internal void Relayout(float width)
+    {
+        if (width <= 0f) return;
+
+        _root.Size = new Vector2(width, HeightFor(_text));
+        _root.CustomMinimumSize = new Vector2(0f, HeightFor(_text));
+        Layout(width);
+    }
+
+    /// <summary>
     /// How tall the row is at the width it was built for. A section stacks what it
     /// hosts, so it has to be told.
     ///
@@ -172,9 +190,18 @@ internal sealed class MyRunsSettingsRow
     /// both: the reading and its note are stacked, and the destructive control sits
     /// beside them rather than under them.
     /// </summary>
-    internal static float Height =>
-        LabelHeight + RuleGap + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap + FetchHeight +
-        MainMenuGap + MainMenuHeight;
+    internal float Height => HeightFor(_text);
+
+    /// <inheritdoc cref="Height"/>
+    internal static float HeightFor(GameTextStyle text)
+    {
+        var label = text.Size * LabelHeightRatio;
+        var note = text.Supporting.Size * NoteHeightRatio;
+        var remove = text.Supporting.Size * RemoveHeightRatio;
+        return label + (text.Size * RuleGapRatio) + Math.Max(label + note, remove) +
+            (text.Size * FetchGapRatio) + (text.Size * FetchHeightRatio) +
+            (text.Size * MainMenuGapRatio) + (text.Size * MainMenuHeightRatio);
+    }
 
     /// <summary>
     /// Assembles the row.
@@ -184,15 +211,15 @@ internal sealed class MyRunsSettingsRow
     /// which may be larger than anything a press would reach it at.</param>
     /// <param name="width">How wide the section is laying it out, in engine
     /// units.</param>
-    /// <param name="font">The font the game's own labels use, or null to leave the
-    /// theme's default in place.</param>
+    /// <param name="text">The font and size the game's own settings rows on this screen
+    /// are drawn at, which is what every line and control here is sized from.</param>
     /// <param name="keepChanged">What to do when the player moves the policy. The row
     /// reports and does not act: what a new policy means for the disk is the retention
     /// owner's, and the host re-derives and calls <see cref="Apply"/>.</param>
     /// <param name="removePressed">What to do when the player asks for every run to
     /// go. Same rule: this raises it, and does not remove anything itself.</param>
     internal static MyRunsSettingsRow Build(
-        MyRunsRow row, int keep, bool fetchRunIndex, float width, Font? font,
+        MyRunsRow row, int keep, bool fetchRunIndex, float width, GameTextStyle text,
         Action<int> keepChanged, Action removePressed, Action<bool> fetchChanged,
         Action<bool> mainMenuChanged)
     {
@@ -202,12 +229,13 @@ internal sealed class MyRunsSettingsRow
         ArgumentNullException.ThrowIfNull(fetchChanged);
         ArgumentNullException.ThrowIfNull(mainMenuChanged);
 
+        var height = HeightFor(text);
         var root = new Control
         {
             Name = RootName,
             Position = Vector2.Zero,
-            Size = new Vector2(width, Height),
-            CustomMinimumSize = new Vector2(width, Height),
+            Size = new Vector2(width, height),
+            CustomMinimumSize = new Vector2(0f, height),
             // The section underneath owns everything this row is not standing on.
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
@@ -218,18 +246,21 @@ internal sealed class MyRunsSettingsRow
             Row = row,
             Keep = keep,
             FetchRunIndex = fetchRunIndex,
-            KeepLabel = Add(root, Text("KeepLabel", LabelFontSize, Cream, font)),
-            KeepNumeral = Add(root, Text("KeepNumeral", NumeralFontSize, Cream, font)),
+            Text = text,
+            KeepLabel = Add(root, Text("KeepLabel", text, Cream)),
+            KeepNumeral = Add(root, Text("KeepNumeral", text, Cream)),
             Rule = Add(root, new Line2D { Name = "Rule", DefaultColor = RuleLine, Width = 1f }),
-            Reading = Add(root, Text("Reading", LabelFontSize, Cream, font)),
-            Detail = Add(root, Text("Detail", NoteFontSize, Muted, font)),
+            Reading = Add(root, Text("Reading", text, Cream)),
+            Detail = Add(root, Text("Detail", text.Supporting, Muted)),
         };
 
-        nodes.Fewer = Add(root, Pressable("Fewer", "−", font));
-        nodes.More = Add(root, Pressable("More", "+", font));
-        nodes.Remove = Add(root, Pressable("Remove", string.Empty, font));
-        nodes.Fetch = Add(root, Pressable("FetchRunIndex", string.Empty, font));
-        nodes.MainMenu = Add(root, Pressable("MainMenuRow", string.Empty, font));
+        // The controls that sit inside a box carry the supporting size, because a
+        // word in a box reads beside the sentence it belongs to rather than as one.
+        nodes.Fewer = Add(root, Pressable("Fewer", "−", text));
+        nodes.More = Add(root, Pressable("More", "+", text));
+        nodes.Remove = Add(root, Pressable("Remove", string.Empty, text.Supporting));
+        nodes.Fetch = Add(root, Pressable("FetchRunIndex", string.Empty, text.Supporting));
+        nodes.MainMenu = Add(root, Pressable("MainMenuRow", string.Empty, text.Supporting));
 
         var built = new MyRunsSettingsRow(nodes);
 
@@ -247,7 +278,7 @@ internal sealed class MyRunsSettingsRow
         // under this screen, and a handler that closed over the starting value would ask
         // for a state the row had already left.
         built._mainMenu.Pressed += () => mainMenuChanged(!built._row.MainMenu.Shown);
-        built.Layout(width, font);
+        built.Layout(width);
         built.Apply(row, keep, fetchRunIndex);
         return built;
     }
@@ -322,28 +353,43 @@ internal sealed class MyRunsSettingsRow
     /// because they are two different sentences: a standing policy above, and what is
     /// on the disk right now below.
     /// </summary>
-    private void Layout(float width, Font? font)
+    private void Layout(float width)
     {
-        var stepper = (StepSize * 2) + NumeralWidth + (StepGap * 2);
-        var removeWidth = Math.Min(width, RemoveBoxWidth(_row.RemoveLabel, font));
+        var unit = _text.Size;
+        var labelHeight = unit * LabelHeightRatio;
+        var noteHeight = _text.Supporting.Size * NoteHeightRatio;
+        var stepSize = unit * StepSizeRatio;
+        var stepGap = unit * StepGapRatio;
+        var numeralWidth = unit * NumeralWidthRatio;
+        var ruleGap = unit * RuleGapRatio;
+        var removeHeight = _text.Supporting.Size * RemoveHeightRatio;
 
-        Place(_keepLabel, 0f, 0f, width - stepper - StepGap, LabelHeight);
-        Place(_fewer, width - stepper, (LabelHeight - StepSize) / 2f, StepSize, StepSize);
-        Place(_keepNumeral, width - stepper + StepSize + StepGap, 0f, NumeralWidth, LabelHeight);
+        var stepper = (stepSize * 2) + numeralWidth + (stepGap * 2);
+        var removeWidth = Math.Min(width, RemoveBoxWidth(_row.RemoveLabel, _text.Supporting));
+
+        Place(_keepLabel, 0f, 0f, width - stepper - stepGap, labelHeight);
+        Place(_fewer, width - stepper, (labelHeight - stepSize) / 2f, stepSize, stepSize);
+        Place(_keepNumeral, width - stepper + stepSize + stepGap, 0f, numeralWidth, labelHeight);
         _keepNumeral.HorizontalAlignment = HorizontalAlignment.Center;
-        Place(_more, width - StepSize, (LabelHeight - StepSize) / 2f, StepSize, StepSize);
+        Place(_more, width - stepSize, (labelHeight - stepSize) / 2f, stepSize, stepSize);
 
-        var ruleY = LabelHeight + (RuleGap / 2f);
+        var ruleY = labelHeight + (ruleGap / 2f);
         _rule.Points = [new Vector2(0f, ruleY), new Vector2(width, ruleY)];
 
-        var lower = LabelHeight + RuleGap;
-        Place(_reading, 0f, lower, width - removeWidth - StepGap, LabelHeight);
-        Place(_remove, width - removeWidth, lower + ((LabelHeight - RemoveHeight) / 2f), removeWidth, RemoveHeight);
-        Place(_detail, 0f, lower + LabelHeight, width - removeWidth - StepGap, NoteHeight);
+        var lower = labelHeight + ruleGap;
+        Place(_reading, 0f, lower, width - removeWidth - stepGap, labelHeight);
+        Place(_remove, width - removeWidth, lower + ((labelHeight - removeHeight) / 2f), removeWidth, removeHeight);
+        Place(_detail, 0f, lower + labelHeight, width - removeWidth - stepGap, noteHeight);
 
-        var fetchY = lower + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap;
-        Place(_fetch, 0f, fetchY, width, FetchHeight);
-        Place(_mainMenu, 0f, fetchY + FetchHeight + MainMenuGap, width, MainMenuHeight);
+        var fetchHeight = unit * FetchHeightRatio;
+        var fetchY = lower + Math.Max(labelHeight + noteHeight, removeHeight) + (unit * FetchGapRatio);
+        Place(_fetch, 0f, fetchY, width, fetchHeight);
+        Place(
+            _mainMenu,
+            0f,
+            fetchY + fetchHeight + (unit * MainMenuGapRatio),
+            width,
+            unit * MainMenuHeightRatio);
     }
 
     /// <summary>
@@ -351,21 +397,21 @@ internal sealed class MyRunsSettingsRow
     ///
     /// Measured rather than assumed, because a Button's own minimum width is its
     /// unwrapped label and a box narrower than that is one the engine widens straight
-    /// back out of the row. The constant stands in where there is no font to measure
+    /// back out of the row. The estimate stands in where there is no font to measure
     /// with, which is the fallback the transport's own measuring uses: a process with no
     /// game draws nothing, so an estimate there costs nothing.
     /// </summary>
-    private static float RemoveBoxWidth(string label, Font? font) =>
-        font is null
-            ? RemoveWidth
+    private static float RemoveBoxWidth(string label, GameTextStyle text) =>
+        text.Font is not { } font
+            ? text.Size * RemoveWidthRatio
             : font.GetStringSize(
                 label,
                 HorizontalAlignment.Left,
                 width: -1f,
-                RemoveFontSize,
+                text.Size,
                 TextServer.JustificationFlag.None,
                 TextServer.Direction.Auto,
-                TextServer.Orientation.Horizontal).X + (RemovePad * 2);
+                TextServer.Orientation.Horizontal).X + (text.Size * RemovePadRatio * 2);
 
     private static void Refuse(Button button, bool refused)
     {
@@ -421,7 +467,6 @@ internal sealed class MyRunsSettingsRow
 
         Lit(button, enabled ? Red : DisabledEdge);
         button.AddThemeColorOverride(FontColour, enabled ? Cream : Dim);
-        button.AddThemeFontSizeOverride("font_size", RemoveFontSize);
     }
 
     /// <summary>Hover and focus take a rim, which is the game's own language for "this
@@ -441,12 +486,12 @@ internal sealed class MyRunsSettingsRow
         return child;
     }
 
-    private static Button Pressable(string name, string text, Font? font)
+    private static Button Pressable(string name, string label, GameTextStyle text)
     {
         var button = new Button
         {
             Name = name,
-            Text = text,
+            Text = label,
             // Clipped for the reason the labels are: a Button's own minimum width is
             // its unwrapped label, so one whose word outgrows its box widens itself
             // back out of the row rather than being cut off inside it.
@@ -456,11 +501,11 @@ internal sealed class MyRunsSettingsRow
             FocusMode = Control.FocusModeEnum.All,
         };
 
-        if (font is not null) button.AddThemeFontOverride("font", font);
+        text.ApplyTo(button);
         return button;
     }
 
-    private static Label Text(string name, int size, Color colour, Font? font)
+    private static Label Text(string name, GameTextStyle style, Color colour)
     {
         var label = new Label
         {
@@ -470,8 +515,7 @@ internal sealed class MyRunsSettingsRow
             ClipText = true,
         };
 
-        if (font is not null) label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", size);
+        style.ApplyTo(label);
         label.AddThemeColorOverride(FontColour, colour);
         return label;
     }
@@ -505,6 +549,8 @@ internal sealed class MyRunsSettingsRow
         internal required int Keep { get; init; }
 
         internal required bool FetchRunIndex { get; init; }
+
+        internal required GameTextStyle Text { get; init; }
 
         internal required Label KeepLabel { get; init; }
 

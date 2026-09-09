@@ -62,7 +62,10 @@ public sealed class FightResultPanelTests
         Assert.Equal(TextureRect.ExpandModeEnum.IgnoreSize, picture.ExpandMode);
         Assert.Equal(chip.Size.X - 2, picture.Size.X);
         Assert.Equal(chip.Size.Y - 2, picture.Size.Y);
-        Assert.True(picture.Size.Y <= 34);
+        // Tens of units rather than the hundreds the texture itself is: the chip scales
+        // with the panel's own text, so the bound is on the order of magnitude the
+        // defect was about rather than on one card height.
+        Assert.True(picture.Size.Y < 100);
     }
 
     [Fact]
@@ -218,7 +221,7 @@ public sealed class FightResultPanelTests
     {
         var left = 0;
         var nodes = FightResultPanel.Build(
-            Panel(Comparison()), Surface, _ => null, font: null, done: () => left++);
+            Panel(Comparison()), Surface, _ => null, GameTextStyle.Fallback, done: () => left++);
 
         Assert.Single(Descendants(nodes.Root).OfType<Button>());
         Assert.Same(nodes.Done, Descendants(nodes.Root).OfType<Button>().Single());
@@ -234,12 +237,24 @@ public sealed class FightResultPanelTests
         Assert.Equal(1, left);
     }
 
+    /// <summary>
+    /// Fits whatever the screen is, at whatever size the game draws its own text.
+    ///
+    /// The sizes are the second half of this and are not decoration: the panel's boxes
+    /// were measured around text of one size, so a client drawing larger text is the
+    /// case where a table of figures runs off the bottom of the panel. Every size the
+    /// game plausibly draws is checked against every surface.
+    /// </summary>
     [Fact]
     public void FitsInsideTheSurfaceItIsGiven()
     {
-        foreach (var surface in new[] { new Vector2(1280, 720), new Vector2(1920, 1080), new Vector2(2560, 1440) })
+        foreach (var (surface, size) in
+                 from screen in new[] { new Vector2(1280, 720), new Vector2(1920, 1080), new Vector2(2560, 1440) }
+                 from text in new[] { 15, 22, 30 }
+                 select (screen, text))
         {
-            var root = FightResultPanel.Build(Panel(Comparison()), surface, _ => null, null, () => { }).Root;
+            var root = FightResultPanel.Build(
+                Panel(Comparison()), surface, _ => null, new GameTextStyle(null, size), () => { }).Root;
             var panel = Find<ColorRect>(root, "Panel");
 
             Assert.Equal(surface, root.Size);
@@ -250,14 +265,23 @@ public sealed class FightResultPanelTests
                 Descendants(panel).OfType<Control>(),
                 node => Assert.True(
                     node.Position.Y + node.Size.Y <= panel.Size.Y + 1,
-                    $"'{node.Name}' hangs below the panel on a {surface.X}x{surface.Y} screen"));
+                    $"'{node.Name}' hangs below the panel on a {surface.X}x{surface.Y} screen at {size}pt"));
+
+            // Sideways as well as down, because the panel is clamped to the screen it is
+            // drawn on: a layout scaled past the clamp keeps its own gutters and pushes
+            // its right-hand column out through the edge rather than off the bottom.
+            Assert.All(
+                Descendants(panel).OfType<Control>(),
+                node => Assert.True(
+                    node.Position.X + node.Size.X <= panel.Size.X + 1,
+                    $"'{node.Name}' runs off the panel on a {surface.X}x{surface.Y} screen at {size}pt"));
         }
     }
 
     // ── The panel, and the fight it is about ───────────────────────────────
 
     private static Control Build(FightResultScreen screen, Func<string, Texture2D?>? art = null) =>
-        FightResultPanel.Build(screen, Surface, art ?? (_ => null), font: null, done: () => { }).Root;
+        FightResultPanel.Build(screen, Surface, art ?? (_ => null), GameTextStyle.Fallback, done: () => { }).Root;
 
     private static FightResultScreen Panel(CombatComparison comparison) =>
         FightResultScreen.For("NaveGreed", comparison);

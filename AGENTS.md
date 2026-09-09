@@ -329,6 +329,11 @@ The run is generated against a supplied complete unlock state and can persist no
 start and inert unless a trainer run is live. Do not weaken either, and do not add a
 path that writes what the barrier suppresses.
 
+**No surface in this mod writes down a font or a font size.**
+`GameText` and `GameTextStyle` in `Sts2PilotTrainer.Mod` read both off a native element the player can see beside the surface, and every word Runmobile draws is that reading or one of the three roles derived around it - a heading above it, a supporting line below it, an annotation below that - never a number.
+Which native element each surface asks is a judgement per surface and `docs/mod-ui-direction.md` owns it, along with the median rule for a screen that offers no single equivalent and the two surfaces that scale their whole geometry by the reading.
+A number here is a number that was right on one window and one build: the game carries no project theme, so nothing inherits, and the sizes it draws its own screens at are the only ones that read as native.
+
 **A run a person plays is recorded by one owner, and refused rather than repaired.**
 `RunCapture` in `Sts2PilotTrainer.Replay` is the whole-run counterpart of `FightCapture` and delegates the inside of each fight to one, so there is one capture path.
 It records singleplayer runs only, and which kind of run this is is read - `LiveRun.ReadSession` off the game's own networking and player list, with `RunSession` owning what each `RunSessionKind` permits - never inferred from the name of the setup member the game called.

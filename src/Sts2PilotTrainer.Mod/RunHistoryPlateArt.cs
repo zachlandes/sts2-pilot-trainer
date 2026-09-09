@@ -15,9 +15,11 @@ namespace Sts2PilotTrainer.Mod;
 ///
 /// <para>It is built from stock Godot nodes rather than duplicated game ribbons for one
 /// reason: the ribbons it would duplicate live on a popup, and there is no popup here.
-/// What the rows borrow instead is the game's own font, through <see cref="GameFont"/>,
-/// the same way the fight result panel does. A row is a flat button in the parchment's
-/// own ink, with the library's own glyph at its end where it carries one.</para>
+/// What the rows borrow instead is the game's own text, through <see cref="GameText"/>:
+/// a row is drawn at the size the run-history screen draws its own rows, so the plate
+/// reads as more of that screen rather than as a smaller thing hung under it. A row is a
+/// flat button in the parchment's own ink, with the library's own glyph at its end where
+/// it carries one.</para>
 ///
 /// <para><b>Every sentence and every rule is <see cref="RunHistoryPlate"/>'s.</b> This
 /// draws what it was handed and decides nothing: which rows there are, which are
@@ -25,19 +27,16 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class RunHistoryPlateArt
 {
-    /// <summary>A row's height, and the step between rows. Fixed rather than measured
-    /// because there is no game node here to measure: the plate is the mod's own
-    /// furniture hung under the game's.</summary>
-    private const float RowHeight = 34f;
+    /// <summary>A row's height, as a multiple of the text in it. Derived rather than
+    /// written down: the text is the screen's own size, which changes with the window,
+    /// and a fixed height would clip it on a large one and float in it on a small.</summary>
+    private const float RowHeightRatio = 2f;
 
-    /// <inheritdoc cref="RowHeight"/>
-    private const float RowGap = 4f;
+    /// <summary>The gap between rows, as the same multiple.</summary>
+    private const float RowGapRatio = 0.24f;
 
-    /// <summary>The head line and a row's label.</summary>
-    private const int RowFontSize = 17;
-
-    /// <summary>The reason under the rows, and anything else supporting.</summary>
-    private const int ReasonFontSize = 15;
+    /// <summary>The step from one line to the next, as a multiple of its own size.</summary>
+    private const float LineStep = 1.6f;
 
     /// <summary>How far in from the pane's left edge the plate's rows start.</summary>
     private const float Inset = 8f;
@@ -47,13 +46,20 @@ internal static class RunHistoryPlateArt
     ///
     /// It is added to <paramref name="parent"/> before anything is drawn into it and
     /// deliberately: every label here wears the game's own font, which
-    /// <see cref="GameFont"/> finds by walking up from the scene tree - so a plate built
-    /// outside the tree would come out in Godot's default sans. <paramref name="width"/>
-    /// is the pane's own, so the plate is exactly as wide as the thing it belongs to.
+    /// <see cref="GameText"/> finds by walking the scene tree - so a plate built outside
+    /// the tree would come out in Godot's default sans. <paramref name="width"/> is the
+    /// pane's own, so the plate is exactly as wide as the thing it belongs to.
     /// </summary>
+    /// <param name="text">The size the run-history screen draws its own text at. The
+    /// rows take it, the supporting lines take the step below it.</param>
     internal static Control Build(
-        Node parent, RunHistoryPlate plate, IReadOnlyList<ScreenRow> rows, float width)
+        Node parent, RunHistoryPlate plate, IReadOnlyList<ScreenRow> rows, float width,
+        GameTextStyle text)
     {
+        var reason = text.Supporting;
+        var rowHeight = text.Size * RowHeightRatio;
+        var rowGap = text.Size * RowGapRatio;
+
         var root = new Control
         {
             Name = "RunmobilePlate",
@@ -69,26 +75,27 @@ internal static class RunHistoryPlateArt
             // The ordinary state has neither: the history row's own record mark already
             // says the run is recorded.
             var colour = plate.Mark == PlateMark.OtherVersion ? LibraryPalette.Red : LibraryPalette.Muted;
-            if (plate.Mark is { } mark) AddMark(root, mark, new Vector2(Inset, y), RowFontSize, colour);
+            if (plate.Mark is { } mark) AddMark(root, mark, new Vector2(Inset, y), text.Size, colour);
             AddLabel(
-                root, head, new Vector2(Inset + (RowFontSize * 1.5f), y),
-                width - Inset - (RowFontSize * 1.5f), colour, RowFontSize);
-            y += RowFontSize * 1.6f;
+                root, head, new Vector2(Inset + (text.Size * 1.5f), y),
+                width - Inset - (text.Size * 1.5f), colour, text);
+            y += text.Size * LineStep;
         }
 
         for (var index = 0; index < rows.Count; index++)
         {
             AddRow(
-                root, rows[index], index, new Vector2(Inset, y), width - (Inset * 2f));
-            y += RowHeight + RowGap;
+                root, rows[index], index, new Vector2(Inset, y), width - (Inset * 2f),
+                rowHeight, text);
+            y += rowHeight + rowGap;
         }
 
-        if (plate.Reason is { Length: > 0 } reason)
+        if (plate.Reason is { Length: > 0 } why)
         {
             AddLabel(
-                root, reason, new Vector2(Inset, y), width - (Inset * 2f),
-                LibraryPalette.Muted, ReasonFontSize);
-            y += ReasonFontSize * 1.6f;
+                root, why, new Vector2(Inset, y), width - (Inset * 2f),
+                LibraryPalette.Muted, reason);
+            y += reason.Size * LineStep;
         }
 
         // Said once, beside the rows, and never as a head line. The plate hands it over
@@ -97,8 +104,8 @@ internal static class RunHistoryPlateArt
         {
             AddLabel(
                 root, notSaved, new Vector2(Inset, y), width - (Inset * 2f),
-                LibraryPalette.Muted, ReasonFontSize);
-            y += ReasonFontSize * 1.6f;
+                LibraryPalette.Muted, reason);
+            y += reason.Size * LineStep;
         }
 
         root.Size = new Vector2(width, y);
@@ -114,7 +121,9 @@ internal static class RunHistoryPlateArt
     /// refused row in this mod follows, because the affordance's position is how a
     /// player learns the feature exists.
     /// </summary>
-    private static void AddRow(Control root, ScreenRow row, int index, Vector2 at, float width)
+    private static void AddRow(
+        Control root, ScreenRow row, int index, Vector2 at, float width, float height,
+        GameTextStyle text)
     {
         var button = new Button
         {
@@ -122,13 +131,12 @@ internal static class RunHistoryPlateArt
             Text = row.Label,
             Flat = true,
             Position = at,
-            Size = new Vector2(width, RowHeight),
-            CustomMinimumSize = new Vector2(width, RowHeight),
+            Size = new Vector2(width, height),
+            CustomMinimumSize = new Vector2(width, height),
             Alignment = HorizontalAlignment.Left,
         };
 
-        if (GameFont.Of(root.GetTree()?.Root) is { } font) button.AddThemeFontOverride("font", font);
-        button.AddThemeFontSizeOverride("font_size", RowFontSize);
+        text.ApplyTo(button);
         button.AddThemeColorOverride("font_color", LibraryPalette.Ink);
         root.AddChild(button);
 
@@ -146,9 +154,9 @@ internal static class RunHistoryPlateArt
 
         if (row.Glyph is not { } glyph) return;
 
-        var size = RowHeight * 0.5f;
+        var size = height * 0.5f;
         var art = LibraryGlyphArt.Of(glyph, $"{button.Name}Glyph", size, LibraryPalette.Muted);
-        art.Position = new Vector2(width - size - Inset, (RowHeight - size) / 2f);
+        art.Position = new Vector2(width - size - Inset, (height - size) / 2f);
         button.AddChild(art);
     }
 
@@ -191,21 +199,20 @@ internal static class RunHistoryPlateArt
     }
 
     private static void AddLabel(
-        Control root, string text, Vector2 at, float width, Color colour, int size)
+        Control root, string line, Vector2 at, float width, Color colour, GameTextStyle style)
     {
         var label = new Label
         {
             Name = "RunmobilePlateLine",
-            Text = text,
+            Text = line,
             Position = at,
             CustomMinimumSize = new Vector2(width, 0f),
-            Size = new Vector2(width, size * 1.4f),
+            Size = new Vector2(width, style.Size * 1.4f),
             MouseFilter = Control.MouseFilterEnum.Ignore,
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
 
-        if (GameFont.Of(root.GetTree()?.Root) is { } font) label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", size);
+        style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", colour);
         root.AddChild(label);
     }

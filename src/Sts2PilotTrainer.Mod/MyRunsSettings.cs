@@ -72,7 +72,9 @@ internal static class MyRunsSettings
                 return;
             }
 
-            Attach(anchor, GameFont.Of(__instance));
+            // The game's own settings row this hangs off, read for its font and size:
+            // Runmobile's row is one more row on that screen and is drawn as one.
+            Attach(anchor, GameText.Under(anchor));
         }
         catch (Exception ex)
         {
@@ -103,7 +105,7 @@ internal static class MyRunsSettings
     /// shaped differently is a row in the wrong place rather than a screen that must not
     /// open.</para>
     /// </summary>
-    internal static MyRunsSettingsRow Attach(Control anchor, Font? font)
+    internal static MyRunsSettingsRow Attach(Control anchor, GameTextStyle text)
     {
         var entry = anchor.GetParent() as Control
             ?? throw new InvalidOperationException(
@@ -113,7 +115,7 @@ internal static class MyRunsSettings
             : anchor.Size.X > 0f
                 ? anchor.Size.X
                 : FallbackWidth;
-        var row = Build(width, font);
+        var row = Build(width, text);
 
         if (entry.GetParent() is Container column)
         {
@@ -121,6 +123,7 @@ internal static class MyRunsSettings
             // Directly under the modding entry rather than at the end of the column, so
             // Runmobile's settings sit with the modding ones a player came here to find.
             column.MoveChild(row.Root, entry.GetIndex() + 1);
+            Callable.From(() => Settle(row)).CallDeferred();
             return row;
         }
 
@@ -130,9 +133,24 @@ internal static class MyRunsSettings
         row.Root.Position = anchor.Position + new Vector2(0f, anchor.Size.Y + SectionGap);
         entry.CustomMinimumSize = new Vector2(
             entry.CustomMinimumSize.X,
-            Math.Max(entry.CustomMinimumSize.Y, row.Root.Position.Y + MyRunsSettingsRow.Height));
+            Math.Max(entry.CustomMinimumSize.Y, row.Root.Position.Y + row.Height));
         entry.AddChild(row.Root);
         return row;
+    }
+
+    private static void Settle(MyRunsSettingsRow row)
+    {
+        try
+        {
+            if (!GodotObject.IsInstanceValid(row.Root) || !row.Root.IsInsideTree()) return;
+            row.Relayout(row.Root.Size.X);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not settle Runmobile's settings row: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     /// <summary>
@@ -148,13 +166,13 @@ internal static class MyRunsSettings
     /// <see cref="MyRunsRow"/>'s, from a fact of its own rather than a count of zero:
     /// no runs yet and cannot tell yet are different sentences.
     /// </summary>
-    internal static MyRunsSettingsRow Build(float width, Font? font)
+    internal static MyRunsSettingsRow Build(float width, GameTextStyle text)
     {
         var facts = OnDisk();
         var settings = RunmobileSettings.Read();
         _row = MyRunsSettingsRow.Build(
             MyRunsRow.For(facts), facts.Keep, settings.FetchRunIndex,
-            width, font, Retain, AskToRemove, SetFetchRunIndex, SetMainMenuRow);
+            width, text, Retain, AskToRemove, SetFetchRunIndex, SetMainMenuRow);
         return _row;
     }
 

@@ -343,18 +343,59 @@ public sealed class MyRunsSettingsRowTests
         var lowest = row.Root.GetChildren().OfType<Control>()
             .Max(child => child.Position.Y + child.Size.Y);
 
-        Assert.Equal(MyRunsSettingsRow.Height, lowest);
+        Assert.Equal(row.Height, lowest);
+    }
+
+    /// <summary>
+    /// The row is drawn at the settings screen's own text size, and its boxes are
+    /// measured around it.
+    ///
+    /// The defect this exists for is the one the whole change is about: a row whose
+    /// words were the game's and whose boxes were a set of constants read as cramped on
+    /// every window the constants were not measured on, and would clip the moment the
+    /// words grew. So both are asserted - the label carries the screen's own size, and
+    /// nothing the row draws hangs below the height it reports at that size.
+    /// </summary>
+    [Theory]
+    [InlineData(15)]
+    [InlineData(24)]
+    [InlineData(34)]
+    public void TheRowIsDrawnAtTheScreensOwnSizeAndFitsTheHeightItReports(int size)
+    {
+        var row = Build(
+            new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20),
+            text: new GameTextStyle(null, size));
+
+        Assert.Equal(size, Label(row, "KeepLabel").GetThemeFontSize("font_size", "Label"));
+        Assert.All(
+            row.Root.GetChildren().OfType<Control>(),
+            child => Assert.True(
+                child.Position.Y + child.Size.Y <= row.Height + 0.01f,
+                $"'{child.Name}' hangs below the row at {size}pt"));
+    }
+
+    /// <summary>A screen drawing larger text gets a taller row rather than the same row
+    /// with the words spilling out of it.</summary>
+    [Fact]
+    public void ARowOnAScreenWithLargerTextIsTaller()
+    {
+        var facts = new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20);
+
+        Assert.True(
+            Build(facts, text: new GameTextStyle(null, 30)).Height >
+            Build(facts, text: new GameTextStyle(null, 15)).Height);
     }
 
     private static MyRunsSettingsRow Build(
         MyRunsFacts facts, Action<int>? keepChanged = null, Action? removePressed = null,
-        Action<bool>? fetchChanged = null, Action<bool>? mainMenuChanged = null) =>
+        Action<bool>? fetchChanged = null, Action<bool>? mainMenuChanged = null,
+        GameTextStyle? text = null) =>
         MyRunsSettingsRow.Build(
             MyRunsRow.For(facts),
             facts.Keep,
             fetchRunIndex: true,
             Width,
-            font: null,
+            text ?? GameTextStyle.Fallback,
             keepChanged ?? (_ => { }),
             removePressed ?? (() => { }),
             fetchChanged ?? (_ => throw new InvalidOperationException("Unexpected fetch press")),
