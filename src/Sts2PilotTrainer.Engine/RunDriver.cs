@@ -52,8 +52,8 @@ namespace Sts2PilotTrainer.Engine;
 /// The card screen an opening blessing opens is the one place that needs saying more
 /// precisely, because nothing of this driver's answers it in the client. The screen the
 /// recording opened is a screen the player is shown: the game puts up its own
-/// <c>NDeckCardSelectScreen</c>, and the recording's pick is made on it, lit and then
-/// pressed like every other decision before the fight. That is the host's to drive,
+/// deck-selection screen, and the recording's pick is made on it, lit and then pressed
+/// like every other decision before the fight. That is the host's to drive,
 /// for the reason a map move is - the screen and its grid are presentation, and this
 /// project keeps screens out of the engine owner - so
 /// <see cref="RunningGameCommands.SelectCard"/> is supplied by the host and this
@@ -1410,8 +1410,8 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// game's own screen.
     ///
     /// The client's answer to a screen that headlessly has no scene tree at all. The
-    /// screen is the game's own <c>NDeckCardSelectScreen</c>, drawn in front of the
-    /// player, so this issues the host's command for it exactly as a map move issues
+    /// screen is the game's own deck-selection screen, drawn in front of the player,
+    /// so this issues the host's command for it exactly as a map move issues
     /// the host's command for the map screen - and for the same reason: the engine has
     /// no command of its own here, and driving a grid from the engine owner would put a
     /// screen in it.

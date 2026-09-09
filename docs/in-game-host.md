@@ -128,10 +128,9 @@ That is why it is a new mechanism rather than a named write, and it is left to a
 Nothing reaches it while the trainer is fight-scoped; a whole-run replay would, and it is answered on that list when it does.
 
 **The recording owns every decision before the fight.**
-Enforced on the two commands those decisions reach — `EventSynchronizer.ChooseLocalOption`
-and `RunManager.EnterMapCoord` — rather than on the buttons that usually reach them.
-A screen with its buttons hidden is a screen a controller, a hotkey or another mod can
-still drive; the command is the thing that would actually change the run.
+Enforced where those decisions change the run: `EventSynchronizer.ChooseLocalOption`, `RunManager.EnterMapCoord`, and the card-click handlers on both deck-selection screens.
+The first two are commands; the card screen has no engine command, so its own handler is the mutation point.
+Patching those points rather than the buttons that usually reach them keeps a controller, a hotkey or another mod from driving a hidden control around the lock.
 
 **The fight is proved before it is handed over.**
 `BoundaryEquality` compares the live state against both readings of the boundary:
