@@ -35,10 +35,7 @@ tests drive, and bootstrapping alone leaves every test that drives it skipped.
 Every test run is bounded by `TestSessionTimeout` in `.runsettings`, wired in from
 `Directory.Build.props` so it applies however `dotnet test` was started. A run that
 exceeds it aborts with a non-zero exit rather than hanging: a deadlocked test used to
-wait for as long as anybody let it. Raise the bound and re-measure it rather than
-removing it, and keep the margin real - an aborted run still prints `Passed!` with a
-smaller total, because tests it never reached are not failures, so a bound a healthy run
-can hit fails in the one direction nobody reads.
+wait for as long as anybody let it. Raise the bound rather than removing it.
 `scripts/arbiter` goes through `dotnet <dll>` rather
 than the generated apphost, which needs `DOTNET_ROOT` that a Homebrew install does
 not set.

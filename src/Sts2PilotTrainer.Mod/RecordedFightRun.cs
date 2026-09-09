@@ -1286,7 +1286,19 @@ internal static class RecordedFightRun
         if (RecordedCardScreen.HasClosed(found.Screen)) return;
 
         await LetTheGameRun(Speed.Divide(PreviewHoldSeconds, PreviewHoldFloor));
-        RecordedCardScreen.ConfirmIfThePreviewIsUp(found.Screen);
+
+        var confirmed = await WaitUntil(
+            () => RecordedCardScreen.HasClosed(found.Screen) ||
+                  RecordedCardScreen.ConfirmIfThePreviewIsUp(found.Screen),
+            LetTheGameRun(AnsweringTheScreenSeconds),
+            () => LetTheGameRun(AnsweringTheScreenPollSeconds));
+
+        if (!confirmed)
+        {
+            throw new InvalidOperationException(
+                $"The card screen was showing its preview of {cardModelId}, but its confirm button did not " +
+                "become available, so the decision the recording made on it is not finished.");
+        }
     }
 
     /// <summary>
