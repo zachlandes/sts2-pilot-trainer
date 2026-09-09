@@ -48,10 +48,8 @@ public sealed class TestSessionVerdictTests : IDisposable
 
         var verdict = RunWithStubbedDotnet(AbortedTranscript, exitCode: 0);
 
-        Assert.NotEqual(0, verdict.ExitCode);
-        Assert.Contains(Aborted, verdict.All, StringComparison.Ordinal);
+        AssertAborted(verdict);
         Assert.Contains("Incomplete!  - Failed:", verdict.All, StringComparison.Ordinal);
-        Assert.DoesNotContain("Passed", verdict.All, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -61,9 +59,7 @@ public sealed class TestSessionVerdictTests : IDisposable
 
         var verdict = RunWithStubbedDotnet(AbortedTranscript, exitCode: 1);
 
-        Assert.NotEqual(0, verdict.ExitCode);
-        Assert.Contains(Aborted, verdict.All, StringComparison.Ordinal);
-        Assert.DoesNotContain("Passed", verdict.All, StringComparison.Ordinal);
+        AssertAborted(verdict);
     }
 
     [Fact]
@@ -139,9 +135,7 @@ public sealed class TestSessionVerdictTests : IDisposable
             "--",
             "RunConfiguration.TestSessionTimeout=1");
 
-        Assert.NotEqual(0, verdict.ExitCode);
-        Assert.Contains(Aborted, verdict.All, StringComparison.Ordinal);
-        Assert.DoesNotContain("Passed", verdict.All, StringComparison.Ordinal);
+        AssertAborted(verdict);
     }
 
     /// <summary>
@@ -188,6 +182,16 @@ public sealed class TestSessionVerdictTests : IDisposable
         }
 
         return RunTestSession(processEnvironment, "a-session-the-stub-ignores");
+    }
+
+    private static void AssertAborted(Arbiter.Result verdict)
+    {
+        Assert.NotEqual(0, verdict.ExitCode);
+        Assert.Contains(Aborted, verdict.All, StringComparison.Ordinal);
+        Assert.DoesNotContain("Passed", verdict.All, StringComparison.Ordinal);
+        var lines = verdict.Output.Split(
+            '\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.StartsWith(Aborted, lines[^1], StringComparison.Ordinal);
     }
 
     private static void AssertRefused(Arbiter.Result verdict)

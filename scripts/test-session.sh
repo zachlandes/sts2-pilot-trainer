@@ -64,9 +64,9 @@ if [ "$marker_status" -eq 0 ]; then
     exit 1
   fi
   echo
-  echo "TEST SESSION ABORTED - it did not run to completion, so this is not a pass."
   echo "A session that times out under load needs TestSessionTimeout in .runsettings"
   echo "raised, or the hang that consumed the bound found; it never needs interpreting."
+  echo "TEST SESSION ABORTED - it did not run to completion, so this is not a pass."
   exit 1
 fi
 

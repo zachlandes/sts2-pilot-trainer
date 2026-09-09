@@ -152,7 +152,7 @@ to prevent.
 
 **What CI cannot run is recorded by name.** On a runner without the game, the 141
 tests named in `scripts/expected-hosted-skips.txt` skip out of
-`Sts2PilotTrainer.Arbiter.Tests`' 215 and the job still reports success.
+`Sts2PilotTrainer.Arbiter.Tests`' 217 and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift
