@@ -2,6 +2,7 @@ using Godot;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -96,24 +97,30 @@ public sealed class MyRunsSettingsTests : IDisposable
     }
 
     [Fact]
-    public void TheSettingsHostReadsRowsAndButtonsFromTheirMatchingNativeElements()
+    public void SettingsTextKeepsRowsValuesDetailsAndButtonsDistinct()
     {
-        var entry = new MarginContainer();
-        var rowLabel = new Label();
-        rowLabel.AddThemeFontOverride("font", new Font());
-        rowLabel.AddThemeFontSizeOverride("font_size", 24);
-        var button = new Control();
-        var buttonLabel = new Label { Name = "%Label" };
-        buttonLabel.AddThemeFontOverride("font", new Font());
-        buttonLabel.AddThemeFontSizeOverride("font_size", 18);
-        entry.AddChild(rowLabel);
-        entry.AddChild(button);
-        button.AddChild(buttonLabel);
+        var text = new MyRunsSettingsText(
+            new GameTextStyle(null, 28),
+            new GameTextStyle(null, 27),
+            new GameTextStyle(null, 26),
+            new GameTextStyle(null, 24),
+            new GameTextStyle(null, 22));
+        var row = MyRunsSettingsRow.Build(
+            MyRunsRow.For(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20)),
+            20,
+            true,
+            Width,
+            text,
+            _ => { },
+            () => { },
+            _ => { },
+            _ => { });
 
-        var text = MyRunsSettings.NativeText(button);
-
-        Assert.Equal(24, text.Row.Size);
-        Assert.Equal(18, text.Button.Size);
+        Assert.Equal(28, Label(row, "KeepLabel").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(27, Label(row, "KeepNumeral").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(26, Label(row, "Reading").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(24, Label(row, "Detail").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(22, row.Remove.GetThemeFontSize("font_size", "Button"));
     }
 
     [Fact]
@@ -347,7 +354,12 @@ public sealed class MyRunsSettingsTests : IDisposable
     }
 
     private static MyRunsSettingsText Text(int rowSize = 16, int buttonSize = 16) =>
-        new(new GameTextStyle(null, rowSize), new GameTextStyle(null, buttonSize));
+        new(
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, buttonSize));
 
     private static void WriteSettings(int keep) =>
         RunmobileStore.Write(

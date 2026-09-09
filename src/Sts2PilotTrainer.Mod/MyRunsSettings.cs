@@ -103,21 +103,17 @@ internal static class MyRunsSettings
         var entry = anchor.GetParent()
             ?? throw new InvalidOperationException(
                 "This build's modding settings button has no parent carrying its row label.");
-        var row = entry.GetChildren()
-            .Where(child => !ReferenceEquals(child, anchor))
-            .Select(GameText.Of)
-            .OfType<GameTextStyle>()
-            .FirstOrDefault();
-        if (row == default)
-        {
-            throw new InvalidOperationException(
-                "This build's modding settings entry has no native row label.");
-        }
-
-        return new MyRunsSettingsText(
-            row,
-            GameText.Require(anchor.GetNodeOrNull<Control>("%Label"), "settings button label"));
+        return NativeText(
+            entry.GetNodeOrNull<Control>("Label"),
+            anchor.GetNodeOrNull<Control>("%Label"));
     }
+
+    internal static MyRunsSettingsText NativeText(Control? row, Control? button) => new(
+        GameText.Require(row, "settings row label"),
+        GameText.Scene(NativeTextRole.StepperNumeral),
+        GameText.Scene(NativeTextRole.SettingsValue),
+        GameText.Scene(NativeTextRole.Secondary),
+        GameText.Require(button, "settings button label"));
 
     internal static MyRunsSettingsRow Attach(Control anchor, MyRunsSettingsText text)
     {

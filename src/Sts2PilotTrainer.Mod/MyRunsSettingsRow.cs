@@ -3,7 +3,12 @@ using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
-internal readonly record struct MyRunsSettingsText(GameTextStyle Row, GameTextStyle Button);
+internal readonly record struct MyRunsSettingsText(
+    GameTextStyle Row,
+    GameTextStyle Numeral,
+    GameTextStyle Reading,
+    GameTextStyle Detail,
+    GameTextStyle Button);
 
 /// <summary>
 /// Runmobile's settings row, drawn: what the player keeps, what it takes on this
@@ -209,10 +214,11 @@ internal sealed class MyRunsSettingsRow
     /// <inheritdoc cref="Height"/>
     internal static float HeightFor(MyRunsSettingsText text)
     {
-        var label = text.Row.Size * LabelHeightRatio;
-        var note = text.Row.Size * NoteHeightRatio;
+        var label = Math.Max(text.Row.Size, text.Numeral.Size) * LabelHeightRatio;
+        var reading = text.Reading.Size * LabelHeightRatio;
+        var note = text.Detail.Size * NoteHeightRatio;
         var remove = text.Button.Size * RemoveHeightRatio;
-        return label + (text.Row.Size * RuleGapRatio) + Math.Max(label + note, remove) +
+        return label + (text.Row.Size * RuleGapRatio) + Math.Max(reading + note, remove) +
             (text.Row.Size * FetchGapRatio) + (text.Button.Size * FetchHeightRatio) +
             (text.Row.Size * MainMenuGapRatio) + (text.Button.Size * MainMenuHeightRatio);
     }
@@ -261,14 +267,14 @@ internal sealed class MyRunsSettingsRow
             FetchRunIndex = fetchRunIndex,
             Text = text,
             KeepLabel = Add(root, Text("KeepLabel", text.Row, Cream)),
-            KeepNumeral = Add(root, Text("KeepNumeral", text.Row, Cream)),
+            KeepNumeral = Add(root, Text("KeepNumeral", text.Numeral, Cream)),
             Rule = Add(root, new Line2D { Name = "Rule", DefaultColor = RuleLine, Width = 1f }),
-            Reading = Add(root, Text("Reading", text.Row, Cream)),
-            Detail = Add(root, Text("Detail", text.Row, Muted)),
+            Reading = Add(root, Text("Reading", text.Reading, Cream)),
+            Detail = Add(root, Text("Detail", text.Detail, Muted)),
         };
 
-        nodes.Fewer = Add(root, Pressable("Fewer", "−", text.Button));
-        nodes.More = Add(root, Pressable("More", "+", text.Button));
+        nodes.Fewer = Add(root, Pressable("Fewer", "−", text.Numeral));
+        nodes.More = Add(root, Pressable("More", "+", text.Numeral));
         nodes.Remove = Add(root, Pressable("Remove", string.Empty, text.Button));
         nodes.Fetch = Add(root, Pressable("FetchRunIndex", string.Empty, text.Button));
         nodes.MainMenu = Add(root, Pressable("MainMenuRow", string.Empty, text.Button));
@@ -367,8 +373,9 @@ internal sealed class MyRunsSettingsRow
     private void Layout(float width)
     {
         var unit = _text.Row.Size;
-        var labelHeight = unit * LabelHeightRatio;
-        var noteHeight = _text.Row.Size * NoteHeightRatio;
+        var labelHeight = Math.Max(_text.Row.Size, _text.Numeral.Size) * LabelHeightRatio;
+        var readingHeight = _text.Reading.Size * LabelHeightRatio;
+        var noteHeight = _text.Detail.Size * NoteHeightRatio;
         var stepSize = unit * StepSizeRatio;
         var stepGap = unit * StepGapRatio;
         var numeralWidth = unit * NumeralWidthRatio;
@@ -388,12 +395,12 @@ internal sealed class MyRunsSettingsRow
         _rule.Points = [new Vector2(0f, ruleY), new Vector2(width, ruleY)];
 
         var lower = labelHeight + ruleGap;
-        Place(_reading, 0f, lower, width - removeWidth - stepGap, labelHeight);
-        Place(_remove, width - removeWidth, lower + ((labelHeight - removeHeight) / 2f), removeWidth, removeHeight);
-        Place(_detail, 0f, lower + labelHeight, width - removeWidth - stepGap, noteHeight);
+        Place(_reading, 0f, lower, width - removeWidth - stepGap, readingHeight);
+        Place(_remove, width - removeWidth, lower + ((readingHeight - removeHeight) / 2f), removeWidth, removeHeight);
+        Place(_detail, 0f, lower + readingHeight, width - removeWidth - stepGap, noteHeight);
 
         var fetchHeight = _text.Button.Size * FetchHeightRatio;
-        var fetchY = lower + Math.Max(labelHeight + noteHeight, removeHeight) + (unit * FetchGapRatio);
+        var fetchY = lower + Math.Max(readingHeight + noteHeight, removeHeight) + (unit * FetchGapRatio);
         Place(_fetch, 0f, fetchY, width, fetchHeight);
         Place(
             _mainMenu,

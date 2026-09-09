@@ -29,6 +29,16 @@ public sealed class GameTextTests
     }
 
     [Fact]
+    public void AnAutoSizedNativeLabelAnswersItsDesignMaximum()
+    {
+        var native = Native(17);
+        native.Set("AutoSizeEnabled", true);
+        native.Set("MaxFontSize", 28);
+
+        Assert.Equal(28, GameText.Of(native)?.Size);
+    }
+
+    [Fact]
     public void ASmallNativeLabelIsStillItsOwnRole()
     {
         Assert.Equal(8, GameText.Of(Native(8))?.Size);
@@ -63,6 +73,7 @@ public sealed class GameTextTests
         var label = new Label();
         label.AddThemeFontOverride(FontEntry, new Font());
         label.AddThemeFontSizeOverride(FontSizeEntry, size);
+        label.Set("AutoSizeEnabled", false);
         return label;
     }
 }

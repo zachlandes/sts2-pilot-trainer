@@ -7,7 +7,14 @@ namespace Sts2PilotTrainer.Mod;
 internal sealed record FightResultText(
     GameTextStyle Heading,
     GameTextStyle Body,
-    GameTextStyle Figure,
+    GameTextStyle ListHeading,
+    GameTextStyle FigureLabel,
+    GameTextStyle FigureValue,
+    GameTextStyle SectionHeading,
+    GameTextStyle ListNumeral,
+    GameTextStyle Secondary,
+    GameTextStyle ChartNumeral,
+    GameTextStyle CardCaption,
     GameTextStyle Button);
 
 /// <summary>
@@ -149,7 +156,7 @@ internal static class FightResultPanel
         {
             painter.Wrapped(
                 panel, "Notice", screen.Notice, pad, 66 * u, width - (2 * pad), height - (66 * u) - footer,
-                painter.Label, PrimaryText);
+                painter.Body, PrimaryText);
             button = painter.DoneButton(screen.DoneButton, width, height, done);
             panel.AddChild(button);
             return new FightResultPanelNodes(root, button);
@@ -157,7 +164,7 @@ internal static class FightResultPanel
 
         painter.Text(
             panel, "SameBoundaryNote", screen.SameBoundaryNote, pad, 56 * u, width - (2 * pad), 20 * u,
-            painter.Small, DimText);
+            painter.Body, DimText);
 
         var columnWidth = (width - (3 * pad)) / 2;
         var right = pad + columnWidth + pad;
@@ -206,13 +213,15 @@ internal static class FightResultPanel
         internal float Unit { get; } = text.Body.Size / ReferenceTextSize;
 
         internal GameTextStyle Title { get; } = text.Heading;
-
-        internal GameTextStyle Figure { get; } = text.Figure;
-
-        internal GameTextStyle Label { get; } = text.Body;
-
-        internal GameTextStyle Small { get; } = text.Body;
-
+        internal GameTextStyle Body { get; } = text.Body;
+        internal GameTextStyle ListHeading { get; } = text.ListHeading;
+        internal GameTextStyle FigureLabel { get; } = text.FigureLabel;
+        internal GameTextStyle FigureValue { get; } = text.FigureValue;
+        internal GameTextStyle SectionHeading { get; } = text.SectionHeading;
+        internal GameTextStyle ListNumeral { get; } = text.ListNumeral;
+        internal GameTextStyle Secondary { get; } = text.Secondary;
+        internal GameTextStyle ChartNumeral { get; } = text.ChartNumeral;
+        internal GameTextStyle CardCaption { get; } = text.CardCaption;
         internal GameTextStyle Button { get; } = text.Button;
 
         /// <summary>
@@ -241,11 +250,11 @@ internal static class FightResultPanel
             {
                 var value = figure.Matches ? DimText : TitleText;
                 Text(panel, $"Figure.{figure.Label}", figure.Label, x, row, labelWidth, rowHeight,
-                    Label, figure.Matches ? DimText : SecondaryText);
+                    FigureLabel, figure.Matches ? DimText : SecondaryText);
                 Text(panel, $"Figure.{figure.Label}.Yours", figure.Yours, yours, row, columnWidth, rowHeight,
-                    Figure, value, HorizontalAlignment.Center);
+                    FigureValue, value, HorizontalAlignment.Center);
                 Text(panel, $"Figure.{figure.Label}.Theirs", figure.Theirs, theirs, row, columnWidth, rowHeight,
-                    Figure, value, HorizontalAlignment.Center);
+                    FigureValue, value, HorizontalAlignment.Center);
 
                 var rule = Box(Rule, x, row + rowHeight - 1, width, 1);
                 rule.Name = NodeName($"Figure.{figure.Label}.Rule");
@@ -259,7 +268,7 @@ internal static class FightResultPanel
             var note = row + (18 * Unit);
             for (var index = 0; index < screen.Notes.Count; index++)
             {
-                Wrapped(panel, $"Note.{index}", screen.Notes[index], x, note, width, 26 * Unit, Small, DimText);
+                Wrapped(panel, $"Note.{index}", screen.Notes[index], x, note, width, 26 * Unit, Body, DimText);
                 note += 26 * Unit;
             }
         }
@@ -282,7 +291,7 @@ internal static class FightResultPanel
             inside.Name = NodeName($"{name}.Swatch.Inside");
             panel.AddChild(inside);
 
-            Text(panel, name, label, x + (30 * Unit), y, width - (30 * Unit), 30 * Unit, Label, line);
+            Text(panel, name, label, x + (30 * Unit), y, width - (30 * Unit), 30 * Unit, ListHeading, line);
         }
 
         /// <summary>
@@ -298,13 +307,13 @@ internal static class FightResultPanel
             var yours = x + turnWidth;
             var theirs = yours + columnWidth;
 
-            Text(panel, "Chronology", screen.TurnDetailHeading, x, y, width, 20 * Unit, Label, SecondaryText);
+            Text(panel, "Chronology", screen.TurnDetailHeading, x, y, width, 20 * Unit, SectionHeading, SecondaryText);
             Text(panel, "Chronology.Turn", screen.Chart.TurnLabel, x, y + (24 * Unit), turnWidth, 18 * Unit,
-                Small, DimText);
+                ListHeading, DimText);
             Text(panel, "Chronology.You", screen.Columns[0], yours, y + (24 * Unit), columnWidth, 18 * Unit,
-                Small, YouLine);
+                ListHeading, YouLine);
             Text(panel, "Chronology.Them", screen.Columns[1], theirs + (ColumnGutter * Unit), y + (24 * Unit),
-                columnWidth, 18 * Unit, Small, TheirText);
+                columnWidth, 18 * Unit, ListHeading, TheirText);
 
             var rowHeight = Math.Min(44f * Unit, (rows - (46 * Unit)) / Math.Max(1, screen.Turns.Count));
 
@@ -315,7 +324,7 @@ internal static class FightResultPanel
             foreach (var turn in screen.Turns)
             {
                 Text(panel, $"Turn.{turn.Turn}", turn.Turn.ToString(CultureInfo.InvariantCulture),
-                    x, row, turnWidth, rowHeight, Label, SecondaryText);
+                    x, row, turnWidth, rowHeight, ListNumeral, SecondaryText);
                 Side(panel, $"Turn.{turn.Turn}.Yours", turn.Yours, screen.FightOverLabel, YouLine, YouFill,
                     yours, row, columnWidth - (ColumnGutter * Unit), rowHeight, card);
                 Side(panel, $"Turn.{turn.Turn}.Theirs", turn.Theirs, screen.FightOverLabel, TheirLine, TheirFill,
@@ -336,7 +345,7 @@ internal static class FightResultPanel
         {
             if (side is null)
             {
-                Text(panel, $"{name}.FightOver", fightOver, x, y, width, height, Small, DimText);
+                Text(panel, $"{name}.FightOver", fightOver, x, y, width, height, Secondary, DimText);
                 return;
             }
 
@@ -360,7 +369,7 @@ internal static class FightResultPanel
             // The turn's own cost, beside what was played. The same number the chart's
             // lower plot draws, where a player reads it while looking at the cards.
             Text(panel, $"{name}.HealthLost", Loss(side.HealthLost), x + width - (46 * Unit), y, 42 * Unit, height,
-                Label, side.HealthLost > 0 ? line : DimText, HorizontalAlignment.Right);
+                ListNumeral, side.HealthLost > 0 ? line : DimText, HorizontalAlignment.Right);
         }
 
         /// <summary>
@@ -371,7 +380,7 @@ internal static class FightResultPanel
         /// </summary>
         private void Chart(Control panel, FightResultChart chart, float x, float y, float width, float height)
         {
-            Text(panel, "Chart", chart.Heading, x, y, width, 20 * Unit, Label, SecondaryText);
+            Text(panel, "Chart", chart.Heading, x, y, width, 20 * Unit, SectionHeading, SecondaryText);
             if (!chart.HasTurns) return;
 
             var plotLeft = x + (128 * Unit);
@@ -386,13 +395,13 @@ internal static class FightResultPanel
                 x, y + (26 * Unit) + plotHeight + (8 * Unit), plotLeft, plotWidth, plotHeight);
 
             var axis = y + (26 * Unit) + (2 * plotHeight) + (22 * Unit);
-            Text(panel, "Chart.TurnAxis", chart.TurnLabel, x, axis, 108 * Unit, 20 * Unit, Small, DimText,
+            Text(panel, "Chart.TurnAxis", chart.TurnLabel, x, axis, 108 * Unit, 20 * Unit, ListHeading, DimText,
                 HorizontalAlignment.Right);
             for (var index = 0; index < chart.Turns.Count; index++)
             {
                 var at = X(plotLeft, plotWidth, index, chart.Turns.Count);
                 Text(panel, $"Chart.Turn.{chart.Turns[index]}", chart.Turns[index].ToString(CultureInfo.InvariantCulture),
-                    at - (14 * Unit), axis, 28 * Unit, 20 * Unit, Small, SecondaryText, HorizontalAlignment.Center);
+                    at - (14 * Unit), axis, 28 * Unit, 20 * Unit, ChartNumeral, SecondaryText, HorizontalAlignment.Center);
                 Potions(panel, chart, index, at, axis + (20 * Unit));
             }
         }
@@ -402,7 +411,7 @@ internal static class FightResultPanel
             Control panel, string name, FightResultChart chart, Func<FightResultPoint, int?> measure, string label,
             float x, float y, float plotLeft, float plotWidth, float height)
         {
-            Text(panel, name, label, x, y + (height / 2) - (10 * Unit), 108 * Unit, 20 * Unit, Small, DimText,
+            Text(panel, name, label, x, y + (height / 2) - (10 * Unit), 108 * Unit, 20 * Unit, ListHeading, DimText,
                 HorizontalAlignment.Right);
 
             var baseline = Box(Rule, plotLeft - (8 * Unit), y + height, plotWidth + (8 * Unit), 1);
@@ -469,7 +478,7 @@ internal static class FightResultPanel
                 panel.AddChild(dot);
                 Text(panel, $"{name}.Value.{turn}", value.ToString(CultureInfo.InvariantCulture),
                     at.X - (20 * Unit), marker ? at.Y + (4 * Unit) : at.Y - (22 * Unit), 40 * Unit, 18 * Unit,
-                    Small, color, HorizontalAlignment.Center);
+                    ChartNumeral, color, HorizontalAlignment.Center);
             }
         }
 
@@ -537,7 +546,7 @@ internal static class FightResultPanel
             // build has not got, inside a chip the size of a card.
             Wrapped(
                 panel, $"{name}.Name", ModelIdNames.Display(modelId), x + 1, y + 1,
-                width - 2, height - 2, Small, line);
+                width - 2, height - 2, CardCaption, line);
         }
 
         /// <summary>The one control on the panel, and the one thing left to do.</summary>

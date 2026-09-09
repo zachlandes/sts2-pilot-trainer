@@ -279,7 +279,7 @@ internal sealed class PlaybackTransportStrip
             PinRight = Add(root, new Polygon2D { Name = "PinRight", Color = Gold }),
             Mark = Add(root, new Control { Name = "Mark", MouseFilter = Control.MouseFilterEnum.Ignore }),
             Creator = Add(root, Text("Creator", text.Identity, Cream)),
-            Title = Add(root, Text("VideoTitle", text.Supporting, Muted)),
+            Title = Add(root, Text("VideoTitle", text.Description, Muted)),
             Numerals = Add(root, Text("Counter", text.Counter, Muted)),
             Pips = Add(root, new Control { Name = "Pips", MouseFilter = Control.MouseFilterEnum.Ignore }),
             HoldTrack = Add(root, Stroke("HoldTrack", HoldTrack, 2.4f * unit)),
@@ -294,13 +294,13 @@ internal sealed class PlaybackTransportStrip
             Name = "NotePlate",
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
-        nodes.NoteText = Add(nodes.Note, Wrapping(Text("NoteText", text.Supporting, Muted)));
+        nodes.NoteText = Add(nodes.Note, Wrapping(Text("NoteText", text.Note, Muted)));
 
-        nodes.Speed = Add(root, Pressable("Speed", text.Counter, speed));
-        nodes.SpeedLabel = Add(nodes.Speed, Text("SpeedLabel", text.Counter, Muted));
-        nodes.Back = Add(root, Pressable("Back", text.Counter, back));
-        nodes.Play = Add(root, Pressable("Play", text.Counter, play));
-        nodes.Step = Add(root, Pressable("Step", text.Counter, step));
+        nodes.Speed = Add(root, Pressable("Speed", speed));
+        nodes.SpeedLabel = Add(nodes.Speed, Text("SpeedLabel", text.Speed, Muted));
+        nodes.Back = Add(root, Pressable("Back", back));
+        nodes.Play = Add(root, Pressable("Play", play));
+        nodes.Step = Add(root, Pressable("Step", step));
 
         nodes.Tip = Add(root, Plated("Tooltip"));
 
@@ -583,7 +583,7 @@ internal sealed class PlaybackTransportStrip
         var inset = 12 * _unit;
         var textWidth = width - (2 * inset);
         var noteHeight = WrappedHeight(
-            state.Note, _text.Supporting, textWidth, fallbackLines: 2) + (16 * _unit);
+            state.Note, _text.Note, textWidth, fallbackLines: 2) + (16 * _unit);
 
         var noteTop = top + height + (6 * _unit);
         _hangingBottom = noteTop + noteHeight;
@@ -665,7 +665,7 @@ internal sealed class PlaybackTransportStrip
                 _ledger.AddChild(picture);
             }
 
-            var label = Text($"Ledger{row.Number}", _text.MenuRow, colour);
+            var label = Text($"Ledger{row.Number}", _text.LedgerRow, colour);
             label.Text = row.Label;
             Place(label, 62 * _unit, rowTop, width - (86 * _unit), rowHeight);
             _ledger.AddChild(label);
@@ -730,7 +730,7 @@ internal sealed class PlaybackTransportStrip
                 _menu.AddChild(art);
             }
 
-            var button = Pressable($"MenuRow{index}", _text.MenuRow, () => Choose(chosen));
+            var button = Pressable($"MenuRow{index}", () => Choose(chosen));
             button.Flat = true;
             button.Disabled = !row.Enabled;
             Place(button, 0, rowTop, menuWidth, rowHeight);
@@ -1176,15 +1176,18 @@ internal sealed class PlaybackTransportStrip
             new[]
             {
                 text.Identity.Size,
-                text.Supporting.Size,
+                text.Description.Size,
                 text.Counter.Size,
+                text.Note.Size,
+                text.Speed.Size,
                 text.MenuRow.Size,
+                text.LedgerRow.Size,
                 text.TooltipTitle.Size,
                 text.TooltipBody.Size,
             }.Max() / ReferenceTextSize,
             viewport.Y / ReferenceHeight);
 
-    private static Button Pressable(string name, GameTextStyle text, Action pressed)
+    private static Button Pressable(string name, Action pressed)
     {
         var button = new Button
         {
@@ -1194,7 +1197,6 @@ internal sealed class PlaybackTransportStrip
             FocusMode = Control.FocusModeEnum.All,
         };
 
-        text.ApplyTo(button);
         button.Pressed += () => pressed();
         return button;
     }

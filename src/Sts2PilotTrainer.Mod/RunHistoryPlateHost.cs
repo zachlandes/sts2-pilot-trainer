@@ -145,14 +145,16 @@ internal static class RunHistoryPlateHost
     /// which pane it is in, and a second reading of which screen is up could disagree
     /// with it.
     /// </summary>
-    private static GameTextStyle HistoryText(NMapPointHistory pane)
+    private static RunHistoryPlateText HistoryText(NMapPointHistory pane)
     {
         for (Node? node = pane; node is not null; node = node.GetParent())
         {
             if (node is NRunHistory history)
             {
-                return GameText.Require(
-                    history.GetNodeOrNull<Control>("%DateLabel"), "run-history row");
+                return new RunHistoryPlateText(
+                    GameText.Require(
+                        history.GetNodeOrNull<Control>("%BuildLabel"), "run-history fact line"),
+                    GameText.Scene(NativeTextRole.ButtonCaption));
             }
         }
 

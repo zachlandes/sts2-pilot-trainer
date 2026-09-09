@@ -104,7 +104,7 @@ internal static class PrefightScreen
     /// </summary>
     internal static void ShowResult(FightResultScreen screen, Action done)
     {
-        var text = ResultText(screen.HasComparison);
+        var text = ResultText();
         Close();
 
         try
@@ -136,32 +136,18 @@ internal static class PrefightScreen
         }
     }
 
-    private static FightResultText ResultText(bool hasComparison)
-    {
-        var content = _open?.GetNodeOrNull<NVerticalPopup>(VerticalPopupPath);
-        if (content is null)
-        {
-            var popup = NGenericPopup.Create()
-                ?? throw new InvalidOperationException("This process has no native popup text to copy.");
-            var container = NModalContainer.Instance
-                ?? throw new InvalidOperationException("This process has no modal container.");
-            container.Add(popup, showBackstop: false);
-            _open = popup;
-            content = popup.GetNode<NVerticalPopup>(VerticalPopupPath);
-        }
-
-        var body = content.BodyText();
-        var figure = hasComparison
-            ? GameText.Require(
-                NRun.Instance?.GlobalUi.TopBar.Deck.GetNodeOrNull<Control>("DeckCardCount"),
-                "top-bar deck counter")
-            : body;
-        return new FightResultText(
-            content.HeaderText(),
-            body,
-            figure,
-            content.ButtonText());
-    }
+    private static FightResultText ResultText() => new(
+        GameText.Scene(NativeTextRole.PopupHeading),
+        GameText.Scene(NativeTextRole.PopupBody),
+        GameText.Scene(NativeTextRole.ListHeading),
+        GameText.Scene(NativeTextRole.FigureLabel),
+        GameText.Scene(NativeTextRole.FigureValue),
+        GameText.Scene(NativeTextRole.SectionHeading),
+        GameText.Scene(NativeTextRole.ListNumeral),
+        GameText.Scene(NativeTextRole.Secondary),
+        GameText.Scene(NativeTextRole.ChartNumeral),
+        GameText.Scene(NativeTextRole.CardCaption),
+        GameText.Scene(NativeTextRole.ButtonCaption));
 
     internal static void Close()
     {

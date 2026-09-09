@@ -403,7 +403,12 @@ public sealed class MyRunsSettingsRowTests
             mainMenuChanged ?? (_ => throw new InvalidOperationException("Unexpected main-menu press")));
 
     private static MyRunsSettingsText Text(int rowSize = 16, int buttonSize = 16) =>
-        new(new GameTextStyle(null, rowSize), new GameTextStyle(null, buttonSize));
+        new(
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, buttonSize));
 
     private static void Apply(MyRunsSettingsRow row, MyRunsFacts facts) =>
         row.Apply(MyRunsRow.For(facts), facts.Keep);

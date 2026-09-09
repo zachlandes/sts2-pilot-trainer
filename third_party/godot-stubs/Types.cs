@@ -51,6 +51,8 @@ public struct Variant
     public static Variant CreateFrom<T>(T value) => new(value);
 
     public T As<T>() => (T)_value!;
+    public bool AsBool() => _value is bool value && value;
+    public int AsInt32() => _value is int value ? value : 0;
     public object? Obj => _value;
 
     public static implicit operator Variant(bool v) => new(v);

@@ -5,11 +5,16 @@ namespace Godot;
 public class GodotObject
 {
     private readonly Dictionary<string, List<Callable>> _connections = [];
+    private readonly Dictionary<string, Variant> _properties = [];
 
     public class SignalName { }
 
     public static bool IsInstanceValid(GodotObject? obj) => obj != null;
     public virtual bool IsQueuedForDeletion() => false;
+    public Variant Get(StringName property) =>
+        _properties.TryGetValue(property.ToString(), out var value) ? value : default;
+    public void Set(StringName property, Variant value) => _properties[property.ToString()] = value;
+    public void Free() { }
     public Variant CallDeferred(StringName method, params Variant[] args) => default;
 
     // Connect - on GodotObject and with the flags argument, to match real Godot.

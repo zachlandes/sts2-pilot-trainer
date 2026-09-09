@@ -9,9 +9,12 @@ namespace Sts2PilotTrainer.Mod;
 
 internal sealed record PlaybackTransportText(
     GameTextStyle Identity,
-    GameTextStyle Supporting,
+    GameTextStyle Description,
     GameTextStyle Counter,
+    GameTextStyle Note,
+    GameTextStyle Speed,
     GameTextStyle MenuRow,
+    GameTextStyle LedgerRow,
     GameTextStyle TooltipTitle,
     GameTextStyle TooltipBody);
 
@@ -81,7 +84,7 @@ internal static class PlaybackTransportDock
             state,
             globalUi.GetViewportRect().Size,
             Anchor(globalUi),
-            TextOf(globalUi),
+            TextOf(),
             back,
             play,
             step,
@@ -126,40 +129,16 @@ internal static class PlaybackTransportDock
         }
     }
 
-    private static PlaybackTransportText TextOf(NGlobalUi globalUi)
-    {
-        var topBar = globalUi.TopBar;
-        var identity = GameText.Require(
-            topBar.Hp.GetNodeOrNull<Control>("%HpLabel"), "top-bar health numeral");
-        var supporting = GameText.Require(
-            topBar.Timer.GetNodeOrNull<Control>("TimerLabel"), "run timer label");
-        var counter = GameText.Require(
-            topBar.Deck.GetNodeOrNull<Control>("DeckCardCount"), "top-bar deck counter");
-
-        var tooltip = ResourceLoader.Load<PackedScene>("res://scenes/ui/hover_tip.tscn")
-            ?.Instantiate<Control>()
-            ?? throw new InvalidOperationException(
-                "This build has no native hover-tip scene to style the transport's tooltips.");
-        var popup = NGenericPopup.Create()
-            ?? throw new InvalidOperationException(
-                "This build has no native popup row to style the transport's menus.");
-        try
-        {
-            var content = popup.GetNode<NVerticalPopup>("VerticalPopup");
-            return new PlaybackTransportText(
-                identity,
-                supporting,
-                counter,
-                content.ButtonText(),
-                GameText.Require(tooltip.GetNodeOrNull<Control>("%Title"), "hover-tip title"),
-                GameText.Require(tooltip.GetNodeOrNull<Control>("%Description"), "hover-tip body"));
-        }
-        finally
-        {
-            tooltip.QueueFree();
-            popup.QueueFree();
-        }
-    }
+    private static PlaybackTransportText TextOf() => new(
+        GameText.Scene(NativeTextRole.Identity),
+        GameText.Scene(NativeTextRole.IdentityDescription),
+        GameText.Scene(NativeTextRole.TagNumeral),
+        GameText.Scene(NativeTextRole.TooltipBody),
+        GameText.Scene(NativeTextRole.DropdownValue),
+        GameText.Scene(NativeTextRole.DropdownItem),
+        GameText.Scene(NativeTextRole.LedgerRow),
+        GameText.Scene(NativeTextRole.TooltipTitle),
+        GameText.Scene(NativeTextRole.TooltipBody));
 
     /// <summary>
     /// Where the tag hangs from: the top-right corner it is pinned to.

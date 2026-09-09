@@ -82,23 +82,27 @@ internal static class LibraryPaneArt
         // heading over the pane and not over the screen - the parchment's own title
         // above it is the screen's - so it is the step above the body rather than the
         // popup's header, which would put two titles on one parchment.
-        var line = content.BodyText();
+        var heading = GameText.Scene(NativeTextRole.RowTitle);
+        var secondary = GameText.Scene(NativeTextRole.Secondary);
+        var factStyle = GameText.Scene(NativeTextRole.Fact);
+        var card = GameText.Scene(NativeTextRole.CardCaption);
+        var floor = GameText.Scene(NativeTextRole.FloorNumeral);
         var y = at.Position.Y;
         y = LibraryScreen.AddLine(
             content, pane.Heading, new Vector2(at.Position.X, y), at.Size.X,
-            LibraryPalette.Muted, content.HeaderText());
+            LibraryPalette.Muted, heading);
 
         if (pane.Subtitle is { Length: > 0 } subtitle)
         {
             y = LibraryScreen.AddLine(
                 content, subtitle, new Vector2(at.Position.X, y), at.Size.X,
-                LibraryPalette.Muted, line);
+                LibraryPalette.Muted, secondary);
         }
 
         // Relics and the deck count top right, which is where the accepted layout puts
         // them: they are what the run carried, read across the top rather than down the
         // pane.
-        y = AddRelics(content, pane, new Vector2(at.Position.X, y), at.Size.X, line);
+        y = AddRelics(content, pane, new Vector2(at.Position.X, y), at.Size.X, card);
         if (pane.DeckCount is { } cards)
         {
             y = LibraryScreen.AddLine(
@@ -107,28 +111,28 @@ internal static class LibraryPaneArt
                 new Vector2(at.Position.X, y),
                 at.Size.X,
                 LibraryPalette.Muted,
-                line,
+                factStyle,
                 HorizontalAlignment.Right);
         }
 
-        var strip = AddStrip(content, pane, new Vector2(at.Position.X, y), at.Size.X, line);
+        var strip = AddStrip(content, pane, new Vector2(at.Position.X, y), at.Size.X, floor);
         y = strip.Bottom;
         // Keep the deck in the opened-run pane when browser actions need its room
         if (pane.Plate.Count == 0)
-            y = AddDeck(content, pane, new Vector2(at.Position.X, y), at.Size.X, line);
+            y = AddDeck(content, pane, new Vector2(at.Position.X, y), at.Size.X, card);
 
         foreach (var fact in pane.Facts)
         {
             y = LibraryScreen.AddLine(
                 content, fact, new Vector2(at.Position.X, y), at.Size.X,
-                LibraryPalette.Muted, line);
+                LibraryPalette.Muted, factStyle);
         }
 
         if (pane.Verdict is { Length: > 0 } verdict)
         {
             y = LibraryScreen.AddLine(
                 content, verdict, new Vector2(at.Position.X, y), at.Size.X,
-                pane.VerdictPassed ? LibraryPalette.Green : LibraryPalette.Red, line);
+                pane.VerdictPassed ? LibraryPalette.Green : LibraryPalette.Red, factStyle);
         }
 
         var plateFocus = AddPlate(
@@ -231,7 +235,7 @@ internal static class LibraryPaneArt
             controls.Add(AddStripPageButton(
                 content, LibraryCopy.PreviousPage, "Previous", "‹",
                 new Vector2(at.X + layout.Offset, at.Y),
-                layout.Pitch, layout.Height, content.ButtonText(),
+                layout.Pitch, layout.Height, GameText.Scene(NativeTextRole.ButtonCaption),
                 () => LibraryScreen.Navigate(
                     LibraryCopy.PreviousPage, () => previousPage(layout.Index - 1))));
         }
@@ -310,7 +314,7 @@ internal static class LibraryPaneArt
                 content, LibraryCopy.NextPage, "Next", "›",
                 new Vector2(
                     at.X + layout.Offset + (layout.NextSlot * layout.Pitch), at.Y),
-                layout.Pitch, layout.Height, content.ButtonText(),
+                layout.Pitch, layout.Height, GameText.Scene(NativeTextRole.ButtonCaption),
                 () => LibraryScreen.Navigate(
                     LibraryCopy.NextPage, () => nextPage(layout.Index + 1))));
         }

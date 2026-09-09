@@ -195,6 +195,8 @@ public sealed class FightResultPanelTests
         Assert.Equal(
             22,
             Find<Label>(panel.Root, "Figure.Health at the end.Yours").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(22, Find<Label>(panel.Root, "Turn.1").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(22, Find<Label>(panel.Root, "Chart.Turn.1").GetThemeFontSize("font_size", "Label"));
         Assert.Equal(19, panel.Done.GetThemeFontSize("font_size", "Button"));
     }
 
@@ -308,7 +310,14 @@ public sealed class FightResultPanelTests
         new(
             new GameTextStyle(null, heading),
             new GameTextStyle(null, body),
+            new GameTextStyle(null, body),
+            new GameTextStyle(null, body),
             new GameTextStyle(null, figure),
+            new GameTextStyle(null, body),
+            new GameTextStyle(null, figure),
+            new GameTextStyle(null, body),
+            new GameTextStyle(null, figure),
+            new GameTextStyle(null, body),
             new GameTextStyle(null, button));
 
     private static FightResultScreen Panel(CombatComparison comparison) =>

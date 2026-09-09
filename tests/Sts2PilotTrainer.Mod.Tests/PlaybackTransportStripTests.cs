@@ -63,9 +63,13 @@ public sealed class PlaybackTransportStripTests
         foreach (var button in new[] { strip.Back, strip.Play, strip.Step })
         {
             Assert.Equal(string.Empty, button.Text);
+            Assert.False(button.HasThemeFontOverride("font"));
             Assert.NotNull(Descendants(button).OfType<Control>().FirstOrDefault(
                 node => node.Name.ToString() == "Glyph"));
         }
+
+        Assert.False(strip.Speed.HasThemeFontOverride("font"));
+        Assert.False(strip.Identity.HasThemeFontOverride("font"));
     }
 
     /// <summary>
@@ -622,6 +626,8 @@ public sealed class PlaybackTransportStripTests
         Assert.Equal(21, Label(strip, "Creator").GetThemeFontSize("font_size", "Label"));
         Assert.Equal(13, Label(strip, "VideoTitle").GetThemeFontSize("font_size", "Label"));
         Assert.Equal(18, Label(strip, "Counter").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(18, Label(strip, "SpeedLabel").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(14, Label(strip, "NoteText").GetThemeFontSize("font_size", "Label"));
         strip.OpenMenu(_ => { });
         Assert.Equal(
             16,
@@ -1163,6 +1169,9 @@ public sealed class PlaybackTransportStripTests
             new GameTextStyle(null, identity),
             new GameTextStyle(null, supporting),
             new GameTextStyle(null, counter),
+            new GameTextStyle(null, tooltipBody),
+            new GameTextStyle(null, counter),
+            new GameTextStyle(null, menuRow),
             new GameTextStyle(null, menuRow),
             new GameTextStyle(null, tooltipTitle),
             new GameTextStyle(null, tooltipBody));

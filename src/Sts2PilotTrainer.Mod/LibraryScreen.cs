@@ -559,20 +559,23 @@ internal static class LibraryScreen
                 "This build's popup ribbon has no measurable height, so a row column cannot be laid out.");
         }
 
-        var note = content.BodyText();
+        var listHeading = GameText.Scene(NativeTextRole.ListHeading);
+        var filterText = GameText.Scene(NativeTextRole.Tickbox);
+        var footerText = GameText.Scene(NativeTextRole.Footer);
+        var groupHeading = GameText.Scene(NativeTextRole.GroupHeading);
         var top = at.Position.Y;
         if (page.ListHeader is { Length: > 0 } header)
         {
-            AddLine(content, header, new Vector2(at.Position.X, top), at.Size.X, LibraryPalette.Muted, note);
-            top += note.Size * LineStep;
+            AddLine(content, header, new Vector2(at.Position.X, top), at.Size.X, LibraryPalette.Muted, listHeading);
+            top += listHeading.Size * LineStep;
         }
 
         var placed = new List<Control>();
         if (page.ListFilter is { } filter)
         {
-            var checkbox = AddFilter(content, filter, new Vector2(at.Position.X, top), at.Size.X, note);
+            var checkbox = AddFilter(content, filter, new Vector2(at.Position.X, top), at.Size.X, filterText);
             placed.Add(checkbox);
-            top += note.Size * ControlStep;
+            top += filterText.Size * ControlStep;
         }
 
         var bottom = at.End.Y;
@@ -582,10 +585,10 @@ internal static class LibraryScreen
             // not showing, so it sits with the list rather than in the band. The whole
             // reason is the tooltip, because a numeral is what a player scans and a
             // sentence is what they ask for.
-            bottom -= note.Size * LineStep;
+            bottom -= footerText.Size * LineStep;
             AddLine(
                 content, footer, new Vector2(at.Position.X, bottom), at.Size.X,
-                LibraryPalette.Muted, note, tooltip: page.ListFooterTooltip);
+                LibraryPalette.Muted, footerText, tooltip: page.ListFooterTooltip);
         }
 
         var fits = (int)Math.Floor((bottom - top) / step);
@@ -625,7 +628,7 @@ internal static class LibraryScreen
             var button = AddRow(
                 content, drawn[index], $"RunmobileRow{index.ToString(System.Globalization.CultureInfo.InvariantCulture)}",
                 new Vector2(at.Position.X, rowTop), at.Size.X);
-            rowTop += drawn[index].Heading ? note.Size * ControlStep : step;
+            rowTop += drawn[index].Heading ? groupHeading.Size * ControlStep : step;
             if (button is not null) placed.Add(button);
         }
 
@@ -664,7 +667,7 @@ internal static class LibraryScreen
     {
         if (row.Heading)
         {
-            AddLine(content, row.Label, at, width, LibraryPalette.Muted, content.HeaderText());
+            AddLine(content, row.Label, at, width, LibraryPalette.Muted, GameText.Scene(NativeTextRole.GroupHeading));
             return null;
         }
 
@@ -813,7 +816,7 @@ internal static class LibraryScreen
     /// </summary>
     private static void AddActReached(NVerticalPopup content, Control row, string text)
     {
-        var style = content.BodyText();
+        var style = GameText.Scene(NativeTextRole.ListNumeral);
         var label = new Label
         {
             Name = $"{row.Name}ActReached",
@@ -831,7 +834,7 @@ internal static class LibraryScreen
 
     private static void AddTrailing(NVerticalPopup content, Control row, string text)
     {
-        var style = content.BodyText();
+        var style = GameText.Scene(NativeTextRole.ListNumeral);
         var label = new Label
         {
             Name = $"{row.Name}Trailing",
@@ -862,7 +865,7 @@ internal static class LibraryScreen
     /// </summary>
     private static void AddNote(NVerticalPopup content, Control row, string note)
     {
-        var style = content.BodyText();
+        var style = GameText.Scene(NativeTextRole.Secondary);
         var label = new Label
         {
             Name = $"{row.Name}Note",
@@ -959,7 +962,8 @@ internal static class LibraryScreen
     private static ShareFields AddShareFields(NVerticalPopup content, Rect2 at)
     {
         var height = content.NoButton.Size.Y;
-        var text = content.BodyText();
+        var input = GameText.Scene(NativeTextRole.Input);
+        var tickbox = GameText.Scene(NativeTextRole.Tickbox);
 
         LineEdit Field(string name, string placeholder, int? limit, int step)
         {
@@ -972,7 +976,7 @@ internal static class LibraryScreen
                 FocusMode = Control.FocusModeEnum.All,
             };
             if (limit is { } maximum) field.MaxLength = maximum;
-            text.ApplyTo(field);
+            input.ApplyTo(field);
             content.AddChild(field);
             return field;
         }
@@ -993,7 +997,7 @@ internal static class LibraryScreen
             CustomMinimumSize = new Vector2(at.Size.X, height),
             FocusMode = Control.FocusModeEnum.All,
         };
-        text.ApplyTo(consent);
+        tickbox.ApplyTo(consent);
         content.AddChild(consent);
         return new ShareFields(name, description, displayName, consent);
     }
@@ -1010,7 +1014,7 @@ internal static class LibraryScreen
             FocusMode = Control.FocusModeEnum.All,
         };
 
-        content.BodyText().ApplyTo(field);
+        GameText.Scene(NativeTextRole.Input).ApplyTo(field);
         content.AddChild(field);
         field.Connect(
             LineEdit.SignalName.TextSubmitted,

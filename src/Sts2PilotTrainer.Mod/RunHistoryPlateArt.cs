@@ -25,6 +25,8 @@ namespace Sts2PilotTrainer.Mod;
 /// draws what it was handed and decides nothing: which rows there are, which are
 /// refused, whether there is a head line at all and what colour it is.</para>
 /// </summary>
+internal readonly record struct RunHistoryPlateText(GameTextStyle Body, GameTextStyle Button);
+
 internal static class RunHistoryPlateArt
 {
     /// <summary>A row's height, as a multiple of the text in it. Derived rather than
@@ -50,14 +52,13 @@ internal static class RunHistoryPlateArt
     /// the tree would come out in Godot's default sans. <paramref name="width"/> is the
     /// pane's own, so the plate is exactly as wide as the thing it belongs to.
     /// </summary>
-    /// <param name="text">The style the run-history screen draws its own rows in.</param>
+    /// <param name="text">The body and pressable-caption roles this screen draws.</param>
     internal static Control Build(
         Node parent, RunHistoryPlate plate, IReadOnlyList<ScreenRow> rows, float width,
-        GameTextStyle text)
+        RunHistoryPlateText text)
     {
-        var reason = text;
-        var rowHeight = text.Size * RowHeightRatio;
-        var rowGap = text.Size * RowGapRatio;
+        var rowHeight = text.Button.Size * RowHeightRatio;
+        var rowGap = text.Button.Size * RowGapRatio;
 
         var root = new Control
         {
@@ -74,18 +75,18 @@ internal static class RunHistoryPlateArt
             // The ordinary state has neither: the history row's own record mark already
             // says the run is recorded.
             var colour = plate.Mark == PlateMark.OtherVersion ? LibraryPalette.Red : LibraryPalette.Muted;
-            if (plate.Mark is { } mark) AddMark(root, mark, new Vector2(Inset, y), text.Size, colour);
+            if (plate.Mark is { } mark) AddMark(root, mark, new Vector2(Inset, y), text.Body.Size, colour);
             AddLabel(
-                root, head, new Vector2(Inset + (text.Size * 1.5f), y),
-                width - Inset - (text.Size * 1.5f), colour, text);
-            y += text.Size * LineStep;
+                root, head, new Vector2(Inset + (text.Body.Size * 1.5f), y),
+                width - Inset - (text.Body.Size * 1.5f), colour, text.Body);
+            y += text.Body.Size * LineStep;
         }
 
         for (var index = 0; index < rows.Count; index++)
         {
             AddRow(
                 root, rows[index], index, new Vector2(Inset, y), width - (Inset * 2f),
-                rowHeight, text);
+                rowHeight, text.Button);
             y += rowHeight + rowGap;
         }
 
@@ -93,8 +94,8 @@ internal static class RunHistoryPlateArt
         {
             AddLabel(
                 root, why, new Vector2(Inset, y), width - (Inset * 2f),
-                LibraryPalette.Muted, reason);
-            y += reason.Size * LineStep;
+                LibraryPalette.Muted, text.Body);
+            y += text.Body.Size * LineStep;
         }
 
         // Said once, beside the rows, and never as a head line. The plate hands it over
@@ -103,8 +104,8 @@ internal static class RunHistoryPlateArt
         {
             AddLabel(
                 root, notSaved, new Vector2(Inset, y), width - (Inset * 2f),
-                LibraryPalette.Muted, reason);
-            y += reason.Size * LineStep;
+                LibraryPalette.Muted, text.Body);
+            y += text.Body.Size * LineStep;
         }
 
         root.Size = new Vector2(width, y);
