@@ -921,26 +921,26 @@ public sealed record PlaybackTransport(
     /// rows is the sentence the design replaced.</param>
     private static string Describe(
         RecordingCredit credit, PrefightChoice choice, bool name = true) => choice switch
-    {
-        PrefightChoice.Blessing { CardsPicked.Count: > 0 } blessing => name
-            ? TrainerCopy.BlessingWithCardsCaption(credit, blessing.RelicModelId, blessing.CardsPicked)
-            : TrainerCopy.BlessingWithCardsLedgerRow(blessing.RelicModelId, blessing.CardsPicked),
-        PrefightChoice.Blessing blessing => name
-            ? TrainerCopy.BlessingCaption(credit, blessing.RelicModelId)
-            : TrainerCopy.BlessingLedgerRow(blessing.RelicModelId),
-        PrefightChoice.MapMove move => name
-            ? TrainerCopy.MapMoveCaption(
-                credit, move.NodeType, MapColumns.Position(move.Column, move.ColumnCount))
-            : TrainerCopy.MapMoveLedgerRow(
-                move.NodeType, MapColumns.Position(move.Column, move.ColumnCount)),
-        PrefightChoice.CardFromScreen card => name
-            ? TrainerCopy.CardFromScreenCaption(credit, card.CardModelId)
-            : TrainerCopy.CardFromScreenLedgerRow(card.CardModelId),
-        _ => throw new ManifestException(
-            $"Action {choice.Seq} is a kind of decision this trainer has no way to describe, so the recording " +
-            "cannot be watched making it. Only an opening blessing, a map move and a card taken off a screen " +
-            "one of them opened are supported before a fight."),
-    };
+        {
+            PrefightChoice.Blessing { CardsPicked.Count: > 0 } blessing => name
+                ? TrainerCopy.BlessingWithCardsCaption(credit, blessing.RelicModelId, blessing.CardsPicked)
+                : TrainerCopy.BlessingWithCardsLedgerRow(blessing.RelicModelId, blessing.CardsPicked),
+            PrefightChoice.Blessing blessing => name
+                ? TrainerCopy.BlessingCaption(credit, blessing.RelicModelId)
+                : TrainerCopy.BlessingLedgerRow(blessing.RelicModelId),
+            PrefightChoice.MapMove move => name
+                ? TrainerCopy.MapMoveCaption(
+                    credit, move.NodeType, MapColumns.Position(move.Column, move.ColumnCount))
+                : TrainerCopy.MapMoveLedgerRow(
+                    move.NodeType, MapColumns.Position(move.Column, move.ColumnCount)),
+            PrefightChoice.CardFromScreen card => name
+                ? TrainerCopy.CardFromScreenCaption(credit, card.CardModelId)
+                : TrainerCopy.CardFromScreenLedgerRow(card.CardModelId),
+            _ => throw new ManifestException(
+                $"Action {choice.Seq} is a kind of decision this trainer has no way to describe, so the recording " +
+                "cannot be watched making it. Only an opening blessing, a map move and a card taken off a screen " +
+                "one of them opened are supported before a fight."),
+        };
 
     /// <summary>
     /// The model id whose artwork stands for a decision in the ledger.
