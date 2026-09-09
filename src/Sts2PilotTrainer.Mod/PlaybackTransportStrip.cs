@@ -132,6 +132,7 @@ internal sealed class PlaybackTransportStrip
     private readonly Label _tipBody;
     /// <summary>The native text style copied from the run's top bar.</summary>
     private readonly PlaybackTransportText _text;
+    private readonly Func<bool, Texture2D?> _pageArrow;
 
     private Vector2 _viewport;
     private Vector2 _anchor;
@@ -179,7 +180,9 @@ internal sealed class PlaybackTransportStrip
 
     private Func<string>? _tipBodySource;
 
-    private PlaybackTransportStrip(Nodes nodes, Vector2 viewport, Vector2 anchor, PlaybackTransportText text)
+    private PlaybackTransportStrip(
+        Nodes nodes, Vector2 viewport, Vector2 anchor, PlaybackTransportText text,
+        Func<bool, Texture2D?> pageArrow)
     {
         _root = nodes.Root;
         _plateFill = nodes.PlateFill;
@@ -209,6 +212,7 @@ internal sealed class PlaybackTransportStrip
         _tipTitle = nodes.TipTitle;
         _tipBody = nodes.TipBody;
         _text = text;
+        _pageArrow = pageArrow;
         _viewport = viewport;
         _anchor = anchor;
 
@@ -254,7 +258,8 @@ internal sealed class PlaybackTransportStrip
     /// <param name="text">The native style copied from the run's top bar.</param>
     internal static PlaybackTransportStrip Build(
         PlaybackTransport state, Vector2 viewport, Vector2 anchor, PlaybackTransportText text,
-        Action back, Action play, Action step, Action speed, Action identity)
+        Action back, Action play, Action step, Action speed, Action identity,
+        Func<bool, Texture2D?>? pageArrow = null)
     {
         var root = new Control
         {
@@ -314,7 +319,8 @@ internal sealed class PlaybackTransportStrip
         nodes.TipTitle = Add(nodes.Tip, Text("TooltipTitle", text.TooltipTitle, Cream));
         nodes.TipBody = Add(nodes.Tip, Wrapping(Text("TooltipBody", text.TooltipBody, TipBody)));
 
-        var strip = new PlaybackTransportStrip(nodes, viewport, anchor, text);
+        var strip = new PlaybackTransportStrip(
+            nodes, viewport, anchor, text, pageArrow ?? NativePaginatorArt.Texture);
 
         // The identity block is a control too, because pressing it opens the video at
         // the moment being shown. Its hit area is the two lines of text, so it is a
@@ -627,20 +633,54 @@ internal sealed class PlaybackTransportStrip
     {
         Clear(_ledger);
         _ledger.Visible = surface.Ledger && state.Ledger.Count > 0;
-        if (!_ledger.Visible) return;
+        if (!_ledger.Visible)
+        {
+            _ledgerCount = 0;
+            _ledgerPage = 0;
+            _ledgerPageChosen = false;
+            return;
+        }
 
-        var rowHeight = 32 * _unit;
-        var ledgerHeight = (10 * _unit) + (rowHeight * state.Ledger.Count);
+        if (_ledgerCount != state.Ledger.Count)
+        {
+            _ledgerCount = state.Ledger.Count;
+            _ledgerPageChosen = false;
+        }
+
+        var rowHeight = Math.Max(32 * _unit, _text.LedgerRow.Size);
         var ledgerTop = top + height + (6 * _unit);
+        var inset = 6 * _unit;
+        var fits = Math.Max(
+            ScreenPage.MinimumPerPage,
+            (int)Math.Floor((_viewport.Y - ledgerTop - (2 * inset)) / rowHeight));
+        if (!_ledgerPageChosen)
+        {
+            var lookedAt = state.Ledger.ToList().FindIndex(row => row.IsLookedAt);
+            _ledgerPage = lookedAt >= 0
+                ? ScreenPage.Containing(state.Ledger.Count, fits, lookedAt).Index
+                : 0;
+        }
+        var page = ScreenPage.For(state.Ledger.Count, fits, _ledgerPage);
+        _ledgerPage = page.Index;
+        var ledgerHeight = (2 * inset) + (rowHeight * page.Drawn);
         _hangingBottom = ledgerTop + ledgerHeight;
 
         Place(_ledger, left, ledgerTop, width, ledgerHeight);
         PlatePolygon(_ledger, width, ledgerHeight);
 
-        for (var index = 0; index < state.Ledger.Count; index++)
+        var slot = 0;
+        if (page.HasPrevious)
+        {
+            AddLedgerPageButton("LedgerPrevious", true, inset + (slot * rowHeight), width, rowHeight,
+                page.Index - 1);
+            slot++;
+        }
+
+        for (var index = page.First; index < page.First + page.Count; index++)
         {
             var row = state.Ledger[index];
-            var rowTop = (6 * _unit) + (index * rowHeight);
+            var rowTop = inset + (slot * rowHeight);
+            slot++;
             var colour = row.IsLookedAt ? Cream : Muted;
 
             if (row.IsLookedAt)
@@ -680,7 +720,33 @@ internal sealed class PlaybackTransportStrip
                 });
             }
         }
+
+        if (page.HasNext)
+        {
+            AddLedgerPageButton("LedgerNext", false, inset + (slot * rowHeight), width, rowHeight,
+                page.Index + 1);
+        }
     }
+
+    private void AddLedgerPageButton(
+        string name, bool previous, float top, float width, float height, int page)
+    {
+        NativePaginatorArt.AddButton(
+            _ledger, name, string.Empty, previous,
+            new Rect2(0, top, width, height), _pageArrow,
+            () =>
+            {
+                _ledgerPage = page;
+                _ledgerPageChosen = true;
+                Apply(_state);
+            });
+    }
+
+    private int _ledgerCount;
+
+    private int _ledgerPage;
+
+    private bool _ledgerPageChosen;
 
     /// <summary>The speed menu, the chip's two directions or the post-fight choice,
     /// hung in the same shape as the ledger so they read as one family.</summary>

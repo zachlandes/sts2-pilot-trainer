@@ -273,6 +273,55 @@ public sealed class PlaybackTransportStripTests
         Assert.False(strip.Ledger.Visible);
     }
 
+    [Fact]
+    public void LongLedgerKeepsEveryNativeSizedDecisionReachableAcrossPages()
+    {
+        var made = Enumerable.Range(1, 8)
+            .Select(number => (PrefightChoice)new PrefightChoice.MapMove(
+                number, "Monster", 0, 3))
+            .ToList();
+        var state = For(
+            JourneyPhase.Watching,
+            made: made,
+            next: new PrefightChoice.MapMove(9, "Monster", 0, 3),
+            stepsTaken: 8,
+            count: 10,
+            lookingBackAt: 1);
+        var surface = new Vector2(1280, 720);
+        var strip = PlaybackTransportStrip.Build(
+            state,
+            surface,
+            new Vector2(1100, 85),
+            Text(28, 26, 28, 28, 28, 26),
+            back: () => { },
+            play: () => { },
+            step: () => { },
+            speed: () => { },
+            identity: () => { },
+            pageArrow: _ => new Texture2D());
+        var reached = new HashSet<int>();
+
+        while (true)
+        {
+            Assert.True(strip.Ledger.Position.Y + strip.Ledger.Size.Y <= surface.Y);
+            foreach (var label in Descendants(strip.Ledger).OfType<Label>()
+                         .Where(label => label.Name.ToString().StartsWith("Ledger", StringComparison.Ordinal)))
+            {
+                reached.Add(int.Parse(label.Name.ToString()["Ledger".Length..],
+                    System.Globalization.CultureInfo.InvariantCulture));
+                Assert.True(label.Size.Y >= 28);
+                Assert.True(label.Position.Y + label.Size.Y <= strip.Ledger.Size.Y);
+            }
+
+            var next = Descendants(strip.Ledger).OfType<Button>()
+                .SingleOrDefault(button => button.Name.ToString() == "LedgerNext");
+            if (next is null) break;
+            next.EmitPressed();
+        }
+
+        Assert.Equal(Enumerable.Range(1, 9), reached.Order());
+    }
+
     /// <summary>
     /// The player's own fight. The tag keeps its nodes and shows two of them: the mark
     /// and the name, and nothing that offers anything.

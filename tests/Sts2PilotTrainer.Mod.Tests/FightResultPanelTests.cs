@@ -56,6 +56,39 @@ public sealed class FightResultPanelTests
     }
 
     [Fact]
+    public void LongFightKeepsEveryNativeSizedTurnReachableAcrossPages()
+    {
+        var text = Text(32, 26, 26, 28);
+        var panel = FightResultPanel.Build(
+            Panel(LongComparison()),
+            new Vector2(1280, 720),
+            _ => null,
+            text,
+            () => { },
+            _ => new Texture2D()).Root;
+        var reached = new HashSet<int>();
+
+        while (true)
+        {
+            foreach (var label in Descendants(panel).OfType<Label>())
+            {
+                var name = label.Name.ToString();
+                if (!name.StartsWith("Turn_", StringComparison.Ordinal) || name.Count(character => character == '_') != 1)
+                    continue;
+                reached.Add(int.Parse(label.Text, System.Globalization.CultureInfo.InvariantCulture));
+                Assert.True(label.Size.Y >= text.ListNumeral.Size);
+            }
+
+            var next = Descendants(panel).OfType<Button>()
+                .SingleOrDefault(button => button.Name.ToString() == "Chronology_Next");
+            if (next is null) break;
+            next.EmitPressed();
+        }
+
+        Assert.Equal(Enumerable.Range(1, 10), reached.Order());
+    }
+
+    [Fact]
     public void DrawsTheGamesArtworkWhereThereIsSomeAndTheNameWhereThereIsNot()
     {
         var known = new Texture2D();
@@ -372,6 +405,28 @@ public sealed class FightResultPanelTests
 
     /// <summary>Three turns against two, with a potion on the player's second.</summary>
     private static CombatComparison Comparison() => CombatComparison.Between(Yours(), Theirs());
+
+    private static CombatComparison LongComparison() =>
+        CombatComparison.Between(LongFight("long-player"), LongFight("long-recording"));
+
+    private static CombatProjection LongFight(string sourceId)
+    {
+        var capture = Live(sourceId);
+        var hp = 64;
+        var enemyHp = 42;
+        for (var turn = 1; turn < 10; turn++)
+        {
+            capture.BeginStep("PlayCard", Card($"CARD.TURN_{turn}"), Sample("in_progress", turn, hp, enemyHp));
+            enemyHp--;
+            capture.CompleteStep(Sample("in_progress", turn, hp, enemyHp));
+            capture.BeginStep("EndTurn", Args(), Sample("in_progress", turn, hp, enemyHp));
+            hp--;
+            capture.CompleteStep(Sample("in_progress", turn + 1, hp, enemyHp));
+        }
+        capture.BeginStep("PlayCard", Card("CARD.FINISH"), Sample("in_progress", 10, hp, enemyHp));
+        capture.CompleteStep(Sample("victory", 10, 55, 0, enemies: 0));
+        return capture.Project();
+    }
 
     private static CombatProjection Yours()
     {

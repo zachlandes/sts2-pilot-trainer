@@ -233,9 +233,9 @@ internal static class LibraryPaneArt
         if (layout.HasPrevious && pane.SelectStripPage is { } previousPage)
         {
             controls.Add(AddStripPageButton(
-                content, LibraryCopy.PreviousPage, "Previous", "‹",
+                content, LibraryCopy.PreviousPage, "Previous", true,
                 new Vector2(at.X + layout.Offset, at.Y),
-                layout.Pitch, layout.Height, GameText.Scene(NativeTextRole.ButtonCaption),
+                layout.Pitch, layout.Height, NativePaginatorArt.RunHistoryTexture,
                 () => LibraryScreen.Navigate(
                     LibraryCopy.PreviousPage, () => previousPage(layout.Index - 1))));
         }
@@ -311,10 +311,10 @@ internal static class LibraryPaneArt
         if (layout.HasNext && pane.SelectStripPage is { } nextPage)
         {
             controls.Add(AddStripPageButton(
-                content, LibraryCopy.NextPage, "Next", "›",
+                content, LibraryCopy.NextPage, "Next", false,
                 new Vector2(
                     at.X + layout.Offset + (layout.NextSlot * layout.Pitch), at.Y),
-                layout.Pitch, layout.Height, GameText.Scene(NativeTextRole.ButtonCaption),
+                layout.Pitch, layout.Height, NativePaginatorArt.RunHistoryTexture,
                 () => LibraryScreen.Navigate(
                     LibraryCopy.NextPage, () => nextPage(layout.Index + 1))));
         }
@@ -354,21 +354,17 @@ internal static class LibraryPaneArt
     }
 
     internal static Button AddStripPageButton(
-        Control content, string tooltip, string direction, string text, Vector2 at,
-        float width, float height, GameTextStyle style, Action press)
+        Control content, string tooltip, string direction, bool previous, Vector2 at,
+        float width, float height, Func<bool, Texture2D?> image, Action press)
     {
-        var button = new Button
-        {
-            Name = $"RunmobileStrip{direction}",
-            Flat = true,
-            Text = text,
-            Position = at,
-            Size = new Vector2(width, height),
-            CustomMinimumSize = new Vector2(width, height),
-            TooltipText = tooltip,
-        };
-        style.ApplyTo(button);
-        button.Pressed += press;
+        var button = NativePaginatorArt.AddButton(
+            content,
+            $"RunmobileStrip{direction}",
+            tooltip,
+            previous,
+            new Rect2(at, new Vector2(width, height)),
+            image,
+            press);
         button.Connect(
             "gui_input",
             Callable.From<InputEvent>(input =>
@@ -378,7 +374,6 @@ internal static class LibraryPaneArt
                 button.AcceptEvent();
                 press();
             }));
-        content.AddChild(button);
         return button;
     }
 

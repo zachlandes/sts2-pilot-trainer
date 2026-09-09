@@ -113,9 +113,10 @@ internal static class FightResultPanel
     /// <param name="text">The native heading, body, figure, and button styles.</param>
     /// <param name="done">What the one button does.</param>
     internal static FightResultPanelNodes Build(
-        FightResultScreen screen, Vector2 viewport, Func<string, Texture2D?> art, FightResultText text, Action done)
+        FightResultScreen screen, Vector2 viewport, Func<string, Texture2D?> art, FightResultText text, Action done,
+        Func<bool, Texture2D?>? pageArrow = null)
     {
-        var painter = new Painter(art, text);
+        var painter = new Painter(art, text, pageArrow ?? NativePaginatorArt.Texture);
         var u = painter.Unit;
         var pad = Pad * u;
         var header = HeaderHeight * u;
@@ -175,7 +176,25 @@ internal static class FightResultPanel
         panel.AddChild(divider);
 
         painter.Summary(panel, screen, pad, header, columnWidth, content);
-        painter.Chronology(panel, screen, right, header, columnWidth, content);
+        var chronology = new Control
+        {
+            Name = NodeName("ChronologyPage"),
+            Position = new Vector2(right, header),
+            Size = new Vector2(columnWidth, content),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        panel.AddChild(chronology);
+        Action<int>? drawPage = null;
+        drawPage = page =>
+        {
+            foreach (var child in chronology.GetChildren().ToList())
+            {
+                chronology.RemoveChild(child);
+                child.QueueFree();
+            }
+            painter.Chronology(chronology, screen, 0, 0, columnWidth, content, page, drawPage!);
+        };
+        drawPage(0);
         button = painter.DoneButton(screen.DoneButton, width, height, done);
         panel.AddChild(button);
         return new FightResultPanelNodes(root, button);
@@ -205,7 +224,8 @@ internal static class FightResultPanel
     /// Everything that needs the font and the artwork to draw, in one place so that
     /// neither has to be threaded through every helper.
     /// </summary>
-    private sealed class Painter(Func<string, Texture2D?> art, FightResultText text)
+    private sealed class Painter(
+        Func<string, Texture2D?> art, FightResultText text, Func<bool, Texture2D?> pageArrow)
     {
         /// <summary>How much larger the game draws its text than this panel's
         /// measurements assumed. Every box here is multiplied by it, so the panel keeps
@@ -310,18 +330,25 @@ internal static class FightResultPanel
         /// The turn chronology and the chart of the same turns: what each side played,
         /// and what each turn cost them.
         /// </summary>
-        internal void Chronology(Control panel, FightResultScreen screen, float x, float y, float width, float height)
+        internal void Chronology(
+            Control panel, FightResultScreen screen, float x, float y, float width, float height,
+            int requestedPage, Action<int> drawPage)
         {
             var headingHeight = SectionHeading.Size;
             var columnHeadingHeight = ListHeading.Size;
-            var turnCount = Math.Max(1, screen.Turns.Count);
             var preferredRowHeight = Math.Max(ListNumeral.Size, CardCaption.Size);
+            var headingsHeight = headingHeight + columnHeadingHeight;
             var chartHeight = Math.Max(
                 1f,
                 Math.Min(
                     250f * Unit,
-                    height - headingHeight - columnHeadingHeight - (turnCount * preferredRowHeight)));
-            var rowsHeight = height - headingHeight - columnHeadingHeight - chartHeight;
+                    height - headingsHeight - (ScreenPage.MinimumPerPage * preferredRowHeight)));
+            var rowsHeight = height - headingsHeight - chartHeight;
+            var fits = Math.Max(
+                ScreenPage.MinimumPerPage,
+                (int)Math.Floor(rowsHeight / preferredRowHeight));
+            var page = ScreenPage.For(screen.Turns.Count, fits, requestedPage);
+            var rowHeight = Math.Min(44f * Unit, rowsHeight / fits);
             var turnWidth = 46f * Unit;
             var columnWidth = (width - turnWidth) / 2;
             var yours = x + turnWidth;
@@ -337,10 +364,16 @@ internal static class FightResultPanel
             Text(panel, "Chronology.Them", screen.Columns[1], theirs + (ColumnGutter * Unit), headings,
                 columnWidth, columnHeadingHeight, ListHeading, TheirText);
 
-            var rowHeight = Math.Max(1f, Math.Min(44f * Unit, rowsHeight / turnCount));
-            var card = Math.Max(1f, Math.Min(CardHeight * Unit, rowHeight));
             var row = headings + columnHeadingHeight;
-            foreach (var turn in screen.Turns)
+            if (page.HasPrevious)
+            {
+                PageButton(panel, "Chronology.Previous", true, x, row, width, rowHeight,
+                    () => drawPage(page.Index - 1));
+                row += rowHeight;
+            }
+
+            var card = Math.Min(CardHeight * Unit, rowHeight);
+            foreach (var turn in screen.Turns.Skip(page.First).Take(page.Count))
             {
                 Text(panel, $"Turn.{turn.Turn}", turn.Turn.ToString(CultureInfo.InvariantCulture),
                     x, row, turnWidth, rowHeight, ListNumeral, SecondaryText);
@@ -351,8 +384,20 @@ internal static class FightResultPanel
                 row += rowHeight;
             }
 
+            if (page.HasNext)
+            {
+                PageButton(panel, "Chronology.Next", false, x, row, width, rowHeight,
+                    () => drawPage(page.Index + 1));
+            }
+
             Chart(panel, screen.Chart, x, y + height - chartHeight, width, chartHeight);
         }
+
+        private void PageButton(
+            Control panel, string name, bool previous, float x, float y, float width, float height, Action press) =>
+            NativePaginatorArt.AddButton(
+                panel, NodeName(name), string.Empty, previous,
+                new Rect2(x, y, width, height), pageArrow, press);
 
         /// <summary>
         /// One side of one turn: the cards it played, the potions it spent, and what

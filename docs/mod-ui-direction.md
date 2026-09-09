@@ -168,7 +168,8 @@ The library likewise distinguishes list headings, row numerals, secondary lines,
 
 **A surface whose boxes were measured around its own text scales with the native reading.**
 The tag and the result panel scale their geometry with the native reading rather than growing words outside fixed boxes.
-The result chronology allocates its remaining height among headings, positive turn rows, and the chart so a supported surface never produces negative card or plot geometry.
+The result chronology measures how many native-height turn rows fit beside the chart and pages the rest through the game's paginator arrows, so no supported surface compresses or clips a turn.
+The look-back ledger measures its page from the viewport in the same way, and the library strip uses the run-history screen's own arrow image.
 
 **A surface that sits inside the game's own container is a child of it, and asks it for height only.**
 The settings row is inserted into the modding entry's parent column immediately after that entry.

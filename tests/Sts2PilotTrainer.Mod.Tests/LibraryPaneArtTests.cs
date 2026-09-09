@@ -72,9 +72,14 @@ public sealed class LibraryPaneArtTests
     {
         _ = EngineHost.StartupPhase();
         var presses = 0;
+        var image = new Texture2D();
         var button = LibraryPaneArt.AddStripPageButton(
-            new Control(), "Previous", "Previous", "‹", Vector2.Zero, 28f, 28f,
-            new GameTextStyle(null, LineSize), () => presses++);
+            new Control(), "Previous", "Previous", true, Vector2.Zero, 28f, 28f,
+            _ => image, () => presses++);
+
+        Assert.Equal(string.Empty, button.Text);
+        Assert.False(button.HasThemeFontOverride("font"));
+        Assert.Same(image, button.GetChildren().OfType<TextureRect>().Single().Texture);
 
         foreach (var action in new[] { MegaInput.confirm, MegaInput.select })
         {
