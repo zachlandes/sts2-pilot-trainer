@@ -41,6 +41,12 @@ namespace Sts2PilotTrainer.Trainer;
 /// row cannot work this out - which run that is comes from the game - and without it the
 /// second line predicts one removal more than the next main menu will actually
 /// perform.</param>
+/// <param name="MainMenuRowShown">Whether Runmobile is currently a row on the game's own
+/// main menu. Derived once, by <see cref="Trainer.MainMenuRow.ShownWhen"/>, from the
+/// player's stored choice and this profile's run count - both of which the row would
+/// have to read for itself to answer, and one of which comes from the game. The control
+/// beside it is what changes it, and it is drawn from the same answer the menu patch
+/// draws from so the two can never say different things.</param>
 public sealed record MyRunsFacts(
     int Runs,
     long Bytes,
@@ -48,7 +54,8 @@ public sealed record MyRunsFacts(
     int? RemovedJustNow = null,
     bool? SettingsReadable = true,
     MyRunsDisk Disk = MyRunsDisk.Read,
-    bool ContinuableRunWouldBeLeft = false);
+    bool ContinuableRunWouldBeLeft = false,
+    bool MainMenuRowShown = false);
 
 /// <summary>
 /// How the reading of the player's own disk went.
@@ -74,7 +81,14 @@ public enum MyRunsDisk
 }
 
 /// <summary>
-/// The player's settings row about their own runs: keep, size, remove.
+/// Runmobile's settings row: keep, size, remove, whether the run index is fetched, and
+/// whether the mod puts a row on the game's main menu.
+///
+/// It is named for the player's own runs because that is what most of it is about and
+/// what the design's settings section is called. The two switches under it are here
+/// rather than in sections of their own for the reason the section exists at all: this
+/// mod contributes one place a player configures it, and a second one would be a second
+/// thing to find.
 ///
 /// One derivation for the whole row, and the row is drawn from it without asking a
 /// second question. That is the same rule <see cref="PlaybackTransport"/> answers to
@@ -115,6 +129,15 @@ public enum MyRunsDisk
 /// hidden, so the row keeps its shape as the number changes, and the second line is
 /// what says why.</param>
 /// <param name="Confirm">What the game's own popup asks before anything goes.</param>
+/// <param name="MainMenu">Whether Runmobile is a row on the game's main menu, and the
+/// line the control that governs it carries. Its own record rather than two more strings
+/// here, because <see cref="Trainer.MainMenuRow"/> is the one owner of that rule and the
+/// mod's menu patch reads the same owner.</param>
+/// <param name="MainMenuPressable">Whether that control may be moved. The same condition
+/// the policy stepper answers to and for the same reason: the choice is a member of the
+/// player's settings file, so a press over a file this build refuses would write this
+/// build's meaning into a document written by another, and before a save profile is
+/// chosen there is no file to write into at all.</param>
 public sealed record MyRunsRow(
     string Reading,
     string Detail,
@@ -123,7 +146,9 @@ public sealed record MyRunsRow(
     bool KeepPressable,
     string RemoveLabel,
     bool RemovePressable,
-    MyRunsConfirm Confirm)
+    MyRunsConfirm Confirm,
+    MainMenuRow MainMenu,
+    bool MainMenuPressable)
 {
     /// <summary>The smallest number of runs the slider may be moved to. A control that
     /// could be dragged to zero would be a standing purge a player set by accident;
@@ -174,7 +199,10 @@ public sealed record MyRunsRow(
                 Body: $"{runs}, {size}, recorded by Runmobile. Your saves, profile and run history are not " +
                       "touched.",
                 Remove: "Remove",
-                Keep: "Keep them"));
+                Keep: "Keep them"),
+            MainMenu: new MainMenuRow(facts.MainMenuRowShown,
+                LibraryCopy.MainMenuRowSetting(facts.MainMenuRowShown)),
+            MainMenuPressable: read && settingsRead);
     }
 
     /// <summary>

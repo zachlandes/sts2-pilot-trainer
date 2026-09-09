@@ -829,6 +829,8 @@ public sealed class RunLibraryModuleTests
             [
                 "NCompendiumSubmenu.OnSubmenuOpened",
                 "NCompendiumSubmenu._Ready",
+                "NMainMenu.RefreshButtons",
+                "NMainMenu._Ready",
                 "NMapPointHistoryEntry._Ready",
                 "NSettingsScreen._Ready",
             ],

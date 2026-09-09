@@ -4,8 +4,9 @@ using Sts2PilotTrainer.Trainer;
 namespace Sts2PilotTrainer.Mod;
 
 /// <summary>
-/// The settings row about the player's own runs, drawn: what they keep, what it takes
-/// on this computer, and the way to take it back.
+/// Runmobile's settings row, drawn: what the player keeps, what it takes on this
+/// computer, the way to take it back, whether the run index is fetched, and whether
+/// Runmobile puts a row on the game's main menu.
 ///
 /// It is a row rather than a section. Runmobile's settings section belongs to the run
 /// library, which owns where it hangs off the game's own modding entry point and what
@@ -14,8 +15,8 @@ namespace Sts2PilotTrainer.Mod;
 /// assembled and asserted on in a process with no game.
 ///
 /// It computes nothing. <see cref="MyRunsRow"/> says what every line reads and whether
-/// the destructive control may be pressed, <see cref="Apply"/> is the only way anything
-/// here changes, and the two controls report what a player did rather than acting on
+/// each control may be pressed, <see cref="Apply"/> is the only way anything
+/// here changes, and every control reports what a player did rather than acting on
 /// it. That is the rule the transport answers to and it is here for the same reason: a
 /// reading of the disk taken before an act and a receipt taken after it are two facts,
 /// and a surface that let each control set its own label would eventually show one
@@ -79,6 +80,8 @@ internal sealed class MyRunsSettingsRow
     private const float RemoveHeight = 30f;
     private const float FetchGap = 10f;
     private const float FetchHeight = 30f;
+    private const float MainMenuGap = 6f;
+    private const float MainMenuHeight = 30f;
 
     private const int LabelFontSize = 15;
     private const int NoteFontSize = 12;
@@ -97,6 +100,7 @@ internal sealed class MyRunsSettingsRow
     private readonly Label _detail;
     private readonly Button _remove;
     private readonly Button _fetch;
+    private readonly Button _mainMenu;
 
     /// <summary>
     /// What the row currently says.
@@ -134,6 +138,7 @@ internal sealed class MyRunsSettingsRow
         _detail = nodes.Detail;
         _remove = nodes.Remove;
         _fetch = nodes.Fetch;
+        _mainMenu = nodes.MainMenu;
         _row = nodes.Row;
         _keep = nodes.Keep;
         _fetchIndex = nodes.FetchRunIndex;
@@ -151,6 +156,10 @@ internal sealed class MyRunsSettingsRow
 
     internal Button Fetch => _fetch;
 
+    /// <summary>The switch that puts Runmobile on the game's main menu, or takes it
+    /// off. Named so a host can assert on it without reaching into the tree.</summary>
+    internal Button MainMenu => _mainMenu;
+
     /// <summary>What the row is saying, for a host that has to ask rather than
     /// re-derive.</summary>
     internal MyRunsRow Row => _row;
@@ -164,7 +173,8 @@ internal sealed class MyRunsSettingsRow
     /// beside them rather than under them.
     /// </summary>
     internal static float Height =>
-        LabelHeight + RuleGap + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap + FetchHeight;
+        LabelHeight + RuleGap + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap + FetchHeight +
+        MainMenuGap + MainMenuHeight;
 
     /// <summary>
     /// Assembles the row.
@@ -183,12 +193,14 @@ internal sealed class MyRunsSettingsRow
     /// go. Same rule: this raises it, and does not remove anything itself.</param>
     internal static MyRunsSettingsRow Build(
         MyRunsRow row, int keep, bool fetchRunIndex, float width, Font? font,
-        Action<int> keepChanged, Action removePressed, Action<bool> fetchChanged)
+        Action<int> keepChanged, Action removePressed, Action<bool> fetchChanged,
+        Action<bool> mainMenuChanged)
     {
         ArgumentNullException.ThrowIfNull(row);
         ArgumentNullException.ThrowIfNull(keepChanged);
         ArgumentNullException.ThrowIfNull(removePressed);
         ArgumentNullException.ThrowIfNull(fetchChanged);
+        ArgumentNullException.ThrowIfNull(mainMenuChanged);
 
         var root = new Control
         {
@@ -217,6 +229,7 @@ internal sealed class MyRunsSettingsRow
         nodes.More = Add(root, Pressable("More", "+", font));
         nodes.Remove = Add(root, Pressable("Remove", string.Empty, font));
         nodes.Fetch = Add(root, Pressable("FetchRunIndex", string.Empty, font));
+        nodes.MainMenu = Add(root, Pressable("MainMenuRow", string.Empty, font));
 
         var built = new MyRunsSettingsRow(nodes);
 
@@ -228,6 +241,12 @@ internal sealed class MyRunsSettingsRow
         built._more.Pressed += () => built.Step(1, keepChanged);
         built._remove.Pressed += removePressed;
         built._fetch.Pressed += () => fetchChanged(!built._fetchIndex);
+
+        // Reads the row's own current answer at press time rather than the one it was
+        // built with, for the reason the stepper does: what is on the menu can change
+        // under this screen, and a handler that closed over the starting value would ask
+        // for a state the row had already left.
+        built._mainMenu.Pressed += () => mainMenuChanged(!built._row.MainMenu.Shown);
         built.Layout(width, font);
         built.Apply(row, keep, fetchRunIndex);
         return built;
@@ -259,6 +278,7 @@ internal sealed class MyRunsSettingsRow
         _detail.Text = row.Detail;
         _remove.Text = row.RemoveLabel;
         _fetch.Text = $"{LibraryCopy.FetchRunIndex}: {(fetchRunIndex ? "on" : "off")}";
+        _mainMenu.Text = row.MainMenu.SettingLabel;
 
         // The stepper refuses at its bottom rather than disappearing there, so the two
         // controls never move about under the player's aim. There is no top: a policy
@@ -267,11 +287,13 @@ internal sealed class MyRunsSettingsRow
         Refuse(_more, !row.KeepPressable);
         Refuse(_remove, !row.RemovePressable);
         Refuse(_fetch, !row.KeepPressable);
+        Refuse(_mainMenu, !row.MainMenuPressable);
 
         Face(_fewer, !_fewer.Disabled);
         Face(_more, !_more.Disabled);
         Destructive(_remove, row.RemovePressable);
         Face(_fetch, !_fetch.Disabled);
+        Face(_mainMenu, !_mainMenu.Disabled);
     }
 
     /// <summary>
@@ -321,6 +343,7 @@ internal sealed class MyRunsSettingsRow
 
         var fetchY = lower + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap;
         Place(_fetch, 0f, fetchY, width, FetchHeight);
+        Place(_mainMenu, 0f, fetchY + FetchHeight + MainMenuGap, width, MainMenuHeight);
     }
 
     /// <summary>
@@ -500,5 +523,7 @@ internal sealed class MyRunsSettingsRow
         internal Button Remove { get; set; } = null!;
 
         internal Button Fetch { get; set; } = null!;
+
+        internal Button MainMenu { get; set; } = null!;
     }
 }

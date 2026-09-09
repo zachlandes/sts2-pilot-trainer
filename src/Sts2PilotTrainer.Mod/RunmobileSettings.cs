@@ -12,16 +12,18 @@ namespace Sts2PilotTrainer.Mod;
 /// <c>settings.json</c> in the store.
 ///
 /// The file is the record and a screen is a way of editing it.
-/// Three of these members have a control now: <c>MyRunsSettingsRow</c> draws the standing policy, the removal act, and whether the shared-run index is fetched.
-/// All three go through the writers below rather than keeping a second copy of the answer, so a player who edits the file by hand and a player who moves the control are saying the same thing in the same place.
+/// Four of these members have a control now: <c>MyRunsSettingsRow</c> draws the standing policy, the removal act, whether the shared-run index is fetched, and whether the main-menu row is drawn.
+/// All four go through the writers below rather than keeping a second copy of the answer, so a player who edits the file by hand and a player who moves the control are saying the same thing in the same place.
 /// Whether to record has no control yet and is a line in this file.
 ///
 /// Recording is on by default because the recorder is not released to players before
 /// that surface is: the default is what the person building this wants while it is
 /// being built, and it becomes a decision the moment somebody else can see it.
 ///
-/// Five things are said here and they are four different kinds of sentence.
-/// Whether to record and whether to fetch the shared-run index are standing choices.
+/// Six things are said here and they are four different kinds of sentence.
+/// Whether to record, whether to fetch the shared-run index and whether Runmobile draws
+/// a row on the main menu are standing choices - the last of which has a third answer,
+/// "nobody has said", because its default follows the player's own progression.
 /// The sharing-service endpoint is the explicit authority for outbound transfer and has no default.
 /// How many runs to keep is a standing policy, and it has a default rather than being unbounded because the recorder writes a real file per run and nothing else ever removed one.
 /// Asking for every run to be removed is a one-shot act: it is honoured once and then set to false, which is both how it stops repeating and how a player sees that it happened.
@@ -66,6 +68,22 @@ internal sealed record RunmobileSettings
 
     [JsonPropertyName("sharing_service_url")]
     public string? SharingServiceUrl { get; init; }
+
+    /// <summary>
+    /// Whether Runmobile draws a row of its own on the game's main menu, or null where
+    /// the player has never said.
+    ///
+    /// Three answers rather than two, and the third is the point. A player who has
+    /// finished no run cannot reach this library any other way - the game hides its own
+    /// Compendium until a run is finished - so the row is there for them by default and
+    /// not for anybody else. Null is what lets that default follow the player's
+    /// progression, and true or false is what stops it: once somebody has moved the
+    /// control, finishing a first run must not quietly take away a row they turned on.
+    /// <c>MainMenuRow.ShownWhen</c> is the one place those three answers become a
+    /// visibility.
+    /// </summary>
+    [JsonPropertyName("show_main_menu_row")]
+    public bool? ShowMainMenuRow { get; init; }
 
     /// <summary>
     /// How many of the player's most recent recorded runs are kept.
@@ -117,6 +135,13 @@ internal sealed record RunmobileSettings
     /// Both answers fail in the direction of doing less: nothing is recorded, because
     /// the only thing this file can say is "off", and nothing is removed, because a
     /// sentence nobody could read is not somebody asking for their runs to be deleted.
+    ///
+    /// <see cref="ShowMainMenuRow"/> is left unsaid rather than answered either way, and
+    /// that is the same direction: an unreadable file is a file nobody has said anything
+    /// in, so the row falls back to the run count exactly as it does for a player who has
+    /// never opened the settings page. Answering "off" here would take the library's only
+    /// entrance away from a new player over a file fault, and answering "on" would put a
+    /// row on the menu of somebody who may have turned it off.
     /// </summary>
     private static RunmobileSettings DoNotRecord =>
         new()
@@ -242,6 +267,16 @@ internal sealed record RunmobileSettings
     internal static void SetFetchRunIndex(bool fetch) => Set("fetch_run_index", fetch);
 
     /// <summary>
+    /// Writes whether the main-menu row is drawn.
+    ///
+    /// It takes a bool rather than the file's own <c>bool?</c>: writing null back would
+    /// be a player asking to un-decide something, which no control offers and which
+    /// would silently hand their menu back to the run count. Hand-editing the member out
+    /// of the file still does that, because the file is the record.
+    /// </summary>
+    internal static void SetShowMainMenuRow(bool show) => Set("show_main_menu_row", show);
+
+    /// <summary>
     /// Writes one member of the player's file and leaves every other one exactly as
     /// they wrote it.
     ///
@@ -276,6 +311,7 @@ internal sealed record RunmobileSettings
                 ["sharing_service_url"] = Default.SharingServiceUrl,
                 ["keep_recent_runs"] = Default.KeepRecentRuns,
                 ["purge_my_runs"] = false,
+                ["show_main_menu_row"] = null,
             };
         }
         else

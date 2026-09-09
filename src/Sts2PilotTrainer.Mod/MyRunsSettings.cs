@@ -127,7 +127,7 @@ internal static class MyRunsSettings
         var settings = RunmobileSettings.Read();
         _row = MyRunsSettingsRow.Build(
             MyRunsRow.For(facts), facts.Keep, settings.FetchRunIndex,
-            width, font, Retain, AskToRemove, SetFetchRunIndex);
+            width, font, Retain, AskToRemove, SetFetchRunIndex, SetMainMenuRow);
         return _row;
     }
 
@@ -170,7 +170,35 @@ internal static class MyRunsSettings
             Bytes: 0,
             Keep: RunmobileSettings.DefaultKeepRecentRuns,
             SettingsReadable: null,
-            Disk: disk);
+            Disk: disk,
+            MainMenuRowShown: MainMenuRowShown());
+    }
+
+    /// <summary>
+    /// What the main menu is doing about Runmobile's row, asked separately from the disk
+    /// reading above.
+    ///
+    /// It is a different question from a different pair of sources - the settings file and
+    /// the game's own run count - and neither of them is the recordings directory that
+    /// just refused. A row that reported "off" because the store had no save profile yet
+    /// would be stating something about a menu it never asked, so the same reader the
+    /// menu patch uses is asked here too. Where even that cannot answer, the control is
+    /// already refused by <see cref="MyRunsRow"/> and the line under it says the disk
+    /// could not be read.
+    /// </summary>
+    private static bool MainMenuRowShown()
+    {
+        try
+        {
+            return MainMenuLibraryRow.Shown();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not tell whether Runmobile is on the main menu: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            return false;
+        }
     }
 
     /// <summary>
@@ -237,6 +265,43 @@ internal static class MyRunsSettings
                 $"{ex.GetType().Name}: {ex.Message}", 2);
             if (_row is { } row) row.Apply(row.Row, RunmobileSettings.Read().KeepRecentRuns,
                 RunmobileSettings.Read().FetchRunIndex);
+        }
+    }
+
+    /// <summary>
+    /// Writes whether Runmobile is a row on the game's main menu, and says what the menu
+    /// now does.
+    ///
+    /// Nothing on screen moves here: the menu behind this screen re-decides in its own
+    /// <c>RefreshButtons</c>, which the player reaches by leaving settings, and this
+    /// build has no way to redraw a menu it is not standing on. The row is redrawn from
+    /// the disk instead, so what the control says is what the file now holds - and a
+    /// write that failed leaves the control exactly where it was, saying what is still
+    /// true.
+    /// </summary>
+    private static void SetMainMenuRow(bool show)
+    {
+        try
+        {
+            RunmobileSettings.SetShowMainMenuRow(show);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not write whether Runmobile is on the main menu: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            return;
+        }
+
+        try
+        {
+            Redraw(null);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] wrote whether Runmobile is on the main menu, but could not say so " +
+                $"on the screen: {ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 
