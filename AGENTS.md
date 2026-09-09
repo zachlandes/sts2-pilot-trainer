@@ -375,7 +375,7 @@ resolve. [docs/distribution.md](docs/distribution.md) owns the detail.
 lives in `Sts2PilotTrainer.Trainer`, and every recording-specific value in it is
 interpolated - the credit from `RecordingIdentity`, the blessing and the node
 from the run the decision is about to act on.
-Two recordings are credited and `RecordingIdentity.Credit` is the one reader: a reconstruction from a video is credited to `source.video.channel_name`, and a run the recorder watched somebody play is credited to that player, read off `source.native` rather than substituted for a name that is missing.
+Two recordings are credited and `RecordingIdentity.Credit` is the one reader: a reconstruction from a video is credited to `source.video.channel_name`, a native run the library knows is the player's own is credited to them, and a native run received from somebody else is credited neutrally as "This run" because the recording stores no identity.
 That credit is a `RecordingCredit` rather than a name because the same slot is a sentence subject in one caption and a possessive in the next, and one string forced into both reads "Watch You's fight"; a manifest that is neither is still refused rather than attributed.
 A sentence that names NaveGreed, the
 Underdocks or a Sludge Spinner is a bug; the one remaining exception is named in

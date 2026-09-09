@@ -4,8 +4,9 @@ namespace Sts2PilotTrainer.Trainer;
 /// Whose recording this is, in the grammatical forms the screens need.
 ///
 /// A name was enough while every recording came from somebody else's video. A run the
-/// player recorded themselves is credited to them, and English does not let one noun
-/// stand in every slot a name stood in: "NaveGreed took Burning Blood" becomes "You
+/// player recorded themselves is credited to them, while a received native run is
+/// credited neutrally. English does not let one noun stand in every slot a name stood
+/// in: "NaveGreed took Burning Blood" becomes "You
 /// took Burning Blood", and "Watch NaveGreed's fight" becomes "Watch your fight". A
 /// single string forced into both would read "Watch You's fight", which is why this
 /// carries the forms rather than a name.
@@ -52,6 +53,10 @@ public sealed record RecordingCredit(
 
     /// <summary>The credit for a recording somebody else made, named by the manifest.</summary>
     public static RecordingCredit Named(string name) => new(name, $"{name}'s", name, IsYours: false);
+
+    /// <summary>The credit for a native run whose player is not known to the viewer.</summary>
+    public static RecordingCredit Neutral { get; } = new(
+        TrainerCopy.ThisRunSubject, TrainerCopy.ThisRunPossessive, TrainerCopy.ThisRunLabel, IsYours: false);
 
     /// <summary>The credit for a run this player recorded themselves.</summary>
     public static RecordingCredit Yours { get; } = new(

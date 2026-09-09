@@ -365,6 +365,15 @@ public static class TrainerCopy
     /// draws between this attempt and the recorded one.</summary>
     public const string YourRunLabel = "Your run";
 
+    /// <summary>A received native run as the subject of a sentence.</summary>
+    public const string ThisRunSubject = "this run";
+
+    /// <summary>A received native run before the thing it owns.</summary>
+    public const string ThisRunPossessive = "this run's";
+
+    /// <summary>A received native run where a standalone label is needed.</summary>
+    public const string ThisRunLabel = "This run";
+
     /// <summary>The panel's title over a comparison with your own recorded line. Its
     /// own sentence rather than the creator template with a word swapped: "Your fight
     /// and your's" is not English, and "Your fight and yours" says nothing about which
@@ -433,4 +442,7 @@ public static class TrainerCopy
     /// <summary>Shown in place of a comparison when the fight was left before it
     /// ended: quit, returned to the main menu, or abandoned.</summary>
     public const string LeftNote = "This fight was left before it ended, so there is nothing to compare.";
+
+    /// <summary>Shown when this build carries no recorded comparison for the run.</summary>
+    public const string NoRecordedComparison = "This build has no recorded comparison line for this run yet.";
 }

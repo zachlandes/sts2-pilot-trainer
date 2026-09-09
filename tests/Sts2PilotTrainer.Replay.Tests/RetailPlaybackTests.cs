@@ -98,45 +98,4 @@ public sealed class RetailPlaybackTests
 
         Assert.True(RetailPlayback.CanReach(recording, boundarySeq: -1));
     }
-
-    /// <summary>A plan and a boundary sequence are two spellings of one question, so
-    /// the host that walks and the surface that offers cannot come to disagree.</summary>
-    [Fact]
-    public void APlanAndItsBoundarySequenceGetTheSameAnswer()
-    {
-        var actions = new[]
-        {
-            Action(0, ActionVerb.ChooseNeowBlessing),
-            Action(1, ActionVerb.MapMove),
-            Action(2, ActionVerb.PlayCard),
-            Action(3, ActionVerb.MapMove),
-        };
-        var recording = Recording(actions);
-        var plan = new StubPlan(actions.Take(4).ToList());
-
-        Assert.False(RetailPlayback.CanWalk(plan));
-        Assert.Equal(
-            RetailPlayback.FirstRefusal(recording, boundarySeq: 3)!.Seq,
-            RetailPlayback.FirstRefusal(plan)!.Seq);
-    }
-
-    /// <summary>A plan carrying only a prefix, which is all this rule reads of one.</summary>
-    private sealed record StubPlan(IReadOnlyList<ActionRecord> PrefixActions) : IBoundaryPlan
-    {
-        public string Kind => ReplayBoundary.CombatStartKind;
-
-        public int BoundarySeq => PrefixActions[^1].Seq;
-
-        public Checkpoint Boundary => throw new NotSupportedException();
-
-        public SnapshotCacheKey SnapshotKey => throw new NotSupportedException();
-
-        public int? Fight => 1;
-
-        public int? Floor => null;
-
-        public bool Authorises(int stepIndex, ActionRecord action) => true;
-
-        public string Describe() => "the start of fight 1";
-    }
 }

@@ -19,7 +19,9 @@ namespace Sts2PilotTrainer.Trainer.Tests;
 public sealed class RecordingCreditTests
 {
     private static readonly RecordingCredit Theirs = RecordingIdentity.Credit(Fixtures.Recording());
-    private static readonly RecordingCredit Mine = RecordingIdentity.Credit(Fixtures.NativeRecording());
+    private static readonly RecordingCredit Mine = RecordingIdentity.Credit(
+        Fixtures.NativeRecording(), isPlayersOwn: true);
+    private static readonly RecordingCredit Neutral = RecordingIdentity.Credit(Fixtures.NativeRecording());
 
     [Fact]
     public void ARecordingFromAVideoIsCreditedToItsChannel()
@@ -40,7 +42,7 @@ public sealed class RecordingCreditTests
         Assert.Equal("your", Mine.Possessive);
         Assert.Equal("Your run", Mine.Label);
         Assert.True(Mine.IsYours);
-        Assert.Equal("Your run", RecordingIdentity.Creator(Fixtures.NativeRecording()));
+        Assert.Equal("Your run", RecordingIdentity.Creator(Fixtures.NativeRecording(), isPlayersOwn: true));
     }
 
     /// <summary>
@@ -67,6 +69,16 @@ public sealed class RecordingCreditTests
         Assert.Null(RecordingIdentity.CreditOrNull(neither));
         var refusal = Assert.Throws<ManifestException>(() => RecordingIdentity.Credit(neither));
         Assert.Contains("does not say whose run it is", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AReceivedNativeRecordingIsCreditedNeutrally()
+    {
+        Assert.Equal("this run", Neutral.Subject);
+        Assert.Equal("This run", Neutral.OpeningSubject);
+        Assert.Equal("this run's", Neutral.Possessive);
+        Assert.Equal("This run", Neutral.Label);
+        Assert.False(Neutral.IsYours);
     }
 
     [Fact]
@@ -107,7 +119,23 @@ public sealed class RecordingCreditTests
             StringComparison.Ordinal);
         Assert.Contains("doesn't match your recording", TrainerCopy.RefusalHeadline(Mine, "card"),
             StringComparison.Ordinal);
-        Assert.StartsWith("Your run · ", RecordingIdentity.Subtitle(Fixtures.NativeRecording()),
+        Assert.StartsWith(
+            "Your run · ", RecordingIdentity.Subtitle(Fixtures.NativeRecording(), isPlayersOwn: true),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ReceivedNativePlaybackNeverAttributesTheRunToTheViewer()
+    {
+        Assert.Equal("Shows what this run chose here.", TrainerCopy.ShowTooltipBody(Neutral));
+        Assert.Equal("Start this run's fight again?", TrainerCopy.ConfirmJumpToTheBeginningTitle(Neutral));
+        Assert.Equal("This run took Burning Blood", TrainerCopy.BlessingCaption(Neutral, "RELIC.BURNING_BLOOD"));
+        Assert.Equal("This run chose Strike Ironclad", TrainerCopy.CardFromScreenCaption(
+            Neutral, "CARD.STRIKE_IRONCLAD"));
+        Assert.Equal("Watch this run's fight", TrainerCopy.WatchTheirFight(Neutral));
+        Assert.StartsWith("This run's choices are shown as recorded", TrainerCopy.ChoicesShownAsRecorded(Neutral),
+            StringComparison.Ordinal);
+        Assert.StartsWith("This run · ", RecordingIdentity.Subtitle(Fixtures.NativeRecording()),
             StringComparison.Ordinal);
     }
 

@@ -48,7 +48,7 @@ public sealed class NativeRecordingPlaybackTests
         var recording = Load(fileName);
 
         Assert.Null(recording.Source.Video);
-        var credit = RecordingIdentity.Credit(recording);
+        var credit = RecordingIdentity.Credit(recording, isPlayersOwn: true);
 
         Assert.True(credit.IsYours);
         Assert.Equal("Your run", credit.Label);
@@ -69,7 +69,7 @@ public sealed class NativeRecordingPlaybackTests
     public void EverySurfaceTheJourneyPutsUpBuildsForIt(string fileName)
     {
         var recording = Load(fileName);
-        var credit = RecordingIdentity.Credit(recording);
+        var credit = RecordingIdentity.Credit(recording, isPlayersOwn: true);
         var plan = RecordedFightPlan.For(recording, fight: 1);
 
         var identity = new TransportIdentity(
@@ -105,7 +105,8 @@ public sealed class NativeRecordingPlaybackTests
         Assert.False(FightResultScreen.Left().HasComparison);
         Assert.False(FightResultScreen.Refused("no").HasComparison);
 
-        Assert.Equal("Your run · ", RecordingIdentity.Subtitle(recording)[..11]);
+        Assert.Equal(
+            "Your run · ", RecordingIdentity.Subtitle(recording, isPlayersOwn: true)[..11]);
     }
 
     /// <summary>The subtitle and the row's own creator line answer different questions,
@@ -118,6 +119,35 @@ public sealed class NativeRecordingPlaybackTests
 
         Assert.Null(RecordingIdentity.CreatorOrNull(recording));
         Assert.Null(LibraryRun.From(recording, RunOrigin.Mine, RunVerdict.Passed).Creator);
+    }
+
+    [Theory]
+    [MemberData(nameof(Recordings))]
+    public void ARunWithoutItsOwnRecordedLineShowsAPlainNotice(string fileName)
+    {
+        var recording = Load(fileName);
+        var capture = FightCapture.Begin(
+            "player",
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["combat.outcome"] = "in_progress",
+            },
+            "sha256:test");
+        var unrelated = new RecordedFights
+        {
+            SchemaId = RecordedFights.Schema,
+            RunId = "another-recording",
+            Fights = [],
+        };
+
+        var screen = RecordedFightRun.ResultAfterFight(
+            recording, fight: 1,
+            RecordingIdentity.Credit(recording, isPlayersOwn: true), capture, unrelated);
+
+        Assert.False(screen.HasComparison);
+        Assert.Equal(TrainerCopy.NoRecordedComparison, screen.Notice);
+        Assert.DoesNotContain(unrelated.RunId, screen.Notice, StringComparison.Ordinal);
+        Assert.DoesNotContain("digest", screen.Notice, StringComparison.OrdinalIgnoreCase);
     }
 
     // ── Offering only what the client can reach ────────────────────────────

@@ -357,6 +357,8 @@ internal static class RunBrowserScreen
                 recording, RunLibraryStore.ReadProgress(), floor,
                 RecordedFightModule.Instance.FightsShownThisSitting(runId),
                 progressId: runId);
+            var isPlayersOwn = RunLibrary.Runs().FirstOrDefault(run =>
+                string.Equals(run.EntryId, runId, StringComparison.Ordinal))?.Origin == RunOrigin.Mine;
 
             var id = runId;
             var mine = fromMyRuns;
@@ -364,7 +366,8 @@ internal static class RunBrowserScreen
                 Title(recording),
                 Tabs: [],
                 ListHeader: null,
-                EnteringRows(view, runId, RecordingIdentity.CreditOrNull(recording)),
+                EnteringRows(
+                    view, runId, RecordingIdentity.CreditOrNull(recording, isPlayersOwn), isPlayersOwn),
                 ViewPane(recording, view, runId, fromMyRuns, compatibleOnly, stripPage),
                 LibraryCopy.Back,
                 Back: () => OpenTab(
@@ -440,7 +443,7 @@ internal static class RunBrowserScreen
     /// shown-this-sitting mark; a recording nothing can credit carries the mark with
     /// the feature's own name in its place.</param>
     internal static IReadOnlyList<ScreenRow> EnteringRows(
-        RunView view, string runId, RecordingCredit? credit = null)
+        RunView view, string runId, RecordingCredit? credit = null, bool isPlayersOwn = false)
     {
         var rows = new List<ScreenRow>();
         foreach (var row in view.Rows)
@@ -450,8 +453,9 @@ internal static class RunBrowserScreen
             var fight = row.Fight;
             var atFloor = row.Floor;
             var held = row.Held;
+            var own = isPlayersOwn;
             rows.Add(new ScreenRow(
-                row.Label, row.Enabled, () => Enter(id, kind, fight, atFloor), row.Note, row.Reason,
+                row.Label, row.Enabled, () => Enter(id, kind, fight, atFloor, own), row.Note, row.Reason,
                 MarkTooltip: row.ShownThisSitting
                     ? TrainerCopy.ShownThisSittingTooltip(
                         credit ?? RecordingCredit.Named(TrainerCopy.Name))
@@ -642,7 +646,8 @@ internal static class RunBrowserScreen
     /// floor's entry. A row that names a fight carries its ordinal for exactly this,
     /// and never draws it.</para>
     /// </summary>
-    private static void Enter(string runId, int kind, int? fight, int? floor)
+    private static void Enter(
+        string runId, int kind, int? fight, int? floor, bool isPlayersOwn)
     {
         if (RunLibrary.RecordingFor(runId) is not { } recording)
         {
@@ -660,7 +665,8 @@ internal static class RunBrowserScreen
                 $"That row names no boundary of '{runId}', so there is nowhere to stand."),
         };
 
-        _ = RecordedFightRun.Start(recording, plan, runId);
+        var credit = RecordingIdentity.Credit(recording, isPlayersOwn);
+        _ = RecordedFightRun.Start(recording, plan, credit, runId);
     }
 
     /// <summary>

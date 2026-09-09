@@ -285,11 +285,15 @@ internal static class RunHistoryPlateHost
         if (fight is { } ordinal)
         {
             RunLibraryStore.RecordFightPlayed(runId, ordinal);
-            _ = RecordedFightRun.Start(recording, RecordedFightPlan.For(recording, ordinal));
+            _ = RecordedFightRun.Start(
+                recording, RecordedFightPlan.For(recording, ordinal),
+                RecordingIdentity.Credit(recording, isPlayersOwn: true));
             return;
         }
 
-        _ = RecordedFightRun.Start(recording, FloorEntryPlan.For(recording, atFloor));
+        _ = RecordedFightRun.Start(
+            recording, FloorEntryPlan.For(recording, atFloor),
+            RecordingIdentity.Credit(recording, isPlayersOwn: true));
     }
 
     internal static void ShowShare(ReplayManifest recording, Action? back = null)

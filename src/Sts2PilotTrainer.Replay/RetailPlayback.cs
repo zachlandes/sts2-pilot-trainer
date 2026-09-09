@@ -59,17 +59,8 @@ public static class RetailPlayback
             .OrderBy(action => action.Seq)
             .FirstOrDefault(action => !Verbs.Contains(action.Verb));
 
-    /// <summary>The same question of a plan a host is about to walk, so the surface that
-    /// offers a boundary and the host that walks to it read one rule.</summary>
-    public static ActionRecord? FirstRefusal(IBoundaryPlan plan) =>
-        plan.PrefixActions
-            .OrderBy(action => action.Seq)
-            .FirstOrDefault(action => !Verbs.Contains(action.Verb));
-
     /// <summary>Whether a running client can walk this recording to that boundary.</summary>
     public static bool CanReach(ReplayManifest recording, int boundarySeq) =>
         FirstRefusal(recording, boundarySeq) is null;
 
-    /// <summary>Whether a running client can walk this plan.</summary>
-    public static bool CanWalk(IBoundaryPlan plan) => FirstRefusal(plan) is null;
 }

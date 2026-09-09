@@ -39,6 +39,7 @@ namespace Sts2PilotTrainer.Mod;
 internal static class RecordedFightRun
 {
     private static RecordedFightEntry? _entry;
+    private static RecordingCredit? _credit;
     private static string? _progressRunId;
     private static PlayerFightObserver? _observer;
     private static FightResultScreen? _resultAfterMainMenu;
@@ -245,7 +246,8 @@ internal static class RecordedFightRun
     /// keeps the transport, the deviation lock and the write isolation the same
     /// wherever a player entered from.</param>
     internal static async Task Start(
-        ReplayManifest recording, IBoundaryPlan plan, string? progressRunId = null)
+        ReplayManifest recording, IBoundaryPlan plan, RecordingCredit credit,
+        string? progressRunId = null)
     {
         if (Phase != JourneyPhase.None)
         {
@@ -256,13 +258,13 @@ internal static class RecordedFightRun
         // Raised before the run exists rather than after, so there is no moment in
         // which a trainer run could reach a write.
         ProfileWriteBarrier.Raise();
+        _credit = credit;
         _progressRunId = progressRunId ?? recording.RunId;
         Transition(JourneyPhase.Starting);
 
         RecordedFightEntry? entry = null;
         try
         {
-            var credit = RecordingIdentity.Credit(recording);
             entry = RecordedFightEntry.PrepareInRunningGame(
                 recording, plan,
                 new RunningGameCommands(TravelOnTheGamesMapScreen, TakeTheRecordedCardOnTheGamesOwnScreen));
@@ -875,7 +877,8 @@ internal static class RecordedFightRun
         {
             var entry = _entry;
             if (entry is null) return;
-            var credit = RecordingIdentity.Credit(entry.Manifest);
+            var credit = _credit
+                ?? throw new InvalidOperationException("There is no credit for the recorded fight under way.");
 
             // Logged like every other decision this class makes. It is also the line
             // that says a press reached here at all, which is the thing no screenshot
@@ -933,6 +936,7 @@ internal static class RecordedFightRun
             var recording = _afterTheFight?.Manifest ?? _entry?.Manifest;
             var plan = _afterTheFight?.Plan ?? _entry?.Plan;
             var progressRunId = _progressRunId;
+            var credit = _afterTheFight?.Credit ?? _credit;
 
             // The attempt is being discarded rather than left, so the result the
             // teardown queues for it is dropped before the return that would show it.
@@ -943,8 +947,8 @@ internal static class RecordedFightRun
             // Only once the menu is back: the game's own return task completing is the
             // signal the run it is tearing down has gone, and building the next run
             // over it is building it on the old one.
-            if (recording is not null && plan is not null)
-                await Start(recording, plan, progressRunId);
+            if (recording is not null && plan is not null && credit is not null)
+                await Start(recording, plan, credit, progressRunId);
         }
         catch (Exception ex)
         {
@@ -1092,7 +1096,7 @@ internal static class RecordedFightRun
     /// still should: that is the refusal, arriving where it can be reported.
     /// </summary>
     private static TransportFacts Facts(RecordedFightEntry entry) => new(
-        Identity(entry.Manifest, entry.NextStep),
+        Identity(entry.Manifest, _credit, entry.NextStep),
         Shown,
         Phase == JourneyPhase.Watching && !entry.AtBoundary ? entry.DescribeNextStep() : null,
         entry.DecisionsMade,
@@ -1112,7 +1116,7 @@ internal static class RecordedFightRun
     /// remains: every fact about decisions is spent, and the post-fight choice is the
     /// whole of what there is to derive.</summary>
     private static TransportFacts FactsAfter(EndedFight ended) => new(
-        Identity(ended.Manifest, null),
+        Identity(ended.Manifest, ended.Credit, null),
         Shown,
         null,
         0,
@@ -1152,20 +1156,22 @@ internal static class RecordedFightRun
     /// Whose recording this is, and where in the video the decision being shown was
     /// made.
     ///
-    /// Every value comes from the manifest. The video's title is absent until
-    /// ingestion fills it, and the tag says the creator alone rather than inventing
+    /// The video values come from the manifest and the credit comes from the library
+    /// origin that opened the run. The video's title is absent until ingestion fills
+    /// it, and the tag says the credit alone rather than inventing
     /// one; the timestamp is the action's own observation, so the link opens where the
     /// move actually happens rather than at the start of a thirty-four minute video.
     /// </summary>
-    private static TransportIdentity Identity(ReplayManifest manifest, ActionRecord? nextStep)
+    private static TransportIdentity Identity(
+        ReplayManifest manifest, RecordingCredit? credit, ActionRecord? nextStep)
     {
-        // A manifest with no video record still names its creator; what it loses is
-        // the title and the link. Absent rather than invented, so the tag falls back
-        // to the name alone and the block simply does not open anything.
+        // A manifest with no video record loses the title and the link. Absent rather
+        // than invented, so the tag falls back to the credit alone and the block
+        // simply does not open anything.
         var video = manifest.Source.Video;
         var at = _lookingBackAt is null ? VideoTimeOf(nextStep) : null;
         return new TransportIdentity(
-            RecordingIdentity.Credit(manifest),
+            credit ?? throw new InvalidOperationException("There is no credit for the recorded fight under way."),
             video?.Title,
             video is null
                 ? null
@@ -1610,12 +1616,14 @@ internal static class RecordedFightRun
 
             var capture = entry.Capture
                 ?? throw new InvalidOperationException("The fight ended before its capture began.");
-            var screen = FightResultScreen.Of(
-                RecordingIdentity.Credit(entry.Manifest), capture,
-                RecordedFightModule.Instance.RecordedFights.Projection(entry.Fight));
+            var credit = _credit
+                ?? throw new InvalidOperationException("There is no credit for the recorded fight under way.");
+            var screen = ResultAfterFight(
+                entry.Manifest, entry.Fight, credit, capture,
+                RecordedFightModule.Instance.RecordedFights);
             _observer?.Dispose();
             _observer = null;
-            _afterTheFight = new EndedFight(entry.Manifest, entry.Plan, entry.Fight, screen);
+            _afterTheFight = new EndedFight(entry.Manifest, entry.Plan, entry.Fight, credit, screen);
             Transition(JourneyPhase.Result);
             Log.Info(
                 $"[{RunmobileMod.ModId}] result: " +
@@ -1643,6 +1651,19 @@ internal static class RecordedFightRun
                 $"[{RunmobileMod.ModId}] the post-fight choice could not be offered after the run ended: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
+    }
+
+    internal static FightResultScreen ResultAfterFight(
+        ReplayManifest recording, int fight, RecordingCredit credit, FightCapture capture,
+        RecordedFights recordedFights)
+    {
+        if (!string.Equals(recordedFights.RunId, recording.RunId, StringComparison.Ordinal) ||
+            !recordedFights.Fights.Any(candidate => candidate.Fight == fight))
+        {
+            return FightResultScreen.Refused(TrainerCopy.NoRecordedComparison);
+        }
+
+        return FightResultScreen.Of(credit, capture, recordedFights.Projection(fight));
     }
 
     /// <summary>
@@ -1688,7 +1709,7 @@ internal static class RecordedFightRun
         var ended = _afterTheFight;
         if (ended is null) return;
 
-        var choice = PostFightChoice.For(RecordingIdentity.Credit(ended.Manifest), PostFightFactsFor(ended));
+        var choice = PostFightChoice.For(ended.Credit, PostFightFactsFor(ended));
         var rows = new List<ScreenRow>();
         for (var index = 0; index < choice.Rows.Count; index++)
         {
@@ -1722,7 +1743,7 @@ internal static class RecordedFightRun
             var ended = _afterTheFight;
             if (ended is null) return;
 
-            var choice = PostFightChoice.For(RecordingIdentity.Credit(ended.Manifest), PostFightFactsFor(ended));
+            var choice = PostFightChoice.For(ended.Credit, PostFightFactsFor(ended));
             var action = choice.ActionAt(row);
             Log.Info($"[{RunmobileMod.ModId}] the post-fight choice was asked to {action}", 2);
 
@@ -1807,9 +1828,7 @@ internal static class RecordedFightRun
         // there is no entry to read one from. A refusal that cannot name whose recording
         // it was still has to be shown, so it falls back to this mod's own name for the
         // one sentence that needs a possessive.
-        var credit = _entry is { } entry
-            ? RecordingIdentity.Credit(entry.Manifest)
-            : RecordingCredit.Named(TrainerCopy.Name);
+        var credit = _credit ?? RecordingCredit.Named(TrainerCopy.Name);
 
         try
         {
@@ -1920,6 +1939,7 @@ internal static class RecordedFightRun
         var entry = _entry;
         var observer = _observer;
         _entry = null;
+        _credit = null;
         _observer = null;
         _afterTheFight = null;
         _progressRunId = null;
@@ -2104,13 +2124,17 @@ internal static class RecordedFightRun
     /// A fight that has ended, apart from the run that fought it. See
     /// <see cref="_afterTheFight"/>.
     /// </summary>
-    private sealed class EndedFight(ReplayManifest manifest, IBoundaryPlan plan, int fight, FightResultScreen screen)
+    private sealed class EndedFight(
+        ReplayManifest manifest, IBoundaryPlan plan, int fight, RecordingCredit credit,
+        FightResultScreen screen)
     {
         internal ReplayManifest Manifest { get; } = manifest;
 
         internal IBoundaryPlan Plan { get; } = plan;
 
         internal int Fight { get; } = fight;
+
+        internal RecordingCredit Credit { get; } = credit;
 
         internal FightResultScreen Screen { get; } = screen;
     }
