@@ -1,7 +1,7 @@
 namespace Godot;
 
 // CanvasItem
-public class CanvasItem : Node
+public partial class CanvasItem : Node
 {
     public Color Modulate { get; set; } = Color.White;
     public Color SelfModulate { get; set; } = Color.White;

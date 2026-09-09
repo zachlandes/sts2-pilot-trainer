@@ -661,7 +661,7 @@ internal static class LibraryScreen
             return null;
         }
 
-        var button = Duplicate(content, content.NoButton, name);
+        var button = Duplicate(content, content.NoButton, name, width);
         if (button is null) return null;
 
         button.Position = at;
@@ -919,7 +919,7 @@ internal static class LibraryScreen
     /// every row on the screen.
     /// </summary>
     internal static NPopupYesNoButton? Duplicate(
-        NVerticalPopup content, NPopupYesNoButton prototype, string name)
+        NVerticalPopup content, NPopupYesNoButton prototype, string name, float? ribbonWidth = null)
     {
         const int duplicateFlags =
             (int)(Node.DuplicateFlags.Groups | Node.DuplicateFlags.Scripts |
@@ -927,6 +927,8 @@ internal static class LibraryScreen
         if (prototype.Duplicate(duplicateFlags) is not NPopupYesNoButton button) return null;
 
         button.Name = name;
+        // The retail button caches its visual nodes and materials in _Ready
+        if (ribbonWidth is { } width) LibraryRibbonArt.ReplaceTextures(button, width);
         content.AddChild(button);
         button.DisconnectHotkeys();
         button.FocusMode = Control.FocusModeEnum.All;

@@ -27,7 +27,7 @@ public class BackBufferCopy : Node2D { }
 public class CanvasGroup : Node2D { }
 public class CanvasItemMaterial : Material { }
 
-public class NinePatchRect : Control
+public partial class NinePatchRect : Control
 {
     public Texture2D? Texture { get; set; }
 }
