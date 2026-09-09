@@ -105,7 +105,7 @@ internal static class MyRunsSettings
                 "This build's modding settings button has no parent carrying its row label.");
         var row = entry.GetChildren()
             .Where(child => !ReferenceEquals(child, anchor))
-            .Select(GameText.Under)
+            .Select(GameText.Of)
             .OfType<GameTextStyle>()
             .FirstOrDefault();
         if (row == default)
@@ -116,7 +116,7 @@ internal static class MyRunsSettings
 
         return new MyRunsSettingsText(
             row,
-            GameText.RequireUnder(anchor, "settings button label"));
+            GameText.Require(anchor.GetNodeOrNull<Control>("%Label"), "settings button label"));
     }
 
     internal static MyRunsSettingsRow Attach(Control anchor, MyRunsSettingsText text)

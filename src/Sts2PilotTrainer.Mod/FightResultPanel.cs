@@ -4,6 +4,12 @@ using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
+internal sealed record FightResultText(
+    GameTextStyle Heading,
+    GameTextStyle Body,
+    GameTextStyle Figure,
+    GameTextStyle Button);
+
 /// <summary>
 /// The player's fight beside the recording's, drawn.
 ///
@@ -97,11 +103,10 @@ internal static class FightResultPanel
     /// <param name="viewport">The size of the surface it is drawn over.</param>
     /// <param name="art">The game's artwork for a model id, or null where a build has
     /// none. Injected so the panel assembles in a process with no model database.</param>
-    /// <param name="text">The native text style copied from the fight-result screen.
-    /// The whole layout is scaled with it.</param>
+    /// <param name="text">The native heading, body, figure, and button styles.</param>
     /// <param name="done">What the one button does.</param>
     internal static FightResultPanelNodes Build(
-        FightResultScreen screen, Vector2 viewport, Func<string, Texture2D?> art, GameTextStyle text, Action done)
+        FightResultScreen screen, Vector2 viewport, Func<string, Texture2D?> art, FightResultText text, Action done)
     {
         var painter = new Painter(art, text);
         var u = painter.Unit;
@@ -193,21 +198,22 @@ internal static class FightResultPanel
     /// Everything that needs the font and the artwork to draw, in one place so that
     /// neither has to be threaded through every helper.
     /// </summary>
-    private sealed class Painter(Func<string, Texture2D?> art, GameTextStyle text)
+    private sealed class Painter(Func<string, Texture2D?> art, FightResultText text)
     {
         /// <summary>How much larger the game draws its text than this panel's
         /// measurements assumed. Every box here is multiplied by it, so the panel keeps
         /// its proportions and grows around its words.</summary>
-        internal float Unit { get; } = text.Size / ReferenceTextSize;
+        internal float Unit { get; } = text.Body.Size / ReferenceTextSize;
 
-        /// <summary>The native style copied from the fight-result screen.</summary>
-        internal GameTextStyle Title { get; } = text;
+        internal GameTextStyle Title { get; } = text.Heading;
 
-        internal GameTextStyle Figure { get; } = text;
+        internal GameTextStyle Figure { get; } = text.Figure;
 
-        internal GameTextStyle Label { get; } = text;
+        internal GameTextStyle Label { get; } = text.Body;
 
-        internal GameTextStyle Small { get; } = text;
+        internal GameTextStyle Small { get; } = text.Body;
+
+        internal GameTextStyle Button { get; } = text.Button;
 
         /// <summary>
         /// The summary: the two lines named once, then the compared figures under
@@ -558,7 +564,7 @@ internal static class FightResultPanel
             button.AddThemeColorOverride("font_color", PanelFill);
             button.AddThemeColorOverride("font_hover_color", PanelFill);
             button.AddThemeColorOverride("font_pressed_color", PanelFill);
-            Figure.ApplyTo(button);
+            Button.ApplyTo(button);
             button.Pressed += () => done();
             return button;
         }
@@ -615,7 +621,7 @@ internal static class FightResultPanel
                 MouseFilter = Control.MouseFilterEnum.Ignore,
             };
 
-            // Both the font and the size come from the native fight-result screen.
+            // Both the font and the size come from this element's native role.
             style.ApplyTo(label);
             label.AddThemeColorOverride("font_color", color);
             return label;

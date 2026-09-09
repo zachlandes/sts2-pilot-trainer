@@ -103,7 +103,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         rowLabel.AddThemeFontOverride("font", new Font());
         rowLabel.AddThemeFontSizeOverride("font_size", 24);
         var button = new Control();
-        var buttonLabel = new Label();
+        var buttonLabel = new Label { Name = "%Label" };
         buttonLabel.AddThemeFontOverride("font", new Font());
         buttonLabel.AddThemeFontSizeOverride("font_size", 18);
         entry.AddChild(rowLabel);

@@ -6,6 +6,14 @@ using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
+internal sealed record PlaybackTransportText(
+    GameTextStyle Identity,
+    GameTextStyle Supporting,
+    GameTextStyle Counter,
+    GameTextStyle MenuRow,
+    GameTextStyle TooltipTitle,
+    GameTextStyle TooltipBody);
+
 /// <summary>
 /// Where the transport lives inside the running client, and for how long.
 ///
@@ -72,8 +80,7 @@ internal static class PlaybackTransportDock
             state,
             globalUi.GetViewportRect().Size,
             Anchor(globalUi),
-            // The top bar's own text, which is the game furniture the tag hangs under.
-            GameText.RequireUnder(globalUi, "run top bar"),
+            TextOf(globalUi),
             back,
             play,
             step,
@@ -115,6 +122,36 @@ internal static class PlaybackTransportDock
             Log.Error(
                 $"[{RunmobileMod.ModId}] could not remove the transport: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    private static PlaybackTransportText TextOf(NGlobalUi globalUi)
+    {
+        var topBar = globalUi.TopBar;
+        var identity = GameText.Require(
+            topBar.Hp.GetNodeOrNull<Control>("%HpLabel"), "top-bar health numeral");
+        var supporting = GameText.Require(
+            topBar.Timer.GetNodeOrNull<Control>("TimerLabel"), "run timer label");
+        var counter = GameText.Require(
+            topBar.Deck.GetNodeOrNull<Control>("DeckCardCount"), "top-bar deck counter");
+
+        var tooltip = ResourceLoader.Load<PackedScene>("res://scenes/ui/hover_tip.tscn")
+            ?.Instantiate<Control>()
+            ?? throw new InvalidOperationException(
+                "This build has no native hover-tip scene to style the transport's tooltips.");
+        try
+        {
+            return new PlaybackTransportText(
+                identity,
+                supporting,
+                counter,
+                identity,
+                GameText.Require(tooltip.GetNodeOrNull<Control>("%Title"), "hover-tip title"),
+                GameText.Require(tooltip.GetNodeOrNull<Control>("%Description"), "hover-tip body"));
+        }
+        finally
+        {
+            tooltip.QueueFree();
         }
     }
 

@@ -167,7 +167,6 @@ internal static class LibraryScreen
     /// scene was designed to, because the floor is set before any text is put in it. A
     /// body nobody can read is not a list, and the floor is now the game's own size
     /// rather than a number of ours.</summary>
-    private const float MinimumBodyShare = 0.8f;
 
     /// <summary>How far apart rows sit, as a multiple of a row's own measured
     /// height.</summary>
@@ -224,7 +223,6 @@ internal static class LibraryScreen
             ExpandForLibrary(content);
             var label = content.BodyLabel();
             label.BbcodeEnabled = true;
-            label.MinFontSize = (int)Math.Round(content.BodyText().Size * MinimumBodyShare);
             label.ScrollActive = true;
             content.SetText(page.Title, page.Body ?? string.Empty);
             ReservePageRoom(content, page);

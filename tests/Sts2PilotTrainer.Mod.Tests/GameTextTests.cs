@@ -35,22 +35,9 @@ public sealed class GameTextTests
     }
 
     [Fact]
-    public void OnePieceOfFurnitureAnswersTheRoleInsideIt()
-    {
-        var furniture = new Control();
-        furniture.AddChild(Native(19));
-
-        Assert.Equal(19, GameText.Under(furniture)?.Size);
-    }
-
-    [Fact]
     public void MissingNativeTextHasNoSubstitute()
     {
-        var furniture = new Control();
-        furniture.AddChild(new Label { Text = "ours" });
-
-        Assert.Null(GameText.Under(furniture));
-        Assert.Throws<InvalidOperationException>(() => GameText.RequireUnder(furniture, "test row"));
+        Assert.Throws<InvalidOperationException>(() => GameText.Require(new Label(), "test row"));
     }
 
     [Fact]

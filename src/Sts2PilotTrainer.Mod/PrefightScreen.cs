@@ -1,6 +1,7 @@
 using Godot;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Logging;
+using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Multiplayer;
 using Sts2PilotTrainer.Trainer;
@@ -103,6 +104,7 @@ internal static class PrefightScreen
     /// </summary>
     internal static void ShowResult(FightResultScreen screen, Action done)
     {
+        var text = ResultText(screen.HasComparison);
         Close();
 
         try
@@ -114,7 +116,7 @@ internal static class PrefightScreen
                 screen,
                 container.GetViewportRect().Size,
                 ModelArt.Of,
-                GameText.RequireUnder(container, "fight result screen"),
+                text,
                 done);
 
             container.AddChild(panel.Root);
@@ -132,6 +134,33 @@ internal static class PrefightScreen
             throw new InvalidOperationException(
                 $"The result panel could not be shown: {ex.GetType().Name}: {ex.Message}", ex);
         }
+    }
+
+    private static FightResultText ResultText(bool hasComparison)
+    {
+        var content = _open?.GetNodeOrNull<NVerticalPopup>(VerticalPopupPath);
+        if (content is null)
+        {
+            var popup = NGenericPopup.Create()
+                ?? throw new InvalidOperationException("This process has no native popup text to copy.");
+            var container = NModalContainer.Instance
+                ?? throw new InvalidOperationException("This process has no modal container.");
+            container.Add(popup, showBackstop: false);
+            _open = popup;
+            content = popup.GetNode<NVerticalPopup>(VerticalPopupPath);
+        }
+
+        var body = content.BodyText();
+        var figure = hasComparison
+            ? GameText.Require(
+                NRun.Instance?.GlobalUi.TopBar.Deck.GetNodeOrNull<Control>("DeckCardCount"),
+                "top-bar deck counter")
+            : body;
+        return new FightResultText(
+            content.HeaderText(),
+            body,
+            figure,
+            content.ButtonText());
     }
 
     internal static void Close()

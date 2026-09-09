@@ -183,6 +183,22 @@ public sealed class FightResultPanelTests
     }
 
     [Fact]
+    public void EachPanelRoleKeepsItsNativeStyle()
+    {
+        var panel = FightResultPanel.Build(
+            Panel(Comparison()), Surface, _ => null, Text(28, 17, 22, 19), () => { });
+
+        Assert.Equal(28, Find<Label>(panel.Root, "Title").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(
+            17,
+            Find<Label>(panel.Root, "Figure.Health at the end").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(
+            22,
+            Find<Label>(panel.Root, "Figure.Health at the end.Yours").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(19, panel.Done.GetThemeFontSize("font_size", "Button"));
+    }
+
+    [Fact]
     public void AFightWithNoComparisonIsTheNoticeAndTheButton()
     {
         var panel = Build(FightResultScreen.Left());
@@ -221,7 +237,7 @@ public sealed class FightResultPanelTests
     {
         var left = 0;
         var nodes = FightResultPanel.Build(
-            Panel(Comparison()), Surface, _ => null, new GameTextStyle(null, 16), done: () => left++);
+            Panel(Comparison()), Surface, _ => null, Text(), done: () => left++);
 
         Assert.Single(Descendants(nodes.Root).OfType<Button>());
         Assert.Same(nodes.Done, Descendants(nodes.Root).OfType<Button>().Single());
@@ -254,7 +270,7 @@ public sealed class FightResultPanelTests
                  select (screen, text))
         {
             var root = FightResultPanel.Build(
-                Panel(Comparison()), surface, _ => null, new GameTextStyle(null, size), () => { }).Root;
+                Panel(Comparison()), surface, _ => null, Text(size, size, size, size), () => { }).Root;
             var panel = Find<ColorRect>(root, "Panel");
 
             Assert.Equal(surface, root.Size);
@@ -282,7 +298,18 @@ public sealed class FightResultPanelTests
 
     private static Control Build(FightResultScreen screen, Func<string, Texture2D?>? art = null) =>
         FightResultPanel.Build(
-            screen, Surface, art ?? (_ => null), new GameTextStyle(null, 16), done: () => { }).Root;
+            screen, Surface, art ?? (_ => null), Text(), done: () => { }).Root;
+
+    private static FightResultText Text(
+        int heading = 24,
+        int body = 16,
+        int figure = 20,
+        int button = 18) =>
+        new(
+            new GameTextStyle(null, heading),
+            new GameTextStyle(null, body),
+            new GameTextStyle(null, figure),
+            new GameTextStyle(null, button));
 
     private static FightResultScreen Panel(CombatComparison comparison) =>
         FightResultScreen.For("NaveGreed", comparison);

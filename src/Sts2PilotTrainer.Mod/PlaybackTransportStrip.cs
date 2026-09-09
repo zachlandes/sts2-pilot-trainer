@@ -131,7 +131,7 @@ internal sealed class PlaybackTransportStrip
     private readonly Label _tipTitle;
     private readonly Label _tipBody;
     /// <summary>The native text style copied from the run's top bar.</summary>
-    private readonly GameTextStyle _text;
+    private readonly PlaybackTransportText _text;
 
     private Vector2 _viewport;
     private Vector2 _anchor;
@@ -179,7 +179,7 @@ internal sealed class PlaybackTransportStrip
 
     private Func<string>? _tipBodySource;
 
-    private PlaybackTransportStrip(Nodes nodes, Vector2 viewport, Vector2 anchor, GameTextStyle text)
+    private PlaybackTransportStrip(Nodes nodes, Vector2 viewport, Vector2 anchor, PlaybackTransportText text)
     {
         _root = nodes.Root;
         _plateFill = nodes.PlateFill;
@@ -253,7 +253,7 @@ internal sealed class PlaybackTransportStrip
     /// game's and this class draws in a process that may have none.</param>
     /// <param name="text">The native style copied from the run's top bar.</param>
     internal static PlaybackTransportStrip Build(
-        PlaybackTransport state, Vector2 viewport, Vector2 anchor, GameTextStyle text,
+        PlaybackTransport state, Vector2 viewport, Vector2 anchor, PlaybackTransportText text,
         Action back, Action play, Action step, Action speed, Action identity)
     {
         var root = new Control
@@ -268,7 +268,6 @@ internal sealed class PlaybackTransportStrip
         };
 
         var unit = Unit(text, viewport);
-        var note = text;
         var nodes = new Nodes
         {
             Root = root,
@@ -279,9 +278,9 @@ internal sealed class PlaybackTransportStrip
             PinLeft = Add(root, new Polygon2D { Name = "PinLeft", Color = Gold }),
             PinRight = Add(root, new Polygon2D { Name = "PinRight", Color = Gold }),
             Mark = Add(root, new Control { Name = "Mark", MouseFilter = Control.MouseFilterEnum.Ignore }),
-            Creator = Add(root, Text("Creator", text, Cream)),
-            Title = Add(root, Text("VideoTitle", text, Muted)),
-            Numerals = Add(root, Text("Counter", note, Muted)),
+            Creator = Add(root, Text("Creator", text.Identity, Cream)),
+            Title = Add(root, Text("VideoTitle", text.Supporting, Muted)),
+            Numerals = Add(root, Text("Counter", text.Counter, Muted)),
             Pips = Add(root, new Control { Name = "Pips", MouseFilter = Control.MouseFilterEnum.Ignore }),
             HoldTrack = Add(root, Stroke("HoldTrack", HoldTrack, 2.4f * unit)),
             HoldFill = Add(root, Stroke("Hold", Teal, 2.4f * unit)),
@@ -295,13 +294,13 @@ internal sealed class PlaybackTransportStrip
             Name = "NotePlate",
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
-        nodes.NoteText = Add(nodes.Note, Wrapping(Text("NoteText", note, Muted)));
+        nodes.NoteText = Add(nodes.Note, Wrapping(Text("NoteText", text.Supporting, Muted)));
 
-        nodes.Speed = Add(root, Pressable("Speed", text, speed));
-        nodes.SpeedLabel = Add(nodes.Speed, Text("SpeedLabel", note, Muted));
-        nodes.Back = Add(root, Pressable("Back", text, back));
-        nodes.Play = Add(root, Pressable("Play", text, play));
-        nodes.Step = Add(root, Pressable("Step", text, step));
+        nodes.Speed = Add(root, Pressable("Speed", text.Counter, speed));
+        nodes.SpeedLabel = Add(nodes.Speed, Text("SpeedLabel", text.Counter, Muted));
+        nodes.Back = Add(root, Pressable("Back", text.Counter, back));
+        nodes.Play = Add(root, Pressable("Play", text.Counter, play));
+        nodes.Step = Add(root, Pressable("Step", text.Counter, step));
 
         nodes.Tip = Add(root, Plated("Tooltip"));
 
@@ -312,8 +311,8 @@ internal sealed class PlaybackTransportStrip
             Name = "TooltipPlate",
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
-        nodes.TipTitle = Add(nodes.Tip, Text("TooltipTitle", note, Cream));
-        nodes.TipBody = Add(nodes.Tip, Wrapping(Text("TooltipBody", note, TipBody)));
+        nodes.TipTitle = Add(nodes.Tip, Text("TooltipTitle", text.TooltipTitle, Cream));
+        nodes.TipBody = Add(nodes.Tip, Wrapping(Text("TooltipBody", text.TooltipBody, TipBody)));
 
         var strip = new PlaybackTransportStrip(nodes, viewport, anchor, text);
 
@@ -583,7 +582,8 @@ internal sealed class PlaybackTransportStrip
         // what cut the sentence off after "what was cho" in the client.
         var inset = 12 * _unit;
         var textWidth = width - (2 * inset);
-        var noteHeight = WrappedHeight(state.Note, _text.Size, textWidth, fallbackLines: 2) + (16 * _unit);
+        var noteHeight = WrappedHeight(
+            state.Note, _text.Supporting, textWidth, fallbackLines: 2) + (16 * _unit);
 
         var noteTop = top + height + (6 * _unit);
         _hangingBottom = noteTop + noteHeight;
@@ -665,7 +665,7 @@ internal sealed class PlaybackTransportStrip
                 _ledger.AddChild(picture);
             }
 
-            var label = Text($"Ledger{row.Number}", _text, colour);
+            var label = Text($"Ledger{row.Number}", _text.MenuRow, colour);
             label.Text = row.Label;
             Place(label, 62 * _unit, rowTop, width - (86 * _unit), rowHeight);
             _ledger.AddChild(label);
@@ -730,13 +730,13 @@ internal sealed class PlaybackTransportStrip
                 _menu.AddChild(art);
             }
 
-            var button = Pressable($"MenuRow{index}", _text, () => Choose(chosen));
+            var button = Pressable($"MenuRow{index}", _text.MenuRow, () => Choose(chosen));
             button.Flat = true;
             button.Disabled = !row.Enabled;
             Place(button, 0, rowTop, menuWidth, rowHeight);
             _menu.AddChild(button);
 
-            var label = Text($"MenuRow{index}.Label", _text, colour);
+            var label = Text($"MenuRow{index}.Label", _text.MenuRow, colour);
             label.Text = row.Label;
             Place(label, 40 * _unit, rowTop, menuWidth - (56 * _unit), rowHeight);
             _menu.AddChild(label);
@@ -1092,7 +1092,8 @@ internal sealed class PlaybackTransportStrip
         var width = 250 * _unit;
         var inset = 12 * _unit;
         var bodyTop = 24 * _unit;
-        var bodyHeight = WrappedHeight(body, _text.Size, width - (2 * inset), fallbackLines: 2);
+        var bodyHeight = WrappedHeight(
+            body, _text.TooltipBody, width - (2 * inset), fallbackLines: 2);
         var height = bodyTop + bodyHeight + (8 * _unit);
 
         // Below the control and pulled back on screen, never over the tag itself:
@@ -1170,8 +1171,18 @@ internal sealed class PlaybackTransportStrip
     /// tag in proportion, because a tag that grew its words and not its boxes is a tag
     /// with the words outside it.
     /// </summary>
-    private static float Unit(GameTextStyle text, Vector2 viewport) =>
-        Math.Max(text.Size / ReferenceTextSize, viewport.Y / ReferenceHeight);
+    private static float Unit(PlaybackTransportText text, Vector2 viewport) =>
+        Math.Max(
+            new[]
+            {
+                text.Identity.Size,
+                text.Supporting.Size,
+                text.Counter.Size,
+                text.MenuRow.Size,
+                text.TooltipTitle.Size,
+                text.TooltipBody.Size,
+            }.Max() / ReferenceTextSize,
+            viewport.Y / ReferenceHeight);
 
     private static Button Pressable(string name, GameTextStyle text, Action pressed)
     {
@@ -1254,15 +1265,16 @@ internal sealed class PlaybackTransportStrip
     /// with no font, which is every test here and nothing in the client, the caller's
     /// own line count stands.
     /// </summary>
-    private float WrappedHeight(string text, int fontSize, float width, int fallbackLines)
+    private static float WrappedHeight(
+        string text, GameTextStyle style, float width, int fallbackLines)
     {
-        if (_text.Font is not { } font) return fallbackLines * LineHeight * fontSize;
+        if (style.Font is not { } font) return fallbackLines * LineHeight * style.Size;
 
         return font.GetMultilineStringSize(
             text,
             HorizontalAlignment.Left,
             width,
-            fontSize,
+            style.Size,
             maxLines: -1,
             brkFlags: TextServer.LineBreakFlag.Mandatory | TextServer.LineBreakFlag.WordBound).Y;
     }

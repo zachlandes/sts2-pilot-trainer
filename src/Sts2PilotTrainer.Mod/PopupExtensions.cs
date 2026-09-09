@@ -7,10 +7,12 @@ namespace Sts2PilotTrainer.Mod;
 internal static class PopupExtensions
 {
     /// <summary>Reads the popup's native heading label.</summary>
-    internal static MegaLabel HeaderLabel(this NVerticalPopup popup) => popup.Header;
+    internal static MegaLabel HeaderLabel(this NVerticalPopup popup) =>
+        popup.GetNode<MegaLabel>("Header");
 
     /// <summary>Reads the popup's native body label.</summary>
-    internal static MegaRichTextLabel BodyLabel(this NVerticalPopup popup) => popup.Description;
+    internal static MegaRichTextLabel BodyLabel(this NVerticalPopup popup) =>
+        popup.GetNode<MegaRichTextLabel>("Description");
 
     /// <summary>What the game draws this popup's heading in.</summary>
     internal static GameTextStyle HeaderText(this NVerticalPopup popup) =>
@@ -22,5 +24,5 @@ internal static class PopupExtensions
 
     /// <summary>What the game draws this popup's ribbon labels in.</summary>
     internal static GameTextStyle ButtonText(this NVerticalPopup popup) =>
-        GameText.RequireUnder(popup.NoButton.GetNodeOrNull<Control>("%Label"), "popup button label");
+        GameText.Require(popup.NoButton.GetNodeOrNull<Control>("%Label"), "popup button label");
 }

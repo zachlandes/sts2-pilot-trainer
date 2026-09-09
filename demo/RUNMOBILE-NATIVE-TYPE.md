@@ -38,5 +38,6 @@ The strip's floor numerals and the counts under card tiles use the popup descrip
 
 ## What this run did not cover
 
-The playback tag and the fight result panel take their size from what the screen behind them draws ordinary text at, and neither was exercised here: both need a recorded fight walked in the client, which this session did not have the retail copy long enough to do.
+The playback tag copies the top bar's health, timer and deck-counter roles plus the game's native hover-tip roles, and the fight result panel copies the native post-fight popup's heading, body and button roles plus the top-bar deck counter for figures.
+Neither was exercised here: both need a recorded fight walked in the client, which this session did not have the retail copy long enough to do.
 Their headless containment is asserted across three surfaces and three text sizes by `FightResultPanelTests.FitsInsideTheSurfaceItIsGiven` and `PlaybackTransportStripTests.TheTagIsDrawnAtTheGamesOwnSizeAndGrowsWithIt`, which is a weaker claim than a capture and is stated as such.

@@ -605,14 +605,27 @@ public sealed class PlaybackTransportStripTests
         Assert.Equal(tagRight, chip.Max(point => point.X), 1);
     }
 
-    /// <summary>
-    /// The tag is drawn at the game's own text size, and grows with it.
-    ///
-    /// Both halves matter. The words are the game's, so a client drawing larger text
-    /// gets larger words; and the tag was measured around text of one size, so it grows
-    /// with them rather than keeping the design's boxes and letting the identity block
-    /// spill out of its own plate.
-    /// </summary>
+    [Fact]
+    public void EachTransportRoleKeepsItsNativeStyle()
+    {
+        var strip = PlaybackTransportStrip.Build(
+            Revealing(MapMove, 2, noteShown: true),
+            Surface,
+            Anchor,
+            Text(21, 13, 18, 16, 24, 14),
+            back: () => { },
+            play: () => { },
+            step: () => { },
+            speed: () => { },
+            identity: () => { });
+
+        Assert.Equal(21, Label(strip, "Creator").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(13, Label(strip, "VideoTitle").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(18, Label(strip, "Counter").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(24, Label(strip, "TooltipTitle").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(14, Label(strip, "TooltipBody").GetThemeFontSize("font_size", "Label"));
+    }
+
     [Fact]
     public void TheTagIsDrawnAtTheGamesOwnSizeAndGrowsWithIt()
     {
@@ -635,7 +648,7 @@ public sealed class PlaybackTransportStripTests
 
     private static PlaybackTransportStrip BuildAt(PlaybackTransport state, int size) =>
         PlaybackTransportStrip.Build(
-            state, Surface, Anchor, new GameTextStyle(null, size),
+            state, Surface, Anchor, Text(size, size - 2, size + 2, size, size + 4, size - 2),
             back: () => { }, play: () => { }, step: () => { }, speed: () => { }, identity: () => { });
 
     /// <summary>The pips are a picture of the journey, and they stop being drawn when
@@ -1132,8 +1145,23 @@ public sealed class PlaybackTransportStripTests
 
     private static PlaybackTransportStrip Build(PlaybackTransport state) =>
         PlaybackTransportStrip.Build(
-            state, Surface, Anchor, new GameTextStyle(null, 16),
+            state, Surface, Anchor, Text(),
             back: () => { }, play: () => { }, step: () => { }, speed: () => { }, identity: () => { });
+
+    private static PlaybackTransportText Text(
+        int identity = 16,
+        int supporting = 14,
+        int counter = 18,
+        int menuRow = 16,
+        int tooltipTitle = 20,
+        int tooltipBody = 14) =>
+        new(
+            new GameTextStyle(null, identity),
+            new GameTextStyle(null, supporting),
+            new GameTextStyle(null, counter),
+            new GameTextStyle(null, menuRow),
+            new GameTextStyle(null, tooltipTitle),
+            new GameTextStyle(null, tooltipBody));
 
     private static Label Label(PlaybackTransportStrip strip, string name) => Find<Label>(strip.Root, name);
 

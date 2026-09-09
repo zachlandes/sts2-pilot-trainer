@@ -160,7 +160,9 @@ This began as `RecorderPresenceRow` copying the MODDED label so its row would re
 **Which element is a judgement made per element.**
 The settings row copies the native settings row label for its text and the native settings button label for its controls.
 A popup heading copies `NVerticalPopup.Header`, body and supporting copy `NVerticalPopup.Description`, and controls copy the label under the popup's own ribbon button.
-The run-history plate copies a row from the run-history pane, the transport copies the run top bar, and the result panel copies the fight-result screen it covers.
+The run-history plate copies the run-history screen's own row style.
+The transport copies health, timer, deck-counter, and native hover-tip roles from the top-bar band it hangs under.
+The result panel copies heading, body, and button roles from the native post-fight popup before it is cleared, and its figures copy the surviving top-bar deck counter.
 Missing native furniture refuses the surface rather than substituting Godot's default or synthesizing a related size.
 
 **A surface whose boxes were measured around its own text scales with the native reading.**
