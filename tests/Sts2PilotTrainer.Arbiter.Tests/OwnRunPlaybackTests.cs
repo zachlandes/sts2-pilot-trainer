@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
 
@@ -22,6 +23,12 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// meant to be edited as the walk is built: a floor between fights moves from
 /// <c>Unreachable</c> to <c>RestoreThenWalk</c> the day the client can walk a fight,
 /// and that edit is the evidence.
+///
+/// <para>The committed copies are migrated; the files in a player's store are what
+/// the recorder wrote. The first retail proof of the restore route found the
+/// difference the hard way - the library offered the version-5 file and the entry
+/// refused it - so the same offer is driven from the recorder's own form too, rebuilt
+/// from the committed copy by undoing exactly what the migration adds.</para>
 /// </summary>
 public sealed class OwnRunPlaybackTests
 {
@@ -35,6 +42,35 @@ public sealed class OwnRunPlaybackTests
 
     private static ReplayManifest Load(string fileName) => ManifestJson.Deserialize(File.ReadAllText(ManifestPath(fileName)));
 
+    /// <summary>
+    /// The recording as its version-5 recorder wrote it, rebuilt from the committed
+    /// migrated copy: the version it stated, no integrity, no migration note, and none
+    /// of the arrival checkpoints the derivation added - a derived one is the inferred
+    /// checkpoint of that kind, and a recorder's own would be captured.
+    /// </summary>
+    private static string RecordersOwnWrite(string fileName)
+    {
+        var document = JsonNode.Parse(File.ReadAllText(ManifestPath(fileName)))!.AsObject();
+        var native = document["source"]!["native"]!.AsObject();
+        Assert.Equal(ManifestJson.PreviousManifestVersion, native["migrated_from_version"]!.GetValue<int>());
+        document["manifest_version"] = ManifestJson.PreviousManifestVersion;
+        native.Remove("integrity");
+        native.Remove("migrated_from_version");
+
+        var checkpoints = document["checkpoints"]!.AsArray();
+        var derived = checkpoints
+            .Where(checkpoint =>
+                checkpoint!["kind"]!.GetValue<string>() == FloorArrival.CheckpointKind &&
+                checkpoint["expect"]!.AsObject().All(field => field.Value!["Source"]!.GetValue<string>() == "Inferred"))
+            .ToList();
+        Assert.NotEmpty(derived);
+        foreach (var checkpoint in derived) checkpoints.Remove(checkpoint);
+
+        var path = Path.Combine(Scratch(Path.Combine(Path.GetFileNameWithoutExtension(fileName), "recorder-wrote")), fileName);
+        File.WriteAllText(path, document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
+        return path;
+    }
+
     /// <summary>The plan the browser builds for a row: a fight's where the position holds
     /// one, else the floor's. The same rule as <c>RunBrowserScreen.Enter</c>.</summary>
     private static IBoundaryPlan PlanFor(ReplayManifest recording, RunViewPosition position) =>
@@ -45,6 +81,65 @@ public sealed class OwnRunPlaybackTests
         var path = Path.Combine(Arbiter.RepoRoot, "build", "test-scratch", "own-run-playback", name);
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    /// <summary>
+    /// The recorder's own write of the run reads as the committed copy: the same
+    /// checkpoints, the same rows offered, the same route to each, and a manifest the
+    /// validator passes. This is the half of the tripwire that needs no game, and it is
+    /// the half that was missing when the library offered a file the entry refused.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Recordings))]
+    public void TheRecordersOwnWriteOffersWhatTheCommittedCopyOffers(string fileName)
+    {
+        var committed = Load(fileName);
+        var written = ManifestJson.Load(RecordersOwnWrite(fileName));
+
+        var validation = ManifestValidator.Validate(written);
+        Assert.True(validation.IsValid, validation.Describe());
+        Assert.Equal(ManifestJson.Serialize(committed), ManifestJson.Serialize(written));
+
+        var expected = RunView.PositionsIn(committed).Select(position => (position.Floor, position.Fight, position.Playable, Route: RetailPlayback.RouteTo(committed, position.AfterSeq).ToString()));
+        var actual = RunView.PositionsIn(written).Select(position => (position.Floor, position.Fight, position.Playable, Route: RetailPlayback.RouteTo(written, position.AfterSeq).ToString()));
+        Assert.Equal(expected, actual);
+        Assert.Contains(RunView.PositionsIn(written), position => position.Playable && position.Fight is > 1);
+    }
+
+    /// <summary>
+    /// The recorder's own write, driven to the engine's own entry by both routes the
+    /// client takes: the first fight walked and the first later fight restored from
+    /// the arrival that dealt it, each at the digest the file declares. One fight per
+    /// route rather than every fight, because the route tests below already cover
+    /// every fight on the migrated copy and the two files read as one manifest.
+    /// </summary>
+    [GameTheory]
+    [MemberData(nameof(Recordings))]
+    public void TheRecordersOwnWriteIsEnteredByWalkingAndByRestoring(string fileName)
+    {
+        var path = RecordersOwnWrite(fileName);
+        var scratch = Path.Combine(Path.GetFileNameWithoutExtension(fileName), "recorder-wrote");
+        var recording = ManifestJson.Load(path);
+        var offered = RunView.PositionsIn(recording).Where(position => position.Playable).ToList();
+        var walked = Assert.Single(offered, position => position.Fight == 1);
+        var restored = offered.First(position => RetailPlayback.RouteTo(recording, position.AfterSeq) is PlaybackRoute.Restore);
+
+        var walk = EnterFight(path, scratch, PlanFor(recording, walked), restore: false, cache: null, out var walkResult);
+        Assert.True(walkResult.Verified, walkResult.All);
+        Assert.Equal("replayed", walk.GetProperty("entry_route").GetString());
+        Assert.Equal(recording.CombatStartDigest(1), walk.GetProperty("this_game_digest").GetString());
+
+        var cache = Scratch(Path.Combine(scratch, "cache"));
+        var snapshot = Arbiter.Run(
+            "floor-snapshot", path, "--floor", restored.Floor.ToString(), "--cache", cache,
+            "--out", Scratch(Path.Combine(scratch, $"snap-{restored.Floor}")));
+        Assert.True(snapshot.ExitCode == 0, snapshot.All);
+
+        var restore = EnterFight(path, scratch, PlanFor(recording, restored), restore: true, cache: cache, out var restoreResult);
+        Assert.True(restoreResult.Verified, restoreResult.All);
+        Assert.Equal("restored", restore.GetProperty("entry_route").GetString());
+        Assert.Empty(restore.GetProperty("steps").EnumerateArray());
+        Assert.Equal(recording.CombatStartDigest(restored.Fight!.Value), restore.GetProperty("this_game_digest").GetString());
     }
 
     /// <summary>
@@ -63,7 +158,7 @@ public sealed class OwnRunPlaybackTests
         foreach (var position in offered)
         {
             var plan = PlanFor(recording, position);
-            var report = EnterFight(fileName, plan, restore: false, cache: null, out var result);
+            var report = EnterFight(ManifestPath(fileName), Path.GetFileNameWithoutExtension(fileName), plan, restore: false, cache: null, out var result);
 
             Assert.True(result.Verified, result.All);
             Assert.Equal("replayed", report.GetProperty("entry_route").GetString());
@@ -142,7 +237,7 @@ public sealed class OwnRunPlaybackTests
 
             var plan = PlanFor(recording, position);
             Assert.IsType<RecordedFightPlan>(plan);
-            var report = EnterFight(fileName, plan, restore: true, cache: cache, out var result);
+            var report = EnterFight(ManifestPath(fileName), Path.GetFileNameWithoutExtension(fileName), plan, restore: true, cache: cache, out var result);
 
             Assert.True(result.Verified, result.All);
             Assert.Equal("restored", report.GetProperty("entry_route").GetString());
@@ -221,11 +316,12 @@ public sealed class OwnRunPlaybackTests
         }
     }
 
-    private static JsonElement EnterFight(string fileName, IBoundaryPlan plan, bool restore, string? cache, out Arbiter.Result result)
+    /// <param name="scratch">Where under the test scratch this entry's evidence goes, so
+    /// the recorder's own form and the committed copy never share a report.</param>
+    private static JsonElement EnterFight(string manifestPath, string scratch, IBoundaryPlan plan, bool restore, string? cache, out Arbiter.Result result)
     {
-        var name = Path.GetFileNameWithoutExtension(fileName);
-        var outDir = Scratch(Path.Combine(name, $"{(restore ? "restore" : "walk")}-{plan.Kind}-{plan.Fight ?? plan.Floor}"));
-        var args = new List<string> { "enter-fight", ManifestPath(fileName), "--out", outDir };
+        var outDir = Scratch(Path.Combine(scratch, $"{(restore ? "restore" : "walk")}-{plan.Kind}-{plan.Fight ?? plan.Floor}"));
+        var args = new List<string> { "enter-fight", manifestPath, "--out", outDir };
         if (plan.Fight is { } fight) args.AddRange(["--fight", fight.ToString()]);
         else args.AddRange(["--floor", plan.Floor!.Value.ToString()]);
         if (restore) args.AddRange(["--restore", "--cache", cache!]);

@@ -75,7 +75,12 @@ public static class ManifestJson
     /// recorder had no unmapped stop and refused rather than stopping at anything it
     /// could not name; one it did state is kept as it was - and it declares that it
     /// was migrated from 5, which is what lets the validator waive the option keys no
-    /// version-5 recorder read. No action and no boundary is touched, so the history
+    /// version-5 recorder read. A native recording also gains, at every floor arrival
+    /// its boundaries declare, the checkpoint a version-5 recorder could not write: it
+    /// sampled no map coordinate, and the arrival is derived through
+    /// <see cref="FloorArrival"/> - the one owner of that derivation - from the map move
+    /// the boundary already names, marked inferred with its reasoning, exactly as the
+    /// validator re-derives it. No action and no boundary is touched, so the history
     /// hash and every captured digest stay exactly what they were.
     /// </summary>
     private static ReplayManifest MigrateFromVersion5(string json)
@@ -94,7 +99,7 @@ public static class ManifestJson
         var migrated = JsonSerializer.Deserialize<ReplayManifest>(node.ToJsonString(), Options)
             ?? throw new ManifestException("Manifest deserialized to null.");
         ValidateRequiredMembers(migrated, "Manifest");
-        return migrated;
+        return migrated.Source.Native is null ? migrated : FloorArrival.WithArrivalCheckpoints(migrated);
     }
 
     public static ReplayManifest Load(string path) => Deserialize(File.ReadAllText(path));
