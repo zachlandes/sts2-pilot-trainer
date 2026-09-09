@@ -1,6 +1,7 @@
 using Godot;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Logging;
+using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Multiplayer;
 using Sts2PilotTrainer.Trainer;
@@ -98,11 +99,13 @@ internal static class PrefightScreen
     /// Not the game's popup. The result is a panel of this mod's own, added into the
     /// game's modal container so that the container's own backstop dims and blocks
     /// the screen underneath and its Clear takes the panel away on every path that
-    /// already clears a popup. The font is read from the theme the container sits
-    /// under, so the words are in the game's own type rather than in Godot's default.
+    /// already clears a popup. The font and the size are read off the game's own labels
+    /// on the screen behind it, so the words are in the game's own type at the game's own
+    /// scale rather than in Godot's default.
     /// </summary>
     internal static void ShowResult(FightResultScreen screen, Action done)
     {
+        var text = ResultText();
         Close();
 
         try
@@ -114,7 +117,7 @@ internal static class PrefightScreen
                 screen,
                 container.GetViewportRect().Size,
                 ModelArt.Of,
-                GameFont.Of(container.GetTree()?.Root) ?? container.GetThemeFont(GameLabelFont, GameLabelThemeType),
+                text,
                 done);
 
             container.AddChild(panel.Root);
@@ -134,10 +137,18 @@ internal static class PrefightScreen
         }
     }
 
-    /// <summary>The theme entry the game's own labels take their font from.</summary>
-    private static readonly StringName GameLabelFont = "font";
-
-    private static readonly StringName GameLabelThemeType = "Label";
+    private static FightResultText ResultText() => new(
+        GameText.Scene(NativeTextRole.PopupHeading),
+        GameText.Scene(NativeTextRole.PopupBody),
+        GameText.Scene(NativeTextRole.ListHeading),
+        GameText.Scene(NativeTextRole.FigureLabel),
+        GameText.Scene(NativeTextRole.FigureValue),
+        GameText.Scene(NativeTextRole.SectionHeading),
+        GameText.Scene(NativeTextRole.ListNumeral),
+        GameText.Scene(NativeTextRole.Secondary),
+        GameText.Scene(NativeTextRole.ChartNumeral),
+        GameText.Scene(NativeTextRole.CardCaption),
+        GameText.Scene(NativeTextRole.ButtonCaption));
 
     internal static void Close()
     {

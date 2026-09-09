@@ -3,6 +3,13 @@ using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
+internal readonly record struct MyRunsSettingsText(
+    GameTextStyle Row,
+    GameTextStyle Numeral,
+    GameTextStyle Reading,
+    GameTextStyle Detail,
+    GameTextStyle Button);
+
 /// <summary>
 /// Runmobile's settings row, drawn: what the player keeps, what it takes on this
 /// computer, the way to take it back, whether the run index is fetched, and whether
@@ -67,28 +74,32 @@ internal sealed class MyRunsSettingsRow
     private static readonly Color DisabledEdge = Rgb(0x2e, 0x2a, 0x2c);
     private static readonly Color Dim = Rgb(0x6a, 0x62, 0x59);
 
-    // ── The layout, in the design's own reference units ─────────────────────
+    // ── The layout, as multiples of the text in it ──────────────────────────
+    //
+    // Every box here is a multiple of the settings screen's own text size rather than a
+    // number, so a native-role or game-build change moves the words and their boxes
+    // together. A row written in constants can keep the game's words while leaving the
+    // boxes around them at an obsolete size.
 
-    private const float LabelHeight = 22f;
-    private const float NoteHeight = 18f;
-    private const float RuleGap = 14f;
-    private const float StepSize = 24f;
-    private const float StepGap = 6f;
-    private const float NumeralWidth = 34f;
-    private const float RemoveWidth = 168f;
-    private const float RemovePad = 14f;
-    private const float RemoveHeight = 30f;
-    private const float FetchGap = 10f;
-    private const float FetchHeight = 30f;
-    private const float MainMenuGap = 6f;
-    private const float MainMenuHeight = 30f;
-
-    private const int LabelFontSize = 15;
-    private const int NoteFontSize = 12;
-    private const int NumeralFontSize = 15;
-    private const int RemoveFontSize = 13;
+    private const float LabelHeightRatio = 1.5f;
+    private const float NoteHeightRatio = 1.5f;
+    private const float RuleGapRatio = 0.95f;
+    private const float StepSizeRatio = 1.6f;
+    private const float StepGapRatio = 0.4f;
+    private const float NumeralWidthRatio = 2.3f;
+    private const float ButtonGlyphWidthRatio = 0.6f;
+    private const float ButtonPadRatio = 0.95f;
+    private const float RemoveHeightRatio = 2f;
+    private const float ControlGapRatio = 0.7f;
+    private const float FetchGapRatio = 0.7f;
+    private const float FetchHeightRatio = 2f;
+    private const float MainMenuGapRatio = 0.4f;
+    private const float MainMenuHeightRatio = 2f;
 
     private static readonly StringName FontColour = "font_color";
+
+    /// <summary>The native settings row and button styles this row copies.</summary>
+    private readonly MyRunsSettingsText _text;
 
     private readonly Control _root;
     private readonly Label _keepLabel;
@@ -125,6 +136,7 @@ internal sealed class MyRunsSettingsRow
     /// </summary>
     private int _keep;
     private bool _fetchIndex;
+    private float _layoutWidth;
 
     private MyRunsSettingsRow(Nodes nodes)
     {
@@ -142,6 +154,9 @@ internal sealed class MyRunsSettingsRow
         _row = nodes.Row;
         _keep = nodes.Keep;
         _fetchIndex = nodes.FetchRunIndex;
+        _text = nodes.Text;
+        _layoutWidth = _root.Size.X;
+        _root.Resized += OnRootResized;
     }
 
     internal Control Root => _root;
@@ -165,16 +180,60 @@ internal sealed class MyRunsSettingsRow
     internal MyRunsRow Row => _row;
 
     /// <summary>
+    /// Lays the row out again at a width that is known this time.
+    ///
+    /// Wanted because a settings screen has not been laid out when its <c>_Ready</c>
+    /// runs: every control still carries the size its scene was saved at, and the
+    /// column's real width arrives a frame later when the container sorts its children.
+    /// A row built from the first reading is built against a number that was never the
+    /// answer - which is how a row whose words are the game's own size came to clip them
+    /// mid-word, measured in the retail client.
+    ///
+    /// Nothing here re-derives what the row says. It is the same nodes, placed again.
+    /// </summary>
+    internal void Relayout(float width)
+    {
+        if (width <= 0f) return;
+
+        _layoutWidth = width;
+        // The height is a minimum and the width never is. A container gives a child at
+        // least its minimum, so a row that asked for a width would widen the game's own
+        // settings list to match - which it did, in the retail client, dragging every one
+        // of the game's rows out to the edge of the screen. The row asks for the room it
+        // needs downward and takes its width from what it was given.
+        _root.Size = new Vector2(width, HeightFor(_text));
+        _root.CustomMinimumSize = new Vector2(0f, HeightFor(_text));
+        Layout(width);
+    }
+
+    private void OnRootResized()
+    {
+        var width = _root.Size.X;
+        if (width <= 0f || width == _layoutWidth) return;
+        Relayout(width);
+    }
+
+    /// <summary>
     /// How tall the row is at the width it was built for. A section stacks what it
     /// hosts, so it has to be told.
     ///
-    /// The lower line is as tall as the taller of its two things rather than as tall as
-    /// both: the reading and its note are stacked, and the destructive control sits
-    /// beside them rather than under them.
+    /// The readings take the whole column, and each control gets its own row below
+    /// them so native-sized text never takes the readings' room.
     /// </summary>
-    internal static float Height =>
-        LabelHeight + RuleGap + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap + FetchHeight +
-        MainMenuGap + MainMenuHeight;
+    internal float Height => HeightFor(_text);
+
+    /// <inheritdoc cref="Height"/>
+    internal static float HeightFor(MyRunsSettingsText text)
+    {
+        var label = Math.Max(text.Row.Size, text.Numeral.Size) * LabelHeightRatio;
+        var reading = text.Reading.Size * LabelHeightRatio;
+        var note = text.Detail.Size * NoteHeightRatio;
+        var remove = text.Button.Size * RemoveHeightRatio;
+        return label + (text.Row.Size * RuleGapRatio) + reading + note +
+            (text.Row.Size * ControlGapRatio) + remove +
+            (text.Row.Size * FetchGapRatio) + (text.Button.Size * FetchHeightRatio) +
+            (text.Row.Size * MainMenuGapRatio) + (text.Button.Size * MainMenuHeightRatio);
+    }
 
     /// <summary>
     /// Assembles the row.
@@ -184,15 +243,14 @@ internal sealed class MyRunsSettingsRow
     /// which may be larger than anything a press would reach it at.</param>
     /// <param name="width">How wide the section is laying it out, in engine
     /// units.</param>
-    /// <param name="font">The font the game's own labels use, or null to leave the
-    /// theme's default in place.</param>
+    /// <param name="text">The native row and button styles from this settings screen.</param>
     /// <param name="keepChanged">What to do when the player moves the policy. The row
     /// reports and does not act: what a new policy means for the disk is the retention
     /// owner's, and the host re-derives and calls <see cref="Apply"/>.</param>
     /// <param name="removePressed">What to do when the player asks for every run to
     /// go. Same rule: this raises it, and does not remove anything itself.</param>
     internal static MyRunsSettingsRow Build(
-        MyRunsRow row, int keep, bool fetchRunIndex, float width, Font? font,
+        MyRunsRow row, int keep, bool fetchRunIndex, float width, MyRunsSettingsText text,
         Action<int> keepChanged, Action removePressed, Action<bool> fetchChanged,
         Action<bool> mainMenuChanged)
     {
@@ -202,12 +260,13 @@ internal sealed class MyRunsSettingsRow
         ArgumentNullException.ThrowIfNull(fetchChanged);
         ArgumentNullException.ThrowIfNull(mainMenuChanged);
 
+        var height = HeightFor(text);
         var root = new Control
         {
             Name = RootName,
             Position = Vector2.Zero,
-            Size = new Vector2(width, Height),
-            CustomMinimumSize = new Vector2(width, Height),
+            Size = new Vector2(width, height),
+            CustomMinimumSize = new Vector2(0f, height),
             // The section underneath owns everything this row is not standing on.
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
@@ -218,18 +277,19 @@ internal sealed class MyRunsSettingsRow
             Row = row,
             Keep = keep,
             FetchRunIndex = fetchRunIndex,
-            KeepLabel = Add(root, Text("KeepLabel", LabelFontSize, Cream, font)),
-            KeepNumeral = Add(root, Text("KeepNumeral", NumeralFontSize, Cream, font)),
+            Text = text,
+            KeepLabel = Add(root, Text("KeepLabel", text.Row, Cream)),
+            KeepNumeral = Add(root, Text("KeepNumeral", text.Numeral, Cream)),
             Rule = Add(root, new Line2D { Name = "Rule", DefaultColor = RuleLine, Width = 1f }),
-            Reading = Add(root, Text("Reading", LabelFontSize, Cream, font)),
-            Detail = Add(root, Text("Detail", NoteFontSize, Muted, font)),
+            Reading = Add(root, Text("Reading", text.Reading, Cream)),
+            Detail = Add(root, Text("Detail", text.Detail, Muted)),
         };
 
-        nodes.Fewer = Add(root, Pressable("Fewer", "−", font));
-        nodes.More = Add(root, Pressable("More", "+", font));
-        nodes.Remove = Add(root, Pressable("Remove", string.Empty, font));
-        nodes.Fetch = Add(root, Pressable("FetchRunIndex", string.Empty, font));
-        nodes.MainMenu = Add(root, Pressable("MainMenuRow", string.Empty, font));
+        nodes.Fewer = Add(root, Pressable("Fewer", "−", text.Numeral));
+        nodes.More = Add(root, Pressable("More", "+", text.Numeral));
+        nodes.Remove = Add(root, Pressable("Remove", string.Empty, text.Button));
+        nodes.Fetch = Add(root, Pressable("FetchRunIndex", string.Empty, text.Button));
+        nodes.MainMenu = Add(root, Pressable("MainMenuRow", string.Empty, text.Button));
 
         var built = new MyRunsSettingsRow(nodes);
 
@@ -247,7 +307,6 @@ internal sealed class MyRunsSettingsRow
         // under this screen, and a handler that closed over the starting value would ask
         // for a state the row had already left.
         built._mainMenu.Pressed += () => mainMenuChanged(!built._row.MainMenu.Shown);
-        built.Layout(width, font);
         built.Apply(row, keep, fetchRunIndex);
         return built;
     }
@@ -294,6 +353,8 @@ internal sealed class MyRunsSettingsRow
         Destructive(_remove, row.RemovePressable);
         Face(_fetch, !_fetch.Disabled);
         Face(_mainMenu, !_mainMenu.Disabled);
+
+        Layout(_root.Size.X);
     }
 
     /// <summary>
@@ -318,32 +379,52 @@ internal sealed class MyRunsSettingsRow
     /// <summary>
     /// Lays the row out at the width the section gave it.
     ///
-    /// Two lines with a control on the right of each, and a hairline between them,
-    /// because they are two different sentences: a standing policy above, and what is
-    /// on the disk right now below.
+    /// The policy and disk readings take the whole column, with their controls aligned
+    /// to the right edge like the native rows around them.
     /// </summary>
-    private void Layout(float width, Font? font)
+    private void Layout(float width)
     {
-        var stepper = (StepSize * 2) + NumeralWidth + (StepGap * 2);
-        var removeWidth = Math.Min(width, RemoveBoxWidth(_row.RemoveLabel, font));
+        var unit = _text.Row.Size;
+        var labelHeight = Math.Max(_text.Row.Size, _text.Numeral.Size) * LabelHeightRatio;
+        var readingHeight = _text.Reading.Size * LabelHeightRatio;
+        var noteHeight = _text.Detail.Size * NoteHeightRatio;
+        var stepSize = unit * StepSizeRatio;
+        var stepGap = unit * StepGapRatio;
+        var numeralWidth = unit * NumeralWidthRatio;
+        var ruleGap = unit * RuleGapRatio;
+        var removeHeight = _text.Button.Size * RemoveHeightRatio;
 
-        Place(_keepLabel, 0f, 0f, width - stepper - StepGap, LabelHeight);
-        Place(_fewer, width - stepper, (LabelHeight - StepSize) / 2f, StepSize, StepSize);
-        Place(_keepNumeral, width - stepper + StepSize + StepGap, 0f, NumeralWidth, LabelHeight);
+        var stepper = (stepSize * 2) + numeralWidth + (stepGap * 2);
+        var removeWidth = Math.Min(width, ButtonBoxWidth(_remove.Text, _text.Button));
+
+        Place(_keepLabel, 0f, 0f, width - stepper - stepGap, labelHeight);
+        Place(_fewer, width - stepper, (labelHeight - stepSize) / 2f, stepSize, stepSize);
+        Place(_keepNumeral, width - stepper + stepSize + stepGap, 0f, numeralWidth, labelHeight);
         _keepNumeral.HorizontalAlignment = HorizontalAlignment.Center;
-        Place(_more, width - StepSize, (LabelHeight - StepSize) / 2f, StepSize, StepSize);
+        Place(_more, width - stepSize, (labelHeight - stepSize) / 2f, stepSize, stepSize);
 
-        var ruleY = LabelHeight + (RuleGap / 2f);
+        var ruleY = labelHeight + (ruleGap / 2f);
         _rule.Points = [new Vector2(0f, ruleY), new Vector2(width, ruleY)];
 
-        var lower = LabelHeight + RuleGap;
-        Place(_reading, 0f, lower, width - removeWidth - StepGap, LabelHeight);
-        Place(_remove, width - removeWidth, lower + ((LabelHeight - RemoveHeight) / 2f), removeWidth, RemoveHeight);
-        Place(_detail, 0f, lower + LabelHeight, width - removeWidth - StepGap, NoteHeight);
+        var lower = labelHeight + ruleGap;
+        Place(_reading, 0f, lower, width, readingHeight);
+        Place(_detail, 0f, lower + readingHeight, width, noteHeight);
 
-        var fetchY = lower + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap;
-        Place(_fetch, 0f, fetchY, width, FetchHeight);
-        Place(_mainMenu, 0f, fetchY + FetchHeight + MainMenuGap, width, MainMenuHeight);
+        var removeY = lower + readingHeight + noteHeight + (unit * ControlGapRatio);
+        Place(_remove, width - removeWidth, removeY, removeWidth, removeHeight);
+
+        var fetchHeight = _text.Button.Size * FetchHeightRatio;
+        var fetchWidth = Math.Min(width, ButtonBoxWidth(_fetch.Text, _text.Button));
+        var fetchY = removeY + removeHeight + (unit * FetchGapRatio);
+        Place(_fetch, width - fetchWidth, fetchY, fetchWidth, fetchHeight);
+
+        var mainMenuWidth = Math.Min(width, ButtonBoxWidth(_mainMenu.Text, _text.Button));
+        Place(
+            _mainMenu,
+            width - mainMenuWidth,
+            fetchY + fetchHeight + (unit * MainMenuGapRatio),
+            mainMenuWidth,
+            _text.Button.Size * MainMenuHeightRatio);
     }
 
     /// <summary>
@@ -351,21 +432,21 @@ internal sealed class MyRunsSettingsRow
     ///
     /// Measured rather than assumed, because a Button's own minimum width is its
     /// unwrapped label and a box narrower than that is one the engine widens straight
-    /// back out of the row. The constant stands in where there is no font to measure
+    /// back out of the row. The estimate stands in where there is no font to measure
     /// with, which is the fallback the transport's own measuring uses: a process with no
     /// game draws nothing, so an estimate there costs nothing.
     /// </summary>
-    private static float RemoveBoxWidth(string label, Font? font) =>
-        font is null
-            ? RemoveWidth
+    private static float ButtonBoxWidth(string label, GameTextStyle text) =>
+        (text.Font is not { } font
+            ? label.Length * text.Size * ButtonGlyphWidthRatio
             : font.GetStringSize(
                 label,
                 HorizontalAlignment.Left,
                 width: -1f,
-                RemoveFontSize,
+                text.Size,
                 TextServer.JustificationFlag.None,
                 TextServer.Direction.Auto,
-                TextServer.Orientation.Horizontal).X + (RemovePad * 2);
+                TextServer.Orientation.Horizontal).X) + (text.Size * ButtonPadRatio * 2);
 
     private static void Refuse(Button button, bool refused)
     {
@@ -421,7 +502,6 @@ internal sealed class MyRunsSettingsRow
 
         Lit(button, enabled ? Red : DisabledEdge);
         button.AddThemeColorOverride(FontColour, enabled ? Cream : Dim);
-        button.AddThemeFontSizeOverride("font_size", RemoveFontSize);
     }
 
     /// <summary>Hover and focus take a rim, which is the game's own language for "this
@@ -441,12 +521,12 @@ internal sealed class MyRunsSettingsRow
         return child;
     }
 
-    private static Button Pressable(string name, string text, Font? font)
+    private static Button Pressable(string name, string label, GameTextStyle text)
     {
         var button = new Button
         {
             Name = name,
-            Text = text,
+            Text = label,
             // Clipped for the reason the labels are: a Button's own minimum width is
             // its unwrapped label, so one whose word outgrows its box widens itself
             // back out of the row rather than being cut off inside it.
@@ -456,11 +536,11 @@ internal sealed class MyRunsSettingsRow
             FocusMode = Control.FocusModeEnum.All,
         };
 
-        if (font is not null) button.AddThemeFontOverride("font", font);
+        text.ApplyTo(button);
         return button;
     }
 
-    private static Label Text(string name, int size, Color colour, Font? font)
+    private static Label Text(string name, GameTextStyle style, Color colour)
     {
         var label = new Label
         {
@@ -470,8 +550,7 @@ internal sealed class MyRunsSettingsRow
             ClipText = true,
         };
 
-        if (font is not null) label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", size);
+        style.ApplyTo(label);
         label.AddThemeColorOverride(FontColour, colour);
         return label;
     }
@@ -505,6 +584,8 @@ internal sealed class MyRunsSettingsRow
         internal required int Keep { get; init; }
 
         internal required bool FetchRunIndex { get; init; }
+
+        internal required MyRunsSettingsText Text { get; init; }
 
         internal required Label KeepLabel { get; init; }
 

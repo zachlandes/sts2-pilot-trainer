@@ -89,14 +89,15 @@ internal sealed class PlaybackTransportStrip
     private const float PipPitch = 11f;
     private const float IdentityWidth = 128f;
 
-    private const int CreatorFontSize = 15;
-    private const int TitleFontSize = 11;
-    private const int CounterFontSize = 12;
-    private const int SpeedFontSize = 12;
-    private const int MenuFontSize = 14;
-    private const int TipTitleFontSize = 13;
-    private const int TipBodyFontSize = 12;
-    private const int NoteFontSize = 12;
+    /// <summary>
+    /// The size the design's own text was drawn at, at <see cref="ReferenceHeight"/>.
+    ///
+    /// Every box in the design was measured around text this size, so it is what the
+    /// game's own size is compared against: a client whose text is larger gets a tag
+    /// larger in the same proportion rather than the design's boxes with bigger words
+    /// spilling out of them.
+    /// </summary>
+    private const float ReferenceTextSize = 15f;
 
     /// <summary>How tall a line of text is as a multiple of its font size. Used only
     /// where there is no font to measure with, which is every test here.</summary>
@@ -129,7 +130,9 @@ internal sealed class PlaybackTransportStrip
     private readonly Control _tipPlate;
     private readonly Label _tipTitle;
     private readonly Label _tipBody;
-    private readonly Font? _font;
+    /// <summary>The native text style copied from the run's top bar.</summary>
+    private readonly PlaybackTransportText _text;
+    private readonly Func<bool, Texture2D?> _pageArrow;
 
     private Vector2 _viewport;
     private Vector2 _anchor;
@@ -177,7 +180,9 @@ internal sealed class PlaybackTransportStrip
 
     private Func<string>? _tipBodySource;
 
-    private PlaybackTransportStrip(Nodes nodes, Vector2 viewport, Vector2 anchor, Font? font)
+    private PlaybackTransportStrip(
+        Nodes nodes, Vector2 viewport, Vector2 anchor, PlaybackTransportText text,
+        Func<bool, Texture2D?> pageArrow)
     {
         _root = nodes.Root;
         _plateFill = nodes.PlateFill;
@@ -206,10 +211,12 @@ internal sealed class PlaybackTransportStrip
         _tipPlate = nodes.TipPlate;
         _tipTitle = nodes.TipTitle;
         _tipBody = nodes.TipBody;
-        _font = font;
+        _text = text;
+        _pageArrow = pageArrow;
         _viewport = viewport;
         _anchor = anchor;
-        _unit = viewport.Y / ReferenceHeight;
+
+        _unit = Unit(text, viewport);
         _state = nodes.State;
         _surface = nodes.State.Surface;
     }
@@ -248,11 +255,11 @@ internal sealed class PlaybackTransportStrip
     /// the bottom of the top bar's own widgets, and the right edge of the game's meta
     /// cluster. Passed in rather than measured here, because that furniture is the
     /// game's and this class draws in a process that may have none.</param>
-    /// <param name="font">The font the game's own labels use, or null to leave the
-    /// theme's default in place.</param>
+    /// <param name="text">The native style copied from the run's top bar.</param>
     internal static PlaybackTransportStrip Build(
-        PlaybackTransport state, Vector2 viewport, Vector2 anchor, Font? font,
-        Action back, Action play, Action step, Action speed, Action identity)
+        PlaybackTransport state, Vector2 viewport, Vector2 anchor, PlaybackTransportText text,
+        Action back, Action play, Action step, Action speed, Action identity,
+        Func<bool, Texture2D?>? pageArrow = null)
     {
         var root = new Control
         {
@@ -265,7 +272,7 @@ internal sealed class PlaybackTransportStrip
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
 
-        var unit = viewport.Y / ReferenceHeight;
+        var unit = Unit(text, viewport);
         var nodes = new Nodes
         {
             Root = root,
@@ -276,9 +283,9 @@ internal sealed class PlaybackTransportStrip
             PinLeft = Add(root, new Polygon2D { Name = "PinLeft", Color = Gold }),
             PinRight = Add(root, new Polygon2D { Name = "PinRight", Color = Gold }),
             Mark = Add(root, new Control { Name = "Mark", MouseFilter = Control.MouseFilterEnum.Ignore }),
-            Creator = Add(root, Text("Creator", CreatorFontSize, Cream, font)),
-            Title = Add(root, Text("VideoTitle", TitleFontSize, Muted, font)),
-            Numerals = Add(root, Text("Counter", CounterFontSize, Muted, font)),
+            Creator = Add(root, Text("Creator", text.Identity, Cream)),
+            Title = Add(root, Text("VideoTitle", text.Description, Muted)),
+            Numerals = Add(root, Text("Counter", text.Counter, Muted)),
             Pips = Add(root, new Control { Name = "Pips", MouseFilter = Control.MouseFilterEnum.Ignore }),
             HoldTrack = Add(root, Stroke("HoldTrack", HoldTrack, 2.4f * unit)),
             HoldFill = Add(root, Stroke("Hold", Teal, 2.4f * unit)),
@@ -292,13 +299,13 @@ internal sealed class PlaybackTransportStrip
             Name = "NotePlate",
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
-        nodes.NoteText = Add(nodes.Note, Wrapping(Text("NoteText", NoteFontSize, Muted, font)));
+        nodes.NoteText = Add(nodes.Note, Wrapping(Text("NoteText", text.Note, Muted)));
 
-        nodes.Speed = Add(root, Pressable("Speed", font, speed));
-        nodes.SpeedLabel = Add(nodes.Speed, Text("SpeedLabel", SpeedFontSize, Muted, font));
-        nodes.Back = Add(root, Pressable("Back", font, back));
-        nodes.Play = Add(root, Pressable("Play", font, play));
-        nodes.Step = Add(root, Pressable("Step", font, step));
+        nodes.Speed = Add(root, Pressable("Speed", speed));
+        nodes.SpeedLabel = Add(nodes.Speed, Text("SpeedLabel", text.Speed, Muted));
+        nodes.Back = Add(root, Pressable("Back", back));
+        nodes.Play = Add(root, Pressable("Play", play));
+        nodes.Step = Add(root, Pressable("Step", step));
 
         nodes.Tip = Add(root, Plated("Tooltip"));
 
@@ -309,10 +316,11 @@ internal sealed class PlaybackTransportStrip
             Name = "TooltipPlate",
             MouseFilter = Control.MouseFilterEnum.Ignore,
         });
-        nodes.TipTitle = Add(nodes.Tip, Text("TooltipTitle", TipTitleFontSize, Cream, font));
-        nodes.TipBody = Add(nodes.Tip, Wrapping(Text("TooltipBody", TipBodyFontSize, TipBody, font)));
+        nodes.TipTitle = Add(nodes.Tip, Text("TooltipTitle", text.TooltipTitle, Cream));
+        nodes.TipBody = Add(nodes.Tip, Wrapping(Text("TooltipBody", text.TooltipBody, TipBody)));
 
-        var strip = new PlaybackTransportStrip(nodes, viewport, anchor, font);
+        var strip = new PlaybackTransportStrip(
+            nodes, viewport, anchor, text, pageArrow ?? NativePaginatorArt.Texture);
 
         // The identity block is a control too, because pressing it opens the video at
         // the moment being shown. Its hit area is the two lines of text, so it is a
@@ -580,7 +588,8 @@ internal sealed class PlaybackTransportStrip
         // what cut the sentence off after "what was cho" in the client.
         var inset = 12 * _unit;
         var textWidth = width - (2 * inset);
-        var noteHeight = WrappedHeight(state.Note, NoteFontSize, textWidth, fallbackLines: 2) + (16 * _unit);
+        var noteHeight = WrappedHeight(
+            state.Note, _text.Note, textWidth, fallbackLines: 2) + (16 * _unit);
 
         var noteTop = top + height + (6 * _unit);
         _hangingBottom = noteTop + noteHeight;
@@ -624,20 +633,56 @@ internal sealed class PlaybackTransportStrip
     {
         Clear(_ledger);
         _ledger.Visible = surface.Ledger && state.Ledger.Count > 0;
-        if (!_ledger.Visible) return;
+        if (!_ledger.Visible)
+        {
+            _ledgerCount = 0;
+            _ledgerPage = 0;
+            _ledgerPageChosen = false;
+            return;
+        }
 
-        var rowHeight = 32 * _unit;
-        var ledgerHeight = (10 * _unit) + (rowHeight * state.Ledger.Count);
-        var ledgerTop = top + height + (6 * _unit);
+        if (_ledgerCount != state.Ledger.Count)
+        {
+            _ledgerCount = state.Ledger.Count;
+            _ledgerPageChosen = false;
+        }
+
+        var rowHeight = Math.Max(32 * _unit, _text.LedgerRow.Size);
+        var ledgerTop = top + height;
+        var inset = 6 * _unit;
+        var menuRowHeight = Math.Max(32 * _unit, _text.MenuRow.Size);
+        var reserve = MenuHeight(ScreenPage.MinimumPerPage, menuRowHeight) + TooltipHeight(surface.Speed);
+        var fits = Math.Max(
+            ScreenPage.MinimumPerPage,
+            (int)Math.Floor((_viewport.Y - ledgerTop - (2 * inset) - reserve) / rowHeight));
+        if (!_ledgerPageChosen)
+        {
+            var lookedAt = state.Ledger.ToList().FindIndex(row => row.IsLookedAt);
+            _ledgerPage = lookedAt >= 0
+                ? ScreenPage.Containing(state.Ledger.Count, fits, lookedAt).Index
+                : 0;
+        }
+        var page = ScreenPage.For(state.Ledger.Count, fits, _ledgerPage);
+        _ledgerPage = page.Index;
+        var ledgerHeight = (2 * inset) + (rowHeight * page.Drawn);
         _hangingBottom = ledgerTop + ledgerHeight;
 
         Place(_ledger, left, ledgerTop, width, ledgerHeight);
         PlatePolygon(_ledger, width, ledgerHeight);
 
-        for (var index = 0; index < state.Ledger.Count; index++)
+        var slot = 0;
+        if (page.HasPrevious)
+        {
+            AddLedgerPageButton("LedgerPrevious", true, inset + (slot * rowHeight), width, rowHeight,
+                page.Index - 1);
+            slot++;
+        }
+
+        for (var index = page.First; index < page.First + page.Count; index++)
         {
             var row = state.Ledger[index];
-            var rowTop = (6 * _unit) + (index * rowHeight);
+            var rowTop = inset + (slot * rowHeight);
+            slot++;
             var colour = row.IsLookedAt ? Cream : Muted;
 
             if (row.IsLookedAt)
@@ -662,7 +707,7 @@ internal sealed class PlaybackTransportStrip
                 _ledger.AddChild(picture);
             }
 
-            var label = Text($"Ledger{row.Number}", MenuFontSize, colour, _font);
+            var label = Text($"Ledger{row.Number}", _text.LedgerRow, colour);
             label.Text = row.Label;
             Place(label, 62 * _unit, rowTop, width - (86 * _unit), rowHeight);
             _ledger.AddChild(label);
@@ -677,7 +722,33 @@ internal sealed class PlaybackTransportStrip
                 });
             }
         }
+
+        if (page.HasNext)
+        {
+            AddLedgerPageButton("LedgerNext", false, inset + (slot * rowHeight), width, rowHeight,
+                page.Index + 1);
+        }
     }
+
+    private void AddLedgerPageButton(
+        string name, bool previous, float top, float width, float height, int page)
+    {
+        NativePaginatorArt.AddButton(
+            _ledger, name, string.Empty, previous,
+            new Rect2(0, top, width, height), _pageArrow,
+            () =>
+            {
+                _ledgerPage = page;
+                _ledgerPageChosen = true;
+                Apply(_state);
+            });
+    }
+
+    private int _ledgerCount;
+
+    private int _ledgerPage;
+
+    private bool _ledgerPageChosen;
 
     /// <summary>The speed menu, the chip's two directions or the post-fight choice,
     /// hung in the same shape as the ledger so they read as one family.</summary>
@@ -688,12 +759,23 @@ internal sealed class PlaybackTransportStrip
         _menu.Visible = rows.Count > 0;
         if (!_menu.Visible) return;
 
-        var rowHeight = 32 * _unit;
+        var rowHeight = Math.Max(32 * _unit, _text.MenuRow.Size);
         var chip = _openMenu == Code(MenuKind.Chip) || _openMenu == Code(MenuKind.PostFight);
         var menuWidth = (chip ? 260 : 96) * _unit;
-        var menuHeight = (10 * _unit) + (rowHeight * rows.Count);
+        var tooltipHeight = TooltipHeight(_surface.Speed);
+        var fits = Math.Max(
+            ScreenPage.MinimumPerPage,
+            (int)Math.Floor((_viewport.Y - _hangingBottom - (10 * _unit) - tooltipHeight) / rowHeight));
+        if (!_menuPageChosen)
+        {
+            var current = rows.ToList().FindIndex(row => row.IsCurrent);
+            _menuPage = current >= 0 ? ScreenPage.Containing(rows.Count, fits, current).Index : 0;
+        }
+        var page = ScreenPage.For(rows.Count, fits, _menuPage);
+        _menuPage = page.Index;
+        var menuHeight = MenuHeight(page.Drawn, rowHeight);
         var menuLeft = chip ? left + width - menuWidth : left + (192 * _unit);
-        var menuTop = _hangingBottom + (6 * _unit);
+        var menuTop = NextHangingTop(6 * _unit, menuHeight + tooltipHeight);
         Place(_menu, menuLeft, menuTop, menuWidth, menuHeight);
         PlatePolygon(_menu, menuWidth, menuHeight);
 
@@ -704,7 +786,13 @@ internal sealed class PlaybackTransportStrip
         // exists to prevent.
         _hangingBottom = menuTop + menuHeight;
 
-        for (var index = 0; index < rows.Count; index++)
+        var slot = 0;
+        if (page.HasPrevious)
+        {
+            AddMenuPageButton("MenuPrevious", true, slot++, rowHeight, menuWidth, page.Index - 1);
+        }
+
+        for (var index = page.First; index < page.First + page.Count; index++)
         {
             var row = rows[index];
 
@@ -717,7 +805,7 @@ internal sealed class PlaybackTransportStrip
             // worked, because the chip could not be pressed and a chosen speed looks
             // much like a speed nobody chose.
             var chosen = index;
-            var rowTop = (6 * _unit) + (index * rowHeight);
+            var rowTop = (6 * _unit) + (slot++ * rowHeight);
             var colour = !row.Enabled ? DisabledGlyph : row.IsCurrent ? Cream : Muted;
 
             if (row.Glyph is { } glyph)
@@ -727,13 +815,13 @@ internal sealed class PlaybackTransportStrip
                 _menu.AddChild(art);
             }
 
-            var button = Pressable($"MenuRow{index}", _font, () => Choose(chosen));
+            var button = Pressable($"MenuRow{index}", () => Choose(chosen));
             button.Flat = true;
             button.Disabled = !row.Enabled;
             Place(button, 0, rowTop, menuWidth, rowHeight);
             _menu.AddChild(button);
 
-            var label = Text($"MenuRow{index}.Label", MenuFontSize, colour, _font);
+            var label = Text($"MenuRow{index}.Label", _text.MenuRow, colour);
             label.Text = row.Label;
             Place(label, 40 * _unit, rowTop, menuWidth - (56 * _unit), rowHeight);
             _menu.AddChild(label);
@@ -748,6 +836,27 @@ internal sealed class PlaybackTransportStrip
                 });
             }
         }
+
+        if (page.HasNext)
+        {
+            AddMenuPageButton("MenuNext", false, slot, rowHeight, menuWidth, page.Index + 1);
+        }
+    }
+
+    private float MenuHeight(int rows, float rowHeight) => (10 * _unit) + (rowHeight * rows);
+
+    private void AddMenuPageButton(
+        string name, bool previous, int slot, float rowHeight, float width, int page)
+    {
+        NativePaginatorArt.AddButton(
+            _menu, name, string.Empty, previous,
+            new Rect2(0, (6 * _unit) + (slot * rowHeight), width, rowHeight), _pageArrow,
+            () =>
+            {
+                _menuPage = page;
+                _menuPageChosen = true;
+                Apply(_state);
+            });
     }
 
     /// <summary>
@@ -760,6 +869,10 @@ internal sealed class PlaybackTransportStrip
     /// the check; run it rather than judging a new field by resemblance to this one.
     /// </summary>
     private int _openMenu;
+
+    private int _menuPage;
+
+    private bool _menuPageChosen;
 
     /// <summary>No menu open. <see cref="_openMenu"/> holds one more than the kind, so
     /// zero is the empty answer and no separate flag is needed.</summary>
@@ -803,6 +916,8 @@ internal sealed class PlaybackTransportStrip
         HideTooltip();
 
         _openMenu = Code(_surface.Menu);
+        _menuPage = 0;
+        _menuPageChosen = false;
         _onChoose = chosen;
         Apply(_state);
     }
@@ -810,6 +925,8 @@ internal sealed class PlaybackTransportStrip
     internal void CloseMenu()
     {
         _openMenu = None;
+        _menuPage = 0;
+        _menuPageChosen = false;
         _onChoose = null;
         Apply(_state);
     }
@@ -1089,15 +1206,16 @@ internal sealed class PlaybackTransportStrip
         var width = 250 * _unit;
         var inset = 12 * _unit;
         var bodyTop = 24 * _unit;
-        var bodyHeight = WrappedHeight(body, TipBodyFontSize, width - (2 * inset), fallbackLines: 2);
-        var height = bodyTop + bodyHeight + (8 * _unit);
+        var height = TooltipHeight(title, body);
+        var bodyHeight = height - bodyTop - (8 * _unit);
 
         // Below the control and pulled back on screen, never over the tag itself:
         // a tooltip that covers the counter it is explaining is worse than none. And
         // below whatever else is already hanging there, for the same reason.
         var x = Math.Clamp(
             anchor.Position.X + (anchor.Size.X / 2) - (width / 2), 8 * _unit, _viewport.X - width - (8 * _unit));
-        var y = Math.Max(anchor.Position.Y + anchor.Size.Y, _hangingBottom) + (10 * _unit);
+        var below = Math.Max(anchor.Position.Y + anchor.Size.Y, _hangingBottom);
+        var y = Math.Max(below, NextHangingTop(10 * _unit, height));
         Place(_tip, x, y, width, height);
         Clear(_tipPlate);
         Place(_tipPlate, 0, 0, width, height);
@@ -1105,6 +1223,23 @@ internal sealed class PlaybackTransportStrip
         Place(_tipTitle, inset, 6 * _unit, width - (2 * inset), 18 * _unit);
         Sentence(_tipBody, body, inset, bodyTop, width - (2 * inset), bodyHeight);
     }
+
+    private float TooltipHeight(ElementSurface element) =>
+        TooltipHeight(element.TooltipTitle, element.TooltipBody);
+
+    private float TooltipHeight(string title, string body)
+    {
+        if (title.Length == 0 && body.Length == 0) return 0;
+
+        var width = 250 * _unit;
+        var inset = 12 * _unit;
+        return (24 * _unit) +
+               WrappedHeight(body, _text.TooltipBody, width - (2 * inset), fallbackLines: 2) +
+               (8 * _unit);
+    }
+
+    private float NextHangingTop(float gap, float followingHeight) =>
+        _hangingBottom + (_hangingBottom + gap + followingHeight <= _viewport.Y ? gap : 0);
 
     private void HideTooltip()
     {
@@ -1158,7 +1293,32 @@ internal sealed class PlaybackTransportStrip
         return child;
     }
 
-    private static Button Pressable(string name, Font? font, Action pressed)
+    /// <summary>
+    /// How much larger the tag is drawn than the design it was measured as.
+    ///
+    /// Whichever is larger: the window the design was measured against, or the game's own
+    /// type. Both are 1 at the design's reference, so a client drawing text at the size
+    /// the design assumed gets the design unchanged; one drawing it larger gets the whole
+    /// tag in proportion, because a tag that grew its words and not its boxes is a tag
+    /// with the words outside it.
+    /// </summary>
+    private static float Unit(PlaybackTransportText text, Vector2 viewport) =>
+        Math.Max(
+            new[]
+            {
+                text.Identity.Size,
+                text.Description.Size,
+                text.Counter.Size,
+                text.Note.Size,
+                text.Speed.Size,
+                text.MenuRow.Size,
+                text.LedgerRow.Size,
+                text.TooltipTitle.Size,
+                text.TooltipBody.Size,
+            }.Max() / ReferenceTextSize,
+            viewport.Y / ReferenceHeight);
+
+    private static Button Pressable(string name, Action pressed)
     {
         var button = new Button
         {
@@ -1168,12 +1328,11 @@ internal sealed class PlaybackTransportStrip
             FocusMode = Control.FocusModeEnum.All,
         };
 
-        if (font is not null) button.AddThemeFontOverride("font", font);
         button.Pressed += () => pressed();
         return button;
     }
 
-    private static Label Text(string name, int size, Color colour, Font? font)
+    private static Label Text(string name, GameTextStyle style, Color colour)
     {
         var label = new Label
         {
@@ -1183,8 +1342,7 @@ internal sealed class PlaybackTransportStrip
             ClipText = true,
         };
 
-        if (font is not null) label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", size);
+        style.ApplyTo(label);
         label.AddThemeColorOverride(FontColour, colour);
         return label;
     }
@@ -1240,15 +1398,16 @@ internal sealed class PlaybackTransportStrip
     /// with no font, which is every test here and nothing in the client, the caller's
     /// own line count stands.
     /// </summary>
-    private float WrappedHeight(string text, int fontSize, float width, int fallbackLines)
+    private static float WrappedHeight(
+        string text, GameTextStyle style, float width, int fallbackLines)
     {
-        if (_font is null) return fallbackLines * LineHeight * fontSize;
+        if (style.Font is not { } font) return fallbackLines * LineHeight * style.Size;
 
-        return _font.GetMultilineStringSize(
+        return font.GetMultilineStringSize(
             text,
             HorizontalAlignment.Left,
             width,
-            fontSize,
+            style.Size,
             maxLines: -1,
             brkFlags: TextServer.LineBreakFlag.Mandatory | TextServer.LineBreakFlag.WordBound).Y;
     }

@@ -108,7 +108,10 @@ internal static class RunHistoryPlateHost
             var pane = PaneOf(entry);
             if (pane?.GetParent() is not Node parent) return;
 
-            _plate = RunHistoryPlateArt.Build(parent, plate, Rows(plate, recording), pane.Size.X);
+            // The screen's own text size, read where the plate will hang rather than
+            // written down: the plate is part of this screen and is drawn at its size.
+            _plate = RunHistoryPlateArt.Build(
+                parent, plate, Rows(plate, recording), pane.Size.X, HistoryText(pane));
 
             // Immediately after the pane, so a parent that lays its children out puts
             // the plate between the pane and whatever follows it - which is what makes
@@ -142,7 +145,23 @@ internal static class RunHistoryPlateHost
     /// which pane it is in, and a second reading of which screen is up could disagree
     /// with it.
     /// </summary>
-    private static Control? PaneOf(NMapPointHistoryEntry entry)
+    private static RunHistoryPlateText HistoryText(NMapPointHistory pane)
+    {
+        for (Node? node = pane; node is not null; node = node.GetParent())
+        {
+            if (node is NRunHistory history)
+            {
+                return new RunHistoryPlateText(
+                    GameText.Require(
+                        history.GetNodeOrNull<Control>("%BuildLabel"), "run-history fact line"),
+                    GameText.Scene(NativeTextRole.ButtonCaption));
+            }
+        }
+
+        throw new InvalidOperationException("This map-point history has no run-history screen.");
+    }
+
+    private static NMapPointHistory? PaneOf(NMapPointHistoryEntry entry)
     {
         for (Node? node = entry; node is not null; node = node.GetParent())
         {

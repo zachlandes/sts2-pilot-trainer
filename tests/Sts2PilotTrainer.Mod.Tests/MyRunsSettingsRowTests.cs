@@ -333,6 +333,36 @@ public sealed class MyRunsSettingsRowTests
         Assert.Equal(Control.FocusModeEnum.None, row.MainMenu.FocusMode);
     }
 
+    /// <summary>
+    /// At the supported minimum surface, the game's mapped settings sizes still leave
+    /// both readings the whole column and align each full-word control with the native
+    /// controls at its right edge.
+    /// </summary>
+    [Fact]
+    public void MappedNativeSizesKeepTheReadingWideAndControlsRightAligned()
+    {
+        var text = new MyRunsSettingsText(
+            new GameTextStyle(null, 28),
+            new GameTextStyle(null, 27),
+            new GameTextStyle(null, 26),
+            new GameTextStyle(null, 24),
+            new GameTextStyle(null, 22));
+        var row = Build(
+            new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20),
+            text: text);
+
+        var reading = Label(row, "Reading");
+        Assert.Equal(Width, reading.Size.X);
+        Assert.True(reading.Size.X > reading.Text.Length * text.Reading.Size / 2f);
+        Assert.Equal(Width, Label(row, "Detail").Size.X);
+
+        foreach (var control in new[] { row.Remove, row.Fetch, row.MainMenu })
+        {
+            Assert.True(control.Position.X > 0f, $"{control.Name} is not aligned as a right-side control");
+            Assert.Equal(Width, control.Position.X + control.Size.X);
+        }
+    }
+
     /// <summary>The row is as tall as what it draws. A section stacks what it hosts, so
     /// a height taller than the lowest element leaves a gap nothing explains.</summary>
     [Fact]
@@ -343,22 +373,72 @@ public sealed class MyRunsSettingsRowTests
         var lowest = row.Root.GetChildren().OfType<Control>()
             .Max(child => child.Position.Y + child.Size.Y);
 
-        Assert.Equal(MyRunsSettingsRow.Height, lowest);
+        Assert.Equal(row.Height, lowest);
+    }
+
+    /// <summary>
+    /// The row is drawn at the settings screen's own text size, and its boxes are
+    /// measured around it.
+    ///
+    /// The defect this exists for is the one the whole change is about: a row whose
+    /// words were the game's and whose boxes were a set of constants read as cramped on
+    /// every window the constants were not measured on, and would clip the moment the
+    /// words grew. So both are asserted - the label carries the screen's own size, and
+    /// nothing the row draws hangs below the height it reports at that size.
+    /// </summary>
+    [Theory]
+    [InlineData(15)]
+    [InlineData(24)]
+    [InlineData(34)]
+    public void TheRowIsDrawnAtTheScreensOwnSizeAndFitsTheHeightItReports(int size)
+    {
+        var row = Build(
+            new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20),
+            text: Text(size, size + 3));
+
+        Assert.Equal(size, Label(row, "KeepLabel").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(size + 3, row.Remove.GetThemeFontSize("font_size", "Button"));
+        Assert.All(
+            row.Root.GetChildren().OfType<Control>(),
+            child => Assert.True(
+                child.Position.Y + child.Size.Y <= row.Height + 0.01f,
+                $"'{child.Name}' hangs below the row at {size}pt"));
+    }
+
+    /// <summary>A screen drawing larger text gets a taller row rather than the same row
+    /// with the words spilling out of it.</summary>
+    [Fact]
+    public void ARowOnAScreenWithLargerTextIsTaller()
+    {
+        var facts = new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20);
+
+        Assert.True(
+            Build(facts, text: Text(30)).Height >
+            Build(facts, text: Text(15)).Height);
     }
 
     private static MyRunsSettingsRow Build(
         MyRunsFacts facts, Action<int>? keepChanged = null, Action? removePressed = null,
-        Action<bool>? fetchChanged = null, Action<bool>? mainMenuChanged = null) =>
+        Action<bool>? fetchChanged = null, Action<bool>? mainMenuChanged = null,
+        MyRunsSettingsText? text = null) =>
         MyRunsSettingsRow.Build(
             MyRunsRow.For(facts),
             facts.Keep,
             fetchRunIndex: true,
             Width,
-            font: null,
+            text ?? Text(),
             keepChanged ?? (_ => { }),
             removePressed ?? (() => { }),
             fetchChanged ?? (_ => throw new InvalidOperationException("Unexpected fetch press")),
             mainMenuChanged ?? (_ => throw new InvalidOperationException("Unexpected main-menu press")));
+
+    private static MyRunsSettingsText Text(int rowSize = 16, int buttonSize = 16) =>
+        new(
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, buttonSize));
 
     private static void Apply(MyRunsSettingsRow row, MyRunsFacts facts) =>
         row.Apply(MyRunsRow.For(facts), facts.Keep);

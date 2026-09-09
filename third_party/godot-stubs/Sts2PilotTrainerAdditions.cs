@@ -290,6 +290,9 @@ public partial class Control
 
     public event Action? FocusExited;
 
+    /// <summary>Godot announces when a container gives a control its settled size.</summary>
+    public event Action? Resized;
+
     /// <summary>Raises the hover and focus signals, so the mod's game-free tests can
     /// drive what the client's pointer and controller drive.</summary>
     public void EmitHover(bool entered)
@@ -304,7 +307,33 @@ public partial class Control
         else FocusExited?.Invoke();
     }
 
-    public void AddThemeFontOverride(StringName name, Font font) { }
+    private readonly Dictionary<string, Font> _fontOverrides = [];
+
+    private readonly Dictionary<string, int> _fontSizeOverrides = [];
+
+    public void AddThemeFontOverride(StringName name, Font font) => _fontOverrides[name.ToString()] = font;
+
+    public void AddThemeFontSizeOverride(StringName name, int fontSize) =>
+        _fontSizeOverrides[name.ToString()] = fontSize;
+
+    public bool HasThemeFontOverride(StringName name) => _fontOverrides.ContainsKey(name.ToString());
+
+    /// <summary>
+    /// Godot: the override where one is set, and the theme's own font otherwise.
+    ///
+    /// Backed rather than answering a fresh font every time, because the mod now reads a
+    /// native label's font and size to size its own text with, and a stub that forgot
+    /// what was set on a control could not tell a control wearing the game's type from
+    /// one wearing Godot's - which is the whole distinction that reading rests on.
+    /// </summary>
+    public Font GetThemeFont(StringName name, StringName themeType) =>
+        _fontOverrides.TryGetValue(name.ToString(), out var font) ? font : new Font();
+
+    /// <inheritdoc cref="GetThemeFont"/>
+    /// <remarks>16 is Godot's own default label size, which is what a control with no
+    /// override of its own is drawn at.</remarks>
+    public int GetThemeFontSize(StringName name, StringName themeType) =>
+        _fontSizeOverrides.TryGetValue(name.ToString(), out var size) ? size : 16;
 
     private readonly Dictionary<string, Color> _colorOverrides = [];
 
@@ -424,46 +453,4 @@ public partial struct Vector2I : IEquatable<Vector2I>
     public override bool Equals(object? obj) => obj is Vector2I other && this == other;
     public override int GetHashCode() => HashCode.Combine(X, Y);
     public override string ToString() => $"({X}, {Y})";
-}
-
-/// <summary>
-/// Where a node sits among its parent's children, and how it is moved there.
-///
-/// Both are members of the real GodotSharp <c>Node</c> that this project's own code
-/// compiles against: every surface the mod inserts beside one of the game's own - the
-/// Compendium card, the run-history plate, the recorder's presence row, the main-menu row
-/// and Runmobile's settings row - places itself with <c>MoveChild(node, sibling.GetIndex()
-/// + 1)</c>. The gap was only ever in this stub, and it showed the first time one of those
-/// paths was exercised in a process with no game.
-///
-/// Behaviour follows Godot's documented semantics: an index counts from the end when it is
-/// negative, a node with no parent has no index, and moving a child within its own parent
-/// is a reorder rather than a re-parent.
-/// </summary>
-public partial class Node
-{
-    /// <summary>Godot: this node's position among its parent's children, or -1 when it has
-    /// no parent.</summary>
-    public int GetIndex(bool includeInternal = false) => _parent?._children.IndexOf(this) ?? -1;
-
-    /// <summary>Godot: moves one of this node's children to <paramref name="toIndex"/>,
-    /// counting from the end when that is negative.</summary>
-    public void MoveChild(Node childNode, int toIndex)
-    {
-        ArgumentNullException.ThrowIfNull(childNode);
-
-        var from = _children.IndexOf(childNode);
-        if (from < 0)
-        {
-            throw new InvalidOperationException(
-                "MoveChild was given a node that is not a child of this one.");
-        }
-
-        var to = toIndex < 0 ? _children.Count + toIndex : toIndex;
-        to = Math.Clamp(to, 0, _children.Count - 1);
-        if (to == from) return;
-
-        _children.RemoveAt(from);
-        _children.Insert(to, childNode);
-    }
 }

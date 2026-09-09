@@ -34,6 +34,12 @@ namespace Sts2PilotTrainer.Mod;
 internal static class MyRunsSettings
 {
     private const string ModdingButtonPath = "%ModdingButton";
+    private const string ModdingButtonLabelPath = "%ModdingButton/Label";
+    private const string SettingsValuePath =
+        "ScrollContainer/Mask/Clipper/SoundSettings/VBoxContainer/MasterVolume/MasterVolumeSlider/SliderValue";
+    private const string StepperNumeralPath =
+        "ScrollContainer/Mask/Clipper/GeneralSettings/VBoxContainer/Screenshake/Paginator/LabelContainer/Mask/Label";
+
     private const float FallbackWidth = 520f;
     private const float SectionGap = 12f;
 
@@ -72,7 +78,7 @@ internal static class MyRunsSettings
                 return;
             }
 
-            Attach(anchor, GameFont.Of(__instance));
+            Attach(anchor, NativeText(__instance, anchor));
         }
         catch (Exception ex)
         {
@@ -91,19 +97,37 @@ internal static class MyRunsSettings
     /// MarginContainer lays every child out in the same rectangle - so a third child is
     /// not a third row, it is a third thing drawn on top of the first two. That container
     /// is itself one entry in the column's <see cref="VBoxContainer"/>, and the column is
-    /// where a new entry belongs: a VBoxContainer stacks what it holds from each child's
-    /// minimum size, which <see cref="MyRunsSettingsRow"/> already carries, so everything
-    /// below the row moves down on its own and nothing has to be repositioned by
-    /// hand.</para>
+    /// where a new entry belongs.</para>
     ///
     /// <para>The fallback is for a build whose settings screen is not laid out by
     /// containers at all: there the entry is the host, the row is positioned under the
-    /// anchor inside it, and the host is grown to hold it - which is all that can be done
-    /// without a column to insert into. It refuses nothing, because a settings screen
-    /// shaped differently is a row in the wrong place rather than a screen that must not
-    /// open.</para>
+    /// anchor inside it, and the host is grown to hold it.</para>
     /// </summary>
-    internal static MyRunsSettingsRow Attach(Control anchor, Font? font)
+    internal static MyRunsSettingsText NativeText(NSettingsScreen screen, Control anchor) =>
+        NativeText(screen, anchor, GameText.Scene(NativeTextRole.Secondary));
+
+    internal static MyRunsSettingsText NativeText(
+        NSettingsScreen screen, Control anchor, GameTextStyle detail)
+    {
+        var entry = anchor.GetParent()
+            ?? throw new InvalidOperationException(
+                "This build's modding settings button has no parent carrying its row label.");
+        return new MyRunsSettingsText(
+            GameText.Require(entry.GetNodeOrNull<Control>("Label"), "settings row label at 'Modding/Label'"),
+            GameText.Require(
+                screen.GetNodeOrNull<Control>(StepperNumeralPath),
+                $"settings stepper numeral at '{StepperNumeralPath}'"),
+            GameText.Require(
+                screen.GetNodeOrNull<Control>(SettingsValuePath),
+                $"settings value at '{SettingsValuePath}'"),
+            detail,
+            // Resolve the scene-owned unique path from the screen
+            GameText.Require(
+                screen.GetNodeOrNull<Control>(ModdingButtonLabelPath),
+                $"settings button label at '{ModdingButtonLabelPath}'"));
+    }
+
+    internal static MyRunsSettingsRow Attach(Control anchor, MyRunsSettingsText text)
     {
         var entry = anchor.GetParent() as Control
             ?? throw new InvalidOperationException(
@@ -113,26 +137,40 @@ internal static class MyRunsSettings
             : anchor.Size.X > 0f
                 ? anchor.Size.X
                 : FallbackWidth;
-        var row = Build(width, font);
+        var row = Build(width, text);
 
         if (entry.GetParent() is Container column)
         {
             column.AddChild(row.Root);
-            // Directly under the modding entry rather than at the end of the column, so
-            // Runmobile's settings sit with the modding ones a player came here to find.
             column.MoveChild(row.Root, entry.GetIndex() + 1);
+            Callable.From(() => Settle(row)).CallDeferred();
             return row;
         }
 
-        // No column above the entry: the entry is the host, and the row is placed under
-        // the anchor inside it. This is the shape a settings screen laid out without
-        // containers has, and it is what the row's own assembly test builds.
         row.Root.Position = anchor.Position + new Vector2(0f, anchor.Size.Y + SectionGap);
         entry.CustomMinimumSize = new Vector2(
             entry.CustomMinimumSize.X,
-            Math.Max(entry.CustomMinimumSize.Y, row.Root.Position.Y + MyRunsSettingsRow.Height));
+            Math.Max(entry.CustomMinimumSize.Y, row.Root.Position.Y + row.Height));
         entry.AddChild(row.Root);
         return row;
+    }
+
+    /// <summary>
+    /// Takes the width the container actually gave the row.
+    /// </summary>
+    private static void Settle(MyRunsSettingsRow row)
+    {
+        try
+        {
+            if (!GodotObject.IsInstanceValid(row.Root) || !row.Root.IsInsideTree()) return;
+            row.Relayout(row.Root.Size.X);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not lay Runmobile's settings out again: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     /// <summary>
@@ -148,13 +186,13 @@ internal static class MyRunsSettings
     /// <see cref="MyRunsRow"/>'s, from a fact of its own rather than a count of zero:
     /// no runs yet and cannot tell yet are different sentences.
     /// </summary>
-    internal static MyRunsSettingsRow Build(float width, Font? font)
+    internal static MyRunsSettingsRow Build(float width, MyRunsSettingsText text)
     {
         var facts = OnDisk();
         var settings = RunmobileSettings.Read();
         _row = MyRunsSettingsRow.Build(
             MyRunsRow.For(facts), facts.Keep, settings.FetchRunIndex,
-            width, font, Retain, AskToRemove, SetFetchRunIndex, SetMainMenuRow);
+            width, text, Retain, AskToRemove, SetFetchRunIndex, SetMainMenuRow);
         return _row;
     }
 

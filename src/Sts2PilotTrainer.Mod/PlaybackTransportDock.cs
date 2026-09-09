@@ -2,9 +2,21 @@ using Godot;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
+using MegaCrit.Sts2.Core.Nodes.Multiplayer;
 using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
+
+internal sealed record PlaybackTransportText(
+    GameTextStyle Identity,
+    GameTextStyle Description,
+    GameTextStyle Counter,
+    GameTextStyle Note,
+    GameTextStyle Speed,
+    GameTextStyle MenuRow,
+    GameTextStyle LedgerRow,
+    GameTextStyle TooltipTitle,
+    GameTextStyle TooltipBody);
 
 /// <summary>
 /// Where the transport lives inside the running client, and for how long.
@@ -72,7 +84,7 @@ internal static class PlaybackTransportDock
             state,
             globalUi.GetViewportRect().Size,
             Anchor(globalUi),
-            GameFont.Of(globalUi.GetTree()?.Root),
+            TextOf(),
             back,
             play,
             step,
@@ -116,6 +128,17 @@ internal static class PlaybackTransportDock
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
     }
+
+    private static PlaybackTransportText TextOf() => new(
+        GameText.Scene(NativeTextRole.Identity),
+        GameText.Scene(NativeTextRole.IdentityDescription),
+        GameText.Scene(NativeTextRole.TagNumeral),
+        GameText.Scene(NativeTextRole.TooltipBody),
+        GameText.Scene(NativeTextRole.DropdownValue),
+        GameText.Scene(NativeTextRole.DropdownItem),
+        GameText.Scene(NativeTextRole.LedgerRow),
+        GameText.Scene(NativeTextRole.TooltipTitle),
+        GameText.Scene(NativeTextRole.TooltipBody));
 
     /// <summary>
     /// Where the tag hangs from: the top-right corner it is pinned to.

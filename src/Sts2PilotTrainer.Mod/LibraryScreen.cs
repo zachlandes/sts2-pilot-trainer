@@ -162,9 +162,11 @@ internal static class LibraryScreen
     /// the text is then set directly.</summary>
     private static LocString PlaceholderConfirm => new("main_menu_ui", "GENERIC_POPUP.confirm");
 
-    /// <summary>The smallest the body is allowed to become. A body nobody can read is
-    /// not a list.</summary>
-    private const int MinimumBodyFontSize = 17;
+    /// <summary>The smallest the popup's own body is allowed to shrink itself to, as a
+    /// share of the size it stands at when the screen opens - which is the size its own
+    /// scene was designed to, because the floor is set before any text is put in it. A
+    /// body nobody can read is not a list, and the floor is now the game's own size
+    /// rather than a number of ours.</summary>
 
     /// <summary>How far apart rows sit, as a multiple of a row's own measured
     /// height.</summary>
@@ -178,9 +180,14 @@ internal static class LibraryScreen
     /// height. A row occupies its whole height, so anything under one clears it.</summary>
     private const float NoteDrop = 1.12f;
 
-    /// <summary>The second line is supporting text and reads after the row, so it is
-    /// smaller and dimmer than the label the game drew.</summary>
-    private const int NoteFontSize = 15;
+    /// <summary>How far a line of Runmobile's own text stands off the one before it, as
+    /// a multiple of its own size. The header over the list, the filter under it and the
+    /// footer beneath are each one line and a breath.</summary>
+    private const float LineStep = 1.6f;
+
+    /// <summary>The same for a control rather than a line: a checkbox is a box round a
+    /// word and stands taller than the word does.</summary>
+    private const float ControlStep = 2.3f;
 
     /// <summary>How wide the list is, as a share of the content area. The pane takes
     /// the rest less the seam, so the two are one measurement rather than two.</summary>
@@ -216,7 +223,6 @@ internal static class LibraryScreen
             ExpandForLibrary(content);
             var label = content.BodyLabel();
             label.BbcodeEnabled = true;
-            label.MinFontSize = MinimumBodyFontSize;
             label.ScrollActive = true;
             content.SetText(page.Title, page.Body ?? string.Empty);
             ReservePageRoom(content, page);
@@ -553,19 +559,23 @@ internal static class LibraryScreen
                 "This build's popup ribbon has no measurable height, so a row column cannot be laid out.");
         }
 
+        var listHeading = GameText.Scene(NativeTextRole.ListHeading);
+        var filterText = GameText.Scene(NativeTextRole.Tickbox);
+        var footerText = GameText.Scene(NativeTextRole.Footer);
+        var groupHeading = GameText.Scene(NativeTextRole.GroupHeading);
         var top = at.Position.Y;
         if (page.ListHeader is { Length: > 0 } header)
         {
-            AddLine(content, header, new Vector2(at.Position.X, top), at.Size.X, LibraryPalette.Muted, NoteFontSize);
-            top += 28f;
+            AddLine(content, header, new Vector2(at.Position.X, top), at.Size.X, LibraryPalette.Muted, listHeading);
+            top += listHeading.Size * LineStep;
         }
 
         var placed = new List<Control>();
         if (page.ListFilter is { } filter)
         {
-            var checkbox = AddFilter(content, filter, new Vector2(at.Position.X, top), at.Size.X);
+            var checkbox = AddFilter(content, filter, new Vector2(at.Position.X, top), at.Size.X, filterText);
             placed.Add(checkbox);
-            top += 40f;
+            top += filterText.Size * ControlStep;
         }
 
         var bottom = at.End.Y;
@@ -575,10 +585,10 @@ internal static class LibraryScreen
             // not showing, so it sits with the list rather than in the band. The whole
             // reason is the tooltip, because a numeral is what a player scans and a
             // sentence is what they ask for.
-            bottom -= 28f;
+            bottom -= footerText.Size * LineStep;
             AddLine(
                 content, footer, new Vector2(at.Position.X, bottom), at.Size.X,
-                LibraryPalette.Muted, NoteFontSize, tooltip: page.ListFooterTooltip);
+                LibraryPalette.Muted, footerText, tooltip: page.ListFooterTooltip);
         }
 
         var fits = (int)Math.Floor((bottom - top) / step);
@@ -618,7 +628,7 @@ internal static class LibraryScreen
             var button = AddRow(
                 content, drawn[index], $"RunmobileRow{index.ToString(System.Globalization.CultureInfo.InvariantCulture)}",
                 new Vector2(at.Position.X, rowTop), at.Size.X);
-            rowTop += drawn[index].Heading ? 32f : step;
+            rowTop += drawn[index].Heading ? groupHeading.Size * ControlStep : step;
             if (button is not null) placed.Add(button);
         }
 
@@ -627,20 +637,20 @@ internal static class LibraryScreen
     }
 
     private static CheckBox AddFilter(
-        NVerticalPopup content, ScreenFilter filter, Vector2 at, float width)
+        NVerticalPopup content, ScreenFilter filter, Vector2 at, float width, GameTextStyle text)
     {
+        var height = text.Size * ControlStep;
         var checkbox = new CheckBox
         {
             Name = "RunmobileListFilter",
             Text = filter.Label,
             ButtonPressed = filter.Checked,
             Position = at,
-            Size = new Vector2(width, 32f),
-            CustomMinimumSize = new Vector2(width, 32f),
+            Size = new Vector2(width, height),
+            CustomMinimumSize = new Vector2(width, height),
             FocusMode = Control.FocusModeEnum.All,
         };
-        if (GameFont.Of(content.GetTree()?.Root) is { } font)
-            checkbox.AddThemeFontOverride("font", font);
+        text.ApplyTo(checkbox);
         checkbox.Pressed += () => Navigate(filter.Label, filter.Toggle);
         content.AddChild(checkbox);
         return checkbox;
@@ -657,7 +667,7 @@ internal static class LibraryScreen
     {
         if (row.Heading)
         {
-            AddLine(content, row.Label, at, width, LibraryPalette.Muted, NoteFontSize);
+            AddLine(content, row.Label, at, width, LibraryPalette.Muted, GameText.Scene(NativeTextRole.GroupHeading));
             return null;
         }
 
@@ -806,36 +816,36 @@ internal static class LibraryScreen
     /// </summary>
     private static void AddActReached(NVerticalPopup content, Control row, string text)
     {
+        var style = GameText.Scene(NativeTextRole.ListNumeral);
         var label = new Label
         {
             Name = $"{row.Name}ActReached",
             Text = text,
-            Position = new Vector2(row.Size.X * 0.42f, (row.Size.Y - NoteFontSize) / 2f),
+            Position = new Vector2(row.Size.X * 0.42f, (row.Size.Y - style.Size) / 2f),
             CustomMinimumSize = new Vector2(row.Size.X * 0.18f, 0f),
             MouseFilter = Control.MouseFilterEnum.Ignore,
             HorizontalAlignment = HorizontalAlignment.Center,
         };
 
-        if (GameFont.Of(content.GetTree()?.Root) is { } font) label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", NoteFontSize);
+        style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", LibraryPalette.Muted);
         row.AddChild(label);
     }
 
     private static void AddTrailing(NVerticalPopup content, Control row, string text)
     {
+        var style = GameText.Scene(NativeTextRole.ListNumeral);
         var label = new Label
         {
             Name = $"{row.Name}Trailing",
             Text = text,
-            Position = new Vector2(row.Size.X * 0.6f, (row.Size.Y - NoteFontSize) / 2f),
+            Position = new Vector2(row.Size.X * 0.6f, (row.Size.Y - style.Size) / 2f),
             CustomMinimumSize = new Vector2(row.Size.X * 0.3f, 0f),
             MouseFilter = Control.MouseFilterEnum.Ignore,
             HorizontalAlignment = HorizontalAlignment.Right,
         };
 
-        if (GameFont.Of(content.GetTree()?.Root) is { } font) label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", NoteFontSize);
+        style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", LibraryPalette.Teal);
         row.AddChild(label);
     }
@@ -855,21 +865,21 @@ internal static class LibraryScreen
     /// </summary>
     private static void AddNote(NVerticalPopup content, Control row, string note)
     {
+        var style = GameText.Scene(NativeTextRole.Secondary);
         var label = new Label
         {
             Name = $"{row.Name}Note",
             Text = note,
             Position = new Vector2(0f, row.Size.Y * NoteDrop),
             CustomMinimumSize = new Vector2(row.Size.X, 0f),
-            Size = new Vector2(row.Size.X, NoteFontSize * 1.3f),
+            Size = new Vector2(row.Size.X, style.Size * 1.3f),
             ClipText = true,
             TooltipText = note,
             MouseFilter = Control.MouseFilterEnum.Ignore,
             HorizontalAlignment = HorizontalAlignment.Center,
         };
 
-        if (GameFont.Of(content.GetTree()?.Root) is { } font) label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", NoteFontSize);
+        style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", LibraryPalette.Muted);
         row.AddChild(label);
     }
@@ -884,11 +894,11 @@ internal static class LibraryScreen
     /// is the only line on this surface that does - a numeral is what a player scans and
     /// the sentence is what they ask for.</param>
     internal static float AddLine(
-        NVerticalPopup content, string text, Vector2 at, float width, Color colour, int size,
+        NVerticalPopup content, string text, Vector2 at, float width, Color colour, GameTextStyle style,
         HorizontalAlignment alignment = HorizontalAlignment.Left, string? tooltip = null)
     {
         var lineCount = text.Count(character => character == '\n') + 1;
-        var height = size * 1.3f * lineCount;
+        var height = style.Size * 1.3f * lineCount;
         var label = new Label
         {
             Name = "RunmobileLine",
@@ -904,11 +914,10 @@ internal static class LibraryScreen
             HorizontalAlignment = alignment,
         };
 
-        if (GameFont.Of(content.GetTree()?.Root) is { } font) label.AddThemeFontOverride("font", font);
-        label.AddThemeFontSizeOverride("font_size", size);
+        style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", colour);
         content.AddChild(label);
-        return at.Y + (size * 1.45f * lineCount);
+        return at.Y + (style.Size * 1.45f * lineCount);
     }
 
     /// <summary>
@@ -940,9 +949,9 @@ internal static class LibraryScreen
     /// Adds the run-code field: a stock Godot line edit wearing the game's own font.
     ///
     /// Stock rather than the game's <c>NSearchBar</c>, which is a scene this mod has no
-    /// path to instantiate outside the screens that already hold one. The font is
-    /// borrowed from a label already on screen, the way the result panel borrows it,
-    /// so the field reads as part of the game rather than as Godot's default sans.
+    /// path to instantiate outside the screens that already hold one. The stock field
+    /// instead wears the native card-library search field's font and size, so it reads
+    /// as the same kind of input rather than as Godot's default sans.
     /// </summary>
     private sealed record ShareFields(
         LineEdit Name, LineEdit Description, LineEdit DisplayName, CheckBox Consent)
@@ -953,7 +962,8 @@ internal static class LibraryScreen
     private static ShareFields AddShareFields(NVerticalPopup content, Rect2 at)
     {
         var height = content.NoButton.Size.Y;
-        var font = GameFont.Of(content.GetTree()?.Root);
+        var input = GameText.Scene(NativeTextRole.Input);
+        var tickbox = GameText.Scene(NativeTextRole.Tickbox);
 
         LineEdit Field(string name, string placeholder, int? limit, int step)
         {
@@ -966,7 +976,7 @@ internal static class LibraryScreen
                 FocusMode = Control.FocusModeEnum.All,
             };
             if (limit is { } maximum) field.MaxLength = maximum;
-            if (font is not null) field.AddThemeFontOverride("font", font);
+            input.ApplyTo(field);
             content.AddChild(field);
             return field;
         }
@@ -987,7 +997,7 @@ internal static class LibraryScreen
             CustomMinimumSize = new Vector2(at.Size.X, height),
             FocusMode = Control.FocusModeEnum.All,
         };
-        if (font is not null) consent.AddThemeFontOverride("font", font);
+        tickbox.ApplyTo(consent);
         content.AddChild(consent);
         return new ShareFields(name, description, displayName, consent);
     }
@@ -1004,7 +1014,7 @@ internal static class LibraryScreen
             FocusMode = Control.FocusModeEnum.All,
         };
 
-        if (GameFont.Of(content.GetTree()?.Root) is { } font) field.AddThemeFontOverride("font", font);
+        GameText.Scene(NativeTextRole.Input).ApplyTo(field);
         content.AddChild(field);
         field.Connect(
             LineEdit.SignalName.TextSubmitted,

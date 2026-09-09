@@ -37,13 +37,7 @@ internal static class RecorderPresenceRow
     /// already added rather than adding a second.</summary>
     internal const string RowName = "RunmobileRecording";
 
-    private static readonly StringName FontEntry = "font";
-
-    private static readonly StringName FontSizeEntry = "font_size";
-
     private static readonly StringName FontColorEntry = "font_color";
-
-    private static readonly StringName LabelType = "Label";
 
     /// <summary>The warning hue for a recording that stopped.</summary>
     internal const string WarningColorHex = "#e0755a";
@@ -87,11 +81,14 @@ internal static class RecorderPresenceRow
     ///
     /// The row takes the MODDED label's font, size and alignment at the moment it is
     /// added - after that label's own <c>_Ready</c>, so a locale font substitution the
-    /// game applied there is what gets copied. It takes no colour of its own: it is a
-    /// child of the same container and reads the same theme, which is what "the
-    /// overlay's own colour" means. It does not copy the MODDED label's modulate, which
-    /// the game turns red to say a mod failed to load; that is a claim about a mod and
-    /// not about this recording.
+    /// game applied there is what gets copied. The copy goes through
+    /// <see cref="GameText"/>, which is where every Runmobile surface now takes its type
+    /// from; this row is the one that rule was generalised out of.
+    ///
+    /// <para>It takes no colour of its own: it is a child of the same container and reads
+    /// the same theme, which is what "the overlay's own colour" means. It does not copy
+    /// the MODDED label's modulate, which the game turns red to say a mod failed to load;
+    /// that is a claim about a mod and not about this recording.</para>
     /// </summary>
     /// <returns>The row, or null where the MODDED label has no parent to add one
     /// to.</returns>
@@ -107,8 +104,7 @@ internal static class RecorderPresenceRow
             HorizontalAlignment = moddedRow.HorizontalAlignment,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        row.AddThemeFontOverride(FontEntry, moddedRow.GetThemeFont(FontEntry, LabelType));
-        row.AddThemeFontSizeOverride(FontSizeEntry, moddedRow.GetThemeFontSize(FontSizeEntry, LabelType));
+        GameText.Require(moddedRow, "version overlay row").ApplyTo(row);
 
         column.AddChild(row);
         column.MoveChild(row, moddedRow.GetIndex() + 1);

@@ -151,6 +151,31 @@ The settings row about the player's own runs - keep, size, remove - is derived i
 It is there for the reason the transport's rule is there: the number the policy keeps, the number on the disk and what a removal just did are three facts that can disagree, and a row where each control set its own label would show a reading taken before an act beside a receipt taken after it.
 Where that row hangs, what it reads, and where its drawing departs from the accepted design are in [in-game-host.md](in-game-host.md) under "The settings row, and the size figure".
 
+## Type: the game's own, at the game's own size
+
+**No surface in this mod writes down or derives a font size.**
+`GameText` reads one named native node for each text role, including the node's locale-substituted font and its design size.
+An auto-sizing native label contributes `MaxFontSize`; a fixed-size label contributes its own `font_size` override.
+There is no median, ratio, fallback size, or first-descendant search.
+Missing native furniture refuses the surface rather than substituting Godot's default or deriving a related size.
+
+**Each piece of text has the native role of the same kind.**
+The settings row reads its row label, value, stepper numeral, and button caption from the named live controls on that settings screen; its supporting line uses the mapped native secondary-row role.
+The run-history plate uses the history screen's fact role for its status, reason, and note, and the native button-caption role for pressable rows.
+The transport uses the profile identity roles for creator and title, the portrait-tip numeral for its counter, the dropdown value and item roles for speed and menus, the map-point reward role for its ledger, and the hover-tip title and body roles for its tooltip and note.
+The result panel resolves every role from named scene resources before it is attached: popup heading and body, list headings and numerals, score labels and values, section headings, chart numerals, card captions, and the button caption.
+The library likewise distinguishes list headings, row numerals, secondary lines, facts, floor numerals, card captions, fields, tickboxes, and footer counts rather than treating the popup body as all of them.
+
+**A surface whose boxes were measured around its own text scales with the native reading.**
+The tag and the result panel scale their geometry with the native reading rather than growing words outside fixed boxes.
+The result chronology measures how many native-height turn rows fit beside the chart and pages the rest through the game's paginator arrows, so no supported surface compresses or clips a turn.
+The look-back ledger measures its page from the viewport in the same way, and the library strip uses the run-history screen's own arrow image.
+
+**A surface that sits inside the game's own container is a child of it, and asks it for height only.**
+The settings row is inserted into the modding entry's parent column immediately after that entry.
+It asks the container for height and never for width, then lays itself out again after the container sorts because the settings screen has not been laid out when its `_Ready` runs.
+`demo/RUNMOBILE-NATIVE-TYPE.md` records current retail captures of the library, refusal popup, and settings row, and names the surfaces that still require manual navigation for an in-client capture.
+
 ## What a redesign owns, and what it does not
 
 Change what `PlaybackTransportStrip` draws.

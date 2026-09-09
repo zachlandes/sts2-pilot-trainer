@@ -31,9 +31,20 @@ public partial class Control : CanvasItem
         public static readonly StringName Resized = "Resized";
     }
 
+    private Vector2 _size;
+
     public Vector2 Position { get; set; }
     public Vector2 GlobalPosition { get; set; }
-    public Vector2 Size { get; set; }
+    public Vector2 Size
+    {
+        get => _size;
+        set
+        {
+            if (_size.X == value.X && _size.Y == value.Y) return;
+            _size = value;
+            Resized?.Invoke();
+        }
+    }
     public Vector2 CustomMinimumSize { get; set; }
     public float Rotation { get; set; }
     public Vector2 Scale { get; set; } = Vector2.One;
@@ -49,12 +60,8 @@ public partial class Control : CanvasItem
     public void AcceptEvent() { }
     public bool HasFocus() => false;
     public Viewport? GetViewport() => null;
-    public Font GetThemeFont(StringName name, StringName themeType) => new();
-    public int GetThemeFontSize(StringName name, StringName themeType) => 16;
     public int GetThemeConstant(StringName name, StringName themeType) => 0;
-    public bool HasThemeFontOverride(StringName name) => false;
     public bool HasThemeFont(StringName name, StringName themeType) => true;
-    public void AddThemeFontSizeOverride(StringName name, int fontSize) { }
 
     public virtual void _GuiInput(InputEvent @event) { }
 

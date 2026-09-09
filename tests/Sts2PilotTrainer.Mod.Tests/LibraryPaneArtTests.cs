@@ -7,13 +7,18 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 
 public sealed class LibraryPaneArtTests
 {
+    /// <summary>The pane's own line size in a process with no game, which is what the
+    /// strip's cells are measured against. The paging assertions below were taken at
+    /// this size.</summary>
+    private const int LineSize = 16;
+
     [Fact]
     public void FullRunStripPagesIntoReadableWindows()
     {
         const int floors = 50;
         const float width = 500f;
 
-        var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0);
+        var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, LineSize);
 
         Assert.Equal(15, layout.Count);
         Assert.Equal(4, layout.Pages);
@@ -27,7 +32,7 @@ public sealed class LibraryPaneArtTests
     [Fact]
     public void FullRunStripOpensOnTheAnchoredPage()
     {
-        var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49);
+        var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, LineSize);
 
         Assert.Equal(3, layout.Index);
         Assert.Equal(45, layout.First);
@@ -40,7 +45,7 @@ public sealed class LibraryPaneArtTests
     [Fact]
     public void FullRunStripCanMoveToAnAdjacentPage()
     {
-        var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, requestedPage: 1);
+        var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, LineSize, requestedPage: 1);
 
         Assert.Equal(1, layout.Index);
         Assert.Equal(15, layout.First);
@@ -51,13 +56,30 @@ public sealed class LibraryPaneArtTests
     }
 
     [Fact]
+    public void DeckRowsLeaveRoomForNativeCardCounts()
+    {
+        const float tile = 64.5f;
+        const int caption = 24;
+
+        var pitch = LibraryPaneArt.DeckRowPitch(tile, caption);
+        var countBottom = (tile * 0.82f * 0.76f) + (caption * 1.3f);
+
+        Assert.True(pitch >= countBottom);
+    }
+
+    [Fact]
     public void StripPageButtonActivatesFromRetailKeyboardActions()
     {
         _ = EngineHost.StartupPhase();
         var presses = 0;
+        var image = new Texture2D();
         var button = LibraryPaneArt.AddStripPageButton(
-            new Control(), "Previous", "Previous", "‹", Vector2.Zero, 28f, 28f,
-            () => presses++);
+            new Control(), "Previous", "Previous", true, Vector2.Zero, 28f, 28f,
+            _ => image, () => presses++);
+
+        Assert.Equal(string.Empty, button.Text);
+        Assert.False(button.HasThemeFontOverride("font"));
+        Assert.Same(image, button.GetChildren().OfType<TextureRect>().Single().Texture);
 
         foreach (var action in new[] { MegaInput.confirm, MegaInput.select })
         {

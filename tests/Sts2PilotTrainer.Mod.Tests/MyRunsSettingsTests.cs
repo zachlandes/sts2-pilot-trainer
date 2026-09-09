@@ -1,7 +1,9 @@
 using Godot;
+using MegaCrit.Sts2.Core.Nodes.Screens.Settings;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -63,7 +65,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         RecordingRetention.ApplyOnce();
         Assert.Equal(4, RunmobileStore.ListFileNames(Recordings).Count);
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, Text());
         row.Fewer.EmitPressed();
 
         Assert.Equal("1", Label(row, "KeepNumeral").Text);
@@ -88,7 +90,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         Record(Older);
         Record(Newest);
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, Text());
         row.Fewer.EmitPressed();
 
         Assert.Equal(4, RunmobileStore.ListFileNames(Recordings).Count);
@@ -96,20 +98,47 @@ public sealed class MyRunsSettingsTests : IDisposable
     }
 
     [Fact]
+    public void SettingsTextReadsEachMappedRoleFromTheLiveScreen()
+    {
+        var screen = new NSettingsScreen();
+        var entry = new MarginContainer();
+        var rowLabel = Native("Label", 28);
+        var button = new Control { Name = "ModdingButton" };
+        var buttonLabel = Native("%ModdingButton/Label", 22);
+        var numeral = Native(
+            "ScrollContainer/Mask/Clipper/GeneralSettings/VBoxContainer/Screenshake/Paginator/LabelContainer/Mask/Label",
+            27);
+        var reading = Native(
+            "ScrollContainer/Mask/Clipper/SoundSettings/VBoxContainer/MasterVolume/MasterVolumeSlider/SliderValue",
+            26);
+        entry.AddChild(rowLabel);
+        entry.AddChild(button);
+        screen.AddChild(buttonLabel);
+        screen.AddChild(numeral);
+        screen.AddChild(reading);
+        screen.AddChild(entry);
+
+        var text = MyRunsSettings.NativeText(screen, button, new GameTextStyle(null, 24));
+
+        Assert.Equal(28, text.Row.Size);
+        Assert.Equal(27, text.Numeral.Size);
+        Assert.Equal(26, text.Reading.Size);
+        Assert.Equal(24, text.Detail.Size);
+        Assert.Equal(22, text.Button.Size);
+    }
+
+    [Fact]
     public void TheProductionSettingsHostShowsAndPersistsTheFetchControl()
     {
-        var host = new Control { Size = new Vector2(Width, 400f) };
-        var modding = new Button
-        {
-            Name = "ModdingButton",
-            Position = new Vector2(0f, 100f),
-            Size = new Vector2(Width, 30f),
-        };
-        host.AddChild(modding);
+        var column = new VBoxContainer { Size = new Vector2(Width, 400f) };
+        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(Width, 30f) };
+        var modding = new Control { Name = "ModdingButton", Size = new Vector2(Width, 30f) };
+        entry.AddChild(modding);
+        column.AddChild(entry);
 
-        var row = MyRunsSettings.Attach(modding, font: null);
+        var row = MyRunsSettings.Attach(modding, Text());
 
-        Assert.Same(host, row.Root.GetParent());
+        Assert.Same(column, row.Root.GetParent());
         Assert.Equal("Fetch the run index: on", row.Fetch.Text);
         row.Fetch.EmitPressed();
         Assert.False(RunmobileSettings.Read().FetchRunIndex);
@@ -138,7 +167,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         column.AddChild(entry);
         column.AddChild(credits);
 
-        var row = MyRunsSettings.Attach(modding, font: null);
+        var row = MyRunsSettings.Attach(modding, Text());
 
         Assert.Same(column, row.Root.GetParent());
         Assert.NotSame(entry, row.Root.GetParent());
@@ -147,7 +176,92 @@ public sealed class MyRunsSettingsTests : IDisposable
         // does not land past the credits it is supposed to push down.
         Assert.True(row.Root.GetIndex() < credits.GetIndex());
         // The block carries its own height, which is what a VBoxContainer lays out from.
-        Assert.Equal(MyRunsSettingsRow.Height, row.Root.CustomMinimumSize.Y);
+        Assert.Equal(row.Height, row.Root.CustomMinimumSize.Y);
+    }
+
+    /// <summary>
+    /// The row is laid out at the settings column, not at the button it hangs off.
+    ///
+    /// This is the defect the retail client found. The game's modding entry point is a
+    /// button a fraction of the column's width, and taking its width fitted only by
+    /// arithmetic: at the size the row used to write down, its stepper took half of that
+    /// and the label just fitted in the rest. Drawn at the settings screen's own size the
+    /// stepper takes the whole of it, the label clips mid-word, and the destructive
+    /// control is pushed back across the row onto the game's own label.
+    /// </summary>
+    [Fact]
+    public void TheRowIsLaidOutAtTheSettingsColumnRatherThanAtTheButtonItHangsOff()
+    {
+        var column = new VBoxContainer { Size = new Vector2(Width, 400f) };
+        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(Width, 30f) };
+        var modding = new Control { Name = "ModdingButton", Size = new Vector2(Width, 30f) };
+        entry.AddChild(modding);
+        column.AddChild(entry);
+
+        var row = MyRunsSettings.Attach(modding, Text(26));
+
+        Assert.Equal(Width, row.Root.Size.X);
+        // The label keeps most of the row whatever the text grows to, rather than being
+        // squeezed out by the controls beside it.
+        Assert.True(
+            Label(row, "KeepLabel").Size.X > Width / 2f,
+            $"the keep label got {Label(row, "KeepLabel").Size.X} of {Width}");
+        // And the destructive control stays at the row's right-hand end.
+        Assert.True(
+            row.Remove.Position.X > Width / 2f,
+            $"the remove control sat at {row.Remove.Position.X} of {Width}");
+        // Immediately after the game's own modding row, which is where it belongs in the
+        // column rather than hung in the gap under a button.
+        Assert.Equal(modding.GetIndex() + 1, row.Root.GetIndex());
+    }
+
+    /// <summary>
+    /// A row built before the screen was laid out takes the column once it is.
+    ///
+    /// A settings screen has not been laid out when its <c>_Ready</c> runs: every
+    /// control still carries the size its scene was saved at. The row is built from that
+    /// and laid out again a frame later, which is the only moment the column's width
+    /// exists. Without it the row keeps a width that was never the answer and clips its
+    /// own words - which is what the retail client showed.
+    /// </summary>
+    [Fact]
+    public void ARowBuiltBeforeTheScreenWasLaidOutTakesTheColumnOnceItIs()
+    {
+        var row = MyRunsSettings.Build(120f, Text(26));
+        var narrowReading = Label(row, "Reading").Size.X;
+        var narrowDetail = Label(row, "Detail").Size.X;
+
+        // Drive the resize announcement the host container makes rather than calling
+        // the row's layout mechanism directly.
+        row.Root.Size = new Vector2(Width, row.Root.Size.Y);
+
+        Assert.Equal(Width, Label(row, "Reading").Size.X);
+        Assert.Equal(Width, Label(row, "Detail").Size.X);
+        Assert.True(Label(row, "Reading").Size.X > narrowReading);
+        Assert.True(Label(row, "Detail").Size.X > narrowDetail);
+        Assert.Equal(Width, row.Remove.Position.X + row.Remove.Size.X);
+        Assert.Equal(Width, row.Fetch.Position.X + row.Fetch.Size.X);
+        Assert.Equal(Width, row.MainMenu.Position.X + row.MainMenu.Size.X);
+    }
+
+    /// <summary>
+    /// The row never asks its host for width, only for height.
+    ///
+    /// A container gives a child at least its minimum, so a row that asked for a width
+    /// would widen the game's own settings list to match. It did exactly that in the
+    /// retail client and dragged every one of the game's rows out to the edge of the
+    /// screen. Height is the row's to ask for; width is the column's to give.
+    /// </summary>
+    [Fact]
+    public void TheRowAsksItsHostForHeightAndNeverForWidth()
+    {
+        var row = MyRunsSettings.Build(120f, Text(26));
+
+        row.Relayout(Width);
+
+        Assert.Equal(0f, row.Root.CustomMinimumSize.X);
+        Assert.True(row.Root.CustomMinimumSize.Y > 0f, "the row asked for no height");
+        Assert.Equal(Width, row.Root.Size.X);
     }
 
     /// <summary>
@@ -171,7 +285,7 @@ public sealed class MyRunsSettingsTests : IDisposable
                 "This game has not chosen a save profile yet, so Runmobile cannot tell whose files these " +
                 "would be."));
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, Text());
 
         Assert.Equal("Your runs are read once you have chosen a save profile", Label(row, "Reading").Text);
         Assert.Equal(string.Empty, Label(row, "Detail").Text);
@@ -192,7 +306,7 @@ public sealed class MyRunsSettingsTests : IDisposable
     {
         RunmobileStore.UseRootProviderForTesting(() => string.Empty);
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, Text());
 
         Assert.Equal("Your runs could not be read; the game's log says why", Label(row, "Reading").Text);
         Assert.Equal(string.Empty, Label(row, "Detail").Text);
@@ -214,7 +328,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         ContinuableRun.UseReaderForTesting(
             () => throw new InvalidOperationException("This game has a saved run it could not read."));
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, Text());
 
         Assert.Equal("Your runs could not be read; the game's log says why", Label(row, "Reading").Text);
         Assert.True(row.Remove.Disabled);
@@ -233,7 +347,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         Record(Newest);
         ContinuableRun.UseReaderForTesting(() => RecordingLibrary.Index([$"{Newest}.journal.jsonl"])[0].StartedUtc);
 
-        var row = MyRunsSettings.Build(Width, font: null);
+        var row = MyRunsSettings.Build(Width, Text());
 
         Assert.Equal(
             "1 older run will be removed at the main menu · user://Runmobile/recordings",
@@ -244,6 +358,24 @@ public sealed class MyRunsSettingsTests : IDisposable
         Assert.Equal(
             [$"{Newest}.journal.jsonl", $"{Newest}.replay.json"],
             RunmobileStore.ListFileNames(Recordings));
+    }
+
+    private static MyRunsSettingsText Text(int rowSize = 16, int buttonSize = 16) =>
+        new(
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, rowSize),
+            new GameTextStyle(null, buttonSize));
+
+    private static Label Native(string name, int size)
+    {
+        var label = new Label { Name = name };
+        label.AddThemeFontOverride("font", new Font());
+        label.AddThemeFontSizeOverride("font_size", 17);
+        label.Set("AutoSizeEnabled", true);
+        label.Set("MaxFontSize", size);
+        return label;
     }
 
     private static void WriteSettings(int keep) =>

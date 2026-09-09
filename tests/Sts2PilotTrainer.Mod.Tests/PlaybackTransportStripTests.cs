@@ -1,4 +1,6 @@
 using Godot;
+using MegaCrit.Sts2.Core.ControllerInput;
+using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
@@ -63,9 +65,13 @@ public sealed class PlaybackTransportStripTests
         foreach (var button in new[] { strip.Back, strip.Play, strip.Step })
         {
             Assert.Equal(string.Empty, button.Text);
+            Assert.False(button.HasThemeFontOverride("font"));
             Assert.NotNull(Descendants(button).OfType<Control>().FirstOrDefault(
                 node => node.Name.ToString() == "Glyph"));
         }
+
+        Assert.False(strip.Speed.HasThemeFontOverride("font"));
+        Assert.False(strip.Identity.HasThemeFontOverride("font"));
     }
 
     /// <summary>
@@ -267,6 +273,91 @@ public sealed class PlaybackTransportStripTests
 
         strip.Apply(Revealing(MapMove, 2, noteShown: true));
         Assert.False(strip.Ledger.Visible);
+    }
+
+    [Fact]
+    public void LongLedgerKeepsEveryNativeSizedDecisionReachableAcrossPages()
+    {
+        _ = EngineHost.StartupPhase();
+        var made = Enumerable.Range(1, 8)
+            .Select(number => (PrefightChoice)new PrefightChoice.MapMove(
+                number, "Monster", 0, 3))
+            .ToList();
+        var state = For(
+            JourneyPhase.Watching,
+            made: made,
+            next: new PrefightChoice.MapMove(9, "Monster", 0, 3),
+            stepsTaken: 8,
+            count: 10,
+            lookingBackAt: 1,
+            speed: PlaybackSpeed.Half);
+        var surface = new Vector2(1280, 720);
+        var strip = PlaybackTransportStrip.Build(
+            state,
+            surface,
+            new Vector2(1100, 85),
+            Text(28, 26, 28, 28, 28, 26),
+            back: () => { },
+            play: () => { },
+            step: () => { },
+            speed: () => { },
+            identity: () => { },
+            pageArrow: _ => new Texture2D());
+        var reached = new HashSet<int>();
+        var nextPage = Descendants(strip.Ledger).OfType<Button>()
+            .Single(button => button.Name.ToString() == "LedgerNext");
+        Activate(nextPage, MegaInput.confirm);
+        Assert.NotNull(Find<Label>(strip.Ledger, "Ledger2"));
+        var previousPage = Descendants(strip.Ledger).OfType<Button>()
+            .Single(button => button.Name.ToString() == "LedgerPrevious");
+        Activate(previousPage, MegaInput.select);
+        Assert.NotNull(Find<Label>(strip.Ledger, "Ledger1"));
+
+        while (true)
+        {
+            Assert.True(strip.Ledger.Position.Y + strip.Ledger.Size.Y <= surface.Y);
+            foreach (var label in Descendants(strip.Ledger).OfType<Label>()
+                         .Where(label => label.Name.ToString().StartsWith("Ledger", StringComparison.Ordinal)))
+            {
+                reached.Add(int.Parse(label.Name.ToString()["Ledger".Length..],
+                    System.Globalization.CultureInfo.InvariantCulture));
+                Assert.True(label.Size.Y >= 28);
+                Assert.True(label.Position.Y + label.Size.Y <= strip.Ledger.Size.Y);
+            }
+
+            var next = Descendants(strip.Ledger).OfType<Button>()
+                .SingleOrDefault(button => button.Name.ToString() == "LedgerNext");
+            if (next is null) break;
+            next.EmitPressed();
+        }
+
+        Assert.Equal(Enumerable.Range(1, 9), reached.Order());
+
+        strip.OpenMenu(_ => { });
+        strip.Speed.EmitFocus(entered: true);
+        var menuRows = new HashSet<int>();
+        while (true)
+        {
+            Assert.True(strip.Menu.Position.Y + strip.Menu.Size.Y <= surface.Y);
+            Assert.True(strip.Tooltip.Position.Y >= strip.Menu.Position.Y + strip.Menu.Size.Y);
+            Assert.True(strip.Tooltip.Position.Y + strip.Tooltip.Size.Y <= surface.Y);
+            foreach (var label in Descendants(strip.Menu).OfType<Label>()
+                         .Where(label => label.Name.ToString().StartsWith("MenuRow", StringComparison.Ordinal)))
+            {
+                var name = label.Name.ToString();
+                menuRows.Add(int.Parse(name["MenuRow".Length..name.IndexOf('.')],
+                    System.Globalization.CultureInfo.InvariantCulture));
+                Assert.True(label.Size.Y >= 28);
+                Assert.True(label.Position.Y + label.Size.Y <= strip.Menu.Size.Y);
+            }
+
+            var next = Descendants(strip.Menu).OfType<Button>()
+                .SingleOrDefault(button => button.Name.ToString() == "MenuNext");
+            if (next is null) break;
+            next.EmitPressed();
+        }
+
+        Assert.Equal(Enumerable.Range(0, 4), menuRows.Order());
     }
 
     /// <summary>
@@ -604,6 +695,58 @@ public sealed class PlaybackTransportStripTests
         Assert.True(chip.Min(point => point.X) > tagLeft);
         Assert.Equal(tagRight, chip.Max(point => point.X), 1);
     }
+
+    [Fact]
+    public void EachTransportRoleKeepsItsNativeStyle()
+    {
+        var strip = PlaybackTransportStrip.Build(
+            Revealing(MapMove, 2, noteShown: true),
+            Surface,
+            Anchor,
+            Text(21, 13, 18, 16, 24, 14),
+            back: () => { },
+            play: () => { },
+            step: () => { },
+            speed: () => { },
+            identity: () => { });
+
+        Assert.Equal(21, Label(strip, "Creator").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(13, Label(strip, "VideoTitle").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(18, Label(strip, "Counter").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(18, Label(strip, "SpeedLabel").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(14, Label(strip, "NoteText").GetThemeFontSize("font_size", "Label"));
+        strip.OpenMenu(_ => { });
+        Assert.Equal(
+            16,
+            Label(strip.Menu, "MenuRow0.Label").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(24, Label(strip, "TooltipTitle").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(14, Label(strip, "TooltipBody").GetThemeFontSize("font_size", "Label"));
+    }
+
+    [Fact]
+    public void TheTagIsDrawnAtTheGamesOwnSizeAndGrowsWithIt()
+    {
+        var state = Revealing(MapMove, 2, noteShown: true);
+
+        var small = BuildAt(state, 15);
+        var large = BuildAt(state, 30);
+
+        Assert.Equal(15, Label(small, "Creator").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(30, Label(large, "Creator").GetThemeFontSize("font_size", "Label"));
+        Assert.True(Width(large) > Width(small));
+        Assert.True(Label(large, "Creator").Size.Y > Label(small, "Creator").Size.Y);
+    }
+
+    private static float Width(PlaybackTransportStrip strip)
+    {
+        var plate = Find<Polygon2D>(strip.Root, "Plate").Polygon;
+        return plate.Max(point => point.X) - plate.Min(point => point.X);
+    }
+
+    private static PlaybackTransportStrip BuildAt(PlaybackTransport state, int size) =>
+        PlaybackTransportStrip.Build(
+            state, Surface, Anchor, Text(size, size - 2, size + 2, size, size + 4, size - 2),
+            back: () => { }, play: () => { }, step: () => { }, speed: () => { }, identity: () => { });
 
     /// <summary>The pips are a picture of the journey, and they stop being drawn when
     /// there are too many to read at a glance.</summary>
@@ -1097,10 +1240,34 @@ public sealed class PlaybackTransportStripTests
     private static StyleBoxFlat Stylebox(Control control, string state) =>
         Assert.IsType<StyleBoxFlat>(control.ThemeStylebox(state));
 
+    private static void Activate(Button button, StringName action)
+    {
+        var input = new InputEventAction { Action = action, Pressed = true };
+        button.EmitSignal("gui_input", Variant.From<InputEvent>(input));
+    }
+
     private static PlaybackTransportStrip Build(PlaybackTransport state) =>
         PlaybackTransportStrip.Build(
-            state, Surface, Anchor, font: null,
+            state, Surface, Anchor, Text(),
             back: () => { }, play: () => { }, step: () => { }, speed: () => { }, identity: () => { });
+
+    private static PlaybackTransportText Text(
+        int identity = 16,
+        int supporting = 14,
+        int counter = 18,
+        int menuRow = 16,
+        int tooltipTitle = 20,
+        int tooltipBody = 14) =>
+        new(
+            new GameTextStyle(null, identity),
+            new GameTextStyle(null, supporting),
+            new GameTextStyle(null, counter),
+            new GameTextStyle(null, tooltipBody),
+            new GameTextStyle(null, counter),
+            new GameTextStyle(null, menuRow),
+            new GameTextStyle(null, menuRow),
+            new GameTextStyle(null, tooltipTitle),
+            new GameTextStyle(null, tooltipBody));
 
     private static Label Label(PlaybackTransportStrip strip, string name) => Find<Label>(strip.Root, name);
 
