@@ -87,9 +87,10 @@ internal sealed class MyRunsSettingsRow
     private const float StepSizeRatio = 1.6f;
     private const float StepGapRatio = 0.4f;
     private const float NumeralWidthRatio = 2.3f;
-    private const float RemoveWidthRatio = 11.2f;
-    private const float RemovePadRatio = 0.95f;
+    private const float ButtonGlyphWidthRatio = 0.6f;
+    private const float ButtonPadRatio = 0.95f;
     private const float RemoveHeightRatio = 2f;
+    private const float ControlGapRatio = 0.7f;
     private const float FetchGapRatio = 0.7f;
     private const float FetchHeightRatio = 2f;
     private const float MainMenuGapRatio = 0.4f;
@@ -205,9 +206,8 @@ internal sealed class MyRunsSettingsRow
     /// How tall the row is at the width it was built for. A section stacks what it
     /// hosts, so it has to be told.
     ///
-    /// The lower line is as tall as the taller of its two things rather than as tall as
-    /// both: the reading and its note are stacked, and the destructive control sits
-    /// beside them rather than under them.
+    /// The readings take the whole column, and each control gets its own row below
+    /// them so native-sized text never takes the readings' room.
     /// </summary>
     internal float Height => HeightFor(_text);
 
@@ -218,7 +218,8 @@ internal sealed class MyRunsSettingsRow
         var reading = text.Reading.Size * LabelHeightRatio;
         var note = text.Detail.Size * NoteHeightRatio;
         var remove = text.Button.Size * RemoveHeightRatio;
-        return label + (text.Row.Size * RuleGapRatio) + Math.Max(reading + note, remove) +
+        return label + (text.Row.Size * RuleGapRatio) + reading + note +
+            (text.Row.Size * ControlGapRatio) + remove +
             (text.Row.Size * FetchGapRatio) + (text.Button.Size * FetchHeightRatio) +
             (text.Row.Size * MainMenuGapRatio) + (text.Button.Size * MainMenuHeightRatio);
     }
@@ -295,7 +296,6 @@ internal sealed class MyRunsSettingsRow
         // under this screen, and a handler that closed over the starting value would ask
         // for a state the row had already left.
         built._mainMenu.Pressed += () => mainMenuChanged(!built._row.MainMenu.Shown);
-        built.Layout(width);
         built.Apply(row, keep, fetchRunIndex);
         return built;
     }
@@ -342,6 +342,8 @@ internal sealed class MyRunsSettingsRow
         Destructive(_remove, row.RemovePressable);
         Face(_fetch, !_fetch.Disabled);
         Face(_mainMenu, !_mainMenu.Disabled);
+
+        Layout(_root.Size.X);
     }
 
     /// <summary>
@@ -366,9 +368,8 @@ internal sealed class MyRunsSettingsRow
     /// <summary>
     /// Lays the row out at the width the section gave it.
     ///
-    /// Two lines with a control on the right of each, and a hairline between them,
-    /// because they are two different sentences: a standing policy above, and what is
-    /// on the disk right now below.
+    /// The policy and disk readings take the whole column, with their controls aligned
+    /// to the right edge like the native rows around them.
     /// </summary>
     private void Layout(float width)
     {
@@ -383,7 +384,7 @@ internal sealed class MyRunsSettingsRow
         var removeHeight = _text.Button.Size * RemoveHeightRatio;
 
         var stepper = (stepSize * 2) + numeralWidth + (stepGap * 2);
-        var removeWidth = Math.Min(width, RemoveBoxWidth(_row.RemoveLabel, _text.Button));
+        var removeWidth = Math.Min(width, ButtonBoxWidth(_remove.Text, _text.Button));
 
         Place(_keepLabel, 0f, 0f, width - stepper - stepGap, labelHeight);
         Place(_fewer, width - stepper, (labelHeight - stepSize) / 2f, stepSize, stepSize);
@@ -395,18 +396,23 @@ internal sealed class MyRunsSettingsRow
         _rule.Points = [new Vector2(0f, ruleY), new Vector2(width, ruleY)];
 
         var lower = labelHeight + ruleGap;
-        Place(_reading, 0f, lower, width - removeWidth - stepGap, readingHeight);
-        Place(_remove, width - removeWidth, lower + ((readingHeight - removeHeight) / 2f), removeWidth, removeHeight);
-        Place(_detail, 0f, lower + readingHeight, width - removeWidth - stepGap, noteHeight);
+        Place(_reading, 0f, lower, width, readingHeight);
+        Place(_detail, 0f, lower + readingHeight, width, noteHeight);
+
+        var removeY = lower + readingHeight + noteHeight + (unit * ControlGapRatio);
+        Place(_remove, width - removeWidth, removeY, removeWidth, removeHeight);
 
         var fetchHeight = _text.Button.Size * FetchHeightRatio;
-        var fetchY = lower + Math.Max(readingHeight + noteHeight, removeHeight) + (unit * FetchGapRatio);
-        Place(_fetch, 0f, fetchY, width, fetchHeight);
+        var fetchWidth = Math.Min(width, ButtonBoxWidth(_fetch.Text, _text.Button));
+        var fetchY = removeY + removeHeight + (unit * FetchGapRatio);
+        Place(_fetch, width - fetchWidth, fetchY, fetchWidth, fetchHeight);
+
+        var mainMenuWidth = Math.Min(width, ButtonBoxWidth(_mainMenu.Text, _text.Button));
         Place(
             _mainMenu,
-            0f,
+            width - mainMenuWidth,
             fetchY + fetchHeight + (unit * MainMenuGapRatio),
-            width,
+            mainMenuWidth,
             _text.Button.Size * MainMenuHeightRatio);
     }
 
@@ -419,9 +425,9 @@ internal sealed class MyRunsSettingsRow
     /// with, which is the fallback the transport's own measuring uses: a process with no
     /// game draws nothing, so an estimate there costs nothing.
     /// </summary>
-    private static float RemoveBoxWidth(string label, GameTextStyle text) =>
-        text.Font is not { } font
-            ? text.Size * RemoveWidthRatio
+    private static float ButtonBoxWidth(string label, GameTextStyle text) =>
+        (text.Font is not { } font
+            ? label.Length * text.Size * ButtonGlyphWidthRatio
             : font.GetStringSize(
                 label,
                 HorizontalAlignment.Left,
@@ -429,7 +435,7 @@ internal sealed class MyRunsSettingsRow
                 text.Size,
                 TextServer.JustificationFlag.None,
                 TextServer.Direction.Auto,
-                TextServer.Orientation.Horizontal).X + (text.Size * RemovePadRatio * 2);
+                TextServer.Orientation.Horizontal).X) + (text.Size * ButtonPadRatio * 2);
 
     private static void Refuse(Button button, bool refused)
     {

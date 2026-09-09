@@ -333,6 +333,36 @@ public sealed class MyRunsSettingsRowTests
         Assert.Equal(Control.FocusModeEnum.None, row.MainMenu.FocusMode);
     }
 
+    /// <summary>
+    /// At the supported minimum surface, the game's mapped settings sizes still leave
+    /// both readings the whole column and align each full-word control with the native
+    /// controls at its right edge.
+    /// </summary>
+    [Fact]
+    public void MappedNativeSizesKeepTheReadingWideAndControlsRightAligned()
+    {
+        var text = new MyRunsSettingsText(
+            new GameTextStyle(null, 28),
+            new GameTextStyle(null, 27),
+            new GameTextStyle(null, 26),
+            new GameTextStyle(null, 24),
+            new GameTextStyle(null, 22));
+        var row = Build(
+            new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20),
+            text: text);
+
+        var reading = Label(row, "Reading");
+        Assert.Equal(Width, reading.Size.X);
+        Assert.True(reading.Size.X > reading.Text.Length * text.Reading.Size / 2f);
+        Assert.Equal(Width, Label(row, "Detail").Size.X);
+
+        foreach (var control in new[] { row.Remove, row.Fetch, row.MainMenu })
+        {
+            Assert.True(control.Position.X > 0f, $"{control.Name} is not aligned as a right-side control");
+            Assert.Equal(Width, control.Position.X + control.Size.X);
+        }
+    }
+
     /// <summary>The row is as tall as what it draws. A section stacks what it hosts, so
     /// a height taller than the lowest element leaves a gap nothing explains.</summary>
     [Fact]
