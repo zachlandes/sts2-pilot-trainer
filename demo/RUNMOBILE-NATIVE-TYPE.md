@@ -27,12 +27,18 @@ The selected run's identity, description, floor numerals, facts, and action use 
 
 The mod's refusal popup uses its mapped R1 title, R2 body, and R3 button roles.
 
+## My Runs settings row
+
+![Current My Runs settings row in its full-screen context](runmobile-settings-row-native-type.png)
+
+![Current My Runs settings row beside the game's native settings rows](runmobile-settings-row-native-type-crop.png)
+
+The row's label, readings, and controls take the full native settings column using the mapped roles for a settings row label, a settings value, and a button caption.
+Its controls share the same right edge as the game's own controls on that screen.
+
 ## What these captures prove
 
-The retail captures prove the library parchment's Others, Mine, and opened-run states at named-role typography, the run strip's native gold arrow art, and the mod's refusal popup at its R1, R2, and R3 roles.
-
-The My Runs settings row is not proven in the client yet.
-It renders without throwing, but the latest client capture still shows it laid out at about a third of the native settings column.
+The retail captures prove the library parchment's Others, Mine, and opened-run states at named-role typography, the run strip's native gold arrow art, the mod's refusal popup at its R1, R2, and R3 roles, and the My Runs settings row at its mapped native roles and full native column width.
 
 The playback transport, fight-result panel, chronology paging, and look-back ledger paging are also not proven in the client.
 Programmatic navigation was attempted and did not reach those surfaces, so they require manual navigation for a retail capture.
