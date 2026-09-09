@@ -1,4 +1,5 @@
 using Godot;
+using MegaCrit.Sts2.Core.Nodes.Screens.Settings;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
@@ -97,30 +98,32 @@ public sealed class MyRunsSettingsTests : IDisposable
     }
 
     [Fact]
-    public void SettingsTextKeepsRowsValuesDetailsAndButtonsDistinct()
+    public void SettingsTextReadsEachMappedRoleFromTheLiveScreen()
     {
-        var text = new MyRunsSettingsText(
-            new GameTextStyle(null, 28),
-            new GameTextStyle(null, 27),
-            new GameTextStyle(null, 26),
-            new GameTextStyle(null, 24),
-            new GameTextStyle(null, 22));
-        var row = MyRunsSettingsRow.Build(
-            MyRunsRow.For(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20)),
-            20,
-            true,
-            Width,
-            text,
-            _ => { },
-            () => { },
-            _ => { },
-            _ => { });
+        var screen = new NSettingsScreen();
+        var entry = new MarginContainer();
+        var rowLabel = Native("Label", 28);
+        var button = new Control();
+        var buttonLabel = Native("%Label", 22);
+        var numeral = Native(
+            "ScrollContainer/Mask/Clipper/GeneralSettings/VBoxContainer/Screenshake/Paginator/LabelContainer/Mask/Label",
+            27);
+        var reading = Native(
+            "ScrollContainer/Mask/Clipper/SoundSettings/VBoxContainer/MasterVolume/MasterVolumeSlider/SliderValue",
+            26);
+        entry.AddChild(rowLabel);
+        entry.AddChild(button);
+        button.AddChild(buttonLabel);
+        screen.AddChild(numeral);
+        screen.AddChild(reading);
 
-        Assert.Equal(28, Label(row, "KeepLabel").GetThemeFontSize("font_size", "Label"));
-        Assert.Equal(27, Label(row, "KeepNumeral").GetThemeFontSize("font_size", "Label"));
-        Assert.Equal(26, Label(row, "Reading").GetThemeFontSize("font_size", "Label"));
-        Assert.Equal(24, Label(row, "Detail").GetThemeFontSize("font_size", "Label"));
-        Assert.Equal(22, row.Remove.GetThemeFontSize("font_size", "Button"));
+        var text = MyRunsSettings.NativeText(screen, button, new GameTextStyle(null, 24));
+
+        Assert.Equal(28, text.Row.Size);
+        Assert.Equal(27, text.Numeral.Size);
+        Assert.Equal(26, text.Reading.Size);
+        Assert.Equal(24, text.Detail.Size);
+        Assert.Equal(22, text.Button.Size);
     }
 
     [Fact]
@@ -360,6 +363,16 @@ public sealed class MyRunsSettingsTests : IDisposable
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, buttonSize));
+
+    private static Label Native(string name, int size)
+    {
+        var label = new Label { Name = name };
+        label.AddThemeFontOverride("font", new Font());
+        label.AddThemeFontSizeOverride("font_size", 17);
+        label.Set("AutoSizeEnabled", true);
+        label.Set("MaxFontSize", size);
+        return label;
+    }
 
     private static void WriteSettings(int keep) =>
         RunmobileStore.Write(

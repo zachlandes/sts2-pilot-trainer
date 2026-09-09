@@ -239,13 +239,20 @@ internal static class FightResultPanel
             var yours = x + labelWidth;
             var theirs = yours + columnWidth;
 
-            Legend(panel, "Legend.You", screen.Columns[0], YouLine, YouFill, yours, y, columnWidth);
-            Legend(panel, "Legend.Them", screen.Columns[1], TheirLine, TheirFill, theirs, y, columnWidth);
+            var legendHeight = ListHeading.Size;
+            Legend(panel, "Legend.You", screen.Columns[0], YouLine, YouFill, yours, y, columnWidth, legendHeight);
+            Legend(panel, "Legend.Them", screen.Columns[1], TheirLine, TheirFill, theirs, y, columnWidth, legendHeight);
 
-            var notes = (26f * Unit * screen.Notes.Count) + (18 * Unit);
-            var rowHeight = Math.Min(
-                44f * Unit, (height - (36 * Unit) - notes) / Math.Max(1, screen.Rows.Count));
-            var row = y + (36 * Unit);
+            var rowCount = Math.Max(1, screen.Rows.Count);
+            var noteCount = screen.Notes.Count;
+            var noteHeight = noteCount == 0
+                ? 0f
+                : Math.Min(Body.Size, Math.Max(1f, (height - legendHeight - rowCount) / noteCount));
+            var notesHeight = noteHeight * noteCount;
+            var rowHeight = Math.Max(
+                1f,
+                Math.Min(44f * Unit, (height - legendHeight - notesHeight) / rowCount));
+            var row = y + legendHeight;
             foreach (var figure in screen.Rows)
             {
                 var value = figure.Matches ? DimText : TitleText;
@@ -265,11 +272,11 @@ internal static class FightResultPanel
             // The caveats follow the figures rather than sitting at the foot of the
             // column: each is a rule about how to read the numbers above it, and a
             // caveat marooned under a gap reads as a footnote to nothing.
-            var note = row + (18 * Unit);
+            var note = row;
             for (var index = 0; index < screen.Notes.Count; index++)
             {
-                Wrapped(panel, $"Note.{index}", screen.Notes[index], x, note, width, 26 * Unit, Body, DimText);
-                note += 26 * Unit;
+                Wrapped(panel, $"Note.{index}", screen.Notes[index], x, note, width, noteHeight, Body, DimText);
+                note += noteHeight;
             }
         }
 
@@ -281,17 +288,22 @@ internal static class FightResultPanel
         /// icons and the chart are read as one line rather than as three.
         /// </summary>
         private void Legend(
-            Control panel, string name, string label, Color line, Color fill, float x, float y, float width)
+            Control panel, string name, string label, Color line, Color fill, float x, float y, float width,
+            float height)
         {
-            var swatch = Box(line, x + (10 * Unit), y + (8 * Unit), 14 * Unit, 14 * Unit);
+            var swatchSize = Math.Min(14 * Unit, height);
+            var swatchY = y + ((height - swatchSize) / 2f);
+            var swatch = Box(line, x + (10 * Unit), swatchY, swatchSize, swatchSize);
             swatch.Name = NodeName($"{name}.Swatch");
             panel.AddChild(swatch);
 
-            var inside = Box(fill, x + (12 * Unit), y + (10 * Unit), 10 * Unit, 10 * Unit);
+            var inside = Box(
+                fill, x + (10 * Unit) + 1f, swatchY + 1f,
+                Math.Max(1f, swatchSize - 2f), Math.Max(1f, swatchSize - 2f));
             inside.Name = NodeName($"{name}.Swatch.Inside");
             panel.AddChild(inside);
 
-            Text(panel, name, label, x + (30 * Unit), y, width - (30 * Unit), 30 * Unit, ListHeading, line);
+            Text(panel, name, label, x + (30 * Unit), y, width - (30 * Unit), height, ListHeading, line);
         }
 
         /// <summary>
@@ -300,27 +312,34 @@ internal static class FightResultPanel
         /// </summary>
         internal void Chronology(Control panel, FightResultScreen screen, float x, float y, float width, float height)
         {
-            var chartHeight = Math.Min(250f * Unit, height * 0.46f);
-            var rows = height - chartHeight - (30 * Unit);
+            var headingHeight = SectionHeading.Size;
+            var columnHeadingHeight = ListHeading.Size;
+            var turnCount = Math.Max(1, screen.Turns.Count);
+            var preferredRowHeight = Math.Max(ListNumeral.Size, CardCaption.Size);
+            var chartHeight = Math.Max(
+                1f,
+                Math.Min(
+                    250f * Unit,
+                    height - headingHeight - columnHeadingHeight - (turnCount * preferredRowHeight)));
+            var rowsHeight = height - headingHeight - columnHeadingHeight - chartHeight;
             var turnWidth = 46f * Unit;
             var columnWidth = (width - turnWidth) / 2;
             var yours = x + turnWidth;
             var theirs = yours + columnWidth;
 
-            Text(panel, "Chronology", screen.TurnDetailHeading, x, y, width, 20 * Unit, SectionHeading, SecondaryText);
-            Text(panel, "Chronology.Turn", screen.Chart.TurnLabel, x, y + (24 * Unit), turnWidth, 18 * Unit,
+            Text(panel, "Chronology", screen.TurnDetailHeading, x, y, width, headingHeight,
+                SectionHeading, SecondaryText);
+            var headings = y + headingHeight;
+            Text(panel, "Chronology.Turn", screen.Chart.TurnLabel, x, headings, turnWidth, columnHeadingHeight,
                 ListHeading, DimText);
-            Text(panel, "Chronology.You", screen.Columns[0], yours, y + (24 * Unit), columnWidth, 18 * Unit,
+            Text(panel, "Chronology.You", screen.Columns[0], yours, headings, columnWidth, columnHeadingHeight,
                 ListHeading, YouLine);
-            Text(panel, "Chronology.Them", screen.Columns[1], theirs + (ColumnGutter * Unit), y + (24 * Unit),
-                columnWidth, 18 * Unit, ListHeading, TheirText);
+            Text(panel, "Chronology.Them", screen.Columns[1], theirs + (ColumnGutter * Unit), headings,
+                columnWidth, columnHeadingHeight, ListHeading, TheirText);
 
-            var rowHeight = Math.Min(44f * Unit, (rows - (46 * Unit)) / Math.Max(1, screen.Turns.Count));
-
-            // A long fight gets more rows in the same space, and a card drawn at its
-            // full height would then be drawn over the turn below it.
-            var card = Math.Min(CardHeight * Unit, rowHeight - (6 * Unit));
-            var row = y + (46 * Unit);
+            var rowHeight = Math.Max(1f, Math.Min(44f * Unit, rowsHeight / turnCount));
+            var card = Math.Max(1f, Math.Min(CardHeight * Unit, rowHeight));
+            var row = headings + columnHeadingHeight;
             foreach (var turn in screen.Turns)
             {
                 Text(panel, $"Turn.{turn.Turn}", turn.Turn.ToString(CultureInfo.InvariantCulture),
@@ -380,29 +399,34 @@ internal static class FightResultPanel
         /// </summary>
         private void Chart(Control panel, FightResultChart chart, float x, float y, float width, float height)
         {
-            Text(panel, "Chart", chart.Heading, x, y, width, 20 * Unit, SectionHeading, SecondaryText);
+            var headingHeight = Math.Min(SectionHeading.Size, Math.Max(1f, height - 3f));
+            Text(panel, "Chart", chart.Heading, x, y, width, headingHeight, SectionHeading, SecondaryText);
             if (!chart.HasTurns) return;
 
             var plotLeft = x + (128 * Unit);
             var plotWidth = width - (128 * Unit);
-            // What is left once the heading, the gap between the plots, the turn axis
-            // and the lane the potions sit in have taken their share.
-            var plotHeight = (height - (92 * Unit)) / 2;
+            var remaining = height - headingHeight;
+            var axisHeight = Math.Min(ListHeading.Size, Math.Max(1f, remaining - 3f));
+            var potionHeight = Math.Min(
+                Math.Min(PotionSize * Unit, ChartNumeral.Size),
+                Math.Max(1f, remaining - axisHeight - 2f));
+            var plotHeight = Math.Max(1f, (remaining - axisHeight - potionHeight) / 2f);
+            var firstPlot = y + headingHeight;
 
             Plot(panel, "Chart.Enemy", chart, point => point.EnemyHealthLost, chart.EnemyMeasureLabel,
-                x, y + (26 * Unit), plotLeft, plotWidth, plotHeight);
+                x, firstPlot, plotLeft, plotWidth, plotHeight);
             Plot(panel, "Chart.Player", chart, point => point.HealthLost, chart.PlayerMeasureLabel,
-                x, y + (26 * Unit) + plotHeight + (8 * Unit), plotLeft, plotWidth, plotHeight);
+                x, firstPlot + plotHeight, plotLeft, plotWidth, plotHeight);
 
-            var axis = y + (26 * Unit) + (2 * plotHeight) + (22 * Unit);
-            Text(panel, "Chart.TurnAxis", chart.TurnLabel, x, axis, 108 * Unit, 20 * Unit, ListHeading, DimText,
+            var axis = firstPlot + (2 * plotHeight);
+            Text(panel, "Chart.TurnAxis", chart.TurnLabel, x, axis, 108 * Unit, axisHeight, ListHeading, DimText,
                 HorizontalAlignment.Right);
             for (var index = 0; index < chart.Turns.Count; index++)
             {
                 var at = X(plotLeft, plotWidth, index, chart.Turns.Count);
                 Text(panel, $"Chart.Turn.{chart.Turns[index]}", chart.Turns[index].ToString(CultureInfo.InvariantCulture),
-                    at - (14 * Unit), axis, 28 * Unit, 20 * Unit, ChartNumeral, SecondaryText, HorizontalAlignment.Center);
-                Potions(panel, chart, index, at, axis + (20 * Unit));
+                    at - (14 * Unit), axis, 28 * Unit, axisHeight, ChartNumeral, SecondaryText, HorizontalAlignment.Center);
+                Potions(panel, chart, index, at, axis + axisHeight, potionHeight);
             }
         }
 
@@ -411,8 +435,9 @@ internal static class FightResultPanel
             Control panel, string name, FightResultChart chart, Func<FightResultPoint, int?> measure, string label,
             float x, float y, float plotLeft, float plotWidth, float height)
         {
-            Text(panel, name, label, x, y + (height / 2) - (10 * Unit), 108 * Unit, 20 * Unit, ListHeading, DimText,
-                HorizontalAlignment.Right);
+            var labelHeight = Math.Min(ListHeading.Size, Math.Max(1f, height));
+            Text(panel, name, label, x, y + ((height - labelHeight) / 2f), 108 * Unit, labelHeight,
+                ListHeading, DimText, HorizontalAlignment.Right);
 
             var baseline = Box(Rule, plotLeft - (8 * Unit), y + height, plotWidth + (8 * Unit), 1);
             baseline.Name = NodeName($"{name}.Baseline");
@@ -476,17 +501,20 @@ internal static class FightResultPanel
                 }
 
                 panel.AddChild(dot);
+                var valueHeight = Math.Min(ChartNumeral.Size, Math.Max(1f, height));
+                var wantedY = marker ? at.Y : at.Y - valueHeight;
+                var valueY = Math.Clamp(wantedY, y, y + height - valueHeight);
                 Text(panel, $"{name}.Value.{turn}", value.ToString(CultureInfo.InvariantCulture),
-                    at.X - (20 * Unit), marker ? at.Y + (4 * Unit) : at.Y - (22 * Unit), 40 * Unit, 18 * Unit,
+                    at.X - (20 * Unit), valueY, 40 * Unit, valueHeight,
                     ChartNumeral, color, HorizontalAlignment.Center);
             }
         }
 
         /// <summary>The potions either side spent on this turn, under the axis and
         /// bordered by the line that spent them.</summary>
-        private void Potions(Control panel, FightResultChart chart, int index, float at, float y)
+        private void Potions(Control panel, FightResultChart chart, int index, float at, float y, float size)
         {
-            var lane = at - (PotionSize * Unit / 2);
+            var lane = at - (size / 2);
             foreach (var (series, color, fill) in new[]
                      {
                          (chart.Yours, YouLine, YouFill), (chart.Theirs, TheirLine, TheirFill),
@@ -496,8 +524,8 @@ internal static class FightResultPanel
                 {
                     Chip(
                         panel, $"Chart.Potion.{series.Points[index].Turn}.{series.Label}.{potion}", potion, color,
-                        fill, lane, y, PotionSize * Unit, PotionSize * Unit);
-                    lane += (PotionSize * Unit) + (ChipGap * Unit);
+                        fill, lane, y, size, size);
+                    lane += size + (ChipGap * Unit);
                 }
             }
         }
@@ -516,7 +544,7 @@ internal static class FightResultPanel
             chip.TooltipText = ModelIdNames.Display(modelId);
             panel.AddChild(chip);
 
-            var inside = Box(fill, x + 1, y + 1, width - 2, height - 2);
+            var inside = Box(fill, x + 1, y + 1, Math.Max(1f, width - 2), Math.Max(1f, height - 2));
             inside.Name = NodeName($"{name}.Inside");
             panel.AddChild(inside);
 
@@ -537,7 +565,7 @@ internal static class FightResultPanel
                 };
                 picture.Position = new Vector2(x + 1, y + 1);
                 picture.CustomMinimumSize = Vector2.Zero;
-                picture.Size = new Vector2(width - 2, height - 2);
+                picture.Size = new Vector2(Math.Max(1f, width - 2), Math.Max(1f, height - 2));
                 panel.AddChild(picture);
                 return;
             }
@@ -546,7 +574,7 @@ internal static class FightResultPanel
             // build has not got, inside a chip the size of a card.
             Wrapped(
                 panel, $"{name}.Name", ModelIdNames.Display(modelId), x + 1, y + 1,
-                width - 2, height - 2, CardCaption, line);
+                Math.Max(1f, width - 2), Math.Max(1f, height - 2), CardCaption, line);
         }
 
         /// <summary>The one control on the panel, and the one thing left to do.</summary>

@@ -1,4 +1,3 @@
-using Godot;
 using MegaCrit.Sts2.addons.mega_text;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 
@@ -14,15 +13,4 @@ internal static class PopupExtensions
     internal static MegaRichTextLabel BodyLabel(this NVerticalPopup popup) =>
         popup.GetNode<MegaRichTextLabel>("Description");
 
-    /// <summary>What the game draws this popup's heading in.</summary>
-    internal static GameTextStyle HeaderText(this NVerticalPopup popup) =>
-        GameText.Require(popup.HeaderLabel(), "popup heading");
-
-    /// <summary>What the game draws this popup's body copy in.</summary>
-    internal static GameTextStyle BodyText(this NVerticalPopup popup) =>
-        GameText.Require(popup.BodyLabel(), "popup description");
-
-    /// <summary>What the game draws this popup's ribbon labels in.</summary>
-    internal static GameTextStyle ButtonText(this NVerticalPopup popup) =>
-        GameText.Require(popup.NoButton.GetNodeOrNull<Control>("%Label"), "popup button label");
 }

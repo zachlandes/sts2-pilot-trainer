@@ -268,7 +268,7 @@ public sealed class FightResultPanelTests
     {
         foreach (var (surface, size) in
                  from screen in new[] { new Vector2(1280, 720), new Vector2(1920, 1080), new Vector2(2560, 1440) }
-                 from text in new[] { 15, 22, 30 }
+                 from text in new[] { 15, 22, 26, 30 }
                  select (screen, text))
         {
             var root = FightResultPanel.Build(
@@ -280,10 +280,16 @@ public sealed class FightResultPanelTests
             Assert.True(panel.Position.X + panel.Size.X <= surface.X);
             Assert.True(panel.Position.Y + panel.Size.Y <= surface.Y);
             Assert.All(
-                Descendants(panel).OfType<Control>(),
-                node => Assert.True(
-                    node.Position.Y + node.Size.Y <= panel.Size.Y + 1,
-                    $"'{node.Name}' hangs below the panel on a {surface.X}x{surface.Y} screen at {size}pt"));
+                Descendants(panel).OfType<Control>().Where(node => node.Visible),
+                node =>
+                {
+                    Assert.True(
+                        node.Size.X > 0 && node.Size.Y > 0,
+                        $"'{node.Name}' has a non-positive size on a {surface.X}x{surface.Y} screen at {size}pt");
+                    Assert.True(
+                        node.Position.Y + node.Size.Y <= panel.Size.Y + 1,
+                        $"'{node.Name}' hangs below the panel on a {surface.X}x{surface.Y} screen at {size}pt");
+                });
 
             // Sideways as well as down, because the panel is clamped to the screen it is
             // drawn on: a layout scaled past the clamp keeps its own gutters and pushes

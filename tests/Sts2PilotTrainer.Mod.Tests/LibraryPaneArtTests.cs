@@ -56,6 +56,18 @@ public sealed class LibraryPaneArtTests
     }
 
     [Fact]
+    public void DeckRowsLeaveRoomForNativeCardCounts()
+    {
+        const float tile = 64.5f;
+        const int caption = 24;
+
+        var pitch = LibraryPaneArt.DeckRowPitch(tile, caption);
+        var countBottom = (tile * 0.82f * 0.76f) + (caption * 1.3f);
+
+        Assert.True(pitch >= countBottom);
+    }
+
+    [Fact]
     public void StripPageButtonActivatesFromRetailKeyboardActions()
     {
         _ = EngineHost.StartupPhase();

@@ -154,25 +154,26 @@ Where that row hangs, what it reads, and where its drawing departs from the acce
 ## Type: the game's own, at the game's own size
 
 **No surface in this mod writes down or derives a font size.**
-Every Runmobile element copies the font and size from the native element whose role it fills, read when the surface is built through `GameText` and `GameTextStyle` in `Sts2PilotTrainer.Mod`.
-This began as `RecorderPresenceRow` copying the MODDED label so its row would read as the fourth row of that column.
+`GameText` reads one named native node for each text role, including the node's locale-substituted font and its design size.
+An auto-sizing native label contributes `MaxFontSize`; a fixed-size label contributes its own `font_size` override.
+There is no median, ratio, fallback size, or first-descendant search.
+Missing native furniture refuses the surface rather than substituting Godot's default or deriving a related size.
 
-**Which element is a judgement made per element.**
-The settings row copies the native settings row label for its text and the native settings button label for its controls.
-A popup heading copies `NVerticalPopup.Header`, body and supporting copy `NVerticalPopup.Description`, and controls copy the label under the popup's own ribbon button.
-The run-history plate copies the run-history screen's own row style.
-The transport copies health, timer, and deck-counter roles from the top-bar band it hangs under, menu rows from a native popup row label, and tooltip roles from the native hover-tip scene.
-The result panel copies heading, body, and button roles from the native post-fight popup before it is cleared, and its figures copy the surviving top-bar deck counter.
-Missing native furniture refuses the surface rather than substituting Godot's default or synthesizing a related size.
+**Each piece of text has the native role of the same kind.**
+The settings row reads its row label, value, stepper numeral, and button caption from the named live controls on that settings screen; its supporting line uses the mapped native secondary-row role.
+The run-history plate uses the history screen's fact role for its status, reason, and note, and the native button-caption role for pressable rows.
+The transport uses the profile identity roles for creator and title, the portrait-tip numeral for its counter, the dropdown value and item roles for speed and menus, the map-point reward role for its ledger, and the hover-tip title and body roles for its tooltip and note.
+The result panel resolves every role from named scene resources before it is attached: popup heading and body, list headings and numerals, score labels and values, section headings, chart numerals, card captions, and the button caption.
+The library likewise distinguishes list headings, row numerals, secondary lines, facts, floor numerals, card captions, fields, tickboxes, and footer counts rather than treating the popup body as all of them.
 
 **A surface whose boxes were measured around its own text scales with the native reading.**
-The tag and the result panel were laid out against text of a stated size, so both scale their whole geometry by the native size rather than growing the words outside fixed boxes.
-The tag never goes below the window's own scaling either; both terms are 1 at the design's reference.
+The tag and the result panel scale their geometry with the native reading rather than growing words outside fixed boxes.
+The result chronology allocates its remaining height among headings, positive turn rows, and the chart so a supported surface never produces negative card or plot geometry.
 
 **A surface that sits inside the game's own container is a child of it, and asks it for height only.**
-The settings row is the case that taught this. Sized from the modding button it hangs off, its words clipped mid-word the moment they were the game's size, because that button is a fraction of the column wide; sized from an ancestor found by walking up, it reached the screen and dragged every one of the game's own rows out to the edge with it, because a child's minimum width is a demand on its container.
-It is now a child of `NSettingsPanel.Content` - the `VBoxContainer` the game keeps one node per settings row in, read off the game's own code rather than guessed - inserted after the game's own modding row, asking for height and never for width, and laid out again once the container has sorted, because a settings screen has not been laid out when its `_Ready` runs.
-`demo/RUNMOBILE-NATIVE-TYPE.md` is the retail proof and records all three wrong readings.
+The settings row is inserted into the modding entry's parent column immediately after that entry.
+It asks the container for height and never for width, then lays itself out again after the container sorts because the settings screen has not been laid out when its `_Ready` runs.
+A fresh retail capture of the current role mapping remains outstanding; `demo/RUNMOBILE-NATIVE-TYPE.md` preserves only the earlier iteration for historical comparison.
 
 ## What a redesign owns, and what it does not
 

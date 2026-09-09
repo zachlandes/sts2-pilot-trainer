@@ -34,6 +34,10 @@ namespace Sts2PilotTrainer.Mod;
 internal static class MyRunsSettings
 {
     private const string ModdingButtonPath = "%ModdingButton";
+    private const string SettingsValuePath =
+        "ScrollContainer/Mask/Clipper/SoundSettings/VBoxContainer/MasterVolume/MasterVolumeSlider/SliderValue";
+    private const string StepperNumeralPath =
+        "ScrollContainer/Mask/Clipper/GeneralSettings/VBoxContainer/Screenshake/Paginator/LabelContainer/Mask/Label";
 
     private const float FallbackWidth = 520f;
     private const float SectionGap = 12f;
@@ -73,7 +77,7 @@ internal static class MyRunsSettings
                 return;
             }
 
-            Attach(anchor, NativeText(anchor));
+            Attach(anchor, NativeText(__instance, anchor));
         }
         catch (Exception ex)
         {
@@ -98,22 +102,22 @@ internal static class MyRunsSettings
     /// containers at all: there the entry is the host, the row is positioned under the
     /// anchor inside it, and the host is grown to hold it.</para>
     /// </summary>
-    internal static MyRunsSettingsText NativeText(Control anchor)
+    internal static MyRunsSettingsText NativeText(NSettingsScreen screen, Control anchor) =>
+        NativeText(screen, anchor, GameText.Scene(NativeTextRole.Secondary));
+
+    internal static MyRunsSettingsText NativeText(
+        NSettingsScreen screen, Control anchor, GameTextStyle detail)
     {
         var entry = anchor.GetParent()
             ?? throw new InvalidOperationException(
                 "This build's modding settings button has no parent carrying its row label.");
-        return NativeText(
-            entry.GetNodeOrNull<Control>("Label"),
-            anchor.GetNodeOrNull<Control>("%Label"));
+        return new MyRunsSettingsText(
+            GameText.Require(entry.GetNodeOrNull<Control>("Label"), "settings row label"),
+            GameText.Require(screen.GetNodeOrNull<Control>(StepperNumeralPath), "settings stepper numeral"),
+            GameText.Require(screen.GetNodeOrNull<Control>(SettingsValuePath), "settings value"),
+            detail,
+            GameText.Require(anchor.GetNodeOrNull<Control>("%Label"), "settings button label"));
     }
-
-    internal static MyRunsSettingsText NativeText(Control? row, Control? button) => new(
-        GameText.Require(row, "settings row label"),
-        GameText.Scene(NativeTextRole.StepperNumeral),
-        GameText.Scene(NativeTextRole.SettingsValue),
-        GameText.Scene(NativeTextRole.Secondary),
-        GameText.Require(button, "settings button label"));
 
     internal static MyRunsSettingsRow Attach(Control anchor, MyRunsSettingsText text)
     {

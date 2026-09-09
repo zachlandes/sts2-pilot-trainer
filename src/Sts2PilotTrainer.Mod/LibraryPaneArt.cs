@@ -397,12 +397,13 @@ internal static class LibraryPaneArt
 
         var tile = width / TilesPerRow;
         var height = tile * 0.82f;
+        var pitch = DeckRowPitch(tile, line.Size);
         var y = at.Y;
         for (var index = 0; index < deck.Count; index++)
         {
             var card = deck[index];
             var column = index % TilesPerRow;
-            if (column == 0 && index > 0) y += height * 1.05f;
+            if (column == 0 && index > 0) y += pitch;
 
             var position = new Vector2(at.X + (column * tile), y);
             var name = ModelIdNames.Display(card.CardId);
@@ -449,7 +450,15 @@ internal static class LibraryPaneArt
             }
         }
 
-        return y + (height * 1.2f);
+        return y + pitch;
+    }
+
+    internal static float DeckRowPitch(float tile, int captionSize)
+    {
+        var tileHeight = tile * 0.82f;
+        var portraitPitch = tileHeight * 1.05f;
+        var captionBottom = (tileHeight * 0.76f) + (captionSize * 1.3f);
+        return Math.Max(portraitPitch, captionBottom);
     }
 
     /// <summary>
