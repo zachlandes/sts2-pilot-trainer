@@ -126,3 +126,48 @@ The built and installed Runmobile assemblies had matching SHA-256 digests.
 The owned retail process and bounded awake assertion were released after the session.
 The protected-files comparison reported no protected-file or Runmobile-store changes; only the game’s logs changed.
 Physical-controller activation remains unproved and deferred to PC testing.
+
+## Character portrait and filter header in the retail client
+
+The v0.111.0 retail client ran commit `6757ed7f7625f1a065b64d8afa50718d2726f2f2`, built and installed through `scripts/install-mod.sh`.
+It was launched directly with `--force-steam=off` into the non-Steam test profile without driving the running Steam process.
+The console lock state was read into a variable from `IOConsoleLocked` and was unlocked before the drive; the machine was held awake with `caffeinate` bound to the game process and released when it quit.
+The installed `Runmobile.dll` had the same SHA-256 digest as the packaged build.
+Commands start at the fullscreen main menu on a 1512 × 982-point display.
+
+```bash
+cliclick c:608,799; sleep 2
+cliclick c:766,720; sleep 2
+screencapture -x runmobile-library-portrait-header.png
+```
+
+```output
+```
+
+![Others with the two-line filter header and the Ironclad character portrait](runmobile-library-portrait-header.png)
+
+```bash
+sips -c 400 1000 --cropOffset 760 620 runmobile-library-portrait-header.png --out runmobile-library-portrait-header-crop.png
+```
+
+```output
+```
+
+![The list header, the compatibility filter, and the character-select portrait at full resolution](runmobile-library-portrait-header-crop.png)
+
+The header is two lines: the column line `Run · Act reached · Last floor replayed` and the checked `Compatible with your game version` filter.
+The portrait beside the run row is the game's own character-select icon for the Ironclad, loaded through `ModelArt.CharacterPortrait`, not a text label standing in for it.
+
+```bash
+cliclick c:538,326; sleep 2; screencapture -x runmobile-library-portrait-mine.png
+cliclick c:390,326; sleep 1; cliclick c:958,585; sleep 2; screencapture -x runmobile-library-portrait-open-run.png
+```
+
+```output
+```
+
+![Mine with the same header and portrait over a recorded run](runmobile-library-portrait-mine.png)
+
+![Opened run with the play-from rows and the flat plate](runmobile-library-portrait-open-run.png)
+
+The protected-files comparison reported no Runmobile-store changes; the mod install itself and the game's own settings and logs were the only files that changed.
