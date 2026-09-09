@@ -2,6 +2,7 @@ using Godot;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
+using MegaCrit.Sts2.Core.Nodes.Multiplayer;
 using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
@@ -139,19 +140,24 @@ internal static class PlaybackTransportDock
             ?.Instantiate<Control>()
             ?? throw new InvalidOperationException(
                 "This build has no native hover-tip scene to style the transport's tooltips.");
+        var popup = NGenericPopup.Create()
+            ?? throw new InvalidOperationException(
+                "This build has no native popup row to style the transport's menus.");
         try
         {
+            var content = popup.GetNode<NVerticalPopup>("VerticalPopup");
             return new PlaybackTransportText(
                 identity,
                 supporting,
                 counter,
-                identity,
+                content.ButtonText(),
                 GameText.Require(tooltip.GetNodeOrNull<Control>("%Title"), "hover-tip title"),
                 GameText.Require(tooltip.GetNodeOrNull<Control>("%Description"), "hover-tip body"));
         }
         finally
         {
             tooltip.QueueFree();
+            popup.QueueFree();
         }
     }
 

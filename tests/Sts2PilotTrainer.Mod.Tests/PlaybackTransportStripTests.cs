@@ -622,6 +622,10 @@ public sealed class PlaybackTransportStripTests
         Assert.Equal(21, Label(strip, "Creator").GetThemeFontSize("font_size", "Label"));
         Assert.Equal(13, Label(strip, "VideoTitle").GetThemeFontSize("font_size", "Label"));
         Assert.Equal(18, Label(strip, "Counter").GetThemeFontSize("font_size", "Label"));
+        strip.OpenMenu(_ => { });
+        Assert.Equal(
+            16,
+            Label(strip.Menu, "MenuRow0.Label").GetThemeFontSize("font_size", "Label"));
         Assert.Equal(24, Label(strip, "TooltipTitle").GetThemeFontSize("font_size", "Label"));
         Assert.Equal(14, Label(strip, "TooltipBody").GetThemeFontSize("font_size", "Label"));
     }
