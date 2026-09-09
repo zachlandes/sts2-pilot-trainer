@@ -5,8 +5,8 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Potions;
-using MegaCrit.Sts2.Core.Entities.TreasureRelicPicking;
 using MegaCrit.Sts2.Core.Entities.RestSite;
+using MegaCrit.Sts2.Core.Entities.TreasureRelicPicking;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Events.Custom.CrystalSphereEvent;
 using MegaCrit.Sts2.Core.GameActions;
@@ -1079,15 +1079,15 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
 
     private static IReadOnlyList<MerchantEntry> Shelf(
         ActionRecord action, MerchantInventory inventory, string kind) => kind switch
-    {
-        ShopPurchaseKinds.CharacterCard => [.. inventory.CharacterCardEntries],
-        ShopPurchaseKinds.ColorlessCard => [.. inventory.ColorlessCardEntries],
-        ShopPurchaseKinds.Relic => [.. inventory.RelicEntries],
-        ShopPurchaseKinds.Potion => [.. inventory.PotionEntries],
-        _ => throw new EngineException(
-            $"Action {action.Seq} buys a '{kind}', which is not something a merchant sells. Known kinds: " +
-            $"{string.Join(", ", ShopPurchaseKinds.All)}."),
-    };
+        {
+            ShopPurchaseKinds.CharacterCard => [.. inventory.CharacterCardEntries],
+            ShopPurchaseKinds.ColorlessCard => [.. inventory.ColorlessCardEntries],
+            ShopPurchaseKinds.Relic => [.. inventory.RelicEntries],
+            ShopPurchaseKinds.Potion => [.. inventory.PotionEntries],
+            _ => throw new EngineException(
+                $"Action {action.Seq} buys a '{kind}', which is not something a merchant sells. Known kinds: " +
+                $"{string.Join(", ", ShopPurchaseKinds.All)}."),
+        };
 
     /// <summary>What a stocked shelf entry is, as the model id the video shows.</summary>
     private static string IdOf(MerchantEntry entry) => entry switch

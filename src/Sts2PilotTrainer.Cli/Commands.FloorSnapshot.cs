@@ -282,58 +282,58 @@ internal static partial class Commands
         string manifestPath, FloorEntryPlan plan, FloorEntryPlan against,
         FloorEntrySnapshotCandidate candidate, FloorEntryRestoreReading? restored, string? control, bool cached,
         IReadOnlyList<string> refusals) => new
-    {
-        schema = "sts2-pilot-trainer/floor-snapshot/v1",
-        manifest = Path.GetFileName(manifestPath),
-        run_id = candidate.RunId,
-        build_version = candidate.BuildVersion,
-        build_commit = candidate.BuildCommit,
-        boundary = new BoundarySelector
         {
-            Kind = plan.Kind,
-            Floor = plan.FloorNumber,
-        }.ToString(),
-        floor = plan.FloorNumber,
-        after_seq = plan.BoundarySeq,
-        act_index = candidate.ActIndex,
-        control,
-        // The boundary the restored save was measured against, which is this floor's
-        // for a materialisation and another floor's for the control. Without it a
-        // reader of a control report cannot re-check what it refused.
-        restored_against_floor = against.FloorNumber,
-        restored_against_after_seq = against.BoundarySeq,
-        snapshot_key = plan.SnapshotKey,
-        declared_digest = candidate.DeclaredDigest,
-        declared_digest_source = candidate.DeclaredDigestSource,
-        replayed_digest = candidate.ReplayedDigest,
-        restored_digest = restored?.Digest,
-        live_combat_at_arrival = candidate.LiveCombat,
-        replayed_act_room_set = candidate.ActRoomSet,
-        restored_act_room_set = restored?.ActRoomSet,
-        saves_taken = candidate.SavesTaken,
-        save_kept = candidate.SaveKept,
-        save_pre_finished_room = candidate.SavePreFinishedRoom,
-        save_sha256 = candidate.SaveSha256,
-        save_byte_count = candidate.SaveByteCount,
-        save_schema_version = candidate.SaveSchemaVersion,
-        observed_values_compared = restored?.Comparisons.Count ?? 0,
-        observed_values_disagreeing =
+            schema = "sts2-pilot-trainer/floor-snapshot/v1",
+            manifest = Path.GetFileName(manifestPath),
+            run_id = candidate.RunId,
+            build_version = candidate.BuildVersion,
+            build_commit = candidate.BuildCommit,
+            boundary = new BoundarySelector
+            {
+                Kind = plan.Kind,
+                Floor = plan.FloorNumber,
+            }.ToString(),
+            floor = plan.FloorNumber,
+            after_seq = plan.BoundarySeq,
+            act_index = candidate.ActIndex,
+            control,
+            // The boundary the restored save was measured against, which is this floor's
+            // for a materialisation and another floor's for the control. Without it a
+            // reader of a control report cannot re-check what it refused.
+            restored_against_floor = against.FloorNumber,
+            restored_against_after_seq = against.BoundarySeq,
+            snapshot_key = plan.SnapshotKey,
+            declared_digest = candidate.DeclaredDigest,
+            declared_digest_source = candidate.DeclaredDigestSource,
+            replayed_digest = candidate.ReplayedDigest,
+            restored_digest = restored?.Digest,
+            live_combat_at_arrival = candidate.LiveCombat,
+            replayed_act_room_set = candidate.ActRoomSet,
+            restored_act_room_set = restored?.ActRoomSet,
+            saves_taken = candidate.SavesTaken,
+            save_kept = candidate.SaveKept,
+            save_pre_finished_room = candidate.SavePreFinishedRoom,
+            save_sha256 = candidate.SaveSha256,
+            save_byte_count = candidate.SaveByteCount,
+            save_schema_version = candidate.SaveSchemaVersion,
+            observed_values_compared = restored?.Comparisons.Count ?? 0,
+            observed_values_disagreeing =
             restored?.Comparisons.Count(comparison => !comparison.Matches) ?? 0,
-        restored_run_saving = restored?.RunSaving,
-        boundary_matches = restored?.Matches ?? false,
-        boundary_refusal = restored?.Refusal,
-        refusals,
-        cached,
-        restore_path =
+            restored_run_saving = restored?.RunSaving,
+            boundary_matches = restored?.Matches ?? false,
+            boundary_refusal = restored?.Refusal,
+            refusals,
+            cached,
+            restore_path =
             "RunState.FromSerializable, SetUpSavedSingleplayer, Launch, GenerateMap, then " +
             "LoadIntoLatestMapCoord with the save's own pre-finished room, as NGame.LoadRun passes it.",
-        skipped_presentation_steps = new[]
+            skipped_presentation_steps = new[]
         {
             "PreloadManager.LoadRunAssets and LoadActAssets - asset loading, no run state",
             "NGame.RootSceneContainer.SetCurrentScene(NRun.Create) - the run's scene",
             "NRun.Instance.GlobalUi.MapScreen.Drawings.LoadDrawings - the player's map drawings",
         },
-    };
+        };
 
     private static int FloorSnapshotPhase(string[] args, ReplayManifest manifest, string phase)
     {
@@ -348,38 +348,38 @@ internal static partial class Commands
         switch (phase)
         {
             case "capture":
-            {
-                var candidate = FloorEntrySnapshotCapture.Capture(manifest, plan, savePath);
-                File.WriteAllText(
-                    WorktreePath.Require(outPath),
-                    JsonSerializer.Serialize(candidate, Json.Indented) + "\n");
-                return 0;
-            }
+                {
+                    var candidate = FloorEntrySnapshotCapture.Capture(manifest, plan, savePath);
+                    File.WriteAllText(
+                        WorktreePath.Require(outPath),
+                        JsonSerializer.Serialize(candidate, Json.Indented) + "\n");
+                    return 0;
+                }
 
             case "restore":
-            {
-                var saveJson = File.ReadAllText(WorktreePath.Require(savePath));
-                using var entry = RecordedFightEntry.RestoreHeadless(manifest, plan, saveJson);
-                var equality = entry.VerifyBoundary();
-                var state = entry.LiveState();
-                var identity = GameIdentity.Read();
+                {
+                    var saveJson = File.ReadAllText(WorktreePath.Require(savePath));
+                    using var entry = RecordedFightEntry.RestoreHeadless(manifest, plan, saveJson);
+                    var equality = entry.VerifyBoundary();
+                    var state = entry.LiveState();
+                    var identity = GameIdentity.Read();
 
-                File.WriteAllText(
-                    WorktreePath.Require(outPath),
-                    JsonSerializer.Serialize(
-                        new FloorEntryRestoreReading(
-                            BuildVersion: identity.BuildVersion,
-                            BuildCommit: identity.Commit,
-                            SaveSha256: FloorEntrySnapshot.HashOf(saveJson),
-                            Digest: equality.ActualDigest,
-                            RunSaving: entry.RunSaving,
-                            ActRoomSet: Engine.SnapshotRestoreProbe.RoomSetReading(state),
-                            Matches: equality.Matches,
-                            Refusal: equality.Refusal,
-                            Comparisons: equality.Comparisons),
-                        Json.Indented) + "\n");
-                return 0;
-            }
+                    File.WriteAllText(
+                        WorktreePath.Require(outPath),
+                        JsonSerializer.Serialize(
+                            new FloorEntryRestoreReading(
+                                BuildVersion: identity.BuildVersion,
+                                BuildCommit: identity.Commit,
+                                SaveSha256: FloorEntrySnapshot.HashOf(saveJson),
+                                Digest: equality.ActualDigest,
+                                RunSaving: entry.RunSaving,
+                                ActRoomSet: Engine.SnapshotRestoreProbe.RoomSetReading(state),
+                                Matches: equality.Matches,
+                                Refusal: equality.Refusal,
+                                Comparisons: equality.Comparisons),
+                            Json.Indented) + "\n");
+                    return 0;
+                }
 
             default:
                 throw new ManifestException($"Unknown phase '{phase}'.");
