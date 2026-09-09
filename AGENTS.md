@@ -35,13 +35,13 @@ tests drive, and bootstrapping alone leaves every test that drives it skipped.
 Every test run is bounded by `TestSessionTimeout` in `.runsettings`, wired in from
 `Directory.Build.props` so it applies however `dotnet test` was started. A run that
 exceeds it aborts with a non-zero exit rather than hanging: a deadlocked test used to
-wait for as long as anybody let it. Raise the bound rather than removing it; it is
-forty-five minutes because fifteen aborted the Arbiter session under concurrent load.
+wait for as long as anybody let it. Raise the bound rather than removing it;
+`.runsettings` records the rationale for the current bound.
 **Read the verdict from `./scripts/test-session.sh`, never from the printed totals.**
-`dotnet test` reports a session it aborted as `Passed!` with a partial count, and only
-the exit code and a `Test Run Aborted.` line disagree; three runs were read as green
-that way. The script computes the verdict from those two signals instead and prints it
-last. `TestSessionVerdictTests` holds it to that against a real timed-out session.
+`dotnet test` can report an aborted session as `Passed!` with a partial count. The
+script refuses a non-zero exit or an abort marker, suppresses that misleading success,
+and prints its verdict last. `TestSessionVerdictTests` holds it to that against a real
+timed-out session.
 `scripts/arbiter` goes through `dotnet <dll>` rather
 than the generated apphost, which needs `DOTNET_ROOT` that a Homebrew install does
 not set.
