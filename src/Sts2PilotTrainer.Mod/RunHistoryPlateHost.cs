@@ -186,7 +186,12 @@ internal static class RunHistoryPlateHost
         var positions = recording is null
             ? []
             : RunView.PositionsIn(recording);
-        var last = positions.LastOrDefault(position => !position.IsRunStart);
+
+        // The last floor this build can stand a player at, rather than the last floor
+        // the run reached. The row is an offer to play from somewhere, so naming a
+        // place the journey would abort on would be the plate offering what the run
+        // view refuses; RunViewPosition.Playable is the one rule both read.
+        var last = positions.LastOrDefault(position => position.Playable);
 
         return new RunHistoryFacts(
             HasRecording: recording is not null,
@@ -280,11 +285,15 @@ internal static class RunHistoryPlateHost
         if (fight is { } ordinal)
         {
             RunLibraryStore.RecordFightPlayed(runId, ordinal);
-            _ = RecordedFightRun.Start(recording, RecordedFightPlan.For(recording, ordinal));
+            _ = RecordedFightRun.Start(
+                recording, RecordedFightPlan.For(recording, ordinal),
+                RecordingIdentity.Credit(recording, isPlayersOwn: true));
             return;
         }
 
-        _ = RecordedFightRun.Start(recording, FloorEntryPlan.For(recording, atFloor));
+        _ = RecordedFightRun.Start(
+            recording, FloorEntryPlan.For(recording, atFloor),
+            RecordingIdentity.Credit(recording, isPlayersOwn: true));
     }
 
     internal static void ShowShare(ReplayManifest recording, Action? back = null)

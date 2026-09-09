@@ -3,9 +3,9 @@ using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Trainer;
 
-/// <summary>Where a run in the library came from. It decides which list it is in and
-/// which heading it sits under, and nothing else - no row is drawn differently for
-/// it, and no control names it.</summary>
+/// <summary>Where a run in the library came from. It decides which list it is in,
+/// which heading it sits under, and whether a native recording is known to be the
+/// player's own. No row or control names the origin.</summary>
 public enum RunOrigin
 {
     /// <summary>Travels inside the mod. Present with no network and no index.</summary>

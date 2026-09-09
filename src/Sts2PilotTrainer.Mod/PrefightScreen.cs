@@ -54,10 +54,11 @@ internal static class PrefightScreen
     /// <param name="screen">The screen in the player's own word, or null on a refusal
     /// that is not about one - in which case the engine's own sentence is all there
     /// is, and it is shown rather than a noun being invented for it.</param>
-    internal static void ShowRefusal(string creator, string? screen, string reason) =>
-        ShowRefusal(creator, screen, reason, details: false);
+    internal static void ShowRefusal(RecordingCredit credit, string? screen, string reason) =>
+        ShowRefusal(credit, screen, reason, details: false);
 
-    private static void ShowRefusal(string creator, string? screen, string reason, bool details)
+    private static void ShowRefusal(
+        RecordingCredit credit, string? screen, string reason, bool details)
     {
         if (screen is null)
         {
@@ -65,7 +66,7 @@ internal static class PrefightScreen
             return;
         }
 
-        var body = $"{TrainerCopy.RefusalHeadline(creator, screen)}\n\n{TrainerCopy.RefusalNoHarm}";
+        var body = $"{TrainerCopy.RefusalHeadline(credit, screen)}\n\n{TrainerCopy.RefusalNoHarm}";
         if (details) body += $"\n\n{reason}";
 
         Open(
@@ -74,7 +75,7 @@ internal static class PrefightScreen
             TrainerCopy.BackButton,
             Close,
             details ? TrainerCopy.RefusalHideDetails : TrainerCopy.RefusalShowDetails,
-            () => ShowRefusal(creator, screen, reason, !details),
+            () => ShowRefusal(credit, screen, reason, !details),
             backstop: false);
     }
 

@@ -17,7 +17,7 @@ public sealed class FightResultChartTests
     [Fact]
     public void PlotsBothMeasuresForBothLinesAgainstTheTurn()
     {
-        var chart = FightResultChart.From("NaveGreed", Comparison());
+        var chart = FightResultChart.From(RecordingCredit.Named("NaveGreed"), Comparison());
 
         Assert.Equal([1, 2, 3], chart.Turns);
         Assert.Equal([8, 10, 24], chart.Yours.Points.Select(point => point.EnemyHealthLost));
@@ -31,7 +31,7 @@ public sealed class FightResultChartTests
     [Fact]
     public void KeepsThePlayersLineAndTheRecordingsApart()
     {
-        var chart = FightResultChart.From("NaveGreed", Comparison());
+        var chart = FightResultChart.From(RecordingCredit.Named("NaveGreed"), Comparison());
 
         Assert.True(chart.Yours.IsPlayer);
         Assert.False(chart.Theirs.IsPlayer);
@@ -42,7 +42,7 @@ public sealed class FightResultChartTests
     [Fact]
     public void MarksAPotionAtTheTurnItWasUsed()
     {
-        var chart = FightResultChart.From("NaveGreed", Comparison());
+        var chart = FightResultChart.From(RecordingCredit.Named("NaveGreed"), Comparison());
 
         Assert.Empty(chart.Yours.Points[0].PotionModelIds);
         Assert.Equal(["POTION.BLOCK_POTION"], chart.Yours.Points[1].PotionModelIds);
@@ -53,7 +53,7 @@ public sealed class FightResultChartTests
     [Fact]
     public void ATurnALineNeverReachedHasNoValueRatherThanAZero()
     {
-        var chart = FightResultChart.From("NaveGreed", Comparison());
+        var chart = FightResultChart.From(RecordingCredit.Named("NaveGreed"), Comparison());
 
         Assert.False(chart.Theirs.Points[2].Reached);
         Assert.Null(chart.Theirs.Points[2].EnemyHealthLost);
@@ -66,13 +66,13 @@ public sealed class FightResultChartTests
     {
         // The largest single value anywhere is the recording's 34 off the enemy on
         // turn 2, and the player's line is drawn against it too.
-        Assert.Equal(34, FightResultChart.From("NaveGreed", Comparison()).Ceiling);
+        Assert.Equal(34, FightResultChart.From(RecordingCredit.Named("NaveGreed"), Comparison()).Ceiling);
     }
 
     [Fact]
     public void AFightThatCostNeitherSideAnythingStillHasItsTurns()
     {
-        var chart = FightResultChart.From("NaveGreed", CombatComparison.Between(Untouched(), Untouched()));
+        var chart = FightResultChart.From(RecordingCredit.Named("NaveGreed"), CombatComparison.Between(Untouched(), Untouched()));
 
         Assert.True(chart.HasTurns);
         Assert.Equal(0, chart.Ceiling);

@@ -155,4 +155,28 @@ internal static class Fixtures
             Checkpoints = [],
         };
 
+    /// <summary>
+    /// A recording the player made themselves: a native source, and no channel name,
+    /// which is what every recording the recorder writes looks like.
+    /// </summary>
+    internal static ReplayManifest NativeRecording() =>
+        Recording(creator: null) with
+        {
+            RunId = "native-SEED-20260906-120000",
+            Source = new SourceProvenance
+            {
+                Kind = "native",
+                ExtractionMethod = "recorder",
+                Coverage = "the whole run",
+                Native = new NativeSource
+                {
+                    RecorderVersion = "runmobile-recorder/1.0.0.0",
+                    WitnessedRunStart = Fact<bool>.Captured(true, FactEvidence.AtActionOrdinal(-1)),
+                    Continuity = NativeSource.ContinuousContinuity,
+                    Outcome = "abandoned",
+                    Integrity = NativeSource.CompleteIntegrity,
+                },
+            },
+        };
+
 }

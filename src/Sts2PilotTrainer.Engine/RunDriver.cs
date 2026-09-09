@@ -81,19 +81,20 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// Leaving it out is what made such a recording verify headlessly and then abort in
     /// the client after the player had watched the blessing being made, which is the
     /// worst place for a refusal this project has.
+    ///
+    /// <para>Declared in <see cref="RetailPlayback"/> rather than here because a second
+    /// owner needs the same answer and cannot reference this assembly: the run library
+    /// asks it of a boundary's prefix before it offers a player a place to stand. This
+    /// driver is still the thing that enforces it.</para>
     /// </summary>
-    private static readonly ActionVerb[] VerbsAllowedInRunningGame =
-    [
-        ActionVerb.ChooseNeowBlessing, ActionVerb.ChooseEventOption, ActionVerb.MapMove,
-        ActionVerb.SelectCardFromScreen,
-    ];
+    private static IReadOnlyList<ActionVerb> VerbsAllowedInRunningGame => RetailPlayback.Verbs;
 
     /// <summary>
     /// The same list, for a test that holds it against the committed fixture's
     /// boundary prefix. Exposed rather than duplicated: two copies of this set is how
     /// the client came to refuse a verb the arbiter had started issuing.
     /// </summary>
-    public static IReadOnlyList<ActionVerb> VerbsIssuedInsideARunningGame => VerbsAllowedInRunningGame;
+    public static IReadOnlyList<ActionVerb> VerbsIssuedInsideARunningGame => RetailPlayback.Verbs;
 
     /// <summary>
     /// The screen answers a host with a scene tree draws the screen for, so the answer

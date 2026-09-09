@@ -383,13 +383,13 @@ internal sealed class PlaybackTransportStrip
 
         // The creator is on every surface there is - it is the whole of what a chip
         // says - so it is the one label with nothing to decide.
-        _creator.Text = state.Identity.Creator;
+        _creator.Text = state.Identity.Credit.Label;
         _title.Text = state.Identity.VideoTitle ?? string.Empty;
         Show(_title, surface.Title);
 
         // Two lines when there is a video title, one centred line when there is not.
         // The fallback is the design's: a recording whose manifest has no title says
-        // the creator alone rather than showing an empty second line.
+        // the credit alone rather than showing an empty second line.
         var identityLeft = left + (42 * _unit);
         if (_title.Visible)
         {

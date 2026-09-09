@@ -187,20 +187,18 @@ refuses as it always did, and a change no action accounts for is still a gap eit
 Reproduced in the client before and after: the same gesture that refused a whole fight now
 produces a comparison.
 
-**The recording's side travels with the manifest.**
-The client cannot replay - one process, one run, and it is the player's - so the
-recording's line is produced headlessly by `./scripts/arbiter recorded-fight` and
-embedded as `manifests/navegreed-OJ-6QXhNgdg.recorded-fights.json`.
-`RecordedFights.Bind` refuses it at mod start unless its schema and run id are the
-shipped manifest's, and then refuses per fight unless that fight's history hash
-through its end and its combat-start digest are the manifest's boundary of the same
-ordinal - so a file carrying five fights refuses on the one that drifted. A test
-regenerates it in a fresh process and compares.
+**A recorded comparison line is bound to one manifest, and native recordings do not have one yet.**
+The client cannot replay - one process, one run, and it is the player's - so the included reconstruction's line is produced headlessly by `./scripts/arbiter recorded-fight` and embedded as `manifests/navegreed-OJ-6QXhNgdg.recorded-fights.json`.
+`RecordedFights.Bind` refuses it at mod start unless its schema and run id are the shipped manifest's, and then refuses per fight unless that fight's history hash through its end and its combat-start digest are the manifest's boundary of the same ordinal - so a file carrying five fights refuses on the one that drifted.
+A test regenerates it in a fresh process and compares.
+Before `RecordedFightRun` reads a projection after a fight, it requires that embedded file to name the run being played and contain that fight ordinal.
+A native recording has no matching line in this build, so its result screen states that there is no recorded comparison line for the run yet; it never reads the included reconstruction's line and never names that other run in the notice.
+Producing a native recording's comparison line is deliberately deferred rather than inferred from the captured fight.
 
-**The result is a panel this mod draws, and only when asked for.**
-For a completed fight, the result is computed the moment `CombatEnded` fires and held; two seconds later, once the game has drawn its ending, the journey moves to `Ended` and the post-fight choice opens under the chip - Show the comparison, Fight it again, Leave - in place of a panel drawn unbidden.
-`PostFightChoice` in `Sts2PilotTrainer.Trainer` derives the rows and `RecordedFightRun.ChoosePostFight` presses them; the first draws this panel, and its Done returns to the choice.
-A lost fight is compared, Lost against Won: the projection treats a defeat as finished and the comparison carries the outcome row, so the notice that claimed there was no line to compare is retired.
+**The result surface is drawn only when asked for.**
+For a completed fight, the result is computed the moment `CombatEnded` fires and held; two seconds later, once the game has drawn its ending, the journey moves to `Ended` and the post-fight choice opens under the chip - Show the comparison, Fight it again, Leave - in place of a result drawn unbidden.
+`PostFightChoice` in `Sts2PilotTrainer.Trainer` derives the rows and `RecordedFightRun.ChoosePostFight` presses them; the first draws the comparison panel when the run has a bound recorded line or the no-line notice when it does not, and Done returns to the choice.
+Where a recorded line exists, a lost fight is compared, Lost against Won: the projection treats a defeat as finished and the comparison carries the outcome row, so defeat alone never substitutes a notice for that comparison.
 Computed first on purpose, and held apart from the run in `RecordedFightRun.EndedFight`: on a loss the game's own flow may tear the run down on its way to its ending, and the choice is owed either way.
 `TrainerRunTeardown` therefore releases the run and keeps the ended fight when the fight is over, and the return to the main menu - the choice's Leave or the game's own Continue on its ending - is what finishes the journey.
 The loot a won fight offers stays visible under the choice and `LootLock` keeps it where it is: the reward buttons and the game's proceed are prefixed to do nothing while the fight is over, because those rows are the recording's next decisions and the choice is the only way on.
@@ -649,11 +647,9 @@ Two things follow from it that are not about card screens.
 
 The first is that a verification which photographs behaviour the host cannot produce is a
 check that cannot fail.
-Whatever the two hosts do differently has to be stated as a difference somewhere, and two
-declarations on `RunDriver` are where these are: `VerbsIssuedInsideARunningGame`, and
-`AnswersShownOnTheGamesOwnScreen` for the answers the client draws a screen for.
-`RecordedFightVerbAgreementTests` holds both against the committed fixture's walk to its
-first fight and proves the known `SelectCardFromScreen` shape remains covered by each.
+Whatever the two hosts do differently has to be stated as a difference somewhere.
+`RetailPlayback.Verbs` declares what the running client issues, while `RunDriver.AnswersShownOnTheGamesOwnScreen` separately declares the answers for which it draws a screen.
+`RunDriver.VerbsIssuedInsideARunningGame` exposes the first set without copying it, and `RecordedFightVerbAgreementTests` holds both against the committed fixture's walk to its first fight and proves the known `SelectCardFromScreen` shape remains covered by each.
 Issued and drawn are two claims, held separately on purpose: a verb issued without a
 screen would be committed with nothing to point at, and a screen drawn without the verb
 would light the recording's card and never press it.
@@ -661,6 +657,19 @@ Neither establishes that every possible first-fight prefix is supported; bundle 
 answers remain refused in the client because their prompt stand-ins are headless-only.
 The tests need no game installed, which is the point - the run that would otherwise catch
 this is one only a person with the client can make.
+
+The same refusal in its other place is a surface offering a boundary the walk cannot
+reach, and that is not a card-screen shape at all: standing a player at any boundary past
+the first fight means replaying the fight before it, which is a card played and a turn
+ended and loot claimed, none of which this client issues. A run library that offered every
+boundary the recording proved therefore built the run, showed a decision or two and then
+aborted, in the same worst place. So the verb set is declared once in
+`RetailPlayback`, in the assembly that carries no game, and the library asks it of a
+boundary's prefix before it draws the row: `RunViewPosition.Reachable` is that answer and
+`Playable` folds it in, so a refused place keeps its row and says why. `RunDriver` is
+still what enforces it, and the two cannot drift because there is no second copy of the
+set. Widening what the client issues widens what the library offers in the same commit,
+which is the property that was missing.
 
 The second is the rule the fix was eventually written to, which is not the rule the first
 fix was written to.

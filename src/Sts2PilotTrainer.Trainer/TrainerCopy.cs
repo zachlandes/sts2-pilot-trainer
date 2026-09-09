@@ -42,9 +42,9 @@ public static class TrainerCopy
     public const string FightEnemy = "Sludge Spinner";
 
     /// <summary>What this one recording is, under the screen's title.</summary>
-    public static string Subtitle(string creator, string character, int ascension) =>
+    public static string Subtitle(RecordingCredit credit, string character, int ascension) =>
         string.Join(" · ",
-            creator,
+            credit.Label,
             ModelIdNames.Display(character),
             $"Ascension {ascension.ToString(CultureInfo.InvariantCulture)}",
             FightFloor,
@@ -91,7 +91,7 @@ public static class TrainerCopy
     /// </summary>
     public const string ShowTooltipTitle = "Show";
 
-    public static string ShowTooltipBody(string creator) => $"Shows what {creator} chose here.";
+    public static string ShowTooltipBody(RecordingCredit credit) => $"Shows what {credit.Subject} chose here.";
 
     /// <summary>The playback speed, which the captain asked for the way a video
     /// player has it.</summary>
@@ -119,7 +119,7 @@ public static class TrainerCopy
     public static string StepCounter(int step, int count) =>
         $"{step.ToString(CultureInfo.InvariantCulture)} of {count.ToString(CultureInfo.InvariantCulture)}";
 
-    // The ledger's rows. The tag hanging above them names the creator once, so the
+    // The ledger's rows. The tag hanging above them carries the credit once, so the
     // rows do not: five rows each opening with the same name is the repetition the
     // caption line was replaced to avoid.
 
@@ -201,7 +201,8 @@ public static class TrainerCopy
 
     /// <summary>The confirmation before the one destructive thing the transport
     /// offers. Named plainly: what is lost, and that the same fight comes back.</summary>
-    public static string ConfirmJumpToTheBeginningTitle(string creator) => $"Start {creator}'s fight again?";
+    public static string ConfirmJumpToTheBeginningTitle(RecordingCredit credit) =>
+        $"Start {credit.Possessive} fight again?";
 
     public const string ConfirmJumpToTheBeginningBody =
         "This attempt is discarded and the fight starts again from exactly where it started before.";
@@ -219,31 +220,31 @@ public static class TrainerCopy
 
 
     /// <summary>What the recording did at its opening event.</summary>
-    public static string BlessingCaption(string creator, string relicModelId) =>
-        $"{creator} took {ModelIdNames.Display(relicModelId)}";
+    public static string BlessingCaption(RecordingCredit credit, string relicModelId) =>
+        $"{credit.OpeningSubject} took {ModelIdNames.Display(relicModelId)}";
 
     /// <summary>The same, where the relic opened a card screen and the recording
     /// picked off it. See <see cref="BlessingWithCardsLedgerRow"/> for why the card is
     /// named here at all.</summary>
     public static string BlessingWithCardsCaption(
-        string creator, string relicModelId, IReadOnlyList<string> cards) =>
-        $"{creator} took {ModelIdNames.Display(relicModelId)} and chose {NameCards(cards)}";
+        RecordingCredit credit, string relicModelId, IReadOnlyList<string> cards) =>
+        $"{credit.OpeningSubject} took {ModelIdNames.Display(relicModelId)} and chose {NameCards(cards)}";
 
     /// <summary>What the recording picked off the card screen its last decision
     /// opened.</summary>
-    public static string CardFromScreenCaption(string creator, string cardModelId) =>
-        $"{creator} chose {ModelIdNames.Display(cardModelId)}";
+    public static string CardFromScreenCaption(RecordingCredit credit, string cardModelId) =>
+        $"{credit.OpeningSubject} chose {ModelIdNames.Display(cardModelId)}";
 
     /// <summary>What the recording did on the map.</summary>
-    public static string MapMoveCaption(string creator, string nodeType, string columnPosition) =>
-        $"{creator} moved to the {ModelIdNames.Display(nodeType)} node, {columnPosition} column";
+    public static string MapMoveCaption(RecordingCredit credit, string nodeType, string columnPosition) =>
+        $"{credit.OpeningSubject} moved to the {ModelIdNames.Display(nodeType)} node, {columnPosition} column";
 
     /// <summary>Shown once, the first time a player watches the recording decide
     /// anything. It says what the screens are and, as importantly, what they are
     /// not.</summary>
-    public static string ChoicesShownAsRecorded(string creator) =>
-        $"{creator}'s choices are shown as recorded, one press after each screen. This shows what was " +
-        "chosen, not why.";
+    public static string ChoicesShownAsRecorded(RecordingCredit credit) =>
+        $"{credit.OpeningPossessive} choices are shown as recorded, one press after each screen. This shows " +
+        "what was chosen, not why.";
 
     // ── The post-fight choice ───────────────────────────────────────────────
     //
@@ -256,7 +257,7 @@ public static class TrainerCopy
 
     /// <summary>Runs the recording's fight through the engine on the transport.
     /// Absent until in-combat playback exists.</summary>
-    public static string WatchTheirFight(string creator) => $"Watch {creator}'s fight";
+    public static string WatchTheirFight(RecordingCredit credit) => $"Watch {credit.Possessive} fight";
 
     /// <summary>Back to the proven combat start. No confirmation: the attempt is over
     /// and nothing is discarded by repeating it.</summary>
@@ -272,8 +273,9 @@ public static class TrainerCopy
     /// <summary>The hollow-eye mark beside a fight whose recording has been shown this
     /// sitting. Its tooltip is the whole explanation, and it says the mark is for the
     /// sitting only because the state behind it is never written.</summary>
-    public static string ShownThisSittingTooltip(string creator) =>
-        $"You have seen {creator}'s fight this sitting. It is cold again next time you launch the game.";
+    public static string ShownThisSittingTooltip(RecordingCredit credit) =>
+        $"You have seen {credit.Possessive} fight this sitting. It is cold again next time you launch the " +
+        "game.";
 
     // ── A refusal, in a player's words ─────────────────────────────────────
     //
@@ -286,8 +288,9 @@ public static class TrainerCopy
     // it. Only the sentence a player reads changes.
 
     /// <summary>Which screen did not match, named the way a player sees it.</summary>
-    public static string RefusalHeadline(string creator, string screen) =>
-        $"This {screen} doesn't match {creator}'s recording, so Combat Trainer stopped rather than guess.";
+    public static string RefusalHeadline(RecordingCredit credit, string screen) =>
+        $"This {screen} doesn't match {credit.Possessive} recording, so Combat Trainer stopped rather than " +
+        "guess.";
 
     /// <summary>The reassurance that is load-bearing rather than soothing: a refused
     /// entry leaves nothing behind, and a player who thought otherwise would go
@@ -329,14 +332,53 @@ public static class TrainerCopy
     // during the fight. The panel is mostly pictures - card art by turn, two lines on
     // a chart, figures in two columns - so what is left here is the furniture those
     // pictures need and the sentences that are rules rather than captions. Every
-    // number comes from CombatComparison and every name from the manifest; nothing
-    // below names a recording.
+    // number comes from CombatComparison and every credit from RecordingIdentity;
+    // nothing below names a recording.
 
     /// <summary>The panel's title over a comparison.</summary>
-    public static string ComparisonTitle(string creator) => $"Your fight and {creator}'s";
+    public static string ComparisonTitle(RecordingCredit credit) =>
+        credit.IsYours ? ComparisonWithYourOwnTitle : $"Your fight and {credit.Possessive}";
 
     /// <summary>The column the player's numbers sit under.</summary>
     public const string YouColumn = "You";
+
+    // ── Crediting a run the player recorded themselves ─────────────────────
+    //
+    // The three forms RecordingCredit.Yours is built from. They are here rather than
+    // in that record because this file is where every fixed word the journey shows a
+    // player lives, and because they are the second half of a pair: a recording from
+    // somebody else supplies the same three forms from its creator's name.
+
+    /// <summary>Your own run as the subject of a sentence: "Shows what you chose
+    /// here." Lower case, because most uses sit mid sentence; the ones that open a
+    /// sentence capitalize it through <see cref="RecordingCredit.OpeningSubject"/>.</summary>
+    public const string YouSubject = "you";
+
+    /// <summary>Your own run before the thing it owns: "Watch your fight". Lower case,
+    /// because every use of it sits mid sentence; the one that opens a sentence
+    /// capitalizes it through <see cref="RecordingCredit.OpeningPossessive"/>.</summary>
+    public const string YourPossessive = "your";
+
+    /// <summary>Your own run where a name would go with nothing after it - the
+    /// transport's tag, the subtitle, a column heading. "You" alone reads as the person
+    /// rather than the recording in those slots, which is the distinction the panel
+    /// draws between this attempt and the recorded one.</summary>
+    public const string YourRunLabel = "Your run";
+
+    /// <summary>A received native run as the subject of a sentence.</summary>
+    public const string ThisRunSubject = "this run";
+
+    /// <summary>A received native run before the thing it owns.</summary>
+    public const string ThisRunPossessive = "this run's";
+
+    /// <summary>A received native run where a standalone label is needed.</summary>
+    public const string ThisRunLabel = "This run";
+
+    /// <summary>The panel's title over a comparison with your own recorded line. Its
+    /// own sentence rather than the creator template with a word swapped: "Your fight
+    /// and your's" is not English, and "Your fight and yours" says nothing about which
+    /// of the two is the recording.</summary>
+    public const string ComparisonWithYourOwnTitle = "This fight and your recorded one";
 
     /// <summary>The summary row labels, in the contract's order.</summary>
     public const string OutcomeRow = "Outcome";
@@ -400,4 +442,7 @@ public static class TrainerCopy
     /// <summary>Shown in place of a comparison when the fight was left before it
     /// ended: quit, returned to the main menu, or abandoned.</summary>
     public const string LeftNote = "This fight was left before it ended, so there is nothing to compare.";
+
+    /// <summary>Shown when this build carries no recorded comparison for the run.</summary>
+    public const string NoRecordedComparison = "This build has no recorded comparison line for this run yet.";
 }

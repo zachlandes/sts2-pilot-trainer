@@ -44,7 +44,8 @@ The smaller sampled boundary in each trace remains descriptive; it is not treate
 Entering a fight is held to the same boundary from the other direction.
 `RecordedFightEntry` walks a constructed run through the recording's decisions and stops there, and `BoundaryEquality` refuses to hand the fight over unless the live state is the recorded boundary on both readings - every value the recording observed, and the complete canonical snapshot's digest.
 That is the same reason the digest is required of a comparison: a boundary that agreed on everything a video shows and differed in a random stream's position is a fight that diverges at the next shuffle.
-Where somebody can be stood is any boundary the recording declares of a kind a host enters: a combat start, or a floor arrival.
+A declared combat start or floor arrival is a candidate place for a host to stand somebody; the host must also be able to replay every decision in the prefix that reaches it.
+The retail client currently reaches only the first fight, while the headless host can reach later declared boundaries, and `RetailPlayback` owns that capability distinction for library offers.
 A turn boundary is carried by the format so a later rewind has somewhere to land, and nothing in these phases stands anybody in one - `BoundarySelector.PlanFor` refuses it, because a turn's state is reached by playing the fight from its start.
 A fight that has already started is never resumed mid-way.
 

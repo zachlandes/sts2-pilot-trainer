@@ -82,7 +82,7 @@ It does not clear the version overlay, whose seed text starts further right than
 Flat charcoal at 94%, an inked gold edge, an inner hairline, two gold pins, a chamfered foot.
 Same palette as the game, different material: the game's own furniture is torn stone and parchment, so a flat plate reads as not-the-game without being loud about it, and it hangs under the game's own meta cluster where controls that act on the recording belong.
 
-**Contents, left to right.** The mark (the selection reticle the reveal lights, shrunk to a glyph); the identity block (creator over video title, pressable, opening the video at the decision's own observed timestamp); the counter as numerals with pips; the speed chip; three 30-unit glyph controls - look back, play or pause, step.
+**Contents, left to right.** The mark (the selection reticle the reveal lights, shrunk to a glyph); the identity block (the recording's credit over its video title where it has one, pressable only for a video and opening it at the decision's own observed timestamp); the counter as numerals with pips; the speed chip; three 30-unit glyph controls - look back, play or pause, step.
 
 **Icon only, tooltips for words.** The captain's ruling: progressive disclosure is the game's own principle.
 There is no always-visible caption line; step's tooltip names the decision it is about to make.
@@ -104,11 +104,11 @@ Between screens, the window between committing one decision and revealing the ne
 The one exception is play once it is already running: it is drawn as pause there and pause is never refused, because it stops the run rather than moving it.
 The speed control is offered, as it is in Opening.
 The two ways look back can be refused stay distinguishable in the model, because nothing behind yet and not yet are different answers to somebody who pressed.
-The chip during the player's own fight: the mark and the name, silent until pressed.
+The chip during the player's own fight: the mark and the recording's credit, silent until pressed.
 It stays exactly as it is for the couple of seconds the game takes to draw its own ending, drawn and pressable, with both of its rows refused - both act on a fight that no longer exists.
 Ended, once the ending is drawn: the chip stays and the post-fight choice hangs under it in the chip menu's own shape, opened on its own and re-opened by pressing the chip.
 The rows are the teaching's order - look, then act - and are present or absent, never disabled: Show the comparison, Fight it again and Leave on this build, with Watch {creator}'s fight and Continue as you absent until the phases that add them merge, and Continue as you always absent on a loss.
-Nothing about the recording's line is drawn unbidden; the comparison panel is the first row's, and its Done returns to the choice.
+Nothing about the recording's line is drawn unbidden; the first row draws the comparison panel when this build carries a line bound to that run, or a plain no-line notice when it does not, and Done returns to the choice.
 The glyph rule extends by one shape there: **a hollow eye is a reveal that only looks.**
 A row already taken this sitting carries the teal dot the speed menu uses for "the one you are in", and the same hollow eye marks the fight's row in the run view; that state is in memory for the sitting, never written, and gates nothing.
 On a win the menu hangs over the loot screen, which stays visible and locked; on a loss it hangs the same way over the game's own ending, from the run's persistent interface, and where that interface did not survive the ending it is drawn in the game's modal container instead.
@@ -161,7 +161,7 @@ A redesign that needs an element to appear, disappear or refuse somewhere new ch
 
 - **Jump to the end adds no comparison kind.** It ends the attempt and the existing result surface says what it already says about a fight left before it ended.
   A partial player line - "left at turn N", the turns played kept and the chart's line stopping there - is a change to the comparison contract and belongs to the comparison owner; see `docs/comparison-direction.md`.
-- **The video title** is `source.video.title` in the manifest, filled at ingestion. Until a recording carries one the identity block shows the creator alone.
+- **The video title** is `source.video.title` in the manifest, filled at ingestion. Until a recording carries one the identity block shows its resolved credit alone.
 - **Screens the journey does not yet walk** - loot, card rewards, shops, rests - have no caption owner. The tag is built to carry them unchanged; the reveal refuses them.
 - **No new hotkeys.** On-screen controls only, so the controls carry no hotkey glyph: one would name a key that does nothing.
 - **The tag's anchor is measured once**, in `PlaybackTransportDock.Attach`, and nothing remeasures it, so a relic row that grows past the measured band or a window resized mid-journey leaves the tag where it was.

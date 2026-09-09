@@ -60,15 +60,17 @@ public sealed record FightResultChart(
     /// <summary>
     /// Reads the chart out of a comparison.
     /// </summary>
-    /// <param name="creator">Whose recording the second line is, from the manifest.</param>
+    /// <param name="credit">How the recording's source and library origin credit the
+    /// second line. The series is a label with nothing after it, so it takes the
+    /// credit's label form.</param>
     /// <param name="comparison">The player's line on the left, the recording's on the right.</param>
-    public static FightResultChart From(string creator, CombatComparison comparison)
+    public static FightResultChart From(RecordingCredit credit, CombatComparison comparison)
     {
         var turns = comparison.Turns.Select(turn => turn.Turn).ToList();
         var yours = new FightResultSeries(
             TrainerCopy.YouColumn, IsPlayer: true, comparison.Turns.Select(Point(turn => turn.Left)).ToList());
         var theirs = new FightResultSeries(
-            creator, IsPlayer: false, comparison.Turns.Select(Point(turn => turn.Right)).ToList());
+            credit.Label, IsPlayer: false, comparison.Turns.Select(Point(turn => turn.Right)).ToList());
 
         return new FightResultChart(
             TrainerCopy.ChartHeading,

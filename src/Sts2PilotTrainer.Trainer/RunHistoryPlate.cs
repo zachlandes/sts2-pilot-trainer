@@ -57,8 +57,12 @@ public sealed record PlateRow(
 /// whether the flow exists is a fact about the build and not about the run - and a
 /// host that drew the row refused on its own would put the enabled decision in two
 /// owners.</param>
-/// <param name="LastFloor">The last floor the run arrived at, or null when the
-/// recording proves none.</param>
+/// <param name="LastFloor">The furthest floor of this run a player can be stood at, or
+/// null when there is none. The furthest the row can offer rather than the furthest the
+/// run reached: the row is an offer to play from somewhere, and
+/// <see cref="RunViewPosition.Playable"/> is the one rule that says where those places
+/// are - which excludes the run's own start, a fight the recording stops inside, and a
+/// place this client cannot be walked to.</param>
 /// <param name="LastFloorKind">What that floor held. The row names it beside the floor
 /// number, and <see cref="FloorKind.Unknown"/> leaves it unnamed rather than
 /// guessed.</param>

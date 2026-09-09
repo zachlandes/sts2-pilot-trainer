@@ -17,8 +17,8 @@ namespace Sts2PilotTrainer.Trainer;
 /// It is a model of pictures rather than of sentences: the cards each turn, the
 /// potions and the two lines of the chart are model ids and numerals that a renderer
 /// draws. What text remains is furniture and the two caveats, each a rule rather
-/// than a caption. Every sentence is a template over the creator's name and the
-/// comparison's values, and nothing here names a recording.
+/// than a caption. Every sentence is a template over the resolved recording credit
+/// and the comparison's values, and nothing here names a recording.
 /// </summary>
 public sealed record FightResultScreen(
     string Title,
@@ -54,9 +54,9 @@ public sealed record FightResultScreen(
     /// <summary>
     /// The player's completed fight beside the recording's.
     /// </summary>
-    /// <param name="creator">Whose recording it is, from the manifest.</param>
+    /// <param name="credit">How the recording's source and library origin credit it.</param>
     /// <param name="comparison">The player's line on the left, the recording's on the right.</param>
-    public static FightResultScreen For(string creator, CombatComparison comparison)
+    public static FightResultScreen For(RecordingCredit credit, CombatComparison comparison)
     {
         var rows = new List<FightResultRow>();
         foreach (var field in comparison.Summary)
@@ -71,14 +71,14 @@ public sealed record FightResultScreen(
             turn.Right is { } theirs ? FightResultTurnSide.Of(theirs) : null)).ToList();
 
         return new FightResultScreen(
-            Title: TrainerCopy.ComparisonTitle(creator),
+            Title: TrainerCopy.ComparisonTitle(credit),
             SameBoundaryNote: TrainerCopy.SameBoundaryNote,
-            Columns: [TrainerCopy.YouColumn, creator],
+            Columns: [TrainerCopy.YouColumn, credit.Label],
             Rows: rows,
             TurnDetailHeading: TrainerCopy.TurnDetailHeading,
             Turns: turns,
             FightOverLabel: TrainerCopy.FightOverLabel,
-            Chart: FightResultChart.From(creator, comparison),
+            Chart: FightResultChart.From(credit, comparison),
             Notes: [TrainerCopy.NoVerdictNote, TrainerCopy.BlockNote],
             Notice: string.Empty,
             DoneButton: TrainerCopy.DoneButton,
@@ -96,7 +96,8 @@ public sealed record FightResultScreen(
     /// no line to compare. A comparison that refuses - a boundary that is not the
     /// recording's - is shown in its own words.
     /// </summary>
-    public static FightResultScreen Of(string creator, FightCapture capture, CombatProjection recording)
+    public static FightResultScreen Of(
+        RecordingCredit credit, FightCapture capture, CombatProjection recording)
     {
         switch (capture.State)
         {
@@ -108,7 +109,7 @@ public sealed record FightResultScreen(
 
         try
         {
-            return For(creator, CombatComparison.Between(capture.Project(), recording));
+            return For(credit, CombatComparison.Between(capture.Project(), recording));
         }
         catch (ManifestException refusal)
         {

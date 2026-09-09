@@ -34,7 +34,7 @@ public sealed class PlaybackTransportStripTests
     private static readonly PrefightChoice MapMove = new PrefightChoice.MapMove(1, "Monster", 3, 7);
 
     private static readonly TransportIdentity NaveGreed = new(
-        "NaveGreed", "Ironclad A10, Underdocks", "https://www.youtube.com/watch?v=OJ-6QXhNgdg&t=26s", "0:26");
+        RecordingCredit.Named("NaveGreed"), "Ironclad A10, Underdocks", "https://www.youtube.com/watch?v=OJ-6QXhNgdg&t=26s", "0:26");
 
     [Fact]
     public void CarriesTheRecordingsOwnWordsAndNothingElse()
@@ -850,7 +850,7 @@ public sealed class PlaybackTransportStripTests
         Assert.False(strip.Identity.Disabled);
 
         strip.Apply(For(
-            JourneyPhase.Watching, new TransportIdentity("NaveGreed", null, null, null),
+            JourneyPhase.Watching, new TransportIdentity(RecordingCredit.Named("NaveGreed"), null, null, null),
             next: MapMove, stepsTaken: 1));
 
         Assert.True(strip.Identity.Disabled);

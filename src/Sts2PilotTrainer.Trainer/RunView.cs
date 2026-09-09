@@ -22,8 +22,15 @@ namespace Sts2PilotTrainer.Trainer;
 /// <param name="AfterSeq">The action the recording's own boundary for this floor
 /// follows, or -1 for the floor the run started on, which no boundary names. What the
 /// recording says at this place is read at that action.</param>
+/// <param name="Reachable">Whether a running retail client can actually walk the
+/// recording to here. <see cref="Replay.RetailPlayback"/> is the one owner of that
+/// question and the same set the driver enforces, so a place this says yes about is a
+/// place the journey can reach. It defaults to true for a caller building a position by
+/// hand; <see cref="RunView.PositionsIn"/>, which is what every surface reads, always
+/// asks.</param>
 public sealed record RunViewPosition(
-    int Floor, int? Fight, FloorKind Kind, bool Unfinished, bool IsRunStart, int AfterSeq)
+    int Floor, int? Fight, FloorKind Kind, bool Unfinished, bool IsRunStart, int AfterSeq,
+    bool Reachable = true)
 {
     /// <summary>
     /// Whether the play-from row will stand a player here.
@@ -31,10 +38,12 @@ public sealed record RunViewPosition(
     /// The rule in one place, read by the row and by every strip that draws this
     /// position - the run view's own and the browser pane's - so a cell drawn as
     /// playable is a cell the row offers. The run's own start is refused because
-    /// "Start the run over" already puts a player there, and an unfinished fight
-    /// because there is no finished recorded line to set one against.
+    /// "Start the run over" already puts a player there, an unfinished fight because
+    /// there is no finished recorded line to set one against, and a place the client
+    /// cannot walk to because offering it would build the run, show a decision or two
+    /// and then abort in front of the player.
     /// </summary>
-    public bool Playable => !IsRunStart && !Unfinished;
+    public bool Playable => !IsRunStart && !Unfinished && Reachable;
 }
 
 /// <summary>
@@ -104,10 +113,15 @@ public sealed record RunViewRow(
 ///
 /// It computes nothing about the run and judges nothing about how it was played.
 /// Which places exist is <see cref="ReplayManifest.Boundaries"/>' answer - the same
-/// list <c>RecordedFightEntry</c> walks to and the same list the validator enforces -
-/// so a row here can never offer a boundary the entry would refuse. Which of them this
-/// player has stood in is <see cref="RunProgress"/>' answer, and the only thing on this
-/// screen that is about the person rather than the run.
+/// list <c>RecordedFightEntry</c> walks to and the same list the validator enforces.
+/// Which of those this client can actually be walked to is
+/// <see cref="Replay.RetailPlayback"/>'s, asked of the same verb set the driver
+/// enforces, so a row here can never offer a boundary the journey would refuse. Both
+/// questions have to be asked: existing and being reachable are different facts, and a
+/// surface that asked only the first offered a floor whose walk aborts after the run has
+/// been built and two decisions watched. Which of them this player has stood in is
+/// <see cref="RunProgress"/>' answer, and the only thing on this screen that is about
+/// the person rather than the run.
 ///
 /// <para><b>One play-from row, not two.</b> A fight is one thing a floor can hold
 /// rather than a thing beside it, so the label is fixed and the second line names the
@@ -240,7 +254,8 @@ public sealed record RunView(
                         : FloorKinds.Between(recording, entry.AfterSeq, until),
                     fight is null && fought,
                     index == 0,
-                    entry.AfterSeq);
+                    entry.AfterSeq,
+                    RetailPlayback.CanReach(recording, entry.AfterSeq));
             }),
         ];
     }
@@ -284,11 +299,18 @@ public sealed record RunView(
         if (progress.ContinueAt(progressId, fights) is { } next)
         {
             var at = positions.FirstOrDefault(position => position.Fight == next);
+
+            // Refused rather than moved on to the next fight this build can reach.
+            // "the next fight you have not played from" is what the row means, and a
+            // row that quietly named a different one would be answering a question
+            // nobody asked.
+            var reachable = at?.Reachable ?? true;
             rows.Add(new RunViewRow(
                 RunViewRowKind.Continue,
                 LibraryCopy.ContinueFromNextUnplayed,
-                at is null ? null : LibraryCopy.FloorLine(at.Floor),
-                Enabled: true,
+                at is null || !reachable ? null : LibraryCopy.FloorLine(at.Floor),
+                Enabled: reachable,
+                Reason: reachable ? null : LibraryCopy.EarlierFightNotReplayable,
                 Fight: next,
                 Floor: at?.Floor,
                 Enemy: at is null ? null : RunReading.At(recording, at.AfterSeq).Enemies.FirstOrDefault()?.Model,
@@ -297,12 +319,18 @@ public sealed record RunView(
 
         // Absent for the same reason Continue is: it walks to fight 1's combat start,
         // and a recording that proves no fight 1 has nowhere for it to come to rest.
+        // Drawn and refused where this build cannot walk even that far, which is a
+        // recording whose opening decisions are not ones the client issues: the row is
+        // still where a player learns the offer exists.
         if (fights.Contains(1))
         {
             var start = positions.FirstOrDefault(position => position.Fight == 1);
+            var reachable = start?.Reachable ?? true;
             rows.Add(new RunViewRow(
                 RunViewRowKind.StartOver, LibraryCopy.StartTheRunOver, null,
-                Enabled: true, Fight: 1, Floor: start?.Floor));
+                Enabled: reachable,
+                Reason: reachable ? null : LibraryCopy.EarlierFightNotReplayable,
+                Fight: 1, Floor: start?.Floor));
         }
 
         return rows;
@@ -338,6 +366,13 @@ public sealed record RunView(
             return new RunViewRow(
                 RunViewRowKind.PlayFrom, LibraryCopy.PlayFromThisFloor, null, Enabled: false,
                 Reason: LibraryCopy.FightNotFinished, Floor: selected.Floor);
+        }
+
+        if (!selected.Reachable)
+        {
+            return new RunViewRow(
+                RunViewRowKind.PlayFrom, LibraryCopy.PlayFromThisFloor, null, Enabled: false,
+                Reason: LibraryCopy.EarlierFightNotReplayable, Floor: selected.Floor);
         }
 
         return new RunViewRow(
