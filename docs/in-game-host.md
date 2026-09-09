@@ -271,7 +271,7 @@ A reading that could not be taken is refused exactly like a multiplayer one - a 
 
 **A multiplayer game gets no mod surface at all, which is a stronger rule than recording nothing.**
 `GameSessionWatch` is the shell's, installed however the modules answer, and `RunmobileMod.MayDraw` is the one gate every surface passes: the menu cards go through it, and so does a surface a module draws from its own Harmony patches, which is where the cards' gate never looks.
-The run library's two are both of that kind - `CompendiumCard.ShowsButton` decides whether the Compendium button is there and `RunHistoryPlateHost.PlateFor` whether a history-row press opens anything - and each asks the shell rather than reading the session, so a module knows only that the shell said no.
+The run library's four are all of that kind - `MainMenuLibraryRow.Visible` decides whether its main-menu row is there, `CompendiumCard.ShowsButton` decides whether the Compendium button is there, `MyRunsSettings.AddRow` decides whether its settings row is added, and `RunHistoryPlateHost.PlateFor` decides whether a history-row press opens anything - and each asks the shell rather than reading the session, so a module knows only that the shell said no.
 What a module may not do is read the session to decide whether to draw; the reading behind that decision is the shell's and the module's question is "may I draw this".
 Reading it to decide whether to *record* is a different question with a different answer, and `RunRecorder.Attach` asks it directly through `GameSessionWatch.Observed` and `RunSession.MayBeRecorded` - the two permissions are separate, which is why `RunSession` carries both.
 Silence is silence rather than a degraded surface: nothing is drawn, not even a refusal saying why, because a refusal is itself this mod speaking.
@@ -844,7 +844,7 @@ Each `LibraryPage` carries its way back rather than relying on a modal stack: an
 Only the browser itself, which is the screen a player enters on, closes the library.
 The tab travels as a bool because the way back ends up in a lambda's captured fields, and a captured `LibraryTab` has stopped this mod loading once already.
 
-## Three surfaces, and the hook each one needs
+## Four surfaces, and the hook each one needs
 
 Read out of v0.111.0 in a scratch decompile, ahead of building anything on them.
 Mechanism only: node paths and the lifecycle method a `[HarmonyPatch]` postfix would
@@ -1063,8 +1063,8 @@ There is no top to refuse at: a press that reported two hundred over a file sayi
 A settings file this build cannot read is the one case where the numeral is not the player's own sentence, and the row says so rather than showing it.
 `RunmobileSettings.Read` answers an unreadable file with its "remove nothing" sentinel, which is a number no player wrote and no control can put right, so `RecordingRetention.OnDisk` carries the readable-or-not as a fact of its own on `MyRunsFacts` and hands the row the default in place of it.
 That number is shown and nothing is inferred from it: under an unreadable file no policy is in force at all, because `RecordingLibrary.Cull` names nothing for the sentinel, so the second line says exactly that - `settings.json` could not be read, so no runs are removed automatically until it is - rather than claiming the usual policy stands.
-Every control that would write into that file is refused with it: both ends of the stepper, and the removal too, because `PurgeNow` records the request in the same file before it takes anything and an act that cannot be recorded is one that must not be offered.
-The second line is what explains all three, so none of them is a dead control with no reason on screen.
+Every control that would write into that file is refused with it: both ends of the stepper, the removal, the index-fetch switch and the main-menu switch, because `PurgeNow` records the request in the same file before it takes anything and an act that cannot be recorded is one that must not be offered.
+The second line explains the shared refusal, so none of them is a dead control with no reason on screen.
 `RunmobileSettings.Set` refuses through `Read` itself rather than through a second set of rules of its own, so a document can never be unreadable to the row and writable by the control beside it; an absent file is not an unreadable one and still gets the defaults with the one member set.
 
 The one recording retention never names is the run the game can currently Continue, and neither a cap nor a purge removes its journal.

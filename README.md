@@ -9,7 +9,8 @@ Playing from a recording writes nothing to your saves, your stats or your run hi
 Recording your own runs changes nothing about them: they save and count exactly as they always did.
 Works on Slay the Spire 2 `v0.111.0`, needs no other mod, and asks you to play from a recording with only Runmobile enabled.
 
-This repository is `sts2-pilot-trainer`: the mod a player installs is `Runmobile`, and its Compendium is the entry point for recorded runs.
+This repository is `sts2-pilot-trainer`: the mod a player installs is `Runmobile`, and its main-menu row and Compendium open the recorded-run library.
+The main-menu row appears by default for a player with no finished runs, while a player with run history uses the Compendium unless they turn the row on in settings.
 Anything marked **Coming soon** below is planned for launch and not built yet.
 A feature stops being coming soon by deleting the tag, so this file stays current without losing the framing.
 
@@ -56,17 +57,21 @@ Three of the gate's conditions need a video, game-mode, seed-topology and eviden
 A fourth, baselib-path, is not asked either, and a weaker check stands in for it: the loaded mods' own declaration that they do not affect gameplay, which the gate's artifact says out loud.
 The arbiter enters fight 2 of that recording headlessly and reproduces the recorded digest byte for byte.
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
-Settings show how much space recordings take, how many are kept, remove them on request, and control whether the shared-run index is fetched; index fetching defaults on.
+Settings show how much space recordings take, how many are kept, remove them on request, control whether the shared-run index is fetched, and let the player show or hide Runmobile on the main menu; index fetching defaults on.
 No setting shares a run automatically.
 - **Coming soon:** a control for turning recording itself off.
 
 **Browse the runs and play from one.**
-The Compendium, which the game opens when no run is active, has a Runmobile button in its bottom row with Statistics and Run History.
+A player with no finished runs gets a Runmobile row on the main menu by default, because the game sends them straight to character select from Singleplayer and does not make the Compendium available yet.
+A player with run history does not get that row by default and can instead use the Runmobile button in the Compendium's bottom row with Statistics and Run History.
+The settings page can show or hide the main-menu row for either player, overriding the run-count default.
+Both buttons open the same library.
 Its parchment browser has two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
 Each run row shows its character, act reached and leading relics, while the selected run's pane adds its complete relics, recorded deck count and a strip of the floors it reached.
 Opening that run makes the strip selectable and offers **Play from this floor**, **Continue** to the next unplayed fight, and **Start the run over** wherever the recording proves each entry point.
 Long run strips page through fixed-width cells, open on the page containing the selected or last replayed floor, and let a focused Previous or Next control use the game's keyboard or controller confirm or select binding.
-[demo/RUNMOBILE-LIBRARY.md](demo/RUNMOBILE-LIBRARY.md) shows the parchment library in the retail client.
+[demo/RUNMOBILE-MAIN-MENU.md](demo/RUNMOBILE-MAIN-MENU.md) shows both defaults and the settings override in the retail client.
+[demo/RUNMOBILE-LIBRARY.md](demo/RUNMOBILE-LIBRARY.md) shows the parchment library itself.
 The visible `Compatible with your game version` filter defaults on, hides incompatible runs during ordinary browsing, and leaves a muted "{n} not shown" count underneath.
 Turning the filter off reveals incompatible runs as disabled rows; entering an exact code does that automatically, selects its run in the sorted position, and shows both the build it requires and the current build.
 An established multiplayer run remains hidden.
@@ -123,7 +128,7 @@ Runmobile lets you play from the fight they played.
 
 - **Coming soon:** Steam Workshop, with a Nexus mirror.
 - Today, from source: `./scripts/install-mod.sh` packages the mod, prepares its private replay runtime from the local game installation, and puts it in the game's own mods directory; `--uninstall` removes it.
-  Launch the game through Steam, enable only Runmobile, and open Singleplayer.
+  Launch the game through Steam, enable only Runmobile, and choose Runmobile on the main menu or in the Compendium.
 
 ## How it works, in one breath
 
@@ -229,7 +234,7 @@ The in-game host reads the client through `Preflight.Evaluate` before it constru
 ./scripts/arbiter adopt-live            # the refusal, from a process that is not a running game
 ```
 
-The Compendium opens the run library, where a player selects a floor from the run strip and chooses **Play from this floor**, **Continue**, or **Start the run over**.
+The main-menu row and Compendium button open the same run library, where a player selects a floor from the run strip and chooses **Play from this floor**, **Continue**, or **Start the run over**.
 The resulting journey makes the recording's decisions and hands over only after the live boundary matches the manifest's observed fields and snapshot digest.
 Winning the fight shows the visual result panel with the player's fight beside the recording's: compact summary figures, card and potion art by turn, and a chart of enemy and player health lost each turn.
 The two lines stay distinct by colour and marker shape, and the panel states differences without scoring either line or giving a verdict.
@@ -306,7 +311,7 @@ The full walkthrough, with commands and their real output, is in
 | `src/Sts2PilotTrainer.Replay` | The replay format and its rules. Depends on nothing — not the game, not a video pipeline, not a storefront. Its tests run on a machine that does not own the game. |
 | `src/Sts2PilotTrainer.Engine` | The only project that knows about a specific game version. |
 | `src/Sts2PilotTrainer.Trainer` | The game-free owner of recorded-fight wording, result models, and chart derivation. |
-| `src/Sts2PilotTrainer.Mod` | The only project loaded into the retail game; it owns the Compendium entry and retail presentation. |
+| `src/Sts2PilotTrainer.Mod` | The only project loaded into the retail game; it owns the main-menu and Compendium entries and retail presentation. |
 | `src/Sts2PilotTrainer.Cli` | The arbiter's commands. |
 | `manifests/` | The reconstructed run and the map read from the video, plus two runs recorded inside the player's own game. Facts only. |
 | `docs/` | [The proof-of-concept path](docs/proof-of-concept-path.md) · [the in-game host](docs/in-game-host.md) · [environment identity](docs/environment-identity.md) · [comparison direction](docs/comparison-direction.md) · [headless fidelity](docs/headless-fidelity.md) · [dependencies](docs/dependencies.md) · [distribution](docs/distribution.md) · [the engine's own replay format](docs/native-replay-format.md) |
