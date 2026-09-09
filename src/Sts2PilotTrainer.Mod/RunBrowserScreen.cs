@@ -107,7 +107,10 @@ internal static class RunBrowserScreen
                 ListFooterTooltip: browser.NotShownTooltipBody,
                 SelectedRow: selectedRow,
                 ListNotice: community ? locked?.Notice : null,
-                ListNoticeFallback: SharingUnavailable()));
+                ListNoticeFallback: StatusLine(
+                    community
+                        ? locked?.Tooltip
+                        : RunLibrary.SharingAvailable ? null : LibraryCopy.SharingServiceUnavailable)));
         }
         catch (Exception ex)
         {
@@ -222,6 +225,14 @@ internal static class RunBrowserScreen
     private sealed record IndexRequest(
         int Tab, bool CompatibleOnly, string? SelectedEntryId, long Surface, string Scope);
 
+    /// <summary>The line the screen puts over the tabs where the lock's own plate is
+    /// not drawn. On Community it is the lock's own sentence, from the same
+    /// <see cref="CommunityLock"/> that wrote the plate, so both lock cases are answered
+    /// by one owner; on My runs, where there is no plate, it is the standing fact that
+    /// nothing can be shared.</summary>
+    private static string? StatusLine(string? text) =>
+        text is { Length: > 0 } line ? LibraryMarkup.Dim(line) : null;
+
     /// <summary>What the body says about a fetch this sitting attempted. A build with
     /// no service attempts none, so there is nothing here to say about one.</summary>
     private static string? BrowserStatus() =>
@@ -232,14 +243,7 @@ internal static class RunBrowserScreen
             ? LibraryMarkup.Dim(failure)
             : null;
 
-    /// <summary>The missing service in one line, for the screen to put over the tabs
-    /// where the lock's own plate could not be drawn. The plate says it where the runs
-    /// would be, and <see cref="LibraryScreen.NoticeDraws"/> decides which of the two a
-    /// player reads.</summary>
-    private static string? SharingUnavailable() =>
-        RunLibrary.SharingAvailable
-            ? null
-            : LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable);
+
 
     /// <summary>
     /// The list, one row per run, in the groups the browser put them in.

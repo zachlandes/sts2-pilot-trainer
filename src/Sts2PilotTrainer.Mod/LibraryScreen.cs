@@ -254,8 +254,16 @@ internal static class LibraryScreen
             var label = content.BodyLabel();
             label.BbcodeEnabled = true;
             label.ScrollActive = true;
-            content.SetText(page.Title, page.BodyWith(noticeDrawn: false) ?? string.Empty);
-            ReservePageRoom(content, page);
+            content.SetText(page.Title, page.Body ?? string.Empty);
+            // The plate's fate before the body is laid out, so no room is kept for a
+            // line that will not appear. Measured against the body without the
+            // fallback, which is the taller column of the two: where the plate does not
+            // fit that one it does not fit the shorter one either, so the answer holds
+            // whichever body this settles on
+            var body = page.BodyWith(
+                NoticeDrawnIn(content, page, AreaFrom(content, BodyHeight(content, page, page.Body))));
+            if (body != page.Body) content.SetText(page.Title, body ?? string.Empty);
+            ReservePageRoom(content, page, body);
 
             ShareFields? share = null;
             content.InitYesButton(
@@ -294,16 +302,13 @@ internal static class LibraryScreen
                 content.NoButton.SetText(page.BackLabel);
             }
 
-            var area = AreaOf(content);
+            var area = AreaFrom(content, content.BodyLabel().Size.Y);
             if (page.ShareSubmitted is not null) share = AddShareFields(content, area);
             var bandControls = new List<Control>();
             var band = AddBand(content, page, area, bandControls);
 
             var listWidth = page.Pane is null ? area.Size.X : area.Size.X * ListShare;
-            var first = AddRows(
-                content, page, new Rect2(area.Position.X, band, listWidth, area.End.Y - band),
-                out var noticeDrawn);
-            if (noticeDrawn) content.SetText(page.Title, page.BodyWith(true) ?? string.Empty);
+            var first = AddRows(content, page, ListRect(area, band, listWidth));
 
             if (page.Pane is { } pane)
             {
@@ -456,18 +461,25 @@ internal static class LibraryScreen
     }
 
     /// <summary>Bounds the popup's scrolling body above the library furniture.</summary>
-    private static void ReservePageRoom(NVerticalPopup content, LibraryPage page)
+    private static void ReservePageRoom(NVerticalPopup content, LibraryPage page, string? body)
     {
         if (page.Rows.Count == 0 && page.Pane is null && page.Tabs.Count == 0) return;
 
         var label = content.BodyLabel();
+        var height = BodyHeight(content, page, body);
         label.FitContent = false;
         label.CustomMinimumSize = new Vector2(label.CustomMinimumSize.X, 0f);
-        label.Size = new Vector2(
-            label.Size.X,
-            string.IsNullOrEmpty(page.BodyWith(noticeDrawn: false))
-                ? 0f
-                : Math.Min(label.Size.Y, content.NoButton.Size.Y));
+        label.Size = new Vector2(label.Size.X, height);
+    }
+
+    /// <summary>How much parchment the body will stand in once the screen's own
+    /// furniture is under it. Read before <see cref="ReservePageRoom"/> writes it, so
+    /// the area can be measured for a body the screen has not settled on yet.</summary>
+    private static float BodyHeight(NVerticalPopup content, LibraryPage page, string? body)
+    {
+        var label = content.BodyLabel();
+        if (page.Rows.Count == 0 && page.Pane is null && page.Tabs.Count == 0) return label.Size.Y;
+        return string.IsNullOrEmpty(body) ? 0f : Math.Min(label.Size.Y, content.NoButton.Size.Y);
     }
 
     /// <summary>
@@ -477,10 +489,10 @@ internal static class LibraryScreen
     /// Everything this screen positions is placed inside it, so a build that moves the
     /// panel's label or its ribbons moves the whole screen with them.
     /// </summary>
-    private static Rect2 AreaOf(NVerticalPopup content)
+    private static Rect2 AreaFrom(NVerticalPopup content, float bodyHeight)
     {
         var label = content.BodyLabel();
-        var top = label.Position.Y + label.Size.Y;
+        var top = label.Position.Y + bodyHeight;
         var bottom = content.NoButton.Position.Y;
         if (bottom <= top)
         {
@@ -501,7 +513,7 @@ internal static class LibraryScreen
     private static float AddBand(
         NVerticalPopup content, LibraryPage page, Rect2 area, List<Control> focusable)
     {
-        if (page.Tabs.Count == 0 && page.CodeSubmitted is null) return area.Position.Y;
+        if (page.Tabs.Count == 0 && page.CodeSubmitted is null) return BandBottom(content, page, area);
 
         var prototype = content.NoButton;
         var height = prototype.Size.Y;
@@ -540,8 +552,21 @@ internal static class LibraryScreen
                 new Rect2(at, area.Position.Y, Math.Max(tabWidth, area.End.X - at), height)));
         }
 
-        return area.Position.Y + (height * 1.65f);
+        return BandBottom(content, page, area);
     }
+
+    /// <summary>Where the band ends and the panes begin, from the ribbon it is measured
+    /// against. Said here rather than at the end of <see cref="AddBand"/> because the
+    /// screen has to know where the list column starts before it has drawn anything -
+    /// a second arithmetic would let the measurement and the drawing disagree.</summary>
+    private static float BandBottom(NVerticalPopup content, LibraryPage page, Rect2 area) =>
+        page.Tabs.Count == 0 && page.CodeSubmitted is null
+            ? area.Position.Y
+            : area.Position.Y + (content.NoButton.Size.Y * 1.65f);
+
+    /// <summary>The list column: what the band leaves, as wide as the pane leaves it.</summary>
+    private static Rect2 ListRect(Rect2 area, float band, float listWidth) =>
+        new(area.Position.X, band, listWidth, area.End.Y - band);
 
     /// <summary>The line between the panes. It runs the whole height of the content
     /// area, up through the list's own header, because the header sits over the list
@@ -571,20 +596,11 @@ internal static class LibraryScreen
     /// how many rows are drawn: room for fewer than a page is refused by
     /// <see cref="ScreenPage.For"/> rather than drawn over.
     /// </summary>
-    private static Control? AddRows(
-        NVerticalPopup content, LibraryPage page, Rect2 at, out bool noticeDrawn)
+    private static Control? AddRows(NVerticalPopup content, LibraryPage page, Rect2 at)
     {
-        noticeDrawn = false;
         var rows = page.Rows;
-        var prototype = content.NoButton;
-        var noted = rows.Any(row => SupportingText(row) is not null);
-        var step = prototype.Size.Y * (noted ? NotedRowStep : RowStep);
-        if (step <= 0f)
-        {
-            throw new InvalidOperationException(
-                "This build's popup ribbon has no measurable height, so a row column cannot be laid out.");
-        }
-
+        var column = MeasureList(content, page, at);
+        var step = column.Step;
         var listHeading = GameText.Scene(NativeTextRole.ListHeading);
         var filterText = GameText.Scene(NativeTextRole.Tickbox);
         var footerText = GameText.Scene(NativeTextRole.Footer);
@@ -593,7 +609,7 @@ internal static class LibraryScreen
         if (page.ListHeader is { Length: > 0 } header)
         {
             AddLine(content, header, new Vector2(at.Position.X, top), at.Size.X, LibraryPalette.Muted, listHeading);
-            top += listHeading.Size * LineStep;
+            top += column.HeaderDrop;
         }
 
         var placed = new List<Control>();
@@ -601,38 +617,31 @@ internal static class LibraryScreen
         {
             var checkbox = AddFilter(content, filter, new Vector2(at.Position.X, top), at.Size.X, filterText);
             placed.Add(checkbox);
-            top += filterText.Size * ControlStep;
+            top += column.FilterDrop;
         }
 
-        var bottom = at.End.Y;
+        var bottom = column.Bottom;
         if (page.ListFooter is { Length: > 0 } footer)
         {
             // Under the list, where the design puts it: it is about what the list is
             // not showing, so it sits with the list rather than in the band. The whole
             // reason is the tooltip, because a numeral is what a player scans and a
             // sentence is what they ask for.
-            bottom -= footerText.Size * LineStep;
             AddLine(
                 content, footer, new Vector2(at.Position.X, bottom), at.Size.X,
                 LibraryPalette.Muted, footerText, tooltip: page.ListFooterTooltip);
         }
 
-        var pinned = rows.Where(row => row.Pinned).ToList();
-        if (page.ListNotice is { Length: > 0 } notice)
+        if (page.ListNotice is { Length: > 0 } notice && column.NoticeDrawn)
         {
-            var noticeText = GameText.Scene(NativeTextRole.Secondary);
-            var allotted = NoticeBudget(
-                bottom - top, step, NoticeHeight(notice, at.Size.X, noticeText), pinned.Count);
-            noticeDrawn = NoticeDraws(allotted, noticeText.Size);
-            if (noticeDrawn)
-            {
-                AddNotice(
-                    content, notice, new Vector2(at.Position.X, top), at.Size.X, allotted, noticeText);
-                top += allotted;
-            }
+            AddNotice(
+                content, notice, new Vector2(at.Position.X, top), at.Size.X, column.NoticeAllotted,
+                GameText.Scene(NativeTextRole.Secondary));
+            top += column.NoticeAllotted;
         }
 
         var fits = (int)Math.Floor((bottom - top) / step);
+        var pinned = rows.Where(row => row.Pinned).ToList();
         var paged = rows.Where(row => !row.Pinned).ToList();
         var requestedPage = page.Page;
         if (page.SelectedRow is { } selectedRow &&
@@ -737,6 +746,66 @@ internal static class LibraryScreen
     /// </summary>
     internal static bool NoticeDraws(float allotted, float textSize) =>
         allotted - (textSize * NoticeGap) - (textSize * NoticePad * 2f) >= textSize;
+
+    /// <summary>
+    /// What the list column measures, before anything is drawn in it.
+    ///
+    /// One reading, taken twice: the screen asks it whether the plate goes up before it
+    /// lays the body out, and <see cref="AddRows"/> asks it again to draw against. The
+    /// arithmetic lives here alone, so the sentence a player reads and the plate they
+    /// read it on cannot come from two different measurements.
+    /// </summary>
+    private readonly record struct ListColumn(
+        float Step, float HeaderDrop, float FilterDrop, float Bottom, float NoticeAllotted)
+    {
+        internal bool NoticeDrawn => NoticeAllotted > 0f;
+    }
+
+    private static ListColumn MeasureList(NVerticalPopup content, LibraryPage page, Rect2 at)
+    {
+        var step = content.NoButton.Size.Y *
+            (page.Rows.Any(row => SupportingText(row) is not null) ? NotedRowStep : RowStep);
+        if (step <= 0f)
+        {
+            throw new InvalidOperationException(
+                "This build's popup ribbon has no measurable height, so a row column cannot be laid out.");
+        }
+
+        var headerDrop = page.ListHeader is { Length: > 0 }
+            ? GameText.Scene(NativeTextRole.ListHeading).Size * LineStep
+            : 0f;
+        var filterDrop = page.ListFilter is null
+            ? 0f
+            : GameText.Scene(NativeTextRole.Tickbox).Size * ControlStep;
+        var bottom = page.ListFooter is { Length: > 0 }
+            ? at.End.Y - (GameText.Scene(NativeTextRole.Footer).Size * LineStep)
+            : at.End.Y;
+
+        var allotted = 0f;
+        if (page.ListNotice is { Length: > 0 } notice)
+        {
+            var style = GameText.Scene(NativeTextRole.Secondary);
+            var budget = NoticeBudget(
+                bottom - at.Position.Y - headerDrop - filterDrop,
+                step,
+                NoticeHeight(notice, at.Size.X, style),
+                page.Rows.Count(row => row.Pinned));
+            if (NoticeDraws(budget, style.Size)) allotted = budget;
+        }
+
+        return new ListColumn(step, headerDrop, filterDrop, bottom, allotted);
+    }
+
+    /// <summary>Whether the plate goes up in the column this area leaves, asked before
+    /// the screen has drawn any of it.</summary>
+    private static bool NoticeDrawnIn(NVerticalPopup content, LibraryPage page, Rect2 area) =>
+        MeasureList(
+            content,
+            page,
+            ListRect(
+                area,
+                BandBottom(content, page, area),
+                page.Pane is null ? area.Size.X : area.Size.X * ListShare)).NoticeDrawn;
 
     /// <summary>
     /// How much of the list column the notice may take.

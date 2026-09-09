@@ -166,7 +166,9 @@ public sealed class LibraryNoticeTests
         var drawn = LibraryScreen.NoticeDraws(allotted, textSize);
 
         Assert.True(drawn);
-        Assert.Null(Page(body: null, fallback: "no sharing service").BodyWith(drawn));
+        Assert.True(
+            string.IsNullOrEmpty(Page(body: null, fallback: "no sharing service").BodyWith(drawn)),
+            "an empty body reserves no parchment over the tabs");
     }
 
     /// <summary>The fallback joins what the body was already saying rather than

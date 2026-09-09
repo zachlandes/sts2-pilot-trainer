@@ -37,6 +37,23 @@ public sealed class CommunityAccessTests
         Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Notice);
     }
 
+    /// <summary>Every lock says its reason in one sentence, because that sentence is
+    /// what the screen puts over the tabs where the plate could not be drawn. A lock
+    /// with no tooltip would be a Community list with nothing to account for it.
+    /// </summary>
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    public void EveryLockCarriesItsReasonInOneSentence(bool sharingAvailable, bool showCommunityRuns)
+    {
+        var locked = CommunityLock.For(sharingAvailable, showCommunityRuns);
+
+        Assert.NotNull(locked);
+        Assert.NotEmpty(locked.Tooltip);
+        Assert.DoesNotContain('\n', locked.Tooltip);
+    }
+
     [Fact]
     public void ThePlayerFacingTabIsCalledCommunity()
     {
