@@ -760,6 +760,14 @@ The Compendium card and the run-history plate therefore both hang off surfaces t
 `MainMenuLibraryRow` adds a ninth button to the game's own column, duplicated from `MainMenuTextButtons/CompendiumButton` so its font, colours, reticle animation and disabled treatment are MegaCrit's, placed directly under it, and connected to the same `RunBrowserScreen.Open` the card connects to.
 There is one library and one playback path; this is a second way in, not a second feature.
 
+**This is the surface that must not adopt the running game where it is built, and it is a sixth trap of the same family as the five above.**
+The main menu is constructed while the startup phase is still `Essential`: there is no model database and no id-serialization cache, so `EngineHost.AdoptRunningGame` refuses at `NMainMenu._Ready`.
+It refuses once. `RunmobileMod.Adopt` latches `_adoptionAttempted` whatever the outcome, so a refusal taken at main-menu construction is the answer every later surface gets for the rest of the process - the Compendium card would stop adding itself and the recorder would stop recording, from one call in a feature that has nothing to do with either.
+A build that asked there was green in every test and dead in the client, and the game's log named it: `refusing to report on this game ... startup phase is 'Essential'`, under `MainMenuLibraryRow.AddButton`.
+The Compendium card can ask in its own `_Ready` because its submenu is built when a player pushes it, which is later; this row is built alongside the menu itself, so its first honest moment is the press, and `MainMenuLibraryRow.Open` is where it asks.
+Building the row needs none of it: whether it belongs on the menu is the settings file and `SaveManager.Progress`, both of which the game's own `RefreshButtons` reads in the same method.
+A refusal at the press takes the row off the menu rather than leaving a control that does nothing - the same outcome the card reaches by never adding itself, one moment later.
+
 Three things about the copy have to be done by hand because the duplicate came from a localized button.
 Its label is set on the `MegaLabel` directly, since Runmobile ships no localization table and asking for a key that does not exist would put a key on the player's main menu.
 Its private `_locString` is cleared with it, because `NMainMenuTextButton._Notification` re-reads that on every translation change and would otherwise put "COMPENDIUM" back when the player changes language.

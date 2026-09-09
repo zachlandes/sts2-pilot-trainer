@@ -36,6 +36,12 @@ namespace Sts2PilotTrainer.Mod;
 /// <c>_Ready</c> and again after a run is abandoned - so visibility is decided there
 /// rather than once. <c>SingleplayerButtonPressed</c> is not patched at all: the row does
 /// not touch the game's own routes.
+///
+/// <para><b>Nothing here adopts the running game until the row is pressed.</b> The main
+/// menu is built one startup phase before the game has a model database, so adopting at
+/// <c>_Ready</c> refuses - and the refusal is latched for the process, which would take
+/// the Compendium card and the recorder down with it. <see cref="Open"/> says the whole
+/// of it.</para>
 /// </summary>
 [HarmonyPatch(typeof(NMainMenu))]
 internal static class MainMenuLibraryRow
@@ -66,11 +72,8 @@ internal static class MainMenuLibraryRow
         {
             if (Existing(__instance) is not null) return;
 
-            // The first moment there is demonstrably a running game to read, and the
-            // moment retention is applied for this profile. Mod loading is neither: it
-            // runs before the game has a model database at all.
-            if (!RunmobileMod.EnsureAdopted()) return;
-
+            // Nothing here adopts the running game, and that is the whole reason this
+            // hook can be the main menu's own _Ready. See AdoptOnPress.
             var source = __instance.GetNodeOrNull<NMainMenuTextButton>(SourceButtonPath);
             if (source is null)
             {
@@ -138,6 +141,52 @@ internal static class MainMenuLibraryRow
     }
 
     /// <summary>
+    /// Opens the library, having taken the running game at the first moment this surface
+    /// can honestly ask for it.
+    ///
+    /// <para><b>The press, not <c>_Ready</c>.</b> The main menu is built while the game's
+    /// startup phase is still <c>Essential</c> - there is no model database and no
+    /// id-serialization cache yet - so <see cref="EngineHost.AdoptRunningGame"/> refuses
+    /// there, and it refuses <em>once</em>: the outcome is latched, so a refusal taken at
+    /// main-menu construction is the answer every later surface gets for the rest of the
+    /// process. Asking there would have cost the Compendium card and the recorder as
+    /// well as this row. The Compendium card can ask in its own <c>_Ready</c> because its
+    /// submenu is built when a player pushes it, which is later; this row is built
+    /// alongside the menu itself, so its first honest moment is the press.</para>
+    ///
+    /// <para>Building the row needs none of that. Whether it belongs on the menu is the
+    /// settings file and <c>SaveManager.Progress</c>, both of which the game's own
+    /// <c>RefreshButtons</c> reads in the same method.</para>
+    ///
+    /// A refusal takes the row off the menu rather than leaving a control that does
+    /// nothing. It is the same outcome the Compendium card reaches by never adding
+    /// itself, one moment later, because this is the moment the question could first be
+    /// asked.
+    /// </summary>
+    private static void Open(NButton pressed)
+    {
+        try
+        {
+            if (RunmobileMod.EnsureAdopted())
+            {
+                RunBrowserScreen.Open();
+                return;
+            }
+
+            pressed.Visible = false;
+            Log.Error(
+                $"[{RunmobileMod.ModId}] cannot read this game, so the Runmobile row has been taken off " +
+                "the menu rather than left as a control that does nothing.", 2);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not open the library from the main menu: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    /// <summary>
     /// Whether the player's settings and this profile's history put the row on the menu.
     ///
     /// A settings file this build cannot read says nothing, which is what the
@@ -180,7 +229,7 @@ internal static class MainMenuLibraryRow
 
             var error = button.Connect(
                 NClickableControl.SignalName.Released,
-                Callable.From<NButton>(_ => RunBrowserScreen.Open()));
+                Callable.From<NButton>(pressed => Open(pressed)));
             if (error != Error.Ok)
             {
                 throw new InvalidOperationException($"Connecting the Runmobile row failed with {error}.");
