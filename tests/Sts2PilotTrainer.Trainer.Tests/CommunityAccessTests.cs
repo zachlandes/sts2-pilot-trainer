@@ -7,13 +7,13 @@ public sealed class CommunityAccessTests
     [Fact]
     public void AServiceAndTheSettingOnIsAnOrdinaryTab()
     {
-        Assert.Null(CommunityLock.For(sharingAvailable: true, settingsReadable: true, showCommunityRuns: true));
+        Assert.Null(CommunityLock.For(sharingAvailable: true, showCommunityRuns: true));
     }
 
     [Fact]
     public void TheSettingOffLocksTheTabAndPointsAtTheSetting()
     {
-        var locked = CommunityLock.For(sharingAvailable: true, settingsReadable: true, showCommunityRuns: false);
+        var locked = CommunityLock.For(sharingAvailable: true, showCommunityRuns: false);
 
         Assert.NotNull(locked);
         Assert.Contains(LibraryCopy.ShowCommunityRuns, locked.Tooltip);
@@ -29,43 +29,12 @@ public sealed class CommunityAccessTests
     [InlineData(false)]
     public void NoServiceOutranksTheSetting(bool showCommunityRuns)
     {
-        var locked = CommunityLock.For(sharingAvailable: false, settingsReadable: true, showCommunityRuns);
+        var locked = CommunityLock.For(sharingAvailable: false, showCommunityRuns);
 
         Assert.NotNull(locked);
         Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Tooltip);
         Assert.Contains("sharing service", locked.Tooltip);
         Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Notice);
-    }
-
-    /// <summary>A settings file this build cannot read is one no control can write
-    /// into, so the lock says that rather than sending a player to a toggle that snaps
-    /// straight back.</summary>
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void AnUnreadableSettingsFilePointsAtNoSwitch(bool showCommunityRuns)
-    {
-        var locked = CommunityLock.For(
-            sharingAvailable: true, settingsReadable: false, showCommunityRuns);
-
-        Assert.NotNull(locked);
-        Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Tooltip);
-        Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Notice);
-        Assert.DoesNotContain("in Settings", locked.Notice);
-        Assert.DoesNotContain("open Settings", locked.Notice);
-        Assert.Contains("settings.json", locked.Tooltip);
-        Assert.Contains("run code", locked.Notice);
-    }
-
-    /// <summary>No service outranks an unreadable file too: the tab names the service.</summary>
-    [Fact]
-    public void NoServiceOutranksAnUnreadableSettingsFile()
-    {
-        var locked = CommunityLock.For(
-            sharingAvailable: false, settingsReadable: false, showCommunityRuns: false);
-
-        Assert.NotNull(locked);
-        Assert.Equal(LibraryCopy.CommunityUnavailableTooltip, locked.Tooltip);
     }
 
     [Fact]

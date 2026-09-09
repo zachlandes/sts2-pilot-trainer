@@ -186,7 +186,7 @@ Three of them are borrowed rather than drawn, and the rule for each is the same:
 
 **The tabs are `NSettingsTab`**, the scene behind the stats screen's Statistics and Achievements tabs, at the ribbon's height and the scene's own 256:90 proportions.
 Selected and deselected through the tab's own `Select` and `Deselect`, exactly as `NStatsTabManager` does it, so the outline, the label weight and the hover are the game's.
-The current tab is selected and takes no press; it still hovers and takes focus, because the game's do.
+The current tab is selected and takes no press; it still hovers, as the game's do, but it is not a focus stop, and the other tab is - this band has no shoulder hotkeys, so focus is the only controller route to it.
 
 **The lock is the stats screen's**: `submenu_lock.png` over the Community tab, in the proportions `stats_screen.tscn` gives it over the Achievements tab, with the reason in the tab's tooltip.
 A locked tab here is still pressable, which is the one departure from the stats screen and is deliberate: what is behind it - the runs included with Runmobile and any run looked up by code - is still there, and the plate at the head of the list says in plain words what is missing and where the setting is.

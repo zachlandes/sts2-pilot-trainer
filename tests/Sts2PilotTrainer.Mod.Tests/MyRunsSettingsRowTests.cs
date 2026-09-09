@@ -363,8 +363,6 @@ public sealed class MyRunsSettingsRowTests
         }
     }
 
-    /// <summary>The row is as tall as what it draws. A section stacks what it hosts, so
-    /// a height taller than the lowest element leaves a gap nothing explains.</summary>
     /// <summary>
     /// The keep stepper stands off the row above it and off the rule beneath it, the
     /// way the game's own settings rows stand off their dividers; hard against either it
@@ -388,6 +386,8 @@ public sealed class MyRunsSettingsRowTests
         Assert.True(Label(row, "Reading").Position.Y > rule, "the readings stay under the rule");
     }
 
+    /// <summary>The row is as tall as what it draws. A section stacks what it hosts, so
+    /// a height taller than the lowest element leaves a gap nothing explains.</summary>
     [Fact]
     public void TheHeightItReportsIsWhatItDraws()
     {
