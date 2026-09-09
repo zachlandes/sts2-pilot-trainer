@@ -34,6 +34,7 @@ namespace Sts2PilotTrainer.Mod;
 internal static class MyRunsSettings
 {
     private const string ModdingButtonPath = "%ModdingButton";
+
     private const float FallbackWidth = 520f;
     private const float SectionGap = 12f;
 
@@ -93,17 +94,11 @@ internal static class MyRunsSettings
     /// MarginContainer lays every child out in the same rectangle - so a third child is
     /// not a third row, it is a third thing drawn on top of the first two. That container
     /// is itself one entry in the column's <see cref="VBoxContainer"/>, and the column is
-    /// where a new entry belongs: a VBoxContainer stacks what it holds from each child's
-    /// minimum size, which <see cref="MyRunsSettingsRow"/> already carries, so everything
-    /// below the row moves down on its own and nothing has to be repositioned by
-    /// hand.</para>
+    /// where a new entry belongs.</para>
     ///
     /// <para>The fallback is for a build whose settings screen is not laid out by
     /// containers at all: there the entry is the host, the row is positioned under the
-    /// anchor inside it, and the host is grown to hold it - which is all that can be done
-    /// without a column to insert into. It refuses nothing, because a settings screen
-    /// shaped differently is a row in the wrong place rather than a screen that must not
-    /// open.</para>
+    /// anchor inside it, and the host is grown to hold it.</para>
     /// </summary>
     internal static MyRunsSettingsRow Attach(Control anchor, GameTextStyle text)
     {
@@ -120,16 +115,11 @@ internal static class MyRunsSettings
         if (entry.GetParent() is Container column)
         {
             column.AddChild(row.Root);
-            // Directly under the modding entry rather than at the end of the column, so
-            // Runmobile's settings sit with the modding ones a player came here to find.
             column.MoveChild(row.Root, entry.GetIndex() + 1);
             Callable.From(() => Settle(row)).CallDeferred();
             return row;
         }
 
-        // No column above the entry: the entry is the host, and the row is placed under
-        // the anchor inside it. This is the shape a settings screen laid out without
-        // containers has, and it is what the row's own assembly test builds.
         row.Root.Position = anchor.Position + new Vector2(0f, anchor.Size.Y + SectionGap);
         entry.CustomMinimumSize = new Vector2(
             entry.CustomMinimumSize.X,
@@ -138,6 +128,9 @@ internal static class MyRunsSettings
         return row;
     }
 
+    /// <summary>
+    /// Takes the width the container actually gave the row.
+    /// </summary>
     private static void Settle(MyRunsSettingsRow row)
     {
         try
@@ -148,7 +141,7 @@ internal static class MyRunsSettings
         catch (Exception ex)
         {
             Log.Error(
-                $"[{RunmobileMod.ModId}] could not settle Runmobile's settings row: " +
+                $"[{RunmobileMod.ModId}] could not lay Runmobile's settings out again: " +
                 $"{ex.GetType().Name}: {ex.Message}", 2);
         }
     }

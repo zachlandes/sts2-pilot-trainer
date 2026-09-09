@@ -333,6 +333,8 @@ path that writes what the barrier suppresses.
 `GameText` and `GameTextStyle` in `Sts2PilotTrainer.Mod` read both off a native element the player can see beside the surface, and every word Runmobile draws is that reading or one of the three roles derived around it - a heading above it, a supporting line below it, an annotation below that - never a number.
 Which native element each surface asks is a judgement per surface and `docs/mod-ui-direction.md` owns it, along with the median rule for a screen that offers no single equivalent and the two surfaces that scale their whole geometry by the reading.
 A number here is a number that was right on one window and one build: the game carries no project theme, so nothing inherits, and the sizes it draws its own screens at are the only ones that read as native.
+A surface that sits inside one of the game's own containers is a child of it and asks it for height only, laid out again once that container has sorted - a settings screen has not been laid out when its `_Ready` runs, and a child's minimum width is a demand its host obeys.
+`demo/RUNMOBILE-NATIVE-TYPE.md` is the retail proof and records the three wrong readings that rule came from.
 
 **A run a person plays is recorded by one owner, and refused rather than repaired.**
 `RunCapture` in `Sts2PilotTrainer.Replay` is the whole-run counterpart of `FightCapture` and delegates the inside of each fight to one, so there is one capture path.

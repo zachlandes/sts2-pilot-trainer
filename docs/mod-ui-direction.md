@@ -172,6 +172,11 @@ The tag never goes below the window's own scaling either; both terms are 1 at th
 
 **A build whose furniture moved falls back rather than guessing**, to `GameTextStyle.Fallback`, which is Godot's own default size and no font at all: worse-looking, still readable, and never a number this mod invented for a screen it could not read.
 
+**A surface that sits inside the game's own container is a child of it, and asks it for height only.**
+The settings row is the case that taught this. Sized from the modding button it hangs off, its words clipped mid-word the moment they were the game's size, because that button is a fraction of the column wide; sized from an ancestor found by walking up, it reached the screen and dragged every one of the game's own rows out to the edge with it, because a child's minimum width is a demand on its container.
+It is now a child of `NSettingsPanel.Content` - the `VBoxContainer` the game keeps one node per settings row in, read off the game's own code rather than guessed - inserted after the game's own modding row, asking for height and never for width, and laid out again once the container has sorted, because a settings screen has not been laid out when its `_Ready` runs.
+`demo/RUNMOBILE-NATIVE-TYPE.md` is the retail proof and records all three wrong readings.
+
 ## What a redesign owns, and what it does not
 
 Change what `PlaybackTransportStrip` draws.

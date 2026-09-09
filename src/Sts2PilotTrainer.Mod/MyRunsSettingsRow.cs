@@ -171,12 +171,26 @@ internal sealed class MyRunsSettingsRow
     internal MyRunsRow Row => _row;
 
     /// <summary>
-    /// Takes a new width after the settings column has laid the row out.
+    /// Lays the row out again at a width that is known this time.
+    ///
+    /// Wanted because a settings screen has not been laid out when its <c>_Ready</c>
+    /// runs: every control still carries the size its scene was saved at, and the
+    /// column's real width arrives a frame later when the container sorts its children.
+    /// A row built from the first reading is built against a number that was never the
+    /// answer - which is how a row whose words are the game's own size came to clip them
+    /// mid-word, measured in the retail client.
+    ///
+    /// Nothing here re-derives what the row says. It is the same nodes, placed again.
     /// </summary>
     internal void Relayout(float width)
     {
         if (width <= 0f) return;
 
+        // The height is a minimum and the width never is. A container gives a child at
+        // least its minimum, so a row that asked for a width would widen the game's own
+        // settings list to match - which it did, in the retail client, dragging every one
+        // of the game's rows out to the edge of the screen. The row asks for the room it
+        // needs downward and takes its width from what it was given.
         _root.Size = new Vector2(width, HeightFor(_text));
         _root.CustomMinimumSize = new Vector2(0f, HeightFor(_text));
         Layout(width);

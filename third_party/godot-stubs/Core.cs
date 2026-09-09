@@ -89,6 +89,26 @@ public partial class Node : GodotObject
     public Node? GetParent() => _parent;
     public NodePath GetPath() => new();
 
+    /// <summary>
+    /// Godot: where this node sits among its parent's children, and moving it there.
+    ///
+    /// Added by sts2-pilot-trainer. Two of the mod's surfaces are inserted into the
+    /// game's own containers at a particular place - the recorder's row under the
+    /// overlay's MODDED label, the settings row after the game's own modding row - and
+    /// where they land is exactly what went wrong when it was guessed. Here rather than
+    /// in the project's own additions file because both need the child list this class
+    /// keeps private. The real GodotSharp has carried both all along.
+    /// </summary>
+    public int GetIndex(bool includeInternal = false) => _parent?._children.IndexOf(this) ?? -1;
+
+    /// <inheritdoc cref="GetIndex"/>
+    public void MoveChild(Node child, int toIndex)
+    {
+        if (!_children.Remove(child)) return;
+
+        _children.Insert(System.Math.Clamp(toIndex, 0, _children.Count), child);
+    }
+
     public Godot.Collections.Array<Node> GetChildren(bool includeInternal = false)
     {
         return new Godot.Collections.Array<Node>(_children);

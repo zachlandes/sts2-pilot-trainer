@@ -98,18 +98,15 @@ public sealed class MyRunsSettingsTests : IDisposable
     [Fact]
     public void TheProductionSettingsHostShowsAndPersistsTheFetchControl()
     {
-        var host = new Control { Size = new Vector2(Width, 400f) };
-        var modding = new Button
-        {
-            Name = "ModdingButton",
-            Position = new Vector2(0f, 100f),
-            Size = new Vector2(Width, 30f),
-        };
-        host.AddChild(modding);
+        var column = new VBoxContainer { Size = new Vector2(Width, 400f) };
+        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(Width, 30f) };
+        var modding = new Control { Name = "ModdingButton", Size = new Vector2(Width, 30f) };
+        entry.AddChild(modding);
+        column.AddChild(entry);
 
         var row = MyRunsSettings.Attach(modding, GameTextStyle.Fallback);
 
-        Assert.Same(host, row.Root.GetParent());
+        Assert.Same(column, row.Root.GetParent());
         Assert.Equal("Fetch the run index: on", row.Fetch.Text);
         row.Fetch.EmitPressed();
         Assert.False(RunmobileSettings.Read().FetchRunIndex);
@@ -138,7 +135,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         column.AddChild(entry);
         column.AddChild(credits);
 
-        var row = MyRunsSettings.Attach(modding, font: null);
+        var row = MyRunsSettings.Attach(modding, GameTextStyle.Fallback);
 
         Assert.Same(column, row.Root.GetParent());
         Assert.NotSame(entry, row.Root.GetParent());
@@ -147,7 +144,89 @@ public sealed class MyRunsSettingsTests : IDisposable
         // does not land past the credits it is supposed to push down.
         Assert.True(row.Root.GetIndex() < credits.GetIndex());
         // The block carries its own height, which is what a VBoxContainer lays out from.
-        Assert.Equal(MyRunsSettingsRow.Height, row.Root.CustomMinimumSize.Y);
+        Assert.Equal(row.Height, row.Root.CustomMinimumSize.Y);
+    }
+
+    /// <summary>
+    /// The row is laid out at the settings column, not at the button it hangs off.
+    ///
+    /// This is the defect the retail client found. The game's modding entry point is a
+    /// button a fraction of the column's width, and taking its width fitted only by
+    /// arithmetic: at the size the row used to write down, its stepper took half of that
+    /// and the label just fitted in the rest. Drawn at the settings screen's own size the
+    /// stepper takes the whole of it, the label clips mid-word, and the destructive
+    /// control is pushed back across the row onto the game's own label.
+    /// </summary>
+    [Fact]
+    public void TheRowIsLaidOutAtTheSettingsColumnRatherThanAtTheButtonItHangsOff()
+    {
+        var column = new VBoxContainer { Size = new Vector2(Width, 400f) };
+        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(Width, 30f) };
+        var modding = new Control { Name = "ModdingButton", Size = new Vector2(Width, 30f) };
+        entry.AddChild(modding);
+        column.AddChild(entry);
+
+        var row = MyRunsSettings.Attach(modding, new GameTextStyle(null, 26));
+
+        Assert.Equal(Width, row.Root.Size.X);
+        // The label keeps most of the row whatever the text grows to, rather than being
+        // squeezed out by the controls beside it.
+        Assert.True(
+            Label(row, "KeepLabel").Size.X > Width / 2f,
+            $"the keep label got {Label(row, "KeepLabel").Size.X} of {Width}");
+        // And the destructive control stays at the row's right-hand end.
+        Assert.True(
+            row.Remove.Position.X > Width / 2f,
+            $"the remove control sat at {row.Remove.Position.X} of {Width}");
+        // Immediately after the game's own modding row, which is where it belongs in the
+        // column rather than hung in the gap under a button.
+        Assert.Equal(modding.GetIndex() + 1, row.Root.GetIndex());
+    }
+
+    /// <summary>
+    /// A row built before the screen was laid out takes the column once it is.
+    ///
+    /// A settings screen has not been laid out when its <c>_Ready</c> runs: every
+    /// control still carries the size its scene was saved at. The row is built from that
+    /// and laid out again a frame later, which is the only moment the column's width
+    /// exists. Without it the row keeps a width that was never the answer and clips its
+    /// own words - which is what the retail client showed.
+    /// </summary>
+    [Fact]
+    public void ARowBuiltBeforeTheScreenWasLaidOutTakesTheColumnOnceItIs()
+    {
+        var row = MyRunsSettings.Build(120f, new GameTextStyle(null, 26));
+        var narrow = Label(row, "KeepLabel").Size.X;
+
+        row.Relayout(Width);
+
+        Assert.Equal(Width, row.Root.Size.X);
+        Assert.True(
+            Label(row, "KeepLabel").Size.X > narrow,
+            "the keep label kept the width it was built against");
+        Assert.True(
+            row.Remove.Position.X > Width / 2f,
+            $"the remove control sat at {row.Remove.Position.X} of {Width}");
+    }
+
+    /// <summary>
+    /// The row never asks its host for width, only for height.
+    ///
+    /// A container gives a child at least its minimum, so a row that asked for a width
+    /// would widen the game's own settings list to match. It did exactly that in the
+    /// retail client and dragged every one of the game's rows out to the edge of the
+    /// screen. Height is the row's to ask for; width is the column's to give.
+    /// </summary>
+    [Fact]
+    public void TheRowAsksItsHostForHeightAndNeverForWidth()
+    {
+        var row = MyRunsSettings.Build(120f, new GameTextStyle(null, 26));
+
+        row.Relayout(Width);
+
+        Assert.Equal(0f, row.Root.CustomMinimumSize.X);
+        Assert.True(row.Root.CustomMinimumSize.Y > 0f, "the row asked for no height");
+        Assert.Equal(Width, row.Root.Size.X);
     }
 
     /// <summary>
