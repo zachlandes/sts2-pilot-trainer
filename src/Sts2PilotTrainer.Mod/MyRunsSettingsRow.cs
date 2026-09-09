@@ -136,6 +136,7 @@ internal sealed class MyRunsSettingsRow
     /// </summary>
     private int _keep;
     private bool _fetchIndex;
+    private float _layoutWidth;
 
     private MyRunsSettingsRow(Nodes nodes)
     {
@@ -154,6 +155,8 @@ internal sealed class MyRunsSettingsRow
         _keep = nodes.Keep;
         _fetchIndex = nodes.FetchRunIndex;
         _text = nodes.Text;
+        _layoutWidth = _root.Size.X;
+        _root.Resized += OnRootResized;
     }
 
     internal Control Root => _root;
@@ -192,6 +195,7 @@ internal sealed class MyRunsSettingsRow
     {
         if (width <= 0f) return;
 
+        _layoutWidth = width;
         // The height is a minimum and the width never is. A container gives a child at
         // least its minimum, so a row that asked for a width would widen the game's own
         // settings list to match - which it did, in the retail client, dragging every one
@@ -200,6 +204,13 @@ internal sealed class MyRunsSettingsRow
         _root.Size = new Vector2(width, HeightFor(_text));
         _root.CustomMinimumSize = new Vector2(0f, HeightFor(_text));
         Layout(width);
+    }
+
+    private void OnRootResized()
+    {
+        var width = _root.Size.X;
+        if (width <= 0f || width == _layoutWidth) return;
+        Relayout(width);
     }
 
     /// <summary>

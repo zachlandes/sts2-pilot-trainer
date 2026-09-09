@@ -290,6 +290,9 @@ public partial class Control
 
     public event Action? FocusExited;
 
+    /// <summary>Godot announces when a container gives a control its settled size.</summary>
+    public event Action? Resized;
+
     /// <summary>Raises the hover and focus signals, so the mod's game-free tests can
     /// drive what the client's pointer and controller drive.</summary>
     public void EmitHover(bool entered)

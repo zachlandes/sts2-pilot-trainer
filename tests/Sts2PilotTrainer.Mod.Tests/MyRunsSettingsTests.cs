@@ -228,17 +228,20 @@ public sealed class MyRunsSettingsTests : IDisposable
     public void ARowBuiltBeforeTheScreenWasLaidOutTakesTheColumnOnceItIs()
     {
         var row = MyRunsSettings.Build(120f, Text(26));
-        var narrow = Label(row, "KeepLabel").Size.X;
+        var narrowReading = Label(row, "Reading").Size.X;
+        var narrowDetail = Label(row, "Detail").Size.X;
 
-        row.Relayout(Width);
+        // Drive the resize announcement the host container makes rather than calling
+        // the row's layout mechanism directly.
+        row.Root.Size = new Vector2(Width, row.Root.Size.Y);
 
-        Assert.Equal(Width, row.Root.Size.X);
-        Assert.True(
-            Label(row, "KeepLabel").Size.X > narrow,
-            "the keep label kept the width it was built against");
-        Assert.True(
-            row.Remove.Position.X > Width / 2f,
-            $"the remove control sat at {row.Remove.Position.X} of {Width}");
+        Assert.Equal(Width, Label(row, "Reading").Size.X);
+        Assert.Equal(Width, Label(row, "Detail").Size.X);
+        Assert.True(Label(row, "Reading").Size.X > narrowReading);
+        Assert.True(Label(row, "Detail").Size.X > narrowDetail);
+        Assert.Equal(Width, row.Remove.Position.X + row.Remove.Size.X);
+        Assert.Equal(Width, row.Fetch.Position.X + row.Fetch.Size.X);
+        Assert.Equal(Width, row.MainMenu.Position.X + row.MainMenu.Size.X);
     }
 
     /// <summary>

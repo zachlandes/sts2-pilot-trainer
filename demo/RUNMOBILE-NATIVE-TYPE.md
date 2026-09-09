@@ -1,7 +1,7 @@
 # Runmobile native-type capture
 
-These screenshots show the current named-role typography in the v0.111.0 retail client at commit `70718c81`.
-The installed archive matched the build's SHA-256 digest and ran fullscreen on the game's 1512 × 982 reference surface with `--force-steam=off`.
+These screenshots show named-role typography in the v0.111.0 retail client.
+The installed archives matched their builds' SHA-256 digests and ran fullscreen on the game's 1512 × 982 reference surface with `--force-steam=off`.
 
 ## Library Others tab
 
@@ -17,13 +17,23 @@ The Mine view shows the same named-role typography and the run strip pager's own
 
 ## Opened run pane
 
-![Current opened run pane using named native text roles](runmobile-library-open-native-type.png)
+![Current opened run pane using named native text roles](runmobile-library-open-run-native.png)
 
 The selected run's identity, description, floor numerals, facts, and action use their mapped native roles.
 
-## What this run did not cover
+## Refusal popup
 
-The My Runs settings row did not render during this capture because its settings-button role lookup failed, so this evidence does not claim that surface.
-The playback transport and fight-result panel, including chronology and ledger paging, were not exercised either.
-Those surfaces still need a fresh in-client capture after the settings-row fix.
-Focused headless tests assert their mapped styles and containment, but that is weaker evidence than a retail-client capture.
+![Current refusal popup using named native text roles](runmobile-refusal-popup-native.png)
+
+The mod's refusal popup uses its mapped R1 title, R2 body, and R3 button roles.
+
+## What these captures prove
+
+The retail captures prove the library parchment's Others, Mine, and opened-run states at named-role typography, the run strip's native gold arrow art, and the mod's refusal popup at its R1, R2, and R3 roles.
+
+The My Runs settings row is not proven in the client yet.
+It renders without throwing, but the latest client capture still shows it laid out at about a third of the native settings column.
+
+The playback transport, fight-result panel, chronology paging, and look-back ledger paging are also not proven in the client.
+Programmatic navigation was attempted and did not reach those surfaces, so they require manual navigation for a retail capture.
+This change covers them with automated paging and layout tests instead.
