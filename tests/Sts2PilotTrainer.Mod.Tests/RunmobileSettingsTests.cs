@@ -262,6 +262,55 @@ public sealed class RunmobileSettingsTests : IDisposable
         Assert.False((bool)written["record_my_runs"]!);
     }
 
+    /// <summary>
+    /// Nobody has said, until somebody says. The member is absent from a file a player
+    /// has never touched, which is what lets the main-menu row follow their run count
+    /// instead - and it is absent rather than false, because false is a sentence.
+    /// </summary>
+    [Fact]
+    public void NobodyHasSaidAnythingAboutTheMainMenuRowUntilTheyDo()
+    {
+        Assert.Null(RunmobileSettings.Read().ShowMainMenuRow);
+
+        RunmobileSettings.SetShowMainMenuRow(false);
+        Assert.False(RunmobileSettings.Read().ShowMainMenuRow);
+
+        RunmobileSettings.SetShowMainMenuRow(true);
+        Assert.True(RunmobileSettings.Read().ShowMainMenuRow);
+    }
+
+    [Fact]
+    public void TheMainMenuChoiceIsWrittenAndLeavesEveryOtherMemberAlone()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            $$"""{"schema":"{{RunmobileSettings.Schema}}","record_my_runs":false,"keep_recent_runs":12}""");
+
+        RunmobileSettings.SetShowMainMenuRow(true);
+
+        var written = JsonNode.Parse(RunmobileStore.Read(RunmobileSettings.FileName)!)!.AsObject();
+        Assert.True((bool)written["show_main_menu_row"]!);
+        Assert.Equal(12, (int)written["keep_recent_runs"]!);
+        Assert.False((bool)written["record_my_runs"]!);
+    }
+
+    /// <summary>
+    /// A file this build cannot read says nothing about the row either, so the row falls
+    /// back to the run count rather than losing a new player the library's only
+    /// entrance - and the control that would write into that file is refused with every
+    /// other one.
+    /// </summary>
+    [Fact]
+    public void AFileThisBuildCannotReadSaysNothingAboutTheMainMenuRow()
+    {
+        RunmobileStore.Write(
+            RunmobileSettings.FileName,
+            """{"schema":"sts2-pilot-trainer/runmobile-settings/v99","show_main_menu_row":true}""");
+
+        Assert.Null(RunmobileSettings.Read().ShowMainMenuRow);
+        Assert.ThrowsAny<Exception>(() => RunmobileSettings.SetShowMainMenuRow(false));
+    }
+
     /// <summary>A negative is not a number of runs. The file has an answer for one a
     /// player typed; a caller passing one has a bug.</summary>
     [Fact]

@@ -185,7 +185,10 @@ internal static class RecordingRetention
             settings.Readable ? settings.KeepRecentRuns : RunmobileSettings.DefaultKeepRecentRuns,
             SettingsReadable: settings.Readable,
             ContinuableRunWouldBeLeft:
-                continuable is { } started && named.Any(recording => recording.StartedUtc == started));
+                continuable is { } started && named.Any(recording => recording.StartedUtc == started),
+            // Not a fact about this disk, and asked here because this is already the one
+            // place the settings file and the game are read together for the row.
+            MainMenuRowShown: MainMenuRow.ShownWhen(settings.ShowMainMenuRow, RunsFinished.Any()));
     }
 
     /// <summary>

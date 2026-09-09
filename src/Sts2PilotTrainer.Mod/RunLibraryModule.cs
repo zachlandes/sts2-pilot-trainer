@@ -11,12 +11,20 @@ namespace Sts2PilotTrainer.Mod;
 /// The run library: browse the runs this game can play, open one, and play from any
 /// place its recording proves.
 ///
-/// The third module in the shell, and the one with the most surface. It owns four
-/// things and they are one screen rather than four features - a card in the
-/// Compendium, the browser behind it, one run opened, and the plate under the game's
-/// own run-history pane. All four speak the same vocabulary and obey the same rule:
-/// a player plays <em>from</em> a run. Compatibility is a visible filter that defaults
-/// on; exact-code lookup can clear it and select one disabled incompatible row.
+/// The third module in the shell, and the one with the most surface. It owns five
+/// things and they are one screen rather than five features - a row on the game's own
+/// main menu, a card in the Compendium, the browser behind both, one run opened, and
+/// the plate under the game's own run-history pane. All of them speak the same
+/// vocabulary and obey the same rule: a player plays <em>from</em> a run. Compatibility
+/// is a visible filter that defaults on; exact-code lookup can clear it and select one
+/// disabled incompatible row.
+///
+/// <para>The main-menu row is the entrance that does not depend on the game's own
+/// progression. A player who has finished no run is sent from Singleplayer straight to
+/// character select and has no Compendium button at all, so the card and the plate are
+/// both unreachable for exactly the player who has never played.
+/// <c>MainMenuRow.ShownWhen</c> owns whether the row is there, and Runmobile's settings
+/// row is where a player of either kind says otherwise.</para>
 ///
 /// <para><b>After the fact, always.</b> Nothing here is reachable while a run is being
 /// played. The Compendium is a main-menu surface, and the run-history plate says so in
@@ -41,6 +49,7 @@ internal sealed class RunLibraryModule : IRunmobileModule
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
         typeof(CompendiumCard),
+        typeof(MainMenuLibraryRow),
         typeof(MyRunsSettings),
         typeof(RunHistoryPlateHost.HistoryEntry),
     ];

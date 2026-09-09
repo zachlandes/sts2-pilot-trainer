@@ -63,7 +63,7 @@ public class GodotObject
     protected virtual bool HasGodotClassSignal(in NativeInterop.godot_string_name signal) => false;
 }
 
-public class Node : GodotObject
+public partial class Node : GodotObject
 {
     public enum InternalMode { Disabled, Front, Back }
 

@@ -829,6 +829,9 @@ public sealed class RunLibraryModuleTests
             [
                 "NCompendiumSubmenu.OnSubmenuOpened",
                 "NCompendiumSubmenu._Ready",
+                "NMainMenu.OnSubmenuStackChanged",
+                "NMainMenu.RefreshButtons",
+                "NMainMenu._Ready",
                 "NMapPointHistoryEntry._Ready",
                 "NSettingsScreen._Ready",
             ],
@@ -836,6 +839,81 @@ public sealed class RunLibraryModuleTests
         Assert.Empty(PatchTargets.Unresolvable(RunLibraryModule.PatchClasses));
         Assert.True(RunLibraryModule.Instance.Enabled);
         Assert.Null(RunLibraryModule.Instance.Refusal);
+    }
+
+    /// <summary>
+    /// The main-menu row re-decides where the game shows its button column again, and
+    /// not only where the game refreshes its own buttons.
+    ///
+    /// <c>RefreshButtons</c> is called exactly twice in this build - at the end of
+    /// <c>_Ready</c> and after a run is abandoned - so a row that followed it alone kept
+    /// whatever it was told at construction. The client showed that: turning the setting
+    /// off and walking back out of Settings left the row on the menu until the next
+    /// launch. Named here rather than counted, so removing the hook fails this test
+    /// instead of quietly restoring the defect.
+    /// </summary>
+    [GameFact]
+    public void TheMainMenuRowFollowsTheHookThatFiresPerVisit()
+    {
+        _ = EngineHost.StartupPhase();
+
+        var targets = PatchTargets.Targets([typeof(MainMenuLibraryRow)]);
+
+        Assert.Contains("NMainMenu.OnSubmenuStackChanged", targets);
+        Assert.Contains("NMainMenu.RefreshButtons", targets);
+        Assert.Empty(PatchTargets.Unresolvable([typeof(MainMenuLibraryRow)]));
+    }
+
+    /// <summary>
+    /// Deciding whether the row belongs on the menu must not need an adopted game.
+    ///
+    /// The main menu is built one startup phase before the game has a model database, so
+    /// adoption there refuses and latches that refusal for the process. Visibility needs
+    /// only the settings file and the game's run count, both supplied here without a
+    /// running game.
+    /// </summary>
+    [Fact]
+    public void MainMenuVisibilityDoesNotNeedAnAdoptedGame()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"runmobile-menu-{Guid.NewGuid():N}");
+        RunmobileStore.UseRootForTesting(root);
+
+        try
+        {
+            RunsFinished.UseReaderForTesting(() => false);
+            Assert.True(MainMenuLibraryRow.Shown());
+
+            RunsFinished.UseReaderForTesting(() => true);
+            Assert.False(MainMenuLibraryRow.Shown());
+        }
+        finally
+        {
+            RunsFinished.UseReaderForTesting(null);
+            RunmobileStore.UseRootForTesting(null);
+        }
+    }
+
+    /// <summary>
+    /// A refused adoption keeps the row absent when the menu re-decides visibility.
+    /// </summary>
+    [GameFact]
+    public void RefusedAdoptionKeepsTheMainMenuRowHidden()
+    {
+        _ = EngineHost.StartupPhase();
+        var root = Path.Combine(Path.GetTempPath(), $"runmobile-menu-{Guid.NewGuid():N}");
+        RunmobileStore.UseRootForTesting(root);
+
+        try
+        {
+            RunsFinished.UseReaderForTesting(() => false);
+            Assert.False(RunmobileMod.EnsureAdopted());
+            Assert.False(MainMenuLibraryRow.Visible());
+        }
+        finally
+        {
+            RunsFinished.UseReaderForTesting(null);
+            RunmobileStore.UseRootForTesting(null);
+        }
     }
 
     /// <summary>A member this build does not have is named by whichever of the two

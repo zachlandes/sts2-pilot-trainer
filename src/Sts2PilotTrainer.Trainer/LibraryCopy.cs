@@ -38,8 +38,10 @@ public static class LibraryCopy
     ///
     /// The mod's own name rather than a description of the screen, because the card
     /// sits beside the game's own Run History and anything built from the run noun
-    /// would read as a second one of those. Nothing else on this surface names the
-    /// mod, so the card is where a player learns which mod put it there.
+    /// would read as a second one of those. The main-menu row carries the same word for
+    /// the same reason and is the only other place on this surface that names the mod;
+    /// between them, whichever one a player found is where they learn which mod put it
+    /// there.
     /// </summary>
     public const string CompendiumCard = "Runmobile";
 
@@ -154,6 +156,22 @@ public static class LibraryCopy
     public const string CompatibleFilter = "Compatible with your game version";
 
     public const string FetchRunIndex = "Fetch the run index";
+
+    /// <summary>
+    /// The main-menu row itself: the mod's own name, the same word the Compendium card
+    /// carries, because they are two ways to the one library rather than two things.
+    /// </summary>
+    public const string MainMenuRow = "Runmobile";
+
+    /// <summary>
+    /// The settings control that governs whether that row is drawn, value included.
+    ///
+    /// The value is in the line rather than beside it, the way the run-index control
+    /// already states its own: a control whose label and value were two elements is one
+    /// that can show a reading taken before a press beside a label written after it.
+    /// </summary>
+    public static string MainMenuRowSetting(bool shown) =>
+        $"{MainMenuRow} on the main menu: {(shown ? "on" : "off")}";
 
     public const string FetchingRunIndex = "Fetching the run index…";
 

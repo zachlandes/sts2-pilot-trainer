@@ -286,6 +286,53 @@ public sealed class MyRunsSettingsRowTests
         }
     }
 
+    /// <summary>
+    /// The main-menu control states what the menu is doing, because a switch that only
+    /// said what it would do next leaves a player guessing which way it is set.
+    /// </summary>
+    [Fact]
+    public void TheMainMenuControlStatesWhatTheMenuIsDoing()
+    {
+        Assert.Equal(
+            "Runmobile on the main menu: on",
+            Build(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20, MainMenuRowShown: true)).MainMenu.Text);
+        Assert.Equal(
+            "Runmobile on the main menu: off",
+            Build(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20, MainMenuRowShown: false)).MainMenu.Text);
+    }
+
+    /// <summary>It reports the flip and writes nothing itself, like every other control
+    /// here.</summary>
+    [Fact]
+    public void TheMainMenuControlReportsTheFlipAndChangesNothing()
+    {
+        bool? asked = null;
+        var row = Build(
+            new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20, MainMenuRowShown: true),
+            mainMenuChanged: show => asked = show);
+
+        row.MainMenu.EmitPressed();
+
+        Assert.False(asked);
+        Assert.Equal("Runmobile on the main menu: on", row.MainMenu.Text);
+    }
+
+    /// <summary>
+    /// A settings file this build cannot read refuses the switch with the rest of them.
+    /// The choice is a member of that file, so a press would write this build's meaning
+    /// into a document written by another.
+    /// </summary>
+    [Fact]
+    public void OverAnUnreadableSettingsFileTheMainMenuControlIsRefused()
+    {
+        var row = Build(
+            new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20, SettingsReadable: false));
+
+        Assert.True(row.MainMenu.Disabled);
+        Assert.True(row.MainMenu.Visible);
+        Assert.Equal(Control.FocusModeEnum.None, row.MainMenu.FocusMode);
+    }
+
     /// <summary>The row is as tall as what it draws. A section stacks what it hosts, so
     /// a height taller than the lowest element leaves a gap nothing explains.</summary>
     [Fact]
@@ -301,7 +348,7 @@ public sealed class MyRunsSettingsRowTests
 
     private static MyRunsSettingsRow Build(
         MyRunsFacts facts, Action<int>? keepChanged = null, Action? removePressed = null,
-        Action<bool>? fetchChanged = null) =>
+        Action<bool>? fetchChanged = null, Action<bool>? mainMenuChanged = null) =>
         MyRunsSettingsRow.Build(
             MyRunsRow.For(facts),
             facts.Keep,
@@ -310,7 +357,8 @@ public sealed class MyRunsSettingsRowTests
             font: null,
             keepChanged ?? (_ => { }),
             removePressed ?? (() => { }),
-            fetchChanged ?? (_ => throw new InvalidOperationException("Unexpected fetch press")));
+            fetchChanged ?? (_ => throw new InvalidOperationException("Unexpected fetch press")),
+            mainMenuChanged ?? (_ => throw new InvalidOperationException("Unexpected main-menu press")));
 
     private static void Apply(MyRunsSettingsRow row, MyRunsFacts facts) =>
         row.Apply(MyRunsRow.For(facts), facts.Keep);

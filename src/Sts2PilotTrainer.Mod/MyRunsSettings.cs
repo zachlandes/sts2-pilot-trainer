@@ -82,29 +82,56 @@ internal static class MyRunsSettings
         }
     }
 
+    /// <summary>
+    /// Puts the row into the settings column, under the game's own modding entry.
+    ///
+    /// <para><b>The anchor's own parent is the wrong place, and putting the row there is
+    /// what drew it over the game's "Modding" heading.</b> <c>%ModdingButton</c> sits in a
+    /// <see cref="MarginContainer"/> named <c>Modding</c>, beside the heading label, and a
+    /// MarginContainer lays every child out in the same rectangle - so a third child is
+    /// not a third row, it is a third thing drawn on top of the first two. That container
+    /// is itself one entry in the column's <see cref="VBoxContainer"/>, and the column is
+    /// where a new entry belongs: a VBoxContainer stacks what it holds from each child's
+    /// minimum size, which <see cref="MyRunsSettingsRow"/> already carries, so everything
+    /// below the row moves down on its own and nothing has to be repositioned by
+    /// hand.</para>
+    ///
+    /// <para>The fallback is for a build whose settings screen is not laid out by
+    /// containers at all: there the entry is the host, the row is positioned under the
+    /// anchor inside it, and the host is grown to hold it - which is all that can be done
+    /// without a column to insert into. It refuses nothing, because a settings screen
+    /// shaped differently is a row in the wrong place rather than a screen that must not
+    /// open.</para>
+    /// </summary>
     internal static MyRunsSettingsRow Attach(Control anchor, Font? font)
     {
-        var parent = anchor.GetParent()
+        var entry = anchor.GetParent() as Control
             ?? throw new InvalidOperationException(
                 "This build's modding settings button has no parent to host Runmobile's settings.");
-        var width = anchor.Size.X > 0f
-            ? anchor.Size.X
-            : parent is Control host && host.Size.X > 0f
-                ? host.Size.X
+        var width = entry.Size.X > 0f
+            ? entry.Size.X
+            : anchor.Size.X > 0f
+                ? anchor.Size.X
                 : FallbackWidth;
         var row = Build(width, font);
-        if (parent is not Container)
+
+        if (entry.GetParent() is Container column)
         {
-            row.Root.Position = anchor.Position + new Vector2(0f, anchor.Size.Y + SectionGap);
-            if (parent is Control control)
-            {
-                control.CustomMinimumSize = new Vector2(
-                    control.CustomMinimumSize.X,
-                    Math.Max(control.CustomMinimumSize.Y, row.Root.Position.Y + MyRunsSettingsRow.Height));
-            }
+            column.AddChild(row.Root);
+            // Directly under the modding entry rather than at the end of the column, so
+            // Runmobile's settings sit with the modding ones a player came here to find.
+            column.MoveChild(row.Root, entry.GetIndex() + 1);
+            return row;
         }
 
-        parent.AddChild(row.Root);
+        // No column above the entry: the entry is the host, and the row is placed under
+        // the anchor inside it. This is the shape a settings screen laid out without
+        // containers has, and it is what the row's own assembly test builds.
+        row.Root.Position = anchor.Position + new Vector2(0f, anchor.Size.Y + SectionGap);
+        entry.CustomMinimumSize = new Vector2(
+            entry.CustomMinimumSize.X,
+            Math.Max(entry.CustomMinimumSize.Y, row.Root.Position.Y + MyRunsSettingsRow.Height));
+        entry.AddChild(row.Root);
         return row;
     }
 
@@ -127,7 +154,7 @@ internal static class MyRunsSettings
         var settings = RunmobileSettings.Read();
         _row = MyRunsSettingsRow.Build(
             MyRunsRow.For(facts), facts.Keep, settings.FetchRunIndex,
-            width, font, Retain, AskToRemove, SetFetchRunIndex);
+            width, font, Retain, AskToRemove, SetFetchRunIndex, SetMainMenuRow);
         return _row;
     }
 
@@ -170,7 +197,35 @@ internal static class MyRunsSettings
             Bytes: 0,
             Keep: RunmobileSettings.DefaultKeepRecentRuns,
             SettingsReadable: null,
-            Disk: disk);
+            Disk: disk,
+            MainMenuRowShown: MainMenuRowShown());
+    }
+
+    /// <summary>
+    /// What the main menu is doing about Runmobile's row, asked separately from the disk
+    /// reading above.
+    ///
+    /// It is a different question from a different pair of sources - the settings file and
+    /// the game's own run count - and neither of them is the recordings directory that
+    /// just refused. A row that reported "off" because the store had no save profile yet
+    /// would be stating something about a menu it never asked, so the same reader the
+    /// menu patch uses is asked here too. Where even that cannot answer, the control is
+    /// already refused by <see cref="MyRunsRow"/> and the line under it says the disk
+    /// could not be read.
+    /// </summary>
+    private static bool MainMenuRowShown()
+    {
+        try
+        {
+            return MainMenuLibraryRow.Shown();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not tell whether Runmobile is on the main menu: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            return false;
+        }
     }
 
     /// <summary>
@@ -237,6 +292,43 @@ internal static class MyRunsSettings
                 $"{ex.GetType().Name}: {ex.Message}", 2);
             if (_row is { } row) row.Apply(row.Row, RunmobileSettings.Read().KeepRecentRuns,
                 RunmobileSettings.Read().FetchRunIndex);
+        }
+    }
+
+    /// <summary>
+    /// Writes whether Runmobile is a row on the game's main menu, and says what the menu
+    /// now does.
+    ///
+    /// Nothing on screen moves here: leaving settings pops the submenu stack, and the
+    /// menu behind this screen re-decides in <c>OnSubmenuStackChanged</c>. This build has
+    /// no way to redraw a menu it is not standing on. The row is redrawn from
+    /// the disk instead, so what the control says is what the file now holds - and a
+    /// write that failed leaves the control exactly where it was, saying what is still
+    /// true.
+    /// </summary>
+    private static void SetMainMenuRow(bool show)
+    {
+        try
+        {
+            RunmobileSettings.SetShowMainMenuRow(show);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not write whether Runmobile is on the main menu: " +
+                $"{ex.GetType().Name}: {ex.Message}", 2);
+            return;
+        }
+
+        try
+        {
+            Redraw(null);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] wrote whether Runmobile is on the main menu, but could not say so " +
+                $"on the screen: {ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 

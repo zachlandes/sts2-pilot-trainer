@@ -117,6 +117,40 @@ public sealed class MyRunsSettingsTests : IDisposable
     }
 
     /// <summary>
+    /// The shape the retail client actually has, and the one the row was drawn on top of
+    /// the game's own heading in.
+    ///
+    /// <c>%ModdingButton</c> sits in a <c>MarginContainer</c> beside the "Modding" label,
+    /// and that container is one entry in the column's <c>VBoxContainer</c>. A
+    /// MarginContainer lays every child out in the same rectangle, so a row added there is
+    /// a third thing drawn over the first two rather than a third row - which is what the
+    /// client showed. The row belongs in the column, directly after the entry, where the
+    /// VBoxContainer stacks it from its own minimum size and moves what follows down.
+    /// </summary>
+    [Fact]
+    public void InTheClientsOwnShapeTheRowGoesInTheColumnAndNotTheModdingEntry()
+    {
+        var column = new VBoxContainer { Size = new Vector2(Width, 400f) };
+        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(Width, 64f) };
+        var modding = new Button { Name = "ModdingButton", Size = new Vector2(Width, 64f) };
+        var credits = new Control { Name = "Credits", Size = new Vector2(Width, 64f) };
+        entry.AddChild(modding);
+        column.AddChild(entry);
+        column.AddChild(credits);
+
+        var row = MyRunsSettings.Attach(modding, font: null);
+
+        Assert.Same(column, row.Root.GetParent());
+        Assert.NotSame(entry, row.Root.GetParent());
+        Assert.Equal(entry.GetIndex() + 1, row.Root.GetIndex());
+        // And ahead of what the column already had below the modding entry, so the row
+        // does not land past the credits it is supposed to push down.
+        Assert.True(row.Root.GetIndex() < credits.GetIndex());
+        // The block carries its own height, which is what a VBoxContainer lays out from.
+        Assert.Equal(MyRunsSettingsRow.Height, row.Root.CustomMinimumSize.Y);
+    }
+
+    /// <summary>
     /// A disk that cannot be asked yet is a row rather than an exception.
     ///
     /// The settings section hangs off the main menu's own modding entry point, which is

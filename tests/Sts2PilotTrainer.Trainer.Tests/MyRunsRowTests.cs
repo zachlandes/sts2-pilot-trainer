@@ -287,4 +287,49 @@ public sealed class MyRunsRowTests
         Assert.Equal("Remove", confirm.Remove);
         Assert.Equal("Keep them", confirm.Keep);
     }
+
+    /// <summary>
+    /// The row states what the menu is doing rather than deriving it a second time.
+    /// <see cref="MainMenuRow.ShownWhen"/> is the one owner of that rule and the mod's
+    /// menu patch reads the same owner, so the control and the menu cannot disagree.
+    /// </summary>
+    [Fact]
+    public void TheMainMenuLineStatesWhatTheMenuIsDoing()
+    {
+        var on = MyRunsRow.For(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 50, MainMenuRowShown: true));
+        var off = MyRunsRow.For(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 50, MainMenuRowShown: false));
+
+        Assert.True(on.MainMenu.Shown);
+        Assert.Equal("Runmobile on the main menu: on", on.MainMenu.SettingLabel);
+        Assert.False(off.MainMenu.Shown);
+        Assert.Equal("Runmobile on the main menu: off", off.MainMenu.SettingLabel);
+    }
+
+    /// <summary>
+    /// The switch answers to the same condition the policy stepper does, because the
+    /// choice is a member of the same file: a press over one this build refuses would
+    /// write this build's meaning into a document written by another, and before a save
+    /// profile is chosen there is no file to write into at all.
+    /// </summary>
+    [Fact]
+    public void TheMainMenuControlIsRefusedWhereverThePolicyIs()
+    {
+        Assert.False(MyRunsRow.For(
+            new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 50, SettingsReadable: false)).MainMenuPressable);
+        Assert.False(MyRunsRow.For(
+            new MyRunsFacts(0, 0, 50, SettingsReadable: null, Disk: MyRunsDisk.NoSaveProfileYet))
+            .MainMenuPressable);
+        Assert.True(MyRunsRow.For(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 50)).MainMenuPressable);
+    }
+
+    /// <summary>
+    /// It is pressable with nothing on the disk. Where the runs are and whether the mod
+    /// is findable are different questions, and a new player - the one the row exists for
+    /// - has no runs by definition.
+    /// </summary>
+    [Fact]
+    public void ItIsPressableWithNoRunsAtAll()
+    {
+        Assert.True(MyRunsRow.For(new MyRunsFacts(Runs: 0, Bytes: 0, Keep: 50)).MainMenuPressable);
+    }
 }

@@ -271,7 +271,7 @@ A reading that could not be taken is refused exactly like a multiplayer one - a 
 
 **A multiplayer game gets no mod surface at all, which is a stronger rule than recording nothing.**
 `GameSessionWatch` is the shell's, installed however the modules answer, and `RunmobileMod.MayDraw` is the one gate every surface passes: the menu cards go through it, and so does a surface a module draws from its own Harmony patches, which is where the cards' gate never looks.
-The run library's two are both of that kind - `CompendiumCard.ShowsButton` decides whether the Compendium button is there and `RunHistoryPlateHost.PlateFor` whether a history-row press opens anything - and each asks the shell rather than reading the session, so a module knows only that the shell said no.
+The run library's four are all of that kind - `MainMenuLibraryRow.Visible` decides whether its main-menu row is there, `CompendiumCard.ShowsButton` decides whether the Compendium button is there, `MyRunsSettings.AddRow` decides whether its settings row is added, and `RunHistoryPlateHost.PlateFor` decides whether a history-row press opens anything - and each asks the shell rather than reading the session, so a module knows only that the shell said no.
 What a module may not do is read the session to decide whether to draw; the reading behind that decision is the shell's and the module's question is "may I draw this".
 Reading it to decide whether to *record* is a different question with a different answer, and `RunRecorder.Attach` asks it directly through `GameSessionWatch.Observed` and `RunSession.MayBeRecorded` - the two permissions are separate, which is why `RunSession` carries both.
 Silence is silence rather than a degraded surface: nothing is drawn, not even a refusal saying why, because a refusal is itself this mod speaking.
@@ -714,10 +714,11 @@ than guessing it.
 
 The third module, and the only one with a surface a player browses. What it offers and
 what it refuses is `Sts2PilotTrainer.Trainer`'s - `RunBrowser`, `RunView`,
-`RunHistoryPlate` and `LibraryCopy` - and every one of those is pure and tested without
-a game. What runs inside the client is the three patches below plus the drawing classes behind them.
+`MainMenuRow`, `RunHistoryPlate` and `LibraryCopy` - and every one of those is pure and
+tested without a game. What runs inside the client is the four patches below plus the drawing classes behind them.
 
-**Three hooks, and each is the honest one for its question.**
+**The hooks are each the honest one for their question.**
+`MainMenuLibraryRow` follows `NMainMenu._Ready`, which is where the game builds its button column and wires each button's focus behaviour; `NMainMenu.OnSubmenuStackChanged`, which is where the game re-decides visibility each time the column returns; and `NMainMenu.RefreshButtons`, which is where enabled states are settled at the end of `_Ready` and after a run is abandoned.
 `CompendiumCard` follows `NCompendiumSubmenu._Ready`, which is where the row is built and where every focus neighbour is assigned index by index, so a button added anywhere else exists and is unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides per-visit visibility, so the shell's permission to draw is asked each time rather than once.
 `MyRunsSettings` follows `NSettingsScreen._Ready` and places its row beside `%ModdingButton`, the game's own modding settings entry point.
 `RunHistoryPlateHost` follows `NMapPointHistoryEntry._Ready` and connects the `Released` that entry already emits and nothing in the game listens to.
@@ -751,6 +752,38 @@ Paging is presentation: `RunBrowser` and `RunView` still return every row and fl
 `RunHistoryPlate` supplies a warning mark only for a refusal that has a status heading; the ordinary recorded state has neither a repeated heading nor a mark.
 `RunHistoryPlateArt` draws that heading and mark above the flat rows, using the eligibility red for another-build refusals and muted ink for other warnings.
 It also draws the chevron on Choose another floor, while every sentence, enabled state and row choice remains the pure derivation's answer.
+
+**A brand-new player cannot reach the Compendium at all, and the main-menu row is the answer.**
+`NMainMenu.SingleplayerButtonPressed` opens character select directly rather than the singleplayer submenu when `SaveManager.Instance.Progress.NumberOfRuns == 0`, `NMainMenu.RefreshButtons` sets `_compendiumButton.Visible` from `SaveManager.IsCompendiumAvailable`, and that returns false at zero runs in a release game.
+`NPauseMenu` applies the same gate, so the first run's pause menu has no Compendium either.
+The Compendium card and the run-history plate therefore both hang off surfaces the player who has never finished a run never sees, and that is exactly the player a trainer is worth the most to.
+`MainMenuLibraryRow` adds a ninth button to the game's own column, duplicated from `MainMenuTextButtons/CompendiumButton` so its font, colours, reticle animation and disabled treatment are MegaCrit's, placed directly under it, and connected to the same `RunBrowserScreen.Open` the card connects to.
+There is one library and one playback path; this is a second way in, not a second feature.
+
+**This is the surface that must not adopt the running game where it is built, and it is a sixth trap of the same family as the five above.**
+The main menu is constructed while the startup phase is still `Essential`: there is no model database and no id-serialization cache, so `EngineHost.AdoptRunningGame` refuses at `NMainMenu._Ready`.
+It refuses once. `RunmobileMod.Adopt` latches `_adoptionAttempted` whatever the outcome, so a refusal taken at main-menu construction is the answer every later surface gets for the rest of the process - the Compendium card would stop adding itself and the recorder would stop recording, from one call in a feature that has nothing to do with either.
+A build that asked there was green in every test and dead in the client, and the game's log named it: `refusing to report on this game ... startup phase is 'Essential'`, under `MainMenuLibraryRow.AddButton`.
+The Compendium card can ask in its own `_Ready` because its submenu is built when a player pushes it, which is later; this row is built alongside the menu itself, so its first honest moment is the press, and `MainMenuLibraryRow.Open` is where it asks.
+Building the row needs none of it: whether it belongs on the menu is the settings file and `SaveManager.Progress`, both of which the game's own `RefreshButtons` reads in the same method.
+A refusal at the press takes the row off the menu rather than leaving a control that does nothing, and the shell's latched refusal keeps later visibility passes from restoring it - the same outcome the card reaches by never adding itself, one moment later.
+
+Three things about the copy have to be done by hand because the duplicate came from a localized button.
+Its label is set on the `MegaLabel` directly, since Runmobile ships no localization table and asking for a key that does not exist would put a key on the player's main menu.
+Its private `_locString` is cleared with it, because `NMainMenuTextButton._Notification` re-reads that on every translation change and would otherwise put "COMPENDIUM" back when the player changes language.
+Its label pivot is set deferred, the way the game sets it, because the hover animation scales the label about that pivot and Godot has not laid the new word out in the frame the text is assigned.
+
+`ConnectMainMenuTextButtonFocusLogic` runs inside `_Ready`, before a postfix can add anything, so the row connects `Focused` and `Unfocused` itself - dispatched through the menu's own Godot method table, because both handlers are private, and the focused one deferred exactly as the game defers it.
+The neighbour rewiring is conditional: where `FocusNeighborBottom` is empty this build's column is navigated geometrically and a new sibling is already in it, and writing a path in would replace a working answer with a brittle one.
+
+**Whether the row is there is `MainMenuRow.ShownWhen`, and nothing else derives it.**
+The player's stored `show_main_menu_row` where they have written one, and this profile's run count where they have not - so a player who has finished no run gets the row and a player with run history does not, and either of them can say otherwise on the settings page.
+Once they have, that sentence holds: finishing a first run does not take away a row they turned on.
+`RunsFinished.Any` is the one reader of the game's own `Progress.NumberOfRuns`, which is the same number the game reads to decide the two gates above, so the row appears exactly where the game's own route does not.
+A settings file this build cannot read says nothing rather than "off", because answering "off" would take the library's only entrance away from a new player over a file fault.
+`MyRunsRow` states the same answer on the settings page from the same owner, and `MyRunsSettingsRow` draws it, so the control and the menu cannot come apart.
+Whether it may be pressed mirrors the Compendium button, because the game disables its own destinations while an undiscovered epoch is waiting and a mod row that stayed live through that would be a way around a gate the game put up.
+The shell's permission to draw is asked first and a no draws nothing at all - not a greyed row.
 
 **The Compendium entry is present whenever the shell may draw.**
 It occupies the authored slot the game leaves when it hides Leaderboards, so the three visible bottom destinations remain inside the viewport and in the game's controller focus chain.
@@ -811,13 +844,26 @@ Each `LibraryPage` carries its way back rather than relying on a modal stack: an
 Only the browser itself, which is the screen a player enters on, closes the library.
 The tab travels as a bool because the way back ends up in a lambda's captured fields, and a captured `LibraryTab` has stopped this mod loading once already.
 
-## Three surfaces, and the hook each one needs
+## Four surfaces, and the hook each one needs
 
 Read out of v0.111.0 in a scratch decompile, ahead of building anything on them.
 Mechanism only: node paths and the lifecycle method a `[HarmonyPatch]` postfix would
 follow, in the shape the mode card already uses. Nothing here is a decision about what
 to draw.
-All three hooks below are the ones the run library now uses.
+All four hooks below are the ones the run library now uses.
+
+**A row on the main menu.** `NMainMenu._Ready` is the hook. It resolves each button by
+plain path under `MainMenuTextButtons` - `ContinueButton`, `AbandonRunButton`,
+`SingleplayerButton`, `MultiplayerButton`, `CompendiumButton`, `TimelineButton`,
+`SettingsButton`, `QuitButton` - wires each one's
+`NClickableControl.SignalName.Released`, and then calls
+`ConnectMainMenuTextButtonFocusLogic`, which walks the column's children and connects the
+two private reticle handlers. A button added afterwards therefore has to connect those
+itself. `NMainMenu.OnSubmenuStackChanged` is the per-visit visibility hook because it runs whenever the button column returns from a submenu.
+`NMainMenu.RefreshButtons` is the third hook: it is called at the end of `_Ready` and again after a run is abandoned, and it is where `_compendiumButton.Visible` and the epoch-gated enabled states are decided.
+`NMainMenu.MainMenuButtons` is a fixed array of the game's own eight, and
+`DefaultFocusedControl` picks the first visible enabled one out of it - so a ninth button
+joins the column without ever becoming the menu's default focus.
 
 **A card in the Compendium.** `NCompendiumSubmenu._Ready` is the hook. It resolves
 every entry by Godot unique name: a top row of four `NShortSubmenuButton`s
@@ -918,6 +964,9 @@ screen as they appeared in the shipped client,
 the recorded fight with its real output, and
 [demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has the fight
 played through and its comparison.
+[demo/RUNMOBILE-MAIN-MENU.md](../demo/RUNMOBILE-MAIN-MENU.md) has the main-menu row on a
+zero-run profile, the library it opens, the settings control that hides it, and a
+progressed profile with no row and its Compendium card intact.
 
 ### Keeping runs, and removing them
 
@@ -935,7 +984,7 @@ A negative number is refused with a logged sentence naming the file and the valu
 Removing nothing survives only as an internal answer for a settings file this build cannot read - a sentence nobody could read is not somebody asking for their runs to be deleted, so recording off and deleting nothing fail in the same direction.
 
 `purge_my_runs` is the one-shot act: every recorded run is removed, and then the mod writes the member back to `false` so a purge is something a player did rather than a state they are left in.
-`keep_recent_runs`, `purge_my_runs`, and `fetch_run_index` are the three members the mod writes, and each write edits the member it names: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
+`keep_recent_runs`, `purge_my_runs`, `fetch_run_index` and `show_main_menu_row` are the four members the mod writes, and each write edits the member it names: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
 A file that is there and is not a settings object is refused rather than written over, because reading one already means "record nothing" and overwriting it would discard what the player wrote in order to store what they meant to add to it.
 `godot.log` carries the receipt either way - `purged your recorded runs: N removed` for the act, `keeping your 50 most recent runs: N older one(s) removed` for the policy.
 
@@ -952,8 +1001,10 @@ It cannot be mod start: the game has no chosen save profile then, so the store c
 
 ### The settings row, and the size figure
 
-All three members have a control now, and the whole of it is one row: `MyRunsSettingsRow` in the mod, drawn from `MyRunsRow` in `Sts2PilotTrainer.Trainer`, wired to the disk by `MyRunsSettings`.
+All four members with a control are one row: `MyRunsSettingsRow` in the mod, drawn from `MyRunsRow` in `Sts2PilotTrainer.Trainer`, wired to the disk by `MyRunsSettings`.
 It is a row and not a section.
+The retention policy, the removal act and the index-fetch choice are about the player's own runs; `show_main_menu_row` is about where Runmobile can be found.
+It is in the same row rather than a section of its own for the reason the section exists at all: this mod contributes one place a player configures it, and a second one would be a second thing to find.
 Where Runmobile's settings section hangs - `%ModdingButton` is the game's own modding entry point, and there is no Mods tab to extend - belongs to the run library along with everything else in it; this is one thing that section places, built whole so that placing it is all there is to do.
 Keeping it apart is also what lets it be assembled and asserted on in a process with no game, which `MyRunsSettingsRowTests` does node by node.
 
@@ -966,12 +1017,23 @@ It measures only what `RecordingLibrary` recognises, so the figure is what this 
 The reading after a removal is re-taken from the disk rather than predicted, so a purge that left the continuable run's journal behind reads as the one run it actually left.
 A failure - the store not ready, a settings file this build will not write over, a disk that refused - goes to the log and leaves the row saying what it said, because a receipt is a claim that something happened.
 
+The main-menu line is the one thing on this row that is not about the disk, and it is asked separately for that reason.
+Where the recordings directory refuses, `MyRunsSettings` still asks `MainMenuLibraryRow.Shown` - the settings file and the game's run count, neither of which is that directory - because a row reporting "off" because no save profile was chosen would be stating something about a menu it never asked.
+Pressing it writes `show_main_menu_row` and nothing else, and moves nothing on screen: leaving settings pops the submenu stack, and the menu behind this screen re-decides in `OnSubmenuStackChanged`.
+The row is redrawn from the disk instead, so what the control says is what the file now holds, and a write that failed leaves it saying what is still true.
+
 Pressing Remove is `RecordingRetention.PurgeNow`, which writes the request to the file first and removes second, so a game that stops in between finishes at the next main menu.
 It is not behind the once-per-profile latch and does not set one: that latch exists so a standing policy is applied once as a profile is entered, and this is a person pressing a control.
 
 Moving the policy removes nothing where it stands, and forgets that latch for the profile this game is running as - `RecordingRetention.ReapplyPolicyAtNextMenu`, which is the retention owner's because the latch is.
 This profile only: another profile's policy was applied against its own recordings and a write made while playing as this one says nothing about it.
 Without that the row's own second line would be describing the next launch rather than the next main menu, because this profile's turn at the latch is already taken by the time a player can reach the control.
+
+**Where the row is parented is the column, not the modding entry.**
+`%ModdingButton` sits in a `MarginContainer` named `Modding`, beside the heading label, and a MarginContainer lays every child out in the same rectangle - so adding the row there made it a third thing drawn on top of the heading and the button rather than a third row.
+That container is one entry in the column's `VBoxContainer`, and the column is where a new entry belongs: a VBoxContainer stacks what it holds from each child's minimum size, which `MyRunsSettingsRow` already carries, so everything below moves down on its own.
+Nothing is repositioned by hand, and growing the parent's minimum size reserves nothing here - the fix that looks obvious and does not work.
+`MyRunsSettings.Attach` places it directly after the modding entry so Runmobile's settings sit with the modding ones a player came there to find.
 
 The store refuses until the game has chosen a save profile, and the settings section hangs off the main menu's own modding entry point, which is reachable before one is.
 `MyRunsSettings.Build` therefore catches and logs the way its other members do, and hands the derivation a `MyRunsDisk` fact of its own rather than a count of zero - no runs yet and cannot tell yet are different sentences.
@@ -1001,8 +1063,8 @@ There is no top to refuse at: a press that reported two hundred over a file sayi
 A settings file this build cannot read is the one case where the numeral is not the player's own sentence, and the row says so rather than showing it.
 `RunmobileSettings.Read` answers an unreadable file with its "remove nothing" sentinel, which is a number no player wrote and no control can put right, so `RecordingRetention.OnDisk` carries the readable-or-not as a fact of its own on `MyRunsFacts` and hands the row the default in place of it.
 That number is shown and nothing is inferred from it: under an unreadable file no policy is in force at all, because `RecordingLibrary.Cull` names nothing for the sentinel, so the second line says exactly that - `settings.json` could not be read, so no runs are removed automatically until it is - rather than claiming the usual policy stands.
-Every control that would write into that file is refused with it: both ends of the stepper, and the removal too, because `PurgeNow` records the request in the same file before it takes anything and an act that cannot be recorded is one that must not be offered.
-The second line is what explains all three, so none of them is a dead control with no reason on screen.
+Every control that would write into that file is refused with it: both ends of the stepper, the removal, the index-fetch switch and the main-menu switch, because `PurgeNow` records the request in the same file before it takes anything and an act that cannot be recorded is one that must not be offered.
+The second line explains the shared refusal, so none of them is a dead control with no reason on screen.
 `RunmobileSettings.Set` refuses through `Read` itself rather than through a second set of rules of its own, so a document can never be unreadable to the row and writable by the control beside it; an absent file is not an unreadable one and still gets the defaults with the one member set.
 
 The one recording retention never names is the run the game can currently Continue, and neither a cap nor a purge removes its journal.
