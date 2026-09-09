@@ -47,11 +47,18 @@ internal static class LibraryRibbonArt
         if (outline.Material is { } outlineMaterial) outline.Material = (Material)outlineMaterial.Duplicate();
     }
 
+    /// <summary>One of the ribbon's two drawn parts, refused by name where a build's
+    /// popup scene has lost the unique name. The one lookup of either, so a missing
+    /// part is reported the same way whoever asked for it.</summary>
+    internal static CanvasItem Part(Control button, string path) =>
+        button.GetNodeOrNull<CanvasItem>(path)
+        ?? throw new InvalidOperationException($"The library ribbon has no texture at {path}");
+
     internal static void ReplaceTextures(Control button, float width)
     {
         foreach (var path in new[] { "%Image", "%Outline" })
         {
-            if (button.GetNode<Control>(path) is not TextureRect image || image.Texture is null)
+            if (Part(button, path) is not TextureRect image || image.Texture is null)
                 throw new InvalidOperationException($"The library ribbon has no texture at {path}");
 
             var owner = image.Owner;

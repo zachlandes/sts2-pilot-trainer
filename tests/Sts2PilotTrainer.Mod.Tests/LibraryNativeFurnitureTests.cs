@@ -90,6 +90,56 @@ public sealed class LibraryNoticeTests
         Assert.Equal(3 * 1.45f * 20, wide, 2);
         Assert.True(narrow > wide, "a narrow column wraps the sentences onto more lines");
     }
+
+    /// <summary>A short window is a window the library still opens on. The plate is
+    /// drawn to what is left over the rows' own floor, so <c>ScreenPage.For</c> never
+    /// receives fewer places than a page holds and refuses the browser.</summary>
+    [Fact]
+    public void AShortColumnKeepsTheRowsAPageAndClipsThePlate()
+    {
+        const float step = 40f;
+        const float wanted = 200f;
+        var available = (3 * step) + (wanted / 2f);
+
+        var notice = LibraryScreen.NoticeBudget(available, step, wanted, pinned: 0);
+        var places = (int)Math.Floor((available - notice) / step);
+
+        Assert.True(notice > 0f, "a short window still gets guidance, clipped");
+        Assert.True(notice < wanted, "the plate gave way to the rows");
+        Assert.True(places >= ScreenPage.MinimumPerPage, $"{places} places is under a page");
+        Assert.True(ScreenPage.For(rows: 12, places, page: 0).Pages > 1);
+    }
+
+    /// <summary>Room enough and the plate stands at the height its sentences want.</summary>
+    [Fact]
+    public void ATallColumnGivesThePlateWhatItAskedFor()
+    {
+        Assert.Equal(200f, LibraryScreen.NoticeBudget(2000f, 40f, 200f, pinned: 0));
+    }
+
+    /// <summary>A pinned row is on every page, so it is counted into the floor the
+    /// notice may not eat: <c>ScreenPage.For</c> takes it off the places first.</summary>
+    [Fact]
+    public void APinnedRowIsCountedIntoTheFloor()
+    {
+        const float step = 40f;
+        var available = (4 * step) + 200f;
+
+        var notice = LibraryScreen.NoticeBudget(available, step, wanted: 200f, pinned: 1);
+        var places = (int)Math.Floor((available - notice) / step);
+
+        Assert.Equal(4, places);
+        var page = ScreenPage.For(rows: 12, places, page: 0, pinned: 1);
+        Assert.True(page.Pages > 1);
+    }
+
+    /// <summary>Too short even for a page of rows and there is no notice at all: the
+    /// plate takes nothing the rows were already short of.</summary>
+    [Fact]
+    public void AColumnUnderAPageGetsNoPlate()
+    {
+        Assert.Equal(0f, LibraryScreen.NoticeBudget(2 * 40f, 40f, wanted: 200f, pinned: 0));
+    }
 }
 
 public sealed class GlyphFillTests

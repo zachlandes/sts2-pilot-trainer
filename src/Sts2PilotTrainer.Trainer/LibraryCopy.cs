@@ -390,7 +390,7 @@ public static class LibraryCopy
 
     /// <summary>Why the run's first floor is not a floor to play from: it is where
     /// starting the run over already puts you.</summary>
-    public const string RunStartsHere = "the run begins on this floor · use Start the run over";
+    public const string RunStartsHere = $"the run begins on this floor · use {StartTheRunOver}";
 
     /// <summary>
     /// Why a place further into the run offers nothing yet: getting there means

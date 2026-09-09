@@ -184,7 +184,7 @@ It asks the container for height and never for width, then lays itself out again
 The captain's judgement on the first library was that its tabs read as buttons and its floor strip as a row of specks, and that the game already had the shapes.
 Three of them are borrowed rather than drawn, and the rule for each is the same: the game's own node or image where one exists, instantiated or loaded and never redrawn; the mod's own glyph only where the game has none.
 
-**The tabs are `NSettingsTab`**, the scene behind the stats screen's Statistics and Achievements tabs, at the ribbon's height and the scene's own 256:90 proportions.
+**The tabs are `NSettingsTab`**, the scene behind the stats screen's Statistics and Achievements tabs, at the scene's own 256:90 proportions and the ribbon's height, or shorter where a narrow window caps the width, because the proportions outrank the height.
 Selected and deselected through the tab's own `Select` and `Deselect`, exactly as `NStatsTabManager` does it, so the outline, the label weight and the hover are the game's.
 The current tab is selected and takes no press; it still hovers, as the game's do, but it is not a focus stop, and the other tab is - this band has no shoulder hotkeys, so focus is the only controller route to it.
 

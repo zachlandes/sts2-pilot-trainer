@@ -183,6 +183,10 @@ internal static class LibraryScreen
     /// in the gap, so the gap has to hold it.</summary>
     private const float NotedRowStep = 1.55f;
 
+    /// <summary>The gap under the notice plate before the first row, as a multiple of
+    /// the plate's own text size.</summary>
+    private const float NoticeGap = 0.6f;
+
     /// <summary>How far under a row its second line sits, as a multiple of the row's own
     /// height. A row occupies its whole height, so anything under one clears it.</summary>
     private const float NoteDrop = 1.12f;
@@ -478,8 +482,11 @@ internal static class LibraryScreen
 
         var prototype = content.NoButton;
         var height = prototype.Size.Y;
-        // The game's own tab keeps its scene's proportions at the ribbon's height
+        // The game's own tab keeps its scene's proportions: at the ribbon's height
+        // where the band is wide enough for it, and shorter where the width cap binds,
+        // because a plate drawn narrower than 256:90 is a squashed plate
         var tabWidth = Math.Min(height * LibraryTabArt.Aspect, area.Size.X * 0.2f);
+        var tabHeight = tabWidth / LibraryTabArt.Aspect;
         var at = area.Position.X;
         foreach (var tab in page.Tabs)
         {
@@ -494,7 +501,7 @@ internal static class LibraryScreen
             var press = tab.Press;
             var button = LibraryTabArt.Add(
                 content, $"RunmobileTab{tab.Label}", tab.Label, tab.Current, tab.LockTooltip,
-                new Rect2(at, area.Position.Y, tabWidth, height),
+                new Rect2(at, area.Position.Y + ((height - tabHeight) / 2f), tabWidth, tabHeight),
                 tab.Current ? null : () => Reopen(press));
             if (!tab.Current) focusable.Add(button);
             at += tabWidth + (height * 0.17f);
@@ -572,11 +579,6 @@ internal static class LibraryScreen
             top += filterText.Size * ControlStep;
         }
 
-        if (page.ListNotice is { Length: > 0 } notice)
-        {
-            top = AddNotice(content, notice, new Vector2(at.Position.X, top), at.Size.X);
-        }
-
         var bottom = at.End.Y;
         if (page.ListFooter is { Length: > 0 } footer)
         {
@@ -590,8 +592,15 @@ internal static class LibraryScreen
                 LibraryPalette.Muted, footerText, tooltip: page.ListFooterTooltip);
         }
 
-        var fits = (int)Math.Floor((bottom - top) / step);
         var pinned = rows.Where(row => row.Pinned).ToList();
+        if (page.ListNotice is { Length: > 0 } notice)
+        {
+            var allotted = NoticeBudget(
+                bottom - top, step, NoticeHeight(notice, at.Size.X), pinned.Count);
+            top = AddNotice(content, notice, new Vector2(at.Position.X, top), at.Size.X, allotted);
+        }
+
+        var fits = (int)Math.Floor((bottom - top) / step);
         var paged = rows.Where(row => !row.Pinned).ToList();
         var requestedPage = page.Page;
         if (page.SelectedRow is { } selectedRow &&
@@ -642,15 +651,16 @@ internal static class LibraryScreen
     /// short - laid over the column rather than over one entry. It passes the mouse
     /// through, so the rows under it keep their press.
     /// </summary>
-    private static float AddNotice(NVerticalPopup content, string notice, Vector2 at, float width)
+    private static float AddNotice(
+        NVerticalPopup content, string notice, Vector2 at, float width, float allotted)
     {
         var style = GameText.Scene(NativeTextRole.Secondary);
         var pad = style.Size * 0.8f;
         var textWidth = width - (pad * 2f);
-        // Measured wrapped, because these are sentences and the column is narrower
-        // than one; a plate sized by counting newlines would end mid-sentence
-        var textHeight = WrappedHeight(notice, textWidth, style);
-        var height = textHeight + (pad * 2f);
+        var height = allotted - (style.Size * NoticeGap);
+        var textHeight = height - (pad * 2f);
+        if (textHeight < style.Size) return at.Y;
+
         content.AddChild(new ColorRect
         {
             Name = "RunmobileListNotice",
@@ -667,12 +677,41 @@ internal static class LibraryScreen
             Position = new Vector2(at.X + pad, at.Y + pad),
             CustomMinimumSize = new Vector2(textWidth, 0f),
             Size = new Vector2(textWidth, textHeight),
+            ClipText = true,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", LibraryPalette.Muted);
         content.AddChild(label);
-        return at.Y + height + (style.Size * 0.6f);
+        return at.Y + allotted;
+    }
+
+    /// <summary>The height the plate wants: its sentences wrapped to the column, the
+    /// padding round them and the gap under it. Measured wrapped, because these are
+    /// sentences and the column is narrower than one; a plate sized by counting
+    /// newlines would end mid-sentence.</summary>
+    private static float NoticeHeight(string notice, float width)
+    {
+        var style = GameText.Scene(NativeTextRole.Secondary);
+        var pad = style.Size * 0.8f;
+        return WrappedHeight(notice, width - (pad * 2f), style) + (pad * 2f) + (style.Size * NoticeGap);
+    }
+
+    /// <summary>
+    /// How much of the list column the notice may take.
+    ///
+    /// The rows are what the column is for and the library has to open: a page holds
+    /// <see cref="ScreenPage.MinimumPerPage"/> rows beyond the pinned ones or
+    /// <see cref="ScreenPage.For"/> refuses the panel outright, which is a player
+    /// looking at a failure screen instead of the browser. So the rows are given that
+    /// floor first and the notice takes what is left, up to the height it wanted. On a
+    /// window too short for the whole plate it is drawn to the remainder with its
+    /// sentences clipped, because guidance a player can read half of beats none.
+    /// </summary>
+    internal static float NoticeBudget(float available, float step, float wanted, int pinned)
+    {
+        var floor = (ScreenPage.MinimumPerPage + pinned) * step;
+        return Math.Clamp(available - floor, 0f, Math.Max(0f, wanted));
     }
 
     /// <summary>How tall a notice stands once wrapped to a width. The measuring is
@@ -988,7 +1027,7 @@ internal static class LibraryScreen
         button.Name = name;
         // Own materials first: a hover on one duplicate must light that one alone
         LibraryRibbonArt.OwnMaterials(
-            button.GetNode<CanvasItem>("%Image"), button.GetNode<CanvasItem>("%Outline"));
+            LibraryRibbonArt.Part(button, "%Image"), LibraryRibbonArt.Part(button, "%Outline"));
         // The retail button caches its visual nodes and materials in _Ready
         if (ribbonWidth is { } width) LibraryRibbonArt.ReplaceTextures(button, width);
         content.AddChild(button);
