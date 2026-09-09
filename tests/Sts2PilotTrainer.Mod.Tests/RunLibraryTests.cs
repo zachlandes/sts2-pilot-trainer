@@ -865,49 +865,32 @@ public sealed class RunLibraryModuleTests
     }
 
     /// <summary>
-    /// Adding the row must not adopt the running game.
+    /// Deciding whether the row belongs on the menu must not need an adopted game.
     ///
     /// The main menu is built one startup phase before the game has a model database, so
-    /// <c>AdoptRunningGame</c> refuses there - and <c>RunmobileMod.Adopt</c> latches its
-    /// refusal for the process, so asking at <c>NMainMenu._Ready</c> also stopped the
-    /// Compendium card adding itself and stopped the recorder. A build that did exactly
-    /// that passed every test in this suite and was dead in the client, which is why the
-    /// call site is asserted rather than the behaviour: nothing without a game can
-    /// reproduce the phase this goes wrong in.
+    /// adoption there refuses and latches that refusal for the process. Visibility needs
+    /// only the settings file and the game's run count, both supplied here without a
+    /// running game.
     /// </summary>
     [Fact]
-    public void AddingTheMainMenuRowDoesNotAdoptTheRunningGame()
+    public void MainMenuVisibilityDoesNotNeedAnAdoptedGame()
     {
-        var source = MainMenuLibraryRowSource();
-        var adding = Between(source, "internal static void AddButton", "internal static void SetVisibility");
-        var pressing = Between(source, "private static void Open(NButton pressed)", "\n    /// <summary>");
+        var root = Path.Combine(Path.GetTempPath(), $"runmobile-menu-{Guid.NewGuid():N}");
+        RunmobileStore.UseRootForTesting(root);
 
-        // Both slices are checked for something they certainly contain first, because a
-        // slice this walk failed to find would make the refusal below pass by being empty.
-        Assert.Contains("Duplicate", adding, StringComparison.Ordinal);
-        Assert.Contains("RunBrowserScreen.Open", pressing, StringComparison.Ordinal);
+        try
+        {
+            RunsFinished.UseReaderForTesting(() => false);
+            Assert.True(MainMenuLibraryRow.Shown());
 
-        Assert.DoesNotContain("EnsureAdopted", adding, StringComparison.Ordinal);
-        // And the press is where it does ask, so the row is not simply never adopting.
-        Assert.Contains("EnsureAdopted", pressing, StringComparison.Ordinal);
-    }
-
-    private static string MainMenuLibraryRowSource()
-    {
-        // Read as source rather than reflected over, the way the engine-command table is:
-        // what has to be true is which call appears in which method, and IL is a worse
-        // place to read that than the file everyone else edits.
-        var root = Sts2PilotTrainer.IO.WorktreeLocator.Find();
-        return File.ReadAllText(
-            Path.Combine(root, "src", "Sts2PilotTrainer.Mod", "MainMenuLibraryRow.cs"));
-    }
-
-    private static string Between(string source, string from, string to)
-    {
-        var start = source.IndexOf(from, StringComparison.Ordinal);
-        Assert.True(start >= 0, $"'{from}' is not in MainMenuLibraryRow.cs any more.");
-        var end = source.IndexOf(to, start + from.Length, StringComparison.Ordinal);
-        return end < 0 ? source[start..] : source[start..end];
+            RunsFinished.UseReaderForTesting(() => true);
+            Assert.False(MainMenuLibraryRow.Shown());
+        }
+        finally
+        {
+            RunsFinished.UseReaderForTesting(null);
+            RunmobileStore.UseRootForTesting(null);
+        }
     }
 
     /// <summary>A member this build does not have is named by whichever of the two
