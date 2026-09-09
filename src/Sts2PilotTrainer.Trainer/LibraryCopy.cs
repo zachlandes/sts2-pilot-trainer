@@ -172,6 +172,20 @@ public static class LibraryCopy
         $"To see runs other players shared, open Settings, find Runmobile under Modding and turn on \"{ShowCommunityRuns}\".\n" +
         "A run code still opens a run here.";
 
+    /// <summary>The same lock when this build could not read settings.json: the
+    /// setting cannot be moved while the file is refused, so the tooltip says what is
+    /// wrong rather than naming a control that will not answer.</summary>
+    public const string CommunitySettingsUnreadableTooltip =
+        "Community runs are unavailable: settings.json could not be read.";
+
+    /// <summary>The plate over the Community list in that state. It points at no
+    /// switch, because every control that would write into that file is refused with
+    /// it, and it says what still works.</summary>
+    public const string CommunitySettingsUnreadableNotice =
+        "Community runs are unavailable.\n" +
+        "Runmobile's settings.json could not be read, so nothing can be fetched until it is; the game's log says why.\n" +
+        "A run code still opens a run here.";
+
     /// <summary>The same lock when no sharing service is configured: nothing a setting
     /// can change, so the tooltip and the plate say what is missing rather than
     /// pointing at a switch.</summary>

@@ -485,15 +485,18 @@ internal static class LibraryScreen
         {
             // The current tab is selected and takes no press, as the game's own tab
             // manager leaves it: pressing the tab you are on would rebuild the screen
-            // you are looking at. It still hovers and takes focus, because the game's
-            // tabs do, and a locked tab is still opened - the lock says what is
-            // missing from it and hides nothing that is there.
+            // you are looking at. It still hovers, because the game's tabs do, but it
+            // is no controller stop - a press there does nothing, and the game's own
+            // tabs are not stops either. The other one is, because this band has no
+            // shoulder hotkeys and focus is the only controller route to it. A locked
+            // tab is still opened - the lock says what is missing from it and hides
+            // nothing that is there.
             var press = tab.Press;
             var button = LibraryTabArt.Add(
                 content, $"RunmobileTab{tab.Label}", tab.Label, tab.Current, tab.LockTooltip,
                 new Rect2(at, area.Position.Y, tabWidth, height),
                 tab.Current ? null : () => Reopen(press));
-            focusable.Add(button);
+            if (!tab.Current) focusable.Add(button);
             at += tabWidth + (height * 0.17f);
         }
 
@@ -672,26 +675,15 @@ internal static class LibraryScreen
         return at.Y + height + (style.Size * 0.6f);
     }
 
-    /// <summary>How tall a sentence stands once wrapped to a width, in the style's own
-    /// font. The estimate stands in where there is no font to measure with, which is
-    /// a process with no game and nothing to draw.</summary>
+    /// <summary>How tall a notice stands once wrapped to a width. The measuring is
+    /// <see cref="GameTextStyle.WrappedHeight"/>'s; the estimate here stands in where
+    /// there is no font, which is a process with no game and nothing to draw.</summary>
     internal static float WrappedHeight(string text, float width, GameTextStyle style)
     {
         const float lineHeight = 1.45f;
-        if (style.Font is not { } font)
-        {
-            var perLine = Math.Max(1, (int)Math.Floor(width / (style.Size * 0.5f)));
-            var lines = text.Split('\n').Sum(line => Math.Max(1, (int)Math.Ceiling(line.Length / (float)perLine)));
-            return lines * lineHeight * style.Size;
-        }
-
-        return font.GetMultilineStringSize(
-            text,
-            HorizontalAlignment.Left,
-            width,
-            style.Size,
-            maxLines: -1,
-            brkFlags: TextServer.LineBreakFlag.Mandatory | TextServer.LineBreakFlag.WordBound).Y;
+        var perLine = Math.Max(1, (int)Math.Floor(width / (style.Size * 0.5f)));
+        var lines = text.Split('\n').Sum(line => Math.Max(1, (int)Math.Ceiling(line.Length / (float)perLine)));
+        return style.WrappedHeight(text, width, lines * lineHeight * style.Size);
     }
 
     private static CheckBox AddFilter(

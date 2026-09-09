@@ -78,8 +78,9 @@ internal static class RunBrowserScreen
                 selectedEntryId: selected,
                 submitAvailable: RunLibrary.SharingAvailable);
 
+            var settings = RunmobileSettings.Read();
             var locked = CommunityLock.For(
-                RunLibrary.SharingAvailable, RunmobileSettings.Read().FetchRunIndex);
+                RunLibrary.SharingAvailable, settings.Readable, settings.FetchRunIndex);
             var rows = ListRows(browser, community);
             var selectedRow = rows
                 .Select((row, index) => (row, index))

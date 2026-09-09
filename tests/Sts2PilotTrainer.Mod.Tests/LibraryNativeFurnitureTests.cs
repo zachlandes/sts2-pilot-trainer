@@ -35,6 +35,16 @@ public sealed class LibraryNativeFurnitureTests
         Assert.Equal("res://scenes/screens/settings_tab.tscn", LibraryTabArt.Scene);
     }
 
+    /// <summary>The game's own tabs are no controller stop, and the one you are on
+    /// would be a stop on a control whose press does nothing. The other one stays a
+    /// stop because this band has no shoulder hotkeys to reach it with.</summary>
+    [Fact]
+    public void OnlyTheTabAPressCrossesToTakesFocus()
+    {
+        Assert.Equal(Control.FocusModeEnum.None, LibraryTabArt.FocusModeFor(current: true));
+        Assert.Equal(Control.FocusModeEnum.All, LibraryTabArt.FocusModeFor(current: false));
+    }
+
     /// <summary>The names <c>ImageHelper.GetRoomIconPath</c> produces for the run-history
     /// screen, and no icon at all for a kind nothing established - the game draws an
     /// unknown room and an event as the same question mark, and the strip must not say

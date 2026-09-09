@@ -70,8 +70,7 @@ internal static class LibraryTabArt
         tab.CustomMinimumSize = at.Size;
         // The hover scale grows from the tab's centre, as the game's does
         tab.PivotOffset = at.Size / 2f;
-        // Reachable from a controller, like every other control in the band
-        tab.FocusMode = Control.FocusModeEnum.All;
+        tab.FocusMode = FocusModeFor(current);
         parent.AddChild(tab);
 
         tab.SetLabel(label);
@@ -88,6 +87,19 @@ internal static class LibraryTabArt
         if (lockTooltip is { Length: > 0 } tooltip) AddLock(tab, tooltip);
         return tab;
     }
+
+    /// <summary>
+    /// Whether a tab is a controller focus stop.
+    ///
+    /// The game's own <c>settings_tab.tscn</c> leaves <c>focus_mode</c> unset, so
+    /// <c>NClickableControl</c> reads as not controller-navigable and a native tab is
+    /// never stopped on; its manager switches tabs on the shoulder hotkeys instead.
+    /// This band has no hotkeys, so the tab a press would actually cross to stays a
+    /// stop - it is the only controller route to the other tab - and the one you are
+    /// on, whose press does nothing, is not.
+    /// </summary>
+    internal static Control.FocusModeEnum FocusModeFor(bool current) =>
+        current ? Control.FocusModeEnum.None : Control.FocusModeEnum.All;
 
     private static void AddLock(NSettingsTab tab, string tooltip)
     {
