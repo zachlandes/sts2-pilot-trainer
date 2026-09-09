@@ -74,13 +74,47 @@ public sealed class FightResultPanelTests
 
         while (true)
         {
-            foreach (var label in Descendants(panel).OfType<Label>())
+            var turnLabels = Descendants(panel).OfType<Label>()
+                .Where(label =>
+                {
+                    var name = label.Name.ToString();
+                    return name.StartsWith("Turn_", StringComparison.Ordinal) &&
+                           name.Count(character => character == '_') == 1;
+                })
+                .ToList();
+            var turns = turnLabels
+                .Select(label => int.Parse(label.Text, System.Globalization.CultureInfo.InvariantCulture))
+                .Order()
+                .ToList();
+            foreach (var label in turnLabels)
             {
-                var name = label.Name.ToString();
-                if (!name.StartsWith("Turn_", StringComparison.Ordinal) || name.Count(character => character == '_') != 1)
-                    continue;
                 reached.Add(int.Parse(label.Text, System.Globalization.CultureInfo.InvariantCulture));
                 Assert.True(label.Size.Y >= text.ListNumeral.Size);
+            }
+
+            var chartTurns = Descendants(panel).OfType<Label>()
+                .Where(label => label.Name.ToString().StartsWith("Chart_Turn_", StringComparison.Ordinal))
+                .Select(label => int.Parse(label.Text, System.Globalization.CultureInfo.InvariantCulture))
+                .Order();
+            var plottedTurns = Descendants(panel).OfType<ColorRect>()
+                .Where(point => point.Name.ToString().StartsWith("Chart_Enemy_Line_You_Point_", StringComparison.Ordinal))
+                .Select(point => int.Parse(point.Name.ToString().Split('_')[^1],
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .Order();
+            Assert.Equal(turns, chartTurns);
+            Assert.Equal(turns, plottedTurns);
+
+            var numerals = Descendants(panel).OfType<Label>()
+                .Where(label => label.Name.ToString().StartsWith("Chart_Turn_", StringComparison.Ordinal) ||
+                                label.Name.ToString().Contains("_Value_", StringComparison.Ordinal));
+            foreach (var series in numerals.GroupBy(label =>
+                         label.Name.ToString()[..label.Name.ToString().LastIndexOf('_')]))
+            {
+                var ordered = series.OrderBy(label => label.Position.X).ToList();
+                for (var index = 1; index < ordered.Count; index++)
+                {
+                    Assert.True(ordered[index - 1].Position.X + ordered[index - 1].Size.X <= ordered[index].Position.X);
+                }
             }
 
             var next = Descendants(panel).OfType<Button>()

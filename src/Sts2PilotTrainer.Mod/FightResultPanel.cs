@@ -344,9 +344,9 @@ internal static class FightResultPanel
                     250f * Unit,
                     height - headingsHeight - (ScreenPage.MinimumPerPage * preferredRowHeight)));
             var rowsHeight = height - headingsHeight - chartHeight;
-            var fits = Math.Max(
-                ScreenPage.MinimumPerPage,
-                (int)Math.Floor(rowsHeight / preferredRowHeight));
+            var rowPlaces = (int)Math.Floor(rowsHeight / preferredRowHeight);
+            var chartPlaces = (int)Math.Floor((width - (128 * Unit)) / (40 * Unit)) + 1;
+            var fits = Math.Max(ScreenPage.MinimumPerPage, Math.Min(rowPlaces, chartPlaces));
             var page = ScreenPage.For(screen.Turns.Count, fits, requestedPage);
             var rowHeight = Math.Min(44f * Unit, rowsHeight / fits);
             var turnWidth = 46f * Unit;
@@ -390,7 +390,7 @@ internal static class FightResultPanel
                     () => drawPage(page.Index + 1));
             }
 
-            Chart(panel, screen.Chart, x, y + height - chartHeight, width, chartHeight);
+            Chart(panel, screen.Chart, page, x, y + height - chartHeight, width, chartHeight);
         }
 
         private void PageButton(
@@ -461,7 +461,9 @@ internal static class FightResultPanel
         /// Two plots rather than four lines on one, and one ceiling for both, so a
         /// height on the upper plot means the same as a height on the lower one.
         /// </summary>
-        private void Chart(Control panel, FightResultChart chart, float x, float y, float width, float height)
+        private void Chart(
+            Control panel, FightResultChart chart, ScreenPage page,
+            float x, float y, float width, float height)
         {
             var headingHeight = Math.Min(SectionHeading.Size, Math.Max(1f, height - 3f));
             Text(panel, "Chart", chart.Heading, x, y, width, headingHeight, SectionHeading, SecondaryText);
@@ -477,17 +479,18 @@ internal static class FightResultPanel
             var plotHeight = Math.Max(1f, (remaining - axisHeight - potionHeight) / 2f);
             var firstPlot = y + headingHeight;
 
-            Plot(panel, "Chart.Enemy", chart, point => point.EnemyHealthLost, chart.EnemyMeasureLabel,
+            Plot(panel, "Chart.Enemy", chart, page, point => point.EnemyHealthLost, chart.EnemyMeasureLabel,
                 x, firstPlot, plotLeft, plotWidth, plotHeight);
-            Plot(panel, "Chart.Player", chart, point => point.HealthLost, chart.PlayerMeasureLabel,
+            Plot(panel, "Chart.Player", chart, page, point => point.HealthLost, chart.PlayerMeasureLabel,
                 x, firstPlot + plotHeight, plotLeft, plotWidth, plotHeight);
 
             var axis = firstPlot + (2 * plotHeight);
             Text(panel, "Chart.TurnAxis", chart.TurnLabel, x, axis, 108 * Unit, axisHeight, ListHeading, DimText,
                 HorizontalAlignment.Right);
-            for (var index = 0; index < chart.Turns.Count; index++)
+            for (var visible = 0; visible < page.Count; visible++)
             {
-                var at = X(plotLeft, plotWidth, index, chart.Turns.Count);
+                var index = page.First + visible;
+                var at = X(plotLeft, plotWidth, visible, page.Count);
                 Text(panel, $"Chart.Turn.{chart.Turns[index]}", chart.Turns[index].ToString(CultureInfo.InvariantCulture),
                     at - (14 * Unit), axis, 28 * Unit, axisHeight, ChartNumeral, SecondaryText, HorizontalAlignment.Center);
                 Potions(panel, chart, index, at, axis + axisHeight, potionHeight);
@@ -496,7 +499,8 @@ internal static class FightResultPanel
 
         /// <summary>One measure, both lines.</summary>
         private void Plot(
-            Control panel, string name, FightResultChart chart, Func<FightResultPoint, int?> measure, string label,
+            Control panel, string name, FightResultChart chart, ScreenPage page,
+            Func<FightResultPoint, int?> measure, string label,
             float x, float y, float plotLeft, float plotWidth, float height)
         {
             var labelHeight = Math.Min(ListHeading.Size, Math.Max(1f, height));
@@ -507,10 +511,10 @@ internal static class FightResultPanel
             baseline.Name = NodeName($"{name}.Baseline");
             panel.AddChild(baseline);
 
-            Line(panel, $"{name}.Line.You", chart, chart.Yours, measure, YouLine, plotLeft, plotWidth, y, height,
-                marker: false);
-            Line(panel, $"{name}.Line.Them", chart, chart.Theirs, measure, TheirLine, plotLeft, plotWidth, y, height,
-                marker: true);
+            Line(panel, $"{name}.Line.You", chart, page, chart.Yours, measure, YouLine,
+                plotLeft, plotWidth, y, height, marker: false);
+            Line(panel, $"{name}.Line.Them", chart, page, chart.Theirs, measure, TheirLine,
+                plotLeft, plotWidth, y, height, marker: true);
         }
 
         /// <summary>
@@ -521,21 +525,22 @@ internal static class FightResultPanel
         /// the axis. The break is the fact: there was no turn to measure.
         /// </summary>
         private void Line(
-            Control panel, string name, FightResultChart chart, FightResultSeries series,
+            Control panel, string name, FightResultChart chart, ScreenPage page, FightResultSeries series,
             Func<FightResultPoint, int?> measure, Color color, float plotLeft, float plotWidth, float y, float height,
             bool marker)
         {
             var ceiling = Math.Max(1, chart.Ceiling);
             var plotted = new List<(int Turn, int Value, Vector2 At)>();
-            for (var index = 0; index < series.Points.Count; index++)
+            for (var visible = 0; visible < page.Count; visible++)
             {
+                var index = page.First + visible;
                 if (measure(series.Points[index]) is not { } value) continue;
 
                 plotted.Add((
                     series.Points[index].Turn,
                     value,
                     new Vector2(
-                        X(plotLeft, plotWidth, index, chart.Turns.Count), y + height - (height * value / ceiling))));
+                        X(plotLeft, plotWidth, visible, page.Count), y + height - (height * value / ceiling))));
             }
 
             if (plotted.Count == 0) return;
