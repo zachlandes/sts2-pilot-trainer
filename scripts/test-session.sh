@@ -36,18 +36,39 @@ fi
 
 # An explicit template rather than `mktemp -t`, which means a prefix on macOS and a
 # template needing X's on GNU coreutils.
-transcript="$(mktemp "${TMPDIR:-/tmp}/sts2-test-session.XXXXXX")"
+if ! transcript="$(mktemp "${TMPDIR:-/tmp}/sts2-test-session.XXXXXX")"; then
+  echo
+  echo "TEST SESSION FAILED - its transcript could not be created."
+  exit 1
+fi
 trap 'rm -f "$transcript"' EXIT
 
 dotnet test "$@" 2>&1 | tee "$transcript"
-status="${PIPESTATUS[0]}"
+pipeline_status=("${PIPESTATUS[@]}")
+status="${pipeline_status[0]}"
+transcript_status="${pipeline_status[1]}"
 
-if grep -qE "$ABORT_MARKERS" "$transcript"; then
+if [ "$transcript_status" -ne 0 ]; then
+  echo
+  echo "TEST SESSION FAILED - its transcript could not be recorded."
+  exit 1
+fi
+
+grep -qE "$ABORT_MARKERS" "$transcript"
+marker_status="$?"
+
+if [ "$marker_status" -eq 0 ]; then
   echo
   echo "TEST SESSION ABORTED - it did not run to completion, so this is not a pass."
   echo "Any \"Passed!\" summary above counts only the tests that ran before the abort."
   echo "A session that times out under load needs TestSessionTimeout in .runsettings"
   echo "raised, or the hang that consumed the bound found; it never needs interpreting."
+  exit 1
+fi
+
+if [ "$marker_status" -ne 1 ]; then
+  echo
+  echo "TEST SESSION FAILED - its transcript could not be read."
   exit 1
 fi
 

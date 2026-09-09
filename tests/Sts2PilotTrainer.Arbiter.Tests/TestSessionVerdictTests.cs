@@ -77,6 +77,35 @@ public sealed class TestSessionVerdictTests : IDisposable
     }
 
     [Fact]
+    public void ATranscriptThatCannotBeCreatedFails()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var verdict = RunWithStubbedDotnet(
+            CompletedTranscript,
+            exitCode: 0,
+            environment: new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["TMPDIR"] = Path.Combine(_sandbox, "missing"),
+            });
+
+        AssertRefused(verdict);
+    }
+
+    [Fact]
+    public void ATranscriptThatCannotBeWrittenFails()
+    {
+        if (OperatingSystem.IsWindows()) return;
+
+        var verdict = RunWithStubbedDotnet(
+            CompletedTranscript,
+            exitCode: 0,
+            transcriptWriteFails: true);
+
+        AssertRefused(verdict);
+    }
+
+    [Fact]
     public void AFailedSessionKeepsTheToolsExitCode()
     {
         if (OperatingSystem.IsWindows()) return;
@@ -119,7 +148,11 @@ public sealed class TestSessionVerdictTests : IDisposable
     /// as told. A real abort cannot be asked for an exit code, and the pairing of a
     /// zero exit with an abort is exactly what the script must not be caught out by.
     /// </summary>
-    private Arbiter.Result RunWithStubbedDotnet(string transcript, int exitCode)
+    private Arbiter.Result RunWithStubbedDotnet(
+        string transcript,
+        int exitCode,
+        IReadOnlyDictionary<string, string>? environment = null,
+        bool transcriptWriteFails = false)
     {
         var tools = Path.Combine(_sandbox, "tools");
         Directory.CreateDirectory(tools);
@@ -131,12 +164,39 @@ public sealed class TestSessionVerdictTests : IDisposable
                 UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         }
 
-        return RunTestSession(
-            new Dictionary<string, string>(StringComparer.Ordinal)
+        var processEnvironment = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["PATH"] = tools + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"),
+        };
+        if (environment is not null)
+        {
+            foreach (var (name, value) in environment) processEnvironment[name] = value;
+        }
+
+        if (transcriptWriteFails)
+        {
+            var mktemp = Path.Combine(tools, "mktemp");
+            File.WriteAllText(mktemp,
+                "#!/usr/bin/env bash\nprintf '%s\\n' \"$BROKEN_TRANSCRIPT\"\n");
+            if (!OperatingSystem.IsWindows())
             {
-                ["PATH"] = tools + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"),
-            },
-            "a-session-the-stub-ignores");
+                File.SetUnixFileMode(mktemp,
+                    UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+            processEnvironment["BROKEN_TRANSCRIPT"] = Path.Combine(_sandbox, "missing", "transcript");
+        }
+
+        return RunTestSession(processEnvironment, "a-session-the-stub-ignores");
+    }
+
+    private static void AssertRefused(Arbiter.Result verdict)
+    {
+        Assert.NotEqual(0, verdict.ExitCode);
+        Assert.Contains(Failed, verdict.All, StringComparison.Ordinal);
+        Assert.DoesNotContain(Passed, verdict.All, StringComparison.Ordinal);
+        var lines = verdict.Output.Split(
+            '\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.StartsWith(Failed, lines[^1], StringComparison.Ordinal);
     }
 
     private static Arbiter.Result RunTestSession(
