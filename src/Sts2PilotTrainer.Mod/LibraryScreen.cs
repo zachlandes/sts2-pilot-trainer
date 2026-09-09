@@ -93,6 +93,10 @@ internal sealed record ScreenPane(
 /// <param name="ListNotice">A greyed plate at the head of the list saying what a
 /// player can do about what the list is not showing, or null. The rows still follow
 /// it: it explains an absence and hides nothing.</param>
+/// <param name="ListNoticeFallback">The same absence in one line over the tabs, said
+/// only where the column was too short to draw the plate. An absence explained twice
+/// reads as two faults and an absence explained nowhere is an empty list a player has
+/// no account of, so exactly one of the two is put up.</param>
 internal sealed record LibraryPage(
     string Title,
     IReadOnlyList<ScreenTab> Tabs,
@@ -110,7 +114,18 @@ internal sealed record LibraryPage(
     int Page = 0,
     int? SelectedRow = null,
     Action<long, string, string, string, bool>? ShareSubmitted = null,
-    string? ListNotice = null);
+    string? ListNotice = null,
+    string? ListNoticeFallback = null)
+{
+    /// <summary>What the body says once the plate's fate is known. The screen lays the
+    /// body out before the column is measured, so it is written with the fallback in it
+    /// and written again without it where the plate went up.</summary>
+    internal string? BodyWith(bool noticeDrawn)
+    {
+        if (noticeDrawn || ListNoticeFallback is not { Length: > 0 } fallback) return Body;
+        return Body is { Length: > 0 } body ? $"{body}\n{fallback}" : fallback;
+    }
+}
 
 /// <summary>
 /// The library's parchment furniture: the game's own panel, with the design's screen
@@ -187,6 +202,10 @@ internal static class LibraryScreen
     /// the plate's own text size.</summary>
     private const float NoticeGap = 0.6f;
 
+    /// <summary>How far the notice plate's sentences sit inside its edge, as a multiple
+    /// of the plate's own text size.</summary>
+    private const float NoticePad = 0.8f;
+
     /// <summary>How far under a row its second line sits, as a multiple of the row's own
     /// height. A row occupies its whole height, so anything under one clears it.</summary>
     private const float NoteDrop = 1.12f;
@@ -235,7 +254,7 @@ internal static class LibraryScreen
             var label = content.BodyLabel();
             label.BbcodeEnabled = true;
             label.ScrollActive = true;
-            content.SetText(page.Title, page.Body ?? string.Empty);
+            content.SetText(page.Title, page.BodyWith(noticeDrawn: false) ?? string.Empty);
             ReservePageRoom(content, page);
 
             ShareFields? share = null;
@@ -282,7 +301,9 @@ internal static class LibraryScreen
 
             var listWidth = page.Pane is null ? area.Size.X : area.Size.X * ListShare;
             var first = AddRows(
-                content, page, new Rect2(area.Position.X, band, listWidth, area.End.Y - band));
+                content, page, new Rect2(area.Position.X, band, listWidth, area.End.Y - band),
+                out var noticeDrawn);
+            if (noticeDrawn) content.SetText(page.Title, page.BodyWith(true) ?? string.Empty);
 
             if (page.Pane is { } pane)
             {
@@ -444,7 +465,9 @@ internal static class LibraryScreen
         label.CustomMinimumSize = new Vector2(label.CustomMinimumSize.X, 0f);
         label.Size = new Vector2(
             label.Size.X,
-            string.IsNullOrEmpty(page.Body) ? 0f : Math.Min(label.Size.Y, content.NoButton.Size.Y));
+            string.IsNullOrEmpty(page.BodyWith(noticeDrawn: false))
+                ? 0f
+                : Math.Min(label.Size.Y, content.NoButton.Size.Y));
     }
 
     /// <summary>
@@ -548,8 +571,10 @@ internal static class LibraryScreen
     /// how many rows are drawn: room for fewer than a page is refused by
     /// <see cref="ScreenPage.For"/> rather than drawn over.
     /// </summary>
-    private static Control? AddRows(NVerticalPopup content, LibraryPage page, Rect2 at)
+    private static Control? AddRows(
+        NVerticalPopup content, LibraryPage page, Rect2 at, out bool noticeDrawn)
     {
+        noticeDrawn = false;
         var rows = page.Rows;
         var prototype = content.NoButton;
         var noted = rows.Any(row => SupportingText(row) is not null);
@@ -595,9 +620,16 @@ internal static class LibraryScreen
         var pinned = rows.Where(row => row.Pinned).ToList();
         if (page.ListNotice is { Length: > 0 } notice)
         {
+            var noticeText = GameText.Scene(NativeTextRole.Secondary);
             var allotted = NoticeBudget(
-                bottom - top, step, NoticeHeight(notice, at.Size.X), pinned.Count);
-            top = AddNotice(content, notice, new Vector2(at.Position.X, top), at.Size.X, allotted);
+                bottom - top, step, NoticeHeight(notice, at.Size.X, noticeText), pinned.Count);
+            noticeDrawn = NoticeDraws(allotted, noticeText.Size);
+            if (noticeDrawn)
+            {
+                AddNotice(
+                    content, notice, new Vector2(at.Position.X, top), at.Size.X, allotted, noticeText);
+                top += allotted;
+            }
         }
 
         var fits = (int)Math.Floor((bottom - top) / step);
@@ -648,19 +680,18 @@ internal static class LibraryScreen
     /// The greyed plate at the head of the list: the background dimmed a little and a
     /// few plain sentences on it saying what a player can do. It is the locked
     /// achievement's treatment - the thing is there, dimmed, and the words say what is
-    /// short - laid over the column rather than over one entry. It passes the mouse
-    /// through, so the rows under it keep their press.
+    /// short - at the head of the column, with the rows starting under it. It takes the
+    /// height <see cref="NoticeBudget"/> left it and takes no mouse, because it is a
+    /// plate and not a control.
     /// </summary>
-    private static float AddNotice(
-        NVerticalPopup content, string notice, Vector2 at, float width, float allotted)
+    private static void AddNotice(
+        NVerticalPopup content, string notice, Vector2 at, float width, float allotted,
+        GameTextStyle style)
     {
-        var style = GameText.Scene(NativeTextRole.Secondary);
-        var pad = style.Size * 0.8f;
+        var pad = style.Size * NoticePad;
         var textWidth = width - (pad * 2f);
         var height = allotted - (style.Size * NoticeGap);
         var textHeight = height - (pad * 2f);
-        if (textHeight < style.Size) return at.Y;
-
         content.AddChild(new ColorRect
         {
             Name = "RunmobileListNotice",
@@ -683,19 +714,29 @@ internal static class LibraryScreen
         style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", LibraryPalette.Muted);
         content.AddChild(label);
-        return at.Y + allotted;
     }
 
     /// <summary>The height the plate wants: its sentences wrapped to the column, the
     /// padding round them and the gap under it. Measured wrapped, because these are
     /// sentences and the column is narrower than one; a plate sized by counting
     /// newlines would end mid-sentence.</summary>
-    private static float NoticeHeight(string notice, float width)
+    private static float NoticeHeight(string notice, float width, GameTextStyle style)
     {
-        var style = GameText.Scene(NativeTextRole.Secondary);
-        var pad = style.Size * 0.8f;
+        var pad = style.Size * NoticePad;
         return WrappedHeight(notice, width - (pad * 2f), style) + (pad * 2f) + (style.Size * NoticeGap);
     }
+
+    /// <summary>
+    /// Whether the plate goes up at the height it was left.
+    ///
+    /// One line of its own text inside the padding and the gap is the least a plate can
+    /// say; under that there is nothing to read and the column keeps the height. This is
+    /// the one place that answer is given, because the body line over the tabs is the
+    /// other half of it - the absence is explained there instead, and two owners of one
+    /// answer is how a player gets both sentences or neither.
+    /// </summary>
+    internal static bool NoticeDraws(float allotted, float textSize) =>
+        allotted - (textSize * NoticeGap) - (textSize * NoticePad * 2f) >= textSize;
 
     /// <summary>
     /// How much of the list column the notice may take.

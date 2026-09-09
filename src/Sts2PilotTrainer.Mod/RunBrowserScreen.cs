@@ -102,11 +102,12 @@ internal static class RunBrowserScreen
                         !compatibleOnly)),
                 CodeSubmitted: code => Look(code, !community),
                 CodePlaceholder: LibraryCopy.RunCodeField,
-                Body: BrowserStatus(community && locked is not null),
+                Body: BrowserStatus(),
                 ListFooter: BrowserFooter(browser),
                 ListFooterTooltip: browser.NotShownTooltipBody,
                 SelectedRow: selectedRow,
-                ListNotice: community ? locked?.Notice : null));
+                ListNotice: community ? locked?.Notice : null,
+                ListNoticeFallback: SharingUnavailable()));
         }
         catch (Exception ex)
         {
@@ -221,20 +222,24 @@ internal static class RunBrowserScreen
     private sealed record IndexRequest(
         int Tab, bool CompatibleOnly, string? SelectedEntryId, long Surface, string Scope);
 
-    /// <param name="noticeShown">Whether the list already carries the lock's own plate,
-    /// which says the service is missing where the runs would be; the body then does
-    /// not say it a second time over the tabs.</param>
-    private static string? BrowserStatus(bool noticeShown = false)
-    {
-        if (!RunLibrary.SharingAvailable)
-            return noticeShown ? null : LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable);
-
-        return indexFailure is { Length: > 0 } failure &&
-               indexFailureScope is { } scope &&
-               RunLibrary.IsCurrentSharingScope(scope)
+    /// <summary>What the body says about a fetch this sitting attempted. A build with
+    /// no service attempts none, so there is nothing here to say about one.</summary>
+    private static string? BrowserStatus() =>
+        RunLibrary.SharingAvailable &&
+        indexFailure is { Length: > 0 } failure &&
+        indexFailureScope is { } scope &&
+        RunLibrary.IsCurrentSharingScope(scope)
             ? LibraryMarkup.Dim(failure)
             : null;
-    }
+
+    /// <summary>The missing service in one line, for the screen to put over the tabs
+    /// where the lock's own plate could not be drawn. The plate says it where the runs
+    /// would be, and <see cref="LibraryScreen.NoticeDraws"/> decides which of the two a
+    /// player reads.</summary>
+    private static string? SharingUnavailable() =>
+        RunLibrary.SharingAvailable
+            ? null
+            : LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable);
 
     /// <summary>
     /// The list, one row per run, in the groups the browser put them in.

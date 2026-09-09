@@ -200,7 +200,7 @@ The played tick is the mod's own, filled and on a disc, hung off the icon's top-
 The retail popup button lights up by writing to its image's HSV shader and its outline's blend mode, and a `Duplicate` shares both with its prototype; one hover then lit the tab, the row and the pane's ribbon at once.
 `LibraryRibbonArt.OwnMaterials` copies both before the duplicate enters the tree, so a highlight is on the control it acts on and nowhere else.
 
-`demo/RUNMOBILE-UI-NATIVE-PASS.md` is what all of this looks like running in the player's client, and the self-contained page beside it carries every state with a caption.
+`demo/RUNMOBILE-UI-NATIVE-PASS.html` is what all of this looks like running in the player's client: every state captured, with a caption, in one self-contained page.
 
 ## What a redesign owns, and what it does not
 

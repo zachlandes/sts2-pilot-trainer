@@ -140,6 +140,60 @@ public sealed class LibraryNoticeTests
     {
         Assert.Equal(0f, LibraryScreen.NoticeBudget(2 * 40f, 40f, wanted: 200f, pinned: 0));
     }
+
+    /// <summary>A plate with no room for a line of its own text does not go up, and the
+    /// body says the absence instead: the player reads one explanation, never none.
+    /// </summary>
+    [Fact]
+    public void AColumnTooShortForThePlatePutsTheReasonOverTheTabs()
+    {
+        const float textSize = 20f;
+        var allotted = LibraryScreen.NoticeBudget(2 * 40f, 40f, wanted: 200f, pinned: 0);
+        var drawn = LibraryScreen.NoticeDraws(allotted, textSize);
+        var page = Page(body: null, fallback: "no sharing service");
+
+        Assert.False(drawn);
+        Assert.Equal("no sharing service", page.BodyWith(drawn));
+    }
+
+    /// <summary>And where it does go up the body says nothing, so the absence is not
+    /// explained twice.</summary>
+    [Fact]
+    public void APlateThatGoesUpSilencesTheBody()
+    {
+        const float textSize = 20f;
+        var allotted = LibraryScreen.NoticeBudget(2000f, 40f, wanted: 200f, pinned: 0);
+        var drawn = LibraryScreen.NoticeDraws(allotted, textSize);
+
+        Assert.True(drawn);
+        Assert.Null(Page(body: null, fallback: "no sharing service").BodyWith(drawn));
+    }
+
+    /// <summary>The fallback joins what the body was already saying rather than
+    /// replacing it: a failed fetch and a missing service are two facts.</summary>
+    [Fact]
+    public void TheFallbackJoinsAnExistingBody()
+    {
+        var page = Page(body: "the index could not be fetched", fallback: "no sharing service");
+
+        Assert.Equal("the index could not be fetched\nno sharing service", page.BodyWith(false));
+        Assert.Equal("the index could not be fetched", page.BodyWith(true));
+    }
+
+    /// <summary>A plate with exactly one line of room is a plate: the boundary is where
+    /// its own text fits inside the padding and the gap under it.</summary>
+    [Theory]
+    [InlineData(20f * 3.2f, true)]
+    [InlineData((20f * 3.2f) - 0.1f, false)]
+    public void OneLineOfTextIsTheLeastAPlateSays(float allotted, bool drawn)
+    {
+        Assert.Equal(drawn, LibraryScreen.NoticeDraws(allotted, 20f));
+    }
+
+    private static LibraryPage Page(string? body, string? fallback) =>
+        new(
+            "Runmobile", Tabs: [], ListHeader: null, Rows: [], Pane: null, BackLabel: "Back",
+            Body: body, ListNotice: "the plate", ListNoticeFallback: fallback);
 }
 
 public sealed class GlyphFillTests
