@@ -71,6 +71,7 @@ directory outside the repository, never into it, and never commit anything you f
 there. `ilspycmd -p -o <scratch> build/lib/sts2.dll` does the job in about twenty
 seconds; on a Homebrew .NET it needs `DOTNET_ROOT` set to the `libexec` directory and
 `DOTNET_ROLL_FORWARD=Major`.
+The client's own command is found the same way and written in `ClientCommands` beside it: per verb the running client issues, the screen handler the retail button reaches, whether the driver calls the engine member or the host supplies the screen's command, and the lock that keeps the decision the recording's; its `Verify()` holds the table's verbs equal to `RetailPlayback.Verbs`, every handler and lock to this build, and every patch the journey hangs to a row or a written excuse, and `RecordedFightModule` refuses on it as the recorder refuses on a renamed member.
 
 **Provenance is not decoration.** Every value in a manifest records whether it was
 observed, inferred, engine-produced, declared or captured, and each carries the
@@ -121,12 +122,13 @@ reader confidence, not arithmetic over the footage, not a screenshot of a mod li
 Those are filters worth having and they are not evidence: four of the ten history
 corruptions pass every arithmetic check the frames allow.
 
-**A fight's boundary is re-derived, never deserialized; a floor arrival with a live
-fight may be restored, and only through the one cache that verifies it.**
+**A boundary is re-derived, never deserialized, except at a floor arrival with a live
+fight, which may be restored - headlessly and in the client - and only through the one
+cache that verifies it.**
 `./scripts/arbiter snapshot-restore-probe` measured the game's own save round trip at a
 combat-start boundary on v0.111.0: `SerializableRun` carries the run's identity and
 hidden state - seed, every RNG stream position, act room set, deck order and relics - but
-no combat, so that boundary keeps meaning "replay the prefix".
+no combat, so a combat start that is not also a floor arrival keeps meaning "replay the prefix".
 `./scripts/arbiter floor-snapshot` measured the floor arrival, which is a different
 moment: the retail client takes its own run save inside `EnterMapPointInternal`, at the
 floor and before the room type is rolled, and restoring it through the retail continue
@@ -135,6 +137,10 @@ wherever a fight is live there. Where one is not, the live run is still carrying
 previous fight's finished `PlayerCombatState` and the save has no representation of it -
 the same run, a different canonical state - so `FloorEntrySnapshotEligibility` refuses it
 by rule rather than leaving it to be noticed.
+A snapshot binds by that moment and not by a plan's kind: the arrival and the fight the same map move dealt are one engine state and `RunCoverage` derives both digests from it, so `FloorEntrySnapshot.Binds` accepts any plan whose boundary is after the snapshot's own action and whose declared digest is the one the snapshot was verified at, and `enter-fight --fight n --restore` restores a fight past the first exactly as `--floor n --restore` does.
+`RetailPlayback.RouteTo` is the one reader of what that makes reachable in the client - walk, restore, restore then walk, or the first decision no route gets past - read from the recording alone, and `RetailPlayback.RestorableArrivals` is the manifest's reading of the live-fight rule: an arrival with a combat start declared at the same action.
+The run library offers on that answer and `RecordedFightRun.Start` executes it; nothing else re-derives reachability.
+Inside the client the restore is the retail continue handler's own path - `GameSession.PrepareRestoreInRunningGame` is its engine half and the public `NGame.LoadRun` its presentation half, with the save's own `preFinishedRoom` - and the save it continues is materialised by the packaged arbiter in its own process into `RunmobileStore`'s `snapshots/cache`, never by the mod.
 Both answers, their numbers and their limits are in
 [docs/native-replay-format.md](docs/native-replay-format.md).
 The cache is a derived one and stays that way: keyed by `SnapshotCacheKey` over the whole
@@ -150,9 +156,9 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 142
+**What CI cannot run is recorded by name.** On a runner without the game, the 147
 tests named in `scripts/expected-hosted-skips.txt` skip out of
-`Sts2PilotTrainer.Arbiter.Tests`' 219 and the job still reports success.
+`Sts2PilotTrainer.Arbiter.Tests`' 208 and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift
@@ -245,11 +251,13 @@ phase before `SiblingAssemblies` has said where the siblings are, and loading a 
 resolves its base class, the interfaces it implements and enough of its instance fields
 to lay it out. Method bodies, method signatures, static fields and reference-typed
 fields are resolved later and are fine. The shapes are not the rule and naming them is
-how the rule was too narrow four times running - a generic built over a sibling type
-has done it, a type implementing a sibling interface has, and so has a *lambda*, because
-a closure is a compiler-written class whose fields are whatever it captured. Run
+how the rule was too narrow five times running - a generic built over a sibling type
+has done it, a type implementing a sibling interface has, so has a *lambda*, because
+a closure is a compiler-written class whose fields are whatever it captured, and so has
+an *async method*, because its state machine is a struct whose fields are its awaiters
+and a `Task<T>` over a sibling type is one. Run
 `ModAssemblyLoadOrderTests` against a new type rather than judging its shape; it is the
-only thing here that reproduces the game's own condition. It has fired five times, twice
+only thing here that reproduces the game's own condition. It has fired six times, twice
 through a green CI run. `DelegatingFightSampleSink` is how the mod reaches an interface
 it may not implement.
 `./scripts/install-mod.sh` is the one
@@ -269,8 +277,9 @@ Turning the filter off reveals incompatible runs as disabled rows, and an exact 
 The player-facing tabs are Others and Mine; `LibraryTab.Community` and `LibraryTab.MyRuns` are internal names only.
 An online row's identity is its share id and code, while `RunId` remains the manifest's identity; two submissions of one run are two rows and each resolves through its own share.
 Where a player can be stood is the recording's own `boundaries[]`, read through `RunView`, so no row can offer somewhere `RecordedFightEntry` would refuse; `RecordedFightRun.Start` takes the plan, because there is still one playback path.
-A boundary existing and a boundary being reachable are two facts and a row needs both: `RunViewPosition.Reachable` asks `RetailPlayback` whether this client can walk the recording's own decisions that far, and `Playable` folds it in beside the run's start and an unfinished fight, so every surface that reads that rule - the play-from row, Continue, Start the run over, both strips and the run-history plate - refuses in the same words rather than constructing a run and aborting mid-journey.
-On this build that leaves supported first-fight prefixes reachable and everything past the first fight refused by name.
+A boundary existing and a boundary being reachable are two facts and a row needs both: `RunViewPosition.Reachable` asks `RetailPlayback.RouteTo` whether this client has a route there - walking the recording's own decisions, or restoring the game's own save from a floor arrival with a live fight - and `Playable` folds it in beside the run's start and an unfinished fight, so every surface that reads that rule - the play-from row, Continue, Start the run over, both strips and the run-history plate - refuses in the same words rather than constructing a run and aborting mid-journey.
+On this build that leaves the first fight reachable by walking, every later fight whose arrival dealt it reachable by restoring, and every floor between fights refused by name, because reaching one means playing the fight before it.
+`OwnRunPlaybackTests` drives every row the library offers on both committed native recordings to the engine's own entry, so the offer and the entry cannot disagree behind a green suite.
 `RunProgress` under the store holds fight ordinals and nothing resumable - it is the pips and Continue's number, never a save.
 What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [docs/in-game-host.md](docs/in-game-host.md) owns the accepted parchment design it draws.
 
@@ -282,7 +291,7 @@ Whether a run may be *recorded* is the other question and has the other answer: 
 `RunmobileStore` is the only thing in the mod that writes, under `user://Runmobile/` scoped by the game's own resolved platform, account and profile - taken whole from `UserDataPathProvider`, never reassembled here, and never part of an exported recording's identity.
 `ProfileWriteBarrier` is a different thing and stays as it is: it suppresses the game's own writes during a trainer run.
 `./scripts/protected-files.sh` is how "nothing outside that subtree changed" is measured rather than asserted.
-Removing is a write and goes through the same gate - `RunmobileStore.Remove` names one file and refuses a directory, while `RemoveTree` is reserved for the temporary publication workspace - and *which* files is `RecordingRetention`'s, so the one operation that cannot be undone does not also pick its own targets.
+Removing is a write and goes through the same gate - `RunmobileStore.Remove` names one file and refuses a directory, while `RemoveTree` is reserved for the derived trees a subprocess wrote - the publication workspace, a snapshot materialisation's work directory and the snapshot cache - and *which* files is `RecordingRetention`'s, so the one operation that cannot be undone does not also pick its own targets.
 The one recording it never names, under any policy, is the run the game can currently Continue: a journal deleted under a live run is one the recorder picks up again and publishes as a run it watched from the start.
 The player's `settings.json` says how many runs to keep and can ask for them all to be removed; both are `RecordingLibrary.Cull` with a different number, applied at the shell's singleplayer-menu patch and again at `RunmobileMod.EnsureAdopted`, because those are the first moment there is a profile and the last moment before any journal is open, once for each save profile the process plays as rather than once for the process.
 The retention policy, removal request, index-fetch choice and main-menu row have controls, and they are one row rather than a section: `MyRunsRow` in `Sts2PilotTrainer.Trainer` derives every line the way `PlaybackTransport.For` derives the transport, `MyRunsSettingsRow` draws it, `MyRunsSettings` wires it to the disk, and the run library's own module places it beside the game's modding settings entry point.
@@ -316,7 +325,7 @@ test. That document also names three limits this path does not remove.
 
 **Standing somebody in a recorded fight has one owner.**
 `RecordedFightEntry` constructs the run, makes the recording's decisions in order and refuses a boundary that is not the recorded one; the mod owns retail timing, presentation, deviation locks and write isolation.
-It has two ways in and one proof: `StartHeadless` walks the decisions, `RestoreHeadless` continues the run from a verified floor-entry snapshot, and both end at the same `VerifyBoundary`. Restoring is an optimisation a consumer opts into with `enter-fight --restore`, which replays instead whenever the cache is absent, of another history or of another build.
+It has two ways in and one proof: `StartHeadless` walks the decisions, `RestoreHeadless` continues the run from a verified floor-entry snapshot at any boundary on the way and walks whatever is left, and both end at the same `VerifyBoundary`; `PrepareInRunningGame` and `PrepareRestoreInRunningGame` are their in-client siblings, through the same `Prepare`. Headlessly, restoring is an optimisation a consumer opts into with `enter-fight --restore`, which replays instead whenever the cache is absent, of another history or of another build; in the client it is the only way past a fight, and the route is `RetailPlayback.RouteTo`'s.
 The watched journey is one long-lived transport and not a popup per step: `PlaybackTransport` in `Sts2PilotTrainer.Trainer` owns what it says, `PlaybackTransportStrip` draws it, `PlaybackTransportDock` parents it to the run's own persistent interface so it survives the map-to-combat transition, and `RecordedFightReveal` lights the game's own selected state without clicking.
 Do not add a second playback path beside it; `docs/in-game-host.md` owns why.
 A screen the recording still has to answer is a screen the run is still inside, and the journey presses past nothing while `RecordedFightEntry.NextStepAnswersAScreenAlreadyOpened` - the event underneath an open card screen is mid-transition, and its proceed would dismiss a decision that has not been made.

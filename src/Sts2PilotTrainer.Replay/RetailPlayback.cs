@@ -63,4 +63,74 @@ public static class RetailPlayback
     public static bool CanReach(ReplayManifest recording, int boundarySeq) =>
         FirstRefusal(recording, boundarySeq) is null;
 
+    /// <summary>
+    /// The floor arrivals of this recording a run can be restored to, latest first.
+    ///
+    /// An arrival is restorable where a fight is live at it, which is the whole finding
+    /// of the floor-entry measurement (<c>FloorEntrySnapshotEligibility</c>): the game's
+    /// own save carries no combat, so an arrival with a finished fight still attached to
+    /// the live run restores into the same run and a different canonical state. This is
+    /// the manifest's reading of that rule - a combat start the recording declares at
+    /// the same action as the arrival, because the map move that arrived is the move
+    /// that dealt the fight - and it offers rather than authorises. <c>floor-snapshot</c>
+    /// asks the engine the same question of the replayed state before anything is
+    /// cached, and a restore is proved at the boundary like a walk is.
+    /// </summary>
+    public static IReadOnlyList<RestorableArrival> RestorableArrivals(ReplayManifest recording)
+    {
+        var combatStarts = recording.Boundaries
+            .Where(boundary => boundary.IsCombatStart)
+            .Select(boundary => boundary.AfterSeq)
+            .ToHashSet();
+
+        return recording.Boundaries
+            .Where(boundary => boundary.IsFloorEntry && boundary.Floor is not null)
+            .Where(boundary => combatStarts.Contains(boundary.AfterSeq))
+            .Select(boundary => new RestorableArrival(boundary.Floor!.Value, boundary.AfterSeq))
+            .OrderByDescending(arrival => arrival.AfterSeq)
+            .ToList();
+    }
+
+    /// <summary>
+    /// How a running client reaches the boundary after this action, or what stops it.
+    ///
+    /// Pure, and read from the recording alone: which decisions the client issues and
+    /// which arrivals the history can be restored to are both facts about the history,
+    /// so a row is offered or refused on the history and never on whether a cache file
+    /// happens to be present. The library asks this for every place it offers and the
+    /// journey asks it once and executes the answer, so the two cannot disagree about a
+    /// boundary.
+    ///
+    /// The walk comes first where it can: a player watching the recording's decisions
+    /// is the point of the journey, and a restore skips exactly that. Only the latest
+    /// restorable arrival before the boundary is tried, because an earlier one's tail
+    /// contains the later one's and could only meet the same refusal sooner.
+    /// </summary>
+    /// <param name="boundarySeq">The sequence number the boundary is immediately after,
+    /// as <see cref="FirstRefusal"/> takes it.</param>
+    public static PlaybackRoute RouteTo(ReplayManifest recording, int boundarySeq)
+    {
+        if (FirstRefusal(recording, boundarySeq) is not { } refusedOnTheWalk) return new PlaybackRoute.Walk();
+
+        var arrival = RestorableArrivals(recording).FirstOrDefault(candidate => candidate.AfterSeq <= boundarySeq);
+        if (arrival is null) return new PlaybackRoute.Unreachable(refusedOnTheWalk);
+
+        var refusedAfterRestore = recording.Actions
+            .Where(action => action.Seq > arrival.AfterSeq && action.Seq <= boundarySeq)
+            .OrderBy(action => action.Seq)
+            .FirstOrDefault(action => !Verbs.Contains(action.Verb));
+        if (refusedAfterRestore is not null) return new PlaybackRoute.Unreachable(refusedAfterRestore);
+
+        return arrival.AfterSeq == boundarySeq
+            ? new PlaybackRoute.Restore(arrival.Floor, arrival.AfterSeq)
+            : new PlaybackRoute.RestoreThenWalk(arrival.Floor, arrival.AfterSeq);
+    }
+
+    /// <summary>The same, for a plan: the route to the boundary the plan ends at.</summary>
+    public static PlaybackRoute RouteTo(ReplayManifest recording, IBoundaryPlan plan) =>
+        RouteTo(recording, plan.BoundarySeq);
 }
+
+/// <summary>One floor arrival a run can be restored to: the floor, and the action the
+/// arrival is immediately after.</summary>
+public sealed record RestorableArrival(int Floor, int AfterSeq);

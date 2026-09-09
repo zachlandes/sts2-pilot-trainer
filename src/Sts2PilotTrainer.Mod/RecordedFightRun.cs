@@ -5,6 +5,7 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Map;
+using MegaCrit.Sts2.Core.Multiplayer;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Rewards;
@@ -13,6 +14,7 @@ using MegaCrit.Sts2.Core.Nodes.Screens;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Saves.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
@@ -41,6 +43,20 @@ internal static class RecordedFightRun
     private static RecordedFightEntry? _entry;
     private static RecordingCredit? _credit;
     private static string? _progressRunId;
+
+    /// <summary>The floor the run was restored to from the game's own save, or null
+    /// for a run walked from its start. A fact for the transport, which must not
+    /// count decisions nobody was shown.</summary>
+    private static int? _restoredToFloor;
+
+    /// <summary>
+    /// Which journey this is, counted up at every start and every finish.
+    ///
+    /// The restore route waits on a subprocess before any run exists, so there is no
+    /// entry for <see cref="StillOurs"/> to compare against across that wait; this is
+    /// what a continuation that wakes after the wait compares instead.
+    /// </summary>
+    private static int _journey;
     private static PlayerFightObserver? _observer;
     private static FightResultScreen? _resultAfterMainMenu;
 
@@ -256,36 +272,170 @@ internal static class RecordedFightRun
         ProfileWriteBarrier.Raise();
         _credit = credit;
         _progressRunId = progressRunId ?? recording.RunId;
-        Transition(JourneyPhase.Starting);
+        var journey = ++_journey;
 
-        RecordedFightEntry? entry = null;
+        // How the client reaches this boundary, asked once of the one owner the library
+        // asked before it offered the row, and executed as answered. Nothing here
+        // re-derives reachability: a route the library would have refused arrives here
+        // only from a surface that did not ask, and is refused in the same words.
+        var route = RetailPlayback.RouteTo(recording, plan);
+
+        // Every await below is on a plain Task and the entry is read back off the
+        // field, never returned: an async method's state machine is a struct whose
+        // fields are its awaiters, and an awaiter generic over a sibling type is one
+        // of the shapes that stops the whole mod loading. See docs/in-game-host.md.
         try
         {
-            entry = RecordedFightEntry.PrepareInRunningGame(
-                recording, plan,
-                new RunningGameCommands(TravelOnTheGamesMapScreen, TakeTheRecordedCardOnTheGamesOwnScreen));
-            _entry = entry;
+            switch (route)
+            {
+                case PlaybackRoute.Walk:
+                    await ConstructAndLaunch(recording, plan);
+                    break;
+                case PlaybackRoute.Restore restore:
+                    await RestoreAndLoad(recording, plan, restore.Floor, restore.AfterSeq, journey);
+                    break;
+                case PlaybackRoute.RestoreThenWalk restore:
+                    await RestoreAndLoad(recording, plan, restore.Floor, restore.AfterSeq, journey);
+                    break;
+                case PlaybackRoute.Unreachable refused:
+                    throw new InvalidOperationException(
+                        $"Action {refused.Refused.Seq.ToString(CultureInfo.InvariantCulture)} is a " +
+                        $"'{refused.Refused.Verb}', which this version cannot replay inside the game, and no " +
+                        $"floor arrival with a live fight lies between it and {plan.Describe()} to restore from.");
+                default:
+                    throw new InvalidOperationException($"No journey executes a {route.GetType().Name}.");
+            }
 
-            // Awaiting the game's own start-run task is what puts the run on screen and
-            // in its first room; the task completes when it has.
-            await LaunchThroughTheGame(entry.PreparedRun);
-
-            if (!StillOurs(entry)) return;
+            if (journey != _journey) return;
+            var entry = _entry;
+            if (entry is null || !StillOurs(entry)) return;
 
             Transition(JourneyPhase.Watching);
-            SweepWhileTheGameIsBetweenScreens();
             Log.Info(
-                $"[{RunmobileMod.ModId}] constructed {credit.RunReference}; watching " +
-                $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)} recorded " +
-                "decision(s) before the fight", 2);
+                _restoredToFloor is { } floor
+                    ? $"[{RunmobileMod.ModId}] restored {credit.RunReference} to floor " +
+                      $"{floor.ToString(CultureInfo.InvariantCulture)} from the game's own save; " +
+                      $"{(entry.Decisions - entry.DecisionsMade).ToString(CultureInfo.InvariantCulture)} " +
+                      "recorded decision(s) left to watch before the fight"
+                    : $"[{RunmobileMod.ModId}] constructed {credit.RunReference}; watching " +
+                      $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)} recorded " +
+                      "decision(s) before the fight", 2);
+
+            // A run restored at its boundary has nothing left to show: the fight is
+            // opening, and the hand-over waits for it the way it does after a last
+            // decision. One with decisions left walks them from here as a constructed
+            // run walks them from its first room.
+            if (entry.AtBoundary)
+            {
+                HandOverWhenTheGameHasFinishedMoving();
+                return;
+            }
+
+            SweepWhileTheGameIsBetweenScreens();
             ArriveWhenTheGameHasFinishedMoving();
         }
         catch (Exception ex)
         {
-            // The entry is still null where preparation itself failed, and that
-            // refusal is this journey's own to report.
-            if (entry is null || StillOurs(entry)) Abandon(ex);
+            // Where preparation itself failed there is no entry yet, and that refusal
+            // is this journey's own to report - unless the journey has already ended
+            // under the wait, in which case it is nobody's.
+            if (journey == _journey) Abandon(ex);
         }
+    }
+
+    /// <summary>The walk route: the recording's run, constructed at its identity and
+    /// launched through the game's own start-run continuation.</summary>
+    private static Task ConstructAndLaunch(ReplayManifest recording, IBoundaryPlan plan)
+    {
+        Transition(JourneyPhase.Starting);
+        var entry = RecordedFightEntry.PrepareInRunningGame(recording, plan, Commands());
+        _entry = entry;
+
+        // Awaiting the game's own start-run task is what puts the run on screen and
+        // in its first room; the task completes when it has.
+        return LaunchThroughTheGame(entry.PreparedRun);
+    }
+
+    /// <summary>
+    /// The restore route: the game's own save from a floor arrival, materialised by the
+    /// packaged arbiter where the store has none, continued through the retail continue
+    /// path, and loaded through the game's own <c>LoadRun</c>.
+    ///
+    /// The wait for the arbiter is the one wait on this journey that happens before a
+    /// run exists, which is why it has a phase of its own and why the continuation
+    /// checks the journey counter rather than an entry. Returns null where the journey
+    /// ended under the wait, so the caller does nothing.
+    /// </summary>
+    private static async Task RestoreAndLoad(
+        ReplayManifest recording, IBoundaryPlan plan, int floor, int afterSeq, int journey)
+    {
+        Transition(JourneyPhase.Preparing);
+        var materialised = SnapshotStore.EnsureAsync(recording, new RestorableArrival(floor, afterSeq));
+        await OnTheGamesThread(materialised);
+        if (journey != _journey) return;
+        var save = materialised.Result;
+
+        Transition(JourneyPhase.Starting);
+        await PrepareRestore(recording, plan, save.SaveJson, save.AfterSeq);
+        if (journey != _journey) return;
+
+        var entry = _entry ?? throw new InvalidOperationException("The restored run was not prepared.");
+        _restoredToFloor = save.Floor;
+        if (entry.RunSaving)
+        {
+            throw new InvalidOperationException(
+                "The restored run would be saved by the game, and this mod does not stand a player in a run it " +
+                "cannot stop the game saving.");
+        }
+
+        Log.Info(
+            $"[{RunmobileMod.ModId}] continuing the recording's run from its save at floor " +
+            $"{save.Floor.ToString(CultureInfo.InvariantCulture)}, verified at {save.VerifiedDigest}", 2);
+        await LoadThroughTheGame(entry.PreparedRun, entry.PreFinishedRoom);
+    }
+
+    /// <summary>
+    /// Prepares the restored entry and keeps it on the field, so that the journey never
+    /// awaits a task generic over the entry's type; see <see cref="Start"/>.
+    ///
+    /// The continuation runs where the task completed, which under the write barrier is
+    /// this thread, synchronously: the one await inside is a write the barrier answers
+    /// as already done.
+    /// </summary>
+    private static Task PrepareRestore(ReplayManifest recording, IBoundaryPlan plan, string saveJson, int afterSeq) =>
+        RecordedFightEntry.PrepareRestoreInRunningGame(recording, plan, saveJson, afterSeq, Commands())
+            .ContinueWith(
+                static prepared => { _entry = prepared.Result; },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnRanToCompletion,
+                TaskScheduler.Default);
+
+    /// <summary>The decisions the host issues on the driver's behalf. One place, so the
+    /// two routes into a run hand the driver the same screens.</summary>
+    private static RunningGameCommands Commands() =>
+        new(TravelOnTheGamesMapScreen, TakeTheRecordedCardOnTheGamesOwnScreen);
+
+    /// <summary>
+    /// Waits for work done off the game's thread and resumes on it.
+    ///
+    /// The arbiter runs in its own process and is waited for on the thread pool; what
+    /// follows it constructs a run and touches the scene tree, which is the game's
+    /// thread's to do. The deferred call is the one scheduling primitive proved to run
+    /// here (see <see cref="ArriveWhenTheGameHasFinishedMoving"/>), and this is the
+    /// same shape the publication gate uses to come back.
+    /// </summary>
+    private static Task OnTheGamesThread(Task work)
+    {
+        var resumed = new TaskCompletionSource();
+        _ = work.ContinueWith(
+            done => Callable.From(() =>
+            {
+                if (done.IsFaulted) resumed.SetException(done.Exception!.InnerExceptions);
+                else if (done.IsCanceled) resumed.SetCanceled();
+                else resumed.SetResult();
+            }).CallDeferred(),
+            TaskScheduler.Default);
+        return resumed.Task;
     }
 
     // ── The transport ──────────────────────────────────────────────────────
@@ -1106,7 +1256,8 @@ internal static class RecordedFightRun
         _noteShown,
         Speed,
         AnythingPlayed(entry),
-        _afterTheFight is { } ended ? PostFightFactsFor(ended) : null);
+        _afterTheFight is { } ended ? PostFightFactsFor(ended) : null,
+        RestoredToFloor: _restoredToFloor);
 
     /// <summary>The same, once the run that fought is gone and only the ended fight
     /// remains: every fact about decisions is spent, and the post-fight choice is the
@@ -1930,6 +2081,31 @@ internal static class RecordedFightRun
             ?? throw new InvalidOperationException("NGame.StartRun did not return a task on this build.");
     }
 
+    /// <summary>
+    /// Hands a restored run to the game's own continue continuation.
+    ///
+    /// <c>NGame.LoadRun</c> is public and is the second half of the retail client's own
+    /// continue handler: it preloads the run's assets, launches, puts the run's scene on
+    /// screen, generates the map and loads into the latest map coordinate with the
+    /// save's own pre-finished room. The exact sibling of
+    /// <see cref="LaunchThroughTheGame"/>, reached by name rather than by reflection
+    /// because the game exposes it.
+    ///
+    /// The retail handler initialises the reaction container's networking with a fresh
+    /// singleplayer service immediately before it, and so does this: every retail route
+    /// into a run does, and mirroring the handler rather than guessing which of its
+    /// steps matter is the rule this whole host is built on. The new-run route does not,
+    /// and works; whether this one needs it is settled by doing what the handler does.
+    /// </summary>
+    private static Task LoadThroughTheGame(RunState runState, SerializableRoom? preFinishedRoom)
+    {
+        var game = NGame.Instance
+            ?? throw new InvalidOperationException("This process has no game to continue a run in.");
+
+        game.ReactionContainer.InitializeNetworking(new NetSingleplayerGameService());
+        return game.LoadRun(runState, preFinishedRoom);
+    }
+
     internal static void Finish()
     {
         var entry = _entry;
@@ -1939,6 +2115,8 @@ internal static class RecordedFightRun
         _observer = null;
         _afterTheFight = null;
         _progressRunId = null;
+        _restoredToFloor = null;
+        _journey++;
         _authorising = false;
         _playing = false;
         _committing = false;

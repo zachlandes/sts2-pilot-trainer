@@ -119,6 +119,22 @@ public static class TrainerCopy
     public static string StepCounter(int step, int count) =>
         $"{step.ToString(CultureInfo.InvariantCulture)} of {count.ToString(CultureInfo.InvariantCulture)}";
 
+    /// <summary>
+    /// What the counter reads in place of a step count on a run restored to a floor.
+    ///
+    /// Short because it sits where "17 of 17" sits; the sentence is
+    /// <see cref="RestoredToFloorNote"/>'s. It names the floor and not a number of
+    /// decisions, because none were shown.
+    /// </summary>
+    public static string RestoredToFloor(int floor) => $"Floor {floor.ToString(CultureInfo.InvariantCulture)}";
+
+    /// <summary>Said once, while the fight opens, on a run that was restored rather
+    /// than walked: the choices before this floor were the recording's and were not
+    /// shown.</summary>
+    public static string RestoredToFloorNote(int floor) =>
+        $"Restored to floor {floor.ToString(CultureInfo.InvariantCulture)} from the recording; the choices " +
+        "before it were not shown.";
+
     // The ledger's rows. The tag hanging above them carries the credit once, so the
     // rows do not: five rows each opening with the same name is the repetition the
     // caption line was replaced to avoid.

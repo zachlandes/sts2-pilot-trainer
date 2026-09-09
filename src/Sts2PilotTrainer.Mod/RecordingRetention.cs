@@ -58,14 +58,14 @@ internal static class RecordingRetention
     private static readonly Lock Gate = new();
 
     private static readonly HashSet<string> Applied = new(StringComparer.Ordinal);
-    private static readonly HashSet<string> ActivePublicationWorkspaces = new(StringComparer.Ordinal);
+    private static readonly HashSet<string> ActiveDerivedWorkspaces = new(StringComparer.Ordinal);
 
-    internal static void BeginPublicationWorkspace(string root, string relativeDirectory)
+    internal static void BeginDerivedWorkspace(string root, string relativeDirectory)
     {
-        lock (Gate) ActivePublicationWorkspaces.Add(PublicationKey(root, relativeDirectory));
+        lock (Gate) ActiveDerivedWorkspaces.Add(WorkspaceKey(root, relativeDirectory));
     }
 
-    internal static void RemovePublicationWorkspace(string root, string relativeDirectory)
+    internal static void RemoveDerivedWorkspace(string root, string relativeDirectory)
     {
         lock (Gate)
         {
@@ -75,17 +75,17 @@ internal static class RecordingRetention
             }
             finally
             {
-                ActivePublicationWorkspaces.Remove(PublicationKey(root, relativeDirectory));
+                ActiveDerivedWorkspaces.Remove(WorkspaceKey(root, relativeDirectory));
             }
         }
     }
 
-    internal static void ReleasePublicationWorkspace(string root, string relativeDirectory)
+    internal static void ReleaseDerivedWorkspace(string root, string relativeDirectory)
     {
-        lock (Gate) ActivePublicationWorkspaces.Remove(PublicationKey(root, relativeDirectory));
+        lock (Gate) ActiveDerivedWorkspaces.Remove(WorkspaceKey(root, relativeDirectory));
     }
 
-    private static string PublicationKey(string root, string relativeDirectory) =>
+    private static string WorkspaceKey(string root, string relativeDirectory) =>
         Path.Combine(root, relativeDirectory);
 
     /// <summary>
@@ -125,21 +125,51 @@ internal static class RecordingRetention
         }
     }
 
+    /// <summary>The roots a subprocess works under for a while and never keeps: the
+    /// publication gate's, and a snapshot materialisation's.</summary>
+    private static readonly string[] DerivedWorkspaceRoots = ["publication", SnapshotStore.WorkDirectory];
+
     private static void RemoveAbandonedPublicationWorkspaces(string root)
     {
-        const string publication = "publication";
-        var directory = RunmobileStore.PathOf(publication);
-        if (!Directory.Exists(directory)) return;
-
-        foreach (var workspace in Directory.EnumerateDirectories(directory))
+        foreach (var derived in DerivedWorkspaceRoots)
         {
-            var relative = $"{publication}/{Path.GetFileName(workspace)}";
-            if (!ActivePublicationWorkspaces.Contains(PublicationKey(root, relative)))
+            var directory = RunmobileStore.PathOf(derived);
+            if (!Directory.Exists(directory)) continue;
+
+            foreach (var workspace in Directory.EnumerateDirectories(directory))
+            {
+                var relative = $"{derived}/{Path.GetFileName(workspace)}";
+                if (!ActiveDerivedWorkspaces.Contains(WorkspaceKey(root, relative)))
+                    RunmobileStore.RemoveTree(root, relative);
+            }
+
+            if (!Directory.EnumerateFileSystemEntries(directory).Any())
+                RunmobileStore.RemoveTree(root, derived);
+        }
+    }
+
+    /// <summary>
+    /// Removes the cached snapshots of these runs, and of every run nothing names when
+    /// <paramref name="everything"/> is set.
+    ///
+    /// The snapshot cache is derived from a recording and is removed with it: a save of
+    /// a run whose recording is gone is a file nothing can bind to, and a purge that
+    /// left it would be a purge that kept something. <see cref="SnapshotStore"/> says
+    /// which directory is which run's; this decides which go, and the store's tree
+    /// removal is the one thing that takes them.
+    /// </summary>
+    private static void RemoveSnapshots(string root, IReadOnlySet<string> runIds, bool everything)
+    {
+        foreach (var (relative, runId) in SnapshotStore.Cached())
+        {
+            if (everything || (runId is not null && runIds.Contains(runId)))
                 RunmobileStore.RemoveTree(root, relative);
         }
 
-        if (!Directory.EnumerateFileSystemEntries(directory).Any())
-            RunmobileStore.RemoveTree(root, publication);
+        if (!everything) return;
+        var cache = RunmobileStore.PathOf(SnapshotStore.CacheDirectory);
+        if (Directory.Exists(cache) && !Directory.EnumerateFileSystemEntries(cache).Any())
+            RunmobileStore.RemoveTree(root, SnapshotStore.CacheDirectory);
     }
 
     /// <summary>
@@ -174,6 +204,10 @@ internal static class RecordingRetention
         var bytes = recordings
             .SelectMany(recording => recording.FileNames)
             .Sum(file => RunmobileStore.SizeOf($"{RunRecorder.RecordingsDirectory}/{file}"));
+
+        // The snapshots of those same runs, because Remove takes them with the run and
+        // a figure that left them out would promise less than the press frees.
+        bytes += SnapshotStore.SizeOf(recordings.Select(recording => recording.RunId).ToHashSet(StringComparer.Ordinal));
 
         var settings = RunmobileSettings.Read();
         var continuable = ContinuableRun.StartedUtc();
@@ -259,6 +293,7 @@ internal static class RecordingRetention
                 went |= RunmobileStore.Remove($"{RunRecorder.RecordingsDirectory}/{file}");
             }
 
+            RemoveSnapshots(RunmobileStore.Root, new HashSet<string>([runId], StringComparer.Ordinal), everything: false);
             return went;
         }
     }
@@ -300,6 +335,15 @@ internal static class RecordingRetention
 
             if (went) removed++;
         }
+
+        // A purge takes every snapshot, the continuable run's included: its recording
+        // stays because the recorder is still writing it, and a snapshot is of the
+        // recording's run rather than of the live save, so nothing about the live run
+        // is lost with it.
+        RemoveSnapshots(
+            RunmobileStore.Root,
+            removing.Select(recording => recording.RunId).ToHashSet(StringComparer.Ordinal),
+            everything: settings.PurgeMyRuns);
 
         if (settings.PurgeMyRuns) RunmobileSettings.ClearPurgeRequest();
 
@@ -365,7 +409,7 @@ internal static class RecordingRetention
         lock (Gate)
         {
             Applied.Clear();
-            ActivePublicationWorkspaces.Clear();
+            ActiveDerivedWorkspaces.Clear();
         }
     }
 }

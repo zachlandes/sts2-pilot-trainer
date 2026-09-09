@@ -99,3 +99,164 @@ public sealed class RetailPlaybackTests
         Assert.True(RetailPlayback.CanReach(recording, boundarySeq: -1));
     }
 }
+
+/// <summary>
+/// How a running client reaches a boundary: walked, restored, or not at all, and what
+/// stops it.
+///
+/// The route is read from the recording alone. Whether a save is cached is not an
+/// input, because a row that was greyed over a missing file would be greyed over the
+/// wrong fact; the cache is materialised at the press where the history says a
+/// restore is possible.
+/// </summary>
+public sealed class RetailPlaybackRouteTests
+{
+    private static Fact<string> Digest(string value) => Fact<string>.Engine(value);
+
+    private static ActionRecord Action(int seq, ActionVerb verb) => new()
+    {
+        Seq = seq,
+        Verb = verb,
+        Source = FactSource.Captured,
+        Args = new Dictionary<string, string>(StringComparer.Ordinal),
+    };
+
+    /// <summary>
+    /// The shape of every real recording: a blessing and a move into the first fight,
+    /// the fight, its loot, a move into the second fight, that fight, its loot, and a
+    /// move into an event.
+    /// </summary>
+    private static ReplayManifest TwoFightsThenAnEvent() => Fixtures.ValidManifest() with
+    {
+        Checkpoints = [],
+        Boundaries =
+        [
+            ReplayBoundary.FloorEntry(floor: 2, afterSeq: 1, Digest("floor-2")),
+            ReplayBoundary.CombatStart(fight: 1, afterSeq: 1, Digest("fight-1")),
+            ReplayBoundary.FloorEntry(floor: 3, afterSeq: 6, Digest("floor-3")),
+            ReplayBoundary.CombatStart(fight: 2, afterSeq: 6, Digest("fight-2")),
+            ReplayBoundary.FloorEntry(floor: 4, afterSeq: 11, Digest("floor-4")),
+        ],
+        Actions =
+        [
+            Action(0, ActionVerb.ChooseNeowBlessing),
+            Action(1, ActionVerb.MapMove),
+            Action(2, ActionVerb.PlayCard),
+            Action(3, ActionVerb.EndTurn),
+            Action(4, ActionVerb.ClaimReward),
+            Action(5, ActionVerb.TakeCard),
+            Action(6, ActionVerb.MapMove),
+            Action(7, ActionVerb.PlayCard),
+            Action(8, ActionVerb.EndTurn),
+            Action(9, ActionVerb.ClaimReward),
+            Action(10, ActionVerb.SkipRewards),
+            Action(11, ActionVerb.MapMove),
+            Action(12, ActionVerb.ChooseEventOption),
+        ],
+    };
+
+    [Fact]
+    public void ARestorableArrivalIsOneWhereTheRecordingDeclaresACombatStartAtTheSameAction()
+    {
+        Assert.Equal(
+            [new RestorableArrival(3, 6), new RestorableArrival(2, 1)],
+            RetailPlayback.RestorableArrivals(TwoFightsThenAnEvent()));
+    }
+
+    /// <summary>The walk comes first where the client can walk: watching the decisions
+    /// is the point, and a restore skips exactly that.</summary>
+    [Fact]
+    public void TheFirstFightIsWalkedEvenThoughItsArrivalCouldBeRestored()
+    {
+        var route = RetailPlayback.RouteTo(TwoFightsThenAnEvent(), boundarySeq: 1);
+
+        Assert.IsType<PlaybackRoute.Walk>(route);
+        Assert.True(route.Reachable);
+    }
+
+    [Fact]
+    public void AFightPastTheFirstIsRestoredFromTheArrivalThatDealtIt()
+    {
+        var route = Assert.IsType<PlaybackRoute.Restore>(RetailPlayback.RouteTo(TwoFightsThenAnEvent(), 6));
+
+        Assert.Equal(3, route.Floor);
+        Assert.Equal(6, route.AfterSeq);
+        Assert.True(route.Reachable);
+    }
+
+    /// <summary>
+    /// A floor between fights is refused, and the refusal names the first decision
+    /// after the best restore point rather than the first in the run: the second
+    /// fight's first card, not the first fight's.
+    /// </summary>
+    [Fact]
+    public void AFloorBetweenFightsIsUnreachableAndNamesTheDecisionAfterTheBestRestorePoint()
+    {
+        var route = Assert.IsType<PlaybackRoute.Unreachable>(RetailPlayback.RouteTo(TwoFightsThenAnEvent(), 11));
+
+        Assert.False(route.Reachable);
+        Assert.Equal(7, route.Refused.Seq);
+        Assert.Equal(ActionVerb.PlayCard, route.Refused.Verb);
+    }
+
+    /// <summary>Where nothing on the way is restorable, the refusal is the first
+    /// decision the client cannot issue, exactly as <c>FirstRefusal</c> names it.</summary>
+    [Fact]
+    public void WithNoRestorePointTheRefusalIsTheFirstOnTheWalk()
+    {
+        var recording = TwoFightsThenAnEvent() with { Boundaries = [] };
+
+        var route = Assert.IsType<PlaybackRoute.Unreachable>(RetailPlayback.RouteTo(recording, 11));
+
+        Assert.Equal(2, route.Refused.Seq);
+        Assert.Equal(RetailPlayback.FirstRefusal(recording, 11), route.Refused);
+    }
+
+    /// <summary>
+    /// A boundary past a restorable arrival whose tail the client can walk is restored
+    /// and then walked. On this build no recording produces it - a fight is live at every
+    /// restorable arrival, so the next decision is the fight's - and the shape is here
+    /// for the day the fight can be walked, when it becomes the route to every floor
+    /// between fights. The fixture is synthetic for that reason.
+    /// </summary>
+    [Fact]
+    public void ARestorePointWithAWalkableTailIsRestoredThenWalked()
+    {
+        var recording = Fixtures.ValidManifest() with
+        {
+            Checkpoints = [],
+            Boundaries =
+            [
+                ReplayBoundary.FloorEntry(floor: 2, afterSeq: 3, Digest("floor-2")),
+                ReplayBoundary.CombatStart(fight: 1, afterSeq: 3, Digest("fight-1")),
+                ReplayBoundary.CombatStart(fight: 2, afterSeq: 5, Digest("fight-2")),
+            ],
+            Actions =
+            [
+                Action(0, ActionVerb.ChooseNeowBlessing),
+                Action(1, ActionVerb.PlayCard),
+                Action(2, ActionVerb.EndTurn),
+                Action(3, ActionVerb.MapMove),
+                Action(4, ActionVerb.ChooseEventOption),
+                Action(5, ActionVerb.ChooseEventOption),
+            ],
+        };
+
+        var route = Assert.IsType<PlaybackRoute.RestoreThenWalk>(RetailPlayback.RouteTo(recording, 5));
+
+        Assert.Equal(2, route.Floor);
+        Assert.Equal(3, route.AfterSeq);
+        Assert.True(route.Reachable);
+    }
+
+    [Fact]
+    public void APlanRoutesToItsOwnBoundary()
+    {
+        var recording = EntryFixtures.WholeRun();
+        var fight = RecordedFightPlan.For(recording, 2);
+
+        Assert.Equal(
+            RetailPlayback.RouteTo(recording, fight.BoundarySeq),
+            RetailPlayback.RouteTo(recording, fight));
+    }
+}

@@ -506,19 +506,73 @@ public sealed class RunViewTests
         Assert.Equal(LibraryCopy.FloorIsYours, RunView.For(ThreeFloors(), RunProgress.Empty).FloorNote);
     }
 
-    // ── What the client can actually be walked to ──────────────────────────
+    // ── What the client can actually reach ─────────────────────────────────
     //
     // The library used to offer every place the recording proved. Reaching any of them
-    // past the first fight means replaying that fight through the retail client, which
+    // past the first fight means getting through that fight in the retail client, which
     // the driver refuses - so the offer built the run, showed a decision or two and
     // then aborted in front of the player. These pin the other half of the rule: a
     // place exists, and a place can be reached, and both have to be true before a row
-    // is enabled.
+    // is enabled. Reached is RetailPlayback.RouteTo's answer: walked from the start, or
+    // restored from a floor arrival where a fight is live - which every fight past the
+    // first is, and no floor between fights is.
+
+    /// <summary>
+    /// The same three floors with an event on the third instead of a fight: reached only
+    /// by walking the first fight, which the client does not, and restorable from
+    /// nowhere, because a floor with no live fight at its arrival cannot be cached.
+    /// </summary>
+    private static ReplayManifest ThreeFloorsWithAnEventAsPlayed() => Recording(
+        [
+            ReplayBoundary.FloorEntry(floor: 2, afterSeq: 1, Digest("floor-2")),
+            ReplayBoundary.CombatStart(fight: 1, afterSeq: 1, Digest("fight-1")),
+            ReplayBoundary.FloorEntry(floor: 3, afterSeq: 6, Digest("floor-3")),
+        ],
+        [
+            Decision(0, ActionVerb.ChooseNeowBlessing),
+            Decision(1, ActionVerb.MapMove),
+            Combat(2),
+            Decision(3, ActionVerb.EndTurn),
+            Decision(4, ActionVerb.ClaimReward),
+            Decision(5, ActionVerb.TakeCard),
+            Decision(6, ActionVerb.MapMove),
+            Decision(7, ActionVerb.ChooseEventOption),
+        ]);
+
+    /// <summary>
+    /// A recording whose first fight begins inside an event rather than at a floor
+    /// arrival, behind a fight the client cannot play: no arrival on the way has a live
+    /// fight, so there is nothing to restore from and nothing is offered.
+    /// </summary>
+    private static ReplayManifest FirstFightBehindAFightAndInsideAnEvent() => Recording(
+        [
+            ReplayBoundary.FloorEntry(floor: 2, afterSeq: 2, Digest("floor-2")),
+            ReplayBoundary.CombatStart(fight: 1, afterSeq: 3, Digest("fight-1")),
+        ],
+        [
+            Decision(0, ActionVerb.ChooseNeowBlessing),
+            Combat(1),
+            Decision(2, ActionVerb.MapMove),
+            Decision(3, ActionVerb.ChooseEventOption),
+        ]);
+
+    [Fact]
+    public void AFightPastTheFirstIsAPlaceThisClientOffersByRestoring()
+    {
+        var recording = ThreeFloorsAsPlayed();
+        var positions = RunView.PositionsIn(recording);
+
+        Assert.True(positions[1].Reachable);
+        Assert.True(positions[2].Reachable);
+        Assert.True(positions[2].Playable);
+        Assert.IsType<PlaybackRoute.Walk>(RetailPlayback.RouteTo(recording, positions[1].AfterSeq));
+        Assert.IsType<PlaybackRoute.Restore>(RetailPlayback.RouteTo(recording, positions[2].AfterSeq));
+    }
 
     [Fact]
     public void AFloorReachedOnlyThroughAnEarlierFightIsNotAPlaceThisClientOffers()
     {
-        var positions = RunView.PositionsIn(ThreeFloorsAsPlayed());
+        var positions = RunView.PositionsIn(ThreeFloorsWithAnEventAsPlayed());
 
         Assert.True(positions[1].Reachable);
         Assert.True(positions[1].Playable);
@@ -529,7 +583,7 @@ public sealed class RunViewTests
     [Fact]
     public void ThePlayFromRowSaysWhyRatherThanStandingSomebodyThere()
     {
-        var view = RunView.For(ThreeFloorsAsPlayed(), RunProgress.Empty, selectedFloor: 3);
+        var view = RunView.For(ThreeFloorsWithAnEventAsPlayed(), RunProgress.Empty, selectedFloor: 3);
         var row = PlayFrom(view);
 
         Assert.False(row.Enabled);
@@ -548,16 +602,52 @@ public sealed class RunViewTests
         Assert.Equal(1, row.Fight);
     }
 
+    /// <summary>Continue names the next unplayed fight, and that fight is reached by
+    /// restoring the arrival that dealt it.</summary>
+    [Fact]
+    public void ContinueReachesTheNextFightByRestoring()
+    {
+        var played = RunProgress.Empty.WithFightPlayed(Run, 1);
+        var view = RunView.For(ThreeFloorsAsPlayed(), played, selectedFloor: 2);
+        var row = RowOf(view, RunViewRowKind.Continue);
+
+        Assert.NotNull(row);
+        Assert.Equal(2, row.Fight);
+        Assert.Equal(3, row.Floor);
+        Assert.True(row.Enabled);
+        Assert.Null(row.Reason);
+        Assert.Equal(LibraryCopy.FloorLine(3), row.Note);
+    }
+
     /// <summary>
     /// Continue is refused rather than moved on to the next fight this build can reach.
     /// It means "the next fight you have not played from", and a row that quietly named
-    /// a different one would answer a question nobody asked.
+    /// a different one would answer a question nobody asked. A second fight that began
+    /// inside an event is one no route reaches: its floor's arrival has no live fight to
+    /// restore from, and the walk to it goes through the first fight.
     /// </summary>
     [Fact]
     public void ContinueRefusesRatherThanSkippingToAFightThisClientCanReach()
     {
+        var secondFightInsideAnEvent = Recording(
+            [
+                ReplayBoundary.FloorEntry(floor: 2, afterSeq: 1, Digest("floor-2")),
+                ReplayBoundary.CombatStart(fight: 1, afterSeq: 1, Digest("fight-1")),
+                ReplayBoundary.FloorEntry(floor: 3, afterSeq: 6, Digest("floor-3")),
+                ReplayBoundary.CombatStart(fight: 2, afterSeq: 7, Digest("fight-2")),
+            ],
+            [
+                Decision(0, ActionVerb.ChooseNeowBlessing),
+                Decision(1, ActionVerb.MapMove),
+                Combat(2),
+                Decision(3, ActionVerb.EndTurn),
+                Decision(4, ActionVerb.ClaimReward),
+                Decision(5, ActionVerb.TakeCard),
+                Decision(6, ActionVerb.MapMove),
+                Decision(7, ActionVerb.ChooseEventOption),
+            ]);
         var played = RunProgress.Empty.WithFightPlayed(Run, 1);
-        var view = RunView.For(ThreeFloorsAsPlayed(), played, selectedFloor: 2);
+        var view = RunView.For(secondFightInsideAnEvent, played, selectedFloor: 2);
         var row = RowOf(view, RunViewRowKind.Continue);
 
         Assert.NotNull(row);
@@ -578,7 +668,7 @@ public sealed class RunViewTests
         Assert.Null(row.Reason);
     }
 
-    /// <summary>Start the run over walks to fight 1, so it is offered wherever that
+    /// <summary>Start the run over goes to fight 1, so it is offered wherever that
     /// fight is reachable and refused with the same sentence where it is not.</summary>
     [Fact]
     public void StartTheRunOverFollowsTheSameRule()
@@ -588,15 +678,28 @@ public sealed class RunViewTests
         Assert.NotNull(reachable);
         Assert.True(reachable.Enabled);
 
-        var behindAFight = Recording(
-            [ReplayBoundary.CombatStart(fight: 1, afterSeq: 2, Digest("fight-1")),
-             ReplayBoundary.FloorEntry(floor: 2, afterSeq: 2, Digest("floor-2"))],
-            [Decision(0, ActionVerb.ChooseNeowBlessing), Combat(1), Decision(2, ActionVerb.MapMove)]);
-        var refused = RowOf(RunView.For(behindAFight, RunProgress.Empty), RunViewRowKind.StartOver);
+        var refused = RowOf(
+            RunView.For(FirstFightBehindAFightAndInsideAnEvent(), RunProgress.Empty), RunViewRowKind.StartOver);
 
         Assert.NotNull(refused);
         Assert.False(refused.Enabled);
         Assert.Equal(LibraryCopy.EarlierFightNotReplayable, refused.Reason);
+    }
+
+    /// <summary>A first fight behind a fight the client cannot play is still offered
+    /// where its own arrival dealt it: the arrival's save is what the journey restores.</summary>
+    [Fact]
+    public void StartTheRunOverRestoresAFirstFightDealtAtItsArrival()
+    {
+        var behindAFight = Recording(
+            [ReplayBoundary.CombatStart(fight: 1, afterSeq: 2, Digest("fight-1")),
+             ReplayBoundary.FloorEntry(floor: 2, afterSeq: 2, Digest("floor-2"))],
+            [Decision(0, ActionVerb.ChooseNeowBlessing), Combat(1), Decision(2, ActionVerb.MapMove)]);
+        var row = RowOf(RunView.For(behindAFight, RunProgress.Empty), RunViewRowKind.StartOver);
+
+        Assert.NotNull(row);
+        Assert.True(row.Enabled);
+        Assert.IsType<PlaybackRoute.Restore>(RetailPlayback.RouteTo(behindAFight, 2));
     }
 
     /// <summary>The strip is drawn from the same rule, so a cell a player can see is
@@ -616,12 +719,7 @@ public sealed class RunViewTests
     [Fact]
     public void AViewWithNothingOnOfferSaysNothingAboutSaving()
     {
-        var behindAFight = Recording(
-            [ReplayBoundary.CombatStart(fight: 1, afterSeq: 2, Digest("fight-1")),
-             ReplayBoundary.FloorEntry(floor: 2, afterSeq: 2, Digest("floor-2"))],
-            [Decision(0, ActionVerb.ChooseNeowBlessing), Combat(1), Decision(2, ActionVerb.MapMove)]);
-
-        var view = RunView.For(behindAFight, RunProgress.Empty);
+        var view = RunView.For(FirstFightBehindAFightAndInsideAnEvent(), RunProgress.Empty);
 
         Assert.All(view.Rows, row => Assert.False(row.Enabled));
         Assert.Null(view.NotSaved);

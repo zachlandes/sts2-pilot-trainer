@@ -57,13 +57,13 @@ public sealed class RecordingRetentionTests : IDisposable
     {
         RunmobileStore.Write("publication/active/evidence/gate.json", "{}");
         RunmobileStore.Write("publication/abandoned/evidence/gate.json", "{}");
-        RecordingRetention.BeginPublicationWorkspace(_root, "publication/active");
+        RecordingRetention.BeginDerivedWorkspace(_root, "publication/active");
 
         RecordingRetention.ApplyOnce();
 
         Assert.True(RunmobileStore.Exists("publication/active/evidence/gate.json"));
         Assert.False(Directory.Exists(RunmobileStore.PathOf("publication/abandoned")));
-        RecordingRetention.RemovePublicationWorkspace(_root, "publication/active");
+        RecordingRetention.RemoveDerivedWorkspace(_root, "publication/active");
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public sealed class RecordingRetentionTests : IDisposable
         RunmobileStore.Write("publication/other/evidence/gate.json", "{}");
         RunmobileStore.Write("recordings/kept.replay.json", "{}");
 
-        RecordingRetention.RemovePublicationWorkspace(_root, "publication/request");
+        RecordingRetention.RemoveDerivedWorkspace(_root, "publication/request");
 
         Assert.False(Directory.Exists(RunmobileStore.PathOf("publication/request")));
         Assert.True(RunmobileStore.Exists("publication/other/evidence/gate.json"));
@@ -91,7 +91,7 @@ public sealed class RecordingRetentionTests : IDisposable
             RunmobileStore.PathOf("recordings"));
 
         Assert.Throws<PathContainmentException>(() =>
-            RecordingRetention.RemovePublicationWorkspace(_root, "publication/request"));
+            RecordingRetention.RemoveDerivedWorkspace(_root, "publication/request"));
         Assert.True(RunmobileStore.Exists("recordings/kept.replay.json"));
     }
 
@@ -104,7 +104,7 @@ public sealed class RecordingRetentionTests : IDisposable
             _root);
 
         Assert.Throws<PathContainmentException>(() =>
-            RecordingRetention.RemovePublicationWorkspace(_root, "publication/recordings"));
+            RecordingRetention.RemoveDerivedWorkspace(_root, "publication/recordings"));
         Assert.True(RunmobileStore.Exists("recordings/kept.replay.json"));
     }
 
@@ -190,6 +190,96 @@ public sealed class RecordingRetentionTests : IDisposable
         Assert.Equal(
             ["navegreed-OJ-6QXhNgdg.replay.json", "notes.txt"], RunmobileStore.ListFileNames(Recordings));
         Assert.True(RunmobileStore.Exists(RunmobileSettings.FileName));
+    }
+
+    // ── The snapshot cache goes with the run ───────────────────────────────
+
+    /// <summary>A recording's cached snapshots are derived from it and go with it,
+    /// whichever way the recording goes; another run's stay.</summary>
+    [Fact]
+    public void RemovingARunRemovesItsSnapshotsAndLeavesAnotherRuns()
+    {
+        Record(Older);
+        Record(Newer);
+        Snapshot("older-floor-3", Older);
+        Snapshot("newer-floor-3", Newer);
+
+        Assert.True(RecordingRetention.RemoveRun(Older));
+
+        Assert.Equal([($"{SnapshotStore.CacheDirectory}/newer-floor-3", (string?)Newer)], SnapshotStore.Cached());
+    }
+
+    [Fact]
+    public void APolicyRemovesTheSnapshotsOfTheRunsItRemoves()
+    {
+        Record(Older);
+        Record(Newest);
+        Snapshot("older-floor-3", Older);
+        Snapshot("newest-floor-3", Newest);
+
+        Assert.Equal(1, RecordingRetention.Apply(Settings(keep: 1), NoContinuableRun));
+
+        Assert.Equal([($"{SnapshotStore.CacheDirectory}/newest-floor-3", (string?)Newest)], SnapshotStore.Cached());
+    }
+
+    /// <summary>A purge takes every snapshot, the continuable run's and an unreadable
+    /// one included: a snapshot is of the recording's run and never the live save, so
+    /// the continuable-run rule has nothing to keep here.</summary>
+    [Fact]
+    public void APurgeRemovesEverySnapshotIncludingTheContinuableRuns()
+    {
+        Record(Older);
+        Record(Newest);
+        Snapshot("older-floor-3", Older);
+        Snapshot("newest-floor-3", Newest);
+        RunmobileStore.Write($"{SnapshotStore.CacheDirectory}/stray/{FloorEntrySnapshot.MetadataFileName}", "?");
+        var continuable = RecordingLibrary.Index(RunmobileStore.ListFileNames(Recordings))
+            .Single(recording => recording.RunId == Newest).StartedUtc;
+
+        Assert.Equal(1, RecordingRetention.Apply(Settings(keep: 50, purge: true), continuable));
+
+        Assert.Equal([$"{Newest}.journal.jsonl", $"{Newest}.replay.json"], RunmobileStore.ListFileNames(Recordings));
+        Assert.Empty(SnapshotStore.Cached());
+        Assert.False(Directory.Exists(RunmobileStore.PathOf(SnapshotStore.CacheDirectory)));
+    }
+
+    /// <summary>The size figure counts a run's snapshots with the run, because Remove
+    /// takes them with it and the row promises what the press frees.</summary>
+    [Fact]
+    public void TheSizeFigureCountsARunsSnapshotsWithIt()
+    {
+        Record(Older);
+        var withoutSnapshots = RecordingRetention.OnDisk().Bytes;
+        Snapshot("older-floor-3", Older);
+
+        Assert.True(RecordingRetention.OnDisk().Bytes > withoutSnapshots);
+    }
+
+    /// <summary>A materialisation's work directory is a derived workspace like the
+    /// publication gate's, swept by the next retention pass when its process was
+    /// interrupted and left alone while it is live.</summary>
+    [Fact]
+    public void NextSafeRetentionPassRemovesAnInterruptedSnapshotWorkspace()
+    {
+        RunmobileStore.Write($"{SnapshotStore.WorkDirectory}/abandoned/recording.replay.json", "{}");
+        RecordingRetention.BeginDerivedWorkspace(_root, $"{SnapshotStore.WorkDirectory}/active");
+        RunmobileStore.Write($"{SnapshotStore.WorkDirectory}/active/recording.replay.json", "{}");
+
+        RecordingRetention.ApplyOnce();
+
+        Assert.False(Directory.Exists(RunmobileStore.PathOf($"{SnapshotStore.WorkDirectory}/abandoned")));
+        Assert.True(Directory.Exists(RunmobileStore.PathOf($"{SnapshotStore.WorkDirectory}/active")));
+        RecordingRetention.RemoveDerivedWorkspace(_root, $"{SnapshotStore.WorkDirectory}/active");
+    }
+
+    /// <summary>A cached snapshot directory, as the arbiter leaves one: the record
+    /// naming its run and the save beside it.</summary>
+    private static void Snapshot(string directory, string runId)
+    {
+        RunmobileStore.Write(
+            $"{SnapshotStore.CacheDirectory}/{directory}/{FloorEntrySnapshot.MetadataFileName}",
+            $$"""{"schema":"{{FloorEntrySnapshot.SchemaId}}","run_id":"{{runId}}"}""");
+        RunmobileStore.Write($"{SnapshotStore.CacheDirectory}/{directory}/{FloorEntrySnapshot.SaveFileName}", "{}");
     }
 
     [Fact]

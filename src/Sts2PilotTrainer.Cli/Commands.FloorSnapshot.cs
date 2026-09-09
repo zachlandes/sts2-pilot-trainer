@@ -359,7 +359,7 @@ internal static partial class Commands
             case "restore":
                 {
                     var saveJson = File.ReadAllText(WorktreePath.Require(savePath));
-                    using var entry = RecordedFightEntry.RestoreHeadless(manifest, plan, saveJson);
+                    using var entry = RecordedFightEntry.RestoreHeadless(manifest, plan, saveJson, plan.BoundarySeq);
                     var equality = entry.VerifyBoundary();
                     var state = entry.LiveState();
                     var identity = GameIdentity.Read();

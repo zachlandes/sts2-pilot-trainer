@@ -76,13 +76,23 @@ public sealed record FloorEntrySnapshot(
         var metadataPath = SnapshotCacheKey.ResolveCacheArtifact(directory, MetadataFileName);
         if (!File.Exists(metadataPath)) return null;
 
-        var snapshot = JsonSerializer.Deserialize<FloorEntrySnapshot>(
-                           File.ReadAllText(metadataPath), Format)
-                       ?? throw new ManifestException(
-                           $"The floor-entry snapshot at {metadataPath} could not be read.");
+        var snapshot = Parse(File.ReadAllText(metadataPath), metadataPath);
 
         return File.Exists(snapshot.SavePathIn(directory)) ? snapshot : null;
     }
+
+    /// <summary>
+    /// The record as it was written, from its own bytes.
+    ///
+    /// For a reader whose containment rule is not the worktree's: the in-game host
+    /// keeps its cache under the mod's own store and reads it through that store's
+    /// gate, so it hands the bytes here rather than a path. Nothing about what the
+    /// record means differs; <see cref="Binds"/> and <see cref="SaveIntegrity"/> are
+    /// asked of it exactly as of one <see cref="Read"/> returned.
+    /// </summary>
+    public static FloorEntrySnapshot Parse(string metadataJson, string describedAs = "the cache") =>
+        JsonSerializer.Deserialize<FloorEntrySnapshot>(metadataJson, Format)
+        ?? throw new ManifestException($"The floor-entry snapshot at {describedAs} could not be read.");
 
     /// <summary>
     /// Publishes a verified snapshot into the cache: the save first, then the metadata
@@ -99,12 +109,14 @@ public sealed record FloorEntrySnapshot(
         Directory.CreateDirectory(directory);
 
         AtomicFile.WriteAllText(SavePathIn(directory), saveJson);
-        AtomicFile.WriteAllText(
-            SnapshotCacheKey.ResolveCacheArtifact(directory, MetadataFileName),
-            JsonSerializer.Serialize(this, Format) + "\n");
+        AtomicFile.WriteAllText(SnapshotCacheKey.ResolveCacheArtifact(directory, MetadataFileName), Serialize());
 
         return directory;
     }
+
+    /// <summary>The record's bytes, as <see cref="WriteInto"/> writes them and
+    /// <see cref="Parse"/> reads them.</summary>
+    public string Serialize() => JsonSerializer.Serialize(this, Format) + "\n";
 
     /// <summary>Where this snapshot's save sits inside its own cache directory.</summary>
     public string SavePathIn(string cacheDirectory) =>
@@ -112,6 +124,13 @@ public sealed record FloorEntrySnapshot(
 
     /// <summary>
     /// Every reason this cached snapshot is not the one a plan asked for, or nothing.
+    ///
+    /// A snapshot binds a plan by the moment it was taken at rather than by the plan's
+    /// kind: the save is the game's own at one action, and every boundary the recording
+    /// declares after that action - the floor arrival and the fight the same move dealt
+    /// - is proved by the one state a restore reaches. The digest the recording
+    /// declares for <em>this</em> plan is compared against the digest the snapshot was
+    /// verified at, which is what keeps that more than an assertion.
     ///
     /// Read before the save is so much as opened. A cache directory is named by a hash
     /// of the key, so finding one is already strong evidence - and "strong evidence"
@@ -143,12 +162,15 @@ public sealed record FloorEntrySnapshot(
                 "snapshot of a different run or a different prefix of this one.");
         }
 
-        if (!string.Equals(BoundaryKind, plan.Kind, StringComparison.Ordinal) || Floor != plan.Floor ||
-            AfterSeq != plan.BoundarySeq)
+        // The moment and not the kind. A floor arrival and the combat start the same
+        // map move dealt are one engine state, and RunCoverage derives both digests from
+        // it, so a save taken at that action proves whichever boundary is declared
+        // there - the digest comparison below is what says so for this plan.
+        if (AfterSeq != plan.BoundarySeq)
         {
             refusals.Add(
                 $"The cached snapshot is {BoundaryKind} floor {Text(Floor)} after action {Text(AfterSeq)}, and " +
-                $"this plan reaches {plan.Kind} floor {Text(plan.Floor)} after action {Text(plan.BoundarySeq)}.");
+                $"this plan reaches {plan.Describe()} after action {Text(plan.BoundarySeq)}.");
         }
 
         if (!string.Equals(BuildVersion, expectedBuildVersion, StringComparison.Ordinal) ||

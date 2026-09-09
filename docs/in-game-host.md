@@ -101,6 +101,20 @@ player's save progress and which this run needs to be the recording's complete o
 See [environment identity](environment-identity.md) on why a supplied progress model
 is not a reading of anybody.
 
+**A fight past the first is reached by the game's own continue path, from the recording's own save.**
+The client issues four decisions and none inside a fight, so the walk reaches the first fight and no further.
+`RetailPlayback.RouteTo` says how each boundary is reached - walked, restored, restored then walked, or not at all, naming the decision that stops it - from the recording alone, and the run library offers on that answer while `RecordedFightRun.Start` executes it.
+A restore is the retail continue handler's own sequence, split the way the new-run path is split.
+`GameSession.PrepareRestoreInRunningGame` reads the save with the game's own reader, `RunState.FromSerializable`, awaits `RunManager.SetUpSavedSingleplayer` and puts `ShouldSave` back to false; the mod then initialises the reaction container's networking with a fresh `NetSingleplayerGameService` and awaits the public `NGame.LoadRun(runState, preFinishedRoom)`, which preloads, launches, puts the scene up, generates the map and loads into the latest map coordinate with the save's own pre-finished room.
+Every retail route into a run initialises that networking immediately before the load, so this one does too rather than guessing which of the handler's steps matter.
+`SetUpSavedSingleplayer` awaits `SaveManager.IncrementNumReloads`, which is a write of the run save; it is on `ProfileWriteBarrier`'s list by name and the barrier is raised before the route is chosen, so inside a trainer run it completes without touching the disk.
+The engine half is awaited rather than blocked on for exactly that reason: a write that did happen would post its continuation back to the game's thread.
+The save comes from the mod's own store, `snapshots/cache` under `RunmobileStore`, keyed by `SnapshotCacheKey` as the headless cache is, and the mod never writes into it.
+Where none is cached the packaged arbiter is run once, in its own process with its workspace pointed at the `snapshots` subtree, exactly as the publication gate runs it; it replays the history to the arrival, restores the save in a fresh process, and writes the cache only once the restored state reproduced the digest the recording declares.
+That wait is `JourneyPhase.Preparing`, a phase before any run exists, and nothing is drawn for it: the transport is parented to a run's own interface, and there is no run yet.
+The restored run is bound, hashed and proved at the boundary the way a walked one is, and the transport says `Floor n` and a once-only note in place of a count of decisions nobody was shown.
+`ClientCommands` is the table that says, per verb the client issues, which screen handler the retail button reaches, whether the driver calls the engine member or the host supplies the screen's command, and which members the deviation lock holds; `RecordedFightModule` refuses on its `Verify()` the way the recorder refuses on a renamed member.
+
 **Nothing this run does can be persisted.**
 `shouldSave: false` gates the run save and everything at the end of a run, and it
 does not gate two writes this fight's path reaches: winning a combat calls
@@ -947,7 +961,7 @@ The list keeps the settled compatibility filter and online sharing behavior rath
 The container holds one modal, so every step replaces the last, and the ribbon would otherwise drop a player out of the library from wherever they had got to.
 Each `LibraryPage` carries its way back rather than relying on a modal stack: an opened run returns to the tab and selection that opened it, and the submit flow returns to its selected Mine run.
 Only the browser itself, which is the screen a player enters on, closes the library.
-The tab travels as a bool because the way back ends up in a lambda's captured fields, and a captured `LibraryTab` has stopped this mod loading once already.
+The tab travels as a bool because the way back ends up in a lambda's captured fields, and a captured `LibraryTab` has stopped this mod loading once already; an async method's state machine has the same exposure through its awaiters, which is why the restore route awaits plain tasks and reads the entry back off a field.
 
 ## Four surfaces, and the hook each one needs
 
@@ -1095,7 +1109,7 @@ A file that is there and is not a settings object is refused rather than written
 
 Three properties hold, and each is asserted rather than described.
 Every file removed came back from `RecordingLibrary` as part of a recording written under the name this build writes, so a player's own file in that directory, a manifest they copied in, and this mod's `settings.json` all survive a purge.
-Every removal goes through `RunmobileStore.Remove`, which refuses a path outside the store, a path inside a game installation and a directory, exactly as a write does.
+Every removal of a recording's file goes through `RunmobileStore.Remove`, which refuses a path outside the store, a path inside a game installation and a directory, exactly as a write does; the snapshot cache directories the packaged arbiter wrote for a run go with the run through `RunmobileStore.RemoveTree`, the same removal the publication workspace uses, and a purge takes every one of them, the continuable run's included - a snapshot is of the recording's run and never of the live save.
 And the moment is the singleplayer menu: the shell's own patch asks for retention first and unconditionally, ahead of any question about which modules contributed a card and ahead of the adoption it attempts only where there is a card to draw, because keeping and removing a player's files is the shell's duty.
 `RunmobileMod.EnsureAdopted` asks for it again, so the recorder's own first adopted moment is covered too, and asking twice costs nothing: it is applied once per save profile whoever asks.
 No journal is being appended to when it runs - the recorder opens one only after passing that same adoption gate, and it has let go of the run it was recording before the singleplayer menu can be reached again - so a removal can never race a journal.

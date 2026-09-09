@@ -16,7 +16,7 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// The whole mod then fails to load with a `ReflectionTypeLoadException`, and the game
 /// reports "Loaded 0 mods".
 ///
-/// It has happened five times, in five shapes, and each time the rule written after it
+/// It has happened six times, in six shapes, and each time the rule written after it
 /// was narrower than the next one. `IReadOnlyList&lt;MenuRow&gt;` as a field was the
 /// first and cost a startup to learn; a `PlaybackSpeed` field was the second, which is
 /// why `_speedIndex` is an int; a `(Control, Func&lt;ElementSurface&gt;)?` field was
@@ -26,7 +26,13 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// a `LibraryTab` - a closure is a compiler-written class whose fields are whatever it
 /// captured, and nobody writing `() =&gt; OpenTab(tab)` is thinking about a field at
 /// all. Capture a string, an int or a bool and read the real thing back inside the
-/// body, which is what the run library's rows do.
+/// body, which is what the run library's rows do. The sixth was an <em>async
+/// method</em> returning <c>Task&lt;RecordedFightEntry&gt;</c> and another awaiting
+/// one: a state machine is a struct whose fields are its awaiters and its builder, and
+/// both are generic over the result. Await a plain <c>Task</c> and read the result back
+/// off a field, which is what <c>RecordedFightRun.Start</c> does; the same week a closure
+/// over an <c>ActionVerb</c> parameter did it too, so a lookup over a sibling enum is a
+/// loop.
 ///
 /// So this test is the arbiter and the prose is not. It reproduces the condition rather
 /// than any description of it: enumerate every type in the built mod with the siblings

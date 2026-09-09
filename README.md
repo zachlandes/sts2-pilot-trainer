@@ -284,10 +284,11 @@ engine-produced values, and is what `--floor` is demonstrated on:
 [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md) has it with its real
 output.
 
-A floor arrival can also be reached from the game's own save at that floor instead of by walking the decisions that lead to it.
+A floor arrival can also be reached from the game's own save at that floor instead of by walking the decisions that lead to it, and so can the fight the same move dealt.
 `./scripts/arbiter floor-snapshot <manifest> --floor <n>` materialises that snapshot, keyed by the whole history that produced it and cached only once a restore in a fresh process has reproduced the digest the recording declares.
-`enter-fight --floor <n> --restore` then uses it, and replays as usual where no such snapshot is there.
+`enter-fight --floor <n> --restore` and `enter-fight --fight <n> --restore` then use it, and replay as usual where no such snapshot is there.
 The boundary is proved the same way either way; only arrivals with a live fight are cached, and [docs/native-replay-format.md](docs/native-replay-format.md) owns why.
+Inside the game the same restore is how `Runmobile` stands a player in any fight of their own run past the first: the packaged arbiter materialises the save under the mod's store and the game's own continue path loads it.
 
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
 `engine-commands`, `verify-seed`, `determinism`, `negative-controls`,

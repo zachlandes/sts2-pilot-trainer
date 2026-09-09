@@ -100,6 +100,8 @@ Looking back, with a ledger of the decisions already made hung beneath - it exis
 Step is offered there and walks the view forward through the ledger rather than committing, so its tooltip drops the sentence promising a commit; the counter and the caption still say which decision is on screen.
 A control's tooltip is part of what it is: one that names an action it does not perform is the same defect as one that cannot be pressed.
 Opening, between the last recorded choice and the fight it leads to: the tag stays exactly where it was and everything that would move the run is refused, because a run with nothing left to commit must not still be offering to commit it. The speed control is not refused there - it does not move the run.
+On a run restored to a floor rather than walked there, Opening is the first state the tag is in, and its counter reads the floor - `Floor 3` - with no pips and a once-only note saying the choices before it were not shown, because a count of decisions would be the tag claiming somebody watched them.
+Preparing, before that, is the wait for the save to be materialised and draws nothing: there is no run for the tag to hang under yet.
 Between screens, the window between committing one decision and revealing the next: look back, play and step are all refused, on the same rule and for the same reason - a press there acts on a state nobody has been shown, and the reveal that follows discards it a frame later.
 The one exception is play once it is already running: it is drawn as pause there and pause is never refused, because it stops the run rather than moving it.
 The speed control is offered, as it is in Opening.

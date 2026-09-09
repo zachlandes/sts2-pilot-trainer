@@ -1,4 +1,5 @@
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Mod;
@@ -132,6 +133,18 @@ internal sealed class RecordedFightModule : IRunmobileModule
         {
             harmony.CreateClassProcessor(patchClass).Patch();
         }
+
+        // The client half of the command mapping, written into the game's own log
+        // beside the patch roster, because the headless listing cannot print it.
+        Log.Info(
+            $"[{RunmobileMod.ModId}] client commands: {ClientCommands.All.Count} verb(s) the running client " +
+            "issues", 2);
+        foreach (var command in ClientCommands.All)
+        {
+            Log.Info(
+                $"[{RunmobileMod.ModId}]   {command.Verb} via {command.DescribeHandler()} ({command.Issue}) " +
+                $"-> {command.Engine.Describe()}", 2);
+        }
     }
 
     private void Examine()
@@ -142,6 +155,18 @@ internal sealed class RecordedFightModule : IRunmobileModule
             _examined = true;
             try
             {
+                // The client's own commands, checked against this build before any
+                // journey can be offered: a lock hung on a renamed member is simply not
+                // there, and a screen handler that moved is a journey that aborts in
+                // front of a player. The recorder refuses its module the same way.
+                var problems = ClientCommands.Verify();
+                if (problems.Count > 0)
+                {
+                    _refusal = "the client's command table does not hold on this build: " +
+                               string.Join(" ", problems);
+                    return;
+                }
+
                 _recording = ShippedRecording.Read();
                 _recordedFights = ShippedRecording.ReadFights(_recording);
             }

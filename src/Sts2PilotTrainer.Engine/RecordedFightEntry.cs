@@ -177,8 +177,8 @@ public sealed class RecordedFightEntry : IDisposable
     }
 
     /// <summary>
-    /// Stands at a floor arrival by restoring the game's own save from that arrival,
-    /// rather than by replaying the decisions that reached it.
+    /// Stands at a boundary by restoring the game's own save from a floor arrival on
+    /// the way to it, rather than by replaying the decisions that reached the arrival.
     ///
     /// The second way into this type and deliberately not a second owner of what it
     /// means to be standing at a recording's boundary. Everything that decides whether
@@ -188,30 +188,62 @@ public sealed class RecordedFightEntry : IDisposable
     /// it declares. What differs is only how the run got here, and a run that got here
     /// wrongly fails the same comparison a drifted replay does.
     ///
-    /// Only a floor arrival, and only one where a fight is live. That scope is the whole
-    /// finding of the floor-entry measurement rather than caution: the game's own save
-    /// carries no combat, so an arrival with a finished fight still attached to the live
-    /// run restores into a state that is the same run and a different canonical state.
-    /// <see cref="FloorEntrySnapshotEligibility"/> owns the rule and
+    /// Any plan, from a save taken at a floor arrival where a fight is live. The
+    /// arrival and the fight the same move dealt are one engine state, so a save from
+    /// the arrival proves the fight's combat start as readily as the arrival itself;
+    /// what it may never be is a save from an arrival with no live fight, which is the
+    /// whole finding of the floor-entry measurement rather than caution.
+    /// <see cref="FloorEntrySnapshotEligibility"/> owns that rule and
     /// <see cref="FloorEntrySnapshot"/> is what refuses to cache one.
     ///
-    /// The plan's decisions are not replayed and are not skipped either - they are
-    /// already made, by the run that produced the save. <see cref="StepsTaken"/> says
-    /// so, so a host that asked for another step is refused in the same words it would
-    /// be after walking them.
+    /// The decisions up to the save are not replayed and are not skipped either - they
+    /// are already made, by the run that produced the save. <see cref="StepsTaken"/>
+    /// counts them, so a host that asked for a step past a boundary the save already
+    /// stands at is refused in the same words it would be after walking there, and a
+    /// host whose plan reaches further on walks the rest with
+    /// <see cref="AdvanceOneStep"/> exactly as it would from the run's start.
     /// </summary>
+    /// <param name="restoredAfterSeq">The action the save was taken immediately after,
+    /// which is the snapshot's own <c>after_seq</c>. It has to be an action of the plan's
+    /// prefix: a save from a moment the plan never passes through is a save of another
+    /// journey.</param>
     public static RecordedFightEntry RestoreHeadless(
-        ReplayManifest manifest, FloorEntryPlan plan, string saveJson, PlayerProgress? supplied = null)
+        ReplayManifest manifest, IBoundaryPlan plan, string saveJson, int restoredAfterSeq,
+        PlayerProgress? supplied = null)
     {
         var progress = supplied ?? SuppliedProgressFor(manifest);
         var entry = Prepare(
             manifest, plan, progress, runningGame: null,
             session => session.RestoreSavedRun(saveJson));
 
-        entry.StepsTaken = plan.PrefixActions.Count;
-        entry._restored = true;
+        entry.MarkRestoredThrough(restoredAfterSeq);
         return entry;
     }
+
+    /// <summary>
+    /// Records that the run came off a save taken after <paramref name="afterSeq"/>,
+    /// so that the steps up to it count as made and nothing before it is executed twice.
+    /// </summary>
+    private void MarkRestoredThrough(int afterSeq)
+    {
+        var through = Plan.PrefixActions.Count(action => action.Seq <= afterSeq);
+        if (through == 0 || Plan.PrefixActions[through - 1].Seq != afterSeq)
+        {
+            throw new EngineException(
+                $"The save was taken after action {afterSeq.ToString(CultureInfo.InvariantCulture)}, which is " +
+                $"not a decision on the way to {Plan.Describe()}. A save from a moment this plan never passes " +
+                "through is a save of another journey.");
+        }
+
+        StepsTaken = through;
+        RestoredAfterSeq = afterSeq;
+        _restored = true;
+    }
+
+    /// <summary>The action the save this run came off was taken after, or null for a
+    /// run that was walked from its start. Read by a host that has to say which floor
+    /// the run was restored to rather than claim decisions were watched.</summary>
+    public int? RestoredAfterSeq { get; private set; }
 
     /// <summary>
     /// Builds the recording's run inside the retail client and stops where
@@ -251,9 +283,63 @@ public sealed class RecordedFightEntry : IDisposable
             manifest.Environment.Acts.Value,
             progress));
 
+    /// <summary>
+    /// Continues the recording's run from the game's own save inside the retail client
+    /// and stops where presentation begins.
+    ///
+    /// The sibling of <see cref="PrepareInRunningGame(ReplayManifest, IBoundaryPlan, RunningGameCommands, PlayerProgress)"/>
+    /// for a boundary the client reaches by restoring, through the same
+    /// <see cref="Prepare"/>, so the validator, the environment gate and the
+    /// reading-back of what the engine built all run for a restored run exactly as
+    /// they do for a constructed one. The caller drives the game's own <c>LoadRun</c>
+    /// with <see cref="PreparedRun"/> and <see cref="PreFinishedRoom"/>, and then
+    /// either hands the fight over or steps this entry through what is left of the
+    /// plan, which <see cref="StepsTaken"/> already says.
+    ///
+    /// Awaited for the reason <see cref="GameSession.PrepareRestoreInRunningGame"/>
+    /// gives: the retail set-up awaits a write the in-game host's barrier answers, and
+    /// blocking the game's thread on it is not an option.
+    /// </summary>
+    /// <param name="restoredAfterSeq">The action the save was taken immediately after;
+    /// see <see cref="RestoreHeadless"/>.</param>
+    public static async Task<RecordedFightEntry> PrepareRestoreInRunningGame(
+        ReplayManifest manifest, IBoundaryPlan plan, string saveJson, int restoredAfterSeq,
+        RunningGameCommands runningGame, PlayerProgress? supplied = null)
+    {
+        var progress = supplied ?? SuppliedProgressFor(manifest);
+        var entry = await PrepareAsync(
+            manifest, plan, progress, runningGame,
+            session => session.PrepareRestoreInRunningGame(saveJson));
+
+        entry.MarkRestoredThrough(restoredAfterSeq);
+        return entry;
+    }
+
+    /// <summary>The room the restored save had already finished, for <c>NGame.LoadRun</c>;
+    /// null for a walked run and for a save taken at a floor arrival.</summary>
+    public MegaCrit.Sts2.Core.Saves.Runs.SerializableRoom? PreFinishedRoom => _session.PreFinishedRoom;
+
     private static RecordedFightEntry Prepare(
         ReplayManifest manifest, IBoundaryPlan plan, PlayerProgress progress,
         RunningGameCommands? runningGame, Action<GameSession> construct)
+    {
+        var session = BeforeConstruction(manifest, progress);
+        construct(session);
+        return AfterConstruction(manifest, plan, progress, runningGame, session);
+    }
+
+    /// <summary>The same sequence, for a construction the game has to be awaited
+    /// through. One pair of halves so that the two cannot check different things.</summary>
+    private static async Task<RecordedFightEntry> PrepareAsync(
+        ReplayManifest manifest, IBoundaryPlan plan, PlayerProgress progress,
+        RunningGameCommands? runningGame, Func<GameSession, Task> construct)
+    {
+        var session = BeforeConstruction(manifest, progress);
+        await construct(session);
+        return AfterConstruction(manifest, plan, progress, runningGame, session);
+    }
+
+    private static GameSession BeforeConstruction(ReplayManifest manifest, PlayerProgress progress)
     {
         var validation = ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
@@ -272,9 +358,13 @@ public sealed class RecordedFightEntry : IDisposable
                 "This game cannot construct the recording's run:", prerequisites, "this machine has"));
         }
 
-        var session = new GameSession();
-        construct(session);
+        return new GameSession();
+    }
 
+    private static RecordedFightEntry AfterConstruction(
+        ReplayManifest manifest, IBoundaryPlan plan, PlayerProgress progress,
+        RunningGameCommands? runningGame, GameSession session)
+    {
         // What the engine actually built, read back before a single decision is made.
         // A seed it normalised differently or an act that quietly defaulted would
         // otherwise replay perfectly into a different fight.
