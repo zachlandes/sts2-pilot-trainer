@@ -1,3 +1,4 @@
+using System.Reflection;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
@@ -25,8 +26,8 @@ namespace Sts2PilotTrainer.Mod;
 /// screen torn down with its run still ends the task this waits on.
 ///
 /// What a screen offered and what came back is announced rather than interpreted:
-/// which card came off which list is the recorder's business, and this says only that
-/// an answer happened. So is what a failure to read one means: a subscriber handles its
+/// what a card off that list means is a subscriber's business, and this says only that
+/// an answer happened and hands over the list it was given. So is what a failure to read one means: a subscriber handles its
 /// own, and <see cref="Announce"/> is only there so that one cannot take another down.
 /// </summary>
 internal static class CardScreensUp
@@ -46,6 +47,25 @@ internal static class CardScreensUp
     /// <summary>Every patch class this owns, for the shell to install and for
     /// <c>RunmobileModuleTests</c> to hold to one owner.</summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } = [typeof(Grid), typeof(Reward)];
+
+    /// <summary>
+    /// The list a grid screen was built with, in the order the engine handed it over,
+    /// or null on a build that no longer exposes it.
+    ///
+    /// Here for the same reason the count is: a screen's own contents are a fact about
+    /// the game, and both features read them for the same thing - a position in this
+    /// list is what an <c>option_index</c> means, in the recording that writes one and
+    /// in the recorded-fight journey that finds the card again on screen. Two readers
+    /// of one private field is two builds this can break on separately.
+    ///
+    /// Read by name and answering null rather than throwing, because what a build
+    /// without it means is the caller's to say: the recorder marks the recording broken
+    /// and the journey refuses to point at a card it cannot identify.
+    /// </summary>
+    internal static IReadOnlyList<CardModel>? OfferedTo(NCardGridSelectionScreen screen) =>
+        typeof(NCardGridSelectionScreen)
+            .GetField("_cards", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?.GetValue(screen) as IReadOnlyList<CardModel>;
 
     /// <summary>Counts one card screen for as long as the game's own task for it is
     /// outstanding.</summary>

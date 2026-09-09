@@ -650,26 +650,36 @@ Two things follow from it that are not about card screens.
 
 The first is that a verification which photographs behaviour the host cannot produce is a
 check that cannot fail.
-Whatever the two hosts do differently has to be stated as a difference somewhere, and `RunDriver.VerbsIssuedInsideARunningGame` is where this one is.
-`RecordedFightVerbAgreementTests` holds that declaration against the committed fixture's walk to its first fight and proves the known `SelectCardFromScreen` shape remains covered.
-It does not establish that every possible first-fight prefix is supported; bundle and relic answers remain refused in the client because their prompt stand-ins are headless-only.
-The test needs no game installed, which is the point - the run that would otherwise catch this is one only a person with the client can make.
+Whatever the two hosts do differently has to be stated as a difference somewhere, and two
+declarations on `RunDriver` are where these are: `VerbsIssuedInsideARunningGame`, and
+`AnswersShownOnTheGamesOwnScreen` for the answers the client draws a screen for.
+`RecordedFightVerbAgreementTests` holds both against the committed fixture's walk to its
+first fight and proves the known `SelectCardFromScreen` shape remains covered by each.
+Issued and drawn are two claims, held separately on purpose: a verb issued without a
+screen would be committed with nothing to point at, and a screen drawn without the verb
+would light the recording's card and never press it.
+Neither establishes that every possible first-fight prefix is supported; bundle and relic
+answers remain refused in the client because their prompt stand-ins are headless-only.
+The tests need no game installed, which is the point - the run that would otherwise catch
+this is one only a person with the client can make.
 
-The second is the rule the fix is written to: a screen the recording opened and the
-recording answered is not the player's, whatever it looks like from the driver.
-Until the boundary the player is watching rather than deciding.
-So the selector is pushed for the one step that queued an answer and released as soon as
-the engine has taken it, and it cannot reach the fight - the last decision before a
-boundary is a map move, or an event option that starts its room's fight, and neither
-queues anything.
-`docs/headless-fidelity.md` owns the mechanism and the two hosts' different timing;
-what belongs here is that the client resumes the engine's continuation on a later frame,
-so `RecordedFightRun` waits for the engine to have taken the answer rather than for a
-length of time - the same rule as everywhere else on this page - and the step's own
-refusal, one step later, is what a screen that never asks still gets.
-Because that screen is never drawn, the decision that opened it carries the card in its
-caption; that sentence is the only place the card is said, and a caption naming only the
-relic would leave a deck that quietly lost a card with nothing having said which.
+The second is the rule the fix was eventually written to, which is not the rule the first
+fix was written to.
+That one said a screen the recording opened and the recording answered is not the
+player's, and pushed the engine's own selector for the one step that queued an answer -
+which made the two hosts agree and left the player watching a blessing being taken and
+never seeing the card it took.
+The rule that replaced it is that a screen the recording opened is still a screen, and a
+watcher is owed the sight of it.
+So in the client nothing of the driver's is on the engine's stack: the game draws its own
+`NDeckCardSelectScreen`, `RecordedCardScreen` finds the recording's card on it, the
+reveal lights it with the game's own focus and the commit presses it - the same consider,
+reveal, commit as a map node, on a screen that has no engine command at all.
+The screen's own preview of what was picked is confirmed after a hold rather than on the
+frame it appears, because confirming it at once replaces it with a flicker; that is a
+screen transition and not a decision, the same as the event screen's proceed.
+`docs/headless-fidelity.md` owns the mechanism and what the two hosts now differ about,
+which is whether the screen is drawn rather than when its answer arrives.
 
 ## The surfaces, and why they are the game's own
 

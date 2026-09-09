@@ -167,22 +167,29 @@ transition that would leave either decision unmade is refused.
 
 **The headless stand-ins are not installed for the run's lifetime inside the retail client.**
 The same `RunDriver` runs there, walking a constructed run through the recording's decisions before its fight, and most of these surfaces are on a player's screen: answering one would take a decision away from somebody who was looking at it, and the client opens its own chest through `NTreasureRoom.OpenChest`.
-So the driver installs no rewards delegate, chest opening or `ScreenStandIns` there, and narrows itself to the opening blessing, an event option, a map move and `SelectCardFromScreen` when one of those decisions queued it.
+So the driver installs no rewards delegate, chest opening, `ScreenStandIns` or card selector there, and narrows itself to the opening blessing, an event option, a map move and `SelectCardFromScreen`.
 Bundle and relic selections still refuse because the prompt stand-ins that consume them are headless-only.
 Every other verb refuses there, including the combat ones, because the fight is the player's.
 See [the in-game host](in-game-host.md).
 
-**The card-screen selector is the one scoped exception, and it took a shipped defect to see it.**
-A screen an opening blessing opens was opened by the recording and answered by the recording; until the boundary the player is watching rather than deciding, so answering it is not taking anything from them.
-The driver learned to queue those selections for the headless host without the client learning to issue them, so a recording whose blessing removes, transforms or upgrades a card replayed, verified, passed the gate and then aborted in the client at the step after the player had watched the blessing being made.
+**The card screen is not stood in for in the client at all: it is drawn, and driven.**
+It took a shipped defect to find the screen and a second change to answer it properly.
+The driver learned to queue those selections for the headless host without the client learning to issue them, so a recording whose opening blessing removes, transforms or upgrades a card replayed, verified, passed the gate and then aborted in the client at the step after the player had watched the blessing being made.
 The refusal had not gone away; it had moved from publication to the worst place a refusal can happen.
-So in the client the selector is pushed for the one step that queued an answer and released as soon as the engine has taken it, by `RunDriver.SettleAnyCardScreenTheLastStepOpened`.
-It cannot reach the player's fight: the last decision before a boundary is a map move, or an event option that starts its room's fight, and neither queues anything.
-Where the two hosts differ is *when* the answer arrives.
-Headlessly the engine's continuation runs inline, so the screen is answered inside the call that opened it and the step settles at the end of its own `Apply`.
-In the client that continuation resumes on a later frame, so the settle happens at the start of the next step and before the boundary is proved, and `RecordedFightRun` waits for the engine to have taken the answer rather than for a length of time.
-A selection nothing took is still refused, in the same sentence, one step later.
-Because the screen is never drawn, what the player is shown is the decision that opened it: `PrefightChoice.Blessing` carries the cards and the caption names them, which is the only place they are said.
+The first fix pushed the seam's own selector for that one step, which made the two hosts agree and left the player watching a blessing whose card they never saw.
+What replaced it is the product answer: nothing of the driver's is on the engine's stack in the client, `CardSelectCmd.FromDeckGeneric` takes its `Selector == null` branch, and the game puts up its own `NDeckCardSelectScreen` in front of the player.
+The recording's card is then found on that screen, lit with the game's own focus and pressed, by `RecordedCardScreen` - one owner, so the card the reveal lights is the card the commit presses.
+There is no engine command for any of it, which is why `RunningGameCommands.SelectCard` is supplied by the host exactly as a map move is.
+
+Two things follow, and neither is about card screens.
+
+Where the two hosts differ is now *whether the screen is drawn*, not when its answer arrives.
+That changes what a watcher is shown, so it changes what is counted and captioned: headlessly a card selection is executed with no reveal, no hold and no number, and `PrefightChoice.Blessing` carries the cards so the caption is the only place they are said; in the client the pick is its own decision with its own caption and its own card art, and the blessing's caption says only the relic.
+`RunDriver.ShowsTheAnswerBeingGiven` is the single owner of which host is which, and `RecordedFightEntry` asks it for every one of those three questions rather than deciding any of them itself.
+
+The recorded `option_index` is a position in the list the engine handed the screen, and the screen sorts that list before it draws it.
+So `RecordedCardScreen` reads the offered list off the screen rather than the grid, and checks the recorded card id against the position the same way `ManifestCardSelector` does headlessly.
+Matching by name on the drawn grid would pick an arbitrary one of a deck's four Strikes, which is a different run and would not always be a failing one.
 
 It also stops draining. The headless host drains the engine to idle after every
 action because it owns the process and there are no frames to do it; the retail

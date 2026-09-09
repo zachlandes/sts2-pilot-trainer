@@ -30,7 +30,8 @@ namespace Sts2PilotTrainer.Mod;
 ///
 /// It refuses rather than approximating. A screen that is not up, a coordinate this
 /// act's map does not draw, an option row that grants a different relic from the one
-/// the recording took: each of those is a reveal that would be pointing at the wrong
+/// the recording took, a card screen offering a different card at the position the
+/// recording names: each of those is a reveal that would be pointing at the wrong
 /// thing, and pointing at the wrong thing before committing a decision is worse than
 /// not pointing at all.
 /// </summary>
@@ -101,6 +102,7 @@ internal static class RecordedFightReveal
     {
         PrefightTarget.MapNode node => FindMapNode(node.Coord),
         PrefightTarget.EventOption option => FindEventOption(option.Index, option.RelicModelId),
+        PrefightTarget.CardOnScreen card => FindCardOnScreen(card.CardModelId, card.OptionIndex),
         _ => throw new InvalidOperationException(
             $"Action {target.Seq} is a kind of decision this trainer cannot point at on the game's " +
             "own screen, so it will not be committed unseen."),
@@ -142,6 +144,30 @@ internal static class RecordedFightReveal
             "the map node the recording moves to",
             travelable,
             point.GetNodeOrNull<NSelectionReticle>(ReticlePath));
+    }
+
+    /// <summary>
+    /// The holder drawing the card the recording took, on the screen an earlier
+    /// decision opened.
+    ///
+    /// The finding is <see cref="RecordedCardScreen"/>'s, so the card this lights is
+    /// the same card the commit presses. What is left here is the same thing every
+    /// other target does: the game's own focus, which is what a card holder's
+    /// <c>OnFocus</c> runs its hover effects off, so the recording's card lifts and
+    /// scales exactly as it does under a player's own cursor.
+    ///
+    /// The options are every card the screen was given, which is more than one on any
+    /// deck screen - so there is a consider beat and the watcher sees the whole deck
+    /// with nothing lit before the recording's card lights.
+    /// </summary>
+    private static Found FindCardOnScreen(string cardModelId, int optionIndex)
+    {
+        var found = RecordedCardScreen.Find(cardModelId, optionIndex);
+        return new Found(
+            found.Holder,
+            $"the card the recording takes off the {TrainerCopy.CardScreenName} screen",
+            found.Offered,
+            null);
     }
 
     private static Found FindEventOption(int index, string relicModelId)

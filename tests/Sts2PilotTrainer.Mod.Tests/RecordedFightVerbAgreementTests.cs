@@ -1,4 +1,5 @@
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -16,12 +17,16 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// before anybody had invested anything to the worst place a refusal can happen.
 ///
 /// So the claim here is the agreement for the committed fixture rather than either
-/// half of it: every verb on that walk to the first fight has to be one the driver will
-/// issue inside a running game. This is a sentinel for the known card-screen shape,
-/// not proof that every possible prefix is supported; bundle and relic prompts remain
-/// headless-only. Nothing about this needs the game to be installed - it is two
-/// declarations held against each other - which is the point, because the run that
-/// would catch this otherwise is one only a person with the client can make.
+/// half of it, in two parts: every verb on that walk to the first fight has to be one
+/// the driver will issue inside a running game, and every screen answer on it has to be
+/// one the client draws a screen for - because the client answers that screen by
+/// lighting the recording's card on it and pressing, and a verb it issues without
+/// drawing would be committed with nothing to point at. This is a sentinel for the
+/// known card-screen shape, not proof that every possible prefix is supported; bundle
+/// and relic prompts remain headless-only. Nothing about this needs the game to be
+/// installed - it is declarations held against each other - which is the point, because
+/// the run that would catch this otherwise is one only a person with the client can
+/// make.
 /// </summary>
 public sealed class RecordedFightVerbAgreementTests
 {
@@ -56,21 +61,80 @@ public sealed class RecordedFightVerbAgreementTests
     }
 
     /// <summary>
-    /// A card selection is executed and never shown, so it is not one of the decisions
-    /// the transport counts through. The distinction only exists because the engine
-    /// answers such a screen inside the call that opens it: there is nothing left on
-    /// the game's own screen to point at by the time the step runs.
+    /// Every screen answer on that walk is one the client draws the screen for.
+    ///
+    /// The second half of the same agreement, and the half A2 added. Issuing a verb and
+    /// being able to show it being issued are two different claims: an answer the client
+    /// issues but draws no screen for is a decision the journey would have to commit
+    /// with nothing on screen to point at, which is the one thing consider, reveal and
+    /// commit exists to prevent. The card screen is the only screen answer that clears
+    /// both bars, and this is what would fail if a later walk contained a bundle or a
+    /// relic answer instead.
     /// </summary>
     [Fact]
-    public void ACardSelectionIsAnAnswerRatherThanADecisionOfItsOwn()
+    public void EveryScreenAnswerOnThatWalkIsOneTheClientDrawsAScreenFor()
     {
-        var prefix = WalkToTheFirstFight();
+        var shown = RunDriver.AnswersShownOnTheGamesOwnScreen;
 
+        Assert.All(
+            WalkToTheFirstFight().Where(CardScreenAnswers.IsAnAnswer),
+            action => Assert.True(
+                shown.Contains(action.Verb),
+                $"The walk to the recording's first fight answers a screen with a {action.Verb}, which no " +
+                "host draws. The journey would have to commit that answer with nothing on screen to point " +
+                "at, or refuse it in front of a player who has already watched the decisions before it."));
+    }
+
+    /// <summary>
+    /// A screen answer the client draws is one it also issues.
+    ///
+    /// Two declarations that have to agree, held against each other rather than derived
+    /// from one another - because they answer different questions and only happen to
+    /// have the same answer today. A verb drawn and not issued would light a card on a
+    /// screen and then refuse to press it.
+    /// </summary>
+    [Fact]
+    public void AnAnswerTheClientDrawsIsAnAnswerItIssues()
+    {
+        var issued = RunDriver.VerbsIssuedInsideARunningGame;
+
+        Assert.All(
+            RunDriver.AnswersShownOnTheGamesOwnScreen,
+            verb => Assert.True(
+                issued.Contains(verb),
+                $"The client draws the screen a {verb} is given on and does not issue the verb, so the " +
+                "recording's answer would be lit and never pressed."));
+    }
+
+    /// <summary>
+    /// Every member the recorded-fight journey hangs a patch on is in this build.
+    ///
+    /// The library module asks this of its own patches because a surface that silently
+    /// failed to appear is a feature nobody can find; this module has the same exposure
+    /// for a different reason. Its deviation locks are what keep the decisions before
+    /// the fight the recording's, and a lock hung on a member a build renamed does not
+    /// refuse loudly - it is simply not there, and a player can take a decision the
+    /// recording owns. The card screen's own handler is the one that made this worth
+    /// asserting: it is named as a string because the method is protected.
+    /// </summary>
+    [GameFact]
+    public void EveryMemberTheRecordedFightJourneyHangsOnIsInThisBuild()
+    {
+        _ = EngineHost.StartupPhase();
+
+        // Named rather than counted, because an empty refusal list is also what a walk
+        // that found nothing to check returns.
         Assert.Equal(
-            prefix.Count - 1,
-            prefix.Count(action => !CardScreenAnswers.IsAnAnswer(action)));
-        Assert.DoesNotContain(
-            prefix.Where(CardScreenAnswers.IsAnAnswer),
-            action => action.Verb != ActionVerb.SelectCardFromScreen);
+            [
+                "EventSynchronizer.ChooseLocalOption",
+                "NDeckCardSelectScreen.OnCardClicked",
+                "NGame.ReturnToMainMenu",
+                "NRewardButton.OnRelease",
+                "NRewardsScreen.OnProceedButtonPressed",
+                "RunManager.CleanUp",
+                "RunManager.EnterMapCoord",
+            ],
+            PatchTargets.Targets(RecordedFightModule.PatchClasses).Order(StringComparer.Ordinal));
+        Assert.Empty(PatchTargets.Unresolvable(RecordedFightModule.PatchClasses));
     }
 }

@@ -64,13 +64,13 @@ public sealed class RecordedFightEntry : IDisposable
 
     private RecordedFightEntry(
         ReplayManifest manifest, IBoundaryPlan plan, GameSession session, PlayerProgress progress,
-        Func<MapCoord, Task>? travelInRunningGame)
+        RunningGameCommands? runningGame)
     {
         Manifest = manifest;
         Plan = plan;
         _session = session;
         _progress = progress;
-        _driver = new RunDriver(session, travelInRunningGame);
+        _driver = new RunDriver(session, runningGame);
     }
 
     public ReplayManifest Manifest { get; }
@@ -98,37 +98,38 @@ public sealed class RecordedFightEntry : IDisposable
     public bool AtBoundary => StepsTaken == Plan.PrefixActions.Count;
 
     /// <summary>
-    /// Whether the recording's next step is its own answer to a screen the step before
-    /// it opened, rather than a decision of its own.
+    /// Whether the recording's next step is one a watcher is shown being made.
     ///
-    /// A host that shows the recording deciding has to know, because such a step has
-    /// nothing on the game's own screen to point at: the engine took the answer inside
-    /// the call that opened the screen, so by the time this step is executed the screen
-    /// is gone and the card is already removed, transformed or upgraded. It is executed
-    /// like every other step and it is not revealed, held or counted - see
-    /// <see cref="Decisions"/>.
+    /// Every step is executed; this is only about whether there is anything on the
+    /// game's own screen to point at while it happens. An answer to a screen an earlier
+    /// decision opened has nothing where the screen was never drawn - the engine takes
+    /// the answer inside the call that opened it, and by the time the step runs the
+    /// card is already removed, transformed or upgraded - so headlessly such a step is
+    /// executed without a reveal, a hold or a number. Inside the retail client the game
+    /// draws that screen, and the pick is made on it like every other decision.
+    ///
+    /// <see cref="RunDriver.ShowsTheAnswerBeingGiven"/> owns which host is which, so
+    /// the counting, the captions and the reveal cannot disagree about one step.
     /// </summary>
-    public bool NextStepAnswersAScreenAlreadyOpened =>
-        NextStep is { } next && CardScreenAnswers.IsAnAnswer(next);
+    private bool IsShown(ActionRecord action) =>
+        !CardScreenAnswers.IsAnAnswer(action) || _driver.ShowsTheAnswerBeingGiven(action.Verb);
 
-    /// <summary>Whether a card selection the last step queued is still waiting for the
-    /// screen that was to take it. A host waits for this to go out rather than for a
-    /// length of time; see docs/in-game-host.md.</summary>
-    public bool ACardScreenAnswerIsOutstanding => _driver.ACardScreenAnswerIsOutstanding;
+    /// <summary>Whether the recording's next step is executed without being shown; see
+    /// <see cref="IsShown"/>.</summary>
+    public bool NextStepIsMadeWithoutBeingShown => NextStep is { } next && !IsShown(next);
 
     /// <summary>
     /// How many of the recording's decisions a watcher is shown on the way to the
-    /// boundary, which is not how many actions the plan's prefix holds.
+    /// boundary, which is not always how many actions the plan's prefix holds.
     ///
-    /// A card selection is executed and never shown, so counting it would make the
+    /// A step nobody is shown is not counted, because counting it would make the
     /// transport's position skip a number nobody was offered. Derived rather than
-    /// stored, from the one owner of which actions are answers.
+    /// stored, from the one owner of which steps this host shows.
     /// </summary>
-    public int Decisions => Plan.PrefixActions.Count(action => !CardScreenAnswers.IsAnAnswer(action));
+    public int Decisions => Plan.PrefixActions.Count(IsShown);
 
     /// <summary>How many of those have been made.</summary>
-    public int DecisionsMade =>
-        Plan.PrefixActions.Take(StepsTaken).Count(action => !CardScreenAnswers.IsAnAnswer(action));
+    public int DecisionsMade => Plan.PrefixActions.Take(StepsTaken).Count(IsShown);
 
     /// <summary>The run this entry constructed, for a host that has to finish
     /// launching it through the game's own continuation.</summary>
@@ -154,7 +155,7 @@ public sealed class RecordedFightEntry : IDisposable
         ReplayManifest manifest, IBoundaryPlan plan, PlayerProgress? supplied = null)
     {
         var progress = supplied ?? SuppliedProgressFor(manifest);
-        var entry = Prepare(manifest, plan, progress, travelInRunningGame: null, session => session.StartRun(
+        var entry = Prepare(manifest, plan, progress, runningGame: null, session => session.StartRun(
             manifest.Environment.Seed.Value,
             manifest.Environment.Character.Value,
             manifest.Environment.Ascension.Value,
@@ -195,7 +196,7 @@ public sealed class RecordedFightEntry : IDisposable
     {
         var progress = supplied ?? SuppliedProgressFor(manifest);
         var entry = Prepare(
-            manifest, plan, progress, travelInRunningGame: null,
+            manifest, plan, progress, runningGame: null,
             session => session.RestoreSavedRun(saveJson));
 
         entry.StepsTaken = plan.PrefixActions.Count;
@@ -211,29 +212,29 @@ public sealed class RecordedFightEntry : IDisposable
     /// <see cref="PreparedRun"/>, which is what loads the scene and enters the first
     /// act, and then steps this entry through the plan.
     /// </summary>
-    /// <param name="travelInRunningGame">
-    /// How the host issues a map move on the game's own map screen. Required here: a
-    /// map move in the client is a screen's command, and the engine's own coordinate
-    /// entry is only the middle of it.
+    /// <param name="runningGame">
+    /// The decisions the host issues on the driver's behalf, because the game issues
+    /// them through a screen rather than through an engine call. Required here; see
+    /// <see cref="RunningGameCommands"/>.
     /// </param>
     public static RecordedFightEntry PrepareInRunningGame(
-        ReplayManifest manifest, Func<MapCoord, Task> travelInRunningGame,
+        ReplayManifest manifest, RunningGameCommands runningGame,
         PlayerProgress? progress = null) =>
-        PrepareInRunningGame(manifest, RecordedFightPlan.For(manifest), travelInRunningGame, progress);
+        PrepareInRunningGame(manifest, RecordedFightPlan.For(manifest), runningGame, progress);
 
-    /// <inheritdoc cref="PrepareInRunningGame(ReplayManifest, Func{MapCoord, Task}, PlayerProgress)"/>
+    /// <inheritdoc cref="PrepareInRunningGame(ReplayManifest, RunningGameCommands, PlayerProgress)"/>
     public static RecordedFightEntry PrepareInRunningGame(
-        ReplayManifest manifest, IBoundaryPlan plan, Func<MapCoord, Task> travelInRunningGame,
+        ReplayManifest manifest, IBoundaryPlan plan, RunningGameCommands runningGame,
         PlayerProgress? supplied = null) =>
-        PrepareAgainst(manifest, plan, travelInRunningGame, supplied ?? SuppliedProgressFor(manifest));
+        PrepareAgainst(manifest, plan, runningGame, supplied ?? SuppliedProgressFor(manifest));
 
     /// <summary>The same, with the progress model already decided, so that the model
     /// the run is built against and the model handed to the session are the one
     /// value.</summary>
     private static RecordedFightEntry PrepareAgainst(
-        ReplayManifest manifest, IBoundaryPlan plan, Func<MapCoord, Task> travelInRunningGame,
+        ReplayManifest manifest, IBoundaryPlan plan, RunningGameCommands runningGame,
         PlayerProgress progress) =>
-        Prepare(manifest, plan, progress, travelInRunningGame, session => session.PrepareRunInRunningGame(
+        Prepare(manifest, plan, progress, runningGame, session => session.PrepareRunInRunningGame(
             manifest.Environment.Seed.Value,
             manifest.Environment.Character.Value,
             manifest.Environment.Ascension.Value,
@@ -243,7 +244,7 @@ public sealed class RecordedFightEntry : IDisposable
 
     private static RecordedFightEntry Prepare(
         ReplayManifest manifest, IBoundaryPlan plan, PlayerProgress progress,
-        Func<MapCoord, Task>? travelInRunningGame, Action<GameSession> construct)
+        RunningGameCommands? runningGame, Action<GameSession> construct)
     {
         var validation = ManifestValidator.Validate(manifest);
         if (!validation.IsValid)
@@ -276,7 +277,7 @@ public sealed class RecordedFightEntry : IDisposable
                 "the started run has"));
         }
 
-        return new RecordedFightEntry(manifest, plan, session, progress, travelInRunningGame);
+        return new RecordedFightEntry(manifest, plan, session, progress, runningGame);
     }
 
     /// <summary>
@@ -362,7 +363,8 @@ public sealed class RecordedFightEntry : IDisposable
         DescribeNextStepOrNull()
         ?? throw new EngineException(
             $"Action {NextStep!.Seq} is a '{NextStep.Verb}', which this trainer cannot show the recording " +
-            "making. Only an opening blessing and a map move are supported before a fight.");
+            "making. Only an opening blessing, a map move and a card taken off a screen one of them opened " +
+            "are supported before a fight.");
 
     /// <summary>
     /// The same, and null rather than a refusal when the decision is not one this
@@ -385,6 +387,8 @@ public sealed class RecordedFightEntry : IDisposable
             ActionVerb.ChooseNeowBlessing => new PrefightChoice.Blessing(
                 action.Seq, BlessingRelic(action), CardsThisDecisionPicks(action)),
             ActionVerb.MapMove => DescribeMapMove(action),
+            ActionVerb.SelectCardFromScreen when IsShown(action) =>
+                new PrefightChoice.CardFromScreen(action.Seq, ArgumentString(action, "card_id")),
             _ => null,
         };
     }
@@ -393,6 +397,10 @@ public sealed class RecordedFightEntry : IDisposable
     /// The cards the recording picked off the screen this decision opens, in the order
     /// it picked them, and empty where it opens none.
     ///
+    /// Empty as well wherever this host draws that screen, because there each pick is a
+    /// decision of its own with its own caption, and saying the cards here too would
+    /// name them twice and name them before they were taken.
+    ///
     /// Read from the manifest rather than from the run, because at the moment a
     /// decision is being shown the screen has not opened and the cards it will offer do
     /// not exist yet. <see cref="CardScreenAnswers"/> owns where that window is cut;
@@ -400,7 +408,7 @@ public sealed class RecordedFightEntry : IDisposable
     /// </summary>
     private IReadOnlyList<string> CardsThisDecisionPicks(ActionRecord action) =>
         CardScreenAnswers.After(Manifest.Actions, action.Seq)
-            .Where(answer => answer.Verb == ActionVerb.SelectCardFromScreen)
+            .Where(answer => answer.Verb == ActionVerb.SelectCardFromScreen && !IsShown(answer))
             .Select(answer => ArgumentString(answer, "card_id"))
             .ToList();
 
@@ -426,9 +434,12 @@ public sealed class RecordedFightEntry : IDisposable
             ActionVerb.MapMove => new PrefightTarget.MapNode(
                 action.Seq,
                 new MapCoord(ArgumentInt(action, "column"), ArgumentInt(action, "row"))),
+            ActionVerb.SelectCardFromScreen when IsShown(action) => new PrefightTarget.CardOnScreen(
+                action.Seq, ArgumentString(action, "card_id"), ArgumentInt(action, "option_index")),
             _ => throw new EngineException(
                 $"Action {action.Seq} is a '{action.Verb}', which this trainer cannot point at on the game's " +
-                "own screen. Only an opening blessing and a map move are supported before a fight."),
+                "own screen. Only an opening blessing, a map move and a card taken off a screen one of them " +
+                "opened are supported before a fight."),
         };
     }
 

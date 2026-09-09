@@ -145,6 +145,17 @@ public static class TrainerCopy
     public static string MapMoveLedgerRow(string nodeType, string columnPosition) =>
         $"{ModelIdNames.Display(nodeType)} node, {columnPosition} column";
 
+    /// <summary>
+    /// The row for a card the recording took off the selection screen an earlier
+    /// decision opened.
+    ///
+    /// The card and nothing else, for the reason <see cref="BlessingWithCardsLedgerRow"/>
+    /// gives: whether the relic that opened the screen removes, transforms or upgrades
+    /// is the relic's own name to carry, and this row already sits under the one that
+    /// named it.
+    /// </summary>
+    public static string CardFromScreenLedgerRow(string cardModelId) => ModelIdNames.Display(cardModelId);
+
     // The identity block: whose recording, which video, and a way through to the
     // moment being shown.
 
@@ -217,6 +228,11 @@ public static class TrainerCopy
     public static string BlessingWithCardsCaption(
         string creator, string relicModelId, IReadOnlyList<string> cards) =>
         $"{creator} took {ModelIdNames.Display(relicModelId)} and chose {NameCards(cards)}";
+
+    /// <summary>What the recording picked off the card screen its last decision
+    /// opened.</summary>
+    public static string CardFromScreenCaption(string creator, string cardModelId) =>
+        $"{creator} chose {ModelIdNames.Display(cardModelId)}";
 
     /// <summary>What the recording did on the map.</summary>
     public static string MapMoveCaption(string creator, string nodeType, string columnPosition) =>
@@ -301,6 +317,8 @@ public static class TrainerCopy
     public const string MapScreenName = "map";
 
     public const string EventScreenName = "choice";
+
+    public const string CardScreenName = "card";
 
     public const string BackButton = "Back";
 

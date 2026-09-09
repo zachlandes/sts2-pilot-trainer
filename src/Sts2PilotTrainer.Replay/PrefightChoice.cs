@@ -19,10 +19,14 @@ public abstract record PrefightChoice(int Seq)
     /// An opening blessing, named by the relic the chosen option grants and by the
     /// cards the recording picked off the screen that relic opened.
     ///
-    /// The cards are usually none. Where there are any, saying so is not decoration:
-    /// the screen is answered from the recording inside the engine call the blessing
-    /// makes, so nobody watching ever sees it, and a caption that named only the relic
-    /// would leave a deck that quietly lost a card with nothing having said which.
+    /// The cards are usually none, and they are none wherever the host puts that
+    /// screen in front of the player: there the picks are decisions of their own, each
+    /// shown being made on the game's own screen, and naming them here as well would
+    /// say the same thing twice and say it before it happened. Where the screen is
+    /// never drawn - headlessly, where the engine's own seam answers it inside the call
+    /// the blessing makes - this line is the only place the card is said, and a caption
+    /// that named only the relic would leave a deck that quietly lost a card with
+    /// nothing having said which.
     /// </summary>
     public sealed record Blessing(int Seq, string RelicModelId, IReadOnlyList<string> CardsPicked)
         : PrefightChoice(Seq)
@@ -38,4 +42,17 @@ public abstract record PrefightChoice(int Seq)
     /// </summary>
     public sealed record MapMove(int Seq, string NodeType, int Column, int ColumnCount)
         : PrefightChoice(Seq);
+
+    /// <summary>
+    /// A card taken off the selection screen an earlier decision opened, named by the
+    /// card.
+    ///
+    /// Only ever built where the host draws that screen, which is what makes it a
+    /// decision a watcher sees rather than an answer the engine took inside the call
+    /// that opened it. It says the card and not what became of it: whether the relic
+    /// that opened the screen removes, transforms or upgrades is the relic's own name
+    /// to carry, and a sentence that guessed the verb would be stating something
+    /// nobody read.
+    /// </summary>
+    public sealed record CardFromScreen(int Seq, string CardModelId) : PrefightChoice(Seq);
 }
