@@ -1,5 +1,7 @@
 using System.Reflection;
 using Godot;
+using MegaCrit.Sts2.Core.ControllerInput;
+using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
@@ -58,6 +60,7 @@ public sealed class FightResultPanelTests
     [Fact]
     public void LongFightKeepsEveryNativeSizedTurnReachableAcrossPages()
     {
+        _ = EngineHost.StartupPhase();
         var text = Text(32, 26, 26, 28);
         var panel = FightResultPanel.Build(
             Panel(LongComparison()),
@@ -67,6 +70,7 @@ public sealed class FightResultPanelTests
             () => { },
             _ => new Texture2D()).Root;
         var reached = new HashSet<int>();
+        var page = 0;
 
         while (true)
         {
@@ -82,9 +86,10 @@ public sealed class FightResultPanelTests
             var next = Descendants(panel).OfType<Button>()
                 .SingleOrDefault(button => button.Name.ToString() == "Chronology_Next");
             if (next is null) break;
-            next.EmitPressed();
+            Activate(next, page++ % 2 == 0 ? MegaInput.confirm : MegaInput.select);
         }
 
+        Assert.True(page >= 2);
         Assert.Equal(Enumerable.Range(1, 10), reached.Order());
     }
 
@@ -402,6 +407,12 @@ public sealed class FightResultPanelTests
 
     private static int Points(Node panel, string name) =>
         Assert.IsType<Line2D>(Find(panel, name)).Points.Length;
+
+    private static void Activate(Button button, StringName action)
+    {
+        var input = new InputEventAction { Action = action, Pressed = true };
+        button.EmitSignal("gui_input", Variant.From<InputEvent>(input));
+    }
 
     /// <summary>Three turns against two, with a potion on the player's second.</summary>
     private static CombatComparison Comparison() => CombatComparison.Between(Yours(), Theirs());

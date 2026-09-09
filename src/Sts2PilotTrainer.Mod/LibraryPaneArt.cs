@@ -1,8 +1,6 @@
 using System.Globalization;
 using Godot;
-using MegaCrit.Sts2.Core.ControllerInput;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
-using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
 using MegaCrit.Sts2.Core.Nodes.Multiplayer;
 using Sts2PilotTrainer.Trainer;
 
@@ -357,7 +355,7 @@ internal static class LibraryPaneArt
         Control content, string tooltip, string direction, bool previous, Vector2 at,
         float width, float height, Func<bool, Texture2D?> image, Action press)
     {
-        var button = NativePaginatorArt.AddButton(
+        return NativePaginatorArt.AddButton(
             content,
             $"RunmobileStrip{direction}",
             tooltip,
@@ -365,16 +363,6 @@ internal static class LibraryPaneArt
             new Rect2(at, new Vector2(width, height)),
             image,
             press);
-        button.Connect(
-            "gui_input",
-            Callable.From<InputEvent>(input =>
-            {
-                if (!input.IsActionPressed(MegaInput.confirm) &&
-                    !input.IsActionPressed(MegaInput.select)) return;
-                button.AcceptEvent();
-                press();
-            }));
-        return button;
     }
 
     /// <summary>

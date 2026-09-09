@@ -1,4 +1,6 @@
 using Godot;
+using MegaCrit.Sts2.Core.ControllerInput;
+using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -47,6 +49,15 @@ internal static class NativePaginatorArt
             TooltipText = tooltip,
         };
         button.Pressed += press;
+        button.Connect(
+            "gui_input",
+            Callable.From<InputEvent>(input =>
+            {
+                if (!input.IsActionPressed(MegaInput.confirm) &&
+                    !input.IsActionPressed(MegaInput.select)) return;
+                button.AcceptEvent();
+                press();
+            }));
 
         var side = Math.Min(bounds.Size.X, bounds.Size.Y);
         var picture = new TextureRect

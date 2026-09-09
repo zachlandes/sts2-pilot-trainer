@@ -1,4 +1,6 @@
 using Godot;
+using MegaCrit.Sts2.Core.ControllerInput;
+using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
@@ -276,6 +278,7 @@ public sealed class PlaybackTransportStripTests
     [Fact]
     public void LongLedgerKeepsEveryNativeSizedDecisionReachableAcrossPages()
     {
+        _ = EngineHost.StartupPhase();
         var made = Enumerable.Range(1, 8)
             .Select(number => (PrefightChoice)new PrefightChoice.MapMove(
                 number, "Monster", 0, 3))
@@ -300,6 +303,14 @@ public sealed class PlaybackTransportStripTests
             identity: () => { },
             pageArrow: _ => new Texture2D());
         var reached = new HashSet<int>();
+        var nextPage = Descendants(strip.Ledger).OfType<Button>()
+            .Single(button => button.Name.ToString() == "LedgerNext");
+        Activate(nextPage, MegaInput.confirm);
+        Assert.NotNull(Find<Label>(strip.Ledger, "Ledger9"));
+        var previousPage = Descendants(strip.Ledger).OfType<Button>()
+            .Single(button => button.Name.ToString() == "LedgerPrevious");
+        Activate(previousPage, MegaInput.select);
+        Assert.NotNull(Find<Label>(strip.Ledger, "Ledger1"));
 
         while (true)
         {
@@ -1201,6 +1212,12 @@ public sealed class PlaybackTransportStripTests
 
     private static StyleBoxFlat Stylebox(Control control, string state) =>
         Assert.IsType<StyleBoxFlat>(control.ThemeStylebox(state));
+
+    private static void Activate(Button button, StringName action)
+    {
+        var input = new InputEventAction { Action = action, Pressed = true };
+        button.EmitSignal("gui_input", Variant.From<InputEvent>(input));
+    }
 
     private static PlaybackTransportStrip Build(PlaybackTransport state) =>
         PlaybackTransportStrip.Build(
