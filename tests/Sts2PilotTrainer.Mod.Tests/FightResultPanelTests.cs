@@ -37,6 +37,25 @@ public sealed class FightResultPanelTests
     }
 
     [Fact]
+    public void CrowdedTurnKeepsEveryChipBeforeTheHealthValue()
+    {
+        var cards = new[] { "CARD.ONE", "CARD.TWO", "CARD.THREE", "CARD.FOUR", "CARD.FIVE" };
+        var panel = FightResultPanel.Build(
+            Panel(CombatComparison.Between(CrowdedYours(cards), Theirs())),
+            new Vector2(1280, 720),
+            _ => null,
+            Text(32, 26, 26, 28),
+            () => { }).Root;
+        var health = Find<Label>(panel, "Turn.1.Yours.HealthLost");
+
+        Assert.All(
+            cards.Select(card => Find<ColorRect>(panel, $"Turn.1.Yours.Card.{card}")),
+            chip => Assert.True(
+                chip.Position.X + chip.Size.X <= health.Position.X,
+                $"'{chip.Name}' overlaps the reserved health value"));
+    }
+
+    [Fact]
     public void DrawsTheGamesArtworkWhereThereIsSomeAndTheNameWhereThereIsNot()
     {
         var known = new Texture2D();
@@ -369,6 +388,25 @@ public sealed class FightResultPanelTests
         capture.CompleteStep(Sample("in_progress", 3, 50, 24, potions: "empty|empty"));
         capture.BeginStep("PlayCard", Card("CARD.HELLRAISER"), Sample("in_progress", 3, 50, 24, potions: "empty|empty"));
         capture.CompleteStep(Sample("victory", 3, 50, 0, enemies: 0, potions: "empty|empty"));
+        return capture.Project();
+    }
+
+    private static CombatProjection CrowdedYours(IReadOnlyList<string> cards)
+    {
+        var capture = Live("crowded-player");
+        var enemyHealth = 42;
+        foreach (var card in cards)
+        {
+            capture.BeginStep("PlayCard", Card(card), Sample("in_progress", 1, 64, enemyHealth));
+            enemyHealth--;
+            capture.CompleteStep(Sample("in_progress", 1, 64, enemyHealth));
+        }
+        capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, enemyHealth));
+        capture.CompleteStep(Sample("in_progress", 2, 58, enemyHealth));
+        capture.BeginStep("EndTurn", Args(), Sample("in_progress", 2, 58, enemyHealth));
+        capture.CompleteStep(Sample("in_progress", 3, 50, enemyHealth));
+        capture.BeginStep("PlayCard", Card("CARD.FINISH"), Sample("in_progress", 3, 50, enemyHealth));
+        capture.CompleteStep(Sample("victory", 3, 50, 0, enemies: 0));
         return capture.Project();
     }
 

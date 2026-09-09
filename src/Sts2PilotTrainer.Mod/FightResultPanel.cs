@@ -370,24 +370,43 @@ internal static class FightResultPanel
 
             var cardWidth = cardHeight * CardWidth / CardHeight;
             var potion = Math.Min(PotionSize * Unit, cardHeight);
-            var chip = x;
-            foreach (var card in side.CardModelIds)
+            var healthWidth = Math.Min(42 * Unit, width);
+            var healthX = x + width - healthWidth;
+            var chipRight = healthX - (ChipGap * Unit);
+            var available = chipRight - x;
+            if (available <= 0f && side.CardModelIds.Count + side.PotionModelIds.Count > 0)
             {
-                Chip(panel, $"{name}.Card.{card}", card, line, fill, chip, y + ((height - cardHeight) / 2),
-                    cardWidth, cardHeight);
-                chip += cardWidth + (ChipGap * Unit);
+                throw new InvalidOperationException("This result row has no room beside its health value.");
             }
 
-            foreach (var spent in side.PotionModelIds)
+            var chips = side.CardModelIds
+                .Select(id => (Kind: "Card", Id: id, Width: cardWidth, Height: cardHeight))
+                .Concat(side.PotionModelIds.Select(id => (Kind: "Potion", Id: id, Width: potion, Height: potion)))
+                .ToList();
+            var widths = chips.Sum(item => item.Width);
+            var gap = chips.Count > 1 ? ChipGap * Unit : 0f;
+            var scale = 1f;
+            if (widths + (gap * Math.Max(0, chips.Count - 1)) > available)
             {
-                Chip(panel, $"{name}.Potion.{spent}", spent, line, fill, chip, y + ((height - potion) / 2),
-                    potion, potion);
-                chip += potion + (ChipGap * Unit);
+                gap = chips.Count > 1 && widths < available
+                    ? (available - widths) / (chips.Count - 1)
+                    : 0f;
+                if (widths > available) scale = available / widths;
+            }
+
+            var chip = x;
+            foreach (var item in chips)
+            {
+                var chipWidth = item.Width * scale;
+                var chipHeight = item.Height * scale;
+                Chip(panel, $"{name}.{item.Kind}.{item.Id}", item.Id, line, fill, chip,
+                    y + ((height - chipHeight) / 2), chipWidth, chipHeight);
+                chip += chipWidth + gap;
             }
 
             // The turn's own cost, beside what was played. The same number the chart's
             // lower plot draws, where a player reads it while looking at the cards.
-            Text(panel, $"{name}.HealthLost", Loss(side.HealthLost), x + width - (46 * Unit), y, 42 * Unit, height,
+            Text(panel, $"{name}.HealthLost", Loss(side.HealthLost), healthX, y, healthWidth, height,
                 ListNumeral, side.HealthLost > 0 ? line : DimText, HorizontalAlignment.Right);
         }
 
