@@ -1,0 +1,62 @@
+{
+  "head_captured": "7f34edd88f29dc199eec0ce8e9169bf4a520ef87",
+  "packaged_and_installed_runmobile_sha256": "ad24a227f38478345c84f645e1795f3ed47e7673869ad14e0fbdb4c4e50d1afb",
+  "retail": {
+    "game_build": "v0.111.0",
+    "arguments": [
+      "--force-steam=off"
+    ],
+    "profile": "isolated non-Steam test profile (default/1, profile1)",
+    "mods_loaded": "Runmobile only (Loaded 1 mods)",
+    "console_locked_before_launch": false,
+    "client_exited": true,
+    "bound_awake_assertion_exited": true,
+    "successful_after_protected_files_changed": "only mods/Runmobile, the installed head itself",
+    "successful_after_runmobile_store_changed": false,
+    "successful_after_game_churn": "logs only",
+    "states": {
+      "community-unavailable": "no sharing_service_url in the store's settings.json (default)",
+      "community-setting-off": "sharing_service_url set to a placeholder HTTPS URL, fetch_run_index false, written by hand into the isolated store for the capture and removed after",
+      "community-unlocked": "same URL, fetch_run_index true through the settings row's own toggle"
+    },
+    "note": "The client instance that was quit before the second rebuild aborted during teardown (SIGABRT in std::terminate after SIGTERM); macOS reported it as a crash. Every capture is from a later, healthy instance."
+  },
+  "images": {
+    "demo/runmobile-native-ui-community-setting-off-tooltip.png": {
+      "sha256": "892798e9426ab6b5d48cd4784a089d96dc913bcb0b92d6fe641986c0d9274589",
+      "processing": "centred crop removing the menu bar, resampled to 1400 wide"
+    },
+    "demo/runmobile-native-ui-community-setting-off.png": {
+      "sha256": "d5d2af4ddfe02e2392fb34e781cbc379bf668756dc2ba2f9dd198aebd838e095",
+      "processing": "centred crop removing the menu bar, resampled to 1400 wide"
+    },
+    "demo/runmobile-native-ui-community-unavailable-tooltip.png": {
+      "sha256": "ef3965dd13e996543ca3f6c48421ea9a2359e0528a12227d70108383aa73c1aa",
+      "processing": "centred crop removing the menu bar, resampled to 1400 wide"
+    },
+    "demo/runmobile-native-ui-community-unavailable.png": {
+      "sha256": "c95775d66873f39ca668ac0700b00e32d7b3fd6a6dbb62ccc7532e63c66f962b",
+      "processing": "centred crop removing the menu bar, resampled to 1400 wide"
+    },
+    "demo/runmobile-native-ui-community-unlocked.png": {
+      "sha256": "8d4de577bf42e660fbec43609aed1f0c46d22bdecbdb33a3135a4e4107dcb183",
+      "processing": "centred crop removing the menu bar, resampled to 1400 wide"
+    },
+    "demo/runmobile-native-ui-open-run-floor-strip.png": {
+      "sha256": "5e5470d340bf22cfcdb52b5009abdd9cbb5dd6934f5ab1a860a32ec9e375b84a",
+      "processing": "centred crop removing the menu bar, resampled to 1400 wide"
+    },
+    "demo/runmobile-native-ui-row-hover-only-the-row.png": {
+      "sha256": "870c9102337303d6318af4b0b1474036dd56fd81ca765182dac7c9f2e06e3269",
+      "processing": "centred crop removing the menu bar, resampled to 1400 wide"
+    },
+    "demo/runmobile-native-ui-settings-row-on.png": {
+      "sha256": "2a889595ef9aec694c87652659d4b14e9e608efc52d31f6071acd0f84bfa121b",
+      "processing": "centred crop removing the menu bar, resampled to 1400 wide"
+    },
+    "demo/RUNMOBILE-UI-NATIVE-PASS.html": {
+      "sha256": "0f447f13d33e27ca6746049706a811cfaa5f48f8751360f045b6a00b0cfb84f7",
+      "processing": "JPEG quality 82 at 1400 wide, embedded as data URIs"
+    }
+  }
+}
