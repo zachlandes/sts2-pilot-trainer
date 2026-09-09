@@ -109,16 +109,22 @@ public sealed record TransportControl(
 /// too, and a way through to it. <paramref name="VideoTitle"/> is absent until
 /// ingestion fills the manifest's title, and the block falls back to the creator
 /// alone rather than inventing one.
+///
+/// <para>It carries a <see cref="RecordingCredit"/> rather than a name because the
+/// captions under it put the credit into sentences, and a run the player recorded
+/// themselves is credited in the second person. The tag's own line is the credit's
+/// label.</para>
 /// </summary>
 public sealed record TransportIdentity(
-    string Creator, string? VideoTitle, string? VideoUrl, string? OpensAt)
+    RecordingCredit Credit, string? VideoTitle, string? VideoUrl, string? OpensAt)
 {
     /// <summary>Whether pressing the block opens anything. False on a recording whose
     /// manifest carries no video at all, which a recording made inside the player's
     /// own game does not.</summary>
     public bool IsLink => VideoUrl is not null;
 
-    public string TooltipTitle => VideoTitle is null ? Creator : $"{Creator} · {VideoTitle}";
+    public string TooltipTitle =>
+        VideoTitle is null ? Credit.Label : $"{Credit.Label} · {VideoTitle}";
 
     public string TooltipBody => OpensAt is null
         ? TrainerCopy.IdentityNoTimestamp
@@ -618,14 +624,14 @@ public sealed record PlaybackTransport(
             Back: BackControl(number > 1, offered),
             Play: PlayControl(playing, enabled: playing || offered),
             Step: lit
-                ? StepControl(number, count, Describe(identity.Creator, choice))
-                : ShowControl(identity.Creator, number, count, considering),
+                ? StepControl(number, count, Describe(identity.Credit, choice))
+                : ShowControl(identity.Credit, number, count, considering),
             Ledger: [],
             // Said once, before the first decision anybody watches, and at the reveal
             // rather than before it: a rule about how to read these screens is worth
             // saying once and tiresome above every one.
             Note: lit && number == 1 && !noteShown
-                ? TrainerCopy.ChoicesShownAsRecorded(identity.Creator)
+                ? TrainerCopy.ChoicesShownAsRecorded(identity.Credit)
                 : string.Empty,
             ChipMenu: []);
     }
@@ -641,7 +647,7 @@ public sealed record PlaybackTransport(
     private static PlaybackTransport AfterTheFight(
         TransportIdentity identity, PlaybackSpeed speed, PostFightFacts facts)
     {
-        var choice = PostFightChoice.For(identity.Creator, facts);
+        var choice = PostFightChoice.For(identity.Credit, facts);
         return new PlaybackTransport(
             Mode: TransportMode.Ended,
             Identity: identity,
@@ -685,17 +691,17 @@ public sealed record PlaybackTransport(
             Speed: speed,
             Back: BackControl(shown > 1),
             Play: PlayControl(playing: false),
-            Step: StepControl(current, count, Describe(identity.Creator, next), commits: false),
+            Step: StepControl(current, count, Describe(identity.Credit, next), commits: false),
             Ledger:
             [
                 .. made.Select((choice, index) => new LedgerRow(
                     index + 1,
                     ArtOf(choice),
-                    Describe(identity.Creator, choice, name: false),
+                    Describe(identity.Credit, choice, name: false),
                     IsCurrent: false,
                     IsLookedAt: index + 1 == shown)),
                 new LedgerRow(
-                    current, ArtOf(next), Describe(identity.Creator, next, name: false),
+                    current, ArtOf(next), Describe(identity.Credit, next, name: false),
                     IsCurrent: true, IsLookedAt: false),
             ],
             Note: string.Empty,
@@ -883,11 +889,12 @@ public sealed record PlaybackTransport(
     /// reveal. Refused, as every control is between screens, it goes on saying what
     /// it does.
     /// </summary>
-    private static TransportControl ShowControl(string creator, int number, int count, bool enabled) => new(
+    private static TransportControl ShowControl(
+        RecordingCredit credit, int number, int count, bool enabled) => new(
         TransportGlyph.Step,
         enabled,
         TrainerCopy.ShowTooltipTitle,
-        $"{TrainerCopy.ShowTooltipBody(creator)}\n{TrainerCopy.StepCounter(number, count)}",
+        $"{TrainerCopy.ShowTooltipBody(credit)}\n{TrainerCopy.StepCounter(number, count)}",
         enabled ? null : TrainerCopy.BetweenScreensDisabledReason);
 
     private static TransportCounter Check(int number, int count)
@@ -911,21 +918,22 @@ public sealed record PlaybackTransport(
     /// <param name="name">Whether to name the creator. The ledger does not: the tag
     /// hanging above it carries the name once, and repeating it down a list of five
     /// rows is the sentence the design replaced.</param>
-    private static string Describe(string creator, PrefightChoice choice, bool name = true) => choice switch
+    private static string Describe(
+        RecordingCredit credit, PrefightChoice choice, bool name = true) => choice switch
     {
         PrefightChoice.Blessing { CardsPicked.Count: > 0 } blessing => name
-            ? TrainerCopy.BlessingWithCardsCaption(creator, blessing.RelicModelId, blessing.CardsPicked)
+            ? TrainerCopy.BlessingWithCardsCaption(credit, blessing.RelicModelId, blessing.CardsPicked)
             : TrainerCopy.BlessingWithCardsLedgerRow(blessing.RelicModelId, blessing.CardsPicked),
         PrefightChoice.Blessing blessing => name
-            ? TrainerCopy.BlessingCaption(creator, blessing.RelicModelId)
+            ? TrainerCopy.BlessingCaption(credit, blessing.RelicModelId)
             : TrainerCopy.BlessingLedgerRow(blessing.RelicModelId),
         PrefightChoice.MapMove move => name
             ? TrainerCopy.MapMoveCaption(
-                creator, move.NodeType, MapColumns.Position(move.Column, move.ColumnCount))
+                credit, move.NodeType, MapColumns.Position(move.Column, move.ColumnCount))
             : TrainerCopy.MapMoveLedgerRow(
                 move.NodeType, MapColumns.Position(move.Column, move.ColumnCount)),
         PrefightChoice.CardFromScreen card => name
-            ? TrainerCopy.CardFromScreenCaption(creator, card.CardModelId)
+            ? TrainerCopy.CardFromScreenCaption(credit, card.CardModelId)
             : TrainerCopy.CardFromScreenLedgerRow(card.CardModelId),
         _ => throw new ManifestException(
             $"Action {choice.Seq} is a kind of decision this trainer has no way to describe, so the recording " +

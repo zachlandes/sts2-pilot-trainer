@@ -225,6 +225,8 @@ Which screen that is belongs to the relic - a removal opens `NDeckCardSelectScre
 That makes the two hosts differ in whether the screen is drawn, so whether a recorded answer is a decision somebody watches is `RunDriver.ShowsTheAnswerBeingGiven` and nothing re-derives it - the counting, the captions and the reveal all ask it.
 `docs/headless-fidelity.md` owns the mechanism.
 Do not narrow the verbs one host issues, or the answers it draws a screen for, without holding them against a recorded walk to its first fight; `RunDriver.VerbsIssuedInsideARunningGame` and `RunDriver.AnswersShownOnTheGamesOwnScreen` state the two sets once and `RecordedFightVerbAgreementTests` holds the committed fixture against both without the game installed.
+The verbs a running client issues are declared in `RetailPlayback` rather than on the driver, because a second owner in an assembly that cannot reference the game needs the same answer: the run library asks it of a boundary's prefix before it offers a player a place to stand, and a copy of the set is how the library came to offer a floor the journey aborts on.
+The driver still enforces it, and `RetailPlayback` authorises nothing.
 
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
@@ -265,6 +267,8 @@ Turning the filter off reveals incompatible runs as disabled rows, and an exact 
 The player-facing tabs are Others and Mine; `LibraryTab.Community` and `LibraryTab.MyRuns` are internal names only.
 An online row's identity is its share id and code, while `RunId` remains the manifest's identity; two submissions of one run are two rows and each resolves through its own share.
 Where a player can be stood is the recording's own `boundaries[]`, read through `RunView`, so no row can offer somewhere `RecordedFightEntry` would refuse; `RecordedFightRun.Start` takes the plan, because there is still one playback path.
+A boundary existing and a boundary being reachable are two facts and a row needs both: `RunViewPosition.Reachable` asks `RetailPlayback` whether this client can walk the recording's own decisions that far, and `Playable` folds it in beside the run's start and an unfinished fight, so every surface that reads that rule - the play-from row, Continue, Start the run over, both strips and the run-history plate - refuses in the same words rather than constructing a run and aborting mid-journey.
+On this build that leaves the first fight of a run reachable and everything past it refused by name.
 `RunProgress` under the store holds fight ordinals and nothing resumable - it is the pips and Continue's number, never a save.
 What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [docs/in-game-host.md](docs/in-game-host.md) owns the accepted parchment design it draws.
 
@@ -369,8 +373,11 @@ resolve. [docs/distribution.md](docs/distribution.md) owns the detail.
 
 **Player-facing wording is a template, never a recording.** Everything the mod says
 lives in `Sts2PilotTrainer.Trainer`, and every recording-specific value in it is
-interpolated - the creator from `source.video.channel_name`, the blessing and the node
-from the run the decision is about to act on. A sentence that names NaveGreed, the
+interpolated - the credit from `RecordingIdentity`, the blessing and the node
+from the run the decision is about to act on.
+Two recordings are credited and `RecordingIdentity.Credit` is the one reader: a reconstruction from a video is credited to `source.video.channel_name`, and a run the recorder watched somebody play is credited to that player, read off `source.native` rather than substituted for a name that is missing.
+That credit is a `RecordingCredit` rather than a name because the same slot is a sentence subject in one caption and a possessive in the next, and one string forced into both reads "Watch You's fight"; a manifest that is neither is still refused rather than attributed.
+A sentence that names NaveGreed, the
 Underdocks or a Sludge Spinner is a bug; the one remaining exception is named in
 `TrainerCopy.FightFloor` and `TrainerCopy.FightEnemy`, with the manifest fields they
 are waiting on.

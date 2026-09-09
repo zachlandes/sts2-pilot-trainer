@@ -364,7 +364,7 @@ internal static class RunBrowserScreen
                 Title(recording),
                 Tabs: [],
                 ListHeader: null,
-                EnteringRows(view, runId, RecordingIdentity.CreatorOrNull(recording)),
+                EnteringRows(view, runId, RecordingIdentity.CreditOrNull(recording)),
                 ViewPane(recording, view, runId, fromMyRuns, compatibleOnly, stripPage),
                 LibraryCopy.Back,
                 Back: () => OpenTab(
@@ -436,11 +436,11 @@ internal static class RunBrowserScreen
     /// Primitives only in what the lambdas capture, for the load-order reason OpenTab
     /// records.
     /// </summary>
-    /// <param name="creator">Whose recording it is, for the sentence behind the
-    /// shown-this-sitting mark; a recording that names nobody carries the mark with
+    /// <param name="credit">Whose recording it is, for the sentence behind the
+    /// shown-this-sitting mark; a recording nothing can credit carries the mark with
     /// the feature's own name in its place.</param>
     internal static IReadOnlyList<ScreenRow> EnteringRows(
-        RunView view, string runId, string? creator = null)
+        RunView view, string runId, RecordingCredit? credit = null)
     {
         var rows = new List<ScreenRow>();
         foreach (var row in view.Rows)
@@ -453,7 +453,8 @@ internal static class RunBrowserScreen
             rows.Add(new ScreenRow(
                 row.Label, row.Enabled, () => Enter(id, kind, fight, atFloor), row.Note, row.Reason,
                 MarkTooltip: row.ShownThisSitting
-                    ? TrainerCopy.ShownThisSittingTooltip(creator ?? TrainerCopy.Name)
+                    ? TrainerCopy.ShownThisSittingTooltip(
+                        credit ?? RecordingCredit.Named(TrainerCopy.Name))
                     : null,
                 // The mark for what the row's floor held. The game's own run-history
                 // room icons are keyed by whether the room was a monster, an elite or a

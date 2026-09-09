@@ -260,7 +260,7 @@ public sealed class FightResultPanelTests
         FightResultPanel.Build(screen, Surface, art ?? (_ => null), font: null, done: () => { }).Root;
 
     private static FightResultScreen Panel(CombatComparison comparison) =>
-        FightResultScreen.For("NaveGreed", comparison);
+        FightResultScreen.For(RecordingCredit.Named("NaveGreed"), comparison);
 
     /// <summary>
     /// A node by the name the panel gave it. Written with dots here and matched

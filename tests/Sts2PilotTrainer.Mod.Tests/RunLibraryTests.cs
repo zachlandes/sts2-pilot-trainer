@@ -747,9 +747,9 @@ public sealed class RunViewRowMappingTests
     {
         var marked = RunBrowserScreen.EnteringRows(
             RunView.For(Recording(), RunProgress.Empty, selectedFloor: 2, shownThisSitting: [1]),
-            "native-a", "NaveGreed");
+            "native-a", RecordingCredit.Named("NaveGreed"));
         var cold = RunBrowserScreen.EnteringRows(
-            RunView.For(Recording(), RunProgress.Empty, selectedFloor: 2), "native-a", "NaveGreed");
+            RunView.For(Recording(), RunProgress.Empty, selectedFloor: 2), "native-a", RecordingCredit.Named("NaveGreed"));
 
         Assert.Equal(
             "You have seen NaveGreed's fight this sitting. It is cold again next time you launch the game.",

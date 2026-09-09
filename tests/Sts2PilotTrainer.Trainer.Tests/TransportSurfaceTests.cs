@@ -23,7 +23,7 @@ public sealed class TransportSurfaceTests
     private static readonly PrefightChoice MapMove = new PrefightChoice.MapMove(1, "Monster", 3, 7);
 
     private static readonly TransportIdentity NaveGreed = new(
-        "NaveGreed", "Ironclad A10, Underdocks", "https://www.youtube.com/watch?v=OJ-6QXhNgdg&t=26s", "0:26");
+        RecordingCredit.Named("NaveGreed"), "Ironclad A10, Underdocks", "https://www.youtube.com/watch?v=OJ-6QXhNgdg&t=26s", "0:26");
 
     /// <summary>The seven modes, named the way the table names them.</summary>
     public enum Column
@@ -134,7 +134,7 @@ public sealed class TransportSurfaceTests
     [Fact]
     public void TheVideoTitleIsAbsentOnARecordingThatHasNone()
     {
-        var untitled = new TransportIdentity("NaveGreed", null, null, null);
+        var untitled = new TransportIdentity(RecordingCredit.Named("NaveGreed"), null, null, null);
 
         Assert.Equal(
             Presence.Absent,
@@ -152,7 +152,7 @@ public sealed class TransportSurfaceTests
     [Fact]
     public void AnIdentityWithNoVideoSaysNothingOnHover()
     {
-        var noVideo = new TransportIdentity("NaveGreed", null, null, null);
+        var noVideo = new TransportIdentity(RecordingCredit.Named("NaveGreed"), null, null, null);
         var identity = PlaybackTransport.For(JourneyPhase.Watching, Facts(identity: noVideo, next: Blessing))!
             .Surface.Identity;
 

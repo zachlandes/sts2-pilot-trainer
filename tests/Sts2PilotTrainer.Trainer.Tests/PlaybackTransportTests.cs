@@ -42,7 +42,7 @@ public sealed class PlaybackTransportTests
     private static readonly PrefightChoice MapMove = new PrefightChoice.MapMove(1, "Monster", 3, 7);
 
     private static readonly TransportIdentity NaveGreed = new(
-        "NaveGreed", "Ironclad A10, Underdocks", "https://www.youtube.com/watch?v=OJ-6QXhNgdg&t=26s", "0:26");
+        RecordingCredit.Named("NaveGreed"), "Ironclad A10, Underdocks", "https://www.youtube.com/watch?v=OJ-6QXhNgdg&t=26s", "0:26");
 
     [Fact]
     public void TheFirstRevealReadsAsTheApprovedWordingForTheShippedRecording()
@@ -50,7 +50,7 @@ public sealed class PlaybackTransportTests
         var transport = Revealing(Blessing, 1, noteShown: false);
 
         Assert.Equal(TransportMode.Watching, transport.Mode);
-        Assert.Equal("NaveGreed", transport.Identity.Creator);
+        Assert.Equal("NaveGreed", transport.Identity.Credit.Label);
         Assert.Equal("Ironclad A10, Underdocks", transport.Identity.VideoTitle);
         Assert.Equal("1 of 2", transport.Counter.Numerals);
         Assert.Equal(
@@ -226,7 +226,7 @@ public sealed class PlaybackTransportTests
         var transport = For(JourneyPhase.InFight, anythingPlayed: true);
 
         Assert.Equal(TransportMode.Chip, transport.Mode);
-        Assert.Equal("NaveGreed", transport.Identity.Creator);
+        Assert.Equal("NaveGreed", transport.Identity.Credit.Label);
         Assert.Equal(string.Empty, transport.Note);
         foreach (var element in new[]
                  {
@@ -334,7 +334,7 @@ public sealed class PlaybackTransportTests
         Assert.Equal("NaveGreed · Ironclad A10, Underdocks", transport.Identity.TooltipTitle);
         Assert.Equal("Opens the video at 0:26, where this move is made.", transport.Identity.TooltipBody);
 
-        var untitled = new TransportIdentity("NaveGreed", null, null, null);
+        var untitled = new TransportIdentity(RecordingCredit.Named("NaveGreed"), null, null, null);
         Assert.Equal("NaveGreed", untitled.TooltipTitle);
         Assert.False(untitled.IsLink);
     }
@@ -374,7 +374,7 @@ public sealed class PlaybackTransportTests
     [Fact]
     public void AnotherRecordingIsDescribedByTheSameSentences()
     {
-        var other = new TransportIdentity("Someone Else", null, null, null);
+        var other = new TransportIdentity(RecordingCredit.Named("Someone Else"), null, null, null);
         var blessing = For(
             JourneyPhase.Watching, other, next: new PrefightChoice.Blessing(0, "RELIC.ARCANE_SCROLL"));
         var move = For(

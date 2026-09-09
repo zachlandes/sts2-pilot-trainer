@@ -262,7 +262,7 @@ internal static class RecordedFightRun
         RecordedFightEntry? entry = null;
         try
         {
-            var creator = RecordingIdentity.Creator(recording);
+            var credit = RecordingIdentity.Credit(recording);
             entry = RecordedFightEntry.PrepareInRunningGame(
                 recording, plan,
                 new RunningGameCommands(TravelOnTheGamesMapScreen, TakeTheRecordedCardOnTheGamesOwnScreen));
@@ -277,7 +277,7 @@ internal static class RecordedFightRun
             Transition(JourneyPhase.Watching);
             SweepWhileTheGameIsBetweenScreens();
             Log.Info(
-                $"[{RunmobileMod.ModId}] constructed {creator}'s run; watching " +
+                $"[{RunmobileMod.ModId}] constructed {credit.Possessive} run; watching " +
                 $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)} recorded " +
                 "decision(s) before the fight", 2);
             ArriveWhenTheGameHasFinishedMoving();
@@ -875,7 +875,7 @@ internal static class RecordedFightRun
         {
             var entry = _entry;
             if (entry is null) return;
-            var creator = RecordingIdentity.Creator(entry.Manifest);
+            var credit = RecordingIdentity.Credit(entry.Manifest);
 
             // Logged like every other decision this class makes. It is also the line
             // that says a press reached here at all, which is the thing no screenshot
@@ -887,7 +887,7 @@ internal static class RecordedFightRun
             if (row == 0)
             {
                 PrefightScreen.Confirm(
-                    TrainerCopy.ConfirmJumpToTheBeginningTitle(creator),
+                    TrainerCopy.ConfirmJumpToTheBeginningTitle(credit),
                     TrainerCopy.ConfirmJumpToTheBeginningBody,
                     TrainerCopy.ConfirmGoBack,
                     TrainerCopy.ConfirmKeepFighting,
@@ -1165,7 +1165,7 @@ internal static class RecordedFightRun
         var video = manifest.Source.Video;
         var at = _lookingBackAt is null ? VideoTimeOf(nextStep) : null;
         return new TransportIdentity(
-            RecordingIdentity.Creator(manifest),
+            RecordingIdentity.Credit(manifest),
             video?.Title,
             video is null
                 ? null
@@ -1611,7 +1611,7 @@ internal static class RecordedFightRun
             var capture = entry.Capture
                 ?? throw new InvalidOperationException("The fight ended before its capture began.");
             var screen = FightResultScreen.Of(
-                RecordingIdentity.Creator(entry.Manifest), capture,
+                RecordingIdentity.Credit(entry.Manifest), capture,
                 RecordedFightModule.Instance.RecordedFights.Projection(entry.Fight));
             _observer?.Dispose();
             _observer = null;
@@ -1688,7 +1688,7 @@ internal static class RecordedFightRun
         var ended = _afterTheFight;
         if (ended is null) return;
 
-        var choice = PostFightChoice.For(RecordingIdentity.Creator(ended.Manifest), PostFightFactsFor(ended));
+        var choice = PostFightChoice.For(RecordingIdentity.Credit(ended.Manifest), PostFightFactsFor(ended));
         var rows = new List<ScreenRow>();
         for (var index = 0; index < choice.Rows.Count; index++)
         {
@@ -1722,7 +1722,7 @@ internal static class RecordedFightRun
             var ended = _afterTheFight;
             if (ended is null) return;
 
-            var choice = PostFightChoice.For(RecordingIdentity.Creator(ended.Manifest), PostFightFactsFor(ended));
+            var choice = PostFightChoice.For(RecordingIdentity.Credit(ended.Manifest), PostFightFactsFor(ended));
             var action = choice.ActionAt(row);
             Log.Info($"[{RunmobileMod.ModId}] the post-fight choice was asked to {action}", 2);
 
@@ -1803,7 +1803,13 @@ internal static class RecordedFightRun
         // The engine's own sentence, verbatim, whatever the popup shows a player.
         Log.Error($"[{RunmobileMod.ModId}] not entering the recorded fight: {reason}", 2);
 
-        var creator = _entry is { } entry ? RecordingIdentity.Creator(entry.Manifest) : TrainerCopy.Name;
+        // The credit for the run being abandoned, and where preparation itself failed
+        // there is no entry to read one from. A refusal that cannot name whose recording
+        // it was still has to be shown, so it falls back to this mod's own name for the
+        // one sentence that needs a possessive.
+        var credit = _entry is { } entry
+            ? RecordingIdentity.Credit(entry.Manifest)
+            : RecordingCredit.Named(TrainerCopy.Name);
 
         try
         {
@@ -1824,7 +1830,7 @@ internal static class RecordedFightRun
             PlaybackTransportDock.Detach();
 
             if (RunManager.Instance is { IsInProgress: true }) RunManager.Instance.CleanUp();
-            ExplainOnceTheMenuIsBack(creator, screen, reason);
+            ExplainOnceTheMenuIsBack(credit, screen, reason);
         }
         catch (Exception ex)
         {
@@ -1850,13 +1856,14 @@ internal static class RecordedFightRun
     /// game's own return is awaited because completing it is the signal that the menu
     /// the popup will hang on is there.
     /// </summary>
-    private static async void ExplainOnceTheMenuIsBack(string creator, string? screen, string reason)
+    private static async void ExplainOnceTheMenuIsBack(
+        RecordingCredit credit, string? screen, string reason)
     {
         try
         {
             await ExplainOnceTheMenuIsBack(
                 NGame.Instance?.ReturnToMainMenu() ?? Task.CompletedTask,
-                () => PrefightScreen.ShowRefusal(creator, screen, reason));
+                () => PrefightScreen.ShowRefusal(credit, screen, reason));
         }
         catch (Exception ex)
         {

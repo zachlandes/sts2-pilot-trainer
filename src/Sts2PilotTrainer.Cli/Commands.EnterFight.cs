@@ -41,15 +41,17 @@ internal static partial class Commands
 
         // Nullable, because a generated fixture has nobody behind it. Every caption
         // below is a player-facing sentence about a person, so where there is no
-        // person there is no caption - the decisions are printed as themselves.
-        var creator = RecordingIdentity.CreatorOrNull(recording);
-        if (Args.Has(args, "--play") && creator is null)
+        // person there is no caption - the decisions are printed as themselves. A run
+        // this project's own recorder watched is credited to the player who played it,
+        // so it is not one of those.
+        var credit = RecordingIdentity.CreditOrNull(recording);
+        if (Args.Has(args, "--play") && credit is null)
         {
             throw new ManifestException(
                 $"--play plays the fight back as {recording.RunId}'s creator, and this recording does not say " +
                 "whose run it is. Every line the result screen prints names them, so there is nobody to " +
                 "attribute the comparison to. Enter the boundary without --play, or use a recording that " +
-                "carries source.video.channel_name.");
+                "carries source.video.channel_name or was recorded inside the game.");
         }
 
         if (Args.Has(args, "--restore") && stepOne)
@@ -82,7 +84,8 @@ internal static partial class Commands
 
         Console.WriteLine($"recording       : {recording.RunId}");
         Console.WriteLine(
-            $"creator         : {creator ?? "none - a generated fixture, with nobody to attribute it to"}");
+            "creator         : " +
+            (credit?.Label ?? "none - a generated fixture, with nobody to attribute it to"));
         Console.WriteLine($"progress        : {progress} - {LocalEnvironment.OriginOf(progress)}");
 
         var profileBefore = ProfileReading(recording.Environment);
@@ -129,7 +132,7 @@ internal static partial class Commands
             $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)} in " +
             $"{plan.PrefixActions.Count.ToString(CultureInfo.InvariantCulture)} recorded action(s), " +
             $"reached after action {plan.BoundarySeq.ToString(CultureInfo.InvariantCulture)}");
-        if (creator is not null) Console.WriteLine($"  {TrainerCopy.ChoicesShownAsRecorded(creator)}");
+        if (credit is not null) Console.WriteLine($"  {TrainerCopy.ChoicesShownAsRecorded(credit)}");
         Console.WriteLine();
 
         var noteShown = false;
@@ -142,7 +145,7 @@ internal static partial class Commands
             // that fight's predecessors - cards played, turns ended, loot taken - and
             // those are executed and printed as themselves rather than shown on the
             // transport.
-            var choice = creator is null ? null : entry.DescribeNextStepOrNull();
+            var choice = credit is null ? null : entry.DescribeNextStepOrNull();
 
             // Both halves of the reveal, asked in the order the client asks them: what
             // the decision is, and which object on the game's own screen it is about
@@ -153,7 +156,7 @@ internal static partial class Commands
                 ? null
                 : PlaybackTransport.For(JourneyPhase.Watching, new TransportFacts(
                     new TransportIdentity(
-                        creator!, recording.Source.Video?.Title, recording.Source.Video?.Url, null),
+                        credit!, recording.Source.Video?.Title, recording.Source.Video?.Url, null),
                     Made: [],
                     Next: choice,
                     StepsTaken: entry.DecisionsMade,
@@ -172,7 +175,7 @@ internal static partial class Commands
             if (transport is not null)
             {
                 noteShown |= transport.Note.Length > 0;
-                Console.WriteLine($"  [{transport.Identity.Creator}]  {transport.Counter.Numerals}");
+                Console.WriteLine($"  [{transport.Identity.Credit.Label}]  {transport.Counter.Numerals}");
                 Console.WriteLine($"      reveals {target!.Description}");
             }
 
@@ -264,14 +267,14 @@ internal static partial class Commands
         Console.WriteLine();
         Console.WriteLine(equality.Matches
             ? $"ENTERED - this game is standing at {plan.Describe()}" +
-              $"{(creator is null ? "" : $" of {creator}'s run")}, exactly as the recording records it."
+              $"{(credit is null ? "" : $" of {credit.Possessive} run")}, exactly as the recording records it."
             : "REFUSED - " + equality.Refusal);
 
         object? played = null;
         if (Args.Has(args, "--play") && equality.Matches)
         {
             played = PlayAndCompare(
-                entry, equality, RecordingIdentity.Creator(recording), manifestPath,
+                entry, equality, RecordingIdentity.Credit(recording), manifestPath,
                 Args.Value(args, "--recorded-fight"));
         }
 
@@ -281,7 +284,7 @@ internal static partial class Commands
                 schema = "sts2-pilot-trainer/enter-fight/v1",
                 manifest = Path.GetFileName(manifestPath),
                 run_id = recording.RunId,
-                creator,
+                creator = credit?.Label,
                 control = Args.Value(args, "--control"),
                 progress = progress.ToString(),
                 progress_origin = entry.ProgressOrigin,
@@ -405,10 +408,23 @@ internal static partial class Commands
     /// because it is the reason the mod's barrier exists.
     /// </summary>
     private static object PlayAndCompare(
-        RecordedFightEntry entry, BoundaryEquality equality, string creator, string manifestPath,
+        RecordedFightEntry entry, BoundaryEquality equality, RecordingCredit credit, string manifestPath,
         string? recordedFightPath)
     {
         recordedFightPath ??= RecordedFightPathFor(manifestPath);
+        if (!File.Exists(recordedFightPath))
+        {
+            // Said rather than thrown as a missing file. A recording the recorder made
+            // inside the game reaches this now that it can be credited, and it has no
+            // replayed line beside it: producing one is `recorded-fight`'s job and it
+            // has not been run for this recording.
+            throw new ManifestException(
+                $"--play compares the fight against the recording's own replayed line, and " +
+                $"'{Path.GetFileName(recordedFightPath)}' is not there. Produce it with " +
+                $"`./scripts/arbiter recorded-fight {Path.GetFileName(manifestPath)}`, or enter the boundary " +
+                "without --play.");
+        }
+
         var recorded = RecordedFights.Load(recordedFightPath);
         recorded.Bind(entry.Manifest);
 
@@ -419,7 +435,7 @@ internal static partial class Commands
 
         Console.WriteLine();
         Console.WriteLine(
-            $"played          : {creator}'s own {capture.Trace.Steps.Count - 1} fight action(s), through the " +
+            $"played          : {credit.Possessive} own {capture.Trace.Steps.Count - 1} fight action(s), through the " +
             "player-side capture");
         Console.WriteLine($"capture         : {capture.State}");
         Console.WriteLine(
@@ -429,7 +445,7 @@ internal static partial class Commands
 
         var yours = capture.Project();
         var comparison = CombatComparison.Between(yours, recorded.Projection(entry.Fight));
-        var screen = FightResultScreen.For(creator, comparison);
+        var screen = FightResultScreen.For(credit, comparison);
 
         Panel(screen);
 

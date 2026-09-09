@@ -13,7 +13,7 @@ public sealed class FightResultScreenTests
     [Fact]
     public void ReadsAsTheApprovedWordingOverAComparison()
     {
-        var screen = FightResultScreen.For("NaveGreed", CombatComparison.Between(PlayersLine(), RecordingsLine()));
+        var screen = FightResultScreen.For(RecordingCredit.Named("NaveGreed"), CombatComparison.Between(PlayersLine(), RecordingsLine()));
 
         Assert.True(screen.HasComparison);
         Assert.Equal("Your fight and NaveGreed's", screen.Title);
@@ -50,7 +50,7 @@ public sealed class FightResultScreenTests
     [Fact]
     public void ATurnOnlySideReachedIsAbsentOnTheOtherRatherThanZero()
     {
-        var screen = FightResultScreen.For("NaveGreed", CombatComparison.Between(RecordingsLine(), PlayersLine()));
+        var screen = FightResultScreen.For(RecordingCredit.Named("NaveGreed"), CombatComparison.Between(RecordingsLine(), PlayersLine()));
 
         Assert.Null(screen.Turns[2].Yours);
         Assert.NotNull(screen.Turns[2].Theirs);
@@ -66,7 +66,7 @@ public sealed class FightResultScreenTests
         capture.BeginStep("PlayCard", Args(), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("victory", 1, 64, 0, enemies: 0));
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
+        var screen = FightResultScreen.Of(RecordingCredit.Named("NaveGreed"), capture, RecordingsLine());
         Assert.False(screen.HasComparison);
         Assert.Contains("carries no 'card_id'", screen.Notice, StringComparison.Ordinal);
     }
@@ -74,7 +74,7 @@ public sealed class FightResultScreenTests
     [Fact]
     public void AnotherCreatorIsNamedBySameSentences()
     {
-        var screen = FightResultScreen.For("Someone Else", CombatComparison.Between(PlayersLine(), RecordingsLine()));
+        var screen = FightResultScreen.For(RecordingCredit.Named("Someone Else"), CombatComparison.Between(PlayersLine(), RecordingsLine()));
         Assert.Equal("Your fight and Someone Else's", screen.Title);
         Assert.Equal(["You", "Someone Else"], screen.Columns);
         Assert.Equal("Someone Else", screen.Chart.Theirs.Label);
@@ -86,8 +86,8 @@ public sealed class FightResultScreenTests
     {
         var gain = PlayersLine() with { Summary = PlayersLine().Summary with { NetHealthChange = 6 } };
         var even = PlayersLine() with { Summary = PlayersLine().Summary with { NetHealthChange = 0 } };
-        Assert.Equal("+6", FightResultScreen.For("N", CombatComparison.Between(gain, RecordingsLine())).Rows[4].Yours);
-        Assert.Equal("0", FightResultScreen.For("N", CombatComparison.Between(even, RecordingsLine())).Rows[4].Yours);
+        Assert.Equal("+6", FightResultScreen.For(RecordingCredit.Named("N"), CombatComparison.Between(gain, RecordingsLine())).Rows[4].Yours);
+        Assert.Equal("0", FightResultScreen.For(RecordingCredit.Named("N"), CombatComparison.Between(even, RecordingsLine())).Rows[4].Yours);
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public sealed class FightResultScreenTests
         var capture = Live();
         capture.Abandon();
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
+        var screen = FightResultScreen.Of(RecordingCredit.Named("NaveGreed"), capture, RecordingsLine());
         Assert.False(screen.HasComparison);
         Assert.Equal("Combat Trainer", screen.Title);
         Assert.Equal("This fight was left before it ended, so there is nothing to compare.", screen.Notice);
@@ -110,7 +110,7 @@ public sealed class FightResultScreenTests
         capture.Finish(Sample("victory", 1, 64, 0, enemies: 0));
         Assert.Equal(FightCaptureState.Incomplete, capture.State);
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
+        var screen = FightResultScreen.Of(RecordingCredit.Named("NaveGreed"), capture, RecordingsLine());
         Assert.Equal(capture.Refusal, screen.Notice);
         Assert.StartsWith("Your fight could not be captured completely, so it is not compared.", screen.Notice, StringComparison.Ordinal);
     }
@@ -118,7 +118,7 @@ public sealed class FightResultScreenTests
     [Fact]
     public void AFightStillBeingFoughtIsNotCompared()
     {
-        var screen = FightResultScreen.Of("NaveGreed", Live(), RecordingsLine());
+        var screen = FightResultScreen.Of(RecordingCredit.Named("NaveGreed"), Live(), RecordingsLine());
         Assert.False(screen.HasComparison);
         Assert.Contains("has not ended", screen.Notice, StringComparison.Ordinal);
     }
@@ -137,7 +137,7 @@ public sealed class FightResultScreenTests
         capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("defeat", 1, 0, 42));
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
+        var screen = FightResultScreen.Of(RecordingCredit.Named("NaveGreed"), capture, RecordingsLine());
         Assert.True(screen.HasComparison);
         Assert.False(screen.Won);
         Assert.Equal(string.Empty, screen.Notice);
@@ -148,7 +148,7 @@ public sealed class FightResultScreenTests
     [Fact]
     public void AWonFightSaysSo()
     {
-        var screen = FightResultScreen.For("NaveGreed", CombatComparison.Between(PlayersLine(), RecordingsLine()));
+        var screen = FightResultScreen.For(RecordingCredit.Named("NaveGreed"), CombatComparison.Between(PlayersLine(), RecordingsLine()));
         Assert.True(screen.Won);
         Assert.False(FightResultScreen.Left().Won);
     }
@@ -160,7 +160,7 @@ public sealed class FightResultScreenTests
         capture.BeginStep("PlayCard", Card("CARD.BASH"), Sample("in_progress", 1, 64, 42));
         capture.CompleteStep(Sample("victory", 1, 64, 0, enemies: 0));
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
+        var screen = FightResultScreen.Of(RecordingCredit.Named("NaveGreed"), capture, RecordingsLine());
         Assert.False(screen.HasComparison);
         Assert.Contains("different complete combat-start snapshot digests", screen.Notice, StringComparison.Ordinal);
     }
@@ -176,7 +176,7 @@ public sealed class FightResultScreenTests
         capture.BeginStep("PlayCard", Card("CARD.BASH"), Sample("in_progress", 2, 58, 34));
         capture.CompleteStep(Sample("victory", 2, 58, 0, enemies: 0));
 
-        var screen = FightResultScreen.Of("NaveGreed", capture, RecordingsLine());
+        var screen = FightResultScreen.Of(RecordingCredit.Named("NaveGreed"), capture, RecordingsLine());
         Assert.True(screen.HasComparison);
         Assert.All(screen.Rows, row => Assert.True(row.Matches));
         Assert.Equal(["CARD.BASH"], screen.Turns[1].Yours!.CardModelIds);

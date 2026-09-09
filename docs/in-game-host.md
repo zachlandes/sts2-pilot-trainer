@@ -662,6 +662,19 @@ answers remain refused in the client because their prompt stand-ins are headless
 The tests need no game installed, which is the point - the run that would otherwise catch
 this is one only a person with the client can make.
 
+The same refusal in its other place is a surface offering a boundary the walk cannot
+reach, and that is not a card-screen shape at all: standing a player at any boundary past
+the first fight means replaying the fight before it, which is a card played and a turn
+ended and loot claimed, none of which this client issues. A run library that offered every
+boundary the recording proved therefore built the run, showed a decision or two and then
+aborted, in the same worst place. So the verb set is declared once in
+`RetailPlayback`, in the assembly that carries no game, and the library asks it of a
+boundary's prefix before it draws the row: `RunViewPosition.Reachable` is that answer and
+`Playable` folds it in, so a refused place keeps its row and says why. `RunDriver` is
+still what enforces it, and the two cannot drift because there is no second copy of the
+set. Widening what the client issues widens what the library offers in the same commit,
+which is the property that was missing.
+
 The second is the rule the fix was eventually written to, which is not the rule the first
 fix was written to.
 That one said a screen the recording opened and the recording answered is not the

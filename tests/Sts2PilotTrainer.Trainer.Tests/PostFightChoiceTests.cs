@@ -14,7 +14,7 @@ public sealed class PostFightChoiceTests
     [Fact]
     public void OnAWinThisBuildOffersLookThenActThenLeave()
     {
-        var choice = PostFightChoice.For("NaveGreed", Facts(won: true));
+        var choice = PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: true));
 
         Assert.Equal(
             [PostFightAction.ShowTheComparison, PostFightAction.FightItAgain, PostFightAction.Leave],
@@ -28,7 +28,7 @@ public sealed class PostFightChoiceTests
     [Fact]
     public void OnALossTheSameThreeRowsAreOffered()
     {
-        var choice = PostFightChoice.For("NaveGreed", Facts(won: false));
+        var choice = PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: false));
 
         Assert.Equal(
             [PostFightAction.ShowTheComparison, PostFightAction.FightItAgain, PostFightAction.Leave],
@@ -43,7 +43,7 @@ public sealed class PostFightChoiceTests
     [Fact]
     public void FilledShapesMoveTheRunAndTheRevealIsHollow()
     {
-        var choice = PostFightChoice.For("NaveGreed", Facts(won: true, canWatch: true, canContinueAsYou: true));
+        var choice = PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: true, canWatch: true, canContinueAsYou: true));
 
         Assert.Equal(TransportGlyph.Reveal, choice.Rows[0].Row.Glyph);
         Assert.Equal(TransportGlyph.Play, choice.Rows[1].Row.Glyph);
@@ -57,8 +57,8 @@ public sealed class PostFightChoiceTests
     [Fact]
     public void WatchIsPresentOnlyWhereTheBuildCanRunTheRecordingsFight()
     {
-        var without = PostFightChoice.For("NaveGreed", Facts(won: true));
-        var with = PostFightChoice.For("NaveGreed", Facts(won: true, canWatch: true));
+        var without = PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: true));
+        var with = PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: true, canWatch: true));
 
         Assert.DoesNotContain(without.Rows, row => row.Action == PostFightAction.WatchTheirFight);
         Assert.Equal("Watch NaveGreed's fight", with.Rows[1].Row.Label);
@@ -71,13 +71,13 @@ public sealed class PostFightChoiceTests
     public void ContinueAsYouIsPresentOnlyOnAWinAndOnlyWhereTheBuildCanContinue()
     {
         Assert.DoesNotContain(
-            PostFightChoice.For("NaveGreed", Facts(won: true)).Rows,
+            PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: true)).Rows,
             row => row.Action == PostFightAction.ContinueAsYou);
         Assert.DoesNotContain(
-            PostFightChoice.For("NaveGreed", Facts(won: false, canContinueAsYou: true)).Rows,
+            PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: false, canContinueAsYou: true)).Rows,
             row => row.Action == PostFightAction.ContinueAsYou);
 
-        var offered = PostFightChoice.For("NaveGreed", Facts(won: true, canContinueAsYou: true));
+        var offered = PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: true, canContinueAsYou: true));
         Assert.Equal("Continue", offered.Rows[^2].Row.Label);
         Assert.Equal("Leave", offered.Rows[^1].Row.Label);
     }
@@ -87,10 +87,9 @@ public sealed class PostFightChoiceTests
     [Fact]
     public void ARowTakenThisSittingCarriesTheDotAndStaysOffered()
     {
-        var cold = PostFightChoice.For("NaveGreed", Facts(won: true));
-        var shown = PostFightChoice.For("NaveGreed", Facts(won: true, comparisonShown: true));
-        var watched = PostFightChoice.For(
-            "NaveGreed", Facts(won: true, canWatch: true, fightWatched: true));
+        var cold = PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: true));
+        var shown = PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: true, comparisonShown: true));
+        var watched = PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: true, canWatch: true, fightWatched: true));
 
         Assert.False(cold.Rows[0].Row.IsCurrent);
         Assert.True(shown.Rows[0].Row.IsCurrent);
@@ -103,7 +102,7 @@ public sealed class PostFightChoiceTests
     [Fact]
     public void RefusesARowThatIsNotOffered()
     {
-        var choice = PostFightChoice.For("NaveGreed", Facts(won: true));
+        var choice = PostFightChoice.For(RecordingCredit.Named("NaveGreed"), Facts(won: true));
 
         Assert.Throws<Replay.ManifestException>(() => choice.ActionAt(3));
         Assert.Throws<Replay.ManifestException>(() => choice.ActionAt(-1));
@@ -114,7 +113,7 @@ public sealed class PostFightChoiceTests
     [Fact]
     public void AnotherCreatorIsNamedByTheSameSentences()
     {
-        var choice = PostFightChoice.For("Someone Else", Facts(won: true, canWatch: true));
+        var choice = PostFightChoice.For(RecordingCredit.Named("Someone Else"), Facts(won: true, canWatch: true));
 
         Assert.Equal("Watch Someone Else's fight", choice.Rows[1].Row.Label);
         Assert.DoesNotContain(choice.Menu, row => row.Label.Contains("NaveGreed", StringComparison.Ordinal));

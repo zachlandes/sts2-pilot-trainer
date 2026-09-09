@@ -528,6 +528,10 @@ blessing and a map move are what the transcribed prefix contains, and they are w
 the reveal can point at. Every other screen between fights - loot, card rewards,
 rests, shops, treasure, act transitions - is refused by the reveal for the same
 reason the driver refuses its verb, and the transport says so rather than skipping it.
+The consequence for a whole run is that its first fight is the only boundary a client can
+be walked to, because every later one crosses a fight; the run library reads
+`RetailPlayback` and refuses those rows by name rather than starting a journey that
+aborts.
 
 **Only a prefix of the recording is transcribed.** Run start through the opening of
 the floor-5 fight's third turn, which is two whole fights, the loot each of them

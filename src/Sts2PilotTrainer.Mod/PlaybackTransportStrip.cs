@@ -383,7 +383,7 @@ internal sealed class PlaybackTransportStrip
 
         // The creator is on every surface there is - it is the whole of what a chip
         // says - so it is the one label with nothing to decide.
-        _creator.Text = state.Identity.Creator;
+        _creator.Text = state.Identity.Credit.Label;
         _title.Text = state.Identity.VideoTitle ?? string.Empty;
         Show(_title, surface.Title);
 

@@ -64,6 +64,35 @@ public sealed class RunViewTests
     private static RunViewRow PlayFrom(RunView view) =>
         view.Rows.Single(row => row.Kind == RunViewRowKind.PlayFrom);
 
+    private static RunViewRow? RowOf(RunView view, RunViewRowKind kind) =>
+        view.Rows.SingleOrDefault(row => row.Kind == kind);
+
+    /// <summary>
+    /// The same three floors, with the recording's own decisions under them: the run
+    /// walks to fight 1 on nothing but a blessing and a map move, and reaches floor 3
+    /// only through that fight and the loot it dropped.
+    ///
+    /// This is the shape of every real recording. It is written out rather than reduced
+    /// because the whole point of the gate is which of these decisions a running client
+    /// can issue, and a fixture with no actions in it would pass either way.
+    /// </summary>
+    private static ReplayManifest ThreeFloorsAsPlayed() => Recording(
+        [
+            ReplayBoundary.FloorEntry(floor: 2, afterSeq: 1, Digest("floor-2")),
+            ReplayBoundary.CombatStart(fight: 1, afterSeq: 1, Digest("fight-1")),
+            ReplayBoundary.FloorEntry(floor: 3, afterSeq: 6, Digest("floor-3")),
+            ReplayBoundary.CombatStart(fight: 2, afterSeq: 6, Digest("fight-2")),
+        ],
+        [
+            Decision(0, ActionVerb.ChooseNeowBlessing),
+            Decision(1, ActionVerb.MapMove),
+            Combat(2),
+            Decision(3, ActionVerb.EndTurn),
+            Decision(4, ActionVerb.ClaimReward),
+            Decision(5, ActionVerb.TakeCard),
+            Decision(6, ActionVerb.MapMove),
+        ]);
+
     /// <summary>
     /// A run does not arrive at the floor it begins on, so the recording proves no
     /// boundary there - and leaving it out would start the strip at floor two.
@@ -476,4 +505,126 @@ public sealed class RunViewTests
     {
         Assert.Equal(LibraryCopy.FloorIsYours, RunView.For(ThreeFloors(), RunProgress.Empty).FloorNote);
     }
+
+    // ── What the client can actually be walked to ──────────────────────────
+    //
+    // The library used to offer every place the recording proved. Reaching any of them
+    // past the first fight means replaying that fight through the retail client, which
+    // the driver refuses - so the offer built the run, showed a decision or two and
+    // then aborted in front of the player. These pin the other half of the rule: a
+    // place exists, and a place can be reached, and both have to be true before a row
+    // is enabled.
+
+    [Fact]
+    public void AFloorReachedOnlyThroughAnEarlierFightIsNotAPlaceThisClientOffers()
+    {
+        var positions = RunView.PositionsIn(ThreeFloorsAsPlayed());
+
+        Assert.True(positions[1].Reachable);
+        Assert.True(positions[1].Playable);
+        Assert.False(positions[2].Reachable);
+        Assert.False(positions[2].Playable);
+    }
+
+    [Fact]
+    public void ThePlayFromRowSaysWhyRatherThanStandingSomebodyThere()
+    {
+        var view = RunView.For(ThreeFloorsAsPlayed(), RunProgress.Empty, selectedFloor: 3);
+        var row = PlayFrom(view);
+
+        Assert.False(row.Enabled);
+        Assert.Equal(LibraryCopy.EarlierFightNotReplayable, row.Reason);
+        Assert.Null(row.Note);
+    }
+
+    [Fact]
+    public void TheFirstFightIsStillOffered()
+    {
+        var view = RunView.For(ThreeFloorsAsPlayed(), RunProgress.Empty, selectedFloor: 2);
+        var row = PlayFrom(view);
+
+        Assert.True(row.Enabled);
+        Assert.Null(row.Reason);
+        Assert.Equal(1, row.Fight);
+    }
+
+    /// <summary>
+    /// Continue is refused rather than moved on to the next fight this build can reach.
+    /// It means "the next fight you have not played from", and a row that quietly named
+    /// a different one would answer a question nobody asked.
+    /// </summary>
+    [Fact]
+    public void ContinueRefusesRatherThanSkippingToAFightThisClientCanReach()
+    {
+        var played = RunProgress.Empty.WithFightPlayed(Run, 1);
+        var view = RunView.For(ThreeFloorsAsPlayed(), played, selectedFloor: 2);
+        var row = RowOf(view, RunViewRowKind.Continue);
+
+        Assert.NotNull(row);
+        Assert.Equal(2, row.Fight);
+        Assert.False(row.Enabled);
+        Assert.Equal(LibraryCopy.EarlierFightNotReplayable, row.Reason);
+    }
+
+    [Fact]
+    public void ContinueIsOfferedWhileTheNextUnplayedFightIsTheFirst()
+    {
+        var view = RunView.For(ThreeFloorsAsPlayed(), RunProgress.Empty, selectedFloor: 2);
+        var row = RowOf(view, RunViewRowKind.Continue);
+
+        Assert.NotNull(row);
+        Assert.Equal(1, row.Fight);
+        Assert.True(row.Enabled);
+        Assert.Null(row.Reason);
+    }
+
+    /// <summary>Start the run over walks to fight 1, so it is offered wherever that
+    /// fight is reachable and refused with the same sentence where it is not.</summary>
+    [Fact]
+    public void StartTheRunOverFollowsTheSameRule()
+    {
+        var reachable = RowOf(
+            RunView.For(ThreeFloorsAsPlayed(), RunProgress.Empty), RunViewRowKind.StartOver);
+        Assert.NotNull(reachable);
+        Assert.True(reachable.Enabled);
+
+        var behindAFight = Recording(
+            [ReplayBoundary.CombatStart(fight: 1, afterSeq: 2, Digest("fight-1")),
+             ReplayBoundary.FloorEntry(floor: 2, afterSeq: 2, Digest("floor-2"))],
+            [Decision(0, ActionVerb.ChooseNeowBlessing), Combat(1), Decision(2, ActionVerb.MapMove)]);
+        var refused = RowOf(RunView.For(behindAFight, RunProgress.Empty), RunViewRowKind.StartOver);
+
+        Assert.NotNull(refused);
+        Assert.False(refused.Enabled);
+        Assert.Equal(LibraryCopy.EarlierFightNotReplayable, refused.Reason);
+    }
+
+    /// <summary>The strip is drawn from the same rule, so a cell a player can see is
+    /// offered is a cell the row will actually take them to.</summary>
+    [Fact]
+    public void TheStripDrawsTheSameAnswerAsTheRow()
+    {
+        var view = RunView.For(ThreeFloorsAsPlayed(), RunProgress.Empty, selectedFloor: 2);
+
+        Assert.Equal(
+            view.Positions.Select(position => position.Playable),
+            view.Strip.Select(cell => cell.Playable));
+    }
+
+    /// <summary>A screen whose every row is refused says nothing about a run not being
+    /// saved: that sentence would read as the reason they are refused.</summary>
+    [Fact]
+    public void AViewWithNothingOnOfferSaysNothingAboutSaving()
+    {
+        var behindAFight = Recording(
+            [ReplayBoundary.CombatStart(fight: 1, afterSeq: 2, Digest("fight-1")),
+             ReplayBoundary.FloorEntry(floor: 2, afterSeq: 2, Digest("floor-2"))],
+            [Decision(0, ActionVerb.ChooseNeowBlessing), Combat(1), Decision(2, ActionVerb.MapMove)]);
+
+        var view = RunView.For(behindAFight, RunProgress.Empty);
+
+        Assert.All(view.Rows, row => Assert.False(row.Enabled));
+        Assert.Null(view.NotSaved);
+    }
 }
+

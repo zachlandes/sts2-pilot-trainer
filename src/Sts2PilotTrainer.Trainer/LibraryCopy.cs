@@ -366,6 +366,20 @@ public static class LibraryCopy
     /// starting the run over already puts you.</summary>
     public const string RunStartsHere = "the run starts here";
 
+    /// <summary>
+    /// Why a place further into the run offers nothing yet: getting there means
+    /// replaying a fight the recording already fought, and this build cannot drive the
+    /// game through one.
+    ///
+    /// It names what is missing rather than what the player did wrong, because nothing
+    /// about their run is at fault - the recording holds the floor, the arbiter can
+    /// stand in it, and it is this client that cannot walk there. Said in the same
+    /// lower-case fragment the other two refusals use, because it takes the same place
+    /// on the row.
+    /// </summary>
+    public const string EarlierFightNotReplayable =
+        "this build cannot yet replay the fights before it";
+
     /// <summary>Said on the floor pane, and only there. From a floor entry nothing is
     /// compared, and a player who expected a comparison would be waiting for one that
     /// never comes.</summary>

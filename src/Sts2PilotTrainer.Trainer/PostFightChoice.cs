@@ -89,9 +89,9 @@ public sealed record PostFightChoice(IReadOnlyList<PostFightRow> Rows)
     /// <summary>
     /// The choice for one finished fight.
     /// </summary>
-    /// <param name="creator">Whose recording it is, from the manifest. The one row
+    /// <param name="credit">Whose recording it is, from the manifest. The one row
     /// that names anybody names them.</param>
-    public static PostFightChoice For(string creator, PostFightFacts facts)
+    public static PostFightChoice For(RecordingCredit credit, PostFightFacts facts)
     {
         var rows = new List<PostFightRow>
         {
@@ -104,7 +104,7 @@ public sealed record PostFightChoice(IReadOnlyList<PostFightRow> Rows)
         if (facts.CanWatch)
         {
             rows.Add(new PostFightRow(PostFightAction.WatchTheirFight, new MenuRow(
-                TransportGlyph.Play, TrainerCopy.WatchTheirFight(creator), IsCurrent: facts.FightWatched)));
+                TransportGlyph.Play, TrainerCopy.WatchTheirFight(credit), IsCurrent: facts.FightWatched)));
         }
 
         rows.Add(new PostFightRow(
