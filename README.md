@@ -34,7 +34,8 @@ When it ends, nothing is shown until you ask: show the comparison, fight it agai
 The comparison puts the two fights side by side, won or lost: summary figures, the cards and potions each of you played by turn, and a chart of health lost each turn.
 The two lines stay distinct by colour and marker and nothing scores either one.
 Built and shown in the retail client; [demo/PLAYBACK-TRANSPORT.md](demo/PLAYBACK-TRANSPORT.md) and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md) have the screenshots.
-Today that is one featured run, and its menu card opens the first fight; the run library below opens every fight that recording proves.
+Today that is one featured run, and both its menu card and the run library open its first fight.
+Later entry points remain visible but disabled until the client can replay the fights before them.
 - **Coming soon:** more featured runs, from more creators, named on the page.
 - **Coming soon:** every screen between fights carried on the playback controls, so a featured run plays through as one journey.
 - **Coming soon:** watch the creator's own fight played through, and peek at it mid-fight if you choose to.
@@ -59,6 +60,8 @@ The arbiter enters fight 2 of that recording headlessly and reproduces the recor
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
 Settings show how much space recordings take, how many are kept, remove them on request, control whether the shared-run index is fetched, and let the player show or hide Runmobile on the main menu; index fetching defaults on.
 No setting shares a run automatically.
+Your recordings appear under Mine and can be played from their reachable first fight, credited as **Your run** throughout playback.
+This build does not carry a recorded comparison line for them, so after the fight the comparison row states that instead of comparing against the included recording.
 - **Coming soon:** a control for turning recording itself off.
 
 **Browse the runs and play from one.**
@@ -68,14 +71,17 @@ The settings page can show or hide the main-menu row for either player, overridi
 Both buttons open the same library.
 Its parchment browser has two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
 Each run row shows its character, act reached and leading relics, while the selected run's pane adds its complete relics, recorded deck count and a strip of the floors it reached.
-Opening that run makes the strip selectable and offers **Play from this floor**, **Continue** to the next unplayed fight, and **Start the run over** wherever the recording proves each entry point.
+Opening that run makes the strip selectable and offers **Play from this floor**, **Continue** to the next unplayed fight, and **Start the run over** wherever the recording proves an entry point the client can reach.
+On this build only a supported first-fight prefix can be reachable; later rows stay visible and disabled with the reason that the client cannot yet replay the preceding fights.
+A native run under Mine is credited as **Your run**, while one received under Others is credited neutrally as **This run** because recordings carry no player identity.
 Long run strips page through fixed-width cells, open on the page containing the selected or last replayed floor, and let a focused Previous or Next control use the game's keyboard or controller confirm or select binding.
 [demo/RUNMOBILE-MAIN-MENU.md](demo/RUNMOBILE-MAIN-MENU.md) shows both defaults and the settings override in the retail client.
 [demo/RUNMOBILE-LIBRARY.md](demo/RUNMOBILE-LIBRARY.md) shows the parchment library itself.
 The visible `Compatible with your game version` filter defaults on, hides incompatible runs during ordinary browsing, and leaves a muted "{n} not shown" count underneath.
 Turning the filter off reveals incompatible runs as disabled rows; entering an exact code does that automatically, selects its run in the sorted position, and shows both the build it requires and the current build.
 An established multiplayer run remains hidden.
-Your own finished runs are reachable a second way: the game's own run history carries a plate under its pane offering the last floor or the opened run's other floors, and where it cannot offer them the rows stay in place with the reason on them - the recording has a gap in it, it was made on another build, or a run is in progress.
+Your own finished runs are reachable a second way: the game's own run history carries a plate under its pane offering the furthest floor this client can reach or the opened run's other floors.
+Where it cannot offer a place, the rows stay in place with the reason on them - the client cannot replay an earlier fight, the recording has a gap in it, it was made on another build, or a run is in progress.
 That plate also offers `Share this run` when the profile's `settings.json` names an authorized HTTPS sharing service; Runmobile has no built-in service, so otherwise the row says sharing is unavailable and sends nothing.
 The single sharing popup shows the run's identity and integrity seals, accepts a required run name of at most 40 characters and an optional description of at most 200, and requires a display name only when submitting.
 It says that no other personal information travels, requires explicit CC0 consent, and runs the full publication validation locally before sending the manifest and those entered fields.

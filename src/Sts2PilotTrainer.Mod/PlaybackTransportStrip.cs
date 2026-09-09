@@ -389,7 +389,7 @@ internal sealed class PlaybackTransportStrip
 
         // Two lines when there is a video title, one centred line when there is not.
         // The fallback is the design's: a recording whose manifest has no title says
-        // the creator alone rather than showing an empty second line.
+        // the credit alone rather than showing an empty second line.
         var identityLeft = left + (42 * _unit);
         if (_title.Visible)
         {

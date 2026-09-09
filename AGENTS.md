@@ -185,10 +185,12 @@ What the result *looks like* is presentation and stays out of that contract:
 drawn model, and `FightResultPanel` in the mod draws it. A value the projection cannot
 derive honestly is a gap in a line, never a zero.
 The result is drawn on request and never unbidden: after the fight the chip offers
-`PostFightChoice`'s rows and the panel is the first of them, a lost line compares
-(Lost against Won) rather than standing behind a notice, and which fights were shown
-this sitting is held in memory by `RecordedFightModule` for the sitting and written
-nowhere.
+`PostFightChoice`'s rows and the result surface is the first of them.
+A run with a bound recorded line gets the comparison panel, where a lost line compares
+(Lost against Won) rather than standing behind a notice; a native run has no such line
+in this build and gets the plain no-line notice instead.
+Which fights were shown this sitting is held in memory by `RecordedFightModule` for the
+sitting and written nowhere.
 
 **Where this is going, and what is runnable at each step, is
 [docs/proof-of-concept-path.md](docs/proof-of-concept-path.md).** Read it before
@@ -224,9 +226,9 @@ Which screen that is belongs to the relic - a removal opens `NDeckCardSelectScre
 `RecordedCardScreen` is the one reader and presser of that screen, so the card the reveal lights is the card the commit presses, and the recorded `option_index` indexes the list the engine handed the screen rather than the sorted grid a player sees.
 That makes the two hosts differ in whether the screen is drawn, so whether a recorded answer is a decision somebody watches is `RunDriver.ShowsTheAnswerBeingGiven` and nothing re-derives it - the counting, the captions and the reveal all ask it.
 `docs/headless-fidelity.md` owns the mechanism.
-Do not narrow the verbs one host issues, or the answers it draws a screen for, without holding them against a recorded walk to its first fight; `RunDriver.VerbsIssuedInsideARunningGame` and `RunDriver.AnswersShownOnTheGamesOwnScreen` state the two sets once and `RecordedFightVerbAgreementTests` holds the committed fixture against both without the game installed.
-The verbs a running client issues are declared in `RetailPlayback` rather than on the driver, because a second owner in an assembly that cannot reference the game needs the same answer: the run library asks it of a boundary's prefix before it offers a player a place to stand, and a copy of the set is how the library came to offer a floor the journey aborts on.
-The driver still enforces it, and `RetailPlayback` authorises nothing.
+Do not narrow the verbs one host issues, or the answers it draws a screen for, without holding them against a recorded walk to its first fight; `RetailPlayback.Verbs` owns what the running client issues, `RunDriver.AnswersShownOnTheGamesOwnScreen` owns what it draws, and `RecordedFightVerbAgreementTests` holds the committed fixture against both without the game installed.
+The run library asks `RetailPlayback` about a boundary's prefix before it offers a player a place to stand, because a second copy of the verb set is how the library came to offer a floor the journey aborts on.
+The driver still enforces the shared set, and `RetailPlayback` authorises nothing.
 
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
@@ -268,7 +270,7 @@ The player-facing tabs are Others and Mine; `LibraryTab.Community` and `LibraryT
 An online row's identity is its share id and code, while `RunId` remains the manifest's identity; two submissions of one run are two rows and each resolves through its own share.
 Where a player can be stood is the recording's own `boundaries[]`, read through `RunView`, so no row can offer somewhere `RecordedFightEntry` would refuse; `RecordedFightRun.Start` takes the plan, because there is still one playback path.
 A boundary existing and a boundary being reachable are two facts and a row needs both: `RunViewPosition.Reachable` asks `RetailPlayback` whether this client can walk the recording's own decisions that far, and `Playable` folds it in beside the run's start and an unfinished fight, so every surface that reads that rule - the play-from row, Continue, Start the run over, both strips and the run-history plate - refuses in the same words rather than constructing a run and aborting mid-journey.
-On this build that leaves the first fight of a run reachable and everything past it refused by name.
+On this build that leaves supported first-fight prefixes reachable and everything past the first fight refused by name.
 `RunProgress` under the store holds fight ordinals and nothing resumable - it is the pips and Continue's number, never a save.
 What a player reads is `LibraryCopy`; what is drawn is `LibraryScreen`, and [docs/in-game-host.md](docs/in-game-host.md) owns the accepted parchment design it draws.
 

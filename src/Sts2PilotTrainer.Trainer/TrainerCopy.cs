@@ -119,7 +119,7 @@ public static class TrainerCopy
     public static string StepCounter(int step, int count) =>
         $"{step.ToString(CultureInfo.InvariantCulture)} of {count.ToString(CultureInfo.InvariantCulture)}";
 
-    // The ledger's rows. The tag hanging above them names the creator once, so the
+    // The ledger's rows. The tag hanging above them carries the credit once, so the
     // rows do not: five rows each opening with the same name is the repetition the
     // caption line was replaced to avoid.
 
@@ -332,8 +332,8 @@ public static class TrainerCopy
     // during the fight. The panel is mostly pictures - card art by turn, two lines on
     // a chart, figures in two columns - so what is left here is the furniture those
     // pictures need and the sentences that are rules rather than captions. Every
-    // number comes from CombatComparison and every name from the manifest; nothing
-    // below names a recording.
+    // number comes from CombatComparison and every credit from RecordingIdentity;
+    // nothing below names a recording.
 
     /// <summary>The panel's title over a comparison.</summary>
     public static string ComparisonTitle(RecordingCredit credit) =>

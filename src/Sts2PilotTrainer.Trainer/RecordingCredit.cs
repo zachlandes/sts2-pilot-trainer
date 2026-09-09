@@ -11,8 +11,8 @@ namespace Sts2PilotTrainer.Trainer;
 /// single string forced into both would read "Watch You's fight", which is why this
 /// carries the forms rather than a name.
 ///
-/// Three forms are authored and one is derived from another, so there is nothing here
-/// for a fourth caller to invent. Every authored form lives in
+/// Four grammatical forms are carried and the sentence-opening variants are derived,
+/// so there is nothing here for another caller to invent. Every fixed word lives in
 /// <see cref="TrainerCopy"/> with the rest of the fixed words;
 /// <see cref="RecordingIdentity"/> is the one thing that decides which credit a
 /// recording gets.
@@ -26,11 +26,14 @@ namespace Sts2PilotTrainer.Trainer;
 /// <param name="Label">The credit as a name in a list, a column or the transport's own
 /// tag: "NaveGreed", "Your run". A slot where nothing follows it, so it takes the
 /// fuller phrase the possessive cannot.</param>
+/// <param name="RunReference">The run as an object mid-sentence: "NaveGreed's run",
+/// "your run", "this run". This cannot be assembled from <paramref name="Possessive"/>
+/// because the neutral possessive would produce "this run's run".</param>
 /// <param name="IsYours">Whether this recording is the player's own. Two sentences
 /// change shape rather than word for a recording of one's own and ask this; nothing
 /// else reads it, and no surface draws a row or a control differently for it.</param>
 public sealed record RecordingCredit(
-    string Subject, string Possessive, string Label, bool IsYours)
+    string Subject, string Possessive, string Label, string RunReference, bool IsYours)
 {
     /// <summary>The subject opening a sentence: "NaveGreed took Burning Blood", "You
     /// took Burning Blood".</summary>
@@ -52,13 +55,16 @@ public sealed record RecordingCredit(
         form.Length == 0 ? form : char.ToUpperInvariant(form[0]) + form[1..];
 
     /// <summary>The credit for a recording somebody else made, named by the manifest.</summary>
-    public static RecordingCredit Named(string name) => new(name, $"{name}'s", name, IsYours: false);
+    public static RecordingCredit Named(string name) =>
+        new(name, $"{name}'s", name, $"{name}'s run", IsYours: false);
 
     /// <summary>The credit for a native run whose player is not known to the viewer.</summary>
     public static RecordingCredit Neutral { get; } = new(
-        TrainerCopy.ThisRunSubject, TrainerCopy.ThisRunPossessive, TrainerCopy.ThisRunLabel, IsYours: false);
+        TrainerCopy.ThisRunSubject, TrainerCopy.ThisRunPossessive, TrainerCopy.ThisRunLabel,
+        TrainerCopy.ThisRunSubject, IsYours: false);
 
     /// <summary>The credit for a run this player recorded themselves.</summary>
     public static RecordingCredit Yours { get; } = new(
-        TrainerCopy.YouSubject, TrainerCopy.YourPossessive, TrainerCopy.YourRunLabel, IsYours: true);
+        TrainerCopy.YouSubject, TrainerCopy.YourPossessive, TrainerCopy.YourRunLabel,
+        $"{TrainerCopy.YourPossessive} run", IsYours: true);
 }

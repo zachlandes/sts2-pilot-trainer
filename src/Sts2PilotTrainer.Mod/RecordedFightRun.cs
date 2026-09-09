@@ -275,7 +275,7 @@ internal static class RecordedFightRun
             Transition(JourneyPhase.Watching);
             SweepWhileTheGameIsBetweenScreens();
             Log.Info(
-                $"[{RunmobileMod.ModId}] constructed {credit.Possessive} run; watching " +
+                $"[{RunmobileMod.ModId}] constructed {credit.RunReference}; watching " +
                 $"{entry.Decisions.ToString(CultureInfo.InvariantCulture)} recorded " +
                 "decision(s) before the fight", 2);
             ArriveWhenTheGameHasFinishedMoving();

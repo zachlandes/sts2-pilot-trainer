@@ -107,8 +107,8 @@ public sealed record TransportControl(
 ///
 /// The creator alone was the captain's first correction: he wanted the video named
 /// too, and a way through to it. <paramref name="VideoTitle"/> is absent until
-/// ingestion fills the manifest's title, and the block falls back to the creator
-/// alone rather than inventing one.
+/// ingestion fills the manifest's title, and the block falls back to the resolved
+/// credit alone rather than inventing one.
 ///
 /// <para>It carries a <see cref="RecordingCredit"/> rather than a name because the
 /// captions under it put the credit into sentences, and a run the player recorded
@@ -346,9 +346,10 @@ public sealed record TransportFacts(
 /// <see cref="TransportMode.LookingBack"/> is a way of reading rather than a way of
 /// moving.
 ///
-/// Nothing here is written down about one recording. The creator and the video come
-/// from the manifest's source record, each caption's subject from the run the
-/// decision is about to act on, and the counter from how many decisions there are.
+/// Nothing here is written down about one recording. The video comes from the
+/// manifest's source record, the credit from <see cref="RecordingIdentity"/> with the
+/// library's ownership fact, each caption's subject from that credit, and the counter
+/// from how many decisions there are.
 /// </summary>
 public sealed record PlaybackTransport(
     TransportMode Mode,
@@ -711,7 +712,7 @@ public sealed record PlaybackTransport(
     /// <summary>
     /// The fight is the player's.
     ///
-    /// The tag collapses to a chip carrying the mark and the creator and nothing
+    /// The tag collapses to a chip carrying the mark and the recording's credit and nothing
     /// else, silent until it is pressed. Not an oversight: the captain's ruling is
     /// that comparing inside a fight is second-order, because a player diverges from
     /// the recorded line almost immediately, so the comparison points are the whole

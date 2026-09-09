@@ -60,8 +60,9 @@ public sealed record FightResultChart(
     /// <summary>
     /// Reads the chart out of a comparison.
     /// </summary>
-    /// <param name="credit">Whose recording the second line is, from the manifest. The
-    /// series is a label with nothing after it, so it takes the credit's label form.</param>
+    /// <param name="credit">How the recording's source and library origin credit the
+    /// second line. The series is a label with nothing after it, so it takes the
+    /// credit's label form.</param>
     /// <param name="comparison">The player's line on the left, the recording's on the right.</param>
     public static FightResultChart From(RecordingCredit credit, CombatComparison comparison)
     {

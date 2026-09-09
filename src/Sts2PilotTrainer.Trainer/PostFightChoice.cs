@@ -89,8 +89,9 @@ public sealed record PostFightChoice(IReadOnlyList<PostFightRow> Rows)
     /// <summary>
     /// The choice for one finished fight.
     /// </summary>
-    /// <param name="credit">Whose recording it is, from the manifest. The one row
-    /// that names anybody names them.</param>
+    /// <param name="credit">How this recording is credited, resolved from its source
+    /// and whether the library knows it is the player's own. The one row that names
+    /// anybody uses these forms.</param>
     public static PostFightChoice For(RecordingCredit credit, PostFightFacts facts)
     {
         var rows = new List<PostFightRow>

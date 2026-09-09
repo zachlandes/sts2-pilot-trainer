@@ -267,7 +267,7 @@ internal static partial class Commands
         Console.WriteLine();
         Console.WriteLine(equality.Matches
             ? $"ENTERED - this game is standing at {plan.Describe()}" +
-              $"{(credit is null ? "" : $" of {credit.Possessive} run")}, exactly as the recording records it."
+              $"{(credit is null ? "" : $" of {credit.RunReference}")}, exactly as the recording records it."
             : "REFUSED - " + equality.Refusal);
 
         object? played = null;

@@ -30,6 +30,7 @@ public sealed class RecordingCreditTests
         Assert.Equal("NaveGreed", Theirs.OpeningSubject);
         Assert.Equal("NaveGreed's", Theirs.Possessive);
         Assert.Equal("NaveGreed", Theirs.Label);
+        Assert.Equal("NaveGreed's run", Theirs.RunReference);
         Assert.False(Theirs.IsYours);
         Assert.Equal("NaveGreed", RecordingIdentity.Creator(Fixtures.Recording()));
     }
@@ -41,6 +42,7 @@ public sealed class RecordingCreditTests
         Assert.Equal("You", Mine.OpeningSubject);
         Assert.Equal("your", Mine.Possessive);
         Assert.Equal("Your run", Mine.Label);
+        Assert.Equal("your run", Mine.RunReference);
         Assert.True(Mine.IsYours);
         Assert.Equal("Your run", RecordingIdentity.Creator(Fixtures.NativeRecording(), isPlayersOwn: true));
     }
@@ -78,6 +80,7 @@ public sealed class RecordingCreditTests
         Assert.Equal("This run", Neutral.OpeningSubject);
         Assert.Equal("this run's", Neutral.Possessive);
         Assert.Equal("This run", Neutral.Label);
+        Assert.Equal("this run", Neutral.RunReference);
         Assert.False(Neutral.IsYours);
     }
 

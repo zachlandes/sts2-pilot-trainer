@@ -5,10 +5,11 @@ namespace Sts2PilotTrainer.Trainer;
 /// <summary>
 /// Who a recording is by, as the screens name them.
 ///
-/// One reader, because "NaveGreed" appears in a chip, in a caption, in a subtitle
+/// One reader, because the credit appears in a chip, in a caption, in a subtitle
 /// and in the mod list, and four copies of a lookup are four places for a second
-/// recording to be half-adopted. Every one of them comes from the manifest's own
-/// source record.
+/// recording to be half-adopted. The manifest supplies a video attribution or proves
+/// native capture; the caller separately supplies whether a native run is the
+/// viewer's own.
 ///
 /// <para>Two recordings are credited, and the second is the reason this returns a
 /// <see cref="RecordingCredit"/> rather than a name. A reconstruction from a public

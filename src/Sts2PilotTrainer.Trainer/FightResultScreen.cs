@@ -17,8 +17,8 @@ namespace Sts2PilotTrainer.Trainer;
 /// It is a model of pictures rather than of sentences: the cards each turn, the
 /// potions and the two lines of the chart are model ids and numerals that a renderer
 /// draws. What text remains is furniture and the two caveats, each a rule rather
-/// than a caption. Every sentence is a template over the creator's name and the
-/// comparison's values, and nothing here names a recording.
+/// than a caption. Every sentence is a template over the resolved recording credit
+/// and the comparison's values, and nothing here names a recording.
 /// </summary>
 public sealed record FightResultScreen(
     string Title,
@@ -54,7 +54,7 @@ public sealed record FightResultScreen(
     /// <summary>
     /// The player's completed fight beside the recording's.
     /// </summary>
-    /// <param name="credit">Whose recording it is, from the manifest.</param>
+    /// <param name="credit">How the recording's source and library origin credit it.</param>
     /// <param name="comparison">The player's line on the left, the recording's on the right.</param>
     public static FightResultScreen For(RecordingCredit credit, CombatComparison comparison)
     {
