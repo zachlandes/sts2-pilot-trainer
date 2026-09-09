@@ -530,13 +530,14 @@ internal static class FightResultPanel
             bool marker)
         {
             var ceiling = Math.Max(1, chart.Ceiling);
-            var plotted = new List<(int Turn, int Value, Vector2 At)>();
+            var plotted = new List<(int Index, int Turn, int Value, Vector2 At)>();
             for (var visible = 0; visible < page.Count; visible++)
             {
                 var index = page.First + visible;
                 if (measure(series.Points[index]) is not { } value) continue;
 
                 plotted.Add((
+                    index,
                     series.Points[index].Turn,
                     value,
                     new Vector2(
@@ -556,7 +557,7 @@ internal static class FightResultPanel
             };
             panel.AddChild(line);
 
-            foreach (var (turn, value, at) in plotted)
+            foreach (var (index, turn, value, at) in plotted)
             {
                 var dot = Box(color, at.X - (4 * Unit), at.Y - (4 * Unit), 8 * Unit, 8 * Unit);
                 dot.Name = NodeName($"{name}.Point.{turn}");
@@ -571,12 +572,43 @@ internal static class FightResultPanel
 
                 panel.AddChild(dot);
                 var valueHeight = Math.Min(ChartNumeral.Size, Math.Max(1f, height));
-                var wantedY = marker ? at.Y : at.Y - valueHeight;
-                var valueY = Math.Clamp(wantedY, y, y + height - valueHeight);
+                var counterpart = marker ? chart.Yours : chart.Theirs;
+                var counterpartValue = measure(counterpart.Points[index]);
+                var position = ValuePosition(
+                    at, counterpartValue, ceiling, marker,
+                    plotLeft, plotWidth, y, height, valueHeight);
                 Text(panel, $"{name}.Value.{turn}", value.ToString(CultureInfo.InvariantCulture),
-                    at.X - (20 * Unit), valueY, 40 * Unit, valueHeight,
+                    position.X, position.Y, 40 * Unit, valueHeight,
                     ChartNumeral, color, HorizontalAlignment.Center);
             }
+        }
+
+        private Vector2 ValuePosition(
+            Vector2 at, int? counterpartValue, int ceiling, bool marker,
+            float plotLeft, float plotWidth, float top, float height, float labelHeight)
+        {
+            var gap = 4 * Unit;
+            var width = 40 * Unit;
+            var bottom = top + height;
+            var preferredY = marker ? at.Y + gap : at.Y - labelHeight - gap;
+            var labelY = Math.Clamp(preferredY, top, bottom - labelHeight);
+            var labelX = Math.Clamp(at.X - (width / 2), plotLeft, plotLeft + plotWidth - width);
+            if (counterpartValue is not { } otherValue) return new Vector2(labelX, labelY);
+
+            var otherAt = top + height - (height * otherValue / Math.Max(1, ceiling));
+            var otherPreferredY = marker ? otherAt - labelHeight - gap : otherAt + gap;
+            var otherY = Math.Clamp(otherPreferredY, top, bottom - labelHeight);
+            if (labelY + labelHeight <= otherY || otherY + labelHeight <= labelY)
+                return new Vector2(labelX, labelY);
+
+            if (height >= 2 * labelHeight)
+            {
+                var pairTop = Math.Clamp(Math.Min(at.Y, otherAt) - labelHeight, top, bottom - (2 * labelHeight));
+                return new Vector2(labelX, marker ? pairTop + labelHeight : pairTop);
+            }
+
+            var pairLeft = Math.Clamp(at.X - width, plotLeft, plotLeft + plotWidth - (2 * width));
+            return new Vector2(marker ? pairLeft + width : pairLeft, labelY);
         }
 
         /// <summary>The potions either side spent on this turn, under the axis and

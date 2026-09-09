@@ -186,6 +186,32 @@ public sealed class FightResultPanelTests
     }
 
     [Fact]
+    public void SharedBoundaryValuesStaySeparateInsideTheirPlots()
+    {
+        var panel = FightResultPanel.Build(
+            Panel(CombatComparison.Between(SharedBoundary("player"), SharedBoundary("recording"))),
+            new Vector2(1280, 720),
+            _ => null,
+            Text(32, 26, 26, 28),
+            () => { }).Root;
+        var heading = Find<Label>(panel, "Chart");
+        var enemyBaseline = Find<ColorRect>(panel, "Chart.Enemy.Baseline");
+        var playerBaseline = Find<ColorRect>(panel, "Chart.Player.Baseline");
+        var unit = 26f / 15f;
+        var plotLeft = enemyBaseline.Position.X + (8 * unit);
+        var plotRight = enemyBaseline.Position.X + enemyBaseline.Size.X;
+
+        AssertSeparateInside(
+            Find<Label>(panel, "Chart.Enemy.Line.You.Value.1"),
+            Find<Label>(panel, "Chart.Enemy.Line.Them.Value.1"),
+            plotLeft, plotRight, heading.Position.Y + heading.Size.Y, enemyBaseline.Position.Y);
+        AssertSeparateInside(
+            Find<Label>(panel, "Chart.Player.Line.You.Value.1"),
+            Find<Label>(panel, "Chart.Player.Line.Them.Value.1"),
+            plotLeft, plotRight, enemyBaseline.Position.Y, playerBaseline.Position.Y);
+    }
+
+    [Fact]
     public void MarksAPotionOnTheChartAtTheTurnItWasSpent()
     {
         var panel = Build(Panel(Comparison()));
@@ -442,6 +468,24 @@ public sealed class FightResultPanelTests
     private static int Points(Node panel, string name) =>
         Assert.IsType<Line2D>(Find(panel, name)).Points.Length;
 
+    private static void AssertSeparateInside(
+        Label yours, Label theirs, float left, float right, float top, float bottom)
+    {
+        foreach (var label in new[] { yours, theirs })
+        {
+            Assert.True(label.Position.X >= left);
+            Assert.True(label.Position.X + label.Size.X <= right);
+            Assert.True(label.Position.Y >= top);
+            Assert.True(label.Position.Y + label.Size.Y <= bottom);
+        }
+
+        Assert.False(
+            yours.Position.X < theirs.Position.X + theirs.Size.X &&
+            theirs.Position.X < yours.Position.X + yours.Size.X &&
+            yours.Position.Y < theirs.Position.Y + theirs.Size.Y &&
+            theirs.Position.Y < yours.Position.Y + yours.Size.Y);
+    }
+
     private static void Activate(Button button, StringName action)
     {
         var input = new InputEventAction { Action = action, Pressed = true };
@@ -507,6 +551,14 @@ public sealed class FightResultPanelTests
         capture.CompleteStep(Sample("in_progress", 3, 50, enemyHealth));
         capture.BeginStep("PlayCard", Card("CARD.FINISH"), Sample("in_progress", 3, 50, enemyHealth));
         capture.CompleteStep(Sample("victory", 3, 50, 0, enemies: 0));
+        return capture.Project();
+    }
+
+    private static CombatProjection SharedBoundary(string sourceId)
+    {
+        var capture = Live(sourceId);
+        capture.BeginStep("PlayCard", Card("CARD.FINISH"), Sample("in_progress", 1, 64, 42));
+        capture.CompleteStep(Sample("victory", 1, 64, 0, enemies: 0));
         return capture.Project();
     }
 
