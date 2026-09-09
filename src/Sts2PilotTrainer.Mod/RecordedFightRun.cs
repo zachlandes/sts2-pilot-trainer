@@ -682,6 +682,33 @@ internal static class RecordedFightRun
         var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
 
         _lookingBackAt = null;
+
+        // A card screen an earlier decision opened is not a screen transition, and
+        // waiting for its controls to settle is waiting for something that has not
+        // started yet. Measured in the client: the blessing's own work awards the relic
+        // and animates it onto the belt before it opens the screen at all, which is
+        // longer than the settling budget every other screen here needs - so the run was
+        // abandoned in front of a player while the screen it wanted was still coming.
+        //
+        // So this waits for the engine to have opened it rather than for a length of
+        // time, which is the rule everywhere else on this journey. CardScreensUp is the
+        // shell's count of the card screens the engine has put up and is waiting on, and
+        // it is incremented from the game's own CardsSelected - the call FromDeckGeneric
+        // suspends on immediately after pushing the screen.
+        if (entry.NextStepAnswersAScreenAlreadyOpened)
+        {
+            var up = await WaitUntil(
+                () => CardScreensUp.Count > 0,
+                LetTheGameRun(AnsweringTheScreenSeconds),
+                () => LetTheGameRun(AnsweringTheScreenPollSeconds));
+
+            if (!StillOurs(entry)) return;
+
+            Log.Info(
+                $"[{RunmobileMod.ModId}] the screen that decision opened " +
+                $"{(up ? "is up" : "has not arrived")}", 2);
+        }
+
         var options = await WhenTheScreenIsReady(() => RecordedFightReveal.Arrive(entry.DescribeNextTarget()));
 
         // The retry above runs for up to five seconds, which is long enough for the
@@ -2096,7 +2123,11 @@ internal static class RecordedFightRun
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(NDeckCardSelectScreen), "OnCardClicked")]
-        internal static bool OnlyTheRecordingPicksACardOffAScreen() => Allowed("a card off a screen");
+        internal static bool OnlyTheRecordingPicksACardOffTheDeckScreen() => Allowed("a card off a screen");
+
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(NDeckTransformSelectScreen), "OnCardClicked")]
+        internal static bool OnlyTheRecordingPicksACardToTransform() => Allowed("a card to transform");
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(RunManager), nameof(RunManager.EnterMapCoord))]

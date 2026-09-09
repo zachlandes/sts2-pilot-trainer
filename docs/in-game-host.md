@@ -672,7 +672,7 @@ never seeing the card it took.
 The rule that replaced it is that a screen the recording opened is still a screen, and a
 watcher is owed the sight of it.
 So in the client nothing of the driver's is on the engine's stack: the game draws its own
-`NDeckCardSelectScreen`, `RecordedCardScreen` finds the recording's card on it, the
+card screen for that relic, `RecordedCardScreen` finds the recording's card on it, the
 reveal lights it with the game's own focus and the commit presses it - the same consider,
 reveal, commit as a map node, on a screen that has no engine command at all.
 The screen's own preview of what was picked is confirmed after a hold rather than on the
@@ -680,6 +680,23 @@ frame it appears, because confirming it at once replaces it with a flicker; that
 screen transition and not a decision, the same as the event screen's proceed.
 `docs/headless-fidelity.md` owns the mechanism and what the two hosts now differ about,
 which is whether the screen is drawn rather than when its answer arrives.
+
+Two things about that screen were only learnable in the client, and both cost a refused
+run in front of a watcher before they were.
+The first is that it does not arrive on a screen transition: the blessing's own work
+awards the relic and animates it onto the belt before opening anything, which is longer
+than the settling budget every other screen on this journey needs. So the arrival waits
+for `CardScreensUp.Count` - the shell's count of card screens the engine has opened and
+is waiting on - rather than for a length of time, which is this page's oldest rule.
+The second is that "the card screen" is not one screen. A removal opens
+`NDeckCardSelectScreen` through `FromDeckGeneric`; a transform opens
+`NDeckTransformSelectScreen` through `FromDeckForTransformation`, and its preview's
+confirm has a different node name. A driver written to the first refused the second while
+it stood open and drawn in front of the player, with a sentence saying it had not opened.
+Both are `NCardGridSelectionScreen`, which owns the grid, the offered list and the click,
+so that is what `RecordedCardScreen` is written to, and the confirm is found by type.
+Whatever a build calls its screens, the base and the count are the two things worth
+depending on.
 
 Drawing that screen brought back the page's oldest trap in a new place, which is the
 third thing to take from this.

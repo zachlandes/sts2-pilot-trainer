@@ -154,6 +154,7 @@ public sealed class RecordedFightVerbAgreementTests
             [
                 "EventSynchronizer.ChooseLocalOption",
                 "NDeckCardSelectScreen.OnCardClicked",
+                "NDeckTransformSelectScreen.OnCardClicked",
                 "NGame.ReturnToMainMenu",
                 "NRewardButton.OnRelease",
                 "NRewardsScreen.OnProceedButtonPressed",

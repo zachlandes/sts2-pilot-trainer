@@ -19,8 +19,16 @@ namespace Sts2PilotTrainer.Mod;
 /// for the control to light; <see cref="RecordedFightRun"/> asks it to press. Nothing
 /// here decides anything - which card is the recording's, and the plan's.
 ///
+/// It is written to <see cref="NCardGridSelectionScreen"/> rather than to one screen,
+/// because which screen a blessing opens is the relic's business: a removal opens
+/// <c>NDeckCardSelectScreen</c> and a transform opens <c>NDeckTransformSelectScreen</c>,
+/// through a different command with a different confirm button. They share the base
+/// that owns the grid, the offered list and the click, which is the whole of what this
+/// needs - and naming one of them is how the first attempt at this refused a screen that
+/// was open in front of the player.
+///
 /// The screen is reached where the engine put it, on the overlay stack, and its parts
-/// by the unique names the screen's own <c>_Ready</c> uses. Which card is which is read
+/// by the unique names the screens' own <c>_Ready</c> uses. Which card is which is read
 /// off the list the engine handed the screen rather than off the grid, because the grid
 /// sorts what it was given before it draws it: the recording's <c>option_index</c> is a
 /// position in the engine's list and a position on screen is a layout detail. That is
@@ -41,11 +49,13 @@ internal static class RecordedCardScreen
 
     private const string PreviewPath = "%PreviewContainer";
 
-    private const string PreviewConfirmPath = "%PreviewConfirm";
+    // The confirm inside that preview is found by type rather than by name: the deck
+    // screen calls it %PreviewConfirm and the transform screen calls it Confirm, and
+    // what matters is only that it is the preview's own confirm.
 
     /// <summary>The recording's card on the screen that is up: the screen, and the
     /// holder drawing it.</summary>
-    internal sealed record Found(NDeckCardSelectScreen Screen, NGridCardHolder Holder, int Offered);
+    internal sealed record Found(NCardGridSelectionScreen Screen, NGridCardHolder Holder, int Offered);
 
     /// <summary>
     /// Finds the holder drawing the card the recording took, and establishes that the
@@ -60,11 +70,11 @@ internal static class RecordedCardScreen
         // Not "a screen of this type somewhere in the tree": the one the engine last
         // pushed. A run that had left an older one up would otherwise be answered on
         // the wrong screen, and the engine is waiting on this one.
-        if (NOverlayStack.Instance?.Peek() is not NDeckCardSelectScreen screen ||
+        if (NOverlayStack.Instance?.Peek() is not NCardGridSelectionScreen screen ||
             !GodotObject.IsInstanceValid(screen))
         {
             throw new RevealNotReadyException(
-                "The card screen the recording's last decision opens is not up yet.");
+                "The card screen for this recording's last decision hasn't opened yet.");
         }
 
         var offered = OfferedTo(screen);
@@ -142,13 +152,13 @@ internal static class RecordedCardScreen
     /// than have been picked so far there is no preview up and nothing to press, which
     /// is the ordinary case for every pick but the last.
     /// </summary>
-    internal static bool ConfirmIfThePreviewIsUp(NDeckCardSelectScreen screen)
+    internal static bool ConfirmIfThePreviewIsUp(NCardGridSelectionScreen screen)
     {
         if (Preview(screen) is not { } preview) return false;
 
-        var confirm = preview.GetNodeOrNull<NConfirmButton>(PreviewConfirmPath)
+        var confirm = ConfirmButtonIn(preview)
             ?? throw new InvalidOperationException(
-                $"The card screen's preview has no {PreviewConfirmPath} on this build, so the selection the " +
+                "The card screen's preview has no confirm button on this build, so the selection the " +
                 "recording made cannot be confirmed.");
 
         if (!confirm.IsEnabled) return false;
@@ -157,17 +167,36 @@ internal static class RecordedCardScreen
         return true;
     }
 
+    /// <summary>
+    /// The preview's own confirm, found by type.
+    ///
+    /// By type because the two screens name it differently and neither name is the
+    /// point. The preview holds one confirm and one back button, so the first confirm
+    /// under it is unambiguous; a build that put two there would be a build this should
+    /// stop on rather than guess at, and the caller refuses on null.
+    /// </summary>
+    private static NConfirmButton? ConfirmButtonIn(Node node)
+    {
+        foreach (var child in node.GetChildren())
+        {
+            if (child is NConfirmButton confirm) return confirm;
+            if (ConfirmButtonIn(child) is { } deeper) return deeper;
+        }
+
+        return null;
+    }
+
     /// <summary>Whether the screen has taken its answer and gone.</summary>
-    internal static bool HasClosed(NDeckCardSelectScreen screen) =>
+    internal static bool HasClosed(NCardGridSelectionScreen screen) =>
         !GodotObject.IsInstanceValid(screen) || !screen.IsInsideTree();
 
     /// <summary>Whether the screen is showing its own preview of what was picked.
     /// Asked of the screen rather than remembered, because whether there is one at all
     /// depends on how many cards it was told to ask for.</summary>
-    internal static bool PreviewIsUp(NDeckCardSelectScreen screen) => Preview(screen) is not null;
+    internal static bool PreviewIsUp(NCardGridSelectionScreen screen) => Preview(screen) is not null;
 
     /// <summary>The screen's preview of the picked cards while it is up, or null.</summary>
-    private static Control? Preview(NDeckCardSelectScreen screen) =>
+    private static Control? Preview(NCardGridSelectionScreen screen) =>
         HasClosed(screen) ? null : screen.GetNodeOrNull<Control>(PreviewPath) is { Visible: true } preview
             ? preview
             : null;
@@ -182,7 +211,7 @@ internal static class RecordedCardScreen
     /// grid's order would silently mean a different card, because the grid sorts what
     /// it was given before it draws it.
     /// </summary>
-    private static IReadOnlyList<CardModel> OfferedTo(NDeckCardSelectScreen screen) =>
+    private static IReadOnlyList<CardModel> OfferedTo(NCardGridSelectionScreen screen) =>
         CardScreensUp.OfferedTo(screen)
         ?? throw new InvalidOperationException(
             "This build does not expose what the card screen was offered, so which card the recording took " +
