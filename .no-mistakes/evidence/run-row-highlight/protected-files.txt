@@ -1,0 +1,12 @@
+protected files (must not change):
+  nothing
+
+user://Runmobile/ (this mod's own store):
+  nothing
+
+the game's own churn (written on any launch, mod or not):
+  added    user/logs/godot2026-09-08T22.32.06.log
+  added    user/logs/godot2026-09-08T22.32.37.log
+  changed  user/logs/godot.log
+  removed  user/logs/godot2026-09-08T22.08.50.log
+  removed  user/logs/godot2026-09-08T22.11.15.log

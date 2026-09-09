@@ -1,0 +1,42 @@
+{
+  "before": {
+    "commit": "86a9073f9ba79039c2743fc6f5122d53302f3d3e",
+    "packaged_and_installed_runmobile_sha256": "6c525b0a02611d9194281a3497abe57c2fd04984c703f930042ea3576fdb3863"
+  },
+  "after": {
+    "commit": "32ce50bfbfb7dd501649c30de7f027942c460e2c",
+    "packaged_and_installed_runmobile_sha256": "8810ba9228676cc48f42d3265141d54b20f46893f4a297eb15607262ae5583c6"
+  },
+  "retail": {
+    "game_build": "v0.111.0",
+    "arguments": [
+      "--force-steam=off",
+      "--clientId=1"
+    ],
+    "profile": "isolated non-Steam test profile",
+    "console_locked_before_launch": false,
+    "client_exited": true,
+    "bound_awake_assertion_exited": true,
+    "successful_after_protected_files_changed": false,
+    "successful_after_runmobile_store_changed": false,
+    "successful_after_game_churn": "logs only"
+  },
+  "images": {
+    "demo/runmobile-ribbon-after-detail.png": {
+      "sha256": "d0572a7d6bdd1e6d86ffc47c0114adf9f3d2d6e84b26dbb9ed063e9f7408ae73",
+      "processing": "crop only, no resampling or sharpening"
+    },
+    "demo/runmobile-ribbon-after.png": {
+      "sha256": "fbe4761e775134af5ee70841233f88f8f58917cf36d8d5437a04f5922a053db1",
+      "processing": "crop only, no resampling or sharpening"
+    },
+    "demo/runmobile-ribbon-before-detail.png": {
+      "sha256": "006179eff1b89d3b55c1247e6c7880501e0c958df0cc89d51ef4c08c14cedf42",
+      "processing": "crop only, no resampling or sharpening"
+    },
+    "demo/runmobile-ribbon-before.png": {
+      "sha256": "f4925a4374cc7fa291d388d3167e517b9f2aeaa726d34bb758a4bab16f246d92",
+      "processing": "crop only, no resampling or sharpening"
+    }
+  }
+}
