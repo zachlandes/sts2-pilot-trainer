@@ -103,8 +103,8 @@ public sealed class MyRunsSettingsTests : IDisposable
         var screen = new NSettingsScreen();
         var entry = new MarginContainer();
         var rowLabel = Native("Label", 28);
-        var button = new Control();
-        var buttonLabel = Native("%Label", 22);
+        var button = new Control { Name = "ModdingButton" };
+        var buttonLabel = Native("%ModdingButton/Label", 22);
         var numeral = Native(
             "ScrollContainer/Mask/Clipper/GeneralSettings/VBoxContainer/Screenshake/Paginator/LabelContainer/Mask/Label",
             27);
@@ -113,9 +113,10 @@ public sealed class MyRunsSettingsTests : IDisposable
             26);
         entry.AddChild(rowLabel);
         entry.AddChild(button);
-        button.AddChild(buttonLabel);
+        screen.AddChild(buttonLabel);
         screen.AddChild(numeral);
         screen.AddChild(reading);
+        screen.AddChild(entry);
 
         var text = MyRunsSettings.NativeText(screen, button, new GameTextStyle(null, 24));
 

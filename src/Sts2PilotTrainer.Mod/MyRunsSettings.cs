@@ -34,6 +34,7 @@ namespace Sts2PilotTrainer.Mod;
 internal static class MyRunsSettings
 {
     private const string ModdingButtonPath = "%ModdingButton";
+    private const string ModdingButtonLabelPath = "%ModdingButton/Label";
     private const string SettingsValuePath =
         "ScrollContainer/Mask/Clipper/SoundSettings/VBoxContainer/MasterVolume/MasterVolumeSlider/SliderValue";
     private const string StepperNumeralPath =
@@ -112,11 +113,18 @@ internal static class MyRunsSettings
             ?? throw new InvalidOperationException(
                 "This build's modding settings button has no parent carrying its row label.");
         return new MyRunsSettingsText(
-            GameText.Require(entry.GetNodeOrNull<Control>("Label"), "settings row label"),
-            GameText.Require(screen.GetNodeOrNull<Control>(StepperNumeralPath), "settings stepper numeral"),
-            GameText.Require(screen.GetNodeOrNull<Control>(SettingsValuePath), "settings value"),
+            GameText.Require(entry.GetNodeOrNull<Control>("Label"), "settings row label at 'Modding/Label'"),
+            GameText.Require(
+                screen.GetNodeOrNull<Control>(StepperNumeralPath),
+                $"settings stepper numeral at '{StepperNumeralPath}'"),
+            GameText.Require(
+                screen.GetNodeOrNull<Control>(SettingsValuePath),
+                $"settings value at '{SettingsValuePath}'"),
             detail,
-            GameText.Require(anchor.GetNodeOrNull<Control>("%Label"), "settings button label"));
+            // Resolve the scene-owned unique path from the screen
+            GameText.Require(
+                screen.GetNodeOrNull<Control>(ModdingButtonLabelPath),
+                $"settings button label at '{ModdingButtonLabelPath}'"));
     }
 
     internal static MyRunsSettingsRow Attach(Control anchor, MyRunsSettingsText text)
