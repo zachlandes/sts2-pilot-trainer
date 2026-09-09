@@ -150,7 +150,7 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 143
+**What CI cannot run is recorded by name.** On a runner without the game, the 142
 tests named in `scripts/expected-hosted-skips.txt` skip out of
 `Sts2PilotTrainer.Arbiter.Tests`' 219 and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so

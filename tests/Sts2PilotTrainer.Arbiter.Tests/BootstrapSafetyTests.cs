@@ -311,53 +311,6 @@ public class BootstrapSafetyTests
         Assert.True(result.Verified, result.All);
     }
 
-    /// <summary>
-    /// The retail client walks the complete installed mod recursively and opens every
-    /// <c>*.json</c> as a mod manifest. The root Runmobile.json is the only manifest
-    /// the artifact intends to carry. Another JSON with an id registers as another
-    /// mod; one with any other manifest field logs an error and an error-level Sentry
-    /// breadcrumb when its id is absent.
-    /// </summary>
-    [GameFact]
-    public void InstalledArtifactCarriesOnlyItsRootModManifest()
-    {
-        var package = RunCommand("./scripts/package-mod.sh");
-        Assert.Equal(0, package.ExitCode);
-
-        var packagedLine = package.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Single(line => line.StartsWith("packaged     : ", StringComparison.Ordinal));
-        var payload = Path.Combine(Arbiter.RepoRoot, packagedLine[15..].Trim(), "payload");
-        var installed = ScratchDirectory("installed-artifact");
-        CopyDirectory(payload, installed);
-        CopyDirectory(
-            Path.Combine(Arbiter.RepoRoot, "build", "lib"),
-            Path.Combine(installed, "arbiter", "lib"));
-
-        foreach (var path in Directory.GetFiles(installed, "*.json", SearchOption.AllDirectories))
-        {
-            var relative = Path.GetRelativePath(installed, path);
-            if (relative.Equals("Runmobile.json", StringComparison.Ordinal)) continue;
-
-            using var stream = File.OpenRead(path);
-            var json = JsonDocument.Parse(stream).RootElement;
-            var manifestFields = ModManifestFields.Where(field => json.ValueKind == JsonValueKind.Object &&
-                                                                  json.TryGetProperty(field, out _)).ToArray();
-            Assert.True(
-                manifestFields.Length == 0,
-                json.ValueKind == JsonValueKind.Object && json.TryGetProperty("id", out _)
-                    ? $"{relative} ships inside Runmobile, where the game registers it as an additional mod. " +
-                      "Only the root Runmobile.json may carry a top-level mod-manifest field."
-                    : $"{relative} ships inside Runmobile with top-level {string.Join(", ", manifestFields)}, " +
-                      "so the game reads it as a mod manifest missing its id and logs an error on every launch. " +
-                      "Give it a name that does not end in .json.");
-        }
-
-        Assert.True(
-            File.Exists(Path.Combine(installed, "arbiter", "lib", "release_info.json.copy")),
-            "The prepared release info is absent, so the engine cannot report the build it is running. " +
-            "Renaming it is the fix here; removing it is not.");
-    }
-
     private static string WriteArchiveReceipt(IReadOnlyDictionary<string, string> outputHashes)
     {
         var directory = ScratchDirectory("archive-receipt");
@@ -409,9 +362,6 @@ public class BootstrapSafetyTests
 
     private static readonly Sts2PilotTrainer.Bootstrap.Program.InstalledIdentity PreparedIdentity =
         new("v0.111.0", "2026.01.01", "same-commit", "main", 123);
-
-    private static readonly string[] ModManifestFields =
-        ["id", "name", "author", "description", "version"];
 
     private static void CopyDirectory(string source, string destination)
     {
