@@ -97,9 +97,8 @@ internal static class FightResultPanel
     /// <param name="viewport">The size of the surface it is drawn over.</param>
     /// <param name="art">The game's artwork for a model id, or null where a build has
     /// none. Injected so the panel assembles in a process with no model database.</param>
-    /// <param name="text">The font and size the game draws its own text at on the screen
-    /// this panel is put over. The panel's four tiers are taken from it and the whole
-    /// layout is scaled with it.</param>
+    /// <param name="text">The native text style copied from the fight-result screen.
+    /// The whole layout is scaled with it.</param>
     /// <param name="done">What the one button does.</param>
     internal static FightResultPanelNodes Build(
         FightResultScreen screen, Vector2 viewport, Func<string, Texture2D?> art, GameTextStyle text, Action done)
@@ -201,22 +200,14 @@ internal static class FightResultPanel
         /// its proportions and grows around its words.</summary>
         internal float Unit { get; } = text.Size / ReferenceTextSize;
 
-        /// <summary>
-        /// The panel's four tiers, anchored on the game's own size.
-        ///
-        /// The ordinary label is the anchor because it is what most of the panel is, and
-        /// the other three keep the accepted design's own spacing around it: the figures
-        /// are a heading over their labels, the panel's title is a heading over those,
-        /// and the caveats and axes are the step below. Changing the panel's hierarchy is
-        /// a redesign and is not what reading the game's size is for.
-        /// </summary>
-        internal GameTextStyle Title { get; } = text.Heading.Heading;
+        /// <summary>The native style copied from the fight-result screen.</summary>
+        internal GameTextStyle Title { get; } = text;
 
-        internal GameTextStyle Figure { get; } = text.Heading;
+        internal GameTextStyle Figure { get; } = text;
 
         internal GameTextStyle Label { get; } = text;
 
-        internal GameTextStyle Small { get; } = text.Supporting;
+        internal GameTextStyle Small { get; } = text;
 
         /// <summary>
         /// The summary: the two lines named once, then the compared figures under
@@ -540,7 +531,7 @@ internal static class FightResultPanel
             // build has not got, inside a chip the size of a card.
             Wrapped(
                 panel, $"{name}.Name", ModelIdNames.Display(modelId), x + 1, y + 1,
-                width - 2, height - 2, Small.Annotation, line);
+                width - 2, height - 2, Small, line);
         }
 
         /// <summary>The one control on the panel, and the one thing left to do.</summary>
@@ -624,9 +615,7 @@ internal static class FightResultPanel
                 MouseFilter = Control.MouseFilterEnum.Ignore,
             };
 
-            // Both the font and the size are the game's own, taken from a label already
-            // on screen: the panel's four tiers are steps off that one reading, so a
-            // table of figures over the game's art reads at the game's own scale.
+            // Both the font and the size come from the native fight-result screen.
             style.ApplyTo(label);
             label.AddThemeColorOverride("font_color", color);
             return label;

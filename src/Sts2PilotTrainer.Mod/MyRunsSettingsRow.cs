@@ -3,6 +3,8 @@ using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
+internal readonly record struct MyRunsSettingsText(GameTextStyle Row, GameTextStyle Button);
+
 /// <summary>
 /// Runmobile's settings row, drawn: what the player keeps, what it takes on this
 /// computer, the way to take it back, whether the run index is fetched, and whether
@@ -90,10 +92,8 @@ internal sealed class MyRunsSettingsRow
 
     private static readonly StringName FontColour = "font_color";
 
-    /// <summary>The settings screen's own text, and the roles this row derives from it:
-    /// its two sentences at the screen's size, the note under them one step down, and
-    /// the destructive control's word smaller again because it sits inside a box.</summary>
-    private readonly GameTextStyle _text;
+    /// <summary>The native settings row and button styles this row copies.</summary>
+    private readonly MyRunsSettingsText _text;
 
     private readonly Control _root;
     private readonly Label _keepLabel;
@@ -207,14 +207,14 @@ internal sealed class MyRunsSettingsRow
     internal float Height => HeightFor(_text);
 
     /// <inheritdoc cref="Height"/>
-    internal static float HeightFor(GameTextStyle text)
+    internal static float HeightFor(MyRunsSettingsText text)
     {
-        var label = text.Size * LabelHeightRatio;
-        var note = text.Supporting.Size * NoteHeightRatio;
-        var remove = text.Supporting.Size * RemoveHeightRatio;
-        return label + (text.Size * RuleGapRatio) + Math.Max(label + note, remove) +
-            (text.Size * FetchGapRatio) + (text.Size * FetchHeightRatio) +
-            (text.Size * MainMenuGapRatio) + (text.Size * MainMenuHeightRatio);
+        var label = text.Row.Size * LabelHeightRatio;
+        var note = text.Row.Size * NoteHeightRatio;
+        var remove = text.Button.Size * RemoveHeightRatio;
+        return label + (text.Row.Size * RuleGapRatio) + Math.Max(label + note, remove) +
+            (text.Row.Size * FetchGapRatio) + (text.Button.Size * FetchHeightRatio) +
+            (text.Row.Size * MainMenuGapRatio) + (text.Button.Size * MainMenuHeightRatio);
     }
 
     /// <summary>
@@ -225,15 +225,14 @@ internal sealed class MyRunsSettingsRow
     /// which may be larger than anything a press would reach it at.</param>
     /// <param name="width">How wide the section is laying it out, in engine
     /// units.</param>
-    /// <param name="text">The font and size the game's own settings rows on this screen
-    /// are drawn at, which is what every line and control here is sized from.</param>
+    /// <param name="text">The native row and button styles from this settings screen.</param>
     /// <param name="keepChanged">What to do when the player moves the policy. The row
     /// reports and does not act: what a new policy means for the disk is the retention
     /// owner's, and the host re-derives and calls <see cref="Apply"/>.</param>
     /// <param name="removePressed">What to do when the player asks for every run to
     /// go. Same rule: this raises it, and does not remove anything itself.</param>
     internal static MyRunsSettingsRow Build(
-        MyRunsRow row, int keep, bool fetchRunIndex, float width, GameTextStyle text,
+        MyRunsRow row, int keep, bool fetchRunIndex, float width, MyRunsSettingsText text,
         Action<int> keepChanged, Action removePressed, Action<bool> fetchChanged,
         Action<bool> mainMenuChanged)
     {
@@ -261,20 +260,18 @@ internal sealed class MyRunsSettingsRow
             Keep = keep,
             FetchRunIndex = fetchRunIndex,
             Text = text,
-            KeepLabel = Add(root, Text("KeepLabel", text, Cream)),
-            KeepNumeral = Add(root, Text("KeepNumeral", text, Cream)),
+            KeepLabel = Add(root, Text("KeepLabel", text.Row, Cream)),
+            KeepNumeral = Add(root, Text("KeepNumeral", text.Row, Cream)),
             Rule = Add(root, new Line2D { Name = "Rule", DefaultColor = RuleLine, Width = 1f }),
-            Reading = Add(root, Text("Reading", text, Cream)),
-            Detail = Add(root, Text("Detail", text.Supporting, Muted)),
+            Reading = Add(root, Text("Reading", text.Row, Cream)),
+            Detail = Add(root, Text("Detail", text.Row, Muted)),
         };
 
-        // The controls that sit inside a box carry the supporting size, because a
-        // word in a box reads beside the sentence it belongs to rather than as one.
-        nodes.Fewer = Add(root, Pressable("Fewer", "−", text));
-        nodes.More = Add(root, Pressable("More", "+", text));
-        nodes.Remove = Add(root, Pressable("Remove", string.Empty, text.Supporting));
-        nodes.Fetch = Add(root, Pressable("FetchRunIndex", string.Empty, text.Supporting));
-        nodes.MainMenu = Add(root, Pressable("MainMenuRow", string.Empty, text.Supporting));
+        nodes.Fewer = Add(root, Pressable("Fewer", "−", text.Button));
+        nodes.More = Add(root, Pressable("More", "+", text.Button));
+        nodes.Remove = Add(root, Pressable("Remove", string.Empty, text.Button));
+        nodes.Fetch = Add(root, Pressable("FetchRunIndex", string.Empty, text.Button));
+        nodes.MainMenu = Add(root, Pressable("MainMenuRow", string.Empty, text.Button));
 
         var built = new MyRunsSettingsRow(nodes);
 
@@ -369,17 +366,17 @@ internal sealed class MyRunsSettingsRow
     /// </summary>
     private void Layout(float width)
     {
-        var unit = _text.Size;
+        var unit = _text.Row.Size;
         var labelHeight = unit * LabelHeightRatio;
-        var noteHeight = _text.Supporting.Size * NoteHeightRatio;
+        var noteHeight = _text.Row.Size * NoteHeightRatio;
         var stepSize = unit * StepSizeRatio;
         var stepGap = unit * StepGapRatio;
         var numeralWidth = unit * NumeralWidthRatio;
         var ruleGap = unit * RuleGapRatio;
-        var removeHeight = _text.Supporting.Size * RemoveHeightRatio;
+        var removeHeight = _text.Button.Size * RemoveHeightRatio;
 
         var stepper = (stepSize * 2) + numeralWidth + (stepGap * 2);
-        var removeWidth = Math.Min(width, RemoveBoxWidth(_row.RemoveLabel, _text.Supporting));
+        var removeWidth = Math.Min(width, RemoveBoxWidth(_row.RemoveLabel, _text.Button));
 
         Place(_keepLabel, 0f, 0f, width - stepper - stepGap, labelHeight);
         Place(_fewer, width - stepper, (labelHeight - stepSize) / 2f, stepSize, stepSize);
@@ -395,7 +392,7 @@ internal sealed class MyRunsSettingsRow
         Place(_remove, width - removeWidth, lower + ((labelHeight - removeHeight) / 2f), removeWidth, removeHeight);
         Place(_detail, 0f, lower + labelHeight, width - removeWidth - stepGap, noteHeight);
 
-        var fetchHeight = unit * FetchHeightRatio;
+        var fetchHeight = _text.Button.Size * FetchHeightRatio;
         var fetchY = lower + Math.Max(labelHeight + noteHeight, removeHeight) + (unit * FetchGapRatio);
         Place(_fetch, 0f, fetchY, width, fetchHeight);
         Place(
@@ -403,7 +400,7 @@ internal sealed class MyRunsSettingsRow
             0f,
             fetchY + fetchHeight + (unit * MainMenuGapRatio),
             width,
-            unit * MainMenuHeightRatio);
+            _text.Button.Size * MainMenuHeightRatio);
     }
 
     /// <summary>
@@ -564,7 +561,7 @@ internal sealed class MyRunsSettingsRow
 
         internal required bool FetchRunIndex { get; init; }
 
-        internal required GameTextStyle Text { get; init; }
+        internal required MyRunsSettingsText Text { get; init; }
 
         internal required Label KeepLabel { get; init; }
 

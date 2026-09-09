@@ -104,7 +104,7 @@ internal static class RecorderPresenceRow
             HorizontalAlignment = moddedRow.HorizontalAlignment,
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
-        (GameText.Of(moddedRow) ?? GameTextStyle.Fallback).ApplyTo(row);
+        GameText.Require(moddedRow, "version overlay row").ApplyTo(row);
 
         column.AddChild(row);
         column.MoveChild(row, moddedRow.GetIndex() + 1);

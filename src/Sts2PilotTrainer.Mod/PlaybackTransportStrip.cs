@@ -130,9 +130,7 @@ internal sealed class PlaybackTransportStrip
     private readonly Control _tipPlate;
     private readonly Label _tipTitle;
     private readonly Label _tipBody;
-    /// <summary>The game's own text where this tag hangs, and the roles the tag's own
-    /// lines take from it: the creator at the game's size, the counter and every sentence
-    /// a step below it, the video title a step below that.</summary>
+    /// <summary>The native text style copied from the run's top bar.</summary>
     private readonly GameTextStyle _text;
 
     private Vector2 _viewport;
@@ -253,9 +251,7 @@ internal sealed class PlaybackTransportStrip
     /// the bottom of the top bar's own widgets, and the right edge of the game's meta
     /// cluster. Passed in rather than measured here, because that furniture is the
     /// game's and this class draws in a process that may have none.</param>
-    /// <param name="text">The font and size the game draws the top bar's own text at,
-    /// which is what every word on this tag is drawn at and what the tag is scaled
-    /// by.</param>
+    /// <param name="text">The native style copied from the run's top bar.</param>
     internal static PlaybackTransportStrip Build(
         PlaybackTransport state, Vector2 viewport, Vector2 anchor, GameTextStyle text,
         Action back, Action play, Action step, Action speed, Action identity)
@@ -272,7 +268,7 @@ internal sealed class PlaybackTransportStrip
         };
 
         var unit = Unit(text, viewport);
-        var note = text.Supporting;
+        var note = text;
         var nodes = new Nodes
         {
             Root = root,
@@ -284,7 +280,7 @@ internal sealed class PlaybackTransportStrip
             PinRight = Add(root, new Polygon2D { Name = "PinRight", Color = Gold }),
             Mark = Add(root, new Control { Name = "Mark", MouseFilter = Control.MouseFilterEnum.Ignore }),
             Creator = Add(root, Text("Creator", text, Cream)),
-            Title = Add(root, Text("VideoTitle", text.Annotation, Muted)),
+            Title = Add(root, Text("VideoTitle", text, Muted)),
             Numerals = Add(root, Text("Counter", note, Muted)),
             Pips = Add(root, new Control { Name = "Pips", MouseFilter = Control.MouseFilterEnum.Ignore }),
             HoldTrack = Add(root, Stroke("HoldTrack", HoldTrack, 2.4f * unit)),
@@ -587,7 +583,7 @@ internal sealed class PlaybackTransportStrip
         // what cut the sentence off after "what was cho" in the client.
         var inset = 12 * _unit;
         var textWidth = width - (2 * inset);
-        var noteHeight = WrappedHeight(state.Note, _text.Supporting.Size, textWidth, fallbackLines: 2) + (16 * _unit);
+        var noteHeight = WrappedHeight(state.Note, _text.Size, textWidth, fallbackLines: 2) + (16 * _unit);
 
         var noteTop = top + height + (6 * _unit);
         _hangingBottom = noteTop + noteHeight;
@@ -1096,7 +1092,7 @@ internal sealed class PlaybackTransportStrip
         var width = 250 * _unit;
         var inset = 12 * _unit;
         var bodyTop = 24 * _unit;
-        var bodyHeight = WrappedHeight(body, _text.Supporting.Size, width - (2 * inset), fallbackLines: 2);
+        var bodyHeight = WrappedHeight(body, _text.Size, width - (2 * inset), fallbackLines: 2);
         var height = bodyTop + bodyHeight + (8 * _unit);
 
         // Below the control and pulled back on screen, never over the tag itself:

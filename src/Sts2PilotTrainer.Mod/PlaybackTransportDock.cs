@@ -73,7 +73,7 @@ internal static class PlaybackTransportDock
             globalUi.GetViewportRect().Size,
             Anchor(globalUi),
             // The top bar's own text, which is the game furniture the tag hangs under.
-            GameText.On(globalUi),
+            GameText.RequireUnder(globalUi, "run top bar"),
             back,
             play,
             step,

@@ -329,10 +329,10 @@ The run is generated against a supplied complete unlock state and can persist no
 start and inert unless a trainer run is live. Do not weaken either, and do not add a
 path that writes what the barrier suppresses.
 
-**No surface in this mod writes down a font or a font size.**
-`GameText` and `GameTextStyle` in `Sts2PilotTrainer.Mod` read both off a native element the player can see beside the surface, and every word Runmobile draws is that reading or one of the three roles derived around it - a heading above it, a supporting line below it, an annotation below that - never a number.
-Which native element each surface asks is a judgement per surface and `docs/mod-ui-direction.md` owns it, along with the median rule for a screen that offers no single equivalent and the two surfaces that scale their whole geometry by the reading.
-A number here is a number that was right on one window and one build: the game carries no project theme, so nothing inherits, and the sizes it draws its own screens at are the only ones that read as native.
+**No surface in this mod writes down or derives a font or font size.**
+`GameText` and `GameTextStyle` in `Sts2PilotTrainer.Mod` copy both from the native element whose role each Runmobile element fills, and missing native furniture refuses the surface rather than substituting a default.
+Which native element each role asks is a judgement per element and `docs/mod-ui-direction.md` owns it, along with the two surfaces that scale their whole geometry by the reading.
+A number here is a number that was right on one window and one build: the game carries no project theme, so nothing inherits, and the sizes it draws its own elements at are the only ones that read as native.
 A surface that sits inside one of the game's own containers is a child of it and asks it for height only, laid out again once that container has sorted - a settings screen has not been laid out when its `_Ready` runs, and a child's minimum width is a demand its host obeys.
 `demo/RUNMOBILE-NATIVE-TYPE.md` is the retail proof and records the three wrong readings that rule came from.
 

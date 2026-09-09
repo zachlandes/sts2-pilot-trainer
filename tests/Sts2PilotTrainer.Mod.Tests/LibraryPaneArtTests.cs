@@ -10,7 +10,7 @@ public sealed class LibraryPaneArtTests
     /// <summary>The pane's own line size in a process with no game, which is what the
     /// strip's cells are measured against. The paging assertions below were taken at
     /// this size.</summary>
-    private static readonly int LineSize = GameTextStyle.Fallback.Size;
+    private const int LineSize = 16;
 
     [Fact]
     public void FullRunStripPagesIntoReadableWindows()
@@ -62,7 +62,7 @@ public sealed class LibraryPaneArtTests
         var presses = 0;
         var button = LibraryPaneArt.AddStripPageButton(
             new Control(), "Previous", "Previous", "‹", Vector2.Zero, 28f, 28f,
-            GameTextStyle.Fallback, () => presses++);
+            new GameTextStyle(null, LineSize), () => presses++);
 
         foreach (var action in new[] { MegaInput.confirm, MegaInput.select })
         {

@@ -111,7 +111,8 @@ internal static class RunHistoryPlateHost
             // The screen's own text size, read where the plate will hang rather than
             // written down: the plate is part of this screen and is drawn at its size.
             _plate = RunHistoryPlateArt.Build(
-                parent, plate, Rows(plate, recording), pane.Size.X, GameText.On(pane));
+                parent, plate, Rows(plate, recording), pane.Size.X,
+                GameText.RequireUnder(pane, "run-history row"));
 
             // Immediately after the pane, so a parent that lays its children out puts
             // the plate between the pane and whatever follows it - which is what makes

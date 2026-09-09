@@ -73,9 +73,7 @@ internal static class MyRunsSettings
                 return;
             }
 
-            // The game's own settings row this hangs off, read for its font and size:
-            // Runmobile's row is one more row on that screen and is drawn as one.
-            Attach(anchor, GameText.Under(anchor));
+            Attach(anchor, NativeText(anchor));
         }
         catch (Exception ex)
         {
@@ -100,7 +98,28 @@ internal static class MyRunsSettings
     /// containers at all: there the entry is the host, the row is positioned under the
     /// anchor inside it, and the host is grown to hold it.</para>
     /// </summary>
-    internal static MyRunsSettingsRow Attach(Control anchor, GameTextStyle text)
+    internal static MyRunsSettingsText NativeText(Control anchor)
+    {
+        var entry = anchor.GetParent()
+            ?? throw new InvalidOperationException(
+                "This build's modding settings button has no parent carrying its row label.");
+        var row = entry.GetChildren()
+            .Where(child => !ReferenceEquals(child, anchor))
+            .Select(GameText.Under)
+            .OfType<GameTextStyle>()
+            .FirstOrDefault();
+        if (row == default)
+        {
+            throw new InvalidOperationException(
+                "This build's modding settings entry has no native row label.");
+        }
+
+        return new MyRunsSettingsText(
+            row,
+            GameText.RequireUnder(anchor, "settings button label"));
+    }
+
+    internal static MyRunsSettingsRow Attach(Control anchor, MyRunsSettingsText text)
     {
         var entry = anchor.GetParent() as Control
             ?? throw new InvalidOperationException(
@@ -159,7 +178,7 @@ internal static class MyRunsSettings
     /// <see cref="MyRunsRow"/>'s, from a fact of its own rather than a count of zero:
     /// no runs yet and cannot tell yet are different sentences.
     /// </summary>
-    internal static MyRunsSettingsRow Build(float width, GameTextStyle text)
+    internal static MyRunsSettingsRow Build(float width, MyRunsSettingsText text)
     {
         var facts = OnDisk();
         var settings = RunmobileSettings.Read();

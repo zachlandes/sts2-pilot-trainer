@@ -86,7 +86,7 @@ internal static class LibraryPaneArt
         var y = at.Position.Y;
         y = LibraryScreen.AddLine(
             content, pane.Heading, new Vector2(at.Position.X, y), at.Size.X,
-            LibraryPalette.Muted, line.Heading);
+            LibraryPalette.Muted, content.HeaderText());
 
         if (pane.Subtitle is { Length: > 0 } subtitle)
         {
@@ -189,7 +189,7 @@ internal static class LibraryPaneArt
             {
                 LibraryScreen.AddLine(
                     content, ModelIdNames.Display(id), position, size * 1.1f,
-                    LibraryPalette.Muted, line.Supporting);
+                    LibraryPalette.Muted, line);
             }
         }
 
@@ -231,7 +231,7 @@ internal static class LibraryPaneArt
             controls.Add(AddStripPageButton(
                 content, LibraryCopy.PreviousPage, "Previous", "‹",
                 new Vector2(at.X + layout.Offset, at.Y),
-                layout.Pitch, layout.Height, line.Heading,
+                layout.Pitch, layout.Height, content.ButtonText(),
                 () => LibraryScreen.Navigate(
                     LibraryCopy.PreviousPage, () => previousPage(layout.Index - 1))));
         }
@@ -260,7 +260,7 @@ internal static class LibraryPaneArt
                 floor.Playable ? LibraryPalette.Line : LibraryPalette.Line with { A = 0.45f });
             kind.Position = new Vector2((layout.Pitch - layout.Cell) / 2f, inset);
             box.AddChild(kind);
-            AddStripNumber(box, floor.Floor, layout, line.Supporting);
+            AddStripNumber(box, floor.Floor, layout, line);
 
             // Filled, over the cell: it is something this player did.
             if (floor.Played)
@@ -310,7 +310,7 @@ internal static class LibraryPaneArt
                 content, LibraryCopy.NextPage, "Next", "›",
                 new Vector2(
                     at.X + layout.Offset + (layout.NextSlot * layout.Pitch), at.Y),
-                layout.Pitch, layout.Height, line.Heading,
+                layout.Pitch, layout.Height, content.ButtonText(),
                 () => LibraryScreen.Navigate(
                     LibraryCopy.NextPage, () => nextPage(layout.Index + 1))));
         }
@@ -331,8 +331,7 @@ internal static class LibraryPaneArt
             controls.LastOrDefault());
     }
 
-    /// <summary>The floor's number inside its own cell: a mark on a glyph rather than a
-    /// line of the pane's text, so it takes the step below the pane's own.</summary>
+    /// <summary>The floor's number inside its own cell, in the popup's native body style.</summary>
     private static void AddStripNumber(
         Control box, int floor, StripLayout layout, GameTextStyle style)
     {
@@ -435,14 +434,14 @@ internal static class LibraryPaneArt
                         position with { Y = position.Y + (height * 0.76f) },
                         tile * 0.92f,
                         LibraryPalette.Muted,
-                        line.Supporting,
+                        line,
                         HorizontalAlignment.Center);
                 }
             }
             else
             {
                 LibraryScreen.AddLine(
-                    content, text, position, tile * 0.92f, LibraryPalette.Muted, line.Supporting);
+                    content, text, position, tile * 0.92f, LibraryPalette.Muted, line);
             }
         }
 

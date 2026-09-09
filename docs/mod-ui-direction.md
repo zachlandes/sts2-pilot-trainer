@@ -153,24 +153,19 @@ Where that row hangs, what it reads, and where its drawing departs from the acce
 
 ## Type: the game's own, at the game's own size
 
-**No surface in this mod writes down a font size.**
-Every word Runmobile draws is sized from a native element the player can see beside it, read at the moment the surface is built, through `GameText` and `GameTextStyle` in `Sts2PilotTrainer.Mod`.
-This began as `RecorderPresenceRow` copying the MODDED label's font and size so its row would be the fourth row of that column rather than a thing of the mod's hung beside it; the rule is the same everywhere and the generalisation is only which native element each surface asks.
+**No surface in this mod writes down or derives a font size.**
+Every Runmobile element copies the font and size from the native element whose role it fills, read when the surface is built through `GameText` and `GameTextStyle` in `Sts2PilotTrainer.Mod`.
+This began as `RecorderPresenceRow` copying the MODDED label so its row would read as the fourth row of that column.
 
-**Which element is a judgement, and it is per surface rather than per mod.**
-The settings row takes the game's own settings row it hangs off; a Runmobile line on a parchment takes that popup's own body copy; the run-history plate takes the run-history screen; the transport and the result panel take what the screen behind them draws ordinary text at.
-A heading inside a Runmobile surface is the step above that surface's own body rather than the popup's header, because the parchment's title is the screen's and a pane heading drawn at the same size would put two titles on one screen.
-A screen with no single equivalent is read as the middle of its own labels, never the first one found: the run screens carry the version overlay, whose rows are the smallest text the client draws, and a banner is the largest, so either would be the first found depending on where it sits and either would size the whole of Runmobile wrongly.
+**Which element is a judgement made per element.**
+The settings row copies the native settings row label for its text and the native settings button label for its controls.
+A popup heading copies `NVerticalPopup.Header`, body and supporting copy `NVerticalPopup.Description`, and controls copy the label under the popup's own ribbon button.
+The run-history plate copies a row from the run-history pane, the transport copies the run top bar, and the result panel copies the fight-result screen it covers.
+Missing native furniture refuses the surface rather than substituting Godot's default or synthesizing a related size.
 
-**Four roles, and only one of them is a number.**
-The game offers one ordinary text size per screen, and these surfaces need a hierarchy around it, so what is written down is the relationship: a heading above it, a supporting line below it for a second line or a footnote, and an annotation below that for a numeral inside a glyph - a floor number in a strip cell, a copy count under a card tile.
-Nothing is allowed below `GameTextStyle.SmallestReadable`.
-
-**A surface whose boxes were measured around its own text scales with the reading.**
-The tag and the result panel were laid out against text of a stated size, so both carry that size as a reference and scale their whole geometry by how much larger the game's own text is - because a surface that grew its words and not its boxes is a surface with the words outside it.
+**A surface whose boxes were measured around its own text scales with the native reading.**
+The tag and the result panel were laid out against text of a stated size, so both scale their whole geometry by the native size rather than growing the words outside fixed boxes.
 The tag never goes below the window's own scaling either; both terms are 1 at the design's reference.
-
-**A build whose furniture moved falls back rather than guessing**, to `GameTextStyle.Fallback`, which is Godot's own default size and no font at all: worse-looking, still readable, and never a number this mod invented for a screen it could not read.
 
 **A surface that sits inside the game's own container is a child of it, and asks it for height only.**
 The settings row is the case that taught this. Sized from the modding button it hangs off, its words clipped mid-word the moment they were the game's size, because that button is a fraction of the column wide; sized from an ancestor found by walking up, it reached the screen and dragged every one of the game's own rows out to the edge with it, because a child's minimum width is a demand on its container.

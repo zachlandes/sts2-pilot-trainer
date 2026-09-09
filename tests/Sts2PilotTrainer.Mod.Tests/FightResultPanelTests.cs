@@ -221,7 +221,7 @@ public sealed class FightResultPanelTests
     {
         var left = 0;
         var nodes = FightResultPanel.Build(
-            Panel(Comparison()), Surface, _ => null, GameTextStyle.Fallback, done: () => left++);
+            Panel(Comparison()), Surface, _ => null, new GameTextStyle(null, 16), done: () => left++);
 
         Assert.Single(Descendants(nodes.Root).OfType<Button>());
         Assert.Same(nodes.Done, Descendants(nodes.Root).OfType<Button>().Single());
@@ -281,7 +281,8 @@ public sealed class FightResultPanelTests
     // ── The panel, and the fight it is about ───────────────────────────────
 
     private static Control Build(FightResultScreen screen, Func<string, Texture2D?>? art = null) =>
-        FightResultPanel.Build(screen, Surface, art ?? (_ => null), GameTextStyle.Fallback, done: () => { }).Root;
+        FightResultPanel.Build(
+            screen, Surface, art ?? (_ => null), new GameTextStyle(null, 16), done: () => { }).Root;
 
     private static FightResultScreen Panel(CombatComparison comparison) =>
         FightResultScreen.For("NaveGreed", comparison);

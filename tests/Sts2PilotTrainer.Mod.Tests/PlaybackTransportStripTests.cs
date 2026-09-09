@@ -1132,7 +1132,7 @@ public sealed class PlaybackTransportStripTests
 
     private static PlaybackTransportStrip Build(PlaybackTransport state) =>
         PlaybackTransportStrip.Build(
-            state, Surface, Anchor, GameTextStyle.Fallback,
+            state, Surface, Anchor, new GameTextStyle(null, 16),
             back: () => { }, play: () => { }, step: () => { }, speed: () => { }, identity: () => { });
 
     private static Label Label(PlaybackTransportStrip strip, string name) => Find<Label>(strip.Root, name);

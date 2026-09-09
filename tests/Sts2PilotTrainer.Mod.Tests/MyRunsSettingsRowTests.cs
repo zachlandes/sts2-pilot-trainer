@@ -364,9 +364,10 @@ public sealed class MyRunsSettingsRowTests
     {
         var row = Build(
             new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20),
-            text: new GameTextStyle(null, size));
+            text: Text(size, size + 3));
 
         Assert.Equal(size, Label(row, "KeepLabel").GetThemeFontSize("font_size", "Label"));
+        Assert.Equal(size + 3, row.Remove.GetThemeFontSize("font_size", "Button"));
         Assert.All(
             row.Root.GetChildren().OfType<Control>(),
             child => Assert.True(
@@ -382,24 +383,27 @@ public sealed class MyRunsSettingsRowTests
         var facts = new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20);
 
         Assert.True(
-            Build(facts, text: new GameTextStyle(null, 30)).Height >
-            Build(facts, text: new GameTextStyle(null, 15)).Height);
+            Build(facts, text: Text(30)).Height >
+            Build(facts, text: Text(15)).Height);
     }
 
     private static MyRunsSettingsRow Build(
         MyRunsFacts facts, Action<int>? keepChanged = null, Action? removePressed = null,
         Action<bool>? fetchChanged = null, Action<bool>? mainMenuChanged = null,
-        GameTextStyle? text = null) =>
+        MyRunsSettingsText? text = null) =>
         MyRunsSettingsRow.Build(
             MyRunsRow.For(facts),
             facts.Keep,
             fetchRunIndex: true,
             Width,
-            text ?? GameTextStyle.Fallback,
+            text ?? Text(),
             keepChanged ?? (_ => { }),
             removePressed ?? (() => { }),
             fetchChanged ?? (_ => throw new InvalidOperationException("Unexpected fetch press")),
             mainMenuChanged ?? (_ => throw new InvalidOperationException("Unexpected main-menu press")));
+
+    private static MyRunsSettingsText Text(int rowSize = 16, int buttonSize = 16) =>
+        new(new GameTextStyle(null, rowSize), new GameTextStyle(null, buttonSize));
 
     private static void Apply(MyRunsSettingsRow row, MyRunsFacts facts) =>
         row.Apply(MyRunsRow.For(facts), facts.Keep);

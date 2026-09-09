@@ -63,7 +63,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         RecordingRetention.ApplyOnce();
         Assert.Equal(4, RunmobileStore.ListFileNames(Recordings).Count);
 
-        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
+        var row = MyRunsSettings.Build(Width, Text());
         row.Fewer.EmitPressed();
 
         Assert.Equal("1", Label(row, "KeepNumeral").Text);
@@ -88,11 +88,32 @@ public sealed class MyRunsSettingsTests : IDisposable
         Record(Older);
         Record(Newest);
 
-        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
+        var row = MyRunsSettings.Build(Width, Text());
         row.Fewer.EmitPressed();
 
         Assert.Equal(4, RunmobileStore.ListFileNames(Recordings).Count);
         Assert.Equal("2 runs · 1 KB", Label(row, "Reading").Text);
+    }
+
+    [Fact]
+    public void TheSettingsHostReadsRowsAndButtonsFromTheirMatchingNativeElements()
+    {
+        var entry = new MarginContainer();
+        var rowLabel = new Label();
+        rowLabel.AddThemeFontOverride("font", new Font());
+        rowLabel.AddThemeFontSizeOverride("font_size", 24);
+        var button = new Control();
+        var buttonLabel = new Label();
+        buttonLabel.AddThemeFontOverride("font", new Font());
+        buttonLabel.AddThemeFontSizeOverride("font_size", 18);
+        entry.AddChild(rowLabel);
+        entry.AddChild(button);
+        button.AddChild(buttonLabel);
+
+        var text = MyRunsSettings.NativeText(button);
+
+        Assert.Equal(24, text.Row.Size);
+        Assert.Equal(18, text.Button.Size);
     }
 
     [Fact]
@@ -104,7 +125,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         entry.AddChild(modding);
         column.AddChild(entry);
 
-        var row = MyRunsSettings.Attach(modding, GameTextStyle.Fallback);
+        var row = MyRunsSettings.Attach(modding, Text());
 
         Assert.Same(column, row.Root.GetParent());
         Assert.Equal("Fetch the run index: on", row.Fetch.Text);
@@ -135,7 +156,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         column.AddChild(entry);
         column.AddChild(credits);
 
-        var row = MyRunsSettings.Attach(modding, GameTextStyle.Fallback);
+        var row = MyRunsSettings.Attach(modding, Text());
 
         Assert.Same(column, row.Root.GetParent());
         Assert.NotSame(entry, row.Root.GetParent());
@@ -166,7 +187,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         entry.AddChild(modding);
         column.AddChild(entry);
 
-        var row = MyRunsSettings.Attach(modding, new GameTextStyle(null, 26));
+        var row = MyRunsSettings.Attach(modding, Text(26));
 
         Assert.Equal(Width, row.Root.Size.X);
         // The label keeps most of the row whatever the text grows to, rather than being
@@ -195,7 +216,7 @@ public sealed class MyRunsSettingsTests : IDisposable
     [Fact]
     public void ARowBuiltBeforeTheScreenWasLaidOutTakesTheColumnOnceItIs()
     {
-        var row = MyRunsSettings.Build(120f, new GameTextStyle(null, 26));
+        var row = MyRunsSettings.Build(120f, Text(26));
         var narrow = Label(row, "KeepLabel").Size.X;
 
         row.Relayout(Width);
@@ -220,7 +241,7 @@ public sealed class MyRunsSettingsTests : IDisposable
     [Fact]
     public void TheRowAsksItsHostForHeightAndNeverForWidth()
     {
-        var row = MyRunsSettings.Build(120f, new GameTextStyle(null, 26));
+        var row = MyRunsSettings.Build(120f, Text(26));
 
         row.Relayout(Width);
 
@@ -250,7 +271,7 @@ public sealed class MyRunsSettingsTests : IDisposable
                 "This game has not chosen a save profile yet, so Runmobile cannot tell whose files these " +
                 "would be."));
 
-        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
+        var row = MyRunsSettings.Build(Width, Text());
 
         Assert.Equal("Your runs are read once you have chosen a save profile", Label(row, "Reading").Text);
         Assert.Equal(string.Empty, Label(row, "Detail").Text);
@@ -271,7 +292,7 @@ public sealed class MyRunsSettingsTests : IDisposable
     {
         RunmobileStore.UseRootProviderForTesting(() => string.Empty);
 
-        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
+        var row = MyRunsSettings.Build(Width, Text());
 
         Assert.Equal("Your runs could not be read; the game's log says why", Label(row, "Reading").Text);
         Assert.Equal(string.Empty, Label(row, "Detail").Text);
@@ -293,7 +314,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         ContinuableRun.UseReaderForTesting(
             () => throw new InvalidOperationException("This game has a saved run it could not read."));
 
-        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
+        var row = MyRunsSettings.Build(Width, Text());
 
         Assert.Equal("Your runs could not be read; the game's log says why", Label(row, "Reading").Text);
         Assert.True(row.Remove.Disabled);
@@ -312,7 +333,7 @@ public sealed class MyRunsSettingsTests : IDisposable
         Record(Newest);
         ContinuableRun.UseReaderForTesting(() => RecordingLibrary.Index([$"{Newest}.journal.jsonl"])[0].StartedUtc);
 
-        var row = MyRunsSettings.Build(Width, GameTextStyle.Fallback);
+        var row = MyRunsSettings.Build(Width, Text());
 
         Assert.Equal(
             "1 older run will be removed at the main menu · user://Runmobile/recordings",
@@ -324,6 +345,9 @@ public sealed class MyRunsSettingsTests : IDisposable
             [$"{Newest}.journal.jsonl", $"{Newest}.replay.json"],
             RunmobileStore.ListFileNames(Recordings));
     }
+
+    private static MyRunsSettingsText Text(int rowSize = 16, int buttonSize = 16) =>
+        new(new GameTextStyle(null, rowSize), new GameTextStyle(null, buttonSize));
 
     private static void WriteSettings(int keep) =>
         RunmobileStore.Write(

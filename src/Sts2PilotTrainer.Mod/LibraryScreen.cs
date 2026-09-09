@@ -561,7 +561,7 @@ internal static class LibraryScreen
                 "This build's popup ribbon has no measurable height, so a row column cannot be laid out.");
         }
 
-        var note = content.BodyText().Supporting;
+        var note = content.BodyText();
         var top = at.Position.Y;
         if (page.ListHeader is { Length: > 0 } header)
         {
@@ -666,7 +666,7 @@ internal static class LibraryScreen
     {
         if (row.Heading)
         {
-            AddLine(content, row.Label, at, width, LibraryPalette.Muted, content.BodyText().Supporting);
+            AddLine(content, row.Label, at, width, LibraryPalette.Muted, content.HeaderText());
             return null;
         }
 
@@ -815,7 +815,7 @@ internal static class LibraryScreen
     /// </summary>
     private static void AddActReached(NVerticalPopup content, Control row, string text)
     {
-        var style = content.BodyText().Supporting;
+        var style = content.BodyText();
         var label = new Label
         {
             Name = $"{row.Name}ActReached",
@@ -833,7 +833,7 @@ internal static class LibraryScreen
 
     private static void AddTrailing(NVerticalPopup content, Control row, string text)
     {
-        var style = content.BodyText().Supporting;
+        var style = content.BodyText();
         var label = new Label
         {
             Name = $"{row.Name}Trailing",
@@ -864,7 +864,7 @@ internal static class LibraryScreen
     /// </summary>
     private static void AddNote(NVerticalPopup content, Control row, string note)
     {
-        var style = content.BodyText().Supporting;
+        var style = content.BodyText();
         var label = new Label
         {
             Name = $"{row.Name}Note",

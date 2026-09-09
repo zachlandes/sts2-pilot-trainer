@@ -50,13 +50,12 @@ internal static class RunHistoryPlateArt
     /// the tree would come out in Godot's default sans. <paramref name="width"/> is the
     /// pane's own, so the plate is exactly as wide as the thing it belongs to.
     /// </summary>
-    /// <param name="text">The size the run-history screen draws its own text at. The
-    /// rows take it, the supporting lines take the step below it.</param>
+    /// <param name="text">The style the run-history screen draws its own rows in.</param>
     internal static Control Build(
         Node parent, RunHistoryPlate plate, IReadOnlyList<ScreenRow> rows, float width,
         GameTextStyle text)
     {
-        var reason = text.Supporting;
+        var reason = text;
         var rowHeight = text.Size * RowHeightRatio;
         var rowGap = text.Size * RowGapRatio;
 

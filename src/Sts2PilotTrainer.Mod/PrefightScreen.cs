@@ -114,7 +114,7 @@ internal static class PrefightScreen
                 screen,
                 container.GetViewportRect().Size,
                 ModelArt.Of,
-                GameText.On(container),
+                GameText.RequireUnder(container, "fight result screen"),
                 done);
 
             container.AddChild(panel.Root);
