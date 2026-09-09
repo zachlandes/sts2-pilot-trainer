@@ -194,13 +194,13 @@ public class BootstrapSafetyTests
     }
 
     [Fact]
-    public void AcceptsAnIdenticalPreparedSetDespitePatchedSts2BytesChanging()
+    public void AcceptsTheLegacyReleaseInfoNameWhenThePreparedSetIsIdentical()
     {
         var receipt = WriteArchiveReceipt(new Dictionary<string, string>
         {
             ["sts2.dll"] = "archived-patched-bytes",
             ["0Harmony.dll"] = "same-harmony",
-            ["release_info.json.copy"] = "same-release-info",
+            ["release_info.json"] = "same-release-info",
         });
         var current = new Dictionary<string, string>
         {
@@ -211,6 +211,29 @@ public class BootstrapSafetyTests
 
         Sts2PilotTrainer.Bootstrap.Program.RefuseDriftedArchive(
             receipt, "same-commit", "same-pristine-sts2", current);
+    }
+
+    [Fact]
+    public void RefusesChangedReleaseInfoDespiteItsLegacyName()
+    {
+        var receipt = WriteArchiveReceipt(new Dictionary<string, string>
+        {
+            ["sts2.dll"] = "archived-patched-bytes",
+            ["release_info.json"] = "archived-release-info",
+        });
+        var current = new Dictionary<string, string>
+        {
+            ["sts2.dll"] = "new-patched-bytes",
+            ["release_info.json.copy"] = "current-release-info",
+        };
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            Sts2PilotTrainer.Bootstrap.Program.RefuseDriftedArchive(
+                receipt, "same-commit", "same-pristine-sts2", current));
+
+        Assert.Contains("prepared output release_info.json.copy", error.Message, StringComparison.Ordinal);
+        Assert.Contains("archived archived-release", error.Message, StringComparison.Ordinal);
+        Assert.Contains("this run current-release-", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

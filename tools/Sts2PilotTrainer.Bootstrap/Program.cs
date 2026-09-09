@@ -192,7 +192,7 @@ internal static class Program
         // "release_info.json" is what this tool wrote before PreparedReleaseInfoName;
         // left behind, it is exactly the file that name exists to stop shipping.
         foreach (var name in RequiredAssemblies
-                     .Append(PreparedReleaseInfoName).Append("release_info.json").Append(ReceiptName))
+                     .Append(PreparedReleaseInfoName).Append(LegacyPreparedReleaseInfoName).Append(ReceiptName))
         {
             var path = Path.Combine(outDir, name);
             if (File.Exists(path)) File.Delete(path);
@@ -502,14 +502,22 @@ internal static class Program
         }
         else
         {
-            var outputNames = archivedOutputs.Select(entry => entry.Key)
-                .Union(currentOutputHashes.Keys, StringComparer.Ordinal)
+            var normalizedArchivedOutputs = archivedOutputs.ToDictionary(
+                entry => NormalizePreparedOutputName(entry.Key),
+                entry => entry.Value?.GetValue<string>(),
+                StringComparer.Ordinal);
+            var normalizedCurrentOutputs = currentOutputHashes.ToDictionary(
+                entry => NormalizePreparedOutputName(entry.Key),
+                entry => entry.Value,
+                StringComparer.Ordinal);
+            var outputNames = normalizedArchivedOutputs.Keys
+                .Union(normalizedCurrentOutputs.Keys, StringComparer.Ordinal)
                 .Where(name => !name.Equals("sts2.dll", StringComparison.Ordinal))
                 .Order(StringComparer.Ordinal);
             foreach (var name in outputNames)
             {
-                var archivedHash = archivedOutputs[name]?.GetValue<string>();
-                currentOutputHashes.TryGetValue(name, out var currentHash);
+                normalizedArchivedOutputs.TryGetValue(name, out var archivedHash);
+                normalizedCurrentOutputs.TryGetValue(name, out var currentHash);
                 if (archivedHash == currentHash) continue;
 
                 differences.Add(
@@ -548,6 +556,12 @@ internal static class Program
     /// edited, so the extension is the only thing left to change.
     /// </summary>
     private const string PreparedReleaseInfoName = "release_info.json.copy";
+    private const string LegacyPreparedReleaseInfoName = "release_info.json";
+
+    private static string NormalizePreparedOutputName(string name) =>
+        name.Equals(LegacyPreparedReleaseInfoName, StringComparison.Ordinal)
+            ? PreparedReleaseInfoName
+            : name;
 
     private static string Abbreviate(string? hash) =>
         hash is null ? "unknown" : hash.Length <= 16 ? hash : hash[..16] + "...";
