@@ -965,6 +965,9 @@ screen as they appeared in the shipped client,
 the recorded fight with its real output, and
 [demo/PLAYER-FIGHT-COMPARISON.md](../demo/PLAYER-FIGHT-COMPARISON.md) has the fight
 played through and its comparison.
+[demo/RUNMOBILE-MAIN-MENU.md](../demo/RUNMOBILE-MAIN-MENU.md) has the main-menu row on a
+zero-run profile, the library it opens, the settings control that hides it, and a
+progressed profile with no row and its Compendium card intact.
 
 ### Keeping runs, and removing them
 
@@ -982,7 +985,7 @@ A negative number is refused with a logged sentence naming the file and the valu
 Removing nothing survives only as an internal answer for a settings file this build cannot read - a sentence nobody could read is not somebody asking for their runs to be deleted, so recording off and deleting nothing fail in the same direction.
 
 `purge_my_runs` is the one-shot act: every recorded run is removed, and then the mod writes the member back to `false` so a purge is something a player did rather than a state they are left in.
-`keep_recent_runs`, `purge_my_runs`, and `fetch_run_index` are the three members the mod writes, and each write edits the member it names: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
+`keep_recent_runs`, `purge_my_runs`, `fetch_run_index` and `show_main_menu_row` are the four members the mod writes, and each write edits the member it names: the file is edited in place rather than re-serialised, so every other member survives exactly as the player typed it - a refused negative `keep_recent_runs` included.
 A file that is there and is not a settings object is refused rather than written over, because reading one already means "record nothing" and overwriting it would discard what the player wrote in order to store what they meant to add to it.
 `godot.log` carries the receipt either way - `purged your recorded runs: N removed` for the act, `keeping your 50 most recent runs: N older one(s) removed` for the policy.
 
