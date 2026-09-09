@@ -179,7 +179,7 @@ public sealed record GameIdentity(
         var assemblies = receipt["assemblies"]?.AsArray()
             ?? throw new EngineException("The prepared assembly receipt has no assembly list.");
 
-        if (hashes["release_info.json"] is null)
+        if (PreparedReleaseInfo.NameFrom(hashes) is null)
         {
             throw new EngineException("The prepared assembly receipt has no release-info hash.");
         }
@@ -239,11 +239,37 @@ public sealed record GameIdentity(
 /// <summary>
 /// Gives the engine its own release information.
 ///
-/// The engine looks for <c>release_info.json</c> relative to the process working
-/// directory, which is wherever the caller happened to be. Rather than depend on
-/// that, the file is read from beside the prepared assembly and handed to the
-/// engine directly, so the engine reports the build it is actually running.
+/// The engine looks for <c>release_info.json</c> beside its own executable, which
+/// headlessly is the .NET host rather than the game. Rather than depend on a path
+/// that never holds it, the file is read from beside the prepared assembly and handed
+/// to the engine directly, so the engine reports the build it is actually running.
+///
+/// The prepared copy is named <c>release_info.json.copy</c>, written by
+/// <c>Sts2PilotTrainer.Bootstrap</c>, which records why it is not named
+/// <c>*.json</c>. The engine's own loader never reads it under either name.
 /// </summary>
+internal static class PreparedReleaseInfo
+{
+    private const string CurrentName = "release_info.json.copy";
+    private const string LegacyName = "release_info.json";
+
+    internal static string? NameFrom(JsonObject hashes) =>
+        hashes[CurrentName] is not null ? CurrentName :
+        hashes[LegacyName] is not null ? LegacyName :
+        null;
+
+    internal static string? PathFromReceipt(string libDir)
+    {
+        var receiptPath = Path.Combine(libDir, "prepared-assembly.json");
+        if (!File.Exists(receiptPath)) return null;
+
+        var receipt = JsonNode.Parse(File.ReadAllText(receiptPath))?.AsObject();
+        var hashes = receipt?["prepared_output_sha256"]?.AsObject();
+        var name = hashes is null ? null : NameFrom(hashes);
+        return name is null ? null : Path.Combine(libDir, name);
+    }
+}
+
 internal static class ReleaseInfoBinding
 {
     internal static void Install(List<string> failures)
@@ -251,7 +277,7 @@ internal static class ReleaseInfoBinding
         try
         {
             var libDir = AssemblyResolution.ResolveLibDirectory();
-            var path = libDir is null ? null : Path.Combine(libDir, "release_info.json");
+            var path = libDir is null ? null : PreparedReleaseInfo.PathFromReceipt(libDir);
             if (path is null || !File.Exists(path))
             {
                 failures.Add("release info: not found beside the prepared assembly");

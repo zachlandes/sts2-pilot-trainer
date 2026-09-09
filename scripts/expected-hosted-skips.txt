@@ -1,5 +1,6 @@
 # Every test that skips on a runner without the game, asserted against the
 # real run by ./scripts/assert-expected-skips.sh. Regenerate with --update.
+Sts2PilotTrainer.Arbiter.Tests.BootstrapSafetyTests.AnExistingArchiveWithTheLegacyReleaseInfoNameStillReplays
 Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.DerivesEveryBoundaryTheReplayReached
 Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.EntersAFightAfterTheFirstAndNamesTheBoundaryItReached
 Sts2PilotTrainer.Arbiter.Tests.BoundarySelectionTests.RefusesACoordinateTheHistoryNeverReachesAndSaysWhatItDoesPass

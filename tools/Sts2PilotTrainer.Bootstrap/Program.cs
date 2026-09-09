@@ -189,7 +189,10 @@ internal static class Program
 
     private static void RemovePriorPreparedOutputs(string outDir)
     {
-        foreach (var name in RequiredAssemblies.Append("release_info.json").Append(ReceiptName))
+        // "release_info.json" is what this tool wrote before PreparedReleaseInfoName;
+        // left behind, it is exactly the file that name exists to stop shipping.
+        foreach (var name in RequiredAssemblies
+                     .Append(PreparedReleaseInfoName).Append(LegacyPreparedReleaseInfoName).Append(ReceiptName))
         {
             var path = Path.Combine(outDir, name);
             if (File.Exists(path)) File.Delete(path);
@@ -224,12 +227,15 @@ internal static class Program
     /// The game reads its own version from release_info.json at runtime. Placing a
     /// copy beside the prepared assembly means the engine reports its real identity
     /// rather than a default, which is what the preflight compares against.
+    ///
+    /// It lands under <see cref="PreparedReleaseInfoName"/> rather than its own name,
+    /// for the reason recorded there.
     /// </summary>
     private static void CopyReleaseInfo(string gameDir, string outDir)
     {
         var src = FindReleaseInfo(gameDir);
         if (src is null) return;
-        File.Copy(src, Path.Combine(outDir, "release_info.json"), overwrite: true);
+        File.Copy(src, Path.Combine(outDir, PreparedReleaseInfoName), overwrite: true);
     }
 
     /// <summary>
@@ -496,14 +502,22 @@ internal static class Program
         }
         else
         {
-            var outputNames = archivedOutputs.Select(entry => entry.Key)
-                .Union(currentOutputHashes.Keys, StringComparer.Ordinal)
+            var normalizedArchivedOutputs = archivedOutputs.ToDictionary(
+                entry => NormalizePreparedOutputName(entry.Key),
+                entry => entry.Value?.GetValue<string>(),
+                StringComparer.Ordinal);
+            var normalizedCurrentOutputs = currentOutputHashes.ToDictionary(
+                entry => NormalizePreparedOutputName(entry.Key),
+                entry => entry.Value,
+                StringComparer.Ordinal);
+            var outputNames = normalizedArchivedOutputs.Keys
+                .Union(normalizedCurrentOutputs.Keys, StringComparer.Ordinal)
                 .Where(name => !name.Equals("sts2.dll", StringComparison.Ordinal))
                 .Order(StringComparer.Ordinal);
             foreach (var name in outputNames)
             {
-                var archivedHash = archivedOutputs[name]?.GetValue<string>();
-                currentOutputHashes.TryGetValue(name, out var currentHash);
+                normalizedArchivedOutputs.TryGetValue(name, out var archivedHash);
+                normalizedCurrentOutputs.TryGetValue(name, out var currentHash);
                 if (archivedHash == currentHash) continue;
 
                 differences.Add(
@@ -527,6 +541,27 @@ internal static class Program
     }
 
     private const string ReceiptName = "prepared-assembly.json";
+
+    /// <summary>
+    /// The prepared copy of the game's own release_info.json, under a name that is
+    /// deliberately not <c>*.json</c>.
+    ///
+    /// The installer copies this whole directory into the player's mods folder as
+    /// <c>Runmobile/arbiter/lib</c>, and the retail client walks that folder
+    /// recursively reading every <c>*.json</c> as a mod manifest. The game's file has a
+    /// top-level <c>version</c> and no <c>id</c>, which is exactly what
+    /// <c>ModManager.ReadModManifest</c> reports as a manifest missing its id: an error
+    /// with a stack trace in every player's log, and an error-level Sentry breadcrumb,
+    /// on every launch. The content is the game's file byte for byte and is never
+    /// edited, so the extension is the only thing left to change.
+    /// </summary>
+    private const string PreparedReleaseInfoName = "release_info.json.copy";
+    private const string LegacyPreparedReleaseInfoName = "release_info.json";
+
+    private static string NormalizePreparedOutputName(string name) =>
+        name.Equals(LegacyPreparedReleaseInfoName, StringComparison.Ordinal)
+            ? PreparedReleaseInfoName
+            : name;
 
     private static string Abbreviate(string? hash) =>
         hash is null ? "unknown" : hash.Length <= 16 ? hash : hash[..16] + "...";
@@ -585,7 +620,7 @@ internal static class Program
 
     private static SortedDictionary<string, string> HashPreparedOutputs(string outDir, IEnumerable<string> copied)
     {
-        var names = copied.Append("release_info.json")
+        var names = copied.Append(PreparedReleaseInfoName)
             .Where(name => File.Exists(Path.Combine(outDir, name)))
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal);

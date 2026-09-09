@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -193,7 +194,7 @@ public class BootstrapSafetyTests
     }
 
     [Fact]
-    public void AcceptsAnIdenticalPreparedSetDespitePatchedSts2BytesChanging()
+    public void AcceptsTheLegacyReleaseInfoNameWhenThePreparedSetIsIdentical()
     {
         var receipt = WriteArchiveReceipt(new Dictionary<string, string>
         {
@@ -205,11 +206,34 @@ public class BootstrapSafetyTests
         {
             ["sts2.dll"] = "new-patched-bytes",
             ["0Harmony.dll"] = "same-harmony",
-            ["release_info.json"] = "same-release-info",
+            ["release_info.json.copy"] = "same-release-info",
         };
 
         Sts2PilotTrainer.Bootstrap.Program.RefuseDriftedArchive(
             receipt, "same-commit", "same-pristine-sts2", current);
+    }
+
+    [Fact]
+    public void RefusesChangedReleaseInfoDespiteItsLegacyName()
+    {
+        var receipt = WriteArchiveReceipt(new Dictionary<string, string>
+        {
+            ["sts2.dll"] = "archived-patched-bytes",
+            ["release_info.json"] = "archived-release-info",
+        });
+        var current = new Dictionary<string, string>
+        {
+            ["sts2.dll"] = "new-patched-bytes",
+            ["release_info.json.copy"] = "current-release-info",
+        };
+
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            Sts2PilotTrainer.Bootstrap.Program.RefuseDriftedArchive(
+                receipt, "same-commit", "same-pristine-sts2", current));
+
+        Assert.Contains("prepared output release_info.json.copy", error.Message, StringComparison.Ordinal);
+        Assert.Contains("archived archived-release", error.Message, StringComparison.Ordinal);
+        Assert.Contains("this run current-release-", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -258,6 +282,33 @@ public class BootstrapSafetyTests
 
         Assert.Contains("prepared output 0Harmony.dll", error.Message, StringComparison.Ordinal);
         Assert.Contains("unknown", error.Message, StringComparison.Ordinal);
+    }
+
+    [GameFact]
+    public void AnExistingArchiveWithTheLegacyReleaseInfoNameStillReplays()
+    {
+        var source = Path.Combine(Arbiter.RepoRoot, "build", "lib");
+        var archive = ScratchDirectory("legacy-release-info-archive");
+        CopyDirectory(source, archive);
+
+        var currentPath = Path.Combine(archive, "release_info.json.copy");
+        var legacyPath = Path.Combine(archive, "release_info.json");
+        File.Move(currentPath, legacyPath);
+        var receiptPath = Path.Combine(archive, "prepared-assembly.json");
+        var receipt = JsonNode.Parse(File.ReadAllText(receiptPath))!.AsObject();
+        var hashes = receipt["prepared_output_sha256"]!.AsObject();
+        hashes["release_info.json"] = hashes["release_info.json.copy"]!.DeepClone();
+        hashes.Remove("release_info.json.copy");
+        File.WriteAllText(receiptPath, receipt.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+
+        var result = Arbiter.RunWithEnvironment(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["STS2_PILOT_TRAINER_LIB"] = archive,
+            },
+            "preflight", Arbiter.Manifest);
+
+        Assert.True(result.Verified, result.All);
     }
 
     private static string WriteArchiveReceipt(IReadOnlyDictionary<string, string> outputHashes)
@@ -312,6 +363,19 @@ public class BootstrapSafetyTests
     private static readonly Sts2PilotTrainer.Bootstrap.Program.InstalledIdentity PreparedIdentity =
         new("v0.111.0", "2026.01.01", "same-commit", "main", 123);
 
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var path in Directory.GetFiles(source))
+        {
+            File.Copy(path, Path.Combine(destination, Path.GetFileName(path)));
+        }
+        foreach (var path in Directory.GetDirectories(source))
+        {
+            CopyDirectory(path, Path.Combine(destination, Path.GetFileName(path)));
+        }
+    }
+
     private static string OutsideThisWorktree(string name) =>
         Path.GetFullPath(Path.Combine(Arbiter.RepoRoot, "..", $"{name}-{Guid.NewGuid():N}"));
 
@@ -329,16 +393,19 @@ public class BootstrapSafetyTests
         var bootstrap = Path.Combine(
             Arbiter.RepoRoot, "build", "bin", "Sts2PilotTrainer.Bootstrap", "Release", "net9.0",
             "Sts2PilotTrainer.Bootstrap.dll");
+        return RunCommand("dotnet", [bootstrap, .. args]);
+    }
 
+    private static (int ExitCode, string Output) RunCommand(string command, params string[] args)
+    {
         var startInfo = new ProcessStartInfo
         {
-            FileName = "dotnet",
+            FileName = command,
             WorkingDirectory = Arbiter.RepoRoot,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        startInfo.ArgumentList.Add(bootstrap);
         foreach (var arg in args) startInfo.ArgumentList.Add(arg);
 
         using var process = Process.Start(startInfo)!;

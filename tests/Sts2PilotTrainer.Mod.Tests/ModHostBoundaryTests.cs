@@ -232,6 +232,66 @@ public sealed class ModHostBoundaryTests
         }
     }
 
+    /// <summary>
+    /// The retail client walks the complete installed mod recursively and opens every
+    /// <c>*.json</c> as a mod manifest. The root Runmobile.json is the only manifest
+    /// the artifact intends to carry. Another JSON with an id registers as another
+    /// mod; one with any other manifest field logs an error and an error-level Sentry
+    /// breadcrumb on every launch when its id is absent, which is what the prepared
+    /// copy of the game's own release_info.json used to do.
+    ///
+    /// Asked of a real install rather than a reconstruction, and asked from this class
+    /// because every test here that runs the packager shares its collection. Two of
+    /// them in different assemblies would run at once, and packaging begins by deleting
+    /// the distribution directory the other one is reading.
+    /// </summary>
+    [GameFact]
+    public void TheInstalledArtifactCarriesOnlyItsRootModManifest()
+    {
+        var sandbox = Path.Combine(Path.GetTempPath(), $"runmobile-manifest-scan-{Guid.NewGuid():N}");
+        var mods = Path.Combine(sandbox, "mods");
+        Directory.CreateDirectory(mods);
+
+        try
+        {
+            var result = RunInstaller(mods);
+            Assert.Equal(0, result.ExitCode);
+
+            var installed = Path.Combine(mods, "Runmobile");
+            foreach (var path in Directory.GetFiles(installed, "*.json", SearchOption.AllDirectories))
+            {
+                var relative = Path.GetRelativePath(installed, path);
+                if (relative.Equals("Runmobile.json", StringComparison.Ordinal)) continue;
+
+                using var stream = File.OpenRead(path);
+                var json = JsonDocument.Parse(stream).RootElement;
+                var carried = json.ValueKind == JsonValueKind.Object
+                    ? ModManifestFields.Where(field => json.TryGetProperty(field, out _)).ToArray()
+                    : [];
+                Assert.True(
+                    carried.Length == 0,
+                    carried.Contains("id")
+                        ? $"{relative} ships inside Runmobile, where the game registers it as a second mod. " +
+                          "Only the root Runmobile.json may carry a top-level mod-manifest field."
+                        : $"{relative} ships inside Runmobile with top-level {string.Join(", ", carried)}, so " +
+                          "the game reads it as a mod manifest missing its id and logs an error on every " +
+                          "launch. Give it a name that does not end in .json.");
+            }
+
+            Assert.True(
+                File.Exists(Path.Combine(installed, "arbiter", "lib", "release_info.json.copy")),
+                "The prepared release info is absent, so the engine cannot report the build it is running. " +
+                "Renaming it is the fix here; removing it is not.");
+        }
+        finally
+        {
+            if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+        }
+    }
+
+    private static readonly string[] ModManifestFields =
+        ["id", "name", "author", "description", "version"];
+
     [GameFact]
     public void TheBuiltModInstallsUnderTheIdPreflightAccepts()
     {

@@ -43,6 +43,9 @@ Its one-resource pack supplies the 64×64 `mod_image.png` shared by the game's m
 `./scripts/package-mod.sh` produces the distributable archive with a self-contained preparation tool and `install.sh` beside the mod payload.
 After extraction, `./install.sh` installs that payload without a repository checkout or a system .NET runtime.
 That installer prepares a private, receipted copy of the player's own game assemblies under `arbiter/lib/` before atomically replacing the installed mod.
+The retail client walks the complete installed `Runmobile` tree recursively and opens every `*.json` as a mod manifest.
+Only the root `Runmobile.json` may carry a top-level `id`, `name`, `author`, `description`, or `version`; another such file either registers as a second mod or logs an error when its `id` is absent.
+That is why the prepared release info is written byte-for-byte as `release_info.json.copy`, which `Sts2PilotTrainer.Bootstrap` owns and `ModHostBoundaryTests` holds the complete installed artifact to.
 When publication runs, the installed arbiter routes its engine writes into a temporary workspace inside the profile-scoped Runmobile store.
 The published archive contains no game assembly; the prepared copy is made locally from the installation during install.
 It also contains no sharing endpoint.
