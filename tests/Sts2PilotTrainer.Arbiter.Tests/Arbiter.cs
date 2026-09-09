@@ -40,7 +40,7 @@ internal static class Arbiter
         "Needs a prepared game assembly and a built CLI. Run ./scripts/build.sh, which copies your own " +
         "Slay the Spire 2 installation into build/lib without modifying it.";
 
-    private static string CliPath =>
+    internal static string CliPath =>
         Path.Combine(RepoRoot, "build", "bin", "Sts2PilotTrainer.Cli", "Release", "net9.0", "sts2-arbiter.dll");
 
     internal static string Manifest =>

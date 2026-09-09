@@ -84,15 +84,21 @@ public static class StringExtensions
 /// </summary>
 public static class HeadlessSandbox
 {
-    private static string _root = Path.Combine(WorktreeLocator.Find(), "build", "sandbox");
+    // Resolved on first use rather than in the type initializer: the default is a
+    // worktree path, and the packaged arbiter runs from a game installation where
+    // there is no worktree to find. Every host that has a sandbox of its own calls
+    // SetRoot before anything reads Root, and a static initializer that looked for
+    // the worktree anyway took the whole type down before SetRoot could run.
+    private static string? _root;
 
     /// <summary>The sandbox directory. Created on demand; safe to delete between runs.</summary>
     public static string Root
     {
         get
         {
-            Directory.CreateDirectory(_root);
-            return _root;
+            var root = _root ??= Path.Combine(WorktreeLocator.Find(), "build", "sandbox");
+            Directory.CreateDirectory(root);
+            return root;
         }
     }
 

@@ -44,10 +44,38 @@ internal static class PackagedArbiter
     /// caches under; every <c>--out</c> and <c>--cache</c> it is given has to be inside
     /// it, which <c>WorktreePath</c> enforces on its side.</param>
     /// <param name="sandboxPath">Where the engine's own profile writes are routed.</param>
-    internal static ProcessStartInfo StartInfo(string workspacePath, string sandboxPath, params string[] arguments)
+    internal static ProcessStartInfo StartInfo(string workspacePath, string sandboxPath, params string[] arguments) =>
+        StartInfoIn(InstalledDirectory(), workspacePath, sandboxPath, arguments);
+
+    /// <summary>Where the installed package keeps the arbiter: beside the mod assembly.</summary>
+    internal static string InstalledDirectory() =>
+        Path.Combine(Path.GetDirectoryName(typeof(PackagedArbiter).Assembly.Location)!, "arbiter");
+
+    /// <summary>
+    /// A variable the running game sets in its own process, which a child would inherit.
+    ///
+    /// The game's Sentry bridge exports the path of its native library at runtime, and
+    /// the game assembly's own initializer loads that library wherever it finds the
+    /// variable. In an arbiter process there is no Godot for it to attach to: from a
+    /// terminal the process died at that load, and spawned from the client it stood
+    /// still inside a type initializer for as long as it was left. Neither is a state
+    /// the arbiter can report, so the variable is left out of everything this mod
+    /// starts. Measured on v0.111.0; the prefix is stripped rather than the one name
+    /// because the same bridge owns every variable it exports.
+    /// </summary>
+    internal const string GameProcessVariablePrefix = "SENTRY_";
+
+    /// <summary>
+    /// The same start info for an arbiter in a named directory. Not an overload of
+    /// <see cref="StartInfo"/>: every argument there is a string, so an overload with
+    /// one more string bound the mod's own calls in expanded form and made the
+    /// workspace the arbiter directory.
+    /// </summary>
+    /// <param name="arbiterDirectory">The directory holding the arbiter executable and
+    /// its prepared <c>lib</c>.</param>
+    internal static ProcessStartInfo StartInfoIn(
+        string arbiterDirectory, string workspacePath, string sandboxPath, params string[] arguments)
     {
-        var arbiterDirectory = Path.Combine(
-            Path.GetDirectoryName(typeof(PackagedArbiter).Assembly.Location)!, "arbiter");
         var arbiter = Path.Combine(
             arbiterDirectory,
             OperatingSystem.IsWindows() ? "sts2-arbiter.exe" : "sts2-arbiter");
@@ -70,6 +98,12 @@ internal static class PackagedArbiter
             RedirectStandardError = true,
             UseShellExecute = false,
         };
+        foreach (var inherited in start.Environment.Keys
+                     .Where(name => name.StartsWith(GameProcessVariablePrefix, StringComparison.OrdinalIgnoreCase))
+                     .ToList())
+        {
+            start.Environment.Remove(inherited);
+        }
         start.Environment["STS2_PILOT_TRAINER_LIB"] = preparedAssemblyDirectory;
         start.Environment["STS2_PILOT_TRAINER_SANDBOX"] = sandboxPath;
         start.Environment["STS2_PILOT_TRAINER_WORKSPACE"] = workspacePath;
