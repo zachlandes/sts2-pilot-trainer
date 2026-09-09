@@ -378,6 +378,23 @@ public partial class BaseButton
     public bool Disabled { get; set; }
 }
 
+public partial class CanvasItem
+{
+    public Material? Material { get; set; }
+    public bool UseParentMaterial { get; set; }
+}
+
+public partial class NinePatchRect
+{
+    public enum AxisStretchMode { Stretch, Tile, TileFit }
+    public int PatchMarginLeft { get; set; }
+    public int PatchMarginRight { get; set; }
+    public int PatchMarginTop { get; set; }
+    public int PatchMarginBottom { get; set; }
+    public AxisStretchMode AxisStretchHorizontal { get; set; }
+    public AxisStretchMode AxisStretchVertical { get; set; }
+}
+
 /// <summary>
 /// Godot's filled polygon. The transport's glyph family is drawn rather than taken
 /// from the game's art - the game ships no playback iconography - and a filled

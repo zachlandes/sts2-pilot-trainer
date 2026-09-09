@@ -790,6 +790,11 @@ run's fights would stand somebody in a fight they never had.
 
 **The parchment browser is one measured page with a list and selected-run pane.**
 The browser duplicates the popup's own second ribbon for its tabs and rows, then gives each duplicate's hotkeys up immediately.
+For widened rows, `LibraryRibbonArt` replaces the ribbon's image and outline with nine-patches before the button's `_Ready` caches those nodes and their materials.
+Their outer quarters retain native horizontal resolution while the middle stretches; narrow rows reduce the margins to fit.
+The retail textures have different atlas padding, which `NinePatchRect` omits, so `LibraryRibbonArt` first reconstructs each logical texture in memory with its padding intact.
+Those derived textures are reused for the source texture's lifetime and never written to disk.
+The retail HSV and outline blend materials still receive the button's focus and press animations, and the selected run keeps its separate ink outline.
 `NHotkeyManager` is a stack, so five rows all binding confirm would mean the key pressing whichever was pushed last rather than the one a player is looking at.
 The keys stay with the panel's ribbon and the rows are reached by focus.
 `LibraryScreen` measures the band, the list, the divider, the selected-run pane and the flat plate from the game's own panel nodes, so a build that changes the popup's layout moves the library with it.
