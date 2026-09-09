@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -260,36 +261,76 @@ public class BootstrapSafetyTests
         Assert.Contains("unknown", error.Message, StringComparison.Ordinal);
     }
 
+    [GameFact]
+    public void AnExistingArchiveWithTheLegacyReleaseInfoNameStillReplays()
+    {
+        var source = Path.Combine(Arbiter.RepoRoot, "build", "lib");
+        var archive = ScratchDirectory("legacy-release-info-archive");
+        CopyDirectory(source, archive);
+
+        var currentPath = Path.Combine(archive, "release_info.json.copy");
+        var legacyPath = Path.Combine(archive, "release_info.json");
+        File.Move(currentPath, legacyPath);
+        var receiptPath = Path.Combine(archive, "prepared-assembly.json");
+        var receipt = JsonNode.Parse(File.ReadAllText(receiptPath))!.AsObject();
+        var hashes = receipt["prepared_output_sha256"]!.AsObject();
+        hashes["release_info.json"] = hashes["release_info.json.copy"]!.DeepClone();
+        hashes.Remove("release_info.json.copy");
+        File.WriteAllText(receiptPath, receipt.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+
+        var result = Arbiter.RunWithEnvironment(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["STS2_PILOT_TRAINER_LIB"] = archive,
+            },
+            "preflight", Arbiter.Manifest);
+
+        Assert.True(result.Verified, result.All);
+    }
+
     /// <summary>
-    /// The installer copies the prepared set into the player's mods folder as
-    /// <c>Runmobile/arbiter/lib</c>, and the retail client walks that folder
-    /// recursively reading every <c>*.json</c> as a mod manifest.
-    /// <c>MegaCrit.Sts2.Core.Modding.ModManager.ReadModManifest</c> logs an error -
-    /// with a stack trace, and an error-level Sentry breadcrumb - for any JSON there
-    /// with no <c>id</c> but a <c>name</c>, <c>author</c>, <c>description</c> or
-    /// <c>version</c>. The game's own release_info.json has a version and no id, so a
-    /// prepared copy under that name complained on every single launch.
-    ///
-    /// Asked of the real prepared directory rather than a fixture: what ships is what
-    /// the bootstrap wrote, and a claim about the shipped set has to be asked of it.
+    /// The retail client walks the complete installed mod recursively and opens every
+    /// <c>*.json</c> as a mod manifest. The root Runmobile.json is the only manifest
+    /// the artifact intends to carry. Another JSON with an id registers as another
+    /// mod; one with any other manifest field logs an error and an error-level Sentry
+    /// breadcrumb when its id is absent.
     /// </summary>
     [GameFact]
-    public void PreparedSetCarriesNoJsonTheGamesModScannerWouldReadAsAManifest()
+    public void InstalledArtifactCarriesOnlyItsRootModManifest()
     {
-        var libDir = Path.Combine(Arbiter.RepoRoot, "build", "lib");
+        var package = RunCommand("./scripts/package-mod.sh");
+        Assert.Equal(0, package.ExitCode);
 
-        foreach (var path in Directory.GetFiles(libDir, "*.json", SearchOption.AllDirectories))
+        var packagedLine = package.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Single(line => line.StartsWith("packaged     : ", StringComparison.Ordinal));
+        var payload = Path.Combine(Arbiter.RepoRoot, packagedLine[15..].Trim(), "payload");
+        var installed = ScratchDirectory("installed-artifact");
+        CopyDirectory(payload, installed);
+        CopyDirectory(
+            Path.Combine(Arbiter.RepoRoot, "build", "lib"),
+            Path.Combine(installed, "arbiter", "lib"));
+
+        foreach (var path in Directory.GetFiles(installed, "*.json", SearchOption.AllDirectories))
         {
+            var relative = Path.GetRelativePath(installed, path);
+            if (relative.Equals("Runmobile.json", StringComparison.Ordinal)) continue;
+
             using var stream = File.OpenRead(path);
-            Assert.False(
-                LooksLikeAModManifestMissingItsId(JsonDocument.Parse(stream).RootElement),
-                $"{Path.GetRelativePath(libDir, path)} ships inside the mod, where the game reads it as a " +
-                "mod manifest missing its id and logs an error on every launch. Give it a name that does " +
-                "not end in .json.");
+            var json = JsonDocument.Parse(stream).RootElement;
+            var manifestFields = ModManifestFields.Where(field => json.ValueKind == JsonValueKind.Object &&
+                                                                  json.TryGetProperty(field, out _)).ToArray();
+            Assert.True(
+                manifestFields.Length == 0,
+                json.ValueKind == JsonValueKind.Object && json.TryGetProperty("id", out _)
+                    ? $"{relative} ships inside Runmobile, where the game registers it as an additional mod. " +
+                      "Only the root Runmobile.json may carry a top-level mod-manifest field."
+                    : $"{relative} ships inside Runmobile with top-level {string.Join(", ", manifestFields)}, " +
+                      "so the game reads it as a mod manifest missing its id and logs an error on every launch. " +
+                      "Give it a name that does not end in .json.");
         }
 
         Assert.True(
-            File.Exists(Path.Combine(libDir, "release_info.json.copy")),
+            File.Exists(Path.Combine(installed, "arbiter", "lib", "release_info.json.copy")),
             "The prepared release info is absent, so the engine cannot report the build it is running. " +
             "Renaming it is the fix here; removing it is not.");
     }
@@ -346,19 +387,21 @@ public class BootstrapSafetyTests
     private static readonly Sts2PilotTrainer.Bootstrap.Program.InstalledIdentity PreparedIdentity =
         new("v0.111.0", "2026.01.01", "same-commit", "main", 123);
 
-    /// <summary>
-    /// <c>ModManager.ReadModManifest</c>'s own test, restated over the raw JSON: no
-    /// id, and at least one field a manifest carries. A property present but null
-    /// deserializes to null there, so it does not count here either.
-    /// </summary>
-    private static bool LooksLikeAModManifestMissingItsId(JsonElement json) =>
-        json.ValueKind == JsonValueKind.Object &&
-        !HasValue(json, "id") &&
-        (HasValue(json, "name") || HasValue(json, "author") ||
-         HasValue(json, "description") || HasValue(json, "version"));
+    private static readonly string[] ModManifestFields =
+        ["id", "name", "author", "description", "version"];
 
-    private static bool HasValue(JsonElement json, string property) =>
-        json.TryGetProperty(property, out var value) && value.ValueKind != JsonValueKind.Null;
+    private static void CopyDirectory(string source, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        foreach (var path in Directory.GetFiles(source))
+        {
+            File.Copy(path, Path.Combine(destination, Path.GetFileName(path)));
+        }
+        foreach (var path in Directory.GetDirectories(source))
+        {
+            CopyDirectory(path, Path.Combine(destination, Path.GetFileName(path)));
+        }
+    }
 
     private static string OutsideThisWorktree(string name) =>
         Path.GetFullPath(Path.Combine(Arbiter.RepoRoot, "..", $"{name}-{Guid.NewGuid():N}"));
@@ -377,16 +420,19 @@ public class BootstrapSafetyTests
         var bootstrap = Path.Combine(
             Arbiter.RepoRoot, "build", "bin", "Sts2PilotTrainer.Bootstrap", "Release", "net9.0",
             "Sts2PilotTrainer.Bootstrap.dll");
+        return RunCommand("dotnet", [bootstrap, .. args]);
+    }
 
+    private static (int ExitCode, string Output) RunCommand(string command, params string[] args)
+    {
         var startInfo = new ProcessStartInfo
         {
-            FileName = "dotnet",
+            FileName = command,
             WorkingDirectory = Arbiter.RepoRoot,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        startInfo.ArgumentList.Add(bootstrap);
         foreach (var arg in args) startInfo.ArgumentList.Add(arg);
 
         using var process = Process.Start(startInfo)!;
