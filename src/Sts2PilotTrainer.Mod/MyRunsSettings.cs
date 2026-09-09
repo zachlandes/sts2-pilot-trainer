@@ -299,9 +299,9 @@ internal static class MyRunsSettings
     /// Writes whether Runmobile is a row on the game's main menu, and says what the menu
     /// now does.
     ///
-    /// Nothing on screen moves here: the menu behind this screen re-decides in its own
-    /// <c>RefreshButtons</c>, which the player reaches by leaving settings, and this
-    /// build has no way to redraw a menu it is not standing on. The row is redrawn from
+    /// Nothing on screen moves here: leaving settings pops the submenu stack, and the
+    /// menu behind this screen re-decides in <c>OnSubmenuStackChanged</c>. This build has
+    /// no way to redraw a menu it is not standing on. The row is redrawn from
     /// the disk instead, so what the control says is what the file now holds - and a
     /// write that failed leaves the control exactly where it was, saying what is still
     /// true.

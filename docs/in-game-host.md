@@ -717,8 +717,8 @@ what it refuses is `Sts2PilotTrainer.Trainer`'s - `RunBrowser`, `RunView`,
 `MainMenuRow`, `RunHistoryPlate` and `LibraryCopy` - and every one of those is pure and
 tested without a game. What runs inside the client is the four patches below plus the drawing classes behind them.
 
-**Four hooks, and each is the honest one for its question.**
-`MainMenuLibraryRow` follows `NMainMenu._Ready`, which is where the game builds its button column and wires each button's focus behaviour; and `NMainMenu.RefreshButtons`, which is where the game re-decides per-visit what is visible and enabled.
+**The hooks are each the honest one for their question.**
+`MainMenuLibraryRow` follows `NMainMenu._Ready`, which is where the game builds its button column and wires each button's focus behaviour; `NMainMenu.OnSubmenuStackChanged`, which is where the game re-decides visibility each time the column returns; and `NMainMenu.RefreshButtons`, which is where enabled states are settled at the end of `_Ready` and after a run is abandoned.
 `CompendiumCard` follows `NCompendiumSubmenu._Ready`, which is where the row is built and where every focus neighbour is assigned index by index, so a button added anywhere else exists and is unreachable on a controller; and `OnSubmenuOpened`, which is where the game re-decides per-visit visibility, so the shell's permission to draw is asked each time rather than once.
 `MyRunsSettings` follows `NSettingsScreen._Ready` and places its row beside `%ModdingButton`, the game's own modding settings entry point.
 `RunHistoryPlateHost` follows `NMapPointHistoryEntry._Ready` and connects the `Released` that entry already emits and nothing in the game listens to.
@@ -766,7 +766,7 @@ It refuses once. `RunmobileMod.Adopt` latches `_adoptionAttempted` whatever the 
 A build that asked there was green in every test and dead in the client, and the game's log named it: `refusing to report on this game ... startup phase is 'Essential'`, under `MainMenuLibraryRow.AddButton`.
 The Compendium card can ask in its own `_Ready` because its submenu is built when a player pushes it, which is later; this row is built alongside the menu itself, so its first honest moment is the press, and `MainMenuLibraryRow.Open` is where it asks.
 Building the row needs none of it: whether it belongs on the menu is the settings file and `SaveManager.Progress`, both of which the game's own `RefreshButtons` reads in the same method.
-A refusal at the press takes the row off the menu rather than leaving a control that does nothing - the same outcome the card reaches by never adding itself, one moment later.
+A refusal at the press takes the row off the menu rather than leaving a control that does nothing, and the shell's latched refusal keeps later visibility passes from restoring it - the same outcome the card reaches by never adding itself, one moment later.
 
 Three things about the copy have to be done by hand because the duplicate came from a localized button.
 Its label is set on the `MegaLabel` directly, since Runmobile ships no localization table and asking for a key that does not exist would put a key on the player's main menu.
@@ -859,9 +859,8 @@ plain path under `MainMenuTextButtons` - `ContinueButton`, `AbandonRunButton`,
 `NClickableControl.SignalName.Released`, and then calls
 `ConnectMainMenuTextButtonFocusLogic`, which walks the column's children and connects the
 two private reticle handlers. A button added afterwards therefore has to connect those
-itself. `NMainMenu.RefreshButtons` is the second hook and the honest one for visibility:
-it is called at the end of `_Ready` and again after a run is abandoned, and it is where
-`_compendiumButton.Visible` and the epoch-gated enabled states are decided.
+itself. `NMainMenu.OnSubmenuStackChanged` is the per-visit visibility hook because it runs whenever the button column returns from a submenu.
+`NMainMenu.RefreshButtons` is the third hook: it is called at the end of `_Ready` and again after a run is abandoned, and it is where `_compendiumButton.Visible` and the epoch-gated enabled states are decided.
 `NMainMenu.MainMenuButtons` is a fixed array of the game's own eight, and
 `DefaultFocusedControl` picks the first visible enabled one out of it - so a ninth button
 joins the column without ever becoming the menu's default focus.
@@ -1020,7 +1019,7 @@ A failure - the store not ready, a settings file this build will not write over,
 
 The main-menu line is the one thing on this row that is not about the disk, and it is asked separately for that reason.
 Where the recordings directory refuses, `MyRunsSettings` still asks `MainMenuLibraryRow.Shown` - the settings file and the game's run count, neither of which is that directory - because a row reporting "off" because no save profile was chosen would be stating something about a menu it never asked.
-Pressing it writes `show_main_menu_row` and nothing else, and moves nothing on screen: the menu behind this screen re-decides in its own `RefreshButtons`, which the player reaches by leaving settings.
+Pressing it writes `show_main_menu_row` and nothing else, and moves nothing on screen: leaving settings pops the submenu stack, and the menu behind this screen re-decides in `OnSubmenuStackChanged`.
 The row is redrawn from the disk instead, so what the control says is what the file now holds, and a write that failed leaves it saying what is still true.
 
 Pressing Remove is `RecordingRetention.PurgeNow`, which writes the request to the file first and removes second, so a game that stops in between finishes at the next main menu.

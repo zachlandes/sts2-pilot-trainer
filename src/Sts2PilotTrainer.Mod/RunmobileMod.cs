@@ -86,6 +86,14 @@ public static class RunmobileMod
     /// </summary>
     internal static bool MayDraw => GameSessionWatch.MaySpeak;
 
+    internal static bool AdoptionRefused
+    {
+        get
+        {
+            lock (AdoptionGate) return _adoptionAttempted && !_adopted;
+        }
+    }
+
     public static void Initialize()
     {
         SiblingAssemblies.Install();

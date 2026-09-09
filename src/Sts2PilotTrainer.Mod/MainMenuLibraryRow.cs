@@ -151,8 +151,9 @@ internal static class MainMenuLibraryRow
     ///
     /// Two separate questions and both are somebody else's. Whether it is drawn at all is
     /// the shell's permission first - a multiplayer session gets nothing, not even a
-    /// greyed row - and then <see cref="MainMenuRow.ShownWhen"/>. Whether it is pressable
-    /// mirrors the Compendium button, because the game disables its own destinations
+    /// greyed row - then the shell's settled adoption refusal, and then
+    /// <see cref="MainMenuRow.ShownWhen"/>. Whether it is pressable mirrors the Compendium
+    /// button, because the game disables its own destinations
     /// while an undiscovered epoch is waiting and a mod row that stayed live through that
     /// would be a way around a gate the game put up.
     /// </summary>
@@ -162,7 +163,7 @@ internal static class MainMenuLibraryRow
         {
             if (Existing(__instance) is not { } button) return;
 
-            button.Visible = RunmobileMod.MayDraw && Shown();
+            button.Visible = Visible();
             if (__instance.GetNodeOrNull<NMainMenuTextButton>(SourceButtonPath) is { } compendium)
             {
                 button.SetEnabled(compendium.IsEnabled);
@@ -229,6 +230,9 @@ internal static class MainMenuLibraryRow
     /// <c>bool?</c> already means, so such a player gets the run-count default rather
     /// than losing the library's only entrance to a file fault.
     /// </summary>
+    internal static bool Visible() =>
+        RunmobileMod.MayDraw && !RunmobileMod.AdoptionRefused && Shown();
+
     internal static bool Shown() =>
         MainMenuRow.ShownWhen(RunmobileSettings.Read().ShowMainMenuRow, RunsFinished.Any());
 

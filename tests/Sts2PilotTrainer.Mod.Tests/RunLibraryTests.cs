@@ -893,6 +893,29 @@ public sealed class RunLibraryModuleTests
         }
     }
 
+    /// <summary>
+    /// A refused adoption keeps the row absent when the menu re-decides visibility.
+    /// </summary>
+    [GameFact]
+    public void RefusedAdoptionKeepsTheMainMenuRowHidden()
+    {
+        _ = EngineHost.StartupPhase();
+        var root = Path.Combine(Path.GetTempPath(), $"runmobile-menu-{Guid.NewGuid():N}");
+        RunmobileStore.UseRootForTesting(root);
+
+        try
+        {
+            RunsFinished.UseReaderForTesting(() => false);
+            Assert.False(RunmobileMod.EnsureAdopted());
+            Assert.False(MainMenuLibraryRow.Visible());
+        }
+        finally
+        {
+            RunsFinished.UseReaderForTesting(null);
+            RunmobileStore.UseRootForTesting(null);
+        }
+    }
+
     /// <summary>A member this build does not have is named by whichever of the two
     /// declaration styles carries it, so a patch class written the library's way is
     /// checked as well as one written the recorder's.</summary>
