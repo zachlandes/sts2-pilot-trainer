@@ -78,8 +78,9 @@ internal static class RunBrowserScreen
                 selectedEntryId: selected,
                 submitAvailable: RunLibrary.SharingAvailable);
 
-            var locked = CommunityLock.For(
-                RunLibrary.SharingAvailable, RunmobileSettings.Read().FetchRunIndex);
+            var showCommunityRuns = RunmobileSettings.Read().FetchRunIndex;
+            if (!showCommunityRuns) ForgetIndexFailure();
+            var locked = CommunityLock.For(RunLibrary.SharingAvailable, showCommunityRuns);
             var rows = ListRows(browser, community);
             var selectedRow = rows
                 .Select((row, index) => (row, index))
@@ -102,15 +103,10 @@ internal static class RunBrowserScreen
                         !compatibleOnly)),
                 CodeSubmitted: code => Look(code, !community),
                 CodePlaceholder: LibraryCopy.RunCodeField,
-                Body: BrowserStatus(),
+                Body: BrowserStatus(community ? locked : null),
                 ListFooter: BrowserFooter(browser),
                 ListFooterTooltip: browser.NotShownTooltipBody,
-                SelectedRow: selectedRow,
-                ListNotice: community ? locked?.Notice : null,
-                ListNoticeFallback: StatusLine(
-                    community
-                        ? locked?.Tooltip
-                        : RunLibrary.SharingAvailable ? null : LibraryCopy.SharingServiceUnavailable)));
+                SelectedRow: selectedRow));
         }
         catch (Exception ex)
         {
@@ -225,23 +221,36 @@ internal static class RunBrowserScreen
     private sealed record IndexRequest(
         int Tab, bool CompatibleOnly, string? SelectedEntryId, long Surface, string Scope);
 
-    /// <summary>The line the screen puts over the tabs where the lock's own plate is
-    /// not drawn. On Community it is the lock's own sentence, from the same
-    /// <see cref="CommunityLock"/> that wrote the plate, so both lock cases are answered
-    /// by one owner; on My runs, where there is no plate, it is the standing fact that
-    /// nothing can be shared.</summary>
-    private static string? StatusLine(string? text) =>
-        text is { Length: > 0 } line ? LibraryMarkup.Dim(line) : null;
+    /// <summary>
+    /// The one line over the tabs accounting for what the list is not showing.
+    ///
+    /// A locked Community tab says why it is locked and nothing else: a fetch this
+    /// sitting failed is not what a player is looking at once the setting is off, and
+    /// two accounts of one empty list is worse than the one that is still true.
+    /// <paramref name="locked"/> is the same <see cref="CommunityLock"/> the tab's
+    /// tooltip came from, so the hover and the line cannot give different reasons.
+    /// </summary>
+    private static string? BrowserStatus(CommunityLock? locked)
+    {
+        if (locked is { } reason) return LibraryMarkup.Dim(reason.Body);
+        if (!RunLibrary.SharingAvailable)
+            return LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable);
 
-    /// <summary>What the body says about a fetch this sitting attempted. A build with
-    /// no service attempts none, so there is nothing here to say about one.</summary>
-    private static string? BrowserStatus() =>
-        RunLibrary.SharingAvailable &&
-        indexFailure is { Length: > 0 } failure &&
-        indexFailureScope is { } scope &&
-        RunLibrary.IsCurrentSharingScope(scope)
+        return indexFailure is { Length: > 0 } failure &&
+               indexFailureScope is { } scope &&
+               RunLibrary.IsCurrentSharingScope(scope)
             ? LibraryMarkup.Dim(failure)
             : null;
+    }
+
+    /// <summary>Drops a fetch failure this sitting recorded. A player who has turned
+    /// the setting off attempts no fetch, so a failure from before it is a line about
+    /// something that is no longer being tried.</summary>
+    private static void ForgetIndexFailure()
+    {
+        indexFailure = null;
+        indexFailureScope = null;
+    }
 
 
 

@@ -18,8 +18,19 @@ public sealed class CommunityAccessTests
         Assert.NotNull(locked);
         Assert.Contains(LibraryCopy.ShowCommunityRuns, locked.Tooltip);
         Assert.Contains("Settings", locked.Tooltip);
-        Assert.Contains(LibraryCopy.ShowCommunityRuns, locked.Notice);
-        Assert.Contains("run code", locked.Notice);
+        Assert.Contains(LibraryCopy.ShowCommunityRuns, locked.Body);
+        Assert.Contains("Settings", locked.Body);
+    }
+
+    /// <summary>No service and the line is the standing fact the rest of the library
+    /// already says, rather than a second wording of it.</summary>
+    [Fact]
+    public void NoServiceSaysWhatTheLibraryAlreadyCallsIt()
+    {
+        var locked = CommunityLock.For(sharingAvailable: false, showCommunityRuns: true);
+
+        Assert.NotNull(locked);
+        Assert.Equal(LibraryCopy.SharingServiceUnavailable, locked.Body);
     }
 
     /// <summary>A switch that changes nothing is not what to point a player at: with no
@@ -34,7 +45,7 @@ public sealed class CommunityAccessTests
         Assert.NotNull(locked);
         Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Tooltip);
         Assert.Contains("sharing service", locked.Tooltip);
-        Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Notice);
+        Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Body);
     }
 
     /// <summary>Every lock says its reason in one sentence, because that sentence is
@@ -52,6 +63,8 @@ public sealed class CommunityAccessTests
         Assert.NotNull(locked);
         Assert.NotEmpty(locked.Tooltip);
         Assert.DoesNotContain('\n', locked.Tooltip);
+        Assert.NotEmpty(locked.Body);
+        Assert.DoesNotContain('\n', locked.Body);
     }
 
     [Fact]

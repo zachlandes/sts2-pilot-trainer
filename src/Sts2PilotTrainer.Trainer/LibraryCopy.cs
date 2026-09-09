@@ -163,25 +163,17 @@ public static class LibraryCopy
     public const string CommunityOffTooltip =
         $"Community runs are off. Turn on \"{ShowCommunityRuns}\" in Settings, under Modding, to see them here.";
 
-    /// <summary>The greyed plate over the Community list while the setting is off:
-    /// what a player can do about it, in the order they would do it. A run code
-    /// still works there, and the plate says so rather than leaving the field to look
-    /// broken.</summary>
-    public const string CommunityOffNotice =
-        "Community runs are off.\n" +
-        $"To see runs other players shared, open Settings, find Runmobile under Modding and turn on \"{ShowCommunityRuns}\".\n" +
-        "A run code still opens a run here.";
+    /// <summary>The one line over the tabs while the setting is off: the whole
+    /// instruction in a sentence, because a line the panel may have to shorten is a
+    /// line whose second half a player never reads.</summary>
+    public const string CommunityOffBody =
+        $"Community runs are off - turn on {ShowCommunityRuns} in Settings, under Modding, to see them.";
 
     /// <summary>The same lock when no sharing service is configured: nothing a setting
     /// can change, so the tooltip and the plate say what is missing rather than
     /// pointing at a switch.</summary>
     public const string CommunityUnavailableTooltip =
         "Community runs are unavailable: no authorized sharing service is configured.";
-
-    public const string CommunityUnavailableNotice =
-        "Community runs are unavailable.\n" +
-        "No authorized sharing service is configured, so nothing can be fetched or shared.\n" +
-        "The runs included with Runmobile are still here.";
 
     /// <summary>
     /// The main-menu row itself: the mod's own name, the same word the Compendium card

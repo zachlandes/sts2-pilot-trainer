@@ -189,7 +189,8 @@ Selected and deselected through the tab's own `Select` and `Deselect`, exactly a
 The current tab is selected and takes no press; it still hovers, as the game's do, but it is not a focus stop, and the other tab is - this band has no shoulder hotkeys, so focus is the only controller route to it.
 
 **The lock is the stats screen's**: `submenu_lock.png` over the Community tab, in the proportions `stats_screen.tscn` gives it over the Achievements tab, with the reason in the tab's tooltip.
-A locked tab here is still pressable, which is the one departure from the stats screen and is deliberate: what is behind it - the runs included with Runmobile and any run looked up by code - is still there, and the plate at the head of the list says in plain words what is missing and where the setting is.
+A locked tab here is still pressable, which is the one departure from the stats screen and is deliberate: what is behind it - the runs included with Runmobile and any run looked up by code - is still there, and the list is drawn as usual under it.
+The lock is the icon, its hover tooltip and one line over the tabs saying in plain words what is missing and where the setting is; nothing is laid over the list, because a player who cannot see the runs cannot press them.
 `CommunityLock.For` is the one derivation of both sentences.
 
 **The floor markers are the run-history screen's** icons, per floor kind, with the outline behind at the history entry's own quarter of black; the mod's hollow ring stands in only for a kind nothing established or an icon a build has not got.
