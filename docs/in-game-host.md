@@ -1091,6 +1091,9 @@ played through and its comparison.
 [demo/RUNMOBILE-MAIN-MENU.md](../demo/RUNMOBILE-MAIN-MENU.md) has the main-menu row on a
 zero-run profile, the library it opens, the settings control that hides it, and a
 progressed profile with no row and its Compendium card intact.
+[demo/RUNMOBILE-RESTORE-IN-CLIENT.md](../demo/RUNMOBILE-RESTORE-IN-CLIENT.md) has Continue pressed on
+the player's own version-5 recording and fight 2 reached by restoring the recording's own save at
+the recorded digest, with the two defects that proof found on the way and the ledger after it.
 
 ### Keeping runs, and removing them
 

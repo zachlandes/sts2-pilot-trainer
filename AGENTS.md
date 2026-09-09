@@ -141,6 +141,7 @@ A snapshot binds by that moment and not by a plan's kind: the arrival and the fi
 `RetailPlayback.RouteTo` is the one reader of what that makes reachable in the client - walk, restore, restore then walk, or the first decision no route gets past - read from the recording alone, and `RetailPlayback.RestorableArrivals` is the manifest's reading of the live-fight rule: an arrival with a combat start declared at the same action.
 The run library offers on that answer and `RecordedFightRun.Start` executes it; nothing else re-derives reachability.
 Inside the client the restore is the retail continue handler's own path - `GameSession.PrepareRestoreInRunningGame` is its engine half and the public `NGame.LoadRun` its presentation half, with the save's own `preFinishedRoom` - and the save it continues is materialised by the packaged arbiter in its own process into `RunmobileStore`'s `snapshots/cache`, never by the mod.
+The packaged arbiter runs from a game installation, with no worktree above it and none of the running game's own environment: `PackagedArbiterTests` in the arbiter suite runs the built arbiter from a copy outside any worktree, and the one in the mod suite holds the spawned child's environment free of what the game exports; the retail proof found both the hard way.
 Both answers, their numbers and their limits are in
 [docs/native-replay-format.md](docs/native-replay-format.md).
 The cache is a derived one and stays that way: keyed by `SnapshotCacheKey` over the whole
