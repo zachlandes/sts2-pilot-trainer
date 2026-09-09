@@ -86,6 +86,32 @@ public sealed class RecordedFightVerbAgreementTests
     }
 
     /// <summary>
+    /// Every screen answer on that walk follows a decision of its own.
+    ///
+    /// The premise the whole card-screen path rests on, asserted rather than assumed:
+    /// an answer answers a screen that the step before it opened. The driver reads its
+    /// picks off exactly that window, the transport's caption for a blessing names the
+    /// cards from it, and the journey refuses to press the game's own proceed while an
+    /// answer is still outstanding - all three are wrong if an answer can lead a walk
+    /// or follow another kind of gap.
+    /// </summary>
+    [Fact]
+    public void EveryScreenAnswerOnThatWalkFollowsTheDecisionThatOpenedItsScreen()
+    {
+        var prefix = WalkToTheFirstFight();
+
+        for (var step = 0; step < prefix.Count; step++)
+        {
+            if (!CardScreenAnswers.IsAnAnswer(prefix[step])) continue;
+
+            Assert.True(
+                step > 0,
+                $"Action {prefix[step].Seq} answers a screen and is the first step of the walk, so no " +
+                "decision opened that screen.");
+        }
+    }
+
+    /// <summary>
     /// A screen answer the client draws is one it also issues.
     ///
     /// Two declarations that have to agree, held against each other rather than derived

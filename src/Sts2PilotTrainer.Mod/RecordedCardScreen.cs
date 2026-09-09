@@ -92,13 +92,29 @@ internal static class RecordedCardScreen
                 $"The card screen has no {GridPath} on this build, so the card the recording took cannot be " +
                 "found on screen.");
 
-        // Not ready rather than refused: the grid animates its rows in, and a card the
-        // screen has not laid out yet has no holder for a moment after the screen
-        // arrives.
+        // Not ready rather than refused, because the commonest cause is a moment: the
+        // grid animates its rows in and a card it has not laid out yet has no holder
+        // for a frame or two after the screen arrives.
+        //
+        // The other cause is not a moment. The grid keeps holders for a sliding window
+        // of rows and reassigns them from the list as it scrolls, so a deck taller than
+        // the window has cards with no holder at all until somebody scrolls to them -
+        // and nothing here scrolls. See docs/in-game-host.md for what is not built.
+        //
+        // Which of the two this is cannot be told from one reading: a grid mid-animation
+        // is also drawing fewer cards than it was given. So both are stated and neither
+        // is claimed. A reader who sees this at all has watched the retry give up, which
+        // is the evidence that decides it, and inventing a verdict here would put a
+        // confident wrong sentence in front of whoever is debugging.
         var holder = grid.GetCardHolder(card);
         if (holder is null || !GodotObject.IsInstanceValid(holder))
         {
-            throw new RevealNotReadyException("This screen is still laying out the card the recording took.");
+            var drawn = grid.CurrentlyDisplayedCards.Count();
+            throw new RevealNotReadyException(
+                $"This screen is drawing {drawn.ToString(CultureInfo.InvariantCulture)} of the " +
+                $"{offered.Count.ToString(CultureInfo.InvariantCulture)} cards it was given and not the one " +
+                "the recording took: it is either still laying its rows in, or that card is outside the " +
+                "grid's scrolling window and nothing here scrolls.");
         }
 
         return new Found(screen, holder, offered.Count);

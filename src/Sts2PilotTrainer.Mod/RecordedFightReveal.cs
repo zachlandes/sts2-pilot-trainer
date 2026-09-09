@@ -156,6 +156,13 @@ internal static class RecordedFightReveal
     /// <c>OnFocus</c> runs its hover effects off, so the recording's card lifts and
     /// scales exactly as it does under a player's own cursor.
     ///
+    /// That the holder can take focus at all is the game's, not an assumption:
+    /// <c>scenes/cards/holders/grid_card_holder.tscn</c> sets <c>focus_mode = 2</c> on
+    /// its root. Checked because the game's own <c>NodeUtil.TryGrabFocus</c> returns
+    /// without doing anything unless the player is on a controller, so nothing in a
+    /// mouse session ever focuses a holder and a reveal that needed one would have been
+    /// the first.
+    ///
     /// The options are every card the screen was given, which is more than one on any
     /// deck screen - so there is a consider beat and the watcher sees the whole deck
     /// with nothing lit before the recording's card lights.

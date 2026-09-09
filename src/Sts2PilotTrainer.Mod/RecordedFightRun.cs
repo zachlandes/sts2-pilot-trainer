@@ -1270,12 +1270,28 @@ internal static class RecordedFightRun
     /// carries on. Bounded rather than looped freely: two of these in a row is
     /// already more than this journey meets, and a host that would press onward
     /// indefinitely is a host that could walk a run somewhere nobody asked for.
+    ///
+    /// It does nothing at all while the recording's next step answers a screen that
+    /// decision opened. The engine runs an event option's own work as a task and
+    /// suspends it on the card screen, so the event underneath is still showing
+    /// whatever it was showing and what it shows next is not settled - and pressing a
+    /// proceed there would dismiss the event out from under a decision the recording
+    /// has not made yet. The step after that answer runs this again, which is where
+    /// the proceed actually is.
     /// </summary>
     private static void CarryOnPastAnyScreenWaitingToProceed()
     {
         for (var dismissed = 0; dismissed < 2; dismissed++)
         {
             if (_entry is not { } entry) return;
+
+            if (entry.NextStepAnswersAScreenAlreadyOpened)
+            {
+                Log.Info(
+                    $"[{RunmobileMod.ModId}] not carrying on past anything: the recording still has to " +
+                    "answer the screen that decision opened", 2);
+                return;
+            }
 
             bool carriedOn;
             string observed;

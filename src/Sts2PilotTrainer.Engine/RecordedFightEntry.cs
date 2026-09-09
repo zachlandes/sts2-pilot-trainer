@@ -114,9 +114,18 @@ public sealed class RecordedFightEntry : IDisposable
     private bool IsShown(ActionRecord action) =>
         !CardScreenAnswers.IsAnAnswer(action) || _driver.ShowsTheAnswerBeingGiven(action.Verb);
 
-    /// <summary>Whether the recording's next step is executed without being shown; see
-    /// <see cref="IsShown"/>.</summary>
-    public bool NextStepIsMadeWithoutBeingShown => NextStep is { } next && !IsShown(next);
+    /// <summary>
+    /// Whether the recording's next step answers a screen an earlier decision already
+    /// opened, whether or not this host draws that screen.
+    ///
+    /// Not the same question as <see cref="IsShown"/> and deliberately host-blind: this
+    /// one is about the run still being inside a screen, which is true of both hosts.
+    /// A host that drives the game's own screens needs it, because the screen underneath
+    /// the open one is still showing whatever it was showing, and pressing past it would
+    /// press past a decision the recording has not made yet.
+    /// </summary>
+    public bool NextStepAnswersAScreenAlreadyOpened =>
+        NextStep is { } next && CardScreenAnswers.IsAnAnswer(next);
 
     /// <summary>
     /// How many of the recording's decisions a watcher is shown on the way to the

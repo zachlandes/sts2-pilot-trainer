@@ -681,6 +681,37 @@ screen transition and not a decision, the same as the event screen's proceed.
 `docs/headless-fidelity.md` owns the mechanism and what the two hosts now differ about,
 which is whether the screen is drawn rather than when its answer arrives.
 
+Drawing that screen brought back the page's oldest trap in a new place, which is the
+third thing to take from this.
+`EventSynchronizer.ChooseOptionForEvent` does not run the option's work; it starts it as
+a task, and that task suspends on the card screen. So on the frame the blessing is
+committed the event screen underneath is mid-transition, and what it will show next is
+not settled - while the journey's own
+`CarryOnPastAnyScreenWaitingToProceed` runs at the end of every step and presses that
+screen's proceed wherever it is the only button left. Pressing it there would dismiss
+the event out from under a decision the recording has not made yet.
+Which of the two the engine does first is knowable and was not worth knowing: one guard
+is right either way, so the journey carries on past nothing while
+`RecordedFightEntry.NextStepAnswersAScreenAlreadyOpened`. That property is host-blind on
+purpose - it asks whether the run is still inside a screen, which is true of both hosts,
+and is a different question from whether this host draws it.
+Under the scoped selector this could not happen, because no screen was ever drawn to be
+inside. It is the same lesson as the rest of the page in a new costume: what looks like a
+length of time or an ordering is really a question about what the engine has finished,
+and the honest answer is to ask rather than to assume.
+
+**What is deliberately not built there: nothing scrolls the card grid.**
+`NCardGrid` keeps holders for a sliding window of rows and reassigns them from the list
+it was given as it scrolls, so a deck taller than that window has cards with no holder at
+all until somebody scrolls to them. A recording that takes such a card is refused rather
+than answered, in a sentence that says which of the two causes it is - the grid still
+laying rows in, or the card being outside the window - because they want opposite
+responses and the retry only helps the first. Driving the game's own scroll to bring a
+card into the window is the missing piece, and it is not worth writing blind: whether the
+grid has settled after a scroll is exactly the class of question this page exists about,
+and it cannot be answered without the client. The decks a first fight is reached with fit
+on one screen, so nothing today meets it.
+
 ## The surfaces, and why they are the game's own
 
 **The mode card is a duplicate of the game's Custom Run card**, renamed and rewired.
