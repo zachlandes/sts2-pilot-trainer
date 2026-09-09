@@ -43,7 +43,7 @@ if ! transcript="$(mktemp "${TMPDIR:-/tmp}/sts2-test-session.XXXXXX")"; then
 fi
 trap 'rm -f "$transcript"' EXIT
 
-dotnet test "$@" 2>&1 | tee "$transcript"
+dotnet test "$@" 2>&1 | tee "$transcript" >/dev/null
 pipeline_status=("${PIPESTATUS[@]}")
 status="${pipeline_status[0]}"
 transcript_status="${pipeline_status[1]}"
@@ -58,15 +58,25 @@ grep -qE "$ABORT_MARKERS" "$transcript"
 marker_status="$?"
 
 if [ "$marker_status" -eq 0 ]; then
+  if ! sed 's/Passed/Incomplete/g' "$transcript"; then
+    echo
+    echo "TEST SESSION FAILED - its transcript could not be read."
+    exit 1
+  fi
   echo
   echo "TEST SESSION ABORTED - it did not run to completion, so this is not a pass."
-  echo "Any \"Passed!\" summary above counts only the tests that ran before the abort."
   echo "A session that times out under load needs TestSessionTimeout in .runsettings"
   echo "raised, or the hang that consumed the bound found; it never needs interpreting."
   exit 1
 fi
 
 if [ "$marker_status" -ne 1 ]; then
+  echo
+  echo "TEST SESSION FAILED - its transcript could not be read."
+  exit 1
+fi
+
+if ! cat "$transcript"; then
   echo
   echo "TEST SESSION FAILED - its transcript could not be read."
   exit 1

@@ -50,7 +50,8 @@ public sealed class TestSessionVerdictTests : IDisposable
 
         Assert.NotEqual(0, verdict.ExitCode);
         Assert.Contains(Aborted, verdict.All, StringComparison.Ordinal);
-        Assert.DoesNotContain(Passed, verdict.All, StringComparison.Ordinal);
+        Assert.Contains("Incomplete!  - Failed:", verdict.All, StringComparison.Ordinal);
+        Assert.DoesNotContain("Passed", verdict.All, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -62,7 +63,7 @@ public sealed class TestSessionVerdictTests : IDisposable
 
         Assert.NotEqual(0, verdict.ExitCode);
         Assert.Contains(Aborted, verdict.All, StringComparison.Ordinal);
-        Assert.DoesNotContain(Passed, verdict.All, StringComparison.Ordinal);
+        Assert.DoesNotContain("Passed", verdict.All, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -140,7 +141,7 @@ public sealed class TestSessionVerdictTests : IDisposable
 
         Assert.NotEqual(0, verdict.ExitCode);
         Assert.Contains(Aborted, verdict.All, StringComparison.Ordinal);
-        Assert.DoesNotContain(Passed, verdict.All, StringComparison.Ordinal);
+        Assert.DoesNotContain("Passed", verdict.All, StringComparison.Ordinal);
     }
 
     /// <summary>
