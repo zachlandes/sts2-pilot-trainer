@@ -20,13 +20,14 @@ public sealed class LibraryPaneArtTests
 
         var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, LineSize);
 
-        Assert.Equal(15, layout.Count);
-        Assert.Equal(4, layout.Pages);
+        // Six to a page at the history entry's own 60-unit box, not fifteen specks
+        Assert.Equal(6, layout.Count);
+        Assert.Equal(9, layout.Pages);
         Assert.False(layout.HasPrevious);
         Assert.True(layout.HasNext);
-        Assert.True(layout.Pitch >= 28f);
-        Assert.True(layout.Cell >= 16f);
-        Assert.Equal(15, layout.NextSlot);
+        Assert.True(layout.Pitch >= 60f);
+        Assert.True(layout.Cell >= 32f);
+        Assert.Equal(6, layout.NextSlot);
     }
 
     [Fact]
@@ -34,12 +35,12 @@ public sealed class LibraryPaneArtTests
     {
         var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, LineSize);
 
-        Assert.Equal(3, layout.Index);
-        Assert.Equal(45, layout.First);
-        Assert.Equal(5, layout.Count);
+        Assert.Equal(8, layout.Index);
+        Assert.Equal(48, layout.First);
+        Assert.Equal(2, layout.Count);
         Assert.True(layout.HasPrevious);
         Assert.False(layout.HasNext);
-        Assert.Equal(1, layout.SlotOf(45));
+        Assert.Equal(1, layout.SlotOf(48));
     }
 
     [Fact]
@@ -48,11 +49,49 @@ public sealed class LibraryPaneArtTests
         var layout = LibraryPaneArt.LayoutStrip(50, 500f, anchor: 49, LineSize, requestedPage: 1);
 
         Assert.Equal(1, layout.Index);
-        Assert.Equal(15, layout.First);
-        Assert.Equal(15, layout.Count);
+        Assert.Equal(6, layout.First);
+        Assert.Equal(6, layout.Count);
         Assert.True(layout.HasPrevious);
         Assert.True(layout.HasNext);
-        Assert.Equal(16, layout.NextSlot);
+        Assert.Equal(7, layout.NextSlot);
+    }
+
+    /// <summary>
+    /// The floor-2 tick was swallowed by the marker it was drawn over and the floor-1
+    /// ring collided with its numeral. Every part of a cell now has its own place: the
+    /// numeral under the icon box with clear space, the played badge off the box's
+    /// top-right corner, the ring standing off the box - and none of it outside the
+    /// cell, whatever the strip is scaled to.
+    /// </summary>
+    [Theory]
+    [InlineData(5, 500f, 16)]
+    [InlineData(50, 500f, 16)]
+    [InlineData(14, 480f, 24)]
+    [InlineData(3, 900f, 30)]
+    public void StripCellPartsDoNotOverlapAndStayInsideTheCell(int floors, float width, int lineSize)
+    {
+        var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, lineSize);
+        var cell = LibraryPaneArt.CellGeometry(layout, lineSize);
+
+        Assert.True(cell.Numeral.Position.Y >= cell.Icon.End.Y, "the numeral sits under the marker");
+        Assert.True(cell.Numeral.Position.Y >= cell.Ring.End.Y, "the ring stays clear of the numeral");
+        Assert.True(cell.Numeral.Size.Y >= lineSize, "the numeral has its own line");
+
+        var iconCentre = cell.Icon.Position + (cell.Icon.Size / 2f);
+        Assert.False(cell.Badge.HasPoint(iconCentre), "the badge hangs off the corner rather than over the marker");
+        Assert.True(cell.Badge.End.X > cell.Icon.End.X && cell.Badge.Position.Y < cell.Icon.Position.Y,
+            "the badge is at the marker's top-right corner");
+        Assert.True(cell.Badge.Size.X >= cell.Icon.Size.X * 0.4f, "the badge is big enough to read");
+
+        Assert.True(cell.Ring.Position.X <= cell.Icon.Position.X && cell.Ring.End.X >= cell.Icon.End.X);
+        Assert.True(cell.Ring.Position.Y <= cell.Icon.Position.Y && cell.Ring.End.Y >= cell.Icon.End.Y);
+
+        foreach (var (name, part) in new[] { ("icon", cell.Icon), ("numeral", cell.Numeral), ("badge", cell.Badge), ("ring", cell.Ring) })
+        {
+            Assert.True(part.Position.Y >= 0f, $"the {name} is not clipped at the top");
+            Assert.True(part.End.Y <= layout.Height + 0.01f, $"the {name} is inside the cell's height");
+            Assert.True(part.Position.X >= 0f && part.End.X <= layout.Pitch + 0.01f, $"the {name} is inside the column");
+        }
     }
 
     [Fact]

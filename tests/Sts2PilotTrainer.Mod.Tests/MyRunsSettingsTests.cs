@@ -139,10 +139,10 @@ public sealed class MyRunsSettingsTests : IDisposable
         var row = MyRunsSettings.Attach(modding, Text());
 
         Assert.Same(column, row.Root.GetParent());
-        Assert.Equal("Fetch the run index: on", row.Fetch.Text);
+        Assert.Equal("Show community runs: on", row.Fetch.Text);
         row.Fetch.EmitPressed();
         Assert.False(RunmobileSettings.Read().FetchRunIndex);
-        Assert.Equal("Fetch the run index: off", row.Fetch.Text);
+        Assert.Equal("Show community runs: off", row.Fetch.Text);
     }
 
     /// <summary>

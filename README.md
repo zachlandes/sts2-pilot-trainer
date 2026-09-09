@@ -69,7 +69,7 @@ A player with no finished runs gets a Runmobile row on the main menu by default,
 A player with run history does not get that row by default and can instead use the Runmobile button in the Compendium's bottom row with Statistics and Run History.
 The settings page can show or hide the main-menu row for either player, overriding the run-count default.
 Both buttons open the same library.
-Its parchment browser has two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
+Its parchment browser has two tabs: Community - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
 Each run row shows its character, act reached and leading relics, while the selected run's pane adds its complete relics, recorded deck count and a strip of the floors it reached.
 Opening that run makes the strip selectable and offers **Play from this floor**, **Continue** to the next unplayed fight, and **Start the run over** wherever the recording proves an entry point the client can reach.
 On this build only a supported first-fight prefix can be reachable; later rows stay visible and disabled with the reason that the client cannot yet replay the preceding fights.

@@ -862,13 +862,13 @@ The shell's permission to draw is asked first and a no draws nothing at all - no
 **The Compendium entry is present whenever the shell may draw.**
 It occupies the authored slot the game leaves when it hides Leaderboards, so the three visible bottom destinations remain inside the viewport and in the game's controller focus chain.
 It duplicates the Run History treatment, replaces its label, and loads the same packaged wagon used by the mod list.
-The browser is the only route to automatic index retrieval and direct run-code lookup, so an empty local library and a disabled `Fetch the run index` setting cannot hide it.
+The browser is the only route to automatic index retrieval and direct run-code lookup, so an empty local library and a disabled `Show community runs` setting cannot hide it.
 It reads no manifest and performs no network request merely to decide visibility.
 `RunLibrary.RecordingFor` resolves one run from the recorder's directory index - the id names the recording in the index, so pressing a row costs that recording's manifest and no other's, and a manifest whose own run id disagrees with its name answers nothing rather than answering with the wrong run.
 
 The browser still judges every run before showing it, and an empty or unavailable index is shown on that surface rather than represented by removing the way in.
 Its build reading comes from `GameIdentity.ReadForCurrentEngine`: the running client is its own authority in retail, while only a headless process consults the receipted prepared copy.
-Its player-facing tabs are Others and Mine; the Featured and Recent groups sit under Others.
+Its player-facing tabs are Community and Mine; the Featured and Recent groups sit under Community.
 The visible `Compatible with your game version` filter defaults on and hides incompatible runs during ordinary browsing.
 Turning the filter off reveals incompatible runs as disabled rows.
 An exact code does that automatically, selects its run in the sorted position, and shows both the required build and the current build.

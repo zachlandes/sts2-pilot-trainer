@@ -38,8 +38,11 @@ internal sealed record ScreenRow(
     bool Selected = false, string? ActReached = null, string? Trailing = null,
     string? Character = null, bool Heading = false);
 
-/// <summary>One parchment tab across the top band.</summary>
-internal sealed record ScreenTab(string Label, bool Current, Action Press);
+/// <summary>One tab across the top band: the game's own settings tab.</summary>
+/// <param name="LockTooltip">The sentence behind the lock drawn over the tab, or null
+/// for a tab that is not locked. A locked tab is still pressable: what is behind it is
+/// what is there, and the lock says what is missing.</param>
+internal sealed record ScreenTab(string Label, bool Current, Action Press, string? LockTooltip = null);
 
 internal sealed record ScreenFilter(string Label, bool Checked, Action Toggle);
 
@@ -87,6 +90,9 @@ internal sealed record ScreenPane(
 /// <param name="Page">Which page of a list too long for the panel to draw. Zero is the
 /// first, and a caller never passes anything else - the Previous and Next rows re-show
 /// this same screen at the page either side.</param>
+/// <param name="ListNotice">A greyed plate at the head of the list saying what a
+/// player can do about what the list is not showing, or null. The rows still follow
+/// it: it explains an absence and hides nothing.</param>
 internal sealed record LibraryPage(
     string Title,
     IReadOnlyList<ScreenTab> Tabs,
@@ -103,7 +109,8 @@ internal sealed record LibraryPage(
     string? ListFooterTooltip = null,
     int Page = 0,
     int? SelectedRow = null,
-    Action<long, string, string, string, bool>? ShareSubmitted = null);
+    Action<long, string, string, string, bool>? ShareSubmitted = null,
+    string? ListNotice = null);
 
 /// <summary>
 /// The library's parchment furniture: the game's own panel, with the design's screen
@@ -471,39 +478,23 @@ internal static class LibraryScreen
 
         var prototype = content.NoButton;
         var height = prototype.Size.Y;
-        var tabWidth = Math.Min(prototype.Size.X, area.Size.X * 0.17f);
+        // The game's own tab keeps its scene's proportions at the ribbon's height
+        var tabWidth = Math.Min(height * LibraryTabArt.Aspect, area.Size.X * 0.2f);
         var at = area.Position.X;
         foreach (var tab in page.Tabs)
         {
-            var button = Duplicate(content, prototype, $"RunmobileTab{tab.Label}");
-            if (button is null) continue;
-
-            button.SetText(tab.Label);
-            button.Position = new Vector2(at, area.Position.Y);
-            button.Size = new Vector2(tabWidth, button.Size.Y);
-            button.CustomMinimumSize = button.Size;
-            button.Visible = true;
-
-            // The current tab is not pressable: pressing the tab you are on would
-            // rebuild the screen you are looking at, and a control that does nothing
-            // visible is a control a player presses twice. It is drawn at full weight
-            // and the others are dimmed, which is what says which one you are on.
-            if (tab.Current)
-            {
-                button.MouseFilter = Control.MouseFilterEnum.Ignore;
-                button.FocusMode = Control.FocusModeEnum.None;
-            }
-            else
-            {
-                button.Modulate = new Color(1f, 1f, 1f, 0.6f);
-                var press = tab.Press;
-                button.Connect(
-                    NClickableControl.SignalName.Released,
-                    Callable.From<NButton>(_ => Reopen(press)));
-                focusable.Add(button);
-            }
-
-            at += tabWidth * 1.04f;
+            // The current tab is selected and takes no press, as the game's own tab
+            // manager leaves it: pressing the tab you are on would rebuild the screen
+            // you are looking at. It still hovers and takes focus, because the game's
+            // tabs do, and a locked tab is still opened - the lock says what is
+            // missing from it and hides nothing that is there.
+            var press = tab.Press;
+            var button = LibraryTabArt.Add(
+                content, $"RunmobileTab{tab.Label}", tab.Label, tab.Current, tab.LockTooltip,
+                new Rect2(at, area.Position.Y, tabWidth, height),
+                tab.Current ? null : () => Reopen(press));
+            focusable.Add(button);
+            at += tabWidth + (height * 0.17f);
         }
 
         if (page.CodeSubmitted is { } submitted)
@@ -578,6 +569,11 @@ internal static class LibraryScreen
             top += filterText.Size * ControlStep;
         }
 
+        if (page.ListNotice is { Length: > 0 } notice)
+        {
+            top = AddNotice(content, notice, new Vector2(at.Position.X, top), at.Size.X);
+        }
+
         var bottom = at.End.Y;
         if (page.ListFooter is { Length: > 0 } footer)
         {
@@ -634,6 +630,68 @@ internal static class LibraryScreen
 
         JoinColumn(placed, content);
         return placed.FirstOrDefault(control => control.FocusMode != Control.FocusModeEnum.None);
+    }
+
+    /// <summary>
+    /// The greyed plate at the head of the list: the background dimmed a little and a
+    /// few plain sentences on it saying what a player can do. It is the locked
+    /// achievement's treatment - the thing is there, dimmed, and the words say what is
+    /// short - laid over the column rather than over one entry. It passes the mouse
+    /// through, so the rows under it keep their press.
+    /// </summary>
+    private static float AddNotice(NVerticalPopup content, string notice, Vector2 at, float width)
+    {
+        var style = GameText.Scene(NativeTextRole.Secondary);
+        var pad = style.Size * 0.8f;
+        var textWidth = width - (pad * 2f);
+        // Measured wrapped, because these are sentences and the column is narrower
+        // than one; a plate sized by counting newlines would end mid-sentence
+        var textHeight = WrappedHeight(notice, textWidth, style);
+        var height = textHeight + (pad * 2f);
+        content.AddChild(new ColorRect
+        {
+            Name = "RunmobileListNotice",
+            Color = LibraryPalette.Ink with { A = 0.35f },
+            Position = at,
+            Size = new Vector2(width, height),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        });
+        var label = new Label
+        {
+            Name = "RunmobileListNoticeText",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            Text = notice,
+            Position = new Vector2(at.X + pad, at.Y + pad),
+            CustomMinimumSize = new Vector2(textWidth, 0f),
+            Size = new Vector2(textWidth, textHeight),
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        style.ApplyTo(label);
+        label.AddThemeColorOverride("font_color", LibraryPalette.Muted);
+        content.AddChild(label);
+        return at.Y + height + (style.Size * 0.6f);
+    }
+
+    /// <summary>How tall a sentence stands once wrapped to a width, in the style's own
+    /// font. The estimate stands in where there is no font to measure with, which is
+    /// a process with no game and nothing to draw.</summary>
+    internal static float WrappedHeight(string text, float width, GameTextStyle style)
+    {
+        const float lineHeight = 1.45f;
+        if (style.Font is not { } font)
+        {
+            var perLine = Math.Max(1, (int)Math.Floor(width / (style.Size * 0.5f)));
+            var lines = text.Split('\n').Sum(line => Math.Max(1, (int)Math.Ceiling(line.Length / (float)perLine)));
+            return lines * lineHeight * style.Size;
+        }
+
+        return font.GetMultilineStringSize(
+            text,
+            HorizontalAlignment.Left,
+            width,
+            style.Size,
+            maxLines: -1,
+            brkFlags: TextServer.LineBreakFlag.Mandatory | TextServer.LineBreakFlag.WordBound).Y;
     }
 
     private static CheckBox AddFilter(
@@ -936,6 +994,9 @@ internal static class LibraryScreen
         if (prototype.Duplicate(duplicateFlags) is not NPopupYesNoButton button) return null;
 
         button.Name = name;
+        // Own materials first: a hover on one duplicate must light that one alone
+        LibraryRibbonArt.OwnMaterials(
+            button.GetNode<CanvasItem>("%Image"), button.GetNode<CanvasItem>("%Outline"));
         // The retail button caches its visual nodes and materials in _Ready
         if (ribbonWidth is { } width) LibraryRibbonArt.ReplaceTextures(button, width);
         content.AddChild(button);

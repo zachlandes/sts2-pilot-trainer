@@ -48,7 +48,11 @@ internal static class GlyphArt
     internal static Vector2[] Rect(float x, float y, float width, float height) =>
         [new(x, y), new(x + width, y), new(x + width, y + height), new(x, y + height)];
 
-    internal static Vector2[] Circle(float x, float y, float radius) => Arc(x, y, radius, 0, 360);
+    /// <summary>A full circle, without the arc's closing point: a closed outline
+    /// appends the first point itself, and a filled polygon that repeats a vertex -
+    /// even by a rounding error - fails to triangulate and draws nothing, measured in
+    /// the client as a played badge with no disc under its tick.</summary>
+    internal static Vector2[] Circle(float x, float y, float radius) => Arc(x, y, radius, 0, 360)[..^1];
 
     /// <summary>An eye's lid: two arcs meeting at the corners, as points.</summary>
     internal static Vector2[] Almond(float x, float y, float halfWidth, float depth)

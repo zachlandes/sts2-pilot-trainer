@@ -23,7 +23,7 @@ namespace Sts2PilotTrainer.Trainer;
 /// a floor. A fight ordinal travels on a row for the entry to use and is never
 /// written.</para>
 ///
-/// <para><b>The run noun.</b> What a player has is runs - Others, Mine, "{n} runs".
+/// <para><b>The run noun.</b> What a player has is runs - Community, Mine, "{n} runs".
 /// "Recording", "manifest" and "journal" are this project's internal words for
 /// the file, and a player never sees one.</para>
 ///
@@ -48,7 +48,7 @@ public static class LibraryCopy
     // ── The browser ────────────────────────────────────────────────────────
 
     /// <summary>Runs anybody made. The tab a player opens on.</summary>
-    public const string CommunityTab = "Others";
+    public const string CommunityTab = "Community";
 
     /// <summary>Runs of the player's own, which the recorder wrote.</summary>
     public const string MyRunsTab = "Mine";
@@ -155,7 +155,33 @@ public static class LibraryCopy
 
     public const string CompatibleFilter = "Compatible with your game version";
 
-    public const string FetchRunIndex = "Fetch the run index";
+    public const string ShowCommunityRuns = "Show community runs";
+
+    /// <summary>Behind the lock on the Community tab while the setting is off. One
+    /// sentence, because a tooltip is read in passing; it names the setting by its own
+    /// label and says where it is.</summary>
+    public const string CommunityOffTooltip =
+        $"Community runs are off. Turn on \"{ShowCommunityRuns}\" in Settings, under Modding, to see them here.";
+
+    /// <summary>The greyed plate over the Community list while the setting is off:
+    /// what a player can do about it, in the order they would do it. A run code
+    /// still works there, and the plate says so rather than leaving the field to look
+    /// broken.</summary>
+    public const string CommunityOffNotice =
+        "Community runs are off.\n" +
+        $"To see runs other players shared, open Settings, find Runmobile under Modding and turn on \"{ShowCommunityRuns}\".\n" +
+        "A run code still opens a run here.";
+
+    /// <summary>The same lock when no sharing service is configured: nothing a setting
+    /// can change, so the tooltip and the plate say what is missing rather than
+    /// pointing at a switch.</summary>
+    public const string CommunityUnavailableTooltip =
+        "Community runs are unavailable: no authorized sharing service is configured.";
+
+    public const string CommunityUnavailableNotice =
+        "Community runs are unavailable.\n" +
+        "No authorized sharing service is configured, so nothing can be fetched or shared.\n" +
+        "The runs included with Runmobile are still here.";
 
     /// <summary>
     /// The main-menu row itself: the mod's own name, the same word the Compendium card
@@ -274,7 +300,7 @@ public static class LibraryCopy
 
     /// <inheritdoc cref="LookupNotFoundTitle"/>
     public const string LookupNotFound =
-        "Nothing here is that run. Check the code, or open Others and pick a run from the list.";
+        "Nothing here is that run. Check the code, or open Community and pick a run from the list.";
 
     /// <summary>Leaves any of the lookup's answers.</summary>
     public const string Back = "Back";
@@ -364,7 +390,7 @@ public static class LibraryCopy
 
     /// <summary>Why the run's first floor is not a floor to play from: it is where
     /// starting the run over already puts you.</summary>
-    public const string RunStartsHere = "the run starts here";
+    public const string RunStartsHere = "the run begins on this floor · use Start the run over";
 
     /// <summary>
     /// Why a place further into the run offers nothing yet: getting there means

@@ -84,7 +84,7 @@ public class Node2D : CanvasItem
 }
 
 // Resource
-public class Resource : GodotObject
+public partial class Resource : GodotObject
 {
     public string ResourcePath { get; set; } = "";
     public class MethodName { }

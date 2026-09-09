@@ -454,3 +454,35 @@ public partial struct Vector2I : IEquatable<Vector2I>
     public override int GetHashCode() => HashCode.Combine(X, Y);
     public override string ToString() => $"({X}, {Y})";
 }
+
+public partial class Resource
+{
+    /// <summary>
+    /// Added by sts2-pilot-trainer. Godot: a copy of the resource, so two nodes that
+    /// were duplicated from one prototype can carry their own materials rather than
+    /// one. The library's rows and ribbons are duplicates of the popup's own button
+    /// and animate a shader material on hover; a shared one lit every duplicate at
+    /// once. The real GodotSharp has carried this all along.
+    /// </summary>
+    public Resource Duplicate(bool subresources = false) => (Resource)MemberwiseClone();
+}
+
+public partial struct Rect2
+{
+    /// <summary>
+    /// Added by sts2-pilot-trainer. Godot: the rectangle's far corner, and whether a
+    /// point lies inside it. The library's strip lays each cell's parts out as
+    /// rectangles and measures one against the next; both members of the real
+    /// GodotSharp <c>Rect2</c> the mod compiles against.
+    /// </summary>
+    public Vector2 End
+    {
+        get => Position + Size;
+        set => Size = value - Position;
+    }
+
+    /// <inheritdoc cref="End"/>
+    public bool HasPoint(Vector2 point) =>
+        point.X >= Position.X && point.Y >= Position.Y &&
+        point.X < Position.X + Size.X && point.Y < Position.Y + Size.Y;
+}

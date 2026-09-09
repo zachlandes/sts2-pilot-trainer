@@ -365,6 +365,29 @@ public sealed class MyRunsSettingsRowTests
 
     /// <summary>The row is as tall as what it draws. A section stacks what it hosts, so
     /// a height taller than the lowest element leaves a gap nothing explains.</summary>
+    /// <summary>
+    /// The keep stepper stands off the row above it and off the rule beneath it, the
+    /// way the game's own settings rows stand off their dividers; hard against either it
+    /// read as part of the row above.
+    /// </summary>
+    [Fact]
+    public void TheKeepStepperHasBreathingRoomAboveAndBelow()
+    {
+        var text = Text(28);
+        var row = Build(new MyRunsFacts(Runs: 3, Bytes: 1024, Keep: 20), text: text);
+        var pad = text.Row.Size * 0.5f;
+
+        var stepperTop = Math.Min(row.Fewer.Position.Y, Label(row, "KeepLabel").Position.Y);
+        var stepperBottom = Math.Max(
+            row.Fewer.Position.Y + row.Fewer.Size.Y,
+            Label(row, "KeepLabel").Position.Y + Label(row, "KeepLabel").Size.Y);
+        var rule = Rule(row).Points[0].Y;
+
+        Assert.True(stepperTop >= pad, $"the stepper starts {stepperTop} in, under {pad}");
+        Assert.True(rule - stepperBottom >= pad, $"the rule is {rule - stepperBottom} under the stepper, under {pad}");
+        Assert.True(Label(row, "Reading").Position.Y > rule, "the readings stay under the rule");
+    }
+
     [Fact]
     public void TheHeightItReportsIsWhatItDraws()
     {
@@ -445,4 +468,7 @@ public sealed class MyRunsSettingsRowTests
 
     private static Label Label(MyRunsSettingsRow row, string name) =>
         row.Root.GetChildren().OfType<Label>().Single(label => label.Name == name);
+
+    private static Line2D Rule(MyRunsSettingsRow row) =>
+        row.Root.GetChildren().OfType<Line2D>().Single(line => line.Name == "Rule");
 }
