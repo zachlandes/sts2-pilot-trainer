@@ -80,9 +80,8 @@ internal sealed class MyRunsSettingsRow
     private const float RemoveHeight = 30f;
     private const float FetchGap = 10f;
     private const float FetchHeight = 30f;
-
-    /// <summary>The gap between the two switches that share the bottom line.</summary>
-    private const float SwitchGap = 8f;
+    private const float MainMenuGap = 6f;
+    private const float MainMenuHeight = 30f;
 
     private const int LabelFontSize = 15;
     private const int NoteFontSize = 12;
@@ -174,7 +173,8 @@ internal sealed class MyRunsSettingsRow
     /// beside them rather than under them.
     /// </summary>
     internal static float Height =>
-        LabelHeight + RuleGap + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap + FetchHeight;
+        LabelHeight + RuleGap + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap + FetchHeight +
+        MainMenuGap + MainMenuHeight;
 
     /// <summary>
     /// Assembles the row.
@@ -341,13 +341,9 @@ internal sealed class MyRunsSettingsRow
         Place(_remove, width - removeWidth, lower + ((LabelHeight - RemoveHeight) / 2f), removeWidth, RemoveHeight);
         Place(_detail, 0f, lower + LabelHeight, width - removeWidth - StepGap, NoteHeight);
 
-        // The two switches share the bottom line rather than stacking. They are the same
-        // kind of control and the section they sit in has no height to spare: the game's
-        // own rows are directly under it, and a row that grew would be drawn over them.
         var fetchY = lower + Math.Max(LabelHeight + NoteHeight, RemoveHeight) + FetchGap;
-        var half = (width - SwitchGap) / 2f;
-        Place(_fetch, 0f, fetchY, half, FetchHeight);
-        Place(_mainMenu, half + SwitchGap, fetchY, half, FetchHeight);
+        Place(_fetch, 0f, fetchY, width, FetchHeight);
+        Place(_mainMenu, 0f, fetchY + FetchHeight + MainMenuGap, width, MainMenuHeight);
     }
 
     /// <summary>

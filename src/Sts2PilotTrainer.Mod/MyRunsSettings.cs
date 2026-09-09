@@ -82,57 +82,55 @@ internal static class MyRunsSettings
         }
     }
 
+    /// <summary>
+    /// Puts the row into the settings column, under the game's own modding entry.
+    ///
+    /// <para><b>The anchor's own parent is the wrong place, and putting the row there is
+    /// what drew it over the game's "Modding" heading.</b> <c>%ModdingButton</c> sits in a
+    /// <see cref="MarginContainer"/> named <c>Modding</c>, beside the heading label, and a
+    /// MarginContainer lays every child out in the same rectangle - so a third child is
+    /// not a third row, it is a third thing drawn on top of the first two. That container
+    /// is itself one entry in the column's <see cref="VBoxContainer"/>, and the column is
+    /// where a new entry belongs: a VBoxContainer stacks what it holds from each child's
+    /// minimum size, which <see cref="MyRunsSettingsRow"/> already carries, so everything
+    /// below the row moves down on its own and nothing has to be repositioned by
+    /// hand.</para>
+    ///
+    /// <para>The fallback is for a build whose settings screen is not laid out by
+    /// containers at all: there the row is positioned under the anchor and the parent is
+    /// grown to hold it, which is all that can be done without knowing the column's
+    /// shape.</para>
+    /// </summary>
     internal static MyRunsSettingsRow Attach(Control anchor, Font? font)
     {
-        var parent = anchor.GetParent()
+        var entry = anchor.GetParent() as Control
             ?? throw new InvalidOperationException(
                 "This build's modding settings button has no parent to host Runmobile's settings.");
-        var width = anchor.Size.X > 0f
-            ? anchor.Size.X
-            : parent is Control host && host.Size.X > 0f
-                ? host.Size.X
+        var width = entry.Size.X > 0f
+            ? entry.Size.X
+            : anchor.Size.X > 0f
+                ? anchor.Size.X
                 : FallbackWidth;
         var row = Build(width, font);
-        if (parent is not Container)
+
+        if (entry.GetParent() is Container column)
         {
-            var top = anchor.Position.Y + anchor.Size.Y + SectionGap;
-            row.Root.Position = new Vector2(anchor.Position.X, top);
-            MakeRoomBelow(parent, top, MyRunsSettingsRow.Height + SectionGap);
-            if (parent is Control control)
-            {
-                control.CustomMinimumSize = new Vector2(
-                    control.CustomMinimumSize.X,
-                    Math.Max(control.CustomMinimumSize.Y, top + MyRunsSettingsRow.Height));
-            }
+            column.AddChild(row.Root);
+            // Directly under the modding entry rather than at the end of the column, so
+            // Runmobile's settings sit with the modding ones a player came here to find.
+            column.MoveChild(row.Root, entry.GetIndex() + 1);
+            return row;
         }
 
+        var parent = entry.GetParent()
+            ?? throw new InvalidOperationException(
+                "This build's modding settings entry has no column to host Runmobile's settings.");
+        row.Root.Position = entry.Position + new Vector2(0f, entry.Size.Y + SectionGap);
+        entry.CustomMinimumSize = new Vector2(
+            entry.CustomMinimumSize.X,
+            Math.Max(entry.CustomMinimumSize.Y, row.Root.Position.Y + MyRunsSettingsRow.Height));
         parent.AddChild(row.Root);
         return row;
-    }
-
-    /// <summary>
-    /// Moves the game's own rows below this one down, so the section this row is inserted
-    /// into is a section taller rather than a section with something drawn over it.
-    ///
-    /// <para><b>Growing the parent's minimum size reserves nothing here.</b> This column
-    /// positions its children absolutely - the modding button, the "Modding" heading, its
-    /// divider and the credits row are each resolved by unique name and each carry their
-    /// own <c>Position</c> - so a taller parent moves none of them, and a row inserted
-    /// between two of them is simply drawn on top of the lower one. The client showed
-    /// exactly that: the reading and its note over the "Modding" heading.</para>
-    ///
-    /// <para>Only siblings that start below the insertion point move, and they move by
-    /// the same amount, so the column's own spacing is preserved and nothing above the
-    /// row is touched. A <see cref="Container"/> parent never reaches here: it lays its
-    /// children out from their minimum sizes, which the row already carries.</para>
-    /// </summary>
-    private static void MakeRoomBelow(Node parent, float top, float by)
-    {
-        foreach (var child in parent.GetChildren().OfType<Control>())
-        {
-            if (child.Position.Y < top) continue;
-            child.Position += new Vector2(0f, by);
-        }
     }
 
     /// <summary>

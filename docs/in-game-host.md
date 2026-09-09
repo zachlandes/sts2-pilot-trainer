@@ -1027,6 +1027,12 @@ Moving the policy removes nothing where it stands, and forgets that latch for th
 This profile only: another profile's policy was applied against its own recordings and a write made while playing as this one says nothing about it.
 Without that the row's own second line would be describing the next launch rather than the next main menu, because this profile's turn at the latch is already taken by the time a player can reach the control.
 
+**Where the row is parented is the column, not the modding entry.**
+`%ModdingButton` sits in a `MarginContainer` named `Modding`, beside the heading label, and a MarginContainer lays every child out in the same rectangle - so adding the row there made it a third thing drawn on top of the heading and the button rather than a third row.
+That container is one entry in the column's `VBoxContainer`, and the column is where a new entry belongs: a VBoxContainer stacks what it holds from each child's minimum size, which `MyRunsSettingsRow` already carries, so everything below moves down on its own.
+Nothing is repositioned by hand, and growing the parent's minimum size reserves nothing here - the fix that looks obvious and does not work.
+`MyRunsSettings.Attach` places it directly after the modding entry so Runmobile's settings sit with the modding ones a player came there to find.
+
 The store refuses until the game has chosen a save profile, and the settings section hangs off the main menu's own modding entry point, which is reachable before one is.
 `MyRunsSettings.Build` therefore catches and logs the way its other members do, and hands the derivation a `MyRunsDisk` fact of its own rather than a count of zero - no runs yet and cannot tell yet are different sentences.
 That fact has three answers, not two, because only one failure has a cause the row may name.
