@@ -48,4 +48,25 @@ public abstract record PrefightTarget(int Seq)
             $"map node (row {Coord.row.ToString(CultureInfo.InvariantCulture)}, column " +
             $"{Coord.col.ToString(CultureInfo.InvariantCulture)})";
     }
+
+    /// <summary>
+    /// A card on the selection screen an earlier decision opened, by the position it
+    /// sits at in the list the engine offered and the card that was there.
+    ///
+    /// Only ever built where the host draws that screen. Headlessly there is no scene
+    /// tree, the engine's own <c>ICardSelector</c> seam answers inside the call that
+    /// opened it, and nothing is ever on screen to point at.
+    ///
+    /// The index is into the engine's offered list rather than into the grid the
+    /// player sees: the screen sorts what it was given before it draws it, so a
+    /// position on screen is a layout detail and the recorded one is not. Both are
+    /// carried because either alone would be ambiguous - a deck holds several Strikes,
+    /// so the name does not pick one out, and an index alone would take whatever a
+    /// differently generated deck put there.
+    /// </summary>
+    public sealed record CardOnScreen(int Seq, string CardModelId, int OptionIndex) : PrefightTarget(Seq)
+    {
+        public override string Description =>
+            $"{CardModelId} at option {OptionIndex.ToString(CultureInfo.InvariantCulture)} on the card screen";
+    }
 }

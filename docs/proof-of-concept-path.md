@@ -247,10 +247,10 @@ and proves it arrived.
   left raised would stop saving the player's next run. Which writes it names, and the
   one gap a whole-run replay would reach, are in
   [in-game host](in-game-host.md).
-- A deviation lock on the two commands the recording's decisions reach, rather than
-  on the buttons that usually reach them: a screen with its buttons hidden is one a
-  controller, a hotkey or another mod can still drive, and the command is the thing
-  that would change the run.
+- A deviation lock where the recording's decisions change the run, rather than on the
+  buttons that usually reach those mutation points.
+  [The in-game host](in-game-host.md) owns the current set and why the card screen is
+  different.
 - `source.video.channel_name`, so a host names whose recording this is from the
   manifest.
   Every sentence the journey shows is a template over what the run is standing in

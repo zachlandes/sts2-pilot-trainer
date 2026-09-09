@@ -10,6 +10,7 @@ using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Rewards;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens;
+using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
@@ -130,21 +131,31 @@ internal static class RecordedFightRun
     private const double EndingTheFightSeconds = 2.0;
 
     /// <summary>
-    /// How long to give the engine to take the card the recording picked off the screen
-    /// a decision opened, before giving up on it.
+    /// How long to give the card screen to answer a press before giving up on it.
     ///
-    /// The wait exists because of where the two hosts differ. Headlessly the engine's
-    /// continuation runs inline, so the screen is answered inside the call that opened
-    /// it and there is nothing to wait for; in the client that continuation is resumed
-    /// on a later frame, so a host that read the answer on the frame it made the
-    /// decision would refuse a correct run for being a frame early. Short, because the
-    /// engine has no work to do here beyond resuming - it is a frame or two, not an
-    /// animation.
+    /// After the recording's card is pressed the screen either takes the answer and
+    /// closes, or puts up its own preview and asks to confirm - and which of the two
+    /// depends on how many cards it was told to ask for, which is the relic's business
+    /// rather than this host's. So the press is followed by a wait for either, and both
+    /// arrive on the game's own frames. Short, because there is no animation between
+    /// the press and the screen's reaction to it.
     /// </summary>
     private const double AnsweringTheScreenSeconds = 5.0;
 
     /// <summary>How often that wait looks at what it is waiting for.</summary>
     private const double AnsweringTheScreenPollSeconds = 0.05;
+
+    /// <summary>
+    /// How long the screen's own preview of the recording's pick is left up before it
+    /// is confirmed.
+    ///
+    /// The preview is the game's own way of showing what is about to happen to the
+    /// card, and confirming it on the frame it appears would replace it with a flicker.
+    /// Divided by the speed like every other hold, because it is one.
+    /// </summary>
+    private const double PreviewHoldSeconds = 0.6;
+
+    private const double PreviewHoldFloor = 0.15;
 
     /// <summary>
     /// Where the journey has got to, held as a number.
@@ -252,7 +263,9 @@ internal static class RecordedFightRun
         try
         {
             var creator = RecordingIdentity.Creator(recording);
-            entry = RecordedFightEntry.PrepareInRunningGame(recording, plan, TravelOnTheGamesMapScreen);
+            entry = RecordedFightEntry.PrepareInRunningGame(
+                recording, plan,
+                new RunningGameCommands(TravelOnTheGamesMapScreen, TakeTheRecordedCardOnTheGamesOwnScreen));
             _entry = entry;
 
             // Awaiting the game's own start-run task is what puts the run on screen and
@@ -669,6 +682,33 @@ internal static class RecordedFightRun
         var entry = _entry ?? throw new InvalidOperationException("There is no recorded fight under way.");
 
         _lookingBackAt = null;
+
+        // A card screen an earlier decision opened is not a screen transition, and
+        // waiting for its controls to settle is waiting for something that has not
+        // started yet. Measured in the client: the blessing's own work awards the relic
+        // and animates it onto the belt before it opens the screen at all, which is
+        // longer than the settling budget every other screen here needs - so the run was
+        // abandoned in front of a player while the screen it wanted was still coming.
+        //
+        // So this waits for the engine to have opened it rather than for a length of
+        // time, which is the rule everywhere else on this journey. CardScreensUp is the
+        // shell's count of the card screens the engine has put up and is waiting on, and
+        // it is incremented from the game's own CardsSelected - the call FromDeckGeneric
+        // suspends on immediately after pushing the screen.
+        if (entry.NextStepAnswersAScreenAlreadyOpened)
+        {
+            var up = await WaitUntil(
+                () => CardScreensUp.Count > 0,
+                LetTheGameRun(AnsweringTheScreenSeconds),
+                () => LetTheGameRun(AnsweringTheScreenPollSeconds));
+
+            if (!StillOurs(entry)) return;
+
+            Log.Info(
+                $"[{RunmobileMod.ModId}] the screen that decision opened " +
+                $"{(up ? "is up" : "has not arrived")}", 2);
+        }
+
         var options = await WhenTheScreenIsReady(() => RecordedFightReveal.Arrive(entry.DescribeNextTarget()));
 
         // The retry above runs for up to five seconds, which is long enough for the
@@ -1197,11 +1237,6 @@ internal static class RecordedFightRun
             // completes it when the work is done. The authorisation is still held,
             // because a screen's command does most of its work inside this task.
             if (entry.Pending is { } pending) await pending;
-
-            // The recording's own answers to a card screen that decision opened, still
-            // under the same authorisation: the engine takes them inside the call the
-            // decision made, so they belong to that decision rather than being new ones.
-            await MakeTheAnswersThatDecisionAlreadyGave(entry);
         }
         finally
         {
@@ -1214,40 +1249,56 @@ internal static class RecordedFightRun
     }
 
     /// <summary>
-    /// Executes the recording's answers to a card screen the decision just made
-    /// opened, once the engine has actually taken them.
+    /// Takes the recording's card off the game's own card-selection screen.
     ///
-    /// Never revealed and never held on. The engine answers such a screen from the
-    /// recording inside the call that opens it, so by the time these steps run the
-    /// screen has gone and the card is already removed, transformed or upgraded - there
-    /// is nothing on the game's own screen for a reveal to point at, and a hold would
-    /// be holding on nothing. What the player is shown instead is the decision that
-    /// opened it, and its caption names the card; see <c>TrainerCopy</c>.
+    /// The client's half of a decision the engine has no command for: the screen is
+    /// the game's own UI, so the driver issues this and this presses. The card is
+    /// pressed the way a click presses it, and the screen then does one of two things
+    /// on its own frames - takes the answer and closes, or puts up its preview of what
+    /// was picked and asks to confirm. Which one is the relic's business, so both are
+    /// waited for and the confirm is pressed where there is one, after the preview has
+    /// been up long enough to be seen.
     ///
-    /// The wait is for the engine rather than for a length of time, for the reason
-    /// <see cref="AnsweringTheScreenSeconds"/> records. A screen that never asks is
-    /// refused by the step itself, in its own words, raised where this journey can
-    /// report it.
+    /// The card is already lit by the time this runs, by
+    /// <see cref="RecordedFightReveal"/> and off the same reading, so what is pressed
+    /// is what the watcher was shown. A screen that neither closes nor asks to confirm
+    /// is refused with what it is doing, rather than left for the next decision to
+    /// stumble over.
     /// </summary>
-    private static async Task MakeTheAnswersThatDecisionAlreadyGave(RecordedFightEntry entry)
+    private static async Task TakeTheRecordedCardOnTheGamesOwnScreen(string cardModelId, int optionIndex)
     {
-        if (!entry.NextStepAnswersAScreenAlreadyOpened) return;
+        var found = RecordedCardScreen.Find(cardModelId, optionIndex);
+        RecordedCardScreen.Press(found);
 
-        var took = await WaitUntil(
-            () => !entry.ACardScreenAnswerIsOutstanding,
+        var answered = await WaitUntil(
+            () => RecordedCardScreen.HasClosed(found.Screen) ||
+                  RecordedCardScreen.PreviewIsUp(found.Screen),
             LetTheGameRun(AnsweringTheScreenSeconds),
             () => LetTheGameRun(AnsweringTheScreenPollSeconds));
 
-        if (!StillOurs(entry)) return;
+        if (!answered)
+        {
+            throw new InvalidOperationException(
+                $"The card screen took the press on {cardModelId} and then neither closed nor asked to " +
+                "confirm the selection, so the decision the recording made on it is not finished.");
+        }
 
-        Log.Info(
-            $"[{RunmobileMod.ModId}] the screen that decision opened " +
-            $"{(took ? "took" : "did not take")} the recording's answer", 2);
+        if (RecordedCardScreen.HasClosed(found.Screen)) return;
 
-        // Executed whether or not the wait succeeded: the step's own refusal names the
-        // cards nothing consumed, which is a better sentence than any this wait could
-        // write, and it is raised from the same place every other refusal is.
-        while (!entry.AtBoundary && entry.NextStepAnswersAScreenAlreadyOpened) entry.AdvanceOneStep();
+        await LetTheGameRun(Speed.Divide(PreviewHoldSeconds, PreviewHoldFloor));
+
+        var confirmed = await WaitUntil(
+            () => RecordedCardScreen.HasClosed(found.Screen) ||
+                  RecordedCardScreen.ConfirmIfThePreviewIsUp(found.Screen),
+            LetTheGameRun(AnsweringTheScreenSeconds),
+            () => LetTheGameRun(AnsweringTheScreenPollSeconds));
+
+        if (!confirmed)
+        {
+            throw new InvalidOperationException(
+                $"The card screen was showing its preview of {cardModelId}, but its confirm button did not " +
+                "become available, so the decision the recording made on it is not finished.");
+        }
     }
 
     /// <summary>
@@ -1258,12 +1309,28 @@ internal static class RecordedFightRun
     /// carries on. Bounded rather than looped freely: two of these in a row is
     /// already more than this journey meets, and a host that would press onward
     /// indefinitely is a host that could walk a run somewhere nobody asked for.
+    ///
+    /// It does nothing at all while the recording's next step answers a screen that
+    /// decision opened. The engine runs an event option's own work as a task and
+    /// suspends it on the card screen, so the event underneath is still showing
+    /// whatever it was showing and what it shows next is not settled - and pressing a
+    /// proceed there would dismiss the event out from under a decision the recording
+    /// has not made yet. The step after that answer runs this again, which is where
+    /// the proceed actually is.
     /// </summary>
     private static void CarryOnPastAnyScreenWaitingToProceed()
     {
         for (var dismissed = 0; dismissed < 2; dismissed++)
         {
             if (_entry is not { } entry) return;
+
+            if (entry.NextStepAnswersAScreenAlreadyOpened)
+            {
+                Log.Info(
+                    $"[{RunmobileMod.ModId}] not carrying on past anything: the recording still has to " +
+                    "answer the screen that decision opened", 2);
+                return;
+            }
 
             bool carriedOn;
             string observed;
@@ -2044,12 +2111,20 @@ internal static class RecordedFightRun
     /// <summary>
     /// Keeps the decisions before the fight the recording's.
     ///
-    /// Two prefixes on the two commands those decisions reach, which is where a lock
+    /// Three prefixes on the three things those decisions reach, which is where a lock
     /// belongs: a screen with its buttons hidden is a screen a controller, a hotkey
-    /// or a mod can still reach, and the command is the thing that would actually
+    /// or a mod can still reach, and what is patched is the thing that would actually
     /// change the run. While the recording is deciding, only this class may issue
-    /// them; at every other moment - the player's own runs included - neither patch
+    /// them; at every other moment - the player's own runs included - no patch here
     /// does anything.
+    ///
+    /// The third is a screen's own handler rather than a command, because the card
+    /// screen the recording opens has no engine command at all - a card being clicked
+    /// is the whole of the decision. It is the screen's <c>OnCardClicked</c> and not
+    /// the grid's press, so browsing a deck or a pile is untouched and only the screen
+    /// that would actually transform, remove or upgrade a card is locked. Without it a
+    /// player could pick a different card off the screen the recording opened, and the
+    /// run would go somewhere the recording never went.
     /// </summary>
     [HarmonyPatch]
     internal static class DeviationLock
@@ -2057,6 +2132,14 @@ internal static class RecordedFightRun
         [HarmonyPrefix]
         [HarmonyPatch(typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption))]
         internal static bool OnlyTheRecordingChoosesAnEventOption() => Allowed("an event option");
+
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(NDeckCardSelectScreen), "OnCardClicked")]
+        internal static bool OnlyTheRecordingPicksACardOffTheDeckScreen() => Allowed("a card off a screen");
+
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(NDeckTransformSelectScreen), "OnCardClicked")]
+        internal static bool OnlyTheRecordingPicksACardToTransform() => Allowed("a card to transform");
 
         [HarmonyPrefix]
         [HarmonyPatch(typeof(RunManager), nameof(RunManager.EnterMapCoord))]

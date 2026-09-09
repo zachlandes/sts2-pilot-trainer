@@ -128,10 +128,9 @@ That is why it is a new mechanism rather than a named write, and it is left to a
 Nothing reaches it while the trainer is fight-scoped; a whole-run replay would, and it is answered on that list when it does.
 
 **The recording owns every decision before the fight.**
-Enforced on the two commands those decisions reach — `EventSynchronizer.ChooseLocalOption`
-and `RunManager.EnterMapCoord` — rather than on the buttons that usually reach them.
-A screen with its buttons hidden is a screen a controller, a hotkey or another mod can
-still drive; the command is the thing that would actually change the run.
+Enforced where those decisions change the run: `EventSynchronizer.ChooseLocalOption`, `RunManager.EnterMapCoord`, and the card-click handlers on both deck-selection screens.
+The first two are commands; the card screen has no engine command, so its own handler is the mutation point.
+Patching those points rather than the buttons that usually reach them keeps a controller, a hotkey or another mod from driving a hidden control around the lock.
 
 **The fight is proved before it is handed over.**
 `BoundaryEquality` compares the live state against both readings of the boundary:
@@ -650,26 +649,84 @@ Two things follow from it that are not about card screens.
 
 The first is that a verification which photographs behaviour the host cannot produce is a
 check that cannot fail.
-Whatever the two hosts do differently has to be stated as a difference somewhere, and `RunDriver.VerbsIssuedInsideARunningGame` is where this one is.
-`RecordedFightVerbAgreementTests` holds that declaration against the committed fixture's walk to its first fight and proves the known `SelectCardFromScreen` shape remains covered.
-It does not establish that every possible first-fight prefix is supported; bundle and relic answers remain refused in the client because their prompt stand-ins are headless-only.
-The test needs no game installed, which is the point - the run that would otherwise catch this is one only a person with the client can make.
+Whatever the two hosts do differently has to be stated as a difference somewhere, and two
+declarations on `RunDriver` are where these are: `VerbsIssuedInsideARunningGame`, and
+`AnswersShownOnTheGamesOwnScreen` for the answers the client draws a screen for.
+`RecordedFightVerbAgreementTests` holds both against the committed fixture's walk to its
+first fight and proves the known `SelectCardFromScreen` shape remains covered by each.
+Issued and drawn are two claims, held separately on purpose: a verb issued without a
+screen would be committed with nothing to point at, and a screen drawn without the verb
+would light the recording's card and never press it.
+Neither establishes that every possible first-fight prefix is supported; bundle and relic
+answers remain refused in the client because their prompt stand-ins are headless-only.
+The tests need no game installed, which is the point - the run that would otherwise catch
+this is one only a person with the client can make.
 
-The second is the rule the fix is written to: a screen the recording opened and the
-recording answered is not the player's, whatever it looks like from the driver.
-Until the boundary the player is watching rather than deciding.
-So the selector is pushed for the one step that queued an answer and released as soon as
-the engine has taken it, and it cannot reach the fight - the last decision before a
-boundary is a map move, or an event option that starts its room's fight, and neither
-queues anything.
-`docs/headless-fidelity.md` owns the mechanism and the two hosts' different timing;
-what belongs here is that the client resumes the engine's continuation on a later frame,
-so `RecordedFightRun` waits for the engine to have taken the answer rather than for a
-length of time - the same rule as everywhere else on this page - and the step's own
-refusal, one step later, is what a screen that never asks still gets.
-Because that screen is never drawn, the decision that opened it carries the card in its
-caption; that sentence is the only place the card is said, and a caption naming only the
-relic would leave a deck that quietly lost a card with nothing having said which.
+The second is the rule the fix was eventually written to, which is not the rule the first
+fix was written to.
+That one said a screen the recording opened and the recording answered is not the
+player's, and pushed the engine's own selector for the one step that queued an answer -
+which made the two hosts agree and left the player watching a blessing being taken and
+never seeing the card it took.
+The rule that replaced it is that a screen the recording opened is still a screen, and a
+watcher is owed the sight of it.
+So in the client nothing of the driver's is on the engine's stack: the game draws its own
+card screen for that relic, `RecordedCardScreen` finds the recording's card on it, the
+reveal lights it with the game's own focus and the commit presses it - the same consider,
+reveal, commit as a map node, on a screen that has no engine command at all.
+The screen's own preview of what was picked is confirmed after a hold rather than on the
+frame it appears, because confirming it at once replaces it with a flicker; that is a
+screen transition and not a decision, the same as the event screen's proceed.
+`docs/headless-fidelity.md` owns the mechanism and what the two hosts now differ about,
+which is whether the screen is drawn rather than when its answer arrives.
+
+Two things about that screen were only learnable in the client, and both cost a refused
+run in front of a watcher before they were.
+The first is that it does not arrive on a screen transition: the blessing's own work
+awards the relic and animates it onto the belt before opening anything, which is longer
+than the settling budget every other screen on this journey needs. So the arrival waits
+for `CardScreensUp.Count` - the shell's count of card screens the engine has opened and
+is waiting on - rather than for a length of time, which is this page's oldest rule.
+The second is that "the card screen" is not one screen. A removal opens
+`NDeckCardSelectScreen` through `FromDeckGeneric`; a transform opens
+`NDeckTransformSelectScreen` through `FromDeckForTransformation`, and its preview's
+confirm has a different node name. A driver written to the first refused the second while
+it stood open and drawn in front of the player, with a sentence saying it had not opened.
+Both are `NCardGridSelectionScreen`, which owns the grid, the offered list and the click,
+so that is what `RecordedCardScreen` is written to, and the confirm is found by type.
+Whatever a build calls its screens, the base and the count are the two things worth
+depending on.
+
+Drawing that screen brought back the page's oldest trap in a new place, which is the
+third thing to take from this.
+`EventSynchronizer.ChooseOptionForEvent` does not run the option's work; it starts it as
+a task, and that task suspends on the card screen. So on the frame the blessing is
+committed the event screen underneath is mid-transition, and what it will show next is
+not settled - while the journey's own
+`CarryOnPastAnyScreenWaitingToProceed` runs at the end of every step and presses that
+screen's proceed wherever it is the only button left. Pressing it there would dismiss
+the event out from under a decision the recording has not made yet.
+Which of the two the engine does first is knowable and was not worth knowing: one guard
+is right either way, so the journey carries on past nothing while
+`RecordedFightEntry.NextStepAnswersAScreenAlreadyOpened`. That property is host-blind on
+purpose - it asks whether the run is still inside a screen, which is true of both hosts,
+and is a different question from whether this host draws it.
+Under the scoped selector this could not happen, because no screen was ever drawn to be
+inside. It is the same lesson as the rest of the page in a new costume: what looks like a
+length of time or an ordering is really a question about what the engine has finished,
+and the honest answer is to ask rather than to assume.
+
+**What is deliberately not built there: nothing scrolls the card grid.**
+`NCardGrid` keeps holders for a sliding window of rows and reassigns them from the list
+it was given as it scrolls, so a deck taller than that window has cards with no holder at
+all until somebody scrolls to them. A recording that takes such a card is refused rather
+than answered, in a sentence that says which of the two causes it is - the grid still
+laying rows in, or the card being outside the window - because they want opposite
+responses and the retry only helps the first. Driving the game's own scroll to bring a
+card into the window is the missing piece, and it is not worth writing blind: whether the
+grid has settled after a scroll is exactly the class of question this page exists about,
+and it cannot be answered without the client. The decks a first fight is reached with fit
+on one screen, so nothing today meets it.
 
 ## The surfaces, and why they are the game's own
 

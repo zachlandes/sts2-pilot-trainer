@@ -144,9 +144,9 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 140
+**What CI cannot run is recorded by name.** On a runner without the game, the 141
 tests named in `scripts/expected-hosted-skips.txt` skip out of
-`Sts2PilotTrainer.Arbiter.Tests`' 209 and the job still reports success.
+`Sts2PilotTrainer.Arbiter.Tests`' 210 and the job still reports success.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift
@@ -213,9 +213,12 @@ third from the manifest. Three prompts the `ICardSelector` seam does not reach -
 bundle screen, the relic screen and the Crystal Sphere's screen - are stood in for at
 the prompt itself by `ScreenStandIns`, headlessly only. None of them decides anything,
 and each refuses where the manifest is silent.
-The card screen is also the in-game host's when the recording opened and answered it, so in the retail client the selector is pushed only for the step that queued the answer and released as soon as the engine takes it, never for the run's lifetime and never anywhere it could reach the fight.
-The two hosts differ only in when that answer arrives - inline headlessly and on a later frame in the client - and `docs/headless-fidelity.md` owns the mechanism.
-Do not narrow the verbs one host issues without holding them against a recorded walk to its first fight; `RunDriver.VerbsIssuedInsideARunningGame` states the set once and `RecordedFightVerbAgreementTests` holds the committed fixture against it without the game installed.
+The card screen an opening blessing opens is the one the retail client draws rather than answers: no selector is pushed there at all, the game puts up its own screen, and the recording's card is lit on it and pressed like every other decision before the fight.
+Which screen that is belongs to the relic - a removal opens `NDeckCardSelectScreen` and a transform opens `NDeckTransformSelectScreen`, through different commands with differently named confirm buttons - so `RecordedCardScreen` is written to the `NCardGridSelectionScreen` base they share and never to one of them.
+`RecordedCardScreen` is the one reader and presser of that screen, so the card the reveal lights is the card the commit presses, and the recorded `option_index` indexes the list the engine handed the screen rather than the sorted grid a player sees.
+That makes the two hosts differ in whether the screen is drawn, so whether a recorded answer is a decision somebody watches is `RunDriver.ShowsTheAnswerBeingGiven` and nothing re-derives it - the counting, the captions and the reveal all ask it.
+`docs/headless-fidelity.md` owns the mechanism.
+Do not narrow the verbs one host issues, or the answers it draws a screen for, without holding them against a recorded walk to its first fight; `RunDriver.VerbsIssuedInsideARunningGame` and `RunDriver.AnswersShownOnTheGamesOwnScreen` state the two sets once and `RecordedFightVerbAgreementTests` holds the committed fixture against both without the game installed.
 
 **Read [docs/in-game-host.md](docs/in-game-host.md) before touching anything that runs
 inside the retail client.** `Sts2PilotTrainer.Mod` is the only project loaded into the
@@ -304,8 +307,11 @@ test. That document also names three limits this path does not remove.
 It has two ways in and one proof: `StartHeadless` walks the decisions, `RestoreHeadless` continues the run from a verified floor-entry snapshot, and both end at the same `VerifyBoundary`. Restoring is an optimisation a consumer opts into with `enter-fight --restore`, which replays instead whenever the cache is absent, of another history or of another build.
 The watched journey is one long-lived transport and not a popup per step: `PlaybackTransport` in `Sts2PilotTrainer.Trainer` owns what it says, `PlaybackTransportStrip` draws it, `PlaybackTransportDock` parents it to the run's own persistent interface so it survives the map-to-combat transition, and `RecordedFightReveal` lights the game's own selected state without clicking.
 Do not add a second playback path beside it; `docs/in-game-host.md` owns why.
-Not every step of a walk is a decision to be shown: a card selection is the recording's own answer to a screen an earlier decision opened, taken inside the engine call that opened it, so there is nothing left on screen to point at by the time its step runs.
-`CardScreenAnswers.IsAnAnswer` is the one owner of that distinction, `RecordedFightEntry.Decisions` is what a counter counts, and such a step is executed without a reveal or a hold.
+A screen the recording still has to answer is a screen the run is still inside, and the journey presses past nothing while `RecordedFightEntry.NextStepAnswersAScreenAlreadyOpened` - the event underneath an open card screen is mid-transition, and its proceed would dismiss a decision that has not been made.
+Whether a step is one to be shown depends on the host, and on one thing only: whether the screen it happens on is drawn.
+A card selection is the recording's answer to a screen an earlier decision opened, so headlessly the engine takes it inside the call that opened it and there is nothing on screen to point at by the time its step runs - it is executed without a reveal, a hold or a number.
+In the retail client that screen is the game's own and is drawn, so the same step is a decision lit and pressed like any other.
+`CardScreenAnswers.IsAnAnswer` says which steps are answers, `RunDriver.ShowsTheAnswerBeingGiven` says whether this host draws the screen for one, and `RecordedFightEntry.Decisions` is what a counter counts; nothing else re-derives either question.
 **What the transport *is* at any moment is derived in one place and never built by hand.**
 `PlaybackTransport.For(phase, facts)` is total and pure - every phase has an answer, null included for the two that draw nothing - and the five shapes behind it are private, so there is no way round it; `TransportSurface` answers present, drawn and pressable separately for every element and the strip projects that table without reading the mode; `RecordedFightRun.Transition` is the only thing that changes the phase and it re-derives, as does every fact that can change under it.
 Four defects came from the one boolean this replaced. `docs/mod-ui-direction.md` owns the table and the rule.

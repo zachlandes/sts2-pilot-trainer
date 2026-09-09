@@ -2133,7 +2133,7 @@ internal sealed class RunRecorder : IDisposable
         {
             try
             {
-                if (OfferedCards(screen) is { } offered) CardScreenAnswered(offered, chosen);
+                if (CardScreensUp.OfferedTo(screen) is { } offered) CardScreenAnswered(offered, chosen);
                 else
                 {
                     Refuse(
@@ -2161,14 +2161,6 @@ internal sealed class RunRecorder : IDisposable
 
         static void Refuse(string reason) => Active?.Refuse(reason);
     }
-
-    /// <summary>The list a grid screen was built with. Read by name and refused loudly
-    /// when a build no longer has it, because a screen whose options nobody can see is a
-    /// decision nobody can record.</summary>
-    internal static IReadOnlyList<CardModel>? OfferedCards(NCardGridSelectionScreen screen) =>
-        typeof(NCardGridSelectionScreen)
-            .GetField("_cards", BindingFlags.Instance | BindingFlags.NonPublic)
-            ?.GetValue(screen) as IReadOnlyList<CardModel>;
 
     /// <summary>
     /// The screen a card reward puts up, which answers with a position rather than a

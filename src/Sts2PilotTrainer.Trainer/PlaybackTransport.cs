@@ -924,10 +924,13 @@ public sealed record PlaybackTransport(
                 creator, move.NodeType, MapColumns.Position(move.Column, move.ColumnCount))
             : TrainerCopy.MapMoveLedgerRow(
                 move.NodeType, MapColumns.Position(move.Column, move.ColumnCount)),
+        PrefightChoice.CardFromScreen card => name
+            ? TrainerCopy.CardFromScreenCaption(creator, card.CardModelId)
+            : TrainerCopy.CardFromScreenLedgerRow(card.CardModelId),
         _ => throw new ManifestException(
             $"Action {choice.Seq} is a kind of decision this trainer has no way to describe, so the recording " +
-            "cannot be watched making it. Only an opening blessing and a map move are supported before a " +
-            "fight."),
+            "cannot be watched making it. Only an opening blessing, a map move and a card taken off a screen " +
+            "one of them opened are supported before a fight."),
     };
 
     /// <summary>
@@ -941,6 +944,7 @@ public sealed record PlaybackTransport(
     {
         PrefightChoice.Blessing blessing => blessing.RelicModelId,
         PrefightChoice.MapMove move => move.NodeType,
+        PrefightChoice.CardFromScreen card => card.CardModelId,
         _ => string.Empty,
     };
 }

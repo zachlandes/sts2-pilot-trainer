@@ -23,13 +23,20 @@ public sealed class PlaybackTransportTests
     /// A blessing whose relic opens a card screen, and the card the recording picked
     /// off it.
     ///
-    /// Nobody watching ever sees that screen: the engine answers it from the recording
-    /// inside the call the blessing makes, so the card is removed, transformed or
-    /// upgraded before there is a frame to show it on. The caption is therefore the
-    /// only place it is said, which is why these two sentences exist at all.
+    /// The shape a host that never draws that screen produces. Headlessly the engine
+    /// answers it from the recording inside the call the blessing makes, so the card is
+    /// removed, transformed or upgraded before there is a frame to show it on, and the
+    /// caption is the only place it is said. The retail client draws the screen instead
+    /// and the pick becomes <see cref="CardTakenOffTheScreen"/>; the two are two
+    /// readings of one history, which is why both sets of sentences exist.
     /// </summary>
     private static readonly PrefightChoice BlessingWithACard =
         new PrefightChoice.Blessing(0, "RELIC.PRECISE_SCISSORS", ["CARD.STRIKE_IRONCLAD"]);
+
+    /// <summary>The same pick as its own decision, which is what it is wherever the
+    /// game's own card screen is drawn.</summary>
+    private static readonly PrefightChoice CardTakenOffTheScreen =
+        new PrefightChoice.CardFromScreen(1, "CARD.STRIKE_IRONCLAD");
 
     /// <summary>The shipped recording's map move: column 3 of the act's seven.</summary>
     private static readonly PrefightChoice MapMove = new PrefightChoice.MapMove(1, "Monster", 3, 7);
@@ -419,6 +426,26 @@ public sealed class PlaybackTransportTests
 
         Assert.Equal("Precise Scissors, Strike Ironclad", transport.Ledger[0].Label);
         Assert.Equal("RELIC.PRECISE_SCISSORS", transport.Ledger[0].ArtModelId);
+    }
+
+    /// <summary>
+    /// Where the screen is drawn the pick is a decision of its own, with its own
+    /// caption and its own card art. The sentence says the card and not what became of
+    /// it, for the reason the blessing's row does: the verb belongs to the relic named
+    /// on the row above.
+    /// </summary>
+    [Fact]
+    public void ACardTakenOffTheGamesOwnScreenIsItsOwnDecision()
+    {
+        var revealed = Revealing(CardTakenOffTheScreen, 2, noteShown: false);
+        var ledger = For(
+            JourneyPhase.Watching, made: [Blessing, CardTakenOffTheScreen], next: MapMove, stepsTaken: 2,
+            count: 3, lookingBackAt: 2);
+
+        Assert.Contains(
+            "2 of 2 · NaveGreed chose Strike Ironclad", revealed.Step.TooltipBody, StringComparison.Ordinal);
+        Assert.Equal("Strike Ironclad", ledger.Ledger[1].Label);
+        Assert.Equal("CARD.STRIKE_IRONCLAD", ledger.Ledger[1].ArtModelId);
     }
 
     // ── Consider, reveal, commit ────────────────────────────────────────────
