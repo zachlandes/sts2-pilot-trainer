@@ -30,8 +30,8 @@ internal readonly record struct RunHistoryPlateText(GameTextStyle Body, GameText
 internal static class RunHistoryPlateArt
 {
     /// <summary>A row's height, as a multiple of the text in it. Derived rather than
-    /// written down: the text is the screen's own size, which changes with the window,
-    /// and a fixed height would clip it on a large one and float in it on a small.</summary>
+    /// written down so a change to the native role's design size cannot leave its box
+    /// clipping the text or floating around it.</summary>
     private const float RowHeightRatio = 2f;
 
     /// <summary>The gap between rows, as the same multiple.</summary>
@@ -46,11 +46,9 @@ internal static class RunHistoryPlateArt
     /// <summary>
     /// Hangs the plate under the pane and fills it in.
     ///
-    /// It is added to <paramref name="parent"/> before anything is drawn into it and
-    /// deliberately: every label here wears the game's own font, which
-    /// <see cref="GameText"/> finds by walking the scene tree - so a plate built outside
-    /// the tree would come out in Godot's default sans. <paramref name="width"/> is the
-    /// pane's own, so the plate is exactly as wide as the thing it belongs to.
+    /// The caller supplies the live history screen's fact style and the native button
+    /// role before this is drawn. <paramref name="width"/> is the pane's own, so the
+    /// plate is exactly as wide as the thing it belongs to.
     /// </summary>
     /// <param name="text">The body and pressable-caption roles this screen draws.</param>
     internal static Control Build(

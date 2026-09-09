@@ -949,9 +949,9 @@ internal static class LibraryScreen
     /// Adds the run-code field: a stock Godot line edit wearing the game's own font.
     ///
     /// Stock rather than the game's <c>NSearchBar</c>, which is a scene this mod has no
-    /// path to instantiate outside the screens that already hold one. The font and size
-    /// are the popup's own body copy, the way every other line on this parchment is, so
-    /// the field reads as part of the game rather than as Godot's default sans.
+    /// path to instantiate outside the screens that already hold one. The stock field
+    /// instead wears the native card-library search field's font and size, so it reads
+    /// as the same kind of input rather than as Godot's default sans.
     /// </summary>
     private sealed record ShareFields(
         LineEdit Name, LineEdit Description, LineEdit DisplayName, CheckBox Consent)

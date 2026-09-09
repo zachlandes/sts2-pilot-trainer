@@ -76,10 +76,10 @@ internal static class LibraryPaneArt
     /// </summary>
     internal static Control? Add(NVerticalPopup content, ScreenPane pane, Rect2 at)
     {
-        // The popup's own body copy, and the steps around it. The identity line is a
-        // heading over the pane and not over the screen - the parchment's own title
-        // above it is the screen's - so it is the step above the body rather than the
-        // popup's header, which would put two titles on one parchment.
+        // The native roles for each kind of line. The identity line is a heading over
+        // the pane and not over the screen - the parchment's own title above it is the
+        // screen's - so it uses a row title rather than the popup header, which would
+        // put two titles on one parchment.
         var heading = GameText.Scene(NativeTextRole.RowTitle);
         var secondary = GameText.Scene(NativeTextRole.Secondary);
         var factStyle = GameText.Scene(NativeTextRole.Fact);
@@ -333,7 +333,7 @@ internal static class LibraryPaneArt
             controls.LastOrDefault());
     }
 
-    /// <summary>The floor's number inside its own cell, in the popup's native body style.</summary>
+    /// <summary>The floor's number inside its own cell, in the native floor-numeral style.</summary>
     private static void AddStripNumber(
         Control box, int floor, StripLayout layout, GameTextStyle style)
     {

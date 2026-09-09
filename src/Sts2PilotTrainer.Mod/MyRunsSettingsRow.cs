@@ -77,9 +77,9 @@ internal sealed class MyRunsSettingsRow
     // ── The layout, as multiples of the text in it ──────────────────────────
     //
     // Every box here is a multiple of the settings screen's own text size rather than a
-    // number, because that size is the game's and changes with the player's window. A
-    // row written in constants was a row that fitted one window: the words were the
-    // game's neighbours' and the boxes around them were not.
+    // number, so a native-role or game-build change moves the words and their boxes
+    // together. A row written in constants can keep the game's words while leaving the
+    // boxes around them at an obsolete size.
 
     private const float LabelHeightRatio = 1.5f;
     private const float NoteHeightRatio = 1.5f;
