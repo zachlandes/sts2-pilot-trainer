@@ -289,7 +289,8 @@ public sealed class PlaybackTransportStripTests
             next: new PrefightChoice.MapMove(9, "Monster", 0, 3),
             stepsTaken: 8,
             count: 10,
-            lookingBackAt: 1);
+            lookingBackAt: 1,
+            speed: PlaybackSpeed.Half);
         var surface = new Vector2(1280, 720);
         var strip = PlaybackTransportStrip.Build(
             state,
@@ -306,7 +307,7 @@ public sealed class PlaybackTransportStripTests
         var nextPage = Descendants(strip.Ledger).OfType<Button>()
             .Single(button => button.Name.ToString() == "LedgerNext");
         Activate(nextPage, MegaInput.confirm);
-        Assert.NotNull(Find<Label>(strip.Ledger, "Ledger9"));
+        Assert.NotNull(Find<Label>(strip.Ledger, "Ledger2"));
         var previousPage = Descendants(strip.Ledger).OfType<Button>()
             .Single(button => button.Name.ToString() == "LedgerPrevious");
         Activate(previousPage, MegaInput.select);
@@ -331,6 +332,32 @@ public sealed class PlaybackTransportStripTests
         }
 
         Assert.Equal(Enumerable.Range(1, 9), reached.Order());
+
+        strip.OpenMenu(_ => { });
+        strip.Speed.EmitFocus(entered: true);
+        var menuRows = new HashSet<int>();
+        while (true)
+        {
+            Assert.True(strip.Menu.Position.Y + strip.Menu.Size.Y <= surface.Y);
+            Assert.True(strip.Tooltip.Position.Y >= strip.Menu.Position.Y + strip.Menu.Size.Y);
+            Assert.True(strip.Tooltip.Position.Y + strip.Tooltip.Size.Y <= surface.Y);
+            foreach (var label in Descendants(strip.Menu).OfType<Label>()
+                         .Where(label => label.Name.ToString().StartsWith("MenuRow", StringComparison.Ordinal)))
+            {
+                var name = label.Name.ToString();
+                menuRows.Add(int.Parse(name["MenuRow".Length..name.IndexOf('.')],
+                    System.Globalization.CultureInfo.InvariantCulture));
+                Assert.True(label.Size.Y >= 28);
+                Assert.True(label.Position.Y + label.Size.Y <= strip.Menu.Size.Y);
+            }
+
+            var next = Descendants(strip.Menu).OfType<Button>()
+                .SingleOrDefault(button => button.Name.ToString() == "MenuNext");
+            if (next is null) break;
+            next.EmitPressed();
+        }
+
+        Assert.Equal(Enumerable.Range(0, 4), menuRows.Order());
     }
 
     /// <summary>

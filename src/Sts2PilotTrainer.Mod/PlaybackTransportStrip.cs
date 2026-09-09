@@ -648,11 +648,13 @@ internal sealed class PlaybackTransportStrip
         }
 
         var rowHeight = Math.Max(32 * _unit, _text.LedgerRow.Size);
-        var ledgerTop = top + height + (6 * _unit);
+        var ledgerTop = top + height;
         var inset = 6 * _unit;
+        var menuRowHeight = Math.Max(32 * _unit, _text.MenuRow.Size);
+        var reserve = MenuHeight(ScreenPage.MinimumPerPage, menuRowHeight) + TooltipHeight(surface.Speed);
         var fits = Math.Max(
             ScreenPage.MinimumPerPage,
-            (int)Math.Floor((_viewport.Y - ledgerTop - (2 * inset)) / rowHeight));
+            (int)Math.Floor((_viewport.Y - ledgerTop - (2 * inset) - reserve) / rowHeight));
         if (!_ledgerPageChosen)
         {
             var lookedAt = state.Ledger.ToList().FindIndex(row => row.IsLookedAt);
@@ -757,12 +759,23 @@ internal sealed class PlaybackTransportStrip
         _menu.Visible = rows.Count > 0;
         if (!_menu.Visible) return;
 
-        var rowHeight = 32 * _unit;
+        var rowHeight = Math.Max(32 * _unit, _text.MenuRow.Size);
         var chip = _openMenu == Code(MenuKind.Chip) || _openMenu == Code(MenuKind.PostFight);
         var menuWidth = (chip ? 260 : 96) * _unit;
-        var menuHeight = (10 * _unit) + (rowHeight * rows.Count);
+        var tooltipHeight = TooltipHeight(_surface.Speed);
+        var fits = Math.Max(
+            ScreenPage.MinimumPerPage,
+            (int)Math.Floor((_viewport.Y - _hangingBottom - (10 * _unit) - tooltipHeight) / rowHeight));
+        if (!_menuPageChosen)
+        {
+            var current = rows.ToList().FindIndex(row => row.IsCurrent);
+            _menuPage = current >= 0 ? ScreenPage.Containing(rows.Count, fits, current).Index : 0;
+        }
+        var page = ScreenPage.For(rows.Count, fits, _menuPage);
+        _menuPage = page.Index;
+        var menuHeight = MenuHeight(page.Drawn, rowHeight);
         var menuLeft = chip ? left + width - menuWidth : left + (192 * _unit);
-        var menuTop = _hangingBottom + (6 * _unit);
+        var menuTop = NextHangingTop(6 * _unit, menuHeight + tooltipHeight);
         Place(_menu, menuLeft, menuTop, menuWidth, menuHeight);
         PlatePolygon(_menu, menuWidth, menuHeight);
 
@@ -773,7 +786,13 @@ internal sealed class PlaybackTransportStrip
         // exists to prevent.
         _hangingBottom = menuTop + menuHeight;
 
-        for (var index = 0; index < rows.Count; index++)
+        var slot = 0;
+        if (page.HasPrevious)
+        {
+            AddMenuPageButton("MenuPrevious", true, slot++, rowHeight, menuWidth, page.Index - 1);
+        }
+
+        for (var index = page.First; index < page.First + page.Count; index++)
         {
             var row = rows[index];
 
@@ -786,7 +805,7 @@ internal sealed class PlaybackTransportStrip
             // worked, because the chip could not be pressed and a chosen speed looks
             // much like a speed nobody chose.
             var chosen = index;
-            var rowTop = (6 * _unit) + (index * rowHeight);
+            var rowTop = (6 * _unit) + (slot++ * rowHeight);
             var colour = !row.Enabled ? DisabledGlyph : row.IsCurrent ? Cream : Muted;
 
             if (row.Glyph is { } glyph)
@@ -817,6 +836,27 @@ internal sealed class PlaybackTransportStrip
                 });
             }
         }
+
+        if (page.HasNext)
+        {
+            AddMenuPageButton("MenuNext", false, slot, rowHeight, menuWidth, page.Index + 1);
+        }
+    }
+
+    private float MenuHeight(int rows, float rowHeight) => (10 * _unit) + (rowHeight * rows);
+
+    private void AddMenuPageButton(
+        string name, bool previous, int slot, float rowHeight, float width, int page)
+    {
+        NativePaginatorArt.AddButton(
+            _menu, name, string.Empty, previous,
+            new Rect2(0, (6 * _unit) + (slot * rowHeight), width, rowHeight), _pageArrow,
+            () =>
+            {
+                _menuPage = page;
+                _menuPageChosen = true;
+                Apply(_state);
+            });
     }
 
     /// <summary>
@@ -829,6 +869,10 @@ internal sealed class PlaybackTransportStrip
     /// the check; run it rather than judging a new field by resemblance to this one.
     /// </summary>
     private int _openMenu;
+
+    private int _menuPage;
+
+    private bool _menuPageChosen;
 
     /// <summary>No menu open. <see cref="_openMenu"/> holds one more than the kind, so
     /// zero is the empty answer and no separate flag is needed.</summary>
@@ -872,6 +916,8 @@ internal sealed class PlaybackTransportStrip
         HideTooltip();
 
         _openMenu = Code(_surface.Menu);
+        _menuPage = 0;
+        _menuPageChosen = false;
         _onChoose = chosen;
         Apply(_state);
     }
@@ -879,6 +925,8 @@ internal sealed class PlaybackTransportStrip
     internal void CloseMenu()
     {
         _openMenu = None;
+        _menuPage = 0;
+        _menuPageChosen = false;
         _onChoose = null;
         Apply(_state);
     }
@@ -1158,16 +1206,16 @@ internal sealed class PlaybackTransportStrip
         var width = 250 * _unit;
         var inset = 12 * _unit;
         var bodyTop = 24 * _unit;
-        var bodyHeight = WrappedHeight(
-            body, _text.TooltipBody, width - (2 * inset), fallbackLines: 2);
-        var height = bodyTop + bodyHeight + (8 * _unit);
+        var height = TooltipHeight(title, body);
+        var bodyHeight = height - bodyTop - (8 * _unit);
 
         // Below the control and pulled back on screen, never over the tag itself:
         // a tooltip that covers the counter it is explaining is worse than none. And
         // below whatever else is already hanging there, for the same reason.
         var x = Math.Clamp(
             anchor.Position.X + (anchor.Size.X / 2) - (width / 2), 8 * _unit, _viewport.X - width - (8 * _unit));
-        var y = Math.Max(anchor.Position.Y + anchor.Size.Y, _hangingBottom) + (10 * _unit);
+        var below = Math.Max(anchor.Position.Y + anchor.Size.Y, _hangingBottom);
+        var y = Math.Max(below, NextHangingTop(10 * _unit, height));
         Place(_tip, x, y, width, height);
         Clear(_tipPlate);
         Place(_tipPlate, 0, 0, width, height);
@@ -1175,6 +1223,23 @@ internal sealed class PlaybackTransportStrip
         Place(_tipTitle, inset, 6 * _unit, width - (2 * inset), 18 * _unit);
         Sentence(_tipBody, body, inset, bodyTop, width - (2 * inset), bodyHeight);
     }
+
+    private float TooltipHeight(ElementSurface element) =>
+        TooltipHeight(element.TooltipTitle, element.TooltipBody);
+
+    private float TooltipHeight(string title, string body)
+    {
+        if (title.Length == 0 && body.Length == 0) return 0;
+
+        var width = 250 * _unit;
+        var inset = 12 * _unit;
+        return (24 * _unit) +
+               WrappedHeight(body, _text.TooltipBody, width - (2 * inset), fallbackLines: 2) +
+               (8 * _unit);
+    }
+
+    private float NextHangingTop(float gap, float followingHeight) =>
+        _hangingBottom + (_hangingBottom + gap + followingHeight <= _viewport.Y ? gap : 0);
 
     private void HideTooltip()
     {
