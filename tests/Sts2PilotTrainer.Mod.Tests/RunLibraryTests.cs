@@ -841,6 +841,75 @@ public sealed class RunLibraryModuleTests
         Assert.Null(RunLibraryModule.Instance.Refusal);
     }
 
+    /// <summary>
+    /// The main-menu row re-decides where the game shows its button column again, and
+    /// not only where the game refreshes its own buttons.
+    ///
+    /// <c>RefreshButtons</c> is called exactly twice in this build - at the end of
+    /// <c>_Ready</c> and after a run is abandoned - so a row that followed it alone kept
+    /// whatever it was told at construction. The client showed that: turning the setting
+    /// off and walking back out of Settings left the row on the menu until the next
+    /// launch. Named here rather than counted, so removing the hook fails this test
+    /// instead of quietly restoring the defect.
+    /// </summary>
+    [GameFact]
+    public void TheMainMenuRowFollowsTheHookThatFiresPerVisit()
+    {
+        _ = EngineHost.StartupPhase();
+
+        var targets = PatchTargets.Targets([typeof(MainMenuLibraryRow)]);
+
+        Assert.Contains("NMainMenu.OnSubmenuStackChanged", targets);
+        Assert.Contains("NMainMenu.RefreshButtons", targets);
+        Assert.Empty(PatchTargets.Unresolvable([typeof(MainMenuLibraryRow)]));
+    }
+
+    /// <summary>
+    /// Adding the row must not adopt the running game.
+    ///
+    /// The main menu is built one startup phase before the game has a model database, so
+    /// <c>AdoptRunningGame</c> refuses there - and <c>RunmobileMod.Adopt</c> latches its
+    /// refusal for the process, so asking at <c>NMainMenu._Ready</c> also stopped the
+    /// Compendium card adding itself and stopped the recorder. A build that did exactly
+    /// that passed every test in this suite and was dead in the client, which is why the
+    /// call site is asserted rather than the behaviour: nothing without a game can
+    /// reproduce the phase this goes wrong in.
+    /// </summary>
+    [Fact]
+    public void AddingTheMainMenuRowDoesNotAdoptTheRunningGame()
+    {
+        var source = MainMenuLibraryRowSource();
+        var adding = Between(source, "internal static void AddButton", "internal static void SetVisibility");
+        var pressing = Between(source, "private static void Open(NButton pressed)", "\n    /// <summary>");
+
+        // Both slices are checked for something they certainly contain first, because a
+        // slice this walk failed to find would make the refusal below pass by being empty.
+        Assert.Contains("Duplicate", adding, StringComparison.Ordinal);
+        Assert.Contains("RunBrowserScreen.Open", pressing, StringComparison.Ordinal);
+
+        Assert.DoesNotContain("EnsureAdopted", adding, StringComparison.Ordinal);
+        // And the press is where it does ask, so the row is not simply never adopting.
+        Assert.Contains("EnsureAdopted", pressing, StringComparison.Ordinal);
+    }
+
+    private static string MainMenuLibraryRowSource()
+    {
+        // Read as source rather than reflected over, the way the engine-command table is:
+        // what has to be true is which call appears in which method, and IL is a worse
+        // place to read that than the file everyone else edits.
+        var root = Sts2PilotTrainer.IO.WorktreeLocator.Find();
+        return File.ReadAllText(
+            Path.Combine(root, "src", "Sts2PilotTrainer.Mod", "MainMenuLibraryRow.cs"));
+    }
+
+    private static string Between(string source, string from, string to)
+    {
+        var start = source.IndexOf(from, StringComparison.Ordinal);
+        Assert.True(start >= 0, $"'{from}' is not in MainMenuLibraryRow.cs any more.");
+        var end = source.IndexOf(to, start + from.Length, StringComparison.Ordinal);
+        return end < 0 ? source[start..] : source[start..end];
+    }
+
     /// <summary>A member this build does not have is named by whichever of the two
     /// declaration styles carries it, so a patch class written the library's way is
     /// checked as well as one written the recorder's.</summary>
