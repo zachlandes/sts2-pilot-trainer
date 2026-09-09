@@ -95,17 +95,44 @@ internal static class MyRunsSettings
         var row = Build(width, font);
         if (parent is not Container)
         {
-            row.Root.Position = anchor.Position + new Vector2(0f, anchor.Size.Y + SectionGap);
+            var top = anchor.Position.Y + anchor.Size.Y + SectionGap;
+            row.Root.Position = new Vector2(anchor.Position.X, top);
+            MakeRoomBelow(parent, top, MyRunsSettingsRow.Height + SectionGap);
             if (parent is Control control)
             {
                 control.CustomMinimumSize = new Vector2(
                     control.CustomMinimumSize.X,
-                    Math.Max(control.CustomMinimumSize.Y, row.Root.Position.Y + MyRunsSettingsRow.Height));
+                    Math.Max(control.CustomMinimumSize.Y, top + MyRunsSettingsRow.Height));
             }
         }
 
         parent.AddChild(row.Root);
         return row;
+    }
+
+    /// <summary>
+    /// Moves the game's own rows below this one down, so the section this row is inserted
+    /// into is a section taller rather than a section with something drawn over it.
+    ///
+    /// <para><b>Growing the parent's minimum size reserves nothing here.</b> This column
+    /// positions its children absolutely - the modding button, the "Modding" heading, its
+    /// divider and the credits row are each resolved by unique name and each carry their
+    /// own <c>Position</c> - so a taller parent moves none of them, and a row inserted
+    /// between two of them is simply drawn on top of the lower one. The client showed
+    /// exactly that: the reading and its note over the "Modding" heading.</para>
+    ///
+    /// <para>Only siblings that start below the insertion point move, and they move by
+    /// the same amount, so the column's own spacing is preserved and nothing above the
+    /// row is touched. A <see cref="Container"/> parent never reaches here: it lays its
+    /// children out from their minimum sizes, which the row already carries.</para>
+    /// </summary>
+    private static void MakeRoomBelow(Node parent, float top, float by)
+    {
+        foreach (var child in parent.GetChildren().OfType<Control>())
+        {
+            if (child.Position.Y < top) continue;
+            child.Position += new Vector2(0f, by);
+        }
     }
 
     /// <summary>

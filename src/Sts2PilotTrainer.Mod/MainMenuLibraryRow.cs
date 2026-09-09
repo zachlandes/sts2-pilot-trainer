@@ -31,11 +31,12 @@ namespace Sts2PilotTrainer.Mod;
 ///
 /// Three hooks, and each is the honest one for its question.
 /// <c>_Ready</c> is where the game builds its buttons and wires their focus behaviour, so
-/// it is where a ninth one has to be added and joined to that wiring. <c>RefreshButtons</c>
-/// is where the game decides per visit what is visible and enabled - it is called from
-/// <c>_Ready</c> and again after a run is abandoned - so visibility is decided there
-/// rather than once. <c>SingleplayerButtonPressed</c> is not patched at all: the row does
-/// not touch the game's own routes.
+/// it is where a ninth one has to be added and joined to that wiring.
+/// <c>OnSubmenuStackChanged</c> is where the game decides its button column is on screen
+/// again, so it is where visibility is re-decided per visit; <c>RefreshButtons</c> is
+/// where the enabled states this row mirrors are settled, and it is called only twice, so
+/// it cannot be the per-visit hook on its own. <c>SingleplayerButtonPressed</c> is not
+/// patched at all: the row does not touch the game's own routes.
 ///
 /// <para><b>Nothing here adopts the running game until the row is pressed.</b> The main
 /// menu is built one startup phase before the game has a model database, so adopting at
@@ -63,6 +64,12 @@ internal static class MainMenuLibraryRow
     private const string FocusedHandler = "MainMenuButtonFocused";
 
     private const string UnfocusedHandler = "MainMenuButtonUnfocused";
+
+    /// <summary>The game's own "the button column is on screen again" moment, named as a
+    /// string because it is private. It is connected to the submenu stack's
+    /// <c>StackModified</c>, and Settings, the Compendium and character select are all
+    /// pushed onto that stack.</summary>
+    private const string SubmenuStackChangedHook = "OnSubmenuStackChanged";
 
     [HarmonyPostfix]
     [HarmonyPatch(nameof(NMainMenu._Ready))]
@@ -108,8 +115,39 @@ internal static class MainMenuLibraryRow
     }
 
     /// <summary>
-    /// Decides, every time the game refreshes its own buttons, whether the row belongs on
-    /// this menu and whether it may be pressed.
+    /// Re-decides whether the row belongs on this menu whenever the game shows its button
+    /// column again.
+    ///
+    /// <para><b>This is the per-visit hook, and <c>RefreshButtons</c> is not.</b> The game
+    /// calls <c>RefreshButtons</c> exactly twice - at the end of its own <c>_Ready</c>,
+    /// and after a run is abandoned - so a row that only followed it kept whatever it was
+    /// told at construction: turning the setting off and walking back out of Settings left
+    /// the row on the menu until the next launch, which is what the client showed.
+    /// <c>OnSubmenuStackChanged</c> is where the game itself decides the column is
+    /// visible again - it is connected to the stack's own <c>StackModified</c> - and
+    /// Settings is pushed onto that stack, so leaving it fires this. It is the main
+    /// menu's analogue of the <c>OnSubmenuOpened</c> the Compendium card follows for the
+    /// same reason.</para>
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(SubmenuStackChangedHook)]
+    internal static void SetVisibilityOnReturn(NMainMenu __instance) => SetVisibility(__instance);
+
+    /// <summary>
+    /// And again whenever the game re-decides its own buttons, which is where the enabled
+    /// states this row mirrors are settled.
+    ///
+    /// Both hooks rather than one: this one is the only place the epoch gate and the
+    /// abandoned-run refresh reach, and the one above is the only place a return from a
+    /// submenu reaches. Neither covers the other, and the decision they share is
+    /// idempotent.
+    /// </summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(nameof(NMainMenu.RefreshButtons))]
+    internal static void SetVisibilityOnRefresh(NMainMenu __instance) => SetVisibility(__instance);
+
+    /// <summary>
+    /// Whether the row belongs on this menu and whether it may be pressed.
     ///
     /// Two separate questions and both are somebody else's. Whether it is drawn at all is
     /// the shell's permission first - a multiplayer session gets nothing, not even a
@@ -118,8 +156,6 @@ internal static class MainMenuLibraryRow
     /// while an undiscovered epoch is waiting and a mod row that stayed live through that
     /// would be a way around a gate the game put up.
     /// </summary>
-    [HarmonyPostfix]
-    [HarmonyPatch(nameof(NMainMenu.RefreshButtons))]
     internal static void SetVisibility(NMainMenu __instance)
     {
         try
