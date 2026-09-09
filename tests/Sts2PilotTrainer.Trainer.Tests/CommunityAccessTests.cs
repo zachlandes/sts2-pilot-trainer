@@ -48,10 +48,10 @@ public sealed class CommunityAccessTests
         Assert.DoesNotContain(LibraryCopy.ShowCommunityRuns, locked.Body);
     }
 
-    /// <summary>Every lock says its reason in one sentence, because that sentence is
-    /// what the screen puts over the tabs where the plate could not be drawn. A lock
-    /// with no tooltip would be a Community list with nothing to account for it.
-    /// </summary>
+    /// <summary>Every lock says its reason in one sentence: the tooltip behind the
+    /// lock icon, and the body line the screen puts over the tabs for a player who
+    /// never hovers. A lock short of either would be a Community list with nothing to
+    /// account for it.</summary>
     [Theory]
     [InlineData(true, false)]
     [InlineData(false, true)]

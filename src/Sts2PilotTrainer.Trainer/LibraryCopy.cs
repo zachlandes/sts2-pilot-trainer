@@ -170,7 +170,7 @@ public static class LibraryCopy
         $"Community runs are off - turn on {ShowCommunityRuns} in Settings, under Modding, to see them.";
 
     /// <summary>The same lock when no sharing service is configured: nothing a setting
-    /// can change, so the tooltip and the plate say what is missing rather than
+    /// can change, so the tooltip and the body line say what is missing rather than
     /// pointing at a switch.</summary>
     public const string CommunityUnavailableTooltip =
         "Community runs are unavailable: no authorized sharing service is configured.";
