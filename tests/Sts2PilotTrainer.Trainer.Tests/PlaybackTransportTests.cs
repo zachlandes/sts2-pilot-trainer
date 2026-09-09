@@ -19,6 +19,15 @@ public sealed class PlaybackTransportTests
 {
     private static readonly PrefightChoice Blessing = new PrefightChoice.Blessing(0, "RELIC.LEAFY_POULTICE");
 
+    /// <summary>
+    /// A blessing whose relic opens a card screen, and the card the recording picked
+    /// off it.
+    ///
+    /// Nobody watching ever sees that screen: the engine answers it from the recording
+    /// inside the call the blessing makes, so the card is removed, transformed or
+    /// upgraded before there is a frame to show it on. The caption is therefore the
+    /// only place it is said, which is why these two sentences exist at all.
+    /// </summary>
     private static readonly PrefightChoice BlessingWithACard =
         new PrefightChoice.Blessing(0, "RELIC.PRECISE_SCISSORS", ["CARD.STRIKE_IRONCLAD"]);
 
