@@ -235,10 +235,6 @@ internal static class RecordedFightRun
     /// frames. Every failure ends the attempt and says why on screen rather than
     /// leaving a half-built run behind.
     /// </summary>
-    internal static Task Start(ReplayManifest recording) =>
-        Start(recording, RecordedFightPlan.For(recording));
-
-    /// <inheritdoc cref="Start(ReplayManifest)"/>
     /// <param name="plan">Which boundary of the recording to stand the player at. The
     /// library's rows are the reason this is a parameter: a run has as many places to
     /// be stood as its recording proves, and every one of them is this same journey

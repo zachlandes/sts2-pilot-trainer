@@ -1,4 +1,5 @@
 using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
 
