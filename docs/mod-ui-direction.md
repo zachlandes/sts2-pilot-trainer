@@ -174,7 +174,7 @@ The look-back ledger measures its page from the viewport in the same way, and th
 **A surface that sits inside the game's own container is a child of it, and asks it for height only.**
 The settings row is inserted into the modding entry's parent column immediately after that entry.
 It asks the container for height and never for width, then lays itself out again after the container sorts because the settings screen has not been laid out when its `_Ready` runs.
-A fresh retail capture of the current role mapping remains outstanding; `demo/RUNMOBILE-NATIVE-TYPE.md` preserves only the earlier iteration for historical comparison.
+`demo/RUNMOBILE-NATIVE-TYPE.md` records current retail captures of the library, refusal popup, and settings row, and names the surfaces that still require manual navigation for an in-client capture.
 
 ## What a redesign owns, and what it does not
 
