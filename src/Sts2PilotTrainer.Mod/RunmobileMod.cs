@@ -50,6 +50,7 @@ public static class RunmobileMod
 
     private static bool _adoptionAttempted;
     private static bool _adopted;
+    private static bool _nativeTextVerified;
 
     /// <summary>Whether the mod started without refusing. Distinct from any module
     /// being enabled: the shell starting is about this process, and a module being
@@ -235,6 +236,7 @@ public static class RunmobileMod
     /// </summary>
     internal static bool EnsureAdopted()
     {
+        VerifyNativeText();
         var adopted = Adopt();
 
         // What this mod leaves on a player's disk is the shell's, and it does not
@@ -247,6 +249,44 @@ public static class RunmobileMod
         RecordingRetention.ApplyOnce();
 
         return adopted;
+    }
+
+    /// <summary>
+    /// Reads this build's own text roles once, here, and says in the log which ones it
+    /// could not answer.
+    ///
+    /// Here rather than at mod start because the mod reads nothing at initialization,
+    /// and a scene is the game. This is the mod's first moment with a running game, and
+    /// it is one startup phase and one menu ahead of anything that draws, so a role
+    /// this build renamed is a line in the log a player can attach to a bug report
+    /// rather than a feature that breaks where it is used. It cost the recorded-fight
+    /// journey once, from a wrong node path that no test and no surface asked about
+    /// until a player was already entering the fight.
+    ///
+    /// Like the patch roster, a diagnostic never takes the mod down with it: failing to
+    /// describe the typography is not failing to have it.
+    /// </summary>
+    private static void VerifyNativeText()
+    {
+        // Every surface asks for adoption, so this is reached at every menu press. The
+        // roles themselves are read once and cached; the latch is so the summary is
+        // said once too.
+        if (_nativeTextVerified) return;
+        _nativeTextVerified = true;
+
+        try
+        {
+            var refused = GameText.Verify();
+            if (refused.Count == 0) return;
+
+            Log.Error(
+                $"[{ModId}] {refused.Count} text role(s) this build does not have, drawn by a " +
+                "stand-in: " + string.Join(", ", refused), 2);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[{ModId}] could not read this build's text roles: {ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     private static bool Adopt()

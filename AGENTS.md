@@ -341,6 +341,11 @@ Which native element each role asks is a judgement per element and `docs/mod-ui-
 A number here is a number that was right on one window and one build: the game carries no project theme, so nothing inherits, and the sizes it draws its own elements at are the only ones that read as native.
 A surface that sits inside one of the game's own containers is a child of it and asks it for height only, laid out again once that container has sorted - a settings screen has not been laid out when its `_Ready` runs, and a child's minimum width is a demand its host obeys.
 `demo/RUNMOBILE-NATIVE-TYPE.md` records the current retail evidence and the surfaces that still require an in-client capture.
+**A role names a node in one of the game's own scenes, and a role this build has not got costs a log line rather than the feature that asked.**
+`GameText.Verify` resolves every role once, from `RunmobileMod.EnsureAdopted` - not from the mod initializer, which reads nothing because a scene is the game - and a role this build cannot answer is logged there and drawn by the popup's own heading or body of the same weight.
+That stand-in is another native role rather than a default written down here, and it exists because a single wrong node path used to throw wherever the role was first asked for: v0.111.0's ledger row pointed one container too high and abandoned every recorded fight a player entered, with a message about text.
+The two popup roles stand in for nothing themselves, so a build with no native typography at all still refuses the surface, which is the rule above unchanged.
+Nothing else checks a path, because Godot loads no resources under `dotnet test`: `NativeTextRoleTests` reads the shipped pack itself and is what holds the table to this build.
 
 **A run a person plays is recorded by one owner, and refused rather than repaired.**
 `RunCapture` in `Sts2PilotTrainer.Replay` is the whole-run counterpart of `FightCapture` and delegates the inside of each fight to one, so there is one capture path.

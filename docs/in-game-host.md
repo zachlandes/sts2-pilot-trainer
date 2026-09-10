@@ -764,6 +764,27 @@ under the MODDED one, copying its font and size rather than styling one of its o
 That copy is now every surface's rule rather than this row's exception: `GameText` in
 the mod reads each native role's font and size, and `docs/mod-ui-direction.md` owns
 which element each Runmobile element asks.
+
+A role names a node in one of the game's own scenes, and that path is a claim about
+this build that nothing checked until the surface asking for it was drawn.
+v0.111.0 shipped with the ledger row pointing one container too high in the map
+point's hover tip, and the first thing to notice was a player entering a recorded
+fight and being told, in a message about text, that the fight was abandoned - the
+transport asks for that role on the way in.
+`GameText.Verify` now resolves every role once, from `RunmobileMod.EnsureAdopted`,
+which is the mod's first moment with a running game.
+It is not at mod initialization for the reason at the top of this document: a scene
+is the game, and the initializer reads nothing.
+A role this build cannot answer is named in the log there and drawn by the popup's own
+heading or body of the same weight, so a wrong path costs a line in a file a player can
+attach to a bug report rather than the feature that asked for it.
+The stand-in is another native role rather than a size written down in the mod, and the
+two popup roles stand in for nothing themselves: a build that cannot answer those has no
+native typography at all and every surface refuses, which is what missing native
+furniture has always cost.
+Godot loads no resources under `dotnet test`, so a path is checked by
+`NativeTextRoleTests`, which reads the game's own scene files out of the shipped pack
+and skips where there is no installation.
 `RecorderPresence.For` derives what it says and its colour from exactly
 `RunRecorder.Active` and `RunCapture.State`; the row is re-derived every frame, because
 the recorder attaches after the overlay is built and a watch can break at any decision.

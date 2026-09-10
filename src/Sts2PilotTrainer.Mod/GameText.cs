@@ -1,5 +1,6 @@
 using Godot;
 using MegaCrit.Sts2.Core.Localization.Fonts;
+using MegaCrit.Sts2.Core.Logging;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -41,6 +42,7 @@ internal static class GameText
     private static readonly StringName RichTextLabelType = "RichTextLabel";
     private static readonly Dictionary<string, PackedScene> Scenes = [];
     private static readonly Dictionary<NativeTextRole, GameTextStyle> SceneStyles = [];
+    private static readonly Dictionary<NativeTextRole, NativeTextRole> StandIns = [];
 
     internal static GameTextStyle? Of(Node? node)
     {
@@ -70,24 +72,162 @@ internal static class GameText
     internal static GameTextStyle Require(Node? node, string role) =>
         Of(node) ?? throw new InvalidOperationException($"This build's {role} has no native text style.");
 
-    internal static GameTextStyle Scene(NativeTextRole role)
+    /// <summary>
+    /// Resolves every role against this build, once, and says in the game's log which
+    /// ones it could not answer.
+    ///
+    /// A role names a node in one of the game's own scenes, and a build that renamed
+    /// or moved that node answers nothing. Before this ran, the first surface to ask
+    /// for such a role threw where it asked - which was inside the recorded-fight
+    /// journey, so one wrong path in this table cost a player the fight they were
+    /// entering and said so in a message about text. A path this build cannot answer
+    /// now costs a log line here and a stand-in there.
+    ///
+    /// It is not called from the mod initializer, because the mod reads nothing at
+    /// initialization: that runs one startup phase before the game exists and reading
+    /// the game there ends the process. <see cref="RunmobileMod.EnsureAdopted"/> is the
+    /// mod's first moment with a running game and is where this runs.
+    /// See docs/in-game-host.md.
+    ///
+    /// Returns the roles this build could not answer, which is what a test reads.
+    /// </summary>
+    internal static IReadOnlyList<NativeTextRole> Verify()
+    {
+        // One instance of each scene for the whole sweep rather than one per role.
+        // Twenty-six roles sit in eighteen scenes and two of those are whole screens,
+        // and this runs on a menu press a player is waiting through.
+        using var scenes = new Instances();
+        return Verify(role => Read(role, scenes));
+    }
+
+    /// <inheritdoc cref="Verify()"/>
+    /// <param name="read">Where a role's style comes from. The game's own scene files
+    /// in the client; a test supplies its own, because there is no Godot to load a
+    /// scene from without one.</param>
+    internal static IReadOnlyList<NativeTextRole> Verify(Func<NativeTextRole, GameTextStyle> read)
+    {
+        foreach (var role in Specs.Keys)
+        {
+            try
+            {
+                Resolve(role, read);
+            }
+            catch (Exception ex)
+            {
+                // The two roles nothing stands in for. A build that cannot answer the
+                // plainest text the game draws has no native typography at all, and
+                // every surface refuses rather than inventing one - which is what this
+                // mod did about missing native furniture before this check existed.
+                Log.Error(
+                    $"[{RunmobileMod.ModId}] no {Specs[role].Name} and nothing to stand in for it: " +
+                    $"{ex.Message}", 2);
+            }
+        }
+
+        return [.. StandIns.Keys];
+    }
+
+    /// <summary>
+    /// The style a role draws at on this build.
+    ///
+    /// Never throws over a role this build cannot answer, except for the two roles
+    /// nothing stands in for. <see cref="Verify"/> has normally already asked, so this
+    /// is a dictionary lookup by the time a surface is drawn.
+    /// </summary>
+    internal static GameTextStyle Scene(NativeTextRole role) => Resolve(role, Read);
+
+    /// <summary>Forgets what was read off this build. For a test that stands in for
+    /// the game's scene files and must not leave its answers behind.</summary>
+    internal static void Forget()
+    {
+        SceneStyles.Clear();
+        StandIns.Clear();
+        Scenes.Clear();
+    }
+
+    private static GameTextStyle Resolve(NativeTextRole role, Func<NativeTextRole, GameTextStyle> read)
     {
         if (SceneStyles.TryGetValue(role, out var style)) return style;
+        if (StandIns.TryGetValue(role, out var stood)) return Resolve(stood, read);
 
-        var spec = Specs[role];
-        var root = Load(spec.Scene).Instantiate();
         try
         {
-            var control = root.GetNodeOrNull<Control>(spec.Node)
-                ?? throw new InvalidOperationException(
-                    $"This build's '{spec.Scene}' has no '{spec.Node}' text role.");
-            style = Require(control, spec.Name) with { LocaleBold = spec.Bold };
-            SceneStyles.Add(role, style);
-            return style;
+            style = read(role);
         }
-        finally
+        catch (Exception refusal)
         {
-            root.Free();
+            var standIn = StandInFor(role, refusal);
+            // Resolved before it is recorded, so a build that cannot answer the
+            // stand-in either refuses out of here rather than remembering a stand-in
+            // that answers nothing.
+            var drawn = Resolve(standIn, read);
+            StandIns[role] = standIn;
+            Log.Error(
+                $"[{RunmobileMod.ModId}] this build has no {Specs[role].Name} " +
+                $"('{Specs[role].Node}' in '{Specs[role].Scene}'): {refusal.Message} " +
+                $"Drawing it as the {Specs[standIn].Name} instead.", 2);
+            return drawn;
+        }
+
+        SceneStyles.Add(role, style);
+        return style;
+    }
+
+    /// <summary>
+    /// Which role is drawn in place of one this build could not answer.
+    ///
+    /// The stand-in is another native role rather than a font and a size written down
+    /// here: nothing in this mod derives either, and a degraded role is still text this
+    /// build draws somewhere. It is the popup's own heading or body, of the weight the
+    /// refused role asked for, because that is the plainest text the game has and the
+    /// popup is furniture every surface of this mod already requires. Those two stand
+    /// in for nothing themselves, so a build that cannot answer them refuses here and
+    /// every surface refuses with it, which is what missing native furniture has always
+    /// cost.
+    /// </summary>
+    private static NativeTextRole StandInFor(NativeTextRole role, Exception refusal)
+    {
+        var standIn = Specs[role].Bold ? NativeTextRole.PopupHeading : NativeTextRole.PopupBody;
+        if (standIn == role) throw refusal;
+        return standIn;
+    }
+
+    private static GameTextStyle Read(NativeTextRole role)
+    {
+        using var scenes = new Instances();
+        return Read(role, scenes);
+    }
+
+    private static GameTextStyle Read(NativeTextRole role, Instances scenes)
+    {
+        var spec = Specs[role];
+        var control = scenes.Of(spec.Scene).GetNodeOrNull<Control>(spec.Node)
+            ?? throw new InvalidOperationException(
+                $"This build's '{spec.Scene}' has no '{spec.Node}' text role.");
+        return Require(control, spec.Name) with { LocaleBold = spec.Bold };
+    }
+
+    /// <summary>
+    /// The scenes standing up while their roles are read, one instance each, freed
+    /// together. Nothing outlives the read: a role is a font and a size, and the tree
+    /// it was copied from is the game's, not this mod's.
+    /// </summary>
+    private sealed class Instances : IDisposable
+    {
+        private readonly Dictionary<string, Node> _roots = [];
+
+        internal Node Of(string scene)
+        {
+            if (_roots.TryGetValue(scene, out var root)) return root;
+            root = Load(scene).Instantiate();
+            _roots.Add(scene, root);
+            return root;
+        }
+
+        public void Dispose()
+        {
+            foreach (var root in _roots.Values) root.Free();
+            _roots.Clear();
         }
     }
 
@@ -115,6 +255,15 @@ internal static class GameText
 
     private sealed record Spec(string Scene, string Node, string Name, bool Bold);
 
+    /// <summary>
+    /// Every role and the node it names, for a test that reads the game's own scene
+    /// files off this build. A wrong path here is invisible to everything else until
+    /// the surface that asks for it is drawn, and one of them cost a player the
+    /// recorded fight they were entering.
+    /// </summary>
+    internal static IEnumerable<(NativeTextRole Role, string Scene, string Node, string Name)> Declarations =>
+        Specs.Select(pair => (pair.Key, pair.Value.Scene, pair.Value.Node, pair.Value.Name));
+
     private static readonly IReadOnlyDictionary<NativeTextRole, Spec> Specs =
         new Dictionary<NativeTextRole, Spec>
         {
@@ -138,7 +287,8 @@ internal static class GameText
             [NativeTextRole.IdentityDescription] = new("res://scenes/screens/main_menu/change_profile_button.tscn", "HBoxContainer/MarginContainer/VBoxContainer/Description", "identity description", false),
             [NativeTextRole.DropdownValue] = new("res://scenes/screens/settings_dropdown.tscn", "Container/CurrentOption/Label", "dropdown value", true),
             [NativeTextRole.DropdownItem] = new("res://scenes/ui/dropdown_item.tscn", "Label", "dropdown item", true),
-            [NativeTextRole.LedgerRow] = new("res://scenes/ui/map_point_history_hover_tip.tscn", "TextContainer/RewardStats/RewardRows/ObtainedRow1", "ledger row", false),
+            [NativeTextRole.LedgerRow] = new("res://scenes/ui/map_point_history_hover_tip.tscn",
+                "TextContainer/TopContainer/RewardStats/RewardRows/ObtainedRow1", "ledger row", false),
             [NativeTextRole.FloorNumeral] = new("res://scenes/ui/map_point_history_hover_tip.tscn", "TextContainer/TopContainer/Title", "floor numeral", true),
             [NativeTextRole.CardCaption] = new("res://scenes/screens/run_history_screen/deck_history_entry.tscn", "MarginContainer/Label", "card caption", false),
             [NativeTextRole.Input] = new("res://scenes/screens/card_library/card_library.tscn", "Sidebar/MarginContainer/TopVBox/SearchBar/TextArea", "input field", false),
