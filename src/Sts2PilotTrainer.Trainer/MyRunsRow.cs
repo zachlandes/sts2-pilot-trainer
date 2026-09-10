@@ -189,10 +189,10 @@ public sealed record MyRunsRow(
                 _ => $"{runs} · {size}",
             },
             Detail: read ? DetailLine(facts) : string.Empty,
-            KeepLabel: LibraryCopy.OurSetting("Keep my runs"),
+            KeepLabel: "Keep my runs",
             KeepNumeral: facts.Keep.ToString(CultureInfo.InvariantCulture),
             KeepPressable: read && settingsRead,
-            RemoveLabel: LibraryCopy.OurSetting("Remove all my runs"),
+            RemoveLabel: "Remove all my runs",
             RemovePressable: read && settingsRead && facts.Runs > 0,
             Confirm: new MyRunsConfirm(
                 Title: "Remove all your runs?",

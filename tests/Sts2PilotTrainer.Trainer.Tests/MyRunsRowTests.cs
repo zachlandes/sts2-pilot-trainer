@@ -265,7 +265,7 @@ public sealed class MyRunsRowTests
     {
         var row = MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: 6 * Mb, Keep: 5));
 
-        Assert.Equal("Runmobile · Keep my runs", row.KeepLabel);
+        Assert.Equal("Keep my runs", row.KeepLabel);
         Assert.Equal("5", row.KeepNumeral);
         Assert.True(row.KeepPressable);
     }
@@ -300,9 +300,9 @@ public sealed class MyRunsRowTests
         var off = MyRunsRow.For(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 50, MainMenuRowShown: false));
 
         Assert.True(on.MainMenu.Shown);
-        Assert.Equal("Runmobile · On the main menu: on", on.MainMenu.SettingLabel);
+        Assert.Equal("Runmobile on the main menu: on", on.MainMenu.SettingLabel);
         Assert.False(off.MainMenu.Shown);
-        Assert.Equal("Runmobile · On the main menu: off", off.MainMenu.SettingLabel);
+        Assert.Equal("Runmobile on the main menu: off", off.MainMenu.SettingLabel);
     }
 
     /// <summary>

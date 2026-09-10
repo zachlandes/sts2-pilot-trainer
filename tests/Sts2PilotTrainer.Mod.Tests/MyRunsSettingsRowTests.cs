@@ -26,11 +26,11 @@ public sealed class MyRunsSettingsRowTests
     {
         var row = Build(new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20));
 
-        Assert.Equal("Runmobile · Keep my runs", Label(row, "KeepLabel").Text);
+        Assert.Equal("Keep my runs", Label(row, "KeepLabel").Text);
         Assert.Equal("20", Label(row, "KeepNumeral").Text);
         Assert.Equal("12 runs · 6 MB", Label(row, "Reading").Text);
         Assert.Equal("on this computer, in user://Runmobile/recordings", Label(row, "Detail").Text);
-        Assert.Equal("Runmobile · Remove all my runs", row.Remove.Text);
+        Assert.Equal("Remove all my runs", row.Remove.Text);
     }
 
     /// <summary>
@@ -294,10 +294,10 @@ public sealed class MyRunsSettingsRowTests
     public void TheMainMenuControlStatesWhatTheMenuIsDoing()
     {
         Assert.Equal(
-            "Runmobile · On the main menu: on",
+            "Runmobile on the main menu: on",
             Build(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20, MainMenuRowShown: true)).MainMenu.Text);
         Assert.Equal(
-            "Runmobile · On the main menu: off",
+            "Runmobile on the main menu: off",
             Build(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20, MainMenuRowShown: false)).MainMenu.Text);
     }
 
@@ -314,7 +314,7 @@ public sealed class MyRunsSettingsRowTests
         row.MainMenu.EmitPressed();
 
         Assert.False(asked);
-        Assert.Equal("Runmobile · On the main menu: on", row.MainMenu.Text);
+        Assert.Equal("Runmobile on the main menu: on", row.MainMenu.Text);
     }
 
     /// <summary>

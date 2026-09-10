@@ -48,10 +48,10 @@ public sealed class MainMenuRowTests
     public void TheSettingLineCarriesTheAnswerItIsAbout()
     {
         Assert.Equal(
-            "Runmobile · On the main menu: on",
+            "Runmobile on the main menu: on",
             MainMenuRow.For(choice: null, hasFinishedARun: false).SettingLabel);
         Assert.Equal(
-            "Runmobile · On the main menu: off",
+            "Runmobile on the main menu: off",
             MainMenuRow.For(choice: null, hasFinishedARun: true).SettingLabel);
     }
 

@@ -83,6 +83,13 @@ internal sealed class MyRunsSettingsRow
 
     private const float LabelHeightRatio = 1.5f;
 
+    /// <summary>The heading over the whole row, and the clear space under it. One
+    /// heading says whose these controls are, because they stand in the game's own
+    /// General list drawn in the game's own type and nothing else on the screen
+    /// does.</summary>
+    private const float HeadingHeightRatio = 1.5f;
+    private const float HeadingGapRatio = 0.35f;
+
     /// <summary>Clear space above the keep stepper and again below it, before the
     /// rule: the game's own settings rows stand off their dividers by about this much,
     /// and a stepper hard against the row above read as part of it.</summary>
@@ -107,6 +114,7 @@ internal sealed class MyRunsSettingsRow
     private readonly MyRunsSettingsText _text;
 
     private readonly Control _root;
+    private readonly Label _heading;
     private readonly Label _keepLabel;
     private readonly Label _keepNumeral;
     private readonly Button _fewer;
@@ -146,6 +154,7 @@ internal sealed class MyRunsSettingsRow
     private MyRunsSettingsRow(Nodes nodes)
     {
         _root = nodes.Root;
+        _heading = nodes.Heading;
         _keepLabel = nodes.KeepLabel;
         _keepNumeral = nodes.KeepNumeral;
         _fewer = nodes.Fewer;
@@ -165,6 +174,10 @@ internal sealed class MyRunsSettingsRow
     }
 
     internal Control Root => _root;
+
+    /// <summary>The one line that says these controls are Runmobile's. Named so a host
+    /// can assert on it without reaching into the tree.</summary>
+    internal Label Heading => _heading;
 
     /// <summary>The destructive control. Named so a host can put focus somewhere
     /// else.</summary>
@@ -230,11 +243,13 @@ internal sealed class MyRunsSettingsRow
     /// <inheritdoc cref="Height"/>
     internal static float HeightFor(MyRunsSettingsText text)
     {
+        var heading = (text.Row.Size * HeadingHeightRatio) + (text.Row.Size * HeadingGapRatio);
         var label = Math.Max(text.Row.Size, text.Numeral.Size) * LabelHeightRatio;
         var reading = text.Reading.Size * LabelHeightRatio;
         var note = text.Detail.Size * NoteHeightRatio;
         var remove = text.Button.Size * RemoveHeightRatio;
-        return (text.Row.Size * StepperPadRatio * 2f) + label + (text.Row.Size * RuleGapRatio) + reading + note +
+        return heading + (text.Row.Size * StepperPadRatio * 2f) + label +
+            (text.Row.Size * RuleGapRatio) + reading + note +
             (text.Row.Size * ControlGapRatio) + remove +
             (text.Row.Size * FetchGapRatio) + (text.Button.Size * FetchHeightRatio) +
             (text.Row.Size * MainMenuGapRatio) + (text.Button.Size * MainMenuHeightRatio);
@@ -283,6 +298,7 @@ internal sealed class MyRunsSettingsRow
             Keep = keep,
             FetchRunIndex = fetchRunIndex,
             Text = text,
+            Heading = Add(root, Text("Heading", text.Row, Gold)),
             KeepLabel = Add(root, Text("KeepLabel", text.Row, Cream)),
             KeepNumeral = Add(root, Text("KeepNumeral", text.Numeral, Cream)),
             Rule = Add(root, new Line2D { Name = "Rule", DefaultColor = RuleLine, Width = 1f }),
@@ -336,12 +352,13 @@ internal sealed class MyRunsSettingsRow
         _keep = keep;
         _fetchIndex = fetchRunIndex;
 
+        _heading.Text = LibraryCopy.OurSettingsHeading;
         _keepLabel.Text = row.KeepLabel;
         _keepNumeral.Text = row.KeepNumeral;
         _reading.Text = row.Reading;
         _detail.Text = row.Detail;
         _remove.Text = row.RemoveLabel;
-        _fetch.Text = LibraryCopy.CommunityRunsSetting(fetchRunIndex);
+        _fetch.Text = $"{LibraryCopy.ShowCommunityRuns}: {(fetchRunIndex ? "on" : "off")}";
         _mainMenu.Text = row.MainMenu.SettingLabel;
 
         // The stepper refuses at its bottom rather than disappearing there, so the two
@@ -402,17 +419,21 @@ internal sealed class MyRunsSettingsRow
         var stepper = (stepSize * 2) + numeralWidth + (stepGap * 2);
         var removeWidth = Math.Min(width, ButtonBoxWidth(_remove.Text, _text.Button));
 
-        var pad = unit * StepperPadRatio;
-        Place(_keepLabel, 0f, pad, width - stepper - stepGap, labelHeight);
-        Place(_fewer, width - stepper, pad + ((labelHeight - stepSize) / 2f), stepSize, stepSize);
-        Place(_keepNumeral, width - stepper + stepSize + stepGap, pad, numeralWidth, labelHeight);
-        _keepNumeral.HorizontalAlignment = HorizontalAlignment.Center;
-        Place(_more, width - stepSize, pad + ((labelHeight - stepSize) / 2f), stepSize, stepSize);
+        var headingHeight = unit * HeadingHeightRatio;
+        var top = headingHeight + (unit * HeadingGapRatio);
+        Place(_heading, 0f, 0f, width, headingHeight);
 
-        var ruleY = pad + labelHeight + pad + (ruleGap / 2f);
+        var pad = unit * StepperPadRatio;
+        Place(_keepLabel, 0f, top + pad, width - stepper - stepGap, labelHeight);
+        Place(_fewer, width - stepper, top + pad + ((labelHeight - stepSize) / 2f), stepSize, stepSize);
+        Place(_keepNumeral, width - stepper + stepSize + stepGap, top + pad, numeralWidth, labelHeight);
+        _keepNumeral.HorizontalAlignment = HorizontalAlignment.Center;
+        Place(_more, width - stepSize, top + pad + ((labelHeight - stepSize) / 2f), stepSize, stepSize);
+
+        var ruleY = top + pad + labelHeight + pad + (ruleGap / 2f);
         _rule.Points = [new Vector2(0f, ruleY), new Vector2(width, ruleY)];
 
-        var lower = (pad * 2f) + labelHeight + ruleGap;
+        var lower = top + (pad * 2f) + labelHeight + ruleGap;
         Place(_reading, 0f, lower, width, readingHeight);
         Place(_detail, 0f, lower + readingHeight, width, noteHeight);
 
@@ -592,6 +613,8 @@ internal sealed class MyRunsSettingsRow
         internal required bool FetchRunIndex { get; init; }
 
         internal required MyRunsSettingsText Text { get; init; }
+
+        internal required Label Heading { get; init; }
 
         internal required Label KeepLabel { get; init; }
 

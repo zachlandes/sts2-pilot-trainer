@@ -1138,10 +1138,10 @@ It cannot be mod start: the game has no chosen save profile then, so the store c
 
 All four members with a control are one row: `MyRunsSettingsRow` in the mod, drawn from `MyRunsRow` in `Sts2PilotTrainer.Trainer`, wired to the disk by `MyRunsSettings`.
 
-Every one of those controls says whose setting it is, through `LibraryCopy.OurSetting`.
+One heading over the row says whose settings these are, drawn first inside `MyRunsSettingsRow` and worded by `LibraryCopy.OurSettingsHeading`.
 They sit in the game's own General list, among the game's own rows, in the game's own type, so nothing else on the screen distinguishes them: "Keep my runs" reads as a setting Slay the Spire 2 shipped.
-The tag is on all four rather than on a heading above them, because a player who scrolls to one control should not have had to read another to know whose it is.
-One owner, so it cannot be on three of them and missing from the fourth, and the separator is the interpunct because these lines already state their own value with a colon.
+A heading over the group rather than the mod's name in front of every caption, which is what was tried first: those captions already state their own value with a colon, and a Button's own minimum width is its unwrapped caption, so the three longest tagged captions were wider than the row and the engine widened them back out over the game's own column rather than clipping them inside it.
+The heading is one element, so it cannot be on three controls and missing from the fourth, and its height and the gap under it are in `MyRunsSettingsRow.HeightFor`, so the row still asks for the room it takes and the scroll extent below still measures the whole of it.
 It is a row and not a section.
 The retention policy, the removal act and the index-fetch choice are about the player's own runs; `show_main_menu_row` is about where Runmobile can be found.
 It is in the same row rather than a section of its own for the reason the section exists at all: this mod contributes one place a player configures it, and a second one would be a second thing to find.

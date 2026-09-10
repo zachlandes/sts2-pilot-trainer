@@ -140,10 +140,10 @@ public sealed class MyRunsSettingsTests : IDisposable
         var row = MyRunsSettings.Attach(modding, Text());
 
         Assert.Same(column, row.Root.GetParent());
-        Assert.Equal("Runmobile · Show community runs: on", row.Fetch.Text);
+        Assert.Equal("Show community runs: on", row.Fetch.Text);
         row.Fetch.EmitPressed();
         Assert.False(RunmobileSettings.Read().FetchRunIndex);
-        Assert.Equal("Runmobile · Show community runs: off", row.Fetch.Text);
+        Assert.Equal("Show community runs: off", row.Fetch.Text);
     }
 
     /// <summary>
@@ -207,14 +207,10 @@ public sealed class MyRunsSettingsTests : IDisposable
         Assert.True(
             Label(row, "KeepLabel").Size.X > Width / 2f,
             $"the keep label got {Label(row, "KeepLabel").Size.X} of {Width}");
-        // And the destructive control stays at the row's right-hand end, inside it.
-        // Its right edge rather than its left: the control sizes to its own caption, and
-        // that caption now names the mod it belongs to, so where its left edge falls is a
-        // reading of the words rather than of the layout.
-        Assert.Equal(Width, row.Remove.Position.X + row.Remove.Size.X);
+        // And the destructive control stays at the row's right-hand end.
         Assert.True(
-            row.Remove.Position.X >= 0f,
-            $"the remove control started at {row.Remove.Position.X} of {Width}");
+            row.Remove.Position.X > Width / 2f,
+            $"the remove control sat at {row.Remove.Position.X} of {Width}");
         // Immediately after the game's own modding row, which is where it belongs in the
         // column rather than hung in the gap under a button.
         Assert.Equal(modding.GetIndex() + 1, row.Root.GetIndex());
@@ -467,18 +463,54 @@ public sealed class MyRunsSettingsTests : IDisposable
         Assert.Same(column, row.Root.GetParent());
     }
 
-    /// <summary>Every control Runmobile puts in the game's own settings list says whose
-    /// it is. They are drawn in the game's own type among the game's own rows, so
-    /// nothing else on the screen does.</summary>
+    /// <summary>The controls Runmobile puts in the game's own settings list stand under
+    /// one heading that says whose they are. They are drawn in the game's own type among
+    /// the game's own rows, so nothing else on the screen does.</summary>
     [Fact]
-    public void EveryControlRunmobileAddsNamesTheModItBelongsTo()
+    public void TheControlsRunmobileAddsStandUnderAHeadingThatNamesTheMod()
     {
         var row = MyRunsSettings.Build(Width, Text());
 
-        Assert.StartsWith("Runmobile · ", Label(row, "KeepLabel").Text, StringComparison.Ordinal);
-        Assert.StartsWith("Runmobile · ", row.Remove.Text, StringComparison.Ordinal);
-        Assert.StartsWith("Runmobile · ", row.Fetch.Text, StringComparison.Ordinal);
-        Assert.StartsWith("Runmobile · ", row.MainMenu.Text, StringComparison.Ordinal);
+        Assert.Equal("Runmobile", row.Heading.Text);
+        Assert.Equal(0f, row.Heading.Position.Y);
+        Assert.True(
+            row.Heading.Position.Y < Label(row, "KeepLabel").Position.Y,
+            "the heading has to stand above the first control it names");
+        Assert.Equal(Width, row.Heading.Size.X);
+    }
+
+    /// <summary>
+    /// Every control fits inside the row it is laid out in, at the sizes this screen is
+    /// drawn at.
+    ///
+    /// A Button's own minimum width is its unwrapped caption, so a caption wider than
+    /// the row is not clamped to it - the engine widens the control back out over the
+    /// game's own settings column. The layout asks for the smaller of the row's width
+    /// and the caption's box, so a control that ends up exactly the row's width is one
+    /// whose words no longer fit.
+    ///
+    /// The larger size is the one this suite already stands in for the retail settings
+    /// screen's own reading, and it is the size at which naming the mod in front of
+    /// every caption put three of these three controls outside their row.
+    /// </summary>
+    [Theory]
+    [InlineData(16)]
+    [InlineData(26)]
+    public void EveryControlsCaptionFitsInsideTheRow(int size)
+    {
+        var row = MyRunsSettings.Build(Width, Text(size, size));
+
+        foreach (var (name, control) in new[]
+        {
+            ("Remove", row.Remove),
+            ("FetchRunIndex", row.Fetch),
+            ("MainMenuRow", row.MainMenu),
+        })
+        {
+            Assert.True(
+                control.Size.X < Width,
+                $"{name} took {control.Size.X} of {Width} for \"{control.Text}\"");
+        }
     }
 
     private static Label Native(string name, int size)
