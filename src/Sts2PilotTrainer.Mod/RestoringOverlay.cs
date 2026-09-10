@@ -31,6 +31,9 @@ namespace Sts2PilotTrainer.Mod;
 /// look and never the notice. The two drawings say the same sentence, which is
 /// <see cref="RestoringNotice"/>'s.
 ///
+/// The scene ships hidden and is switched on the way its own callers switch it; see
+/// <see cref="BorrowTheGamesOverlay"/>.
+///
 /// The one thing it substitutes a default for is the font, and only where the native
 /// reading itself fails: elsewhere in this mod missing native furniture refuses the
 /// surface, and here refusing would mean the blank screen this exists to remove.
@@ -105,13 +108,22 @@ internal static class RestoringOverlay
             return;
         }
 
+        ShowUnder(game, notice);
+    }
+
+    /// <summary>
+    /// The same, under a named parent, so the rule can be driven in a process with no
+    /// game: the borrow fails there, and what a player would look at is the plate.
+    /// </summary>
+    internal static void ShowUnder(Node parent, RestoringNotice notice)
+    {
         _step = 0;
-        if (!BorrowTheGamesOverlay(game))
+        if (!BorrowTheGamesOverlay(parent))
         {
             var partial = _overlay;
             Forget();
             Free(partial);
-            if (!DrawItHere(game)) return;
+            if (!DrawItHere(parent)) return;
         }
 
         _notice = notice;
@@ -123,13 +135,20 @@ internal static class RestoringOverlay
     }
 
     /// <summary>
-    /// The client's own loading overlay, put up and read for its label.
+    /// The client's own loading overlay, put up, switched on and read for its label.
     ///
-    /// False for either way it can fail to be the surface a player reads - no such
-    /// scene on this build, or a scene with nothing to say through - and the caller
-    /// draws this mod's own plate instead.
+    /// False for every way it can fail to be the surface a player reads - no such
+    /// scene on this build, a scene with nothing to say through, or one that is not on
+    /// screen once it has been asked to be - and the caller draws this mod's own plate
+    /// instead.
+    ///
+    /// The scene ships hidden: its root is saved with <c>visible = false</c>, and the
+    /// game's own callers hold it and set <c>Visible</c> when they show it. Borrowing
+    /// it without doing the same put a present-but-invisible surface over the whole
+    /// Preparing phase and never fell through to the plate - measured in the retail
+    /// client, which drew nothing and logged nothing.
     /// </summary>
-    private static bool BorrowTheGamesOverlay(Node game)
+    private static bool BorrowTheGamesOverlay(Node parent)
     {
         try
         {
@@ -147,8 +166,18 @@ internal static class RestoringOverlay
             // Added before the label is asked for: the scene's own script puts the
             // game's "Loading..." on it when it enters the tree, so a headline set
             // before that would be the one thing overwritten.
-            game.AddChild(overlay);
+            parent.AddChild(overlay);
+            overlay.Visible = true;
             _overlay = overlay;
+
+            if (!overlay.IsVisibleInTree())
+            {
+                Log.Error(
+                    $"[{RunmobileMod.ModId}] this build's '{ScenePath}' is not on screen once asked to be; " +
+                    "drawing the restoring notice here instead", 2);
+                return false;
+            }
+
             _borrowedLabel = overlay.GetNodeOrNull<MegaLabel>(LabelPath);
             if (_borrowedLabel is not null) return true;
 
@@ -168,7 +197,7 @@ internal static class RestoringOverlay
 
     /// <summary>This mod's own plate: a scrim over whatever is behind, and one line
     /// centred on it.</summary>
-    private static bool DrawItHere(Node game)
+    private static bool DrawItHere(Node parent)
     {
         try
         {
@@ -176,8 +205,9 @@ internal static class RestoringOverlay
             {
                 Name = RootName,
                 MouseFilter = Control.MouseFilterEnum.Stop,
+                Visible = true,
             };
-            game.AddChild(root);
+            parent.AddChild(root);
 
             var viewport = root.GetViewportRect().Size;
             root.Position = Vector2.Zero;

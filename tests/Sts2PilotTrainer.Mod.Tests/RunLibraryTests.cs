@@ -313,6 +313,49 @@ public sealed class RunLibraryStoreTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// The same rule at the surface a player presses, which is where it was broken.
+    ///
+    /// The run browser's own row is built and pressed here, so what is under test is
+    /// the press rather than the journey it starts: the row wrote progress before the
+    /// journey had stood anybody anywhere, and this process cannot construct a run, so
+    /// the journey it starts refuses. Continue has to be where it was.
+    ///
+    /// It fails against the code it was written for: put
+    /// <c>RunLibraryStore.RecordFightPlayed</c> back into <c>Enter</c> and this goes red.
+    /// </summary>
+    [GameFact]
+    public void PressingARowWhoseJourneyRefusesLeavesContinueWhereItWas()
+    {
+        const string fileName = "native-3LACFJ5NJ371-20260906-015901.replay.json";
+        var recording = ManifestJson.Deserialize(
+            File.ReadAllText(Path.Combine(Arbiter.RepoRoot, "manifests", fileName)));
+        Write(fileName, ManifestJson.Serialize(recording));
+
+        var runId = recording.RunId;
+        Assert.NotNull(RunLibrary.RecordingFor(runId));
+
+        var view = RunView.For(recording, RunLibraryStore.ReadProgress(), progressId: runId);
+        var rows = RunBrowserScreen.EnteringRows(view, runId, isPlayersOwn: true);
+        var offered = view.Rows
+            .Select((row, index) => (row, index))
+            .First(pair => pair.row.Enabled && pair.row.Fight is not null);
+
+        try
+        {
+            rows[offered.index].Press();
+
+            Assert.Equal(JourneyPhase.None, RecordedFightRun.Phase);
+            Assert.Empty(RunLibraryStore.ReadProgress().PlayedFrom(runId));
+            Assert.Empty(RunLibraryStore.ReadProgress().LastFloor);
+        }
+        finally
+        {
+            if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
+            HeadlessEngine.Forget();
+        }
+    }
+
     [GameFact]
     public void ProgressIsWrittenOnceAndReadBack()
     {
