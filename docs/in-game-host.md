@@ -315,8 +315,9 @@ It also states no map coordinate at a floor arrival, because the version-5 recor
 The runtime that decides a decision is unmapped is not in this build; the format, the capture and the journal line are, so that build changes no file shape.
 
 **Every decision is read either side.**
-The journal's schema is v2 and every decision line carries `before` and `before_digest` beside the settled `state` and `digest`: the reading taken in the prefix of the member the decision went through, which is the state the player made it from and the instant a comparison at verification asks about.
+The journal's schema is v3 - v2 added the before-reading and v3 the bookmark line - and every decision line carries `before` and `before_digest` beside the settled `state` and `digest`: the reading taken in the prefix of the member the decision went through, which is the state the player made it from and the instant a comparison at verification asks about.
 Inside a fight that reading is the observer's before-sample and coincides with the previous after-sample, and `FightCapture` still refuses a gap between them; outside one, the reward screen after a fight is generated on the client's clock between two decisions, so `RunCapture` carries the reading that was taken rather than refusing the gap.
+A v2 journal is read as it stands, because every v2 line is a v3 line and a journal with no bookmark line in it is one with nothing pressed.
 A v1 journal on a player's disk is refused on resume, exactly as any schema this build does not read is, and the run is simply not continued as a recording.
 
 **The seam is the console's own funnel, not the action queue.**
@@ -870,6 +871,13 @@ its run history - serializes the capture again to the same path through
 That is the one rewrite of a finished manifest the mod does, and it changes nothing but
 `source.native.bookmarks`: the history hash is over actions, every boundary digest is
 untouched, and `RunCaptureTests` holds both.
+The write comes before the capture holds the press, so a journal append or a manifest
+rewrite that throws leaves the mark as it was and the tag draws what is on the disk
+rather than a press that reached nothing - on a loss there is no second chance at it,
+since the run is over and nothing regenerates a finished manifest from the journal.
+The press records the action ordinal it comes after and the run clock recorded with that
+decision rather than one read at the press: the death screen is drawn after the run
+ended, and the game's clock is no longer readable by then.
 The control takes focus so a controller reaches it and hands it back on press, which is
 the transport's own cost and fix; it carries no hotkey and no text, and its words are
 Godot's own tooltip.

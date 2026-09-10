@@ -210,7 +210,7 @@ The lock is the icon, its hover tooltip and one line over the tabs saying in pla
 
 **The floor markers are the run-history screen's** icons, per floor kind, with the outline behind at the history entry's own quarter of black; the mod's hollow ring stands in only for a kind nothing established or an icon a build has not got.
 The played tick is the mod's own, filled and on a disc, hung off the icon's top-right corner where the history entry hangs its quest badge, and the numeral is under the marker with clear space rather than on it.
-`LibraryPaneArt.CellGeometry` is the one place the four parts of a cell are placed and the tests hold them apart.
+`LibraryPaneArt.CellGeometry` is the one place the five parts of a cell are placed - icon, numeral, badge, ring and the bookmark tab - and the tests hold them apart.
 
 **Every duplicated ribbon owns its materials.**
 The retail popup button lights up by writing to its image's HSV shader and its outline's blend mode, and a `Duplicate` shares both with its prototype; one hover then lit the tab, the row and the pane's ribbon at once.

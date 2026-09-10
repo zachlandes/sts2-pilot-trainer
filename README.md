@@ -58,6 +58,8 @@ Two runs played by a person on this build have been replayed through the real en
 Three of the gate's conditions need a video, game-mode, seed-topology and evidence-binding, and a recording made inside the game is never asked them.
 A fourth, baselib-path, is not asked either, and a weaker check stands in for it: the loaded mods' own declaration that they do not affect gameplay, which the gate's artifact says out loud.
 The arbiter enters fight 2 of that recording headlessly and reproduces the recorded digest byte for byte.
+When a fight ends, a small tag under the top bar offers **Bookmark this fight** for as long as you are on that floor - the loot and card-reward screens on a win, the death screen on a loss - and pressing it again removes the mark.
+A bookmark is part of the recording, so it travels with the run wherever the run goes: the floor strip hangs a gold tab off a bookmarked fight's cell in every strip, and the opened run says who bookmarked it.
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
 Settings show how much space recordings take, how many are kept, remove them on request, carry the **Show community runs** switch that controls whether the shared-run index is fetched, and let the player show or hide Runmobile on the main menu; showing community runs defaults on.
 No setting shares a run automatically.
