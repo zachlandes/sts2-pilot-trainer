@@ -117,12 +117,59 @@ internal static class NativeScenes
 
     /// <summary>The text of one <c>res://</c> resource, or null where this build has
     /// no such file.</summary>
-    internal static string? Read(string resourcePath)
-    {
-        var name = resourcePath.StartsWith("res://", StringComparison.Ordinal)
+    internal static string? Read(string resourcePath) =>
+        Entries.Value.TryGetValue(Name(resourcePath), out var text) ? text : null;
+
+    private static string Name(string resourcePath) =>
+        resourcePath.StartsWith("res://", StringComparison.Ordinal)
             ? resourcePath["res://".Length..]
             : resourcePath;
-        return Entries.Value.TryGetValue(name, out var text) ? text : null;
+
+    /// <summary>The external resources one scene declares, by the id its nodes refer to
+    /// them with: <c>ExtResource("15_1p7td")</c> in a node body is the <c>path</c> of
+    /// the <c>ext_resource</c> header carrying that id.</summary>
+    internal static IReadOnlyDictionary<string, string> ExternalResources(string sceneText)
+    {
+        var resources = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var section in Sections(sceneText))
+        {
+            if (!section.Header.StartsWith("ext_resource ", StringComparison.Ordinal)) continue;
+            // The header also carries uid="uid://...", whose tail reads as id="..."; the
+            // id is the attribute a space precedes
+            var id = Attribute(section.Header, " id");
+            var path = Attribute(section.Header, "path");
+            if (id is not null && path is not null) resources[id] = path;
+        }
+
+        return resources;
+    }
+
+    /// <summary>
+    /// The properties one node's section sets, by key, with the value as the scene
+    /// spells it - <c>ExtResource("15_1p7td")</c>, <c>73.0</c> - so a test can read what
+    /// a node is bound to without a second parser. Null where the scene has no such node.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string>? Properties(string sceneText, string nodePath)
+    {
+        foreach (var section in Sections(sceneText))
+        {
+            if (!section.Header.StartsWith("node ", StringComparison.Ordinal)) continue;
+            var name = Attribute(section.Header, "name");
+            var parent = Attribute(section.Header, "parent");
+            if (name is null || parent is null) continue;
+            if ((parent is "." ? name : $"{parent}/{name}") != nodePath) continue;
+
+            var properties = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var line in section.Body.Split('\n'))
+            {
+                var separator = line.IndexOf(" = ", StringComparison.Ordinal);
+                if (separator > 0) properties[line[..separator]] = line[(separator + 3)..].TrimEnd('\r');
+            }
+
+            return properties;
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -273,7 +320,7 @@ internal static class NativeScenes
     /// of the file and names its offset in the header, and version 3 is the only layout
     /// read here: the mod compiles against one game build, so an older pack is refused
     /// by name rather than parsed by a second rule this repository has no example of.
-    /// Only text resources are kept, because that is all a scene path can be.
+    /// Only text resources are read, because that is all a scene path can be.
     /// </summary>
     private static IReadOnlyDictionary<string, string> ReadDirectory(string pack)
     {

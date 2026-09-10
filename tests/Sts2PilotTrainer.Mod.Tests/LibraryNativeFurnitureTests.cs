@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Godot;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Trainer;
@@ -33,6 +34,28 @@ public sealed class LibraryNativeFurnitureTests
     {
         Assert.Equal(256f / 90f, LibraryTabArt.Aspect);
         Assert.Equal("res://scenes/screens/settings_tab.tscn", LibraryTabArt.Scene);
+    }
+
+    /// <summary>
+    /// The image the stats scene itself binds to its Achievements tab's <c>Lock</c>
+    /// node, read out of this build's own pack. Existence is not the check - both
+    /// files named <c>submenu_lock.png</c> exist - so the scene is asked which one it
+    /// draws, and a lock that is any other file fails here by name.
+    /// </summary>
+    [NativeSceneFact]
+    public void TheLockIsTheImageTheStatsScreenBindsToItsAchievementsTab()
+    {
+        const string Scene = "res://scenes/screens/stats_screen/stats_screen.tscn";
+        var scene = NativeScenes.Read(Scene);
+        Assert.NotNull(scene);
+
+        var lockNode = NativeScenes.Properties(scene, "Tabs/TabContainer/Achievements/Lock");
+        Assert.NotNull(lockNode);
+        var texture = Regex.Match(lockNode["texture"], "^ExtResource\\(\"([^\"]+)\"\\)$");
+        Assert.True(texture.Success, $"the stats scene's lock is bound to '{lockNode["texture"]}', not an ext_resource");
+
+        var bound = NativeScenes.ExternalResources(scene)[texture.Groups[1].Value];
+        Assert.True(bound == LibraryTabArt.LockImage, $"the stats scene draws '{bound}' on its Achievements tab; the Community tab names '{LibraryTabArt.LockImage}'");
     }
 
     /// <summary>The game's own tabs are no controller stop, and the one you are on

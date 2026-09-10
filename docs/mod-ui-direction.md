@@ -71,7 +71,7 @@ The candidates a designer should know exist, in `MegaCrit.Sts2.Core.Nodes.Common
 | `NGenericPopup` + `NVerticalPopup` | The modal the trainer's refusal and eligibility screens already use. The captain's judgement is that the modals are the part that already feels right. |
 | `NSelectionReticle` (`Nodes.Combat`) | The ring the game puts round a controller-focused map node. |
 | `NSettingsTab` (`Nodes.Screens.Settings`, scene `scenes/screens/settings_tab.tscn`) | The squared tab the settings screen and the stats screen's Statistics and Achievements tabs are: stroked outline on the selected one, half-cream label going cream on selection and gold on hover, a hover scale on the whole plate. Instantiable from its scene, which the library's tabs now are. |
-| `submenu_lock.png` (`images/ui/main_menu`) | The lock the stats screen lays over its disabled Achievements tab, centred and overhanging the plate. The library's Community tab wears it while it is short of a service or the setting. |
+| `submenu_lock.png` (`images/packed/main_menu`) | The lock the stats screen lays over its disabled Achievements tab, centred and overhanging the plate. The library's Community tab wears it while it is short of a service or the setting. `images/ui/main_menu/submenu_lock.png` is a different file with the same name, the chained lock a submenu card wears, and `LibraryNativeFurnitureTests` holds the tab to the one `stats_screen.tscn` binds. |
 | `images/ui/run_history/<room>.png` + `_outline.png` | The run-history screen's floor icons, drawn by `NMapPointHistoryEntry` at 0.7 of a 60 box with the outline behind at a quarter of black. The library's run strip wears them per floor kind. |
 
 **There is no playback iconography in the game's own art.**
