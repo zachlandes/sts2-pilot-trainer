@@ -140,10 +140,10 @@ public sealed class MyRunsSettingsTests : IDisposable
         var row = MyRunsSettings.Attach(modding, Text());
 
         Assert.Same(column, row.Root.GetParent());
-        Assert.Equal("Show community runs: on", row.Fetch.Text);
+        Assert.Equal("Runmobile: Show community runs: on", row.Fetch.Text);
         row.Fetch.EmitPressed();
         Assert.False(RunmobileSettings.Read().FetchRunIndex);
-        Assert.Equal("Show community runs: off", row.Fetch.Text);
+        Assert.Equal("Runmobile: Show community runs: off", row.Fetch.Text);
     }
 
     /// <summary>
@@ -189,28 +189,33 @@ public sealed class MyRunsSettingsTests : IDisposable
     /// and the label just fitted in the rest. Drawn at the settings screen's own size the
     /// stepper takes the whole of it, the label clips mid-word, and the destructive
     /// control is pushed back across the row onto the game's own label.
+    ///
+    /// The column here is the width the client's own settings column measures, which
+    /// <c>MyRunsSettingsRowTests.RetailColumnWidth</c> records the provenance of, rather
+    /// than the fallback the rest of this class uses.
     /// </summary>
     [Fact]
     public void TheRowIsLaidOutAtTheSettingsColumnRatherThanAtTheButtonItHangsOff()
     {
-        var column = new VBoxContainer { Size = new Vector2(Width, 400f) };
-        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(Width, 30f) };
-        var modding = new Control { Name = "ModdingButton", Size = new Vector2(Width, 30f) };
+        const float SettingsColumnWidth = 1000f;
+        var column = new VBoxContainer { Size = new Vector2(SettingsColumnWidth, 400f) };
+        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(SettingsColumnWidth, 30f) };
+        var modding = new Control { Name = "ModdingButton", Size = new Vector2(SettingsColumnWidth, 30f) };
         entry.AddChild(modding);
         column.AddChild(entry);
 
         var row = MyRunsSettings.Attach(modding, Text(26));
 
-        Assert.Equal(Width, row.Root.Size.X);
+        Assert.Equal(SettingsColumnWidth, row.Root.Size.X);
         // The label keeps most of the row whatever the text grows to, rather than being
         // squeezed out by the controls beside it.
         Assert.True(
-            Label(row, "KeepLabel").Size.X > Width / 2f,
-            $"the keep label got {Label(row, "KeepLabel").Size.X} of {Width}");
+            Label(row, "KeepLabel").Size.X > SettingsColumnWidth / 2f,
+            $"the keep label got {Label(row, "KeepLabel").Size.X} of {SettingsColumnWidth}");
         // And the destructive control stays at the row's right-hand end.
         Assert.True(
-            row.Remove.Position.X > Width / 2f,
-            $"the remove control sat at {row.Remove.Position.X} of {Width}");
+            row.Remove.Position.X > SettingsColumnWidth / 2f,
+            $"the remove control sat at {row.Remove.Position.X} of {SettingsColumnWidth}");
         // Immediately after the game's own modding row, which is where it belongs in the
         // column rather than hung in the gap under a button.
         Assert.Equal(modding.GetIndex() + 1, row.Root.GetIndex());
@@ -463,20 +468,19 @@ public sealed class MyRunsSettingsTests : IDisposable
         Assert.Same(column, row.Root.GetParent());
     }
 
-    /// <summary>The controls Runmobile puts in the game's own settings list stand under
-    /// one heading that says whose they are. They are drawn in the game's own type among
-    /// the game's own rows, so nothing else on the screen does.</summary>
+    /// <summary>Every control Runmobile puts in the game's own settings list says whose
+    /// it is. They are drawn in the game's own type among the game's own rows, so nothing
+    /// else on the screen does. The main-menu control is the exception that names the mod
+    /// inside its own sentence rather than in front of it.</summary>
     [Fact]
-    public void TheControlsRunmobileAddsStandUnderAHeadingThatNamesTheMod()
+    public void EveryControlRunmobileAddsNamesTheModItBelongsTo()
     {
         var row = MyRunsSettings.Build(Width, Text());
 
-        Assert.Equal("Runmobile", row.Heading.Text);
-        Assert.Equal(0f, row.Heading.Position.Y);
-        Assert.True(
-            row.Heading.Position.Y < Label(row, "KeepLabel").Position.Y,
-            "the heading has to stand above the first control it names");
-        Assert.Equal(Width, row.Heading.Size.X);
+        Assert.StartsWith("Runmobile: ", Label(row, "KeepLabel").Text, StringComparison.Ordinal);
+        Assert.StartsWith("Runmobile: ", row.Remove.Text, StringComparison.Ordinal);
+        Assert.StartsWith("Runmobile: ", row.Fetch.Text, StringComparison.Ordinal);
+        Assert.StartsWith("Runmobile ", row.MainMenu.Text, StringComparison.Ordinal);
     }
 
     private static Label Native(string name, int size)

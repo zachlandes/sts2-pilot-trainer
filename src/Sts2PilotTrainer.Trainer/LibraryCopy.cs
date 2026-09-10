@@ -161,13 +161,13 @@ public static class LibraryCopy
     /// sentence, because a tooltip is read in passing; it names the setting by its own
     /// label and says where it is.</summary>
     public const string CommunityOffTooltip =
-        $"Community runs are off. Turn on \"{ShowCommunityRuns}\" in Settings, under Modding, to see them here.";
+        $"Community runs are off. Turn on \"{OurTag}{ShowCommunityRuns}\" in Settings, under Modding, to see them here.";
 
     /// <summary>The one line over the tabs while the setting is off: the whole
     /// instruction in a sentence, because a line the panel may have to shorten is a
     /// line whose second half a player never reads.</summary>
     public const string CommunityOffBody =
-        $"Community runs are off - turn on {ShowCommunityRuns} in Settings, under Modding, to see them.";
+        $"Community runs are off - turn on {OurTag}{ShowCommunityRuns} in Settings, under Modding, to see them.";
 
     /// <summary>The same lock when no sharing service is configured: nothing a setting
     /// can change, so the tooltip and the body line say what is missing rather than
@@ -192,21 +192,29 @@ public static class LibraryCopy
         $"{MainMenuRow} on the main menu: {(shown ? "on" : "off")}";
 
     /// <summary>
-    /// The heading over every control this mod contributes to the game's own settings
-    /// list.
+    /// A settings control's line, said as Runmobile's.
     ///
-    /// <para>The controls sit in the game's own General list, among the game's own rows
-    /// and drawn in the game's own type, so nothing on the screen would otherwise say
-    /// which of them a player is looking at: "Keep my runs" reads as a setting Slay the
-    /// Spire 2 shipped. One heading over the group says whose they are, the way the
-    /// game's own settings screen groups its rows.</para>
+    /// <para>Every control this mod contributes sits in the game's own General list,
+    /// among the game's own rows and drawn in the game's own type, so nothing on the
+    /// screen says which of them a player is looking at: "Keep my runs" reads as a
+    /// setting Slay the Spire 2 shipped. The mod's name in front of the line is what says
+    /// otherwise.</para>
     ///
-    /// <para>A heading rather than the mod's name in front of every caption: those
-    /// captions already state their own value with a colon, and the tag in front of each
-    /// pushed three of the four controls wider than the row they are laid out in, where
-    /// a Button's own minimum width is its unwrapped label.</para>
+    /// <para>One owner, so the tag cannot be on two controls and missing from the third.
+    /// A caller states the setting; this states whose it is. The main-menu control is the
+    /// one exception and takes no tag, because it already names the mod inside its own
+    /// sentence.</para>
+    ///
+    /// <para>The tagged captions fit the settings column the client draws them in - about
+    /// a thousand units, measured off the committed retail capture and held by
+    /// <c>MyRunsSettingsRowTests</c>. They outgrow only the 520-unit fallback width, which
+    /// is what the row is given when the settings entry reports no size at all.</para>
     /// </summary>
-    public const string OurSettingsHeading = MainMenuRow;
+    public static string OurSetting(string label) => OurTag + label;
+
+    /// <summary>The tag itself, so the lines that quote a control's name by hand read the
+    /// same words the control does.</summary>
+    public const string OurTag = $"{MainMenuRow}: ";
 
     public const string FetchingRunIndex = "Fetching the run index…";
 

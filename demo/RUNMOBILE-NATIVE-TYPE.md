@@ -36,8 +36,8 @@ The mod's refusal popup uses its mapped R1 title, R2 body, and R3 button roles.
 The row's label, readings, and controls take the full native settings column using the mapped roles for a settings row label, a settings value, and a button caption.
 Its controls share the same right edge as the game's own controls on that screen.
 
-Both settings captures predate the change that added the `Runmobile` heading over this row and corrected the General list's scroll extent.
-They show the row with no heading above it, under the short extent that hid View Credits and the settings below it, and with the community-runs control under an earlier caption.
+Both settings captures predate the change that put `Runmobile: ` in front of these captions and corrected the General list's scroll extent.
+They show the captions untagged, under the short extent that hid View Credits and the settings below it, and the community-runs control under an earlier caption.
 What they still stand for is the roles and the column width, which that change did not move.
 
 ## What these captures prove
@@ -49,6 +49,6 @@ Its expanded strip, the fight-result panel, chronology paging, and look-back led
 Programmatic navigation was attempted and did not reach those surfaces, so they require manual navigation for a retail capture.
 This change covers them with automated paging and layout tests instead.
 Those tests do not read the game's scene files, and the look-back ledger's role named a node v0.111.0 has not: the role table is now held against the shipped pack, which `docs/in-game-host.md` owns.
-The `Runmobile` heading over the settings row and the corrected General scroll extent that reaches View Credits are not captured either, and are the two surfaces this file is still waiting on: the client was the player's own for the length of the change that made them, so both are taken in a later session.
+The settings row's `Runmobile: ` captions and the corrected General scroll extent that reaches View Credits are not captured either, and are the two surfaces this file is still waiting on: the client was the player's own for the length of the change that made them, so both are taken in a later session.
 
 The restoring notice shown while a run is being restored is captured: `demo/RUNMOBILE-RESTORE-IN-CLIENT.md` holds it, taken a second and a half after Continue was pressed on the player's own recording, with the plate over the Compendium screen and its line at the native heading role.

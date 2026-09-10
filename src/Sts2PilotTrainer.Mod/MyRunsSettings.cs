@@ -221,8 +221,9 @@ internal static class MyRunsSettings
         {
             if (!GodotObject.IsInstanceValid(row.Root) || !row.Root.IsInsideTree()) return;
             row.Relayout(row.Root.Size.X);
-            // And again once the column has settled, because the extent is measured from
-            // a height the layout above is free to have changed.
+            // And again now the column has sorted: the call in Attach ran before the
+            // screen had been laid out, and the panel measures itself against its parent's
+            // size, which was not settled then.
             RefreshExtent(row.Root);
         }
         catch (Exception ex)

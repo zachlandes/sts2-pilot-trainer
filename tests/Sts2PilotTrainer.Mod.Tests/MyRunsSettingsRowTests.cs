@@ -50,11 +50,11 @@ public sealed class MyRunsSettingsRowTests
     {
         var row = Build(new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20));
 
-        Assert.Equal("Keep my runs", Label(row, "KeepLabel").Text);
+        Assert.Equal("Runmobile: Keep my runs", Label(row, "KeepLabel").Text);
         Assert.Equal("20", Label(row, "KeepNumeral").Text);
         Assert.Equal("12 runs · 6 MB", Label(row, "Reading").Text);
         Assert.Equal("on this computer, in user://Runmobile/recordings", Label(row, "Detail").Text);
-        Assert.Equal("Remove all my runs", row.Remove.Text);
+        Assert.Equal("Runmobile: Remove all my runs", row.Remove.Text);
     }
 
     /// <summary>
@@ -472,11 +472,15 @@ public sealed class MyRunsSettingsRowTests
     /// the column is not clamped to it - <c>Layout</c> asks for the smaller of the two
     /// and the engine widens the control straight back out over the game's own rows. A
     /// control that comes back exactly the column's width is one whose words no longer
-    /// fit, which is what naming the mod in front of every caption did.
+    /// fit. That is what the mod's name in front of each caption has to stay clear of.
     ///
     /// Both states of the main-menu and community controls are built here rather than
     /// whichever one the disk happens to answer with: the two captions are different
     /// lengths, and the longer one is the one a player reaches by pressing.
+    ///
+    /// The keep label is the other case. Its box is fixed - the column less the stepper -
+    /// and it clips rather than widening, so what is asserted of it is that its words fit
+    /// the box it was actually placed in.
     /// </summary>
     [Theory]
     [InlineData(16)]
@@ -499,9 +503,19 @@ public sealed class MyRunsSettingsRowTests
                         control.Size.X < RetailColumnWidth,
                         $"\"{control.Text}\" took {control.Size.X} of {RetailColumnWidth} at size {size}");
                 }
+
+                var keep = Label(row, "KeepLabel");
+                Assert.True(
+                    GlyphWidth(keep.Text, size) < keep.Size.X,
+                    $"\"{keep.Text}\" needs {GlyphWidth(keep.Text, size)} of the {keep.Size.X} its box has at size {size}");
             }
         }
     }
+
+    /// <summary>How wide a line of words is where there is no font to measure with, which
+    /// is the fallback <c>MyRunsSettingsRow.ButtonBoxWidth</c> itself uses in a process
+    /// with no game.</summary>
+    private static float GlyphWidth(string text, int size) => text.Length * size * 0.6f;
 
     private static MyRunsSettingsRow Build(
         MyRunsFacts facts, Action<int>? keepChanged = null, Action? removePressed = null,
