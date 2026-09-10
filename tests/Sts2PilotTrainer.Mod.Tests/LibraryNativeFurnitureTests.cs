@@ -36,15 +36,6 @@ public sealed class LibraryNativeFurnitureTests
         Assert.Equal("res://scenes/screens/settings_tab.tscn", LibraryTabArt.Scene);
     }
 
-    /// <summary>The packed image, not the one under <c>images/ui</c> that shares its
-    /// basename: that one is the chained lock a submenu card wears, and it shipped on
-    /// the Community tab once because a path can be right in every part but one.</summary>
-    [Fact]
-    public void TheLockIsThePackedStatsScreenImage()
-    {
-        Assert.Equal("res://images/packed/main_menu/submenu_lock.png", LibraryTabArt.LockImage);
-    }
-
     /// <summary>
     /// The image the stats scene itself binds to its Achievements tab's <c>Lock</c>
     /// node, read out of this build's own pack. Existence is not the check - both
