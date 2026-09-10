@@ -341,6 +341,12 @@ Which native element each role asks is a judgement per element and `docs/mod-ui-
 A number here is a number that was right on one window and one build: the game carries no project theme, so nothing inherits, and the sizes it draws its own elements at are the only ones that read as native.
 A surface that sits inside one of the game's own containers is a child of it and asks it for height only, laid out again once that container has sorted - a settings screen has not been laid out when its `_Ready` runs, and a child's minimum width is a demand its host obeys.
 `demo/RUNMOBILE-NATIVE-TYPE.md` records the current retail evidence and the surfaces that still require an in-client capture.
+**A role names a node in one of the game's own scenes, and a role this build has not got is named in the log before the surface that asks for it refuses.**
+`GameText.Verify` resolves every role once, from `RunmobileMod.EnsureAdopted` - not from the mod initializer, which reads nothing because a scene is the game - and names each role this build cannot answer in the game's log.
+It exists because a single wrong node path was noticed nowhere until the surface asking for it was drawn: v0.111.0's ledger row pointed one container too high and abandoned every recorded fight a player entered, with a message about text.
+The refusal itself is the rule above unchanged - nothing is substituted for missing native furniture.
+Nothing else checks a path, because Godot loads no resources under `dotnet test`: `NativeTextRoleTests` reads the shipped pack itself and is what holds the table to this build.
+`NativeScenes.Decide` owns whether it can - it runs where the installed pack is the build `build/lib` was copied from, and otherwise skips saying which of not-prepared, another build or no pack it was, because a green skip over an unchecked table is how this defect shipped and a red would blame the table for a Steam update.
 
 **A run a person plays is recorded by one owner, and refused rather than repaired.**
 `RunCapture` in `Sts2PilotTrainer.Replay` is the whole-run counterpart of `FightCapture` and delegates the inside of each fight to one, so there is one capture path.

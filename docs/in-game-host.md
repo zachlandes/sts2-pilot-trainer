@@ -764,6 +764,37 @@ under the MODDED one, copying its font and size rather than styling one of its o
 That copy is now every surface's rule rather than this row's exception: `GameText` in
 the mod reads each native role's font and size, and `docs/mod-ui-direction.md` owns
 which element each Runmobile element asks.
+
+A role names a node in one of the game's own scenes, and that path is a claim about
+this build that nothing checked until the surface asking for it was drawn.
+v0.111.0 shipped with the ledger row pointing one container too high in the map
+point's hover tip, and the first thing to notice was a player entering a recorded
+fight and being told, in a message about text, that the fight was abandoned - the
+transport asks for that role on the way in.
+`GameText.Verify` now resolves every role once, from `RunmobileMod.EnsureAdopted`,
+which is the mod's first moment with a running game.
+It is not at mod initialization for the reason at the top of this document: a scene
+is the game, and the initializer reads nothing.
+A role this build cannot answer is named in the log there - the role, its scene, its node
+and the reason - so a wrong path is a line in a file a player can attach to a bug report
+before the surface that asks for it refuses.
+It is named, not stood in for: missing native furniture still refuses the surface rather
+than substituting a size written down in the mod, which is what it has always cost.
+Godot loads no resources under `dotnet test`, so a path is checked by
+`NativeTextRoleTests`, which reads the game's own scene files out of the shipped pack.
+`NativeScenes.Decide` is the one place that says what those facts do here, and it has
+four answers, none of which is silent.
+Where the game is not prepared they skip, because not owning it is a good reason not to
+run.
+Where it is prepared and the pack is the build those assemblies were copied from, they
+run, and a wrong node path fails - that is the case the check exists for.
+Where the pack belongs to another build, they skip naming both builds and asking for
+`./scripts/build.sh`, because a Steam update is not a defect in the role table and
+failing there would say it was.
+Where no pack was found at all, they skip naming `STS2_GAME_PCK` as the way to point at
+one, and noting that `./scripts/bootstrap.sh --archive` copies assemblies and no pack.
+A skip that read as green over an unchecked role table is how the ledger row reached a
+player, so every one of those skips says which it is.
 `RecorderPresence.For` derives what it says and its colour from exactly
 `RunRecorder.Active` and `RunCapture.State`; the row is re-derived every frame, because
 the recorder attaches after the overlay is built and a watch can break at any decision.

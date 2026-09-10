@@ -50,6 +50,7 @@ public static class RunmobileMod
 
     private static bool _adoptionAttempted;
     private static bool _adopted;
+    private static bool _nativeTextVerified;
 
     /// <summary>Whether the mod started without refusing. Distinct from any module
     /// being enabled: the shell starting is about this process, and a module being
@@ -235,6 +236,7 @@ public static class RunmobileMod
     /// </summary>
     internal static bool EnsureAdopted()
     {
+        VerifyNativeText();
         var adopted = Adopt();
 
         // What this mod leaves on a player's disk is the shell's, and it does not
@@ -247,6 +249,45 @@ public static class RunmobileMod
         RecordingRetention.ApplyOnce();
 
         return adopted;
+    }
+
+    /// <summary>
+    /// Reads this build's own text roles once, here, and says in the log which ones it
+    /// could not answer.
+    ///
+    /// Here rather than at mod start because the mod reads nothing at initialization,
+    /// and a scene is the game. This is the mod's first moment with a running game. It
+    /// is ahead of anything this mod draws from a menu, and not ahead of everything: the
+    /// recorder asks for adoption at the first room of a run, so on a player who opens
+    /// no Runmobile surface the sweep runs during that transition instead. Either way a
+    /// role this build renamed is named in the log before the surface that asks for it
+    /// refuses, rather than first being noticed by a player already entering a recorded
+    /// fight - which is what a wrong node path cost once.
+    ///
+    /// Like the patch roster, a diagnostic never takes the mod down with it: failing to
+    /// describe the typography is not failing to have it.
+    /// </summary>
+    private static void VerifyNativeText()
+    {
+        // Every surface asks for adoption, so this is reached at every menu press. The
+        // roles themselves are read once and cached; the latch is so the summary is
+        // said once too.
+        if (_nativeTextVerified) return;
+        _nativeTextVerified = true;
+
+        try
+        {
+            var refused = GameText.Verify();
+            if (refused.Count == 0) return;
+
+            Log.Error(
+                $"[{ModId}] {refused.Count} text role(s) this build does not have; every surface " +
+                "that asks for one refuses: " + string.Join(", ", refused), 2);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[{ModId}] could not read this build's text roles: {ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     private static bool Adopt()

@@ -24,14 +24,17 @@ internal static class Arbiter
     internal static string RepoRoot { get; } = FindRepoRoot();
 
     /// <summary>
-    /// Whether a prepared game assembly exists. Without one there is nothing to
-    /// replay, and these tests skip rather than fail: not owning the game is a
-    /// perfectly good reason to be unable to run them, and reporting it as a defect
-    /// would train people to ignore red.
+    /// Whether a prepared game assembly exists. Without one there is nothing here that
+    /// compiles against the game, and a test that needs it skips rather than fails: not
+    /// owning the game is a perfectly good reason to be unable to run one, and reporting
+    /// it as a defect would train people to ignore red. The one reading of that, so a
+    /// test elsewhere asking the same question does not answer it a second way.
     /// </summary>
-    internal static bool GameAvailable =>
-        File.Exists(Path.Combine(RepoRoot, "build", "lib", "sts2.dll")) &&
-        File.Exists(CliPath);
+    internal static bool GamePrepared =>
+        File.Exists(Path.Combine(RepoRoot, "build", "lib", "sts2.dll"));
+
+    /// <inheritdoc cref="GamePrepared"/>
+    internal static bool GameAvailable => GamePrepared && File.Exists(CliPath);
 
     internal static string SkipReason =>
         "Needs a prepared game assembly and a built CLI. Run ./scripts/build.sh, which copies your own " +
