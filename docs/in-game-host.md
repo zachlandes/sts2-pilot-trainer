@@ -1182,7 +1182,7 @@ Nothing is repositioned by hand, and growing the parent's minimum size reserves 
 `NSettingsTabManager` hands the whole `NSettingsPanel` to the screen's scroll container as its content, and `NScrollableContainer`'s bottom limit is `-(padding + panel.Size.Y) + viewport height` - so the panel's own `Size` *is* the scroll extent.
 The panel writes it in `RefreshSize`, from its column's minimum height, at its own `_Ready` and thereafter only when the viewport resizes.
 Godot readies children before parents, so that measurement has already happened by the time the `NSettingsScreen._Ready` postfix adds Runmobile's row: the extent stayed short by the row's height, the scrollbar reached its own bottom with the game's last General settings still below the fold, and a drag past the limit was lerped back to it on release.
-`MyRunsSettings.RefreshExtent` walks up to the `NSettingsPanel` the row landed inside and calls the panel's own command, once after the row is parented and again once the column has settled.
+`MyRunsSettings.RefreshExtent` walks up to the `NSettingsPanel` the row landed inside and calls the panel's own command, once after the row is parented and again deferred, because the first call runs before the screen has been laid out and the panel measures itself against a parent size that is not settled then.
 Nothing here computes a size, and a failure logs and leaves the screen standing - a short extent is worse than it should be, and a settings screen taken down by an exception is gone.
 Resizing the window was the only thing that put it right, which is the same fact from the other side: the viewport's own `SizeChanged` is the panel's other caller.
 

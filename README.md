@@ -60,6 +60,7 @@ A fourth, baselib-path, is not asked either, and a weaker check stands in for it
 The arbiter enters fight 2 of that recording headlessly and reproduces the recorded digest byte for byte.
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
 Settings show how much space recordings take, how many are kept, remove them on request, carry the **Show community runs** switch that controls whether the shared-run index is fetched, and let the player show or hide Runmobile on the main menu; showing community runs defaults on.
+They stand in the game's own General list, so each of them names the mod - **Runmobile: Keep my runs** and so on - except the main-menu control, which already says Runmobile in its own line.
 No setting shares a run automatically.
 Your recordings appear under Mine and can be played from any fight the client reaches - the first one walked, and every later one whose floor the run's own save can be restored to - credited as **Your run** throughout playback.
 Restoring takes a minute or so while the fight's save is materialised, with a notice on screen saying so.
