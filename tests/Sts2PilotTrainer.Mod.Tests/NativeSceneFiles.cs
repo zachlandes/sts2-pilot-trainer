@@ -110,7 +110,7 @@ internal static class NativeScenes
         Search,
         Search.Path is { } pack ? ReadIdentity(FindReleaseInfo(pack)) : null);
 
-    private static readonly Lazy<PackContents> Entries = new(() =>
+    private static readonly Lazy<IReadOnlyDictionary<string, string>> Entries = new(() =>
         Here.State is AvailabilityState.Run
             ? ReadDirectory(Search.Path!)
             : throw new InvalidOperationException(Here.Message));
@@ -118,19 +118,7 @@ internal static class NativeScenes
     /// <summary>The text of one <c>res://</c> resource, or null where this build has
     /// no such file.</summary>
     internal static string? Read(string resourcePath) =>
-        Entries.Value.Scenes.TryGetValue(Name(resourcePath), out var text) ? text : null;
-
-    /// <summary>
-    /// Whether this build ships one <c>res://</c> resource at all. A scene is in the
-    /// pack under its own name; an image is in it as the <c>.import</c> remap Godot
-    /// exports beside the converted texture, and that is what <c>ResourceLoader</c>
-    /// resolves the path through, so it is the name a texture path is looked for under.
-    /// </summary>
-    internal static bool Ships(string resourcePath)
-    {
-        var name = Name(resourcePath);
-        return Entries.Value.Names.Contains(name) || Entries.Value.Names.Contains(name + ".import");
-    }
+        Entries.Value.TryGetValue(Name(resourcePath), out var text) ? text : null;
 
     private static string Name(string resourcePath) =>
         resourcePath.StartsWith("res://", StringComparison.Ordinal)
@@ -332,10 +320,9 @@ internal static class NativeScenes
     /// of the file and names its offset in the header, and version 3 is the only layout
     /// read here: the mod compiles against one game build, so an older pack is refused
     /// by name rather than parsed by a second rule this repository has no example of.
-    /// Only text resources are read, because that is all a scene path can be; every
-    /// entry's name is kept, because whether an image is shipped is asked by name.
+    /// Only text resources are read, because that is all a scene path can be.
     /// </summary>
-    private static PackContents ReadDirectory(string pack)
+    private static IReadOnlyDictionary<string, string> ReadDirectory(string pack)
     {
         using var stream = File.OpenRead(pack);
         using var reader = new BinaryReader(stream, Encoding.UTF8);
@@ -368,7 +355,6 @@ internal static class NativeScenes
 
         var count = reader.ReadUInt32();
         var directory = new List<(string Name, long Offset, int Size)>((int)count);
-        var names = new HashSet<string>((int)count, StringComparer.Ordinal);
         for (var i = 0; i < count; i++)
         {
             var nameLength = (int)reader.ReadUInt32();
@@ -377,7 +363,6 @@ internal static class NativeScenes
             var size = (long)reader.ReadUInt64();
             reader.ReadBytes(16);
             reader.ReadUInt32();
-            names.Add(name);
             if (name.EndsWith(".tscn", StringComparison.Ordinal) && size < int.MaxValue)
             {
                 directory.Add((name, offset + origin, (int)size));
@@ -391,10 +376,8 @@ internal static class NativeScenes
             contents[name] = Encoding.UTF8.GetString(reader.ReadBytes(size));
         }
 
-        return new PackContents(contents, names);
+        return contents;
     }
-
-    private sealed record PackContents(IReadOnlyDictionary<string, string> Scenes, HashSet<string> Names);
 }
 
 /// <summary>

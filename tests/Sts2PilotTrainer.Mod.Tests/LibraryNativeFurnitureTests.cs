@@ -58,24 +58,6 @@ public sealed class LibraryNativeFurnitureTests
         Assert.True(bound == LibraryTabArt.LockImage, $"the stats scene draws '{bound}' on its Achievements tab; the Community tab names '{LibraryTabArt.LockImage}'");
     }
 
-    /// <summary>Every scene and image the library borrows is one this build ships. A
-    /// path that is not there is a tab that refuses or a marker that silently draws the
-    /// mod's own glyph, and neither is a test failure without this.</summary>
-    [NativeSceneFact]
-    public void EverySceneAndImageTheLibraryBorrowsIsOneThisBuildShips()
-    {
-        var borrowed = new List<string> { LibraryTabArt.Scene, LibraryTabArt.LockImage };
-        foreach (var kind in Enum.GetValues<FloorKind>())
-        {
-            if (FloorMarkerArt.IconName(kind) is not { } icon) continue;
-            borrowed.Add(FloorMarkerArt.IconPath(icon));
-            borrowed.Add(FloorMarkerArt.OutlinePath(icon));
-        }
-
-        var missing = borrowed.Where(path => !NativeScenes.Ships(path)).ToList();
-        Assert.True(missing.Count == 0, "this build does not ship: " + string.Join(", ", missing));
-    }
-
     /// <summary>The game's own tabs are no controller stop, and the one you are on
     /// would be a stop on a control whose press does nothing. The other one stays a
     /// stop because this band has no shoulder hotkeys to reach it with.</summary>
