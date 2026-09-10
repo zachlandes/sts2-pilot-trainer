@@ -3,7 +3,7 @@
 *2026-09-09T21:29:29Z by Showboat 0.6.1*
 <!-- showboat-id: 54bb340e-9574-4278-b98f-195d7bab1abf -->
 
-The supported installer built and installed this branch for the v0.111.0 retail client, three times: once at the head that brought restore into the client, and once after each of the two defects below was fixed.
+The supported installer built and installed this branch for the v0.111.0 retail client, four times: once at the head that brought restore into the client, once after each of the two defects below was fixed, and once at the head this branch ends on.
 The client was launched directly with `--force-steam=off`, without invoking Steam, on an isolated non-Steam save tree.
 Save Profile 1's Mine tab holds eight recordings the recorder wrote of runs played on this machine; the one under test is `native-3LACFJ5NJ371-20260906-015901`, as the recorder wrote it - a version-5 file, byte for byte what is in the store, never migrated.
 The committed copy under `manifests/` is the migrated one, which is the difference this session found.
@@ -63,42 +63,36 @@ runmobile-restoring-your-run.png
 
 ![e8d1c719-2026-09-10](e8d1c719-2026-09-10.png)
 
-### Two captures, two heads
+That press entered fight 2 at `combat_start:2`, `sha256:0079692657a84fd564e0ed3ea9d0f3c57aad9bc7cc4a59447803f84849297d38`, on 2026-09-09 at `4886ef7` - the first in-client entry, taken before this branch was rebased onto main; the press below on the current head proves the same thing at a later fight, so its log and capture are the ones kept.
 
-The plate above and the fight below were taken on different heads, and the difference is worth stating plainly rather than leaving a reader to reconcile them.
+## Proved again on the fixed head
 
-The fight-2 entry proof in the rest of this section - Continue at floor 3, the fight entered, the digest matched - was captured on 2026-09-09 at `4886ef7`, before this branch was rebased onto main.
-Main's `6d124d2` (#54, `fix(mod): match Runmobile text to native typography`) entered the branch with that rebase, and its `NativeTextRole.LedgerRow` mapping names a node this build's `map_point_history_hover_tip.tscn` does not have.
-`PlaybackTransportDock` reads that role when it docks the transport, which is after the restore has verified its boundary, so every head from `d0e5508` on refuses fight entry at that point.
-That is a regression the branch inherited from main rather than one its own fix rounds made, and it is fixed separately by the ledger-role hotfix off main.
-
-The plate was captured on 2026-09-10 at the pipeline head, `adcf103`.
-It is of the Preparing phase, which happens before the docking that refuses, so it is unaffected by any of that.
-Fight entry will be re-proved on the fixed head once the hotfix merges.
-
-The client's log below is the 2026-09-09 press, in order, with nothing between the lines removed except the game's own asset chatter:
+The ledger-role hotfix merged to main as #57 and is this branch's base commit, `6a5ace5`.
+The same installer built and installed this branch's head, `d0baf52`, on 2026-09-10, and the same isolated profile pressed Continue again on the player's own recording - now offering floor 7, fight 4, because the presses above had each recorded the fight they opened and nothing else.
+The arrival's save was already in the cache from an earlier press, so there was no wait: the run continued from it, the fight opened, and the mod stood in it at the digest the recording declares.
 
 ```
-[Runmobile] no verified snapshot for arrival on floor 3 (nothing is cached under v0.111.0_standard_CHARACTER.IRONCLAD_a0_3LACFJ5NJ371_1568834832_seq16_8270d9e5…); asking the packaged arbiter to materialise one
-[Runmobile] continuing the recording's run from its save at floor 3, verified at sha256:0079692657a84fd564e0ed3ea9d0f3c57aad9bc7cc4a59447803f84849297d38
+[Runmobile] continuing the recording's run from its save at floor 7, verified at sha256:38f1fb65d17250e306cfa01d66f5f2b626b77b30dec57bdba3d08f832dbb22a7
 [Runmobile] docked the transport under GlobalUi (viewport (1920, 1080), anchor (1824, 108.938866), strip (0, 0), (1920, 1080), visible True)
-[Runmobile] restored your run to floor 3 from the game's own save; 0 recorded decision(s) left to watch before the fight
+[Runmobile] restored your run to floor 7 from the game's own save; 0 recorded decision(s) left to watch before the fight
 [Runmobile] letting the fight open; room=Monster, combat manager=in progress, player combat state=None, turn=1
 [Runmobile] after letting the game run; the fight opened; room=Monster, combat manager=in progress, player combat state=Play, turn=1
-[Runmobile] standing in the recorded fight; canonical state at combat start is sha256:0079692657a84fd564e0ed3ea9d0f3c57aad9bc7cc4a59447803f84849297d38
+[Runmobile] standing in the recorded fight; canonical state at combat start is sha256:38f1fb65d17250e306cfa01d66f5f2b626b77b30dec57bdba3d08f832dbb22a7
 [Runmobile] capturing the player's fight from its combat start
 ```
 
-That digest is `boundaries[]`'s `combat_start:2` in the recording, captured from the live game when the run was played; the client reproduced it field for field from the save, with no decision replayed.
+That digest is `combat_start:4` in the recording.
+No abandon, and the transport docked past the role read that refused before.
 
 ```bash {image}
-runmobile-fight-2-restored.png
+runmobile-fight-4-restored-fixed-head.png
 ```
 
-![3d731af4-2026-09-09](3d731af4-2026-09-09.png)
+![43740c43-2026-09-10](43740c43-2026-09-10.png)
 
-Fight 2 as the player is stood in it: the Ironclad at 71/80 with 113 gold against three slimes, a hand of five at 3 of 3 energy, End Turn 1, the hanging `Your run` tag under the game's own meta cluster, and the game's own overlay naming the seed and `MODDED (1)`.
-The transport's `Floor 3` note is a moment before the fight opens and was not on screen by the time the capture was taken; the fourth log line above is that note's fact.
+Fight 4 as the player is stood in it on the fixed head: the Ironclad at 62/80 with 69 gold against two lizards, a hand of five at 3 of 3 energy, End Turn 1, the `Your run` tag, and the overlay naming the seed and `MODDED (1)`.
+After it, the mod's progress for this run read fights 1 to 4 played and nothing more: the fight was recorded once it had opened.
+`./scripts/protected-files.sh compare` against a ledger taken before that launch reported nothing changed among the protected files; under the store, only `progress.json`.
 
 ## Residual R1, as measured
 
