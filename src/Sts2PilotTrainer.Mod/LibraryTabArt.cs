@@ -66,12 +66,19 @@ internal static class LibraryTabArt
         // the tree. Anchor it top-left first, so a position means a position
         tab.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
         tab.Position = at.Position;
-        tab.Size = at.Size;
+        // The scene declares a 256 by 90 minimum, and Godot clamps a size up to the
+        // minimum standing at the moment it is written - lowering it afterwards does not
+        // shrink what was already clamped, which drew the two tabs 256 wide at 170
+        // apart, one over the other. Lower the constraint before writing the value, the
+        // way the strip's textures ignore their intrinsic size before taking art
         tab.CustomMinimumSize = at.Size;
+        tab.Size = at.Size;
         // The hover scale grows from the tab's centre, as the game's does
         tab.PivotOffset = at.Size / 2f;
         tab.FocusMode = FocusModeFor(current);
         parent.AddChild(tab);
+        // The scene sorts its own children on entering the tree and may clamp again
+        tab.Size = at.Size;
 
         tab.SetLabel(label);
         if (current) tab.Select();
