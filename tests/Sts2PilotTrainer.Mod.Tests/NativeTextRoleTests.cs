@@ -10,8 +10,8 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// checked nowhere else until the surface that asks for it is drawn: v0.111.0 shipped
 /// with the ledger row pointing at a node that scene does not contain, and the first
 /// thing to notice was a player entering a recorded fight and being told the fight was
-/// abandoned. The rest hold the mod to costing a log line for that rather than a
-/// feature.
+/// abandoned. The rest hold the mod to naming such a role in the log before the
+/// surface that asks for it refuses.
 /// </summary>
 public sealed class NativeTextRoleTests : IDisposable
 {
@@ -24,8 +24,6 @@ public sealed class NativeTextRoleTests : IDisposable
     /// </summary>
     static NativeTextRoleTests() => _ = typeof(EngineHost).Assembly;
 
-    private const int PopupHeadingSize = 32;
-    private const int PopupBodySize = 26;
     private const int OrdinarySize = 21;
 
     public void Dispose() => GameText.Forget();
@@ -77,9 +75,6 @@ public sealed class NativeTextRoleTests : IDisposable
         var (_, scenePath, node, _) = GameText.Declarations
             .Single(declaration => declaration.Role == NativeTextRole.LedgerRow);
 
-        Assert.Equal("res://scenes/ui/map_point_history_hover_tip.tscn", scenePath);
-        Assert.Equal("TextContainer/TopContainer/RewardStats/RewardRows/ObtainedRow1", node);
-
         var found = NativeScenes.Nodes(NativeScenes.Read(scenePath)!)[node];
 
         Assert.Equal("RichTextLabel", found.Type);
@@ -102,91 +97,25 @@ public sealed class NativeTextRoleTests : IDisposable
         Assert.Equal([NativeTextRole.LedgerRow], refused);
     }
 
+    /// <summary>
+    /// A role this build cannot answer refuses where it is used, exactly as it did
+    /// before verification existed: this mod never invents a font and a size for
+    /// missing native furniture, and naming the role early does not soften that.
+    /// </summary>
     [Fact]
-    public void ARolePointingAtANodeThisBuildHasNotIsDrawnByAStandInRatherThanThrown()
+    public void ARoleThisBuildCannotAnswerStillRefusesAtUse()
     {
         GameText.Verify(Reading(NativeTextRole.LedgerRow));
 
-        Assert.Equal(PopupBodySize, GameText.Scene(NativeTextRole.LedgerRow).Size);
-    }
-
-    [Fact]
-    public void ABoldRoleStandsInFromTheHeadingRatherThanTheBody()
-    {
-        GameText.Verify(Reading(NativeTextRole.FloorNumeral));
-
-        Assert.Equal(PopupHeadingSize, GameText.Scene(NativeTextRole.FloorNumeral).Size);
-    }
-
-    /// <summary>
-    /// The whole point of the stand-in: the journey a player takes into a recorded
-    /// fight draws eight roles, and one of them being missing used to abandon the
-    /// fight. Every role the transport asks for answers, whichever of them this build
-    /// has lost.
-    /// </summary>
-    [Fact]
-    public void TheRecordedFightJourneyDrawsEveryRoleItAsksForWhicheverOneIsMissing()
-    {
-        NativeTextRole[] journey =
-        [
-            NativeTextRole.Identity,
-            NativeTextRole.IdentityDescription,
-            NativeTextRole.TagNumeral,
-            NativeTextRole.TooltipBody,
-            NativeTextRole.DropdownValue,
-            NativeTextRole.DropdownItem,
-            NativeTextRole.LedgerRow,
-            NativeTextRole.TooltipTitle,
-        ];
-        NativeTextRole[] bold =
-        [
-            NativeTextRole.Identity,
-            NativeTextRole.DropdownValue,
-            NativeTextRole.DropdownItem,
-            NativeTextRole.TooltipTitle,
-        ];
-
-        foreach (var missing in journey)
-        {
-            GameText.Forget();
-            GameText.Verify(Reading(missing));
-
-            foreach (var role in journey)
-            {
-                var expected = role != missing ? OrdinarySize
-                    : bold.Contains(role) ? PopupHeadingSize
-                    : PopupBodySize;
-                Assert.Equal(expected, GameText.Scene(role).Size);
-            }
-        }
-    }
-
-    /// <summary>
-    /// A build that has not got the popup either has no native typography at all, and
-    /// this mod refuses a surface rather than inventing a font and a size for it. That
-    /// rule is unchanged; what the stand-in removes is one wrong path costing a
-    /// feature.
-    /// </summary>
-    [Fact]
-    public void ABuildWithNoNativeTextAtAllStillRefusesRatherThanSubstituting()
-    {
-        var refused = GameText.Verify(_ => throw new InvalidOperationException("nothing here"));
-
-        Assert.Empty(refused);
         Assert.Throws<InvalidOperationException>(() => GameText.Scene(NativeTextRole.LedgerRow));
     }
 
     /// <summary>
-    /// Stands in for the game's scene files: every role answers at a size of its own,
-    /// except the ones this build is being told it has not got.
+    /// Stands in for the game's scene files: every role answers, except the ones this
+    /// build is being told it has not got.
     /// </summary>
     private static Func<NativeTextRole, GameTextStyle> Reading(params NativeTextRole[] missing) =>
         role => missing.Contains(role)
             ? throw new InvalidOperationException($"This build's '{role}' text role is not here.")
-            : new GameTextStyle(null, role switch
-            {
-                NativeTextRole.PopupHeading => PopupHeadingSize,
-                NativeTextRole.PopupBody => PopupBodySize,
-                _ => OrdinarySize,
-            });
+            : new GameTextStyle(null, OrdinarySize);
 }

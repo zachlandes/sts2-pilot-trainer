@@ -775,13 +775,11 @@ transport asks for that role on the way in.
 which is the mod's first moment with a running game.
 It is not at mod initialization for the reason at the top of this document: a scene
 is the game, and the initializer reads nothing.
-A role this build cannot answer is named in the log there and drawn by the popup's own
-heading or body of the same weight, so a wrong path costs a line in a file a player can
-attach to a bug report rather than the feature that asked for it.
-The stand-in is another native role rather than a size written down in the mod, and the
-two popup roles stand in for nothing themselves: a build that cannot answer those has no
-native typography at all and every surface refuses, which is what missing native
-furniture has always cost.
+A role this build cannot answer is named in the log there - the role, its scene, its node
+and the reason - so a wrong path is a line in a file a player can attach to a bug report
+before the surface that asks for it refuses.
+It is named, not stood in for: missing native furniture still refuses the surface rather
+than substituting a size written down in the mod, which is what it has always cost.
 Godot loads no resources under `dotnet test`, so a path is checked by
 `NativeTextRoleTests`, which reads the game's own scene files out of the shipped pack
 and skips where there is no installation.

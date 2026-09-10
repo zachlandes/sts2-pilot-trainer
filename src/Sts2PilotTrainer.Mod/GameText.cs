@@ -42,7 +42,6 @@ internal static class GameText
     private static readonly StringName RichTextLabelType = "RichTextLabel";
     private static readonly Dictionary<string, PackedScene> Scenes = [];
     private static readonly Dictionary<NativeTextRole, GameTextStyle> SceneStyles = [];
-    private static readonly Dictionary<NativeTextRole, NativeTextRole> StandIns = [];
 
     internal static GameTextStyle? Of(Node? node)
     {
@@ -79,9 +78,9 @@ internal static class GameText
     /// A role names a node in one of the game's own scenes, and a build that renamed
     /// or moved that node answers nothing. Before this ran, the first surface to ask
     /// for such a role threw where it asked - which was inside the recorded-fight
-    /// journey, so one wrong path in this table cost a player the fight they were
-    /// entering and said so in a message about text. A path this build cannot answer
-    /// now costs a log line here and a stand-in there.
+    /// journey, so one wrong path in this table said so in a message about text as a
+    /// player was entering the fight. The refusal is unchanged; what this adds is that
+    /// it is named here, once, ahead of the surface that asks.
     ///
     /// It is not called from the mod initializer, because the mod reads nothing at
     /// initialization: that runs one startup phase before the game exists and reading
@@ -106,6 +105,7 @@ internal static class GameText
     /// scene from without one.</param>
     internal static IReadOnlyList<NativeTextRole> Verify(Func<NativeTextRole, GameTextStyle> read)
     {
+        List<NativeTextRole> refused = [];
         foreach (var role in Specs.Keys)
         {
             try
@@ -114,25 +114,25 @@ internal static class GameText
             }
             catch (Exception ex)
             {
-                // The two roles nothing stands in for. A build that cannot answer the
-                // plainest text the game draws has no native typography at all, and
-                // every surface refuses rather than inventing one - which is what this
-                // mod did about missing native furniture before this check existed.
+                // Per role, so one path this build has lost does not end the sweep and
+                // leave the rest of the table unread.
+                refused.Add(role);
                 Log.Error(
-                    $"[{RunmobileMod.ModId}] no {Specs[role].Name} and nothing to stand in for it: " +
-                    $"{ex.Message}", 2);
+                    $"[{RunmobileMod.ModId}] this build has no {Specs[role].Name} " +
+                    $"('{Specs[role].Node}' in '{Specs[role].Scene}'): {ex.Message}", 2);
             }
         }
 
-        return [.. StandIns.Keys];
+        return refused;
     }
 
     /// <summary>
     /// The style a role draws at on this build.
     ///
-    /// Never throws over a role this build cannot answer, except for the two roles
-    /// nothing stands in for. <see cref="Verify"/> has normally already asked, so this
-    /// is a dictionary lookup by the time a surface is drawn.
+    /// A role this build cannot answer refuses here, and the surface that asked refuses
+    /// with it: missing native furniture is never substituted for. <see cref="Verify"/>
+    /// has normally already asked, so this is a dictionary lookup by the time a surface
+    /// is drawn.
     /// </summary>
     internal static GameTextStyle Scene(NativeTextRole role) => Resolve(role, Read);
 
@@ -141,55 +141,16 @@ internal static class GameText
     internal static void Forget()
     {
         SceneStyles.Clear();
-        StandIns.Clear();
         Scenes.Clear();
     }
 
     private static GameTextStyle Resolve(NativeTextRole role, Func<NativeTextRole, GameTextStyle> read)
     {
         if (SceneStyles.TryGetValue(role, out var style)) return style;
-        if (StandIns.TryGetValue(role, out var stood)) return Resolve(stood, read);
 
-        try
-        {
-            style = read(role);
-        }
-        catch (Exception refusal)
-        {
-            var standIn = StandInFor(role, refusal);
-            // Resolved before it is recorded, so a build that cannot answer the
-            // stand-in either refuses out of here rather than remembering a stand-in
-            // that answers nothing.
-            var drawn = Resolve(standIn, read);
-            StandIns[role] = standIn;
-            Log.Error(
-                $"[{RunmobileMod.ModId}] this build has no {Specs[role].Name} " +
-                $"('{Specs[role].Node}' in '{Specs[role].Scene}'): {refusal.Message} " +
-                $"Drawing it as the {Specs[standIn].Name} instead.", 2);
-            return drawn;
-        }
-
+        style = read(role);
         SceneStyles.Add(role, style);
         return style;
-    }
-
-    /// <summary>
-    /// Which role is drawn in place of one this build could not answer.
-    ///
-    /// The stand-in is another native role rather than a font and a size written down
-    /// here: nothing in this mod derives either, and a degraded role is still text this
-    /// build draws somewhere. It is the popup's own heading or body, of the weight the
-    /// refused role asked for, because that is the plainest text the game has and the
-    /// popup is furniture every surface of this mod already requires. Those two stand
-    /// in for nothing themselves, so a build that cannot answer them refuses here and
-    /// every surface refuses with it, which is what missing native furniture has always
-    /// cost.
-    /// </summary>
-    private static NativeTextRole StandInFor(NativeTextRole role, Exception refusal)
-    {
-        var standIn = Specs[role].Bold ? NativeTextRole.PopupHeading : NativeTextRole.PopupBody;
-        if (standIn == role) throw refusal;
-        return standIn;
     }
 
     private static GameTextStyle Read(NativeTextRole role)

@@ -256,12 +256,13 @@ public static class RunmobileMod
     /// could not answer.
     ///
     /// Here rather than at mod start because the mod reads nothing at initialization,
-    /// and a scene is the game. This is the mod's first moment with a running game, and
-    /// it is one startup phase and one menu ahead of anything that draws, so a role
-    /// this build renamed is a line in the log a player can attach to a bug report
-    /// rather than a feature that breaks where it is used. It cost the recorded-fight
-    /// journey once, from a wrong node path that no test and no surface asked about
-    /// until a player was already entering the fight.
+    /// and a scene is the game. This is the mod's first moment with a running game. It
+    /// is ahead of anything this mod draws from a menu, and not ahead of everything: the
+    /// recorder asks for adoption at the first room of a run, so on a player who opens
+    /// no Runmobile surface the sweep runs during that transition instead. Either way a
+    /// role this build renamed is named in the log before the surface that asks for it
+    /// refuses, rather than first being noticed by a player already entering a recorded
+    /// fight - which is what a wrong node path cost once.
     ///
     /// Like the patch roster, a diagnostic never takes the mod down with it: failing to
     /// describe the typography is not failing to have it.
@@ -280,8 +281,8 @@ public static class RunmobileMod
             if (refused.Count == 0) return;
 
             Log.Error(
-                $"[{ModId}] {refused.Count} text role(s) this build does not have, drawn by a " +
-                "stand-in: " + string.Join(", ", refused), 2);
+                $"[{ModId}] {refused.Count} text role(s) this build does not have; every surface " +
+                "that asks for one refuses: " + string.Join(", ", refused), 2);
         }
         catch (Exception ex)
         {
