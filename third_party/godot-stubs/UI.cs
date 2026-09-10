@@ -60,7 +60,7 @@ public partial class Control : CanvasItem
     public void AcceptEvent() { }
     public bool HasFocus() => false;
     public Viewport? GetViewport() => null;
-    public int GetThemeConstant(StringName name, StringName themeType) => 0;
+    // MODIFIED by sts2-pilot-trainer: backed by Sts2PilotTrainerAdditions.cs
     public bool HasThemeFont(StringName name, StringName themeType) => true;
 
     public virtual void _GuiInput(InputEvent @event) { }

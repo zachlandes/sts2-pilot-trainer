@@ -21,6 +21,30 @@ public sealed class MyRunsSettingsRowTests
 {
     private const float Width = 520f;
 
+    /// <summary>
+    /// How wide the game's own General settings column is in the retail client, which is
+    /// the width this row is actually laid out at.
+    ///
+    /// <para>Measured off the committed retail capture
+    /// <c>demo/runmobile-settings-row-native-type.png</c>, which is 3024 x 1964 - a 2x
+    /// capture of the 1512 x 982 surface that file names. The settings rows' own dividers
+    /// span about 1596 px of that 3024-px frame. The game area fills the frame's width and
+    /// is letterboxed top and bottom, so 3024 px is the client's own 1920-unit viewport -
+    /// the one its log records in <c>demo/RUNMOBILE-RESTORE-IN-CLIENT.md</c> - and 1596 px
+    /// is about 1013 units. 1000 is that rounded down.</para>
+    ///
+    /// <para>The same capture cross-checks <c>GlyphWidth</c>, the estimate this file
+    /// measures words with where there is no font: it puts the 31-character caption that
+    /// capture's button carried at 484 units at size 26, and that button's box spans
+    /// about 798 px in the capture, which is about 507 units with its padding.</para>
+    ///
+    /// <para>Measured from a committed capture and provisional until an in-client capture
+    /// confirms it. 520 is <c>MyRunsSettings.FallbackWidth</c> - what the row is given
+    /// when the settings entry reports no size at all - and asserting a caption fits there
+    /// asserts something the client never has to satisfy.</para>
+    /// </summary>
+    private const float RetailColumnWidth = 1000f;
+
     [Fact]
     public void TheRowCarriesWhatTheDerivationSaysAndNothingElse()
     {
@@ -30,7 +54,8 @@ public sealed class MyRunsSettingsRowTests
         Assert.Equal("20", Label(row, "KeepNumeral").Text);
         Assert.Equal("12 runs · 6 MB", Label(row, "Reading").Text);
         Assert.Equal("on this computer, in user://Runmobile/recordings", Label(row, "Detail").Text);
-        Assert.Equal("Remove all my runs", row.Remove.Text);
+        Assert.Equal("Remove", row.Remove.Text);
+        Assert.Equal("Remove all my runs", Label(row, "RemoveLabel").Text);
     }
 
     /// <summary>
@@ -287,18 +312,20 @@ public sealed class MyRunsSettingsRowTests
     }
 
     /// <summary>
-    /// The main-menu control states what the menu is doing, because a switch that only
-    /// said what it would do next leaves a player guessing which way it is set.
+    /// The main-menu control shows what the menu is doing with the game's own ticked
+    /// image, because a switch that only said what it would do next leaves a player
+    /// guessing which way it is set.
     /// </summary>
     [Fact]
     public void TheMainMenuControlStatesWhatTheMenuIsDoing()
     {
-        Assert.Equal(
-            "Runmobile on the main menu: on",
-            Build(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20, MainMenuRowShown: true)).MainMenu.Text);
-        Assert.Equal(
-            "Runmobile on the main menu: off",
-            Build(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20, MainMenuRowShown: false)).MainMenu.Text);
+        var text = Text();
+        Assert.Same(
+            text.Art!.Ticked,
+            TickImage(Build(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20, MainMenuRowShown: true), text: text).MainMenu).Texture);
+        Assert.Same(
+            text.Art!.Unticked,
+            TickImage(Build(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 20, MainMenuRowShown: false), text: text).MainMenu).Texture);
     }
 
     /// <summary>It reports the flip and writes nothing itself, like every other control
@@ -314,7 +341,6 @@ public sealed class MyRunsSettingsRowTests
         row.MainMenu.EmitPressed();
 
         Assert.False(asked);
-        Assert.Equal("Runmobile on the main menu: on", row.MainMenu.Text);
     }
 
     /// <summary>
@@ -346,7 +372,7 @@ public sealed class MyRunsSettingsRowTests
             new GameTextStyle(null, 27),
             new GameTextStyle(null, 26),
             new GameTextStyle(null, 24),
-            new GameTextStyle(null, 22));
+            new GameTextStyle(null, 22)) { Art = MyRunsSettingsArtTests.Art() };
         var row = Build(
             new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20),
             text: text);
@@ -356,10 +382,10 @@ public sealed class MyRunsSettingsRowTests
         Assert.True(reading.Size.X > reading.Text.Length * text.Reading.Size / 2f);
         Assert.Equal(Width, Label(row, "Detail").Size.X);
 
-        foreach (var control in new[] { row.Remove, row.Fetch, row.MainMenu })
+        Assert.Equal(Width, row.Remove.Position.X + row.Remove.Size.X);
+        foreach (var control in new[] { row.Fetch, row.MainMenu })
         {
-            Assert.True(control.Position.X > 0f, $"{control.Name} is not aligned as a right-side control");
-            Assert.Equal(Width, control.Position.X + control.Size.X);
+            Assert.Equal(Width - text.Art!.ActionSize.X / 2f, control.Position.X + control.Size.X / 2f);
         }
     }
 
@@ -379,11 +405,10 @@ public sealed class MyRunsSettingsRowTests
         var stepperBottom = Math.Max(
             row.Fewer.Position.Y + row.Fewer.Size.Y,
             Label(row, "KeepLabel").Position.Y + Label(row, "KeepLabel").Size.Y);
-        var rule = Rule(row).Points[0].Y;
-
-        Assert.True(stepperTop >= pad, $"the stepper starts {stepperTop} in, under {pad}");
-        Assert.True(rule - stepperBottom >= pad, $"the rule is {rule - stepperBottom} under the stepper, under {pad}");
-        Assert.True(Label(row, "Reading").Position.Y > rule, "the readings stay under the rule");
+        var heading = Label(row, "Heading");
+        Assert.True(stepperTop - (heading.Position.Y + heading.Size.Y) >= pad);
+        Assert.True(Label(row, "Reading").Position.Y - stepperBottom >= pad);
+        Assert.True(heading.Position.Y > Rule(row).Points[0].Y);
     }
 
     /// <summary>The row is as tall as what it draws. A section stacks what it hosts, so
@@ -440,20 +465,74 @@ public sealed class MyRunsSettingsRowTests
             Build(facts, text: Text(15)).Height);
     }
 
+    /// <summary>
+    /// Every caption fits the box it is drawn in at the column's real width, in both
+    /// states of every control that has two.
+    ///
+    /// Each caption's box is fixed by <c>Layout</c> - the column less the control it sits
+    /// beside - and clips rather than widening, so a caption longer than its box loses
+    /// its last words in the client without any control moving. The stub draws no font,
+    /// so the words are measured with <c>GlyphWidth</c> against the box the label was
+    /// actually placed in. The Remove button is measured the same way against the
+    /// native action image it is drawn inside, which is sized by its art and not by its
+    /// word.
+    ///
+    /// Both states of the main-menu and community controls are built here rather than
+    /// whichever one the disk happens to answer with, so a state-dependent caption can
+    /// never be the one this misses.
+    /// </summary>
+    [Theory]
+    [InlineData(16)]
+    [InlineData(26)]
+    public void EveryCaptionFitsTheColumnItIsDrawnIn(int size)
+    {
+        foreach (var onTheMenu in new[] { true, false })
+        {
+            foreach (var fetching in new[] { true, false })
+            {
+                var row = Build(
+                    new MyRunsFacts(Runs: 3, Bytes: 3 * 1024 * 1024, Keep: 20, MainMenuRowShown: onTheMenu),
+                    text: Text(size, size),
+                    fetchRunIndex: fetching,
+                    width: RetailColumnWidth);
+
+                foreach (var name in new[] { "KeepLabel", "RemoveLabel", "FetchLabel", "MainMenuLabel" })
+                {
+                    var caption = Label(row, name);
+                    Assert.True(
+                        GlyphWidth(caption.Text, size) < caption.Size.X,
+                        $"\"{caption.Text}\" needs {GlyphWidth(caption.Text, size)} of the {caption.Size.X} its box has at size {size}");
+                }
+
+                Assert.True(
+                    GlyphWidth(row.Remove.Text, size) < row.Remove.Size.X,
+                    $"\"{row.Remove.Text}\" needs {GlyphWidth(row.Remove.Text, size)} of the {row.Remove.Size.X} its image has at size {size}");
+            }
+        }
+    }
+
+    /// <summary>How wide a line of words is where there is no font to measure with: 0.6 em
+    /// a glyph, which <see cref="RetailColumnWidth"/> cross-checks against the committed
+    /// capture.</summary>
+    private static float GlyphWidth(string text, int size) => text.Length * size * 0.6f;
+
     private static MyRunsSettingsRow Build(
         MyRunsFacts facts, Action<int>? keepChanged = null, Action? removePressed = null,
         Action<bool>? fetchChanged = null, Action<bool>? mainMenuChanged = null,
-        MyRunsSettingsText? text = null) =>
+        MyRunsSettingsText? text = null, bool fetchRunIndex = true, float width = Width) =>
         MyRunsSettingsRow.Build(
             MyRunsRow.For(facts),
             facts.Keep,
-            fetchRunIndex: true,
-            Width,
+            fetchRunIndex,
+            width,
             text ?? Text(),
             keepChanged ?? (_ => { }),
             removePressed ?? (() => { }),
             fetchChanged ?? (_ => throw new InvalidOperationException("Unexpected fetch press")),
             mainMenuChanged ?? (_ => throw new InvalidOperationException("Unexpected main-menu press")));
+
+    private static TextureRect TickImage(Button control) =>
+        control.GetChildren().OfType<TextureRect>().Single(child => child.Name.ToString() == "NativeArt");
 
     private static MyRunsSettingsText Text(int rowSize = 16, int buttonSize = 16) =>
         new(
@@ -461,7 +540,7 @@ public sealed class MyRunsSettingsRowTests
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
-            new GameTextStyle(null, buttonSize));
+            new GameTextStyle(null, buttonSize)) { Art = MyRunsSettingsArtTests.Art() };
 
     private static void Apply(MyRunsSettingsRow row, MyRunsFacts facts) =>
         row.Apply(MyRunsRow.For(facts), facts.Keep);

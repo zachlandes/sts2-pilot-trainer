@@ -36,9 +36,13 @@ The mod's refusal popup uses its mapped R1 title, R2 body, and R3 button roles.
 The row's label, readings, and controls take the full native settings column using the mapped roles for a settings row label, a settings value, and a button caption.
 Its controls share the same right edge as the game's own controls on that screen.
 
+Both settings captures predate the change that put the row under a `Runmobile` heading, gave its controls the game's own images, and corrected the General list's scroll extent.
+They show the captions under the short extent that hid View Credits and the settings below it, and the community-runs control under an earlier caption.
+What they still stand for is the roles and the column width, which that change did not move; `demo/RUNMOBILE-SETTINGS-SECTION.md` holds the section as it stands.
+
 ## What these captures prove
 
-The retail captures prove the library parchment's Others, Mine, and opened-run states at named-role typography, the run strip's native gold arrow art, the mod's refusal popup at its R1, R2, and R3 roles, and the My Runs settings row at its mapped native roles and full native column width.
+The retail captures prove the library parchment's Others, Mine, and opened-run states at named-role typography, the run strip's native gold arrow art, the mod's refusal popup at its R1, R2, and R3 roles, and the My Runs settings row at its mapped native roles and full native column width as that row stood when the capture was taken.
 
 The playback transport's hanging tag is captured in the client - `demo/RUNMOBILE-RESTORE-IN-CLIENT.md` holds it, in the fight a player was stood in by restoring their own recording.
 The recorder's bookmark tag, which hangs from the same anchor in the same material, draws no text and asks no role; its in-client capture on v0.111.0 - on the loot screen, on the card-reward screen behind it, and on a real death screen after a lost fight - is `RUNMOBILE-BOOKMARK.md`, taken 2026-09-10.
@@ -46,5 +50,6 @@ Its expanded strip, the fight-result panel, chronology paging, and look-back led
 Programmatic navigation was attempted and did not reach those surfaces, so they require manual navigation for a retail capture.
 This change covers them with automated paging and layout tests instead.
 Those tests do not read the game's scene files, and the look-back ledger's role named a node v0.111.0 has not: the role table is now held against the shipped pack, which `docs/in-game-host.md` owns.
+The settings section under its heading and the corrected General scroll extent that reaches Reset to Default are captured in `demo/RUNMOBILE-SETTINGS-SECTION.md`.
 
 The restoring notice shown while a run is being restored is captured: `demo/RUNMOBILE-RESTORE-IN-CLIENT.md` holds it, taken a second and a half after Continue was pressed on the player's own recording, with the plate over the Compendium screen and its line at the native heading role.

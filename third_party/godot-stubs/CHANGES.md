@@ -1,5 +1,9 @@
 # Changes from upstream
 
+`CanvasItem.ShowBehindParent` lets the settings action's native art draw behind its stock input control's caption.
+`StyleBoxEmpty` inherits `StyleBox`, matching Godot, so a transparent control background reaches the same style-override contract as a filled one.
+Theme constants and `GetThemeColor` retain and return overrides, allowing the settings row to copy and test the native caption outline and entry margins.
+
 Vendored from [wuhao21/sts2-cli](https://github.com/wuhao21/sts2-cli) `src/GodotStubs`,
 commit `d11aa88`, fetched 2026-08-30. MIT licensed; see `LICENSE`.
 
@@ -35,6 +39,7 @@ distributable mod free of a build-time dependency on a third-party repository.
 | `UI.cs`, `ExtraGodotTypes.cs`, `Sts2PilotTrainerAdditions.cs` | `CanvasItem` and `NinePatchRect` are partial so the material properties, patch margins and stretch modes live in the project additions file, allowing the library ribbon tests to check native-width end caps and retention of the retail focus materials without rendering. |
 | `UI.cs`, `Sts2PilotTrainerAdditions.cs` | `Resource` is `partial`, and `Resource.Duplicate` is added in this project's own file as a member-wise copy. The library duplicates the popup's own ribbon for every row and gives each duplicate its own copy of the two materials the retail button animates on hover; without the method the runtime cannot resolve the call in the test that pins that. The real GodotSharp has carried it all along. |
 | `Math.cs`, `Sts2PilotTrainerAdditions.cs` | `Rect2` is `partial`, and `Rect2.End` / `Rect2.HasPoint` are added in this project's own file. The library strip lays each cell's icon, numeral, badge and ring out as rectangles and measures one against the next, which the tests pin so a marker and its numeral can never collide again; both are members of the real GodotSharp `Rect2` the mod compiles against. |
+| `Core.cs`, `Sts2PilotTrainerAdditions.cs` | `GodotObject` is `partial`, and `GodotObject.Call` is added in this project's own file. It is a member of the real GodotSharp the mod compiles against, and the mod's one caller is Runmobile's settings row asking the game's settings panel to measure its column again after the row has been added to it - a private engine command reachable only by name. The stub dispatches nothing and records the name, which is the only thing a process with no engine can check: that the ask was made, of the right object. `CalledMethods` beside it is not a real GodotSharp member and exists for that reading, the way `ThemeColorOverride` already exists for a colour override's. |
 
 Record every future divergence here, with the reason. When upstream moves, diff
 against the new revision rather than re-deriving: this table is what makes that

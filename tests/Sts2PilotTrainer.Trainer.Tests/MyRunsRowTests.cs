@@ -300,9 +300,7 @@ public sealed class MyRunsRowTests
         var off = MyRunsRow.For(new MyRunsFacts(Runs: 1, Bytes: 1024, Keep: 50, MainMenuRowShown: false));
 
         Assert.True(on.MainMenu.Shown);
-        Assert.Equal("Runmobile on the main menu: on", on.MainMenu.SettingLabel);
         Assert.False(off.MainMenu.Shown);
-        Assert.Equal("Runmobile on the main menu: off", off.MainMenu.SettingLabel);
     }
 
     /// <summary>

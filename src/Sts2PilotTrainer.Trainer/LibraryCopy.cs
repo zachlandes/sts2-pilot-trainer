@@ -161,13 +161,13 @@ public static class LibraryCopy
     /// sentence, because a tooltip is read in passing; it names the setting by its own
     /// label and says where it is.</summary>
     public const string CommunityOffTooltip =
-        $"Community runs are off. Turn on \"{ShowCommunityRuns}\" in Settings, under Modding, to see them here.";
+        $"Community runs are off. Turn on \"{ShowCommunityRuns}\" in Settings, under General, in the Runmobile section to see them here.";
 
     /// <summary>The one line over the tabs while the setting is off: the whole
     /// instruction in a sentence, because a line the panel may have to shorten is a
     /// line whose second half a player never reads.</summary>
     public const string CommunityOffBody =
-        $"Community runs are off - turn on {ShowCommunityRuns} in Settings, under Modding, to see them.";
+        $"Community runs are off - turn on {ShowCommunityRuns} in Settings, under General, in the Runmobile section to see them.";
 
     /// <summary>The same lock when no sharing service is configured: nothing a setting
     /// can change, so the tooltip and the body line say what is missing rather than
@@ -181,15 +181,10 @@ public static class LibraryCopy
     /// </summary>
     public const string MainMenuRow = "Runmobile";
 
-    /// <summary>
-    /// The settings control that governs whether that row is drawn, value included.
-    ///
-    /// The value is in the line rather than beside it, the way the run-index control
-    /// already states its own: a control whose label and value were two elements is one
-    /// that can show a reading taken before a press beside a label written after it.
-    /// </summary>
-    public static string MainMenuRowSetting(bool shown) =>
-        $"{MainMenuRow} on the main menu: {(shown ? "on" : "off")}";
+    public const string SettingsHeading = MainMenuRow;
+    public const string KeepMyRuns = "Keep my runs";
+    public const string RemoveMyRuns = "Remove all my runs";
+    public const string ShowOnMainMenu = "Show on the main menu";
 
     public const string FetchingRunIndex = "Fetching the run index…";
 

@@ -189,10 +189,10 @@ public sealed record MyRunsRow(
                 _ => $"{runs} · {size}",
             },
             Detail: read ? DetailLine(facts) : string.Empty,
-            KeepLabel: "Keep my runs",
+            KeepLabel: LibraryCopy.KeepMyRuns,
             KeepNumeral: facts.Keep.ToString(CultureInfo.InvariantCulture),
             KeepPressable: read && settingsRead,
-            RemoveLabel: "Remove all my runs",
+            RemoveLabel: LibraryCopy.RemoveMyRuns,
             RemovePressable: read && settingsRead && facts.Runs > 0,
             Confirm: new MyRunsConfirm(
                 Title: "Remove all your runs?",
@@ -200,8 +200,7 @@ public sealed record MyRunsRow(
                       "touched.",
                 Remove: "Remove",
                 Keep: "Keep them"),
-            MainMenu: new MainMenuRow(facts.MainMenuRowShown,
-                LibraryCopy.MainMenuRowSetting(facts.MainMenuRowShown)),
+            MainMenu: new MainMenuRow(facts.MainMenuRowShown),
             MainMenuPressable: read && settingsRead);
     }
 

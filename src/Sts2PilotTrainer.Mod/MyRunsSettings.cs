@@ -104,7 +104,10 @@ internal static class MyRunsSettings
     /// anchor inside it, and the host is grown to hold it.</para>
     /// </summary>
     internal static MyRunsSettingsText NativeText(NSettingsScreen screen, Control anchor) =>
-        NativeText(screen, anchor, GameText.Scene(NativeTextRole.Secondary));
+        NativeText(screen, anchor, GameText.Scene(NativeTextRole.Secondary)) with
+        {
+            Art = MyRunsSettingsArt.From(anchor),
+        };
 
     internal static MyRunsSettingsText NativeText(
         NSettingsScreen screen, Control anchor, GameTextStyle detail)
@@ -143,6 +146,7 @@ internal static class MyRunsSettings
         {
             column.AddChild(row.Root);
             column.MoveChild(row.Root, entry.GetIndex() + 1);
+            RefreshExtent(column);
             Callable.From(() => Settle(row)).CallDeferred();
             return row;
         }
@@ -152,7 +156,63 @@ internal static class MyRunsSettings
             entry.CustomMinimumSize.X,
             Math.Max(entry.CustomMinimumSize.Y, row.Root.Position.Y + row.Height));
         entry.AddChild(row.Root);
+        RefreshExtent(entry);
         return row;
+    }
+
+    /// <summary>
+    /// The scrolled panel a node of ours was added inside, or null where there is none.
+    ///
+    /// The settings screen's scroll extent is that panel's own <c>Size</c>, and nothing
+    /// but the panel writes it, so the panel is what a row added under it has to reach.
+    /// Nearest ancestor rather than a written path: the row is placed relative to the
+    /// game's own modding entry, and a path from the screen would be a second statement
+    /// of where that entry lives.
+    /// </summary>
+    internal static NSettingsPanel? HostPanel(Node? from)
+    {
+        for (var node = from; node is not null; node = node.GetParent())
+        {
+            if (node is NSettingsPanel panel) return panel;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Has the settings panel measure its column again, now that Runmobile's row is in
+    /// it.
+    ///
+    /// <para><b>This is the defect the retail client found, and it is a matter of
+    /// ordering.</b> <c>NSettingsTabManager</c> hands the whole <see cref="NSettingsPanel"/>
+    /// to the screen's scroll container as its content, and that container's bottom limit
+    /// is <c>-(padding + panel.Size.Y) + viewport height</c> - so the panel's own
+    /// <c>Size</c> is the scroll extent. The panel writes it in <c>RefreshSize</c>, from
+    /// its column's minimum height, at its <c>_Ready</c> and thereafter only when the
+    /// viewport resizes. Godot readies children before parents, so the panel has already
+    /// measured a column that does not contain this row by the time the
+    /// <c>NSettingsScreen._Ready</c> postfix above adds it. The extent stayed short by
+    /// the row's height: the scrollbar reached its own bottom with the game's last
+    /// General settings still below the fold, and a drag past the limit was lerped back
+    /// on release, which is the bounce a player saw.</para>
+    ///
+    /// <para>The panel's own command does the measuring - nothing here computes a size.
+    /// A failure is logged and leaves the screen as it was: a settings screen with a
+    /// short scroll extent is worse than it should be, and one taken down by an
+    /// exception is gone.</para>
+    /// </summary>
+    private static void RefreshExtent(Node from)
+    {
+        try
+        {
+            HostPanel(from)?.Call(NSettingsPanel.MethodName.RefreshSize);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not have the settings screen measure its column again, so " +
+                $"its last settings may be out of reach: {ex.GetType().Name}: {ex.Message}", 2);
+        }
     }
 
     /// <summary>
@@ -164,6 +224,10 @@ internal static class MyRunsSettings
         {
             if (!GodotObject.IsInstanceValid(row.Root) || !row.Root.IsInsideTree()) return;
             row.Relayout(row.Root.Size.X);
+            // And again now the column has sorted: the call in Attach ran before the
+            // screen had been laid out, and the panel measures itself against its parent's
+            // size, which was not settled then.
+            RefreshExtent(row.Root);
         }
         catch (Exception ex)
         {

@@ -341,7 +341,18 @@ public partial class Control
     public int GetThemeFontSize(StringName name, StringName themeType) =>
         _fontSizeOverrides.TryGetValue(name.ToString(), out var size) ? size : 16;
 
+    private readonly Dictionary<string, int> _constantOverrides = [];
+
+    public int GetThemeConstant(StringName name, StringName themeType) =>
+        _constantOverrides.TryGetValue(name.ToString(), out var value) ? value : 0;
+
+    public void AddThemeConstantOverride(StringName name, int value) =>
+        _constantOverrides[name.ToString()] = value;
+
     private readonly Dictionary<string, Color> _colorOverrides = [];
+
+    public Color GetThemeColor(StringName name, StringName themeType) =>
+        _colorOverrides.TryGetValue(name.ToString(), out var value) ? value : default;
 
     public void AddThemeColorOverride(StringName name, Color color) => _colorOverrides[name.ToString()] = color;
 
@@ -415,6 +426,7 @@ public partial class BaseButton
 
 public partial class CanvasItem
 {
+    public bool ShowBehindParent { get; set; }
     public Material? Material { get; set; }
     public bool UseParentMaterial { get; set; }
 }
@@ -491,4 +503,34 @@ public partial struct Rect2
     public bool HasPoint(Vector2 point) =>
         point.X >= Position.X && point.Y >= Position.Y &&
         point.X < Position.X + Size.X && point.Y < Position.Y + Size.Y;
+}
+
+public partial class GodotObject
+{
+    private readonly List<string> _called = [];
+
+    /// <summary>
+    /// Godot: dispatches a method on this object by name.
+    ///
+    /// The mod uses it for the one thing a written binding cannot reach - a game screen's
+    /// own private command, registered in its Godot method list. Runmobile's settings row
+    /// asks the settings panel to measure its column again this way, because the panel
+    /// wrote the scroll extent before the row was in it.
+    ///
+    /// The stub dispatches nothing, because there is no engine here to dispatch to. It
+    /// records the name instead, which is what a game-free test can check: that the ask
+    /// was made, of the right object. Whether this build's screen still answers to that
+    /// name is a separate question, and reflection over the game assembly is what answers
+    /// it.
+    /// </summary>
+    public Variant Call(StringName method, params Variant[] args)
+    {
+        _called.Add(method.ToString());
+        return default;
+    }
+
+    /// <summary>The names <see cref="Call"/> was given, in order. Not a member of the
+    /// real GodotSharp: it is how a test sees an ask that the engine would have
+    /// answered.</summary>
+    public IReadOnlyList<string> CalledMethods => _called;
 }

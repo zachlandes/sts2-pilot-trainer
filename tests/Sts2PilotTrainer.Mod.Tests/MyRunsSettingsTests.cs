@@ -1,3 +1,4 @@
+using System.Reflection;
 using Godot;
 using MegaCrit.Sts2.Core.Nodes.Screens.Settings;
 using Sts2PilotTrainer.Engine;
@@ -136,13 +137,14 @@ public sealed class MyRunsSettingsTests : IDisposable
         entry.AddChild(modding);
         column.AddChild(entry);
 
-        var row = MyRunsSettings.Attach(modding, Text());
+        var text = Text();
+        var row = MyRunsSettings.Attach(modding, text);
 
         Assert.Same(column, row.Root.GetParent());
-        Assert.Equal("Show community runs: on", row.Fetch.Text);
+        Assert.Same(text.Art!.Ticked, TickImage(row.Fetch).Texture);
         row.Fetch.EmitPressed();
         Assert.False(RunmobileSettings.Read().FetchRunIndex);
-        Assert.Equal("Show community runs: off", row.Fetch.Text);
+        Assert.Same(text.Art!.Unticked, TickImage(row.Fetch).Texture);
     }
 
     /// <summary>
@@ -188,28 +190,33 @@ public sealed class MyRunsSettingsTests : IDisposable
     /// and the label just fitted in the rest. Drawn at the settings screen's own size the
     /// stepper takes the whole of it, the label clips mid-word, and the destructive
     /// control is pushed back across the row onto the game's own label.
+    ///
+    /// The column here is the width the client's own settings column measures, which
+    /// <c>MyRunsSettingsRowTests.RetailColumnWidth</c> records the provenance of, rather
+    /// than the fallback the rest of this class uses.
     /// </summary>
     [Fact]
     public void TheRowIsLaidOutAtTheSettingsColumnRatherThanAtTheButtonItHangsOff()
     {
-        var column = new VBoxContainer { Size = new Vector2(Width, 400f) };
-        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(Width, 30f) };
-        var modding = new Control { Name = "ModdingButton", Size = new Vector2(Width, 30f) };
+        const float SettingsColumnWidth = 1000f;
+        var column = new VBoxContainer { Size = new Vector2(SettingsColumnWidth, 400f) };
+        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(SettingsColumnWidth, 30f) };
+        var modding = new Control { Name = "ModdingButton", Size = new Vector2(SettingsColumnWidth, 30f) };
         entry.AddChild(modding);
         column.AddChild(entry);
 
         var row = MyRunsSettings.Attach(modding, Text(26));
 
-        Assert.Equal(Width, row.Root.Size.X);
+        Assert.Equal(SettingsColumnWidth, row.Root.Size.X);
         // The label keeps most of the row whatever the text grows to, rather than being
         // squeezed out by the controls beside it.
         Assert.True(
-            Label(row, "KeepLabel").Size.X > Width / 2f,
-            $"the keep label got {Label(row, "KeepLabel").Size.X} of {Width}");
+            Label(row, "KeepLabel").Size.X > SettingsColumnWidth / 2f,
+            $"the keep label got {Label(row, "KeepLabel").Size.X} of {SettingsColumnWidth}");
         // And the destructive control stays at the row's right-hand end.
         Assert.True(
-            row.Remove.Position.X > Width / 2f,
-            $"the remove control sat at {row.Remove.Position.X} of {Width}");
+            row.Remove.Position.X > SettingsColumnWidth / 2f,
+            $"the remove control sat at {row.Remove.Position.X} of {SettingsColumnWidth}");
         // Immediately after the game's own modding row, which is where it belongs in the
         // column rather than hung in the gap under a button.
         Assert.Equal(modding.GetIndex() + 1, row.Root.GetIndex());
@@ -240,8 +247,8 @@ public sealed class MyRunsSettingsTests : IDisposable
         Assert.True(Label(row, "Reading").Size.X > narrowReading);
         Assert.True(Label(row, "Detail").Size.X > narrowDetail);
         Assert.Equal(Width, row.Remove.Position.X + row.Remove.Size.X);
-        Assert.Equal(Width, row.Fetch.Position.X + row.Fetch.Size.X);
-        Assert.Equal(Width, row.MainMenu.Position.X + row.MainMenu.Size.X);
+        Assert.Equal(Width - Text().Art!.ActionSize.X / 2f, row.Fetch.Position.X + row.Fetch.Size.X / 2f);
+        Assert.Equal(Width - Text().Art!.ActionSize.X / 2f, row.MainMenu.Position.X + row.MainMenu.Size.X / 2f);
     }
 
     /// <summary>
@@ -360,13 +367,124 @@ public sealed class MyRunsSettingsTests : IDisposable
             RunmobileStore.ListFileNames(Recordings));
     }
 
+    private static TextureRect TickImage(Button control) =>
+        control.GetChildren().OfType<TextureRect>().Single(child => child.Name.ToString() == "NativeArt");
+
     private static MyRunsSettingsText Text(int rowSize = 16, int buttonSize = 16) =>
         new(
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
-            new GameTextStyle(null, buttonSize));
+            new GameTextStyle(null, buttonSize)) { Art = MyRunsSettingsArtTests.Art() };
+
+    /// <summary>
+    /// The scroll extent's owner is reachable from where the row is put.
+    ///
+    /// The settings screen's scroll limit is the <c>NSettingsPanel</c>'s own
+    /// <c>Size</c>, written only by that panel's <c>RefreshSize</c>. A row added to the
+    /// column inside it has to reach the panel to have that measured again, and it finds
+    /// it by walking up rather than by a written path - the row is placed relative to the
+    /// game's own modding entry, so a path from the screen would be a second statement of
+    /// where that entry lives.
+    /// </summary>
+    [Fact]
+    public void TheRowFindsTheScrolledPanelItWasAddedInside()
+    {
+        var panel = new NSettingsPanel { Name = "GeneralSettings" };
+        var column = new VBoxContainer { Name = "VBoxContainer" };
+        var entry = new MarginContainer { Name = "Modding" };
+        var modding = new Control { Name = "ModdingButton" };
+        panel.AddChild(column);
+        column.AddChild(entry);
+        entry.AddChild(modding);
+
+        Assert.Same(panel, MyRunsSettings.HostPanel(modding));
+        Assert.Same(panel, MyRunsSettings.HostPanel(column));
+        Assert.Same(panel, MyRunsSettings.HostPanel(panel));
+        Assert.Null(MyRunsSettings.HostPanel(new VBoxContainer()));
+        Assert.Null(MyRunsSettings.HostPanel(null));
+    }
+
+    /// <summary>
+    /// This build's settings panel still declares the command that measures it.
+    ///
+    /// Nothing here computes a scroll extent: the panel measures its own column, and the
+    /// mod asks it to by name. A game build that renamed that command would leave the ask
+    /// silent and the last General settings out of reach again, so the borrowed member is
+    /// held to this build the way every other one is.
+    /// </summary>
+    [Fact]
+    public void ThisBuildsSettingsPanelStillDeclaresTheCommandThatMeasuresIt()
+    {
+        Assert.NotNull(typeof(NSettingsPanel).GetMethod(
+            "RefreshSize",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic |
+            BindingFlags.DeclaredOnly));
+        Assert.Equal("RefreshSize", NSettingsPanel.MethodName.RefreshSize.ToString());
+    }
+
+    /// <summary>
+    /// Adding the row has the panel that owns the scroll extent measure itself again.
+    ///
+    /// <para>This is the defect. <c>NSettingsTabManager</c> hands the whole
+    /// <c>NSettingsPanel</c> to the screen's scroll container as its content, and the
+    /// container's bottom limit is that panel's own <c>Size</c>. The panel writes it in
+    /// <c>RefreshSize</c>, from its column's minimum height, at its own <c>_Ready</c> -
+    /// which Godot runs before the screen's, so before the postfix that adds this row.
+    /// The extent stayed short by the row's height: the scrollbar reached its own bottom
+    /// with View Credits and the settings under it still below the fold, and a drag past
+    /// the limit was lerped back on release.</para>
+    ///
+    /// <para>The ask is what is asserted, because there is no engine here to answer it.
+    /// That this build's panel still answers to that name is the test above.</para>
+    /// </summary>
+    [Fact]
+    public void AddingTheRowHasTheScrolledPanelMeasureItsColumnAgain()
+    {
+        var panel = new NSettingsPanel { Name = "GeneralSettings" };
+        var column = new VBoxContainer { Name = "VBoxContainer", Size = new Vector2(Width, 400f) };
+        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(Width, 30f) };
+        var modding = new Control { Name = "ModdingButton", Size = new Vector2(Width, 30f) };
+        panel.AddChild(column);
+        column.AddChild(entry);
+        entry.AddChild(modding);
+
+        MyRunsSettings.Attach(modding, Text());
+
+        Assert.Contains(NSettingsPanel.MethodName.RefreshSize.ToString(), panel.CalledMethods);
+    }
+
+    /// <summary>A settings screen with no such panel is left alone rather than refused:
+    /// the row is still the player's, and a build whose settings list is not a scrolled
+    /// panel has no extent to measure.</summary>
+    [Fact]
+    public void AColumnWithNoScrolledPanelAboveItIsLeftAlone()
+    {
+        var column = new VBoxContainer { Size = new Vector2(Width, 400f) };
+        var entry = new MarginContainer { Name = "Modding", Size = new Vector2(Width, 30f) };
+        var modding = new Control { Name = "ModdingButton", Size = new Vector2(Width, 30f) };
+        entry.AddChild(modding);
+        column.AddChild(entry);
+
+        var row = MyRunsSettings.Attach(modding, Text());
+
+        Assert.Same(column, row.Root.GetParent());
+    }
+
+    [Fact]
+    public void OneLeftAlignedHeadingScopesTheRunmobileControls()
+    {
+        var row = MyRunsSettings.Build(Width, Text());
+
+        Assert.Equal("Runmobile", Label(row, "Heading").Text);
+        Assert.Equal(HorizontalAlignment.Left, Label(row, "Heading").HorizontalAlignment);
+        Assert.Equal("Keep my runs", Label(row, "KeepLabel").Text);
+        Assert.Equal("Remove", row.Remove.Text);
+        Assert.Equal("Remove all my runs", Label(row, "RemoveLabel").Text);
+        Assert.Equal("Show community runs", Label(row, "FetchLabel").Text);
+        Assert.Equal("Show on the main menu", Label(row, "MainMenuLabel").Text);
+    }
 
     private static Label Native(string name, int size)
     {
