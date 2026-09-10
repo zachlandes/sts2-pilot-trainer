@@ -70,8 +70,9 @@ internal static class LibraryPaneArt
     private const float RingStandoff = 0.1f;
 
     /// <summary>The icon inside its box, and its outline behind it, as shares of the
-    /// box: the history entry's own 0.7 icon in a 60 box with the outline a third
-    /// larger.</summary>
+    /// box: the icon fills 0.8 of it and the outline 1.0, so the outline is a quarter
+    /// larger than the icon. Raised from the history entry's own 0.7 in a 60 box
+    /// because the strip's box is a share of a column and so smaller than 60.</summary>
     private const float IconInBox = 0.8f;
     private const float OutlineInBox = 1f;
 
