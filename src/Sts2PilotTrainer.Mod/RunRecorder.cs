@@ -1342,12 +1342,16 @@ internal sealed class RunRecorder : IDisposable
     internal static FightMarkFacts FightMarkFacts()
     {
         var recorder = Active;
-        if (recorder is null || recorder._disposed) return new FightMarkFacts(false, null, false, false);
+        if (recorder is null || recorder._disposed) return new FightMarkFacts(false, null, null, false, false);
 
         var capture = recorder._capture;
         var fight = capture.LastEndedFight;
         return new FightMarkFacts(
-            true, fight, capture.MovedOnFromLastFight, fight is { } ended && capture.IsBookmarked(ended));
+            true,
+            capture.State,
+            fight,
+            capture.MovedOnFromLastFight,
+            fight is { } ended && capture.IsBookmarked(ended));
     }
 
     /// <summary>

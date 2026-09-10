@@ -837,11 +837,16 @@ marker alone would suggest - caught here only by checking the decompiled name ra
 than guessing it.
 
 **The bookmark tag is the recorder's one control, and it exists for one stretch of the run.**
-`FightMark.For` in `Sts2PilotTrainer.Trainer` derives it from exactly the four facts
-`RunRecorder.FightMarkFacts` reads: a recorder attached, `RunCapture.LastEndedFight`,
-`RunCapture.MovedOnFromLastFight`, and whether that fight is marked.
-It is drawn only where a recorder is attached, a fight has ended and the run has not yet
-left its floor - which is the loot screen and the card-reward screen behind it on a win,
+`FightMark.For` in `Sts2PilotTrainer.Trainer` derives it from exactly the five facts
+`RunRecorder.FightMarkFacts` reads: a recorder attached, `RunCapture.State`,
+`RunCapture.LastEndedFight`, `RunCapture.MovedOnFromLastFight`, and whether that fight is
+marked.
+A capture still recording or recorded to its end offers the tag and one whose watch has a
+hole in it does not, so the control follows the overlay's own row rather than offering to
+save a fight into a recording the player has just been told stopped; the finished state is
+there because a lost fight is bookmarked after the run ended.
+It is drawn only where such a recorder is attached, a fight has ended and the run has not
+yet left its floor - which is the loot screen and the card-reward screen behind it on a win,
 and the game's death screen on a loss, where the run never moves on and the tag stays
 until `RunManager.CleanUp` tears the run down.
 Everywhere else it is absent rather than greyed, because a control that could not save

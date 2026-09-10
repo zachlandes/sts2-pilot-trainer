@@ -1,25 +1,30 @@
+using Sts2PilotTrainer.Replay;
+
 namespace Sts2PilotTrainer.Trainer;
 
 /// <summary>
 /// What the bookmark tag can read, and nothing else.
 ///
-/// Four facts, all the recorder's. Whether it is attached to the run being played;
-/// which fight has just ended with nothing happening since, or null; whether the run
-/// has moved on from that fight's floor; and whether that fight is bookmarked. The
-/// third is separate from the second rather than folded into it because the recorder
-/// reads them apart - a fight's end from its own capture closing, the move from the
-/// map - and a derivation over both is one that cannot draw a tag for a fight the run
-/// has already left.
+/// Five facts, all the recorder's. Whether it is attached to the run being played;
+/// where its capture has got to; which fight has just ended with nothing happening
+/// since, or null; whether the run has moved on from that fight's floor; and whether
+/// that fight is bookmarked. The fourth is separate from the third rather than folded
+/// into it because the recorder reads them apart - a fight's end from its own capture
+/// closing, the move from the map - and a derivation over both is one that cannot draw
+/// a tag for a fight the run has already left.
 /// </summary>
 /// <param name="RecorderActive">Whether a recorder is attached to the run being played.
 /// False when the player turned recording off, when the run is a trainer run this mod
 /// constructed, when the recorder module refused this build, and in a multiplayer
 /// session.</param>
+/// <param name="Capture">Where that recorder's capture has got to, the same reading
+/// <see cref="RecorderFacts"/> takes. Null exactly where no recorder is attached.</param>
 /// <param name="FightJustEnded">The ordinal of the fight that has just ended, or null
 /// when no fight has, or when something has happened since.</param>
 /// <param name="MovedOn">Whether the run has left the floor that fight was on.</param>
 /// <param name="Bookmarked">Whether that fight is bookmarked right now.</param>
-public sealed record FightMarkFacts(bool RecorderActive, int? FightJustEnded, bool MovedOn, bool Bookmarked);
+public sealed record FightMarkFacts(
+    bool RecorderActive, RunCaptureState? Capture, int? FightJustEnded, bool MovedOn, bool Bookmarked);
 
 /// <summary>
 /// The bookmark tag: one control, hung under the top bar for exactly the stretch
@@ -55,14 +60,23 @@ public sealed record FightMark(ElementSurface Control, int? Fight, bool Bookmark
     /// <summary>
     /// The tag for these facts.
     ///
-    /// One state draws it: a recorder attached, a fight just ended, and the run still
-    /// on its floor. Everything else is nothing. The control is always pressable when
-    /// it is drawn - there is no refused form of this tag, because a tag that could not
-    /// save is absent.
+    /// One state draws it: a recorder attached and still recording the run - or one
+    /// that has recorded it to its end, which is where a lost fight is bookmarked on
+    /// the game's death screen - a fight just ended, and the run still on its floor.
+    /// Everything else is nothing. A capture whose watch has a hole in it draws no tag,
+    /// because the row on the overlay has just told the player the recording stopped and
+    /// a control offering to save into it would say the opposite. The control is always
+    /// pressable when it is drawn - there is no refused form of this tag, because a tag
+    /// that could not save is absent.
     /// </summary>
     public static FightMark For(FightMarkFacts facts)
     {
-        if (!facts.RecorderActive || facts.FightJustEnded is not { } fight || facts.MovedOn) return Nothing;
+        if (!facts.RecorderActive || facts.Capture is not (RunCaptureState.Recording or RunCaptureState.Finished))
+        {
+            return Nothing;
+        }
+
+        if (facts.FightJustEnded is not { } fight || facts.MovedOn) return Nothing;
 
         return new FightMark(
             new ElementSurface(

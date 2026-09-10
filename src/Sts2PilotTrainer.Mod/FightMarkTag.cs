@@ -293,6 +293,7 @@ internal sealed class FightMarkTag
     internal static readonly IReadOnlyList<Type> PatchClasses = [typeof(RunBegins), typeof(RunEnds)];
 
     private static Action? _tick;
+    private static bool _faulted;
 
     /// <summary>
     /// A run is being set up. Starts re-deriving the tag every frame, once; the run's
@@ -331,6 +332,7 @@ internal sealed class FightMarkTag
             // assembly's is captured, and the same delegate is what is removed.
             Action tick = Tick;
             _tick = tick;
+            _faulted = false;
             tree.ProcessFrame += tick;
         }
         catch (Exception ex)
@@ -368,35 +370,48 @@ internal sealed class FightMarkTag
     /// tag whose root the game freed underneath it is dropped and docked again the next
     /// frame, and anything else is logged and skipped. Only the run's own cleanup stops
     /// the watch, because a single bad frame that unsubscribed took every later fight's
-    /// press with it.
+    /// press with it. A fault that lasts is one line rather than one a frame: the same
+    /// cause is logged when it starts and again once a frame has drawn in between.
     /// </summary>
     private static void Tick()
     {
         try
         {
-            var mark = FightMark.For(RunRecorder.FightMarkFacts());
-            var current = PlaybackTransportDock.FightMark;
-            if (current is not null && !GodotObject.IsInstanceValid(current.Root))
-            {
-                PlaybackTransportDock.DetachFightMark();
-                return;
-            }
-
-            if (current is null)
-            {
-                // Nothing to draw and nothing built: the common case, every frame of
-                // every fight, and it costs one derivation.
-                if (mark.Control.Presence != Presence.Drawn) return;
-                current = PlaybackTransportDock.AttachFightMark(RunRecorder.ToggleBookmark);
-                if (current is null) return;
-            }
-
-            current.Apply(mark, RunmobileMod.MayDraw);
+            Draw();
+            _faulted = false;
         }
         catch (Exception ex)
         {
-            Log.Error(
-                $"[{RunmobileMod.ModId}] could not derive the bookmark tag: {ex.GetType().Name}: {ex.Message}", 2);
+            if (!_faulted)
+            {
+                Log.Error(
+                    $"[{RunmobileMod.ModId}] could not derive the bookmark tag: " +
+                    $"{ex.GetType().Name}: {ex.Message}", 2);
+            }
+
+            _faulted = true;
         }
+    }
+
+    private static void Draw()
+    {
+        var mark = FightMark.For(RunRecorder.FightMarkFacts());
+        var current = PlaybackTransportDock.FightMark;
+        if (current is not null && !GodotObject.IsInstanceValid(current.Root))
+        {
+            PlaybackTransportDock.DetachFightMark();
+            return;
+        }
+
+        if (current is null)
+        {
+            // Nothing to draw and nothing built: the common case, every frame of
+            // every fight, and it costs one derivation.
+            if (mark.Control.Presence != Presence.Drawn) return;
+            current = PlaybackTransportDock.AttachFightMark(RunRecorder.ToggleBookmark);
+            if (current is null) return;
+        }
+
+        current.Apply(mark, RunmobileMod.MayDraw);
     }
 }

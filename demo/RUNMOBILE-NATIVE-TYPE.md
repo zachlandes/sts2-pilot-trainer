@@ -41,6 +41,7 @@ Its controls share the same right edge as the game's own controls on that screen
 The retail captures prove the library parchment's Others, Mine, and opened-run states at named-role typography, the run strip's native gold arrow art, the mod's refusal popup at its R1, R2, and R3 roles, and the My Runs settings row at its mapped native roles and full native column width.
 
 The playback transport's hanging tag is captured in the client - `demo/RUNMOBILE-RESTORE-IN-CLIENT.md` holds it, in the fight a player was stood in by restoring their own recording.
+The recorder's bookmark tag, which hangs from the same anchor in the same material, is not captured and is owed an in-client capture on v0.111.0: on the loot screen, on the card-reward screen behind it, and on a real death screen after a lost fight.
 Its expanded strip, the fight-result panel, chronology paging, and look-back ledger paging are not.
 Programmatic navigation was attempted and did not reach those surfaces, so they require manual navigation for a retail capture.
 This change covers them with automated paging and layout tests instead.
