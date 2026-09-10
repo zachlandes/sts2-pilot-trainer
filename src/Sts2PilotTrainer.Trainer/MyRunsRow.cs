@@ -200,8 +200,7 @@ public sealed record MyRunsRow(
                       "touched.",
                 Remove: "Remove",
                 Keep: "Keep them"),
-            MainMenu: new MainMenuRow(facts.MainMenuRowShown,
-                LibraryCopy.MainMenuRowSetting(facts.MainMenuRowShown)),
+            MainMenu: new MainMenuRow(facts.MainMenuRowShown),
             MainMenuPressable: read && settingsRead);
     }
 

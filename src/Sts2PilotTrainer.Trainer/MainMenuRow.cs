@@ -28,9 +28,9 @@ namespace Sts2PilotTrainer.Trainer;
 /// currently doing. A patch that worked the rule out for itself would eventually
 /// disagree with the control that claims to set it.</para>
 /// </summary>
-/// <param name="Shown">Whether the row is on the main menu right now.</param>
-/// <param name="SettingLabel">The settings control's whole line, value included.</param>
-public sealed record MainMenuRow(bool Shown, string SettingLabel)
+/// <param name="Shown">Whether the row is on the main menu right now, which the
+/// settings row projects into its native ticked or unticked image.</param>
+public sealed record MainMenuRow(bool Shown)
 {
     /// <summary>
     /// The whole rule, in one expression: the player's own sentence where they have
@@ -43,9 +43,6 @@ public sealed record MainMenuRow(bool Shown, string SettingLabel)
     /// where the game's route does not.</param>
     public static bool ShownWhen(bool? choice, bool hasFinishedARun) => choice ?? !hasFinishedARun;
 
-    public static MainMenuRow For(bool? choice, bool hasFinishedARun)
-    {
-        var shown = ShownWhen(choice, hasFinishedARun);
-        return new MainMenuRow(shown, LibraryCopy.MainMenuRowSetting(shown));
-    }
+    public static MainMenuRow For(bool? choice, bool hasFinishedARun) =>
+        new(ShownWhen(choice, hasFinishedARun));
 }

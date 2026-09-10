@@ -161,13 +161,13 @@ public static class LibraryCopy
     /// sentence, because a tooltip is read in passing; it names the setting by its own
     /// label and says where it is.</summary>
     public const string CommunityOffTooltip =
-        $"Community runs are off. Turn on \"{ShowCommunityRuns}\" in Settings → General → Runmobile to see them here.";
+        $"Community runs are off. Turn on \"{ShowCommunityRuns}\" in Settings, under General, in the Runmobile section to see them here.";
 
     /// <summary>The one line over the tabs while the setting is off: the whole
     /// instruction in a sentence, because a line the panel may have to shorten is a
     /// line whose second half a player never reads.</summary>
     public const string CommunityOffBody =
-        $"Community runs are off - turn on {ShowCommunityRuns} in Settings → General → Runmobile to see them.";
+        $"Community runs are off - turn on {ShowCommunityRuns} in Settings, under General, in the Runmobile section to see them.";
 
     /// <summary>The same lock when no sharing service is configured: nothing a setting
     /// can change, so the tooltip and the body line say what is missing rather than
@@ -180,13 +180,6 @@ public static class LibraryCopy
     /// carries, because they are two ways to the one library rather than two things.
     /// </summary>
     public const string MainMenuRow = "Runmobile";
-
-    /// <summary>
-    /// The main-menu switch's tooltip, including the current value.
-    /// The settings row projects that same reading into its native checked image.
-    /// </summary>
-    public static string MainMenuRowSetting(bool shown) =>
-        $"{MainMenuRow} on the main menu: {(shown ? "on" : "off")}";
 
     public const string SettingsHeading = MainMenuRow;
     public const string KeepMyRuns = "Keep my runs";

@@ -19,7 +19,7 @@ Each caption carried a `Runmobile` prefix, the destructive action was a plain re
 
 ## After: one heading, native controls
 
-A left-aligned `Runmobile` heading at the settings row label role scopes the section under the divider that closes the game's own Modding row.
+A left-aligned `Runmobile` heading at the button-caption role scopes the section under the divider that closes the game's own Modding row.
 Nothing under it repeats the name.
 The two switches are the game's own ticked and unticked images in the native controls column, with a plain caption on the left as every native switch has.
 The removal follows the Credits and Reset rows: the caption `Remove all my runs` on the left, and a short `Remove` inside the native beveled button image, tinted through the same HSV material to a burnt orange between Credits' gold and Reset's maroon.

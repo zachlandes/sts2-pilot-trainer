@@ -42,19 +42,6 @@ public sealed class MainMenuRowTests
         Assert.False(MainMenuRow.ShownWhen(choice: false, hasFinishedARun: true));
     }
 
-    /// <summary>The control states its own value, so what a player reads and what the
-    /// menu does cannot come apart.</summary>
-    [Fact]
-    public void TheSettingLineCarriesTheAnswerItIsAbout()
-    {
-        Assert.Equal(
-            "Runmobile on the main menu: on",
-            MainMenuRow.For(choice: null, hasFinishedARun: false).SettingLabel);
-        Assert.Equal(
-            "Runmobile on the main menu: off",
-            MainMenuRow.For(choice: null, hasFinishedARun: true).SettingLabel);
-    }
-
     /// <summary>The row and the card carry the same word, because they are two ways to
     /// one library rather than two things.</summary>
     [Fact]

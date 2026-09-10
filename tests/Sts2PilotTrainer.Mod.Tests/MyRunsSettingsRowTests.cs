@@ -33,10 +33,10 @@ public sealed class MyRunsSettingsRowTests
     /// the one its log records in <c>demo/RUNMOBILE-RESTORE-IN-CLIENT.md</c> - and 1596 px
     /// is about 1013 units. 1000 is that rounded down.</para>
     ///
-    /// <para>The same capture cross-checks the estimator <c>ButtonBoxWidth</c> falls back
-    /// on where there is no font: it puts the 31-character "Runmobile on the main menu:
-    /// off" at 533 units, and that button spans about 798 px in the capture, which is
-    /// about 507 units.</para>
+    /// <para>The same capture cross-checks <c>GlyphWidth</c>, the estimate this file
+    /// measures words with where there is no font: it puts the 31-character caption that
+    /// capture's button carried at 484 units at size 26, and that button's box spans
+    /// about 798 px in the capture, which is about 507 units with its padding.</para>
     ///
     /// <para>Measured from a committed capture and provisional until an in-client capture
     /// confirms it. 520 is <c>MyRunsSettings.FallbackWidth</c> - what the row is given
@@ -466,22 +466,20 @@ public sealed class MyRunsSettingsRowTests
     }
 
     /// <summary>
-    /// Every caption fits the column it is drawn in, in both states of every control
-    /// that has two.
+    /// Every caption fits the box it is drawn in at the column's real width, in both
+    /// states of every control that has two.
     ///
-    /// A Button's own minimum width is its unwrapped caption, so a caption wider than
-    /// the column is not clamped to it - <c>Layout</c> asks for the smaller of the two
-    /// and the engine widens the control straight back out over the game's own rows. A
-    /// control that comes back exactly the column's width is one whose words no longer
-    /// fit. That is what the mod's name in front of each caption has to stay clear of.
+    /// Each caption's box is fixed by <c>Layout</c> - the column less the control it sits
+    /// beside - and clips rather than widening, so a caption longer than its box loses
+    /// its last words in the client without any control moving. The stub draws no font,
+    /// so the words are measured with <c>GlyphWidth</c> against the box the label was
+    /// actually placed in. The Remove button is measured the same way against the
+    /// native action image it is drawn inside, which is sized by its art and not by its
+    /// word.
     ///
     /// Both states of the main-menu and community controls are built here rather than
-    /// whichever one the disk happens to answer with: the two captions are different
-    /// lengths, and the longer one is the one a player reaches by pressing.
-    ///
-    /// The keep label is the other case. Its box is fixed - the column less the stepper -
-    /// and it clips rather than widening, so what is asserted of it is that its words fit
-    /// the box it was actually placed in.
+    /// whichever one the disk happens to answer with, so a state-dependent caption can
+    /// never be the one this misses.
     /// </summary>
     [Theory]
     [InlineData(16)]
@@ -498,24 +496,24 @@ public sealed class MyRunsSettingsRowTests
                     fetchRunIndex: fetching,
                     width: RetailColumnWidth);
 
-                foreach (var control in new[] { row.Remove, row.Fetch, row.MainMenu })
+                foreach (var name in new[] { "KeepLabel", "RemoveLabel", "FetchLabel", "MainMenuLabel" })
                 {
+                    var caption = Label(row, name);
                     Assert.True(
-                        control.Size.X < RetailColumnWidth,
-                        $"\"{control.Text}\" took {control.Size.X} of {RetailColumnWidth} at size {size}");
+                        GlyphWidth(caption.Text, size) < caption.Size.X,
+                        $"\"{caption.Text}\" needs {GlyphWidth(caption.Text, size)} of the {caption.Size.X} its box has at size {size}");
                 }
 
-                var keep = Label(row, "KeepLabel");
                 Assert.True(
-                    GlyphWidth(keep.Text, size) < keep.Size.X,
-                    $"\"{keep.Text}\" needs {GlyphWidth(keep.Text, size)} of the {keep.Size.X} its box has at size {size}");
+                    GlyphWidth(row.Remove.Text, size) < row.Remove.Size.X,
+                    $"\"{row.Remove.Text}\" needs {GlyphWidth(row.Remove.Text, size)} of the {row.Remove.Size.X} its image has at size {size}");
             }
         }
     }
 
-    /// <summary>How wide a line of words is where there is no font to measure with, which
-    /// is the fallback <c>MyRunsSettingsRow.ButtonBoxWidth</c> itself uses in a process
-    /// with no game.</summary>
+    /// <summary>How wide a line of words is where there is no font to measure with: 0.6 em
+    /// a glyph, which <see cref="RetailColumnWidth"/> cross-checks against the committed
+    /// capture.</summary>
     private static float GlyphWidth(string text, int size) => text.Length * size * 0.6f;
 
     private static MyRunsSettingsRow Build(
