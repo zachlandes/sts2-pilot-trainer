@@ -621,7 +621,7 @@ public sealed record RunJournal
 
 /// <summary>
 /// One press of the bookmark: which fight, whether it went on or came off, and
-/// where in the run the player was when they pressed it.
+/// the fight's end - the coordinates <see cref="FightBookmark"/> carries for it.
 /// </summary>
 public sealed record JournalBookmark
 {
@@ -631,7 +631,7 @@ public sealed record JournalBookmark
     [JsonPropertyName("on")]
     public required bool On { get; init; }
 
-    /// <summary>The last decision recorded when the press happened.</summary>
+    /// <summary>The decision the fight ended on, not the last decision before the press.</summary>
     [JsonPropertyName("after_seq")]
     public required int AfterSeq { get; init; }
 

@@ -630,13 +630,13 @@ public static partial class ManifestValidator
 
     /// <summary>
     /// Every bookmark names a fight the recording finishes, once, in order, as a
-    /// declared fact with the press's own coordinates.
+    /// declared fact anchored at the fight's end.
     ///
     /// In the combat_start cross-check's own terms: a finished fight is exactly one
     /// with a combat_start boundary, and a bookmark on any other fight is a mark
     /// nothing could have pressed, because the control exists only once a fight has
-    /// ended. The press is at or after the fight started - a mark on a fight cannot
-    /// predate it - and never past the last action the history holds.
+    /// ended. The evidence's action is at or after the fight started - a mark on a
+    /// fight cannot predate it - and never past the last action the history holds.
     /// </summary>
     private static void ValidateBookmarks(
         NativeSource native, ReplayManifest manifest, int maxActionOrdinal, List<string> problems)

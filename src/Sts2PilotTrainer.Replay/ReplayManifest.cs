@@ -361,9 +361,11 @@ public sealed record NativeSource
 ///
 /// Keyed by the fight's ordinal, the same number the combat_start boundary, the
 /// progress file and the run view's rows already share, so a bookmark is a place a
-/// player can already be stood. The fact's evidence is where in the run the press
-/// happened - the action ordinal and the run clock - so a reader can say which moment
-/// the player was looking at.
+/// player can already be stood. The fact's evidence is the fight's end rather than the
+/// press - the action ordinal of the decision the fight ended on and the run clock
+/// recorded with it - because a bookmark marks the fight, not the loot-screen decision
+/// that may have come after it, and the death screen is drawn after the run ended,
+/// when the game's clock is no longer readable.
 /// </summary>
 public sealed record FightBookmark
 {
