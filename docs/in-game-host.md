@@ -875,9 +875,10 @@ The write comes before the capture holds the press, so a journal append or a man
 rewrite that throws leaves the mark as it was and the tag draws what is on the disk
 rather than a press that reached nothing - on a loss there is no second chance at it,
 since the run is over and nothing regenerates a finished manifest from the journal.
-The press records the action ordinal it comes after and the run clock recorded with that
-decision rather than one read at the press: the death screen is drawn after the run
-ended, and the game's clock is no longer readable by then.
+The press records the action ordinal of the decision the fight ended on and the run clock
+recorded with that decision rather than one read at the press: a bookmark marks the fight
+and not the loot-screen decision that may have come after it, and the death screen is
+drawn after the run ended, when the game's clock is no longer readable.
 The control takes focus so a controller reaches it and hands it back on press, which is
 the transport's own cost and fix; it carries no hotkey and no text, and its words are
 Godot's own tooltip.

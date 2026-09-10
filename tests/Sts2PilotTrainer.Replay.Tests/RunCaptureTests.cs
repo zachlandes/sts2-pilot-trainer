@@ -794,7 +794,7 @@ public sealed class RunCaptureTests
 
     /// <summary>
     /// A press is a journal line and, in the manifest, a declared fact on the fight it
-    /// names, carrying where in the run the player was when they pressed it.
+    /// names, carrying the decision that fight ended on and that decision's run clock.
     /// </summary>
     [Fact]
     public void ABookmarkIsAJournalLineAndADeclaredFactInTheManifest()
@@ -859,9 +859,30 @@ public sealed class RunCaptureTests
     }
 
     /// <summary>
+    /// A bookmark marks the fight, so a press on the card-reward screen behind a loot
+    /// decision names the decision the fight ended on and its run clock, not the loot
+    /// decision recorded after it.
+    /// </summary>
+    [Fact]
+    public void ABookmarkPressedAfterALootDecisionStillNamesTheFightsEnd()
+    {
+        var capture = Played();
+        capture.Record(
+            ActionVerb.ClaimReward, Args(("reward_index", "0")), Floor(2), Digest(5), runClockMs: 830_000);
+
+        var line = capture.MarkBookmark(1, on: true, Nothing);
+        capture.Finish("won");
+
+        Assert.Contains("\"after_seq\":4,\"run_clock_ms\":812340", line, StringComparison.Ordinal);
+        var bookmark = Assert.Single(capture.ToManifest().Source.Native!.Bookmarks!);
+        Assert.Equal(4, bookmark.Bookmarked.Evidence!.ActionOrdinal);
+        Assert.Equal(812_340, bookmark.Bookmarked.Evidence.RunClockMs);
+    }
+
+    /// <summary>
     /// A fight lost is bookmarked on the game's death screen, by which time the run is
     /// over and the game's own clock reads nothing. The press still carries a run clock,
-    /// because it takes the one recorded at the decision it is placed at.
+    /// because it takes the one recorded at the decision the fight ended on.
     /// </summary>
     [Fact]
     public void ABookmarkPressedAfterTheRunEndedStillCarriesARunClock()

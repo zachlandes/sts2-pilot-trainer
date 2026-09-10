@@ -728,11 +728,12 @@ public sealed class RunCapture
     /// line, so a mark taken off is on the file as what happened and the last line
     /// per fight is what the manifest emits.
     ///
-    /// The press is placed at the last decision recorded, and takes that decision's
-    /// own run clock: on a loss the game's run is no longer in progress by the time the
-    /// death screen is drawn, so a clock read at the press is no reading at all. Both
-    /// halves of the evidence then name the same instant on the win path and the loss
-    /// path alike.
+    /// The press is placed at the decision the fight ended on, and takes that decision's
+    /// own run clock: a bookmark marks the fight and not the loot screen a later
+    /// decision was made on, and on a loss the game's run is no longer in progress by
+    /// the time the death screen is drawn, so a clock read at the press is no reading at
+    /// all. Both halves of the evidence then name the same instant on the win path and
+    /// the loss path alike.
     ///
     /// A press this recording holds is one that reached the disk. <paramref name="persist"/>
     /// is handed the rendered line and writes everything the caller keeps in step with
@@ -748,20 +749,19 @@ public sealed class RunCapture
     public string MarkBookmark(int fight, bool on, Action<string> persist)
     {
         var finished = Coverage.Fights.FirstOrDefault(candidate => candidate.Fight == fight);
-        if (finished is not { Finished: true })
+        if (finished is not { EndSeq: { } endSeq })
         {
             throw new ManifestException(
                 $"Fight {fight.ToString(CultureInfo.InvariantCulture)} is not one this recording has " +
                 "finished, so there is no moment at which it could have been bookmarked.");
         }
 
-        var afterSeq = _entries.Count == 0 ? -1 : _entries[^1].Seq;
         var bookmark = new JournalBookmark
         {
             Fight = fight,
             On = on,
-            AfterSeq = afterSeq,
-            RunClockMs = _clocks.GetValueOrDefault(afterSeq),
+            AfterSeq = endSeq,
+            RunClockMs = _clocks.GetValueOrDefault(endSeq),
         };
         var line = RunJournal.RenderBookmark(bookmark);
 
