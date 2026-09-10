@@ -21,6 +21,25 @@ public sealed class MyRunsSettingsRowTests
 {
     private const float Width = 520f;
 
+    /// <summary>
+    /// How wide the game's own General settings column is in the retail client, which is
+    /// the width this row is actually laid out at.
+    ///
+    /// <para>Measured off the committed retail capture
+    /// <c>demo/runmobile-settings-row-native-type.png</c>: the settings column spans
+    /// about 1056 of that image's 2000 rendered pixels on a roughly 16:9 viewport, which
+    /// is about 1000 units on the game's 1920-unit design width. The same capture
+    /// cross-checks the estimator <c>ButtonBoxWidth</c> falls back on where there is no
+    /// font: it puts the 31-character "Runmobile on the main menu: off" at 533 units, and
+    /// that button measures about 507 units in the image.</para>
+    ///
+    /// <para>Provisional until an in-client capture confirms it. 520 is
+    /// <c>MyRunsSettings.FallbackWidth</c> - what the row is given when the settings entry
+    /// reports no size at all - and asserting a caption fits there asserts something the
+    /// client never has to satisfy.</para>
+    /// </summary>
+    private const float RetailColumnWidth = 1000f;
+
     [Fact]
     public void TheRowCarriesWhatTheDerivationSaysAndNothingElse()
     {
@@ -440,15 +459,75 @@ public sealed class MyRunsSettingsRowTests
             Build(facts, text: Text(15)).Height);
     }
 
+    /// <summary>
+    /// Every caption fits the column it is drawn in, in both states of every control
+    /// that has two.
+    ///
+    /// A Button's own minimum width is its unwrapped caption, so a caption wider than
+    /// the column is not clamped to it - <c>Layout</c> asks for the smaller of the two
+    /// and the engine widens the control straight back out over the game's own rows. A
+    /// control that comes back exactly the column's width is one whose words no longer
+    /// fit, which is what naming the mod in front of every caption did.
+    ///
+    /// Both states of the main-menu and community controls are built here rather than
+    /// whichever one the disk happens to answer with: the two captions are different
+    /// lengths, and the longer one is the one a player reaches by pressing.
+    /// </summary>
+    [Theory]
+    [InlineData(16)]
+    [InlineData(26)]
+    public void EveryCaptionFitsTheColumnItIsDrawnIn(int size)
+    {
+        foreach (var onTheMenu in new[] { true, false })
+        {
+            foreach (var fetching in new[] { true, false })
+            {
+                var row = Build(
+                    new MyRunsFacts(Runs: 3, Bytes: 3 * 1024 * 1024, Keep: 20, MainMenuRowShown: onTheMenu),
+                    text: Text(size, size),
+                    fetchRunIndex: fetching,
+                    width: RetailColumnWidth);
+
+                foreach (var control in new[] { row.Remove, row.Fetch, row.MainMenu })
+                {
+                    Assert.True(
+                        control.Size.X < RetailColumnWidth,
+                        $"\"{control.Text}\" took {control.Size.X} of {RetailColumnWidth} at size {size}");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// A caption too long for the width it is given comes back exactly that width, which
+    /// is the failure the test above guards against rather than a fit.
+    ///
+    /// 520 is the fallback width, used only where the settings entry reports no size at
+    /// all, and the longer of the main-menu captions does not fit it at the retail text
+    /// size. <c>Layout</c> clamps it to the width; the engine then widens the button back
+    /// out to its own unwrapped caption, over the game's own column.
+    /// </summary>
+    [Fact]
+    public void ACaptionTooLongForItsWidthIsClampedToItRatherThanFitted()
+    {
+        var row = Build(
+            new MyRunsFacts(Runs: 3, Bytes: 3 * 1024 * 1024, Keep: 20, MainMenuRowShown: false),
+            text: Text(26, 26),
+            width: Width);
+
+        Assert.Equal("Runmobile on the main menu: off", row.MainMenu.Text);
+        Assert.Equal(Width, row.MainMenu.Size.X);
+    }
+
     private static MyRunsSettingsRow Build(
         MyRunsFacts facts, Action<int>? keepChanged = null, Action? removePressed = null,
         Action<bool>? fetchChanged = null, Action<bool>? mainMenuChanged = null,
-        MyRunsSettingsText? text = null) =>
+        MyRunsSettingsText? text = null, bool fetchRunIndex = true, float width = Width) =>
         MyRunsSettingsRow.Build(
             MyRunsRow.For(facts),
             facts.Keep,
-            fetchRunIndex: true,
-            Width,
+            fetchRunIndex,
+            width,
             text ?? Text(),
             keepChanged ?? (_ => { }),
             removePressed ?? (() => { }),

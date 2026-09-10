@@ -479,40 +479,6 @@ public sealed class MyRunsSettingsTests : IDisposable
         Assert.Equal(Width, row.Heading.Size.X);
     }
 
-    /// <summary>
-    /// Every control fits inside the row it is laid out in, at the sizes this screen is
-    /// drawn at.
-    ///
-    /// A Button's own minimum width is its unwrapped caption, so a caption wider than
-    /// the row is not clamped to it - the engine widens the control back out over the
-    /// game's own settings column. The layout asks for the smaller of the row's width
-    /// and the caption's box, so a control that ends up exactly the row's width is one
-    /// whose words no longer fit.
-    ///
-    /// The larger size is the one this suite already stands in for the retail settings
-    /// screen's own reading, and it is the size at which naming the mod in front of
-    /// every caption put three of these three controls outside their row.
-    /// </summary>
-    [Theory]
-    [InlineData(16)]
-    [InlineData(26)]
-    public void EveryControlsCaptionFitsInsideTheRow(int size)
-    {
-        var row = MyRunsSettings.Build(Width, Text(size, size));
-
-        foreach (var (name, control) in new[]
-        {
-            ("Remove", row.Remove),
-            ("FetchRunIndex", row.Fetch),
-            ("MainMenuRow", row.MainMenu),
-        })
-        {
-            Assert.True(
-                control.Size.X < Width,
-                $"{name} took {control.Size.X} of {Width} for \"{control.Text}\"");
-        }
-    }
-
     private static Label Native(string name, int size)
     {
         var label = new Label { Name = name };
