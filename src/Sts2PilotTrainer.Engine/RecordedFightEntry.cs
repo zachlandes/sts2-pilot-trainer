@@ -236,14 +236,8 @@ public sealed class RecordedFightEntry : IDisposable
         }
 
         StepsTaken = through;
-        RestoredAfterSeq = afterSeq;
         _restored = true;
     }
-
-    /// <summary>The action the save this run came off was taken after, or null for a
-    /// run that was walked from its start. Read by a host that has to say which floor
-    /// the run was restored to rather than claim decisions were watched.</summary>
-    public int? RestoredAfterSeq { get; private set; }
 
     /// <summary>
     /// Builds the recording's run inside the retail client and stops where

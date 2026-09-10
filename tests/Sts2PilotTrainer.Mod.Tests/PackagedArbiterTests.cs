@@ -84,10 +84,12 @@ public sealed class PackagedArbiterTests : IDisposable
 
         var executable = Path.Combine(installed, OperatingSystem.IsWindows() ? "sts2-arbiter.exe" : "sts2-arbiter");
         var prepared = Path.Combine(installed, "lib", "prepared-assembly.json");
+        var libDirectory = Path.Combine(installed, "lib");
         var createdTree = !Directory.Exists(installed);
         var laidExecutable = !File.Exists(executable);
+        var laidLibDirectory = !Directory.Exists(libDirectory);
         var laidPrepared = !File.Exists(prepared);
-        Directory.CreateDirectory(Path.Combine(installed, "lib"));
+        Directory.CreateDirectory(libDirectory);
         try
         {
             if (laidExecutable) File.WriteAllText(executable, string.Empty);
@@ -111,6 +113,7 @@ public sealed class PackagedArbiterTests : IDisposable
             {
                 if (laidExecutable) File.Delete(executable);
                 if (laidPrepared) File.Delete(prepared);
+                if (laidLibDirectory) Directory.Delete(libDirectory, recursive: true);
             }
         }
     }
