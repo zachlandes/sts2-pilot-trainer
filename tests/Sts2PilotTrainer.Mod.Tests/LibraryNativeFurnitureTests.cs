@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Godot;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Trainer;
@@ -33,6 +34,55 @@ public sealed class LibraryNativeFurnitureTests
     {
         Assert.Equal(256f / 90f, LibraryTabArt.Aspect);
         Assert.Equal("res://scenes/screens/settings_tab.tscn", LibraryTabArt.Scene);
+    }
+
+    /// <summary>The packed image, not the one under <c>images/ui</c> that shares its
+    /// basename: that one is the chained lock a submenu card wears, and it shipped on
+    /// the Community tab once because a path can be right in every part but one.</summary>
+    [Fact]
+    public void TheLockIsThePackedStatsScreenImage()
+    {
+        Assert.Equal("res://images/packed/main_menu/submenu_lock.png", LibraryTabArt.LockImage);
+    }
+
+    /// <summary>
+    /// The image the stats scene itself binds to its Achievements tab's <c>Lock</c>
+    /// node, read out of this build's own pack. Existence is not the check - both
+    /// files named <c>submenu_lock.png</c> exist - so the scene is asked which one it
+    /// draws, and a lock that is any other file fails here by name.
+    /// </summary>
+    [NativeSceneFact]
+    public void TheLockIsTheImageTheStatsScreenBindsToItsAchievementsTab()
+    {
+        const string Scene = "res://scenes/screens/stats_screen/stats_screen.tscn";
+        var scene = NativeScenes.Read(Scene);
+        Assert.NotNull(scene);
+
+        var lockNode = NativeScenes.Properties(scene, "Tabs/TabContainer/Achievements/Lock");
+        Assert.NotNull(lockNode);
+        var texture = Regex.Match(lockNode["texture"], "^ExtResource\\(\"([^\"]+)\"\\)$");
+        Assert.True(texture.Success, $"the stats scene's lock is bound to '{lockNode["texture"]}', not an ext_resource");
+
+        var bound = NativeScenes.ExternalResources(scene)[texture.Groups[1].Value];
+        Assert.True(bound == LibraryTabArt.LockImage, $"the stats scene draws '{bound}' on its Achievements tab; the Community tab names '{LibraryTabArt.LockImage}'");
+    }
+
+    /// <summary>Every scene and image the library borrows is one this build ships. A
+    /// path that is not there is a tab that refuses or a marker that silently draws the
+    /// mod's own glyph, and neither is a test failure without this.</summary>
+    [NativeSceneFact]
+    public void EverySceneAndImageTheLibraryBorrowsIsOneThisBuildShips()
+    {
+        var borrowed = new List<string> { LibraryTabArt.Scene, LibraryTabArt.LockImage };
+        foreach (var kind in Enum.GetValues<FloorKind>())
+        {
+            if (FloorMarkerArt.IconName(kind) is not { } icon) continue;
+            borrowed.Add(FloorMarkerArt.IconPath(icon));
+            borrowed.Add(FloorMarkerArt.OutlinePath(icon));
+        }
+
+        var missing = borrowed.Where(path => !NativeScenes.Ships(path)).ToList();
+        Assert.True(missing.Count == 0, "this build does not ship: " + string.Join(", ", missing));
     }
 
     /// <summary>The game's own tabs are no controller stop, and the one you are on

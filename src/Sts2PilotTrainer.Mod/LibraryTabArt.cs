@@ -28,8 +28,13 @@ internal static class LibraryTabArt
 {
     internal const string Scene = "res://scenes/screens/settings_tab.tscn";
 
-    /// <summary>The stats screen's own lock over its disabled Achievements tab.</summary>
-    internal const string LockImage = "res://images/ui/main_menu/submenu_lock.png";
+    /// <summary>The stats screen's own lock over its disabled Achievements tab: the
+    /// image <c>stats_screen.tscn</c> binds to that tab's <c>Lock</c> node. Two files in
+    /// this build share the basename, and <c>images/ui/main_menu/submenu_lock.png</c> is
+    /// the other one - the chained lock a locked submenu card wears, with its plate and
+    /// frame in the picture - which is what this named until a scene fact held it to
+    /// the stats scene.</summary>
+    internal const string LockImage = "res://images/packed/main_menu/submenu_lock.png";
 
     /// <summary>The scene's own proportions: 256 by 90. A tab at any height keeps
     /// them, so the plate is never squashed.</summary>
