@@ -801,7 +801,7 @@ public sealed class RunCaptureTests
     {
         var capture = Played();
 
-        var line = capture.MarkBookmark(1, on: true);
+        var line = capture.MarkBookmark(1, on: true, Nothing);
         capture.Finish("won");
 
         Assert.Contains("\"bookmark\":{\"fight\":1,\"on\":true,\"after_seq\":4,\"run_clock_ms\":812340}", line, StringComparison.Ordinal);
@@ -828,8 +828,8 @@ public sealed class RunCaptureTests
     public void ABookmarkTakenOffLeavesTheManifestWithoutIt()
     {
         var capture = Played();
-        capture.MarkBookmark(1, on: true);
-        var off = capture.MarkBookmark(1, on: false);
+        capture.MarkBookmark(1, on: true, Nothing);
+        var off = capture.MarkBookmark(1, on: false, Nothing);
         capture.Finish("won");
 
         Assert.Contains("\"on\":false", off, StringComparison.Ordinal);
@@ -844,9 +844,9 @@ public sealed class RunCaptureTests
     public void ABookmarkSurvivesIntoTheSessionThatResumesTheRun()
     {
         var capture = Played();
-        capture.MarkBookmark(1, on: true);
-        capture.MarkBookmark(1, on: false);
-        capture.MarkBookmark(1, on: true);
+        capture.MarkBookmark(1, on: true, Nothing);
+        capture.MarkBookmark(1, on: false, Nothing);
+        capture.MarkBookmark(1, on: true, Nothing);
 
         var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), capture.LastDigest);
         resumed.Finish("won");
@@ -869,11 +869,33 @@ public sealed class RunCaptureTests
         var capture = Played();
         capture.Finish("lost");
 
-        capture.MarkBookmark(1, on: true);
+        capture.MarkBookmark(1, on: true, Nothing);
 
         var bookmark = Assert.Single(capture.ToManifest().Source.Native!.Bookmarks!);
         Assert.Equal(4, bookmark.Bookmarked.Evidence!.ActionOrdinal);
         Assert.Equal(812_340, bookmark.Bookmarked.Evidence.RunClockMs);
+    }
+
+    /// <summary>
+    /// A press that could not be written is not one this recording holds: the mark, the
+    /// journal and the manifest all read as they did before it, so the control draws
+    /// what reached the disk.
+    /// </summary>
+    [Fact]
+    public void APressThatCouldNotBeWrittenLeavesTheRecordingUnchanged()
+    {
+        var capture = Played();
+        capture.MarkBookmark(1, on: true, Nothing);
+
+        Assert.Throws<IOException>(
+            () => capture.MarkBookmark(1, on: false, _ => throw new IOException("the store refused")));
+
+        Assert.True(capture.IsBookmarked(1));
+        capture.Finish("won");
+        Assert.True(Assert.Single(capture.ToManifest().Source.Native!.Bookmarks!).Bookmarked.Value);
+        Assert.Equal(
+            1,
+            capture.Journal.Render().Split('\n').Count(line => line.Contains("\"bookmark\"", StringComparison.Ordinal)));
     }
 
     /// <summary>The control exists only once a fight has ended, so a press on any other
@@ -885,8 +907,8 @@ public sealed class RunCaptureTests
         capture.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")), InFight(2, turn: 1), Digest(0));
 
-        Assert.Throws<ManifestException>(() => capture.MarkBookmark(1, on: true));
-        Assert.Throws<ManifestException>(() => capture.MarkBookmark(2, on: true));
+        Assert.Throws<ManifestException>(() => capture.MarkBookmark(1, on: true, Nothing));
+        Assert.Throws<ManifestException>(() => capture.MarkBookmark(2, on: true, Nothing));
     }
 
     /// <summary>
@@ -943,6 +965,12 @@ public sealed class RunCaptureTests
         var capture = Played();
         capture.Finish("abandoned");
         return capture;
+    }
+
+    /// <summary>A press with no file behind it, for the tests that are not about the
+    /// writing.</summary>
+    private static void Nothing(string line)
+    {
     }
 
     /// <summary>

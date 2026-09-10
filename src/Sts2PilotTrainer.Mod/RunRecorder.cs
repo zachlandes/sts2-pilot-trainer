@@ -1386,14 +1386,20 @@ internal sealed class RunRecorder : IDisposable
     /// and the same containment gate <see cref="Finish"/> wrote it with. The rewrite
     /// changes nothing but <c>source.native.bookmarks</c>, which the identity of the
     /// run, the history hash and every boundary digest are unaffected by.
+    ///
+    /// Both writes happen before the capture holds the press, so a write that fails
+    /// leaves the tag drawing what is on disk rather than a mark that reached nothing.
     /// </summary>
     private void Bookmark(int fight, bool on)
     {
-        Append(_journalPath, _capture.MarkBookmark(fight, on));
-        if (!_finished) return;
+        _capture.MarkBookmark(fight, on, line =>
+        {
+            Append(_journalPath, line);
+            if (!_finished) return;
 
-        var path = $"{RecordingsDirectory}/{_capture.RunId}{RecordingLibrary.ManifestExtension}";
-        RunmobileStore.Write(path, ManifestJson.Serialize(_capture.ToManifest()) + "\n");
+            var path = $"{RecordingsDirectory}/{_capture.RunId}{RecordingLibrary.ManifestExtension}";
+            RunmobileStore.Write(path, ManifestJson.Serialize(_capture.ToManifest()) + "\n");
+        });
     }
 
     // ── Finishing ────────────────────────────────────────────────────────────────

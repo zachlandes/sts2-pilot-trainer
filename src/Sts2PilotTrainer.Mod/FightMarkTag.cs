@@ -363,6 +363,12 @@ internal sealed class FightMarkTag
     /// <summary>
     /// Reads the facts and puts what they derive to on the tag, docking it the first
     /// frame the run has an interface to dock in.
+    ///
+    /// A frame that cannot be drawn is one frame lost and not the run's bookmarking: a
+    /// tag whose root the game freed underneath it is dropped and docked again the next
+    /// frame, and anything else is logged and skipped. Only the run's own cleanup stops
+    /// the watch, because a single bad frame that unsubscribed took every later fight's
+    /// press with it.
     /// </summary>
     private static void Tick()
     {
@@ -370,6 +376,12 @@ internal sealed class FightMarkTag
         {
             var mark = FightMark.For(RunRecorder.FightMarkFacts());
             var current = PlaybackTransportDock.FightMark;
+            if (current is not null && !GodotObject.IsInstanceValid(current.Root))
+            {
+                PlaybackTransportDock.DetachFightMark();
+                return;
+            }
+
             if (current is null)
             {
                 // Nothing to draw and nothing built: the common case, every frame of
@@ -385,7 +397,6 @@ internal sealed class FightMarkTag
         {
             Log.Error(
                 $"[{RunmobileMod.ModId}] could not derive the bookmark tag: {ex.GetType().Name}: {ex.Message}", 2);
-            Stop();
         }
     }
 }

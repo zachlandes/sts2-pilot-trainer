@@ -733,12 +733,19 @@ public sealed class RunCapture
     /// death screen is drawn, so a clock read at the press is no reading at all. Both
     /// halves of the evidence then name the same instant on the win path and the loss
     /// path alike.
+    ///
+    /// A press this recording holds is one that reached the disk. <paramref name="persist"/>
+    /// is handed the rendered line and writes everything the caller keeps in step with
+    /// it; where it throws, the press is taken back off and the recording reads as it
+    /// did before, so the control the player is looking at draws what the file says
+    /// rather than what they pressed.
     /// </summary>
-    /// <returns>The journal line to append for it, so the press survives this session
-    /// the same way a decision does.</returns>
+    /// <param name="persist">Writes the press: the journal line it is handed, and the
+    /// manifest again where the caller has already written one.</param>
+    /// <returns>The journal line the press was written as.</returns>
     /// <exception cref="ManifestException">When the fight is not one this recording
     /// has finished.</exception>
-    public string MarkBookmark(int fight, bool on)
+    public string MarkBookmark(int fight, bool on, Action<string> persist)
     {
         var finished = Coverage.Fights.FirstOrDefault(candidate => candidate.Fight == fight);
         if (finished is not { Finished: true })
@@ -756,9 +763,23 @@ public sealed class RunCapture
             AfterSeq = afterSeq,
             RunClockMs = _clocks.GetValueOrDefault(afterSeq),
         };
-        _bookmarks[fight] = bookmark;
         var line = RunJournal.RenderBookmark(bookmark);
+
+        var had = _bookmarks.TryGetValue(fight, out var previous);
+        _bookmarks[fight] = bookmark;
         _journalRecords.Add(line);
+        try
+        {
+            persist(line);
+        }
+        catch
+        {
+            _journalRecords.RemoveAt(_journalRecords.Count - 1);
+            if (had) _bookmarks[fight] = previous!;
+            else _bookmarks.Remove(fight);
+            throw;
+        }
+
         return line;
     }
 
