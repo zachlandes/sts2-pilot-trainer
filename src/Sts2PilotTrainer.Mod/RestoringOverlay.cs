@@ -1,5 +1,4 @@
 using Godot;
-using MegaCrit.Sts2.addons.mega_text;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes;
 using Sts2PilotTrainer.Trainer;
@@ -17,26 +16,17 @@ namespace Sts2PilotTrainer.Mod;
 /// minute on the retail proof. So this hangs under <c>NGame</c>, which outlives the
 /// menu it is put up over and the run scene that replaces it.
 ///
-/// It prefers the game's own loading idiom rather than a plate of this mod's design:
-/// <c>res://scenes/screens/main_menu/loading_overlay.tscn</c> is what the client puts
-/// up while it loads, and instantiating it is what makes this read as the game
-/// waiting rather than as a mod overlay. That path is confirmed against the package
-/// index for v0.111.0, and the scene's script - <c>NLoadingOverlay</c> - is what reads
-/// its <c>%Label</c>. Only the label's words are this mod's.
-///
-/// The borrowed scene is preferred and never required. Where it cannot be loaded, or
-/// is loaded and has no <c>%Label</c> to say anything through, this draws its own
-/// plate instead: the whole point of the surface is that a minute of waiting is not
-/// spent looking at nothing, so a client that has moved the scene costs the native
-/// look and never the notice. The two drawings say the same sentence, which is
-/// <see cref="RestoringNotice"/>'s.
-///
-/// The scene ships hidden and is switched on the way its own callers switch it; see
-/// <see cref="BorrowTheGamesOverlay"/>.
+/// One drawing, and it is this mod's own: a scrim over whatever is behind, and the
+/// notice's line centred on it at the native heading role. The client's own loading
+/// overlay was borrowed here for a while and is not any more. That scene ships hidden,
+/// so borrowing it put a present-but-invisible surface over the whole wait - the
+/// blank screen this exists to remove, drawn by the half of the surface no test
+/// process can execute. The native backdrop is what was dropped; a follow-up may
+/// borrow it again with its visibility handled and an in-client capture behind it.
 ///
 /// The one thing it substitutes a default for is the font, and only where the native
 /// reading itself fails: elsewhere in this mod missing native furniture refuses the
-/// surface, and here refusing would mean the blank screen this exists to remove.
+/// surface, and here refusing would mean that blank screen again.
 ///
 /// Indeterminate on purpose. The arbiter prints the floors it arrived on only once
 /// its replay has finished, so a floor-by-floor bar would be a number this mod does
@@ -47,26 +37,17 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class RestoringOverlay
 {
-    /// <summary>Confirmed against the game's own package index for v0.111.0. The
-    /// label inside it is what the fallback covers, because a scene that loads and
-    /// has been rearranged says nothing without one.</summary>
-    private const string ScenePath = "res://scenes/screens/main_menu/loading_overlay.tscn";
-
-    private const string LabelPath = "%Label";
-
     internal const string RootName = "RunmobileRestoringNotice";
 
-    /// <summary>How long each step of the ellipsis is held. The game's own loading
-    /// text is static, so this is the one thing here that is not borrowed; slow
-    /// enough to read as breathing rather than as flicker.</summary>
+    /// <summary>How long each step of the ellipsis is held. Slow enough to read as
+    /// breathing rather than as flicker.</summary>
     private const double EllipsisSeconds = 0.45;
 
     private static readonly Color Scrim = new(0.06f, 0.07f, 0.08f, 0.94f);
     private static readonly Color HeadlineText = new(0.945f, 0.874f, 0.682f);
 
     private static Control? _overlay;
-    private static MegaLabel? _borrowedLabel;
-    private static Label? _ownLabel;
+    private static Label? _label;
     private static RestoringNotice? _notice;
     private static int _step;
 
@@ -111,20 +92,12 @@ internal static class RestoringOverlay
         ShowUnder(game, notice);
     }
 
-    /// <summary>
-    /// The same, under a named parent, so the rule can be driven in a process with no
-    /// game: the borrow fails there, and what a player would look at is the plate.
-    /// </summary>
+    /// <summary>The same, under a named parent, which is what lets the surface be put
+    /// up and read in a process with no game.</summary>
     internal static void ShowUnder(Node parent, RestoringNotice notice)
     {
         _step = 0;
-        if (!BorrowTheGamesOverlay(parent))
-        {
-            var partial = _overlay;
-            Forget();
-            Free(partial);
-            if (!DrawItHere(parent)) return;
-        }
+        if (!DrawItHere(parent)) return;
 
         _notice = notice;
         Draw();
@@ -134,81 +107,8 @@ internal static class RestoringOverlay
         ellipsis.Timeout += Advance;
     }
 
-    /// <summary>
-    /// The client's own loading overlay, put up, switched on and read for its label.
-    ///
-    /// False for every way it can fail to be the surface a player reads - no such
-    /// scene on this build, a scene with nothing to say through, or one that is not on
-    /// screen once it has been asked to be - and the caller draws this mod's own plate
-    /// instead.
-    ///
-    /// The scene ships hidden: its root is saved with <c>visible = false</c>, and the
-    /// game's own callers hold it and set <c>Visible</c> when they show it. Borrowing
-    /// it without doing the same put a present-but-invisible surface over the whole
-    /// Preparing phase and never fell through to the plate - measured in the retail
-    /// client, which drew nothing and logged nothing.
-    /// </summary>
-    private static bool BorrowTheGamesOverlay(Node parent)
-    {
-        try
-        {
-            var scene = ResourceLoader.Load<PackedScene>(ScenePath);
-            if (scene is null)
-            {
-                Log.Error(
-                    $"[{RunmobileMod.ModId}] this build has no '{ScenePath}' to borrow; drawing the restoring " +
-                    "notice here instead", 2);
-                return false;
-            }
-
-            var overlay = scene.Instantiate<Control>();
-
-            // Added before the label is asked for: the scene's own script puts the
-            // game's "Loading..." on it when it enters the tree, so a headline set
-            // before that would be the one thing overwritten.
-            parent.AddChild(overlay);
-            _overlay = overlay;
-            if (!SwitchOnTheBorrowedRoot(overlay)) return false;
-
-            _borrowedLabel = overlay.GetNodeOrNull<MegaLabel>(LabelPath);
-            if (_borrowedLabel is not null) return true;
-
-            Log.Error(
-                $"[{RunmobileMod.ModId}] this build's '{ScenePath}' has no {LabelPath}; drawing the restoring " +
-                "notice here instead", 2);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(
-                $"[{RunmobileMod.ModId}] could not borrow '{ScenePath}' for the restoring notice " +
-                $"({ex.GetType().Name}: {ex.Message}); drawing it here instead", 2);
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Switches a borrowed root on and says whether it is on screen once asked.
-    ///
-    /// The scene ships hidden - its root is saved with <c>visible = false</c> - and the
-    /// game's own callers hold it and set <c>Visible</c> when they show it, so this
-    /// does the same. Asking again afterwards is what covers the borrow that cannot be
-    /// shown at all, whatever is hiding it: present-but-invisible is the shape the
-    /// retail client drew, and it is indistinguishable from nothing.
-    /// </summary>
-    internal static bool SwitchOnTheBorrowedRoot(Control overlay)
-    {
-        overlay.Visible = true;
-        if (overlay.IsVisibleInTree()) return true;
-
-        Log.Error(
-            $"[{RunmobileMod.ModId}] this build's '{ScenePath}' is not on screen once asked to be; " +
-            "drawing the restoring notice here instead", 2);
-        return false;
-    }
-
-    /// <summary>This mod's own plate: a scrim over whatever is behind, and one line
-    /// centred on it.</summary>
+    /// <summary>The plate: a scrim over whatever is behind, and one line centred on
+    /// it.</summary>
     private static bool DrawItHere(Node parent)
     {
         try
@@ -248,7 +148,7 @@ internal static class RestoringOverlay
             root.AddChild(label);
 
             _overlay = root;
-            _ownLabel = label;
+            _label = label;
             return true;
         }
         catch (Exception ex)
@@ -288,22 +188,13 @@ internal static class RestoringOverlay
     private static void Draw()
     {
         if (_notice is not { } notice) return;
-        var line = notice.Line(_step);
-
-        if (_borrowedLabel is { } borrowed && GodotObject.IsInstanceValid(borrowed))
-        {
-            borrowed.SetTextAutoSize(line);
-            return;
-        }
-
-        if (_ownLabel is { } own && GodotObject.IsInstanceValid(own)) own.Text = line;
+        if (_label is { } label && GodotObject.IsInstanceValid(label)) label.Text = notice.Line(_step);
     }
 
     private static void Forget()
     {
         _overlay = null;
-        _borrowedLabel = null;
-        _ownLabel = null;
+        _label = null;
         _notice = null;
         _step = 0;
     }
