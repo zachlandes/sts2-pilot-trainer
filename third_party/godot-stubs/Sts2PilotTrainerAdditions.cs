@@ -140,7 +140,7 @@ public static class HeadlessSandbox
     {
         try
         {
-            PathContainment.RequireContained(_root, path);
+            PathContainment.RequireContained(Root, path);
         }
         catch (PathContainmentException)
         {
