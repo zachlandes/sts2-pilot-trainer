@@ -91,6 +91,8 @@ public sealed class RunCapture
 
     private FightCapture? _fight;
     private JournalStop? _stop;
+    private RunCoverage? _coverage;
+    private int _coveredSteps = -1;
 
     private RunCapture(
         RunRecordingStart start, bool witnessedRunStart, string continuity, RunJournalEntry opening)
@@ -222,6 +224,27 @@ public sealed class RunCapture
     public bool IsBookmarked(int fight) => _bookmarks.TryGetValue(fight, out var mark) && mark.On;
 
     /// <summary>
+    /// What this history covers, derived once per recorded decision.
+    ///
+    /// The step list only grows - a rollback rebuilds the capture rather than
+    /// shortening it - so the step count is what makes a derivation stale, and every
+    /// reader here shares one pass. A per-frame surface asks two of these readers.
+    /// </summary>
+    private RunCoverage Coverage
+    {
+        get
+        {
+            if (_coverage is null || _coveredSteps != _steps.Count)
+            {
+                _coverage = RunCoverage.Of(Trace);
+                _coveredSteps = _steps.Count;
+            }
+
+            return _coverage;
+        }
+    }
+
+    /// <summary>
     /// The last fight this recording finished, or null while it has finished none or
     /// is still inside one.
     ///
@@ -233,7 +256,7 @@ public sealed class RunCapture
     /// screen behind it on a win and the game's ending on a loss, where the run never
     /// moves on.
     /// </summary>
-    public int? LastEndedFight => RunCoverage.Of(Trace).Fights.LastOrDefault() is { Finished: true } fight
+    public int? LastEndedFight => Coverage.Fights.LastOrDefault() is { Finished: true } fight
         ? fight.Fight
         : null;
 
@@ -243,7 +266,7 @@ public sealed class RunCapture
     {
         get
         {
-            var coverage = RunCoverage.Of(Trace);
+            var coverage = Coverage;
             return coverage.Fights.LastOrDefault() is { Finished: true } fight &&
                    coverage.Floors.Any(floor => floor.EnteredAfterSeq > fight.EndSeq);
         }
@@ -411,7 +434,7 @@ public sealed class RunCapture
     /// </summary>
     private bool IsObservedFightRollback(RunJournalEntry target)
     {
-        var coverage = RunCoverage.Of(Trace);
+        var coverage = Coverage;
         var roomEntry = coverage.Floors.LastOrDefault();
         var fight = roomEntry is null ? null : coverage.FightsOn(roomEntry).LastOrDefault();
         return fight is { Finished: false } && roomEntry!.EnteredAfterSeq == target.Seq &&
@@ -711,7 +734,7 @@ public sealed class RunCapture
     /// has finished.</exception>
     public string MarkBookmark(int fight, bool on, int? runClockMs = null)
     {
-        var finished = RunCoverage.Of(Trace).Fights.FirstOrDefault(candidate => candidate.Fight == fight);
+        var finished = Coverage.Fights.FirstOrDefault(candidate => candidate.Fight == fight);
         if (finished is not { Finished: true })
         {
             throw new ManifestException(
@@ -756,7 +779,7 @@ public sealed class RunCapture
                 "abandoned, and the recorder that reads the run's end is the only thing that knows which.");
         }
 
-        var coverage = RunCoverage.Of(Trace);
+        var coverage = Coverage;
         var locations = coverage.Boundaries();
 
         return new ReplayManifest
