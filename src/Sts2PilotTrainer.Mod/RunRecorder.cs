@@ -22,6 +22,7 @@ using MegaCrit.Sts2.Core.Rewards;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -161,7 +162,7 @@ internal sealed class RunRecorder : IDisposable
         try
         {
             var abandoned = RunManager.Instance?.IsAbandoned ?? false;
-            recorder.Finish(abandoned ? "abandoned" : isVictory ? "won" : "lost");
+            recorder.End(abandoned ? "abandoned" : isVictory ? "won" : "lost");
         }
         catch (Exception ex)
         {
@@ -185,6 +186,7 @@ internal sealed class RunRecorder : IDisposable
         if (recorder is null) return;
 
         Active = null;
+        recorder.FinishIfStillWaitingForTheFightToEnd();
         recorder.Dispose();
     }
 
@@ -1275,14 +1277,22 @@ internal sealed class RunRecorder : IDisposable
         if (_openFightStep is not null)
         {
             CloseFightStep(final);
-            return;
+        }
+        else
+        {
+            const string reason =
+                "The fight ended with no action being sampled, so its end belongs to nothing the recording " +
+                "holds. The history is not a continuous account of this run.";
+            _capture.Fight?.MarkIncomplete(reason);
+            Refuse(reason);
         }
 
-        const string reason =
-            "The fight ended with no action being sampled, so its end belongs to nothing the recording holds. " +
-            "The history is not a continuous account of this run.";
-        _capture.Fight?.MarkIncomplete(reason);
-        Refuse(reason);
+        // The run ended inside this fight and waited for exactly this
+        if (_outcomeAwaitingFightEnd is { } pending)
+        {
+            _outcomeAwaitingFightEnd = null;
+            Finish(pending);
+        }
     }
 
     /// <summary>
@@ -1332,7 +1342,129 @@ internal sealed class RunRecorder : IDisposable
         }
     }
 
+    // ── The bookmark ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Exactly the facts the bookmark tag is derived over, read off the active
+    /// recorder, or none where nothing is recording.
+    /// </summary>
+    internal static FightMarkFacts FightMarkFacts()
+    {
+        var recorder = Active;
+        if (recorder is null || recorder._disposed) return new FightMarkFacts(false, null, null, false, false);
+
+        var capture = recorder._capture;
+        var fight = capture.LastEndedFight;
+        return new FightMarkFacts(
+            true,
+            capture.State,
+            fight,
+            capture.MovedOnFromLastFight,
+            fight is { } ended && capture.IsBookmarked(ended));
+    }
+
+    /// <summary>
+    /// The bookmark was pressed: the fight that just ended is marked, or unmarked
+    /// where it already was.
+    ///
+    /// Nothing here decides whether a press is possible; <see cref="FightMark.For"/>
+    /// draws the control only where it is, and this asks the capture for the same
+    /// fight. A press with no such fight is nothing rather than an error.
+    /// </summary>
+    internal static void ToggleBookmark()
+    {
+        var recorder = Active;
+        if (recorder is null || recorder._disposed) return;
+
+        try
+        {
+            var capture = recorder._capture;
+            if (capture.LastEndedFight is not { } fight || capture.MovedOnFromLastFight) return;
+            recorder.Bookmark(fight, !capture.IsBookmarked(fight));
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[{RunmobileMod.ModId}] the bookmark could not be saved: {ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
+
+    /// <summary>
+    /// Appends the press to the journal, and where the run has already ended, writes
+    /// the manifest again.
+    ///
+    /// A lost fight is bookmarked on the game's death screen, and by then the manifest
+    /// is on disk: the game writes its run history in <c>RunManager.OnEnded</c> and
+    /// draws the screen afterwards, and <see cref="Finish"/> follows the first. So the
+    /// press reaches a file that exists, through the same path, the same serializer
+    /// and the same containment gate <see cref="Finish"/> wrote it with. The rewrite
+    /// changes nothing but <c>source.native.bookmarks</c>, which the identity of the
+    /// run, the history hash and every boundary digest are unaffected by.
+    ///
+    /// Both writes happen before the capture holds the press, so a write that fails
+    /// leaves the tag drawing what is on disk rather than a mark that reached nothing.
+    /// </summary>
+    private void Bookmark(int fight, bool on)
+    {
+        _capture.MarkBookmark(fight, on, line =>
+        {
+            Append(_journalPath, line);
+            if (!_finished) return;
+
+            var path = $"{RecordingsDirectory}/{_capture.RunId}{RecordingLibrary.ManifestExtension}";
+            RunmobileStore.Write(path, ManifestJson.Serialize(_capture.ToManifest()) + "\n");
+        });
+    }
+
     // ── Finishing ────────────────────────────────────────────────────────────────
+
+    /// <summary>The outcome the run ended with while its last fight was still
+    /// live, held until the engine says that fight is over.</summary>
+    private string? _outcomeAwaitingFightEnd;
+
+    /// <summary>
+    /// The run is over. Finishes the recording now, or once the fight it ended
+    /// inside has ended.
+    ///
+    /// The game ends a lost run from inside the enemy turn that killed the player -
+    /// <c>RunManager.OnEnded</c> and the death screen come first, and the combat
+    /// manager processes its pending loss and raises <c>CombatEnded</c> afterwards.
+    /// A recording finished at the first of those has the killing turn still open
+    /// and the fight left live, so the lost fight got no end, no boundary and no
+    /// line, and the history stopped one decision short of where the run did while
+    /// reporting a continuous watch. So a loss with a fight live waits for the
+    /// engine's own word, which <see cref="FinishFight"/> receives with the reading
+    /// the fight ended in, and finishes then. A win or a give-up has no such fight
+    /// live and finishes here.
+    /// </summary>
+    private void End(string outcome)
+    {
+        if (_finished) return;
+
+        if (string.Equals(outcome, "lost", StringComparison.Ordinal) && _capture.Fight is not null && _observer is not null)
+        {
+            _outcomeAwaitingFightEnd = outcome;
+            return;
+        }
+
+        Finish(outcome);
+    }
+
+    /// <summary>
+    /// The safety net under <see cref="End"/>: a lost run torn down before the engine
+    /// ended its fight is still finished, with the fight left as it stood. Said in
+    /// the log, because a recording finished here is one whose death screen offered
+    /// no bookmark.
+    /// </summary>
+    private void FinishIfStillWaitingForTheFightToEnd()
+    {
+        if (_outcomeAwaitingFightEnd is not { } pending || _finished) return;
+
+        Log.Warn(
+            $"[{RunmobileMod.ModId}] the run was torn down before the engine ended the fight it was lost in, " +
+            "so the recording is finished with that fight left open", 2);
+        _outcomeAwaitingFightEnd = null;
+        Finish(pending);
+    }
 
     private void Finish(string outcome)
     {

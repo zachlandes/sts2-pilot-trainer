@@ -86,7 +86,16 @@ public sealed class LibraryPaneArtTests
         Assert.True(cell.Ring.Position.X <= cell.Icon.Position.X && cell.Ring.End.X >= cell.Icon.End.X);
         Assert.True(cell.Ring.Position.Y <= cell.Icon.Position.Y && cell.Ring.End.Y >= cell.Icon.End.Y);
 
-        foreach (var (name, part) in new[] { ("icon", cell.Icon), ("numeral", cell.Numeral), ("badge", cell.Badge), ("ring", cell.Ring) })
+        // The bookmark tab mirrors the badge on the other corner, and the two never
+        // meet: a floor that is both played and bookmarked shows both with air between
+        Assert.False(cell.Mark.HasPoint(iconCentre), "the tab hangs off the corner rather than over the marker");
+        Assert.True(cell.Mark.Position.X < cell.Icon.Position.X && cell.Mark.Position.Y < cell.Icon.Position.Y,
+            "the tab is at the marker's top-left corner");
+        Assert.Equal(cell.Badge.Size, cell.Mark.Size);
+        Assert.True(cell.Mark.End.X <= cell.Badge.Position.X, "the tab and the badge do not overlap");
+        Assert.True(cell.Numeral.Position.Y >= cell.Mark.End.Y, "the tab stays clear of the numeral");
+
+        foreach (var (name, part) in new[] { ("icon", cell.Icon), ("numeral", cell.Numeral), ("badge", cell.Badge), ("ring", cell.Ring), ("tab", cell.Mark) })
         {
             Assert.True(part.Position.Y >= 0f, $"the {name} is not clipped at the top");
             Assert.True(part.End.Y <= layout.Height + 0.01f, $"the {name} is inside the cell's height");

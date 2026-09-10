@@ -315,8 +315,9 @@ It also states no map coordinate at a floor arrival, because the version-5 recor
 The runtime that decides a decision is unmapped is not in this build; the format, the capture and the journal line are, so that build changes no file shape.
 
 **Every decision is read either side.**
-The journal's schema is v2 and every decision line carries `before` and `before_digest` beside the settled `state` and `digest`: the reading taken in the prefix of the member the decision went through, which is the state the player made it from and the instant a comparison at verification asks about.
+The journal's schema is v3 - v2 added the before-reading and v3 the bookmark line - and every decision line carries `before` and `before_digest` beside the settled `state` and `digest`: the reading taken in the prefix of the member the decision went through, which is the state the player made it from and the instant a comparison at verification asks about.
 Inside a fight that reading is the observer's before-sample and coincides with the previous after-sample, and `FightCapture` still refuses a gap between them; outside one, the reward screen after a fight is generated on the client's clock between two decisions, so `RunCapture` carries the reading that was taken rather than refusing the gap.
+A v2 journal is read as it stands, because every v2 line is a v3 line and a journal with no bookmark line in it is one with nothing pressed.
 A v1 journal on a player's disk is refused on resume, exactly as any schema this build does not read is, and the run is simply not continued as a recording.
 
 **The seam is the console's own funnel, not the action queue.**
@@ -835,6 +836,69 @@ fields here are private and one starts with an underscore of its own
 fourth underscore to reach it - `____moddedWarning`, not the `___moddedWarning` the
 marker alone would suggest - caught here only by checking the decompiled name rather
 than guessing it.
+
+**The bookmark tag is the recorder's one control, and it exists for one stretch of the run.**
+`FightMark.For` in `Sts2PilotTrainer.Trainer` derives it from exactly the five facts
+`RunRecorder.FightMarkFacts` reads: a recorder attached, `RunCapture.State`,
+`RunCapture.LastEndedFight`, `RunCapture.MovedOnFromLastFight`, and whether that fight is
+marked.
+A capture still recording or recorded to its end offers the tag and one whose watch has a
+hole in it does not, so the control follows the overlay's own row rather than offering to
+save a fight into a recording the player has just been told stopped; the finished state is
+there because a lost fight is bookmarked after the run ended.
+It is drawn only where such a recorder is attached, a fight has ended and the run has not
+yet left its floor - which is the loot screen and the card-reward screen behind it on a win,
+and the game's death screen on a loss, where the run never moves on and the tag stays
+until `RunManager.CleanUp` tears the run down.
+Everywhere else it is absent rather than greyed, because a control that could not save
+anything would only be a control saying why: the recorder off, a trainer run, a build
+the recorder module refused, a multiplayer session through `RunmobileMod.MayDraw`.
+`FightMarkTag` draws it as stock nodes in the transport's material, and
+`PlaybackTransportDock` docks it on the same measured anchor under `NRun.GlobalUi`, so
+the band under the top bar is measured once for both tags; the two never coexist, because
+a trainer run is not recorded and a recorded run has no transport.
+It is re-derived every frame from `RunManager.SetUpNewSingleplayer` or
+`SetUpSavedSingleplayer` until `CleanUp`, the way the overlay row is, because a fight
+ends inside a sampled action and a map move leaves the floor with no event the tag is
+told about; `FightMarkTag.PatchClasses` is listed beside the overlay row in
+`RecorderModule.PresencePatchClasses` and installed the same way, so a patch that will
+not attach costs the tag and nothing else.
+The press is `RunRecorder.ToggleBookmark`, which appends the journal line
+`RunCapture.MarkBookmark` renders and, where `Finish` has already written the manifest -
+a lost fight is bookmarked on a screen the game draws after `RunManager.OnEnded` wrote
+its run history - serializes the capture again to the same path through
+`RunmobileStore.Write`.
+That is the one rewrite of a finished manifest the mod does, and it changes nothing but
+`source.native.bookmarks`: the history hash is over actions, every boundary digest is
+untouched, and `RunCaptureTests` holds both.
+The write comes before the capture holds the press, so a journal append or a manifest
+rewrite that throws leaves the mark as it was and the tag draws what is on the disk
+rather than a press that reached nothing - on a loss there is no second chance at it,
+since the run is over and nothing regenerates a finished manifest from the journal.
+The press records the action ordinal of the decision the fight ended on and the run clock
+recorded with that decision rather than one read at the press: a bookmark marks the fight
+and not the loot-screen decision that may have come after it, and the death screen is
+drawn after the run ended, when the game's clock is no longer readable.
+The control takes focus so a controller reaches it and hands it back on press, which is
+the transport's own cost and fix; it carries no hotkey and no text, and its words are
+Godot's own tooltip.
+
+**A lost run is finished once the engine has ended the fight, not when the game says the
+run is over.** The retail proof found the order: `CreatureCmd` calls `RunManager.OnEnded`
+and shows the death screen from inside the enemy turn that killed the player, and the
+combat manager processes its pending loss - `IsInProgress` false, `CombatEnded` raised -
+only afterwards, from the next `CheckWinCondition`. A recording finished at `OnEnded`
+had the killing ended turn still open in `_openFightStep`, dropped it silently, left the
+fight live for `RunCapture.Finish` to abandon, and so wrote a lost run with no boundary
+and no line for the fight it was lost in while reporting a continuous watch - and the
+death screen, deriving from that, offered no bookmark. `RunRecorder.End` therefore holds
+the outcome of a loss with a fight live until the observer's own `CombatEnded` closes it
+through `FinishFight`, and finishes then, with the fight's end read as `defeat` because
+the manager has stopped; a win or a give-up finishes at once as before, and a run torn
+down before the engine got there is finished by `RunTornDown` with the fight left as it
+stood, said in the log. The proof is `demo/RUNMOBILE-BOOKMARK.md`: the same press on the
+same screen, empty before the change and a bookmark with the killing decision's own run
+clock after it.
 
 ## The run library
 

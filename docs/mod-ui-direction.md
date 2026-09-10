@@ -90,6 +90,11 @@ Same palette as the game, different material: the game's own furniture is torn s
 **Icon only, tooltips for words.** The captain's ruling: progressive disclosure is the game's own principle.
 There is no always-visible caption line; step's tooltip names the decision it is about to make.
 
+**The bookmark tag** is the same material on the same anchor at a fifth of the width: 120 by 56, the mark at the left and one 30-unit glyph control at the right, drawn by `FightMarkTag` for exactly the stretch between a fight ending and the run moving on, and absent everywhere else.
+Hollow cream at rest with the tooltip "Bookmark this fight"; filled gold with an ink hairline once pressed, with "Bookmarked · Press to remove"; pressing again is the undo, and the fill is the whole feedback.
+The glyph is a bookmark tab - a vertical rectangle with a swallow-tail foot - and the same tab in gold is what the run strip hangs off a cell's top-left corner for a bookmarked fight, opposite the teal played tick, because a bookmark is about the run and the tick is about the person.
+The whole-run save the browser design still owes gives up the bookmark for a keep glyph, an arrow into a tray, in teal; no star is used for either, because stars are held for a possible community rating.
+
 **The glyph family is the mod's own art**, because the game ships none - no play, pause, step or skip shape appears in any resource `sts2.dll` references.
 One rule carries meaning rather than decoration: **a filled shape moves the run, a hollow shape only looks.**
 
@@ -205,7 +210,7 @@ The lock is the icon, its hover tooltip and one line over the tabs saying in pla
 
 **The floor markers are the run-history screen's** icons, per floor kind, with the outline behind at the history entry's own quarter of black; the mod's hollow ring stands in only for a kind nothing established or an icon a build has not got.
 The played tick is the mod's own, filled and on a disc, hung off the icon's top-right corner where the history entry hangs its quest badge, and the numeral is under the marker with clear space rather than on it.
-`LibraryPaneArt.CellGeometry` is the one place the four parts of a cell are placed and the tests hold them apart.
+`LibraryPaneArt.CellGeometry` is the one place the five parts of a cell are placed - icon, numeral, badge, ring and the bookmark tab - and the tests hold them apart.
 
 **Every duplicated ribbon owns its materials.**
 The retail popup button lights up by writing to its image's HSV shader and its outline's blend mode, and a `Duplicate` shares both with its prototype; one hover then lit the tab, the row and the pane's ribbon at once.

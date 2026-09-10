@@ -29,13 +29,21 @@ namespace Sts2PilotTrainer.Replay;
 public sealed record RunJournal
 {
     /// <summary>
-    /// Version 2 samples the state before every decision as well as after it. A
-    /// version-1 journal is a run in progress on a player's disk under an older mod,
-    /// and it is refused exactly as any other schema this build does not read is:
-    /// the recorder's resume path refuses a journal it cannot parse rather than
-    /// repairing it, so the run is simply not continued as a recording.
+    /// Version 3 adds the bookmark line, and every version-2 line is a version-3 line,
+    /// so a version-2 journal is read as-is: it is a run in progress on a player's
+    /// disk under the build before this one, and refusing it would cost them the
+    /// recording for a field they never had. Version 2 samples the state before every
+    /// decision as well as after it. A version-1 journal is refused exactly as any
+    /// other schema this build does not read is: the recorder's resume path refuses a
+    /// journal it cannot parse rather than repairing it, so the run is simply not
+    /// continued as a recording.
     /// </summary>
-    public const string Schema = "sts2-pilot-trainer/run-journal/v2";
+    public const string Schema = "sts2-pilot-trainer/run-journal/v3";
+
+    /// <summary>The one older schema this build reads unchanged.</summary>
+    public const string PreviousSchema = "sts2-pilot-trainer/run-journal/v2";
+
+    public static readonly string[] ReadableSchemas = [Schema, PreviousSchema];
 
     /// <summary>The file extension for a journal, so the store's entries say what they
     /// are. JSON Lines rather than JSON, because appending to a JSON document means
@@ -109,6 +117,16 @@ public sealed record RunJournal
     /// <summary>Branches explicitly removed by observed room-entry rollbacks.</summary>
     public IReadOnlyList<JournalDiscardedBranch> Discarded { get; init; } = [];
 
+    /// <summary>
+    /// What the player marked, one entry per fight, the last press on each winning.
+    ///
+    /// Appended on every press, so a mark taken off is another line rather than a
+    /// line removed - the file is only ever appended to - and a crash keeps whatever
+    /// was pressed. On the file for the reason the mark and the refusals are: a press
+    /// only the running session knows about is one a crash takes with it.
+    /// </summary>
+    public IReadOnlyList<JournalBookmark> Bookmarks { get; init; } = [];
+
     /// <summary>The journal's body in append order, retained across a resume.</summary>
     internal IReadOnlyList<string>? SerializedRecords { get; init; }
 
@@ -164,6 +182,10 @@ public sealed record RunJournal
     public static string RenderRollback(JournalRollback rollback) =>
         JsonSerializer.Serialize(new JournalRollbackLine { Rollback = rollback }, Compact) + "\n";
 
+    /// <summary>One press of the bookmark, as the line appended for it.</summary>
+    public static string RenderBookmark(JournalBookmark bookmark) =>
+        JsonSerializer.Serialize(new JournalBookmarkLine { Bookmark = bookmark }, Compact) + "\n";
+
     /// <summary>The whole journal as it would be on disk. For a caller writing one in
     /// a single pass; a recorder appends instead.</summary>
     public string Render() => SerializedRecords is { } records
@@ -172,6 +194,7 @@ public sealed record RunJournal
           string.Concat(Entries.Select(RenderEntry)) +
           string.Concat(Refusals.Select(RenderRefusal)) +
           (NonStandard ? RenderNonStandard() : string.Empty) +
+          string.Concat(Bookmarks.Select(RenderBookmark)) +
           (Stop is { } stop ? RenderStop(stop) : string.Empty);
 
     /// <summary>
@@ -224,15 +247,23 @@ public sealed record RunJournal
     /// </summary>
     private static Exception? ReadRecord(
         string line, out RunJournalEntry? entry, out string? refusal, out bool nonStandard,
-        out JournalStop? stop, out JournalRollback? rollback)
+        out JournalStop? stop, out JournalRollback? rollback, out JournalBookmark? bookmark)
     {
         entry = null;
         refusal = null;
         nonStandard = false;
         stop = null;
         rollback = null;
+        bookmark = null;
         try
         {
+            if (JsonSerializer.Deserialize<JournalBookmarkLine>(line, Compact) is { Bookmark: not null } marked)
+            {
+                ManifestJson.ValidateRequiredMembers(marked.Bookmark, "Run journal bookmark");
+                bookmark = marked.Bookmark;
+                return null;
+            }
+
             if (JsonSerializer.Deserialize<JournalRefusal>(line, Compact) is { Reason: not null } read)
             {
                 refusal = read.Reason;
@@ -279,7 +310,7 @@ public sealed record RunJournal
     }
 
     private static bool ReadsAsARecord(string line) =>
-        line.Trim().Length > 0 && ReadRecord(line, out _, out _, out _, out _, out _) is null;
+        line.Trim().Length > 0 && ReadRecord(line, out _, out _, out _, out _, out _, out _) is null;
 
     /// <summary>
     /// Reads a journal back, refusing one this build cannot faithfully interpret.
@@ -306,22 +337,24 @@ public sealed record RunJournal
             return value;
         });
 
-        if (!string.Equals(header.SchemaId, Schema, StringComparison.Ordinal))
+        if (!ReadableSchemas.Contains(header.SchemaId, StringComparer.Ordinal))
         {
             throw new ManifestException(
-                $"This run journal declares schema '{header.SchemaId}', and this build reads '{Schema}'. " +
-                "Refusing rather than reading it partially.");
+                $"This run journal declares schema '{header.SchemaId}', and this build reads " +
+                $"'{string.Join("', '", ReadableSchemas)}'. Refusing rather than reading it partially.");
         }
 
         var entries = new List<RunJournalEntry>();
         var refusals = new List<string>();
         var discarded = new List<JournalDiscardedBranch>();
+        var bookmarks = new List<JournalBookmark>();
         var nonStandard = false;
         JournalStop? stop = null;
         for (var index = 1; index < lines.Count; index++)
         {
             if (ReadRecord(
-                    lines[index], out var entry, out var refusal, out var marked, out var stopped, out var rollback)
+                    lines[index], out var entry, out var refusal, out var marked, out var stopped, out var rollback,
+                    out var bookmark)
                 is { } unreadable)
             {
                 // The last line of a file a crash interrupted. Everything before it
@@ -331,6 +364,13 @@ public sealed record RunJournal
             }
 
             if (refusal is not null) refusals.Add(refusal);
+            else if (bookmark is not null)
+            {
+                // The last press on a fight is what stands; the earlier ones stay on
+                // the file as what happened.
+                bookmarks.RemoveAll(earlier => earlier.Fight == bookmark.Fight);
+                bookmarks.Add(bookmark);
+            }
             else if (rollback is not null)
             {
                 var boundaryIndex = entries.FindLastIndex(candidate =>
@@ -412,6 +452,7 @@ public sealed record RunJournal
             NonStandard = nonStandard,
             Stop = stop,
             Discarded = discarded,
+            Bookmarks = bookmarks.OrderBy(bookmark => bookmark.Fight).ToList(),
             SerializedRecords = NormalizeRecords(lines.Skip(1)),
         };
         journal.RequireReadable();
@@ -569,6 +610,34 @@ public sealed record RunJournal
         [JsonPropertyName("rollback")]
         public JournalRollback? Rollback { get; init; }
     }
+
+    /// <summary>The bookmark's line, told apart from the other shapes the same way.</summary>
+    private sealed record JournalBookmarkLine
+    {
+        [JsonPropertyName("bookmark")]
+        public JournalBookmark? Bookmark { get; init; }
+    }
+}
+
+/// <summary>
+/// One press of the bookmark: which fight, whether it went on or came off, and
+/// the fight's end - the coordinates <see cref="FightBookmark"/> carries for it.
+/// </summary>
+public sealed record JournalBookmark
+{
+    [JsonPropertyName("fight")]
+    public required int Fight { get; init; }
+
+    [JsonPropertyName("on")]
+    public required bool On { get; init; }
+
+    /// <summary>The decision the fight ended on, not the last decision before the press.</summary>
+    [JsonPropertyName("after_seq")]
+    public required int AfterSeq { get; init; }
+
+    [JsonPropertyName("run_clock_ms")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? RunClockMs { get; init; }
 }
 
 /// <summary>The boundary and range established when the live run resumed earlier.</summary>

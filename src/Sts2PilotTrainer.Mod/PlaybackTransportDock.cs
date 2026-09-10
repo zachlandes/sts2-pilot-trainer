@@ -55,8 +55,54 @@ internal static class PlaybackTransportDock
     private const float FallbackRight = 1358f;
 
     private static PlaybackTransportStrip? _strip;
+    private static FightMarkTag? _fightMark;
 
     internal static PlaybackTransportStrip? Current => _strip;
+
+    /// <summary>The bookmark tag, while one is docked.</summary>
+    internal static FightMarkTag? FightMark => _fightMark;
+
+    /// <summary>
+    /// Docks the recorder's bookmark tag on the same anchor the transport hangs from,
+    /// or answers null where the run has no interface to dock in yet.
+    ///
+    /// Held here rather than measured twice: the band under the top bar has one
+    /// measurement and one parent that outlives a room, and both tags hang from them.
+    /// The two never coexist - a trainer run is not recorded and a recorded run has
+    /// no transport - so nothing here arbitrates between them.
+    /// </summary>
+    internal static FightMarkTag? AttachFightMark(Action pressed)
+    {
+        DetachFightMark();
+
+        if (NRun.Instance?.GlobalUi is not { } globalUi) return null;
+
+        var tag = FightMarkTag.Build(globalUi.GetViewportRect().Size, Anchor(globalUi), pressed);
+        globalUi.AddChild(tag.Root);
+        _fightMark = tag;
+        Log.Info(
+            $"[{RunmobileMod.ModId}] docked the bookmark tag under {globalUi.Name} (anchor {Anchor(globalUi)})",
+            2);
+        return tag;
+    }
+
+    internal static void DetachFightMark()
+    {
+        var tag = _fightMark;
+        _fightMark = null;
+        if (tag is null || !GodotObject.IsInstanceValid(tag.Root)) return;
+
+        try
+        {
+            tag.Root.GetParent()?.RemoveChild(tag.Root);
+            tag.Root.QueueFree();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(
+                $"[{RunmobileMod.ModId}] could not remove the bookmark tag: {ex.GetType().Name}: {ex.Message}", 2);
+        }
+    }
 
     /// <summary>
     /// Puts the strip on screen, once.

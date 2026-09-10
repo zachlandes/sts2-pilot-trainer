@@ -63,7 +63,7 @@ public static partial class ManifestValidator
         var problems = new List<string>();
 
         var maxActionOrdinal = manifest.Actions.Count - 1;
-        ValidateSource(manifest.Source, manifest.Actions, problems);
+        ValidateSource(manifest, manifest.Source, manifest.Actions, problems);
         ValidateDiscardedBranches(manifest, problems);
         var videoDurationMs = manifest.Source.Video is { DurationSeconds: > 0 } video
             ? checked(video.DurationSeconds * 1000)
@@ -414,7 +414,8 @@ public static partial class ManifestValidator
     }
 
     private static void ValidateSource(
-        SourceProvenance source, IReadOnlyList<ActionRecord> actions, List<string> problems)
+        ReplayManifest manifest, SourceProvenance source, IReadOnlyList<ActionRecord> actions,
+        List<string> problems)
     {
         if (source.Kind is not ("vod" or "native" or "synthetic-engine"))
         {
@@ -467,7 +468,7 @@ public static partial class ManifestValidator
         }
         else if (source.Kind == "native")
         {
-            ValidateNativeSource(source, actions, problems);
+            ValidateNativeSource(manifest, source, actions, problems);
         }
         else if (source.Kind == "synthetic-engine")
         {
@@ -526,7 +527,8 @@ public static partial class ManifestValidator
     /// could have captured.
     /// </summary>
     private static void ValidateNativeSource(
-        SourceProvenance source, IReadOnlyList<ActionRecord> actions, List<string> problems)
+        ReplayManifest manifest, SourceProvenance source, IReadOnlyList<ActionRecord> actions,
+        List<string> problems)
     {
         var maxActionOrdinal = actions.Count - 1;
 
@@ -606,6 +608,7 @@ public static partial class ManifestValidator
         }
 
         ValidateIntegrity(native, actions.Count, problems);
+        ValidateBookmarks(native, manifest, maxActionOrdinal, problems);
 
         // The key beside the index, on every event option a recorder chose. Waived
         // only for a file that says it was written before the key existed: absent
@@ -621,6 +624,91 @@ public static partial class ManifestValidator
                     $"actions[{action.Seq}] ({action.Verb}) in a native recording names no option_key. A " +
                     "recorder reads the option's own key beside its position, which is what lets a build " +
                     "that reordered the options refuse rather than take whatever sits at that index.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Every bookmark names a fight the recording finishes, once, in order, as a
+    /// declared fact anchored at the fight's end.
+    ///
+    /// In the combat_start cross-check's own terms: a finished fight is exactly one
+    /// with a combat_start boundary, and a bookmark on any other fight is a mark
+    /// nothing could have pressed, because the control exists only once a fight has
+    /// ended. The evidence's action is at or after the fight started - a mark on a
+    /// fight cannot predate it - and never past the last action the history holds.
+    /// </summary>
+    private static void ValidateBookmarks(
+        NativeSource native, ReplayManifest manifest, int maxActionOrdinal, List<string> problems)
+    {
+        if (native.Bookmarks is not { } bookmarks) return;
+
+        if (bookmarks.Count == 0)
+        {
+            problems.Add("source.native.bookmarks is empty; a recording with no bookmarks leaves it absent.");
+        }
+
+        var previous = int.MinValue;
+        foreach (var (bookmark, index) in bookmarks.Select((bookmark, index) => (bookmark, index)))
+        {
+            var where = $"source.native.bookmarks[{index.ToString(CultureInfo.InvariantCulture)}]";
+
+            if (bookmark.Fight <= previous)
+            {
+                problems.Add(
+                    $"{where} names fight {bookmark.Fight.ToString(CultureInfo.InvariantCulture)} after fight " +
+                    $"{previous.ToString(CultureInfo.InvariantCulture)}. Bookmarks are one per fight, in fight " +
+                    "order.");
+            }
+
+            previous = bookmark.Fight;
+
+            if (!bookmark.Bookmarked.Value)
+            {
+                problems.Add(
+                    $"{where} says the fight is not bookmarked. A mark taken off is not in the manifest at all; " +
+                    "only the journal keeps the press that removed it.");
+            }
+
+            if (bookmark.Bookmarked.Source != FactSource.Declared)
+            {
+                problems.Add(
+                    $"{where}.bookmarked is {bookmark.Bookmarked.Source.ToString().ToLowerInvariant()}, and a " +
+                    "bookmark is declared: the player said so and the game was not asked.");
+            }
+
+            var start = manifest.BoundaryAt(ReplayBoundary.CombatStartKind, fight: bookmark.Fight);
+            if (start is null)
+            {
+                problems.Add(
+                    $"{where} names fight {bookmark.Fight.ToString(CultureInfo.InvariantCulture)}, and " +
+                    "boundaries declares no combat_start for it. A bookmark is pressed once a fight has ended, " +
+                    "and a fight the recording finishes has a combat_start, so this names a fight nobody could " +
+                    "have marked.");
+            }
+
+            if (bookmark.Bookmarked.Evidence?.ActionOrdinal is not { } pressedAt)
+            {
+                problems.Add(
+                    $"{where}.bookmarked carries no action_ordinal, so nothing says which moment of the run the " +
+                    "player was looking at when they pressed it.");
+                continue;
+            }
+
+            if (pressedAt > maxActionOrdinal)
+            {
+                problems.Add(
+                    $"{where}.bookmarked was pressed after action {pressedAt.ToString(CultureInfo.InvariantCulture)} " +
+                    $"and the history holds {(maxActionOrdinal + 1).ToString(CultureInfo.InvariantCulture)} " +
+                    "action(s).");
+            }
+            else if (start is not null && pressedAt < start.AfterSeq)
+            {
+                problems.Add(
+                    $"{where}.bookmarked was pressed after action {pressedAt.ToString(CultureInfo.InvariantCulture)} " +
+                    $"and fight {bookmark.Fight.ToString(CultureInfo.InvariantCulture)} starts after action " +
+                    $"{start.AfterSeq.ToString(CultureInfo.InvariantCulture)}. A fight cannot be bookmarked " +
+                    "before it happened.");
             }
         }
     }

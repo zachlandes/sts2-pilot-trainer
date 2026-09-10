@@ -20,6 +20,45 @@ public class ManifestJsonTests
         Assert.Equal(original.Actions[1].Args["column"], restored.Actions[1].Args["column"]);
     }
 
+    /// <summary>A bookmark travels with the run: the field round-trips with its
+    /// provenance and its coordinates, and is absent from the text where there is
+    /// none.</summary>
+    [Fact]
+    public void RoundTripsABookmarkAndOmitsTheFieldWhereThereIsNone()
+    {
+        var manifest = Fixtures.NativeManifest();
+        Assert.DoesNotContain("\"bookmarks\"", ManifestJson.Serialize(manifest), StringComparison.Ordinal);
+
+        var marked = manifest with
+        {
+            Source = manifest.Source with
+            {
+                Native = manifest.Source.Native! with
+                {
+                    Bookmarks =
+                    [
+                        new FightBookmark
+                        {
+                            Fight = 1,
+                            Bookmarked = new Fact<bool>(
+                                true, FactSource.Declared, FactEvidence.AtActionOrdinal(1, 812_340)),
+                        },
+                    ],
+                },
+            },
+        };
+
+        var restored = ManifestJson.Deserialize(ManifestJson.Serialize(marked));
+
+        var bookmark = Assert.Single(restored.Source.Native!.Bookmarks!);
+        Assert.Equal(1, bookmark.Fight);
+        Assert.Equal(FactSource.Declared, bookmark.Bookmarked.Source);
+        Assert.Equal(1, bookmark.Bookmarked.Evidence!.ActionOrdinal);
+        Assert.Equal(812_340, bookmark.Bookmarked.Evidence.RunClockMs);
+        Assert.True(restored.Source.Native.IsBookmarked(1));
+        Assert.False(restored.Source.Native.IsBookmarked(2));
+    }
+
     [Fact]
     public void OmitsAnEmptyRngClassificationFromAnAction()
     {

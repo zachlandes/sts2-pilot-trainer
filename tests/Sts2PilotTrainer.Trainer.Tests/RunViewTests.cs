@@ -408,6 +408,52 @@ public sealed class RunViewTests
     }
 
     /// <summary>
+    /// A bookmark is a fact about the run, so its cell carries it whoever is looking,
+    /// and the opened run says who marked it through the credit - "You" for the
+    /// player's own recording, "This run" for one received from somebody else.
+    /// </summary>
+    [Fact]
+    public void ABookmarkedFightMarksItsCellAndTheOpenedRunSaysWhoMarkedIt()
+    {
+        var recording = Bookmarked(ThreeFloors(), fight: 1);
+
+        var mine = RunView.For(recording, RunProgress.Empty, selectedFloor: 2, isPlayersOwn: true);
+        Assert.Equal([false, true, false], mine.Strip.Select(cell => cell.Bookmarked));
+        Assert.Equal([false, true, false], mine.Positions.Select(position => position.Bookmarked));
+        Assert.Equal("You bookmarked this fight.", mine.BookmarkNote);
+
+        var theirs = RunView.For(recording, RunProgress.Empty, selectedFloor: 2);
+        Assert.Equal("This run bookmarked this fight.", theirs.BookmarkNote);
+
+        // Nowhere else: another floor selected says nothing, and a recording with no
+        // marks has no cell marked and nothing to say
+        Assert.Null(RunView.For(recording, RunProgress.Empty, selectedFloor: 3, isPlayersOwn: true).BookmarkNote);
+        var plain = RunView.For(ThreeFloors(), RunProgress.Empty, selectedFloor: 2, isPlayersOwn: true);
+        Assert.All(plain.Strip, cell => Assert.False(cell.Bookmarked));
+        Assert.Null(plain.BookmarkNote);
+    }
+
+    /// <summary>The same recording as a native one with the given fight marked.</summary>
+    private static ReplayManifest Bookmarked(ReplayManifest recording, int fight) =>
+        recording with
+        {
+            Source = Fixtures.NativeRecording().Source with
+            {
+                Native = Fixtures.NativeRecording().Source.Native! with
+                {
+                    Bookmarks =
+                    [
+                        new FightBookmark
+                        {
+                            Fight = fight,
+                            Bookmarked = new Fact<bool>(true, FactSource.Declared, FactEvidence.AtActionOrdinal(12)),
+                        },
+                    ],
+                },
+            },
+        };
+
+    /// <summary>
     /// The strip's playable cells and the play-from row agree, floor by floor. They are
     /// one rule read twice, so a cell a strip draws as playable is a cell the row
     /// offers.

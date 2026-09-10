@@ -342,6 +342,31 @@ public sealed class RunBrowserTests
             "b", RunBrowser.For(LibraryTab.Community, runs, Build, selectedEntryId: "b").Pane!.Run.RunId);
     }
 
+    /// <summary>The pane's strip carries the recording's bookmarks in either tab: the
+    /// mark is about the run, and the pane reads the same positions the run view
+    /// does.</summary>
+    [Fact]
+    public void ThePaneStripCarriesTheRecordingsBookmarksInEitherTab()
+    {
+        var positions = new[]
+        {
+            new RunViewPosition(1, null, FloorKind.Unknown, false, true, -1),
+            new RunViewPosition(2, 1, FloorKind.Combat, false, false, 10, Bookmarked: true),
+            new RunViewPosition(3, 2, FloorKind.Combat, false, false, 20),
+        };
+        IReadOnlyList<LibraryRun> runs =
+        [
+            Run("theirs") with { Positions = positions },
+            Run("mine", origin: RunOrigin.Mine) with { Positions = positions },
+        ];
+
+        foreach (var tab in new[] { LibraryTab.Community, LibraryTab.MyRuns })
+        {
+            var strip = RunBrowser.For(tab, runs, Build).Pane!.Strip;
+            Assert.Equal([false, true, false], strip.Select(cell => cell.Bookmarked));
+        }
+    }
+
     /// <summary>An exact selection reveals an incompatible run without allowing entry.</summary>
     [Fact]
     public void SelectingAnIncompatibleRunDisablesItsOpenRibbon()

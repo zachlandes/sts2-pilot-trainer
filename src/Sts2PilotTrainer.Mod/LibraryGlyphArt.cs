@@ -69,6 +69,19 @@ internal enum LibraryGlyph
 
     /// <summary>Removes something, through the game's own confirm.</summary>
     Bin,
+
+    /// <summary>
+    /// A bookmark tab: a ribbon left in a book at this page. Filled, in gold, because
+    /// the recording's own player marked this fight - a fact about the run, and the one
+    /// filled shape on the strip that is not this player's own doing, which is why it
+    /// hangs off the opposite corner from the tick and wears a different colour.
+    /// </summary>
+    Bookmark,
+
+    /// <summary>The same tab as a hollow stroke: the bookmark tag's control at rest,
+    /// and the ink hairline round the filled tab so it holds on parchment and on
+    /// charcoal alike.</summary>
+    BookmarkOutline,
 }
 
 /// <inheritdoc cref="LibraryGlyph"/>
@@ -96,6 +109,9 @@ internal static class LibraryGlyphArt
         _ => throw new ArgumentOutOfRangeException(
             nameof(kind), kind, "There is no strip glyph for it."),
     };
+
+    private static readonly Vector2[] BookmarkTab =
+        [new(9, 4), new(23, 4), new(23, 28), new(16, 21), new(9, 28)];
 
     private static IEnumerable<GlyphArt.Shape> Shapes(LibraryGlyph glyph) => glyph switch
     {
@@ -181,6 +197,11 @@ internal static class LibraryGlyphArt
             GlyphArt.Shape.Fill("Lid", GlyphArt.Rect(5, 7, 22, 2.6f)),
             GlyphArt.Shape.Fill("Handle", GlyphArt.Rect(13, 4, 6, 2.6f)),
         ],
+
+        // A vertical tab with a swallow-tail foot, about 14 wide by 24 tall in the box
+        LibraryGlyph.Bookmark => [GlyphArt.Shape.Fill("Tab", BookmarkTab)],
+
+        LibraryGlyph.BookmarkOutline => [GlyphArt.Shape.Outline("Tab", BookmarkTab, closed: true)],
 
         _ => throw new InvalidOperationException($"There is no drawing for the {glyph} glyph."),
     };

@@ -2397,6 +2397,94 @@ public class NativeManifestValidatorTests
         Assert.True(result.IsValid, result.Describe());
     }
 
+    // ── Bookmarks ──────────────────────────────────────────────────────────
+
+    /// <summary>The fixture's one fight has a combat_start after action 1 and the
+    /// history holds actions 0 and 1, so a declared mark pressed at action 1 is the
+    /// shape the recorder writes.</summary>
+    [Fact]
+    public void AcceptsADeclaredBookmarkOnAFightTheRecordingFinishes()
+    {
+        var result = Validate(Fixtures.NativeSourceBlock() with { Bookmarks = [Bookmark(1, pressedAt: 1)] });
+
+        Assert.True(result.IsValid, result.Describe());
+    }
+
+    [Fact]
+    public void RejectsABookmarkOnAFightWithNoCombatStart()
+    {
+        var result = Validate(Fixtures.NativeSourceBlock() with { Bookmarks = [Bookmark(2, pressedAt: 1)] });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("source.native.bookmarks[0] names fight 2", StringComparison.Ordinal) &&
+            problem.Contains("declares no combat_start for it", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsABookmarkThatIsNotDeclared()
+    {
+        var captured = new FightBookmark
+        {
+            Fight = 1,
+            Bookmarked = Fact<bool>.Captured(true, FactEvidence.AtActionOrdinal(1)),
+        };
+
+        var result = Validate(Fixtures.NativeSourceBlock() with { Bookmarks = [captured] });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("source.native.bookmarks[0].bookmarked is captured", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsABookmarkPressedBeforeItsFightOrAfterTheHistoryEnds()
+    {
+        var early = Validate(Fixtures.NativeSourceBlock() with { Bookmarks = [Bookmark(1, pressedAt: 0)] });
+        Assert.Contains(early.Problems, problem =>
+            problem.Contains("A fight cannot be bookmarked before it happened", StringComparison.Ordinal));
+
+        var late = Validate(Fixtures.NativeSourceBlock() with { Bookmarks = [Bookmark(1, pressedAt: 7)] });
+        Assert.Contains(late.Problems, problem =>
+            problem.Contains("was pressed after action 7", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RejectsBookmarksOutOfOrderOrRepeated()
+    {
+        var result = Validate(Fixtures.NativeSourceBlock() with
+        {
+            Bookmarks = [Bookmark(1, pressedAt: 1), Bookmark(1, pressedAt: 1)],
+        });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("source.native.bookmarks[1] names fight 1 after fight 1", StringComparison.Ordinal));
+    }
+
+    /// <summary>A mark taken off is a journal line and not a manifest entry, and a
+    /// recording with none leaves the field absent.</summary>
+    [Fact]
+    public void RejectsABookmarkThatSaysOffAndAnEmptyList()
+    {
+        var off = new FightBookmark { Fight = 1, Bookmarked = Fact<bool>.Declared(false) };
+        var result = Validate(Fixtures.NativeSourceBlock() with { Bookmarks = [off] });
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("says the fight is not bookmarked", StringComparison.Ordinal));
+        Assert.Contains(result.Problems, problem =>
+            problem.Contains("carries no action_ordinal", StringComparison.Ordinal));
+
+        var empty = Validate(Fixtures.NativeSourceBlock() with { Bookmarks = [] });
+        Assert.Contains(empty.Problems, problem =>
+            problem.Contains("source.native.bookmarks is empty", StringComparison.Ordinal));
+    }
+
+    private static FightBookmark Bookmark(int fight, int pressedAt) => new()
+    {
+        Fight = fight,
+        Bookmarked = new Fact<bool>(true, FactSource.Declared, FactEvidence.AtActionOrdinal(pressedAt, 812_340)),
+    };
+
     private static ManifestValidator.ValidationResult Validate(NativeSource native)
     {
         var manifest = Fixtures.NativeManifest();

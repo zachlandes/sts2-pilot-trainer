@@ -69,7 +69,8 @@ internal sealed class RecorderModule : IRunmobileModule
     }
 
     /// <summary>
-    /// The recorder's one surface: a row of the game's own version overlay.
+    /// The recorder's two surfaces: a row of the game's own version overlay, and the
+    /// bookmark tag hung under the top bar when a fight has just ended.
     ///
     /// Listed apart from <see cref="RunRecorder.PatchClasses"/>, and installed apart from
     /// the watch, because the two fail differently. A decision this build renamed is a
@@ -78,7 +79,8 @@ internal sealed class RecorderModule : IRunmobileModule
     /// whole. So a patch that will not attach here is a line in the log and nothing else -
     /// it never reaches <see cref="Examine"/>'s refusal.
     /// </summary>
-    internal static readonly IReadOnlyList<Type> PresencePatchClasses = [typeof(RecorderPresenceRow.VersionOverlay)];
+    internal static readonly IReadOnlyList<Type> PresencePatchClasses =
+        [typeof(RecorderPresenceRow.VersionOverlay), .. FightMarkTag.PatchClasses];
 
     private static void InstallPresenceRow(Harmony harmony)
     {
@@ -91,8 +93,8 @@ internal sealed class RecorderModule : IRunmobileModule
             catch (Exception ex)
             {
                 Log.Error(
-                    $"[{RunmobileMod.ModId}] the recording row could not be added to this build's version " +
-                    $"overlay, so the recorder runs without one: {ex.GetType().Name}: {ex.Message}", 2);
+                    $"[{RunmobileMod.ModId}] {patchClass.Name} could not be added to this build, so the " +
+                    $"recorder runs without that surface: {ex.GetType().Name}: {ex.Message}", 2);
             }
         }
     }
