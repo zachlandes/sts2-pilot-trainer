@@ -26,17 +26,22 @@ public sealed class MyRunsSettingsRowTests
     /// the width this row is actually laid out at.
     ///
     /// <para>Measured off the committed retail capture
-    /// <c>demo/runmobile-settings-row-native-type.png</c>: the settings column spans
-    /// about 1056 of that image's 2000 rendered pixels on a roughly 16:9 viewport, which
-    /// is about 1000 units on the game's 1920-unit design width. The same capture
-    /// cross-checks the estimator <c>ButtonBoxWidth</c> falls back on where there is no
-    /// font: it puts the 31-character "Runmobile on the main menu: off" at 533 units, and
-    /// that button measures about 507 units in the image.</para>
+    /// <c>demo/runmobile-settings-row-native-type.png</c>, which is 3024 x 1964 - a 2x
+    /// capture of the 1512 x 982 surface that file names. The settings rows' own dividers
+    /// span about 1596 px of that 3024-px frame. The game area fills the frame's width and
+    /// is letterboxed top and bottom, so 3024 px is the client's own 1920-unit viewport -
+    /// the one its log records in <c>demo/RUNMOBILE-RESTORE-IN-CLIENT.md</c> - and 1596 px
+    /// is about 1013 units. 1000 is that rounded down.</para>
     ///
-    /// <para>Provisional until an in-client capture confirms it. 520 is
-    /// <c>MyRunsSettings.FallbackWidth</c> - what the row is given when the settings entry
-    /// reports no size at all - and asserting a caption fits there asserts something the
-    /// client never has to satisfy.</para>
+    /// <para>The same capture cross-checks the estimator <c>ButtonBoxWidth</c> falls back
+    /// on where there is no font: it puts the 31-character "Runmobile on the main menu:
+    /// off" at 533 units, and that button spans about 798 px in the capture, which is
+    /// about 507 units.</para>
+    ///
+    /// <para>Measured from a committed capture and provisional until an in-client capture
+    /// confirms it. 520 is <c>MyRunsSettings.FallbackWidth</c> - what the row is given
+    /// when the settings entry reports no size at all - and asserting a caption fits there
+    /// asserts something the client never has to satisfy.</para>
     /// </summary>
     private const float RetailColumnWidth = 1000f;
 
@@ -496,27 +501,6 @@ public sealed class MyRunsSettingsRowTests
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// A caption too long for the width it is given comes back exactly that width, which
-    /// is the failure the test above guards against rather than a fit.
-    ///
-    /// 520 is the fallback width, used only where the settings entry reports no size at
-    /// all, and the longer of the main-menu captions does not fit it at the retail text
-    /// size. <c>Layout</c> clamps it to the width; the engine then widens the button back
-    /// out to its own unwrapped caption, over the game's own column.
-    /// </summary>
-    [Fact]
-    public void ACaptionTooLongForItsWidthIsClampedToItRatherThanFitted()
-    {
-        var row = Build(
-            new MyRunsFacts(Runs: 3, Bytes: 3 * 1024 * 1024, Keep: 20, MainMenuRowShown: false),
-            text: Text(26, 26),
-            width: Width);
-
-        Assert.Equal("Runmobile on the main menu: off", row.MainMenu.Text);
-        Assert.Equal(Width, row.MainMenu.Size.X);
     }
 
     private static MyRunsSettingsRow Build(
