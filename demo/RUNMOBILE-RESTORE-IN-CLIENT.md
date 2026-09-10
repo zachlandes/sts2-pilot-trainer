@@ -63,9 +63,20 @@ runmobile-restoring-your-run.png
 
 ![e8d1c719-2026-09-10](e8d1c719-2026-09-10.png)
 
-Captured a second and a half after Continue was pressed on the player's own recording, at this branch's `adcf103`.
-Fight entry itself was still refused on that head by main's `LedgerRow` text-role mapping, which a separate hotfix addresses; the notice above is the surface under test here, and it is on screen.
-The client's log, in order, with nothing between the lines removed except the game's own asset chatter:
+### Two captures, two heads
+
+The plate above and the fight below were taken on different heads, and the difference is worth stating plainly rather than leaving a reader to reconcile them.
+
+The fight-2 entry proof in the rest of this section - Continue at floor 3, the fight entered, the digest matched - was captured on 2026-09-09 at `4886ef7`, before this branch was rebased onto main.
+Main's `6d124d2` (#54, `fix(mod): match Runmobile text to native typography`) entered the branch with that rebase, and its `NativeTextRole.LedgerRow` mapping names a node this build's `map_point_history_hover_tip.tscn` does not have.
+`PlaybackTransportDock` reads that role when it docks the transport, which is after the restore has verified its boundary, so every head from `d0e5508` on refuses fight entry at that point.
+That is a regression the branch inherited from main rather than one its own fix rounds made, and it is fixed separately by the ledger-role hotfix off main.
+
+The plate was captured on 2026-09-10 at the pipeline head, `adcf103`.
+It is of the Preparing phase, which happens before the docking that refuses, so it is unaffected by any of that.
+Fight entry will be re-proved on the fixed head once the hotfix merges.
+
+The client's log below is the 2026-09-09 press, in order, with nothing between the lines removed except the game's own asset chatter:
 
 ```
 [Runmobile] no verified snapshot for arrival on floor 3 (nothing is cached under v0.111.0_standard_CHARACTER.IRONCLAD_a0_3LACFJ5NJ371_1568834832_seq16_8270d9e5…); asking the packaged arbiter to materialise one
