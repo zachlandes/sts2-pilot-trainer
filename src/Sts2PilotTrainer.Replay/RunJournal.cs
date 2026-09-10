@@ -77,7 +77,7 @@ public sealed record RunJournal
     /// has a hole in it; the session after it would read a journal whose last digest
     /// matches the live one and publish that hole as a continuous account of the run.
     /// </summary>
-    public IReadOnlyList<string> Refusals { get; init; } = [];
+    public IReadOnlyList<RunRefusal> Refusals { get; init; } = [];
 
     /// <summary>
     /// Whether the sessions that wrote this journal saw the console used in this run.
@@ -156,8 +156,20 @@ public sealed record RunJournal
     /// <summary>One refusal, as the line appended for it. Appended the moment it is
     /// raised, for the same reason a decision is: a refusal only a running session
     /// knows about is one the session after it cannot be told.</summary>
-    public static string RenderRefusal(string reason) =>
-        JsonSerializer.Serialize(new JournalRefusal { Reason = reason }, Compact) + "\n";
+    public static string RenderRefusal(string reason) => RenderRefusal(RunRefusal.Stopping(reason));
+
+    /// <summary>The same, for a refusal that says whether the watch went on past it.
+    /// A refusal the watch continued past carries <c>watch_continues</c> and one it
+    /// did not carries nothing, so a journal written before this build reads as what
+    /// it was: a refusal that stopped the watch.</summary>
+    public static string RenderRefusal(RunRefusal refusal) =>
+        JsonSerializer.Serialize(
+            new JournalRefusal
+            {
+                Reason = refusal.Reason,
+                WatchContinues = refusal.WatchContinues ? true : null,
+            },
+            Compact) + "\n";
 
     /// <summary>The mark that says the console was used in this run, as the line
     /// appended for it. Appended the moment it is seen, for the same reason a refusal
@@ -246,7 +258,7 @@ public sealed record RunJournal
     /// kept.
     /// </summary>
     private static Exception? ReadRecord(
-        string line, out RunJournalEntry? entry, out string? refusal, out bool nonStandard,
+        string line, out RunJournalEntry? entry, out RunRefusal? refusal, out bool nonStandard,
         out JournalStop? stop, out JournalRollback? rollback, out JournalBookmark? bookmark)
     {
         entry = null;
@@ -266,7 +278,7 @@ public sealed record RunJournal
 
             if (JsonSerializer.Deserialize<JournalRefusal>(line, Compact) is { Reason: not null } read)
             {
-                refusal = read.Reason;
+                refusal = new RunRefusal(read.Reason, read.WatchContinues ?? false);
                 return null;
             }
 
@@ -345,7 +357,7 @@ public sealed record RunJournal
         }
 
         var entries = new List<RunJournalEntry>();
-        var refusals = new List<string>();
+        var refusals = new List<RunRefusal>();
         var discarded = new List<JournalDiscardedBranch>();
         var bookmarks = new List<JournalBookmark>();
         var nonStandard = false;
@@ -579,6 +591,12 @@ public sealed record RunJournal
     {
         [JsonPropertyName("refusal")]
         public string? Reason { get; init; }
+
+        /// <summary>Whether the recorder went on watching the run past this refusal.
+        /// Absent on every refusal that stopped the watch, which is how a journal an
+        /// older build wrote reads as one.</summary>
+        [JsonPropertyName("watch_continues")]
+        public bool? WatchContinues { get; init; }
     }
 
     /// <summary>The non-standard mark's line, told apart from the other two shapes the
@@ -638,6 +656,34 @@ public sealed record JournalBookmark
     [JsonPropertyName("run_clock_ms")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? RunClockMs { get; init; }
+}
+
+/// <summary>
+/// One refusal, and whether the recorder went on watching the run past it.
+///
+/// Two facts rather than one, because a hole in the account of a run and a recorder
+/// that has stopped watching it are different things and only one of them is on the
+/// player's screen. Every refusal makes the recording unshareable - <see
+/// cref="NativeSource.Continuity"/> is what says so and the validator and the share
+/// form both read it. What <see cref="WatchContinues"/> adds is whether the recorder
+/// kept its account of everything after the refusal, which it does for a reload that
+/// rewound the run behind what it had already recorded: the player carries on playing
+/// and the run carries on being recorded, into a recording nobody may share.
+///
+/// It is on the journal line rather than derived from the reason, because a session
+/// after this one reads the sentence and cannot tell one class from the other by
+/// reading it.
+/// </summary>
+/// <param name="Reason">What the recorder could not account for.</param>
+/// <param name="WatchContinues">Whether it went on recording past it.</param>
+public sealed record RunRefusal(string Reason, bool WatchContinues)
+{
+    /// <summary>A refusal the recorder stopped watching at. Every refusal an older
+    /// journal holds is one of these.</summary>
+    public static RunRefusal Stopping(string reason) => new(reason, WatchContinues: false);
+
+    /// <summary>A refusal the recorder went on recording past.</summary>
+    public static RunRefusal Continuing(string reason) => new(reason, WatchContinues: true);
 }
 
 /// <summary>The boundary and range established when the live run resumed earlier.</summary>

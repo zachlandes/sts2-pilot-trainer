@@ -8,9 +8,10 @@ namespace Sts2PilotTrainer.Trainer;
 /// Two, because the row makes two kinds of claim. The overlay's own colour says the row
 /// is one more line of the game's version information, and a recording under way is
 /// exactly that: a fact about this session, stated where the build and the seed are.
-/// The warning hue is the eligibility screen's, and it is used for the one row that
-/// asks something of the player - a recording that stopped is a run they will not be
-/// able to play from, and the overlay is where they will notice.
+/// The warning hue is the eligibility screen's, and it is used for the rows that ask
+/// something of the player - a recording that stopped is a run they will not be able to
+/// play from, and one that can no longer be shared is a run they may want to start
+/// again, and the overlay is where they will notice either.
 /// </summary>
 public enum RecorderRowTone
 {
@@ -29,12 +30,22 @@ public enum RecorderRowTone
 /// is, its capture is at one of three states. A recorder that is not attached has no
 /// capture, so <paramref name="Capture"/> is null exactly there; the derivation treats
 /// an active recorder with no state as nothing established, rather than as a recording.
+///
+/// Whether the capture is still watching and whether it can be shared are two facts and
+/// both are read, because a reload that rewound the run behind what was recorded costs
+/// the recording its continuity and costs the watch nothing. A row derived from the
+/// state alone would say a run was still being recorded and say nothing about the one
+/// thing that changed about it.
 /// </summary>
 /// <param name="RecorderActive">Whether a recorder is attached to the run being played.
 /// False when the player turned recording off, when the run is a trainer run this mod
 /// constructed, and when the recorder module refused this build.</param>
 /// <param name="Capture">Where that recorder's capture has got to.</param>
-public sealed record RecorderFacts(bool RecorderActive, RunCaptureState? Capture);
+/// <param name="Continuous">Whether that capture can still account for the run from its
+/// start, which is what decides whether the recording may ever be shared. Stated rather
+/// than defaulted: a caller that left it out would be claiming continuity it had not
+/// read.</param>
+public sealed record RecorderFacts(bool RecorderActive, RunCaptureState? Capture, bool Continuous);
 
 /// <summary>
 /// The recorder's presence on screen: one more row of the game's own version overlay.
@@ -70,13 +81,16 @@ public sealed record RecorderPresence(ElementSurface Row, string Text, RecorderR
     /// <summary>
     /// The row for these facts.
     ///
-    /// Three rows the design names and two it does not. A recorder attached and
-    /// recording is RECORDING in the overlay's colour; one attached whose watch has a
-    /// hole in it is RECORDING STOPPED in the warning hue; none attached is no row. A
-    /// capture that finished is a run that is over, so nothing is being recorded and the
-    /// row says nothing rather than something stale; an active recorder with no capture
-    /// state is a contradiction in the facts, and a contradiction draws nothing rather
-    /// than guessing which half is right.
+    /// Four rows the design names and two it does not. A recorder attached and
+    /// recording a run it can account for is RECORDING in the overlay's colour; one
+    /// still recording a run it cannot is RECORDING · NOT SHAREABLE in the warning hue,
+    /// because the recording goes on and the one thing that changed about it is the
+    /// player's to know; one whose watch stopped is RECORDING STOPPED in the same hue;
+    /// none attached is no row. Neither warning row states a cause - what made the hole
+    /// is in the journal, and the overlay is a column of short capitals. A capture that finished is a run that is over, so nothing is
+    /// being recorded and the row says nothing rather than something stale; an active
+    /// recorder with no capture state is a contradiction in the facts, and a
+    /// contradiction draws nothing rather than guessing which half is right.
     /// </summary>
     public static RecorderPresence For(RecorderFacts facts)
     {
@@ -84,8 +98,11 @@ public sealed record RecorderPresence(ElementSurface Row, string Text, RecorderR
 
         return facts.Capture switch
         {
-            RunCaptureState.Recording =>
+            RunCaptureState.Recording when facts.Continuous =>
                 new RecorderPresence(ElementSurface.Shown(), RecorderCopy.Recording, RecorderRowTone.Overlay),
+            RunCaptureState.Recording =>
+                new RecorderPresence(
+                    ElementSurface.Shown(), RecorderCopy.RecordingNotShareable, RecorderRowTone.Warning),
             RunCaptureState.Broken =>
                 new RecorderPresence(ElementSurface.Shown(), RecorderCopy.RecordingStopped, RecorderRowTone.Warning),
             _ => Nothing,

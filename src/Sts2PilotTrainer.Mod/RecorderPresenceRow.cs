@@ -1,8 +1,10 @@
+using System;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.addons.mega_text;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes.Debug;
+using Sts2PilotTrainer.Replay;
 using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
@@ -139,11 +141,19 @@ internal static class RecorderPresenceRow
         }
     }
 
-    /// <summary>Exactly the two facts the derivation is over.</summary>
+    /// <summary>Exactly the facts the derivation is over, read off the live recorder.
+    /// Continuity is read beside the state rather than folded into it: a reload that
+    /// rewound the run leaves the capture recording and no longer shareable, and the row
+    /// says the second only because it is read.</summary>
     private static RecorderFacts Facts()
     {
         var recorder = RunRecorder.Active;
-        return new RecorderFacts(recorder is not null, recorder?.Capture.State);
+        var capture = recorder?.Capture;
+        return new RecorderFacts(
+            recorder is not null,
+            capture?.State,
+            Continuous: capture is null ||
+                string.Equals(capture.Continuity, NativeSource.ContinuousContinuity, StringComparison.Ordinal));
     }
 
     /// <summary>

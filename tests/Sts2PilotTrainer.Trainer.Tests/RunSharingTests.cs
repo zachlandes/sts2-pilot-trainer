@@ -257,6 +257,56 @@ public sealed class RunSharingTests
         Assert.Contains("locally", form.LocalValidation);
     }
 
+    /// <summary>
+    /// The seal on a run the recorder could not account for from its start.
+    ///
+    /// A reload behind what was recorded is how a player reaches this by doing something
+    /// ordinary, and the recording went on being made while it happened, so the form is
+    /// where they find out what it cost. It names the hole and not what made it: a
+    /// manifest states <c>continuity</c> and no cause, and more than one thing puts a
+    /// recording here.
+    /// </summary>
+    [Fact]
+    public void ARecordingWithABrokenWatchIsSealedAsUnshareableAndSaysWhatIsWrong()
+    {
+        var manifest = WithContinuity(Fixture(), NativeSource.BrokenContinuity);
+
+        var form = ShareRunForm.For(manifest);
+
+        Assert.Contains("Not shareable", form.IntegritySeal, StringComparison.Ordinal);
+        Assert.Contains("from its start", form.IntegritySeal, StringComparison.Ordinal);
+    }
+
+    /// <summary>And a continuous one is offered to the publication gate as before, so
+    /// the new seal is a branch and not a replacement.</summary>
+    [Fact]
+    public void AContinuousRecordingIsStillSealedForThePublicationGate()
+    {
+        var form = ShareRunForm.For(WithContinuity(Fixture(), NativeSource.ContinuousContinuity));
+
+        Assert.Contains("publication gate", form.IntegritySeal, StringComparison.Ordinal);
+    }
+
+    /// <summary>The fixture as a native recording of the given continuity. The fixture
+    /// itself is reconstructed from a video and carries no native source, and it is the
+    /// native source the seal reads.</summary>
+    private static ReplayManifest WithContinuity(ReplayManifest run, string continuity) => run with
+    {
+        Source = run.Source with
+        {
+            Kind = "native",
+            ExtractionMethod = "captured",
+            Native = new NativeSource
+            {
+                RecorderVersion = "runmobile-recorder/0.1.0",
+                WitnessedRunStart = Fact<bool>.Captured(true, FactEvidence.AtActionOrdinal(-1, 0)),
+                Continuity = continuity,
+                Outcome = "abandoned",
+                Integrity = NativeSource.CompleteIntegrity,
+            },
+        },
+    };
+
     private static IRunSharingApi Service(
         Func<ReplayManifest, bool> gate, Func<DateTimeOffset>? clock = null)
     {

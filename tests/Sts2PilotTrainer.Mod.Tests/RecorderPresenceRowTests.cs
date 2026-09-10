@@ -25,7 +25,7 @@ public sealed class RecorderPresenceRowTests
         var row = new Label();
 
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording)), mayDraw: true);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording, Continuous: true)), mayDraw: true);
 
         Assert.True(row.Visible);
         Assert.Equal(RecorderCopy.Recording, row.Text);
@@ -39,7 +39,7 @@ public sealed class RecorderPresenceRowTests
         var row = new Label();
 
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken)), mayDraw: true);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken, Continuous: true)), mayDraw: true);
 
         Assert.True(row.Visible);
         Assert.Equal(RecorderCopy.RecordingStopped, row.Text);
@@ -55,10 +55,10 @@ public sealed class RecorderPresenceRowTests
         var moddedRow = new Label { Visible = true };
         var row = new Label();
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken)), mayDraw: true);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken, Continuous: true)), mayDraw: true);
 
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording)), mayDraw: true);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording, Continuous: true)), mayDraw: true);
 
         Assert.Null(row.ThemeColorOverride(FontColorEntry));
     }
@@ -72,7 +72,7 @@ public sealed class RecorderPresenceRowTests
         var row = new Label();
 
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording)), mayDraw: true);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording, Continuous: true)), mayDraw: true);
 
         Assert.False(row.Visible);
     }
@@ -86,7 +86,7 @@ public sealed class RecorderPresenceRowTests
         var row = new Label();
 
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording)), mayDraw: false);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording, Continuous: true)), mayDraw: false);
 
         Assert.False(row.Visible);
     }
@@ -97,7 +97,7 @@ public sealed class RecorderPresenceRowTests
         var moddedRow = new Label { Visible = true };
         var row = new Label();
 
-        RecorderPresenceRow.Apply(row, moddedRow, RecorderPresence.For(new RecorderFacts(false, null)), mayDraw: true);
+        RecorderPresenceRow.Apply(row, moddedRow, RecorderPresence.For(new RecorderFacts(false, null, Continuous: true)), mayDraw: true);
 
         Assert.False(row.Visible);
         Assert.Equal(string.Empty, row.Text);

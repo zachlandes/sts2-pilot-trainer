@@ -374,14 +374,70 @@ public sealed class RunCaptureTests
             step.Seq == 6 && step.After["combat.outcome"] == "in_progress");
     }
 
+    /// <summary>
+    /// A reload that rewound the run behind what was recorded costs the recording its
+    /// continuity and the watch nothing.
+    ///
+    /// The player quit and continued from an earlier save. The history this recording
+    /// holds is no longer the run's, so it can never be shared - which is what
+    /// <see cref="NativeSource.BrokenContinuity"/> says and what the validator and the
+    /// share form both read. What has not happened is the recorder giving up: it can
+    /// account for every decision from here on exactly as it could before, and a run
+    /// somebody is still playing is one they are still recording.
+    /// </summary>
     [Fact]
-    public void ASessionThatResumesAtAnEarlierNonFightBoundaryIsBroken()
+    public void ASessionThatResumesAtAnEarlierNonFightBoundaryKeepsRecordingAndCannotBeShared()
     {
         var resumed = RunCapture.Resume(Played().Journal, Digest(0));
 
         Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
-        Assert.Equal(RunCaptureState.Broken, resumed.State);
-        Assert.Contains("not the game's rollback of a live fight", resumed.Refusal!, StringComparison.Ordinal);
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Contains("no longer be shared", resumed.Refusal!, StringComparison.Ordinal);
+        Assert.True(Assert.Single(resumed.Refusals).WatchContinues);
+    }
+
+    /// <summary>
+    /// The run the captain save-scummed, as a regression.
+    ///
+    /// He answered Neow, quit to the menu and continued, and the game gave him the
+    /// blessing to choose again: it came back at the reading before decision 0, which
+    /// is behind everything the recorder had written. The build he was on wrote a
+    /// refusal, stopped the watch, and put RECORDING STOPPED on the overlay while
+    /// carrying on writing decisions into the journal underneath it. The recorder now
+    /// keeps recording and says the one thing that changed - the run cannot be shared.
+    /// </summary>
+    [Fact]
+    public void AReloadThatUndoesTheNeowBlessingKeepsRecordingTheRestOfTheRun()
+    {
+        var first = RunCapture.Begin(Start());
+        first.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(first.Journal.Render()), Digest(-1));
+
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
+
+        // The blessing chosen a second time, and the run played on from it.
+        resumed.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "2"), ("option_key", "NEOW.OTHER")),
+            Floor(1), Digest(20));
+        resumed.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            InFight(2, turn: 1), Digest(21));
+
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Equal(3, resumed.NextSeq);
+
+        resumed.Finish("abandoned");
+        var manifest = resumed.ToManifest();
+        Assert.Equal(NativeSource.BrokenContinuity, manifest.Source.Native!.Continuity);
+        Assert.False(manifest.Source.Native.IsContinuous);
+        Assert.Contains(
+            "source.native.continuity",
+            ManifestValidator.Validate(manifest).Describe(),
+            StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -415,12 +471,17 @@ public sealed class RunCaptureTests
         Assert.Equal(Digest(1), resumed.Fight.CombatStartSnapshotDigest);
     }
 
+    /// <summary>A resume the recorder cannot place in its own history is the other
+    /// thing, and it stops the watch: nothing establishes what the run is from there,
+    /// so there is no account left to go on keeping.</summary>
     [Fact]
     public void ASessionThatResumesSomewhereTheRecorderNeverSawIsBrokenToo()
     {
         var resumed = RunCapture.Resume(Played().Journal, Digest(77));
 
         Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Broken, resumed.State);
+        Assert.False(Assert.Single(resumed.Refusals).WatchContinues);
         Assert.Contains("is not one this recording ever saw", resumed.Refusal!, StringComparison.Ordinal);
     }
 
@@ -446,6 +507,9 @@ public sealed class RunCaptureTests
     /// and publishes <c>continuity = continuous</c> over a history with a hole in it.
     /// Continuity is the one fact nothing downstream can re-derive, so that recording
     /// would carry a false claim nobody could check.
+    ///
+    /// The refusal's own class survives with it, so session two goes on recording where
+    /// session one did rather than reading the sentence and stopping.
     /// </summary>
     [Fact]
     public void ASessionResumedAfterAnEarlierOneWasBrokenIsStillBroken()
@@ -457,8 +521,9 @@ public sealed class RunCaptureTests
         var second = RunCapture.Resume(RunJournal.Parse(first.Journal.Render()), Digest(5));
 
         Assert.Equal(NativeSource.BrokenContinuity, second.Continuity);
-        Assert.Equal(RunCaptureState.Broken, second.State);
+        Assert.Equal(RunCaptureState.Recording, second.State);
         Assert.Contains("resumed this run at decision 1", second.Refusal!, StringComparison.Ordinal);
+        Assert.True(Assert.Single(second.Refusals).WatchContinues);
         Assert.Equal(6, second.NextSeq);
     }
 
@@ -494,7 +559,9 @@ public sealed class RunCaptureTests
 
         var read = RunJournal.Parse(capture.Journal.Render());
 
-        Assert.Equal("the engine never settled", Assert.Single(read.Refusals));
+        var kept = Assert.Single(read.Refusals);
+        Assert.Equal("the engine never settled", kept.Reason);
+        Assert.False(kept.WatchContinues);
         Assert.Equal(6, read.Entries.Count);
         Assert.Equal(RunJournal.RenderRefusal("the engine never settled"), line);
     }

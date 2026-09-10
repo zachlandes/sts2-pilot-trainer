@@ -368,6 +368,14 @@ Any other mismatch marks the recording `continuity = broken` and it is refused f
 Every rollback and refusal is appended to the journal as a line of its own, the moment it is established, and `Resume` applies each one back.
 Without that the break lives only in the session that decided on it: quit and continue once more and the next session finds a journal whose last digest is exactly the live one, sees nothing wrong, and publishes `continuity = continuous` over a hole - which is the one claim nothing downstream could check.
 
+**A hole in the account of a run and a recorder that has stopped watching it are two things, and `RunRefusal` says which a refusal is.**
+Both cost the recording its continuity and with it any chance of being shared; only one of them stops the recording, and until this was separated every refusal did both.
+A resume whose live digest matches an earlier decision in the recorder's own history is a reload that rewound the run behind what had been recorded - the player quit and continued from an earlier save, which the game lets them do and which the mod does not prevent.
+The recorder can account for every decision from there on exactly as it could before, so it goes on recording: `RunRefusal.Continuing` leaves `RunCapture.State` at `Recording`, the run stays the player's to keep and play from, and `continuity = broken` is what refuses it for sharing.
+A resume whose digest matches nothing the recording ever saw is the other thing and stops the watch, because nothing establishes what the run even is from that point.
+The class travels on the journal line as `watch_continues` rather than being read back out of the sentence, so the session after a second quit keeps the disposition instead of guessing at it; a refusal line without the field is one that stopped the watch, which is every refusal a journal written before this holds.
+This was found by playing: a Neow blessing answered, a quit and continue, the blessing offered again, and an overlay reading RECORDING STOPPED over a journal that was still recording decisions underneath it.
+
 **Where the recorder stops, it says so.**
 A reward kind the format has no verb for, a card reward answered with one of its alternatives, a screen whose offered list this build no longer exposes, an engine that did not settle: each marks the recording broken with a sentence rather than writing a value it guessed.
 The recording is still written, because it is what happened; what it is not is publishable, and the validator and `./scripts/arbiter gate` are what say so.
@@ -823,8 +831,14 @@ one, and noting that `./scripts/bootstrap.sh --archive` copies assemblies and no
 A skip that read as green over an unchecked role table is how the ledger row reached a
 player, so every one of those skips says which it is.
 `RecorderPresence.For` derives what it says and its colour from exactly
-`RunRecorder.Active` and `RunCapture.State`; the row is re-derived every frame, because
-the recorder attaches after the overlay is built and a watch can break at any decision.
+`RunRecorder.Active`, `RunCapture.State` and `RunCapture.Continuity`; the row is
+re-derived every frame, because the recorder attaches after the overlay is built and a
+watch can break at any decision. Continuity is read beside the state rather than folded
+into it, because a reload that rewound the run leaves a capture that is still recording
+and can never be shared: a row derived from the state alone would read RECORDING and say
+nothing about the only thing that changed. That row is RECORDING · NOT SHAREABLE in the
+warning hue, and like RECORDING STOPPED it names no cause - the overlay is a column of
+short capitals and the reason is in the journal.
 It follows the MODDED label's own visibility, which is how hiding the overlay from the
 menu that put it up hides this with it, and it asks `RunmobileMod.MayDraw` the same way
 every other surface does. It is installed apart from `RunRecorder.PatchClasses` -
@@ -1146,6 +1160,7 @@ To exercise continuity, quit to the main menu part way through a run and continu
 Outside a fight, `[Runmobile] continuing the recording of <id> at decision N; continuity continuous` is the pass.
 During a fight, Continue returns to that fight's room-entry boundary, the journal records the intervening decisions as discarded, and the same continuous line names the boundary's next decision.
 A `continuity broken` line names any other mismatch, and the recording is then refused for publication rather than repaired.
+To exercise the save-scum path, answer the Neow blessing, quit to the main menu, and continue: the game offers the blessing again, the `continuity broken` line names the decision it came back at, the overlay reads RECORDING · NOT SHAREABLE rather than RECORDING STOPPED, and the rest of the run goes on being recorded into a recording the share form refuses.
 
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory, either `mods` or the game's Steam test-branch variant `mods_STEAMTEST`.

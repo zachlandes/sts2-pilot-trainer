@@ -402,9 +402,9 @@ internal sealed class RunRecorder : IDisposable
             // journal that says nothing about the hole. Appended before the
             // recorder is live, so a crash between here and the next decision still
             // leaves the refusal on the file.
-            foreach (var reason in capture.Refusals.Skip(journal.Refusals.Count))
+            foreach (var raised in capture.Refusals.Skip(journal.Refusals.Count))
             {
-                Append(journalPath, RunJournal.RenderRefusal(reason));
+                Append(journalPath, RunJournal.RenderRefusal(raised));
             }
 
             Log.Info(

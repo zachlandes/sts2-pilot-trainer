@@ -83,7 +83,7 @@ public sealed class RunCapture
     private readonly List<RunJournalEntry> _entries = [];
     private readonly Dictionary<int, string> _digests = [];
     private readonly Dictionary<int, int?> _clocks = [];
-    private readonly List<string> _refusals = [];
+    private readonly List<RunRefusal> _refusals = [];
     private readonly List<DiscardedBranch> _discarded = [];
     private readonly List<JournalDiscardedBranch> _journalDiscarded = [];
     private readonly List<string> _journalRecords = [];
@@ -152,12 +152,13 @@ public sealed class RunCapture
 
     /// <summary>Why this recording is not a continuous account of the run, or null
     /// while it is.</summary>
-    public string? Refusal => _refusals.Count == 0 ? null : string.Join(" ", _refusals);
+    public string? Refusal =>
+        _refusals.Count == 0 ? null : string.Join(" ", _refusals.Select(refusal => refusal.Reason));
 
     /// <summary>Every refusal raised against this recording, in the order they were
     /// raised. One per line of the journal, so a later session is told about each of
     /// them rather than about one sentence they were joined into.</summary>
-    public IReadOnlyList<string> Refusals => _refusals;
+    public IReadOnlyList<RunRefusal> Refusals => _refusals;
 
     /// <summary>How the run ended, once it has. One of
     /// <see cref="NativeSource.Outcomes"/>.</summary>
@@ -376,7 +377,7 @@ public sealed class RunCapture
         // comparison below can only see what happened since the journal's last entry,
         // so a session that recorded on past its own break would otherwise resume as
         // continuous.
-        foreach (var reason in journal.Refusals) capture.Break(reason);
+        foreach (var refusal in journal.Refusals) capture.Break(refusal);
 
         // Same reasoning, for the same reason: the console having been used in this
         // run is a fact about it that no later reading of the live game could recover,
@@ -399,30 +400,42 @@ public sealed class RunCapture
             }
             else
             {
+                // A resume the recorder can place in its own history is a reload that
+                // rewound the run behind what it had recorded - the player quit and
+                // continued from an earlier save. It costs the recording its continuity
+                // and with it any chance of being shared, and it costs the watch
+                // nothing: everything from here on is as recordable as it was before,
+                // and a run somebody is still playing is one they are still recording.
+                // A resume it cannot place is the other thing, and it stops there:
+                // nothing establishes what the run even is from that point.
                 capture.Break(rolledBackTo is null
-                    ? "The run this session resumed into is not one this recording ever saw. The recorder cannot " +
-                      "say what happened between the decision it last watched and the state the game came back in."
-                    : $"The game resumed this run at decision " +
-                      $"{rolledBackTo.Seq.ToString(CultureInfo.InvariantCulture)}, and the recorder had watched it " +
-                      $"to decision {last.Seq.ToString(CultureInfo.InvariantCulture)}. This is not the game's " +
-                      "rollback of a live fight to its room-entry boundary, so the recorder cannot account for it.");
+                    ? RunRefusal.Stopping(
+                        "The run this session resumed into is not one this recording ever saw. The recorder " +
+                        "cannot say what happened between the decision it last watched and the state the game " +
+                        "came back in.")
+                    : RunRefusal.Continuing(
+                        $"The game resumed this run at decision " +
+                        $"{rolledBackTo.Seq.ToString(CultureInfo.InvariantCulture)}, and the recorder had " +
+                        $"watched it to decision {last.Seq.ToString(CultureInfo.InvariantCulture)}. This is not " +
+                        "the game's rollback of a live fight to its room-entry boundary, so the recording can " +
+                        "no longer be shared. The recorder goes on watching the run."));
             }
         }
 
         if (!journal.WitnessedRunStart)
         {
-            capture.Break(
+            capture.Break(RunRefusal.Stopping(
                 "This journal was written by a recorder that did not see the run begin, so the history it holds " +
-                "does not start where the run did.");
+                "does not start where the run did."));
         }
 
         capture._journalRecords.Clear();
         capture._journalRecords.AddRange(journal.SerializedRecords ??
             journal.Entries.Select(RunJournal.RenderEntry));
         if (capture.ResumptionRecord is { } resumption) capture._journalRecords.Add(resumption);
-        foreach (var reason in capture.Refusals.Skip(journal.Refusals.Count))
+        foreach (var refusal in capture.Refusals.Skip(journal.Refusals.Count))
         {
-            capture._journalRecords.Add(RunJournal.RenderRefusal(reason));
+            capture._journalRecords.Add(RunJournal.RenderRefusal(refusal));
         }
 
         return capture;
@@ -674,8 +687,9 @@ public sealed class RunCapture
     /// session the same way a decision does.</returns>
     public string MarkBroken(string reason)
     {
-        Break(reason);
-        var line = RunJournal.RenderRefusal(reason);
+        var refusal = RunRefusal.Stopping(reason);
+        Break(refusal);
+        var line = RunJournal.RenderRefusal(refusal);
         _journalRecords.Add(line);
         return line;
     }
@@ -1048,11 +1062,24 @@ public sealed class RunCapture
             $"{ending}.";
     }
 
-    private void Break(string reason)
+    /// <summary>
+    /// The recording cannot account for the run continuously, and this is what that
+    /// costs it.
+    ///
+    /// Always the same two: the recording is marked broken, which is what refuses it
+    /// for sharing, and the reason is kept so the journal can carry it. Whether the
+    /// recorder is still watching is the refusal's own - a reload that rewound the run
+    /// behind what was recorded leaves the recorder able to account for everything from
+    /// there on, and a run the player is still playing is one they are still recording.
+    /// </summary>
+    private void Break(RunRefusal refusal)
     {
         Continuity = NativeSource.BrokenContinuity;
-        _refusals.Add(reason);
-        if (State == RunCaptureState.Recording) State = RunCaptureState.Broken;
+        _refusals.Add(refusal);
+        if (!refusal.WatchContinues && State == RunCaptureState.Recording)
+        {
+            State = RunCaptureState.Broken;
+        }
     }
 
     private static IReadOnlyDictionary<string, string> Sorted(IReadOnlyDictionary<string, string> args) =>
