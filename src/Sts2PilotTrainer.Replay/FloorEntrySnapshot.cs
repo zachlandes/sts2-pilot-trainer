@@ -127,7 +127,7 @@ public sealed record FloorEntrySnapshot(
     ///
     /// A snapshot binds a plan by the moment it was taken at rather than by the plan's
     /// kind: the save is the game's own at one action, and every boundary the recording
-    /// declares after that action - the floor arrival and the fight the same move dealt
+    /// declares at that action - the floor arrival and the fight the same move dealt
     /// - is proved by the one state a restore reaches. The digest the recording
     /// declares for <em>this</em> plan is compared against the digest the snapshot was
     /// verified at, which is what keeps that more than an assertion.

@@ -59,10 +59,6 @@ public static class RetailPlayback
             .OrderBy(action => action.Seq)
             .FirstOrDefault(action => !Verbs.Contains(action.Verb));
 
-    /// <summary>Whether a running client can walk this recording to that boundary.</summary>
-    public static bool CanReach(ReplayManifest recording, int boundarySeq) =>
-        FirstRefusal(recording, boundarySeq) is null;
-
     /// <summary>
     /// The floor arrivals of this recording a run can be restored to, latest first.
     ///

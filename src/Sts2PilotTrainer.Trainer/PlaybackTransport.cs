@@ -256,8 +256,10 @@ public enum JourneyPhase
     /// A phase of its own rather than a moment inside <see cref="Starting"/> because it
     /// is a different situation: a subprocess is replaying the recording's history and
     /// nothing has been constructed in this game, so a refusal here has nothing to tear
-    /// down. Nothing is drawn for it - the transport is parented to a run's own
-    /// interface, and there is no run - which is a known gap rather than a design.
+    /// down. The transport draws nothing for it, because it is parented to a run's own
+    /// interface and there is no run; what the player sees instead is
+    /// <see cref="RestoringNotice"/>, which is derived from this phase alone and drawn
+    /// in the game's own loading idiom.
     /// </summary>
     Preparing,
 
@@ -792,7 +794,8 @@ public sealed record PlaybackTransport(
     /// behind the run.</param>
     /// <param name="restoredToFloor">The floor the run was restored to, where it was
     /// restored rather than walked. The counter then names the floor instead of
-    /// counting decisions nobody watched, and the note says so once.</param>
+    /// counting decisions nobody watched. This window says nothing in words by the
+    /// captain's ruling, so the floor is the whole of what it says.</param>
     private static PlaybackTransport OpeningTheFight(
         TransportIdentity identity, int count, PlaybackSpeed speed, int? restoredToFloor) =>
         new(
@@ -814,7 +817,7 @@ public sealed record PlaybackTransport(
                 DisabledReason = TrainerCopy.BetweenScreensDisabledReason,
             },
             Ledger: [],
-            Note: restoredToFloor is { } restored ? TrainerCopy.RestoredToFloorNote(restored) : string.Empty,
+            Note: string.Empty,
             ChipMenu: []);
 
     /// <summary>

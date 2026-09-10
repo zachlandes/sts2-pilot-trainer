@@ -285,9 +285,10 @@ public sealed class PlaybackTransportTests
 
     /// <summary>
     /// A run restored to a floor watched none of the decisions before it, so the
-    /// counter names the floor rather than counting them, draws no pips, and the note
-    /// says so once. Every control that moves the run is refused exactly as it is when
-    /// the fight opens after a walk: this is the same state with a different origin.
+    /// counter names the floor rather than counting them and draws no pips. The window
+    /// says nothing in words, so the floor is the whole of what it says. Every control
+    /// that moves the run is refused exactly as it is when the fight opens after a
+    /// walk: this is the same state with a different origin.
     /// </summary>
     [Fact]
     public void ARunRestoredToAFloorNamesTheFloorInPlaceOfACount()
@@ -304,8 +305,8 @@ public sealed class PlaybackTransportTests
         Assert.Equal("Floor 3", transport.Counter.Numerals);
         Assert.False(transport.Counter.ShowPips);
         Assert.Equal(3, transport.Counter.RestoredToFloor);
-        Assert.Equal(
-            "Restored to floor 3 from the recording; the choices before it were not shown.", transport.Note);
+        Assert.Equal(string.Empty, transport.Note);
+        Assert.False(transport.Surface.Note);
         foreach (var control in new[] { transport.Back, transport.Play, transport.Step })
         {
             Assert.False(control.Enabled);

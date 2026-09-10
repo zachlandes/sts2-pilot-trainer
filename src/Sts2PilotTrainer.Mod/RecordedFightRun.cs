@@ -401,13 +401,22 @@ internal static class RecordedFightRun
     /// The continuation runs where the task completed, which under the write barrier is
     /// this thread, synchronously: the one await inside is a write the barrier answers
     /// as already done.
+    ///
+    /// It runs whatever the preparation did, and re-throws what it threw. A
+    /// continuation that ran only on success completed as cancelled where the
+    /// preparation refused, and the refusal a player read was "A task was canceled."
+    /// in place of the engine's own sentence.
     /// </summary>
     private static Task PrepareRestore(ReplayManifest recording, IBoundaryPlan plan, string saveJson, int afterSeq) =>
         RecordedFightEntry.PrepareRestoreInRunningGame(recording, plan, saveJson, afterSeq, Commands())
             .ContinueWith(
-                static prepared => { _entry = prepared.Result; },
+                static prepared =>
+                {
+                    if (prepared.IsCompletedSuccessfully) _entry = prepared.Result;
+                    else prepared.GetAwaiter().GetResult();
+                },
                 CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnRanToCompletion,
+                TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
 
     /// <summary>The decisions the host issues on the driver's behalf. One place, so the
@@ -1185,9 +1194,16 @@ internal static class RecordedFightRun
     ///
     /// Attached once and kept: the strip is a child of the run's own persistent
     /// interface, so it crosses the transitions the popup it replaces could not.
+    ///
+    /// The restoring notice is asked for first and separately, because it is the one
+    /// surface here that exists before a run does: the strip has nowhere to hang while
+    /// the arbiter is materialising the save, and a press that draws nothing for a
+    /// minute reads as a button that did not work.
     /// </summary>
     private static void ShowTransport()
     {
+        RestoringOverlay.Apply(RestoringNotice.For(Phase));
+
         var state = _entry is { } entry
             ? PlaybackTransport.For(Phase, Facts(entry))
             : _afterTheFight is { } ended

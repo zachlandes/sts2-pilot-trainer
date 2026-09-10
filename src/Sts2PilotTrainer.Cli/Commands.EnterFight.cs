@@ -340,13 +340,11 @@ internal static partial class Commands
     /// The game's own save this entry may be restored from, or null to walk the
     /// recording's decisions instead.
     ///
-    /// The snapshot at the boundary's own action is asked for first, for any kind of
+    /// The snapshot asked for is the one at the boundary's own action, for any kind of
     /// plan: a fight's start and the floor arrival the same move dealt are one moment,
-    /// and <see cref="FloorEntrySnapshot.Binds"/> binds by that moment. Where none is
-    /// cached there, the nearest restorable arrival before the boundary is asked for
-    /// instead, and the decisions after it are walked - which
-    /// <see cref="RetailPlayback.RestorableArrivals"/> owns the list of, so this command
-    /// and the run library cannot restore from different places.
+    /// and <see cref="FloorEntrySnapshot.Binds"/> binds by that moment. An earlier
+    /// arrival is not asked for, because restoring to one and walking the decisions
+    /// after it is walking through a fight, which nothing on this build does.
     ///
     /// Null for every reason a cache can fail to answer, and each of them is an ordinary
     /// thing rather than a defect: nothing has been materialised here, the cached
@@ -363,52 +361,41 @@ internal static partial class Commands
     private static RestorableSave? SnapshotToRestoreFrom(
         ReplayManifest recording, IBoundaryPlan plan, string cacheDir, out string source)
     {
-        var candidates = new List<(IBoundaryPlan Bound, string Where)> { (plan, plan.Describe()) };
-        candidates.AddRange(RetailPlayback.RestorableArrivals(recording)
-            .Where(arrival => arrival.AfterSeq < plan.BoundarySeq)
-            .Select(arrival => (
-                (IBoundaryPlan)FloorEntryPlan.For(recording, arrival.Floor),
-                $"arrival on floor {Text(arrival.Floor)}, before {plan.Describe()}")));
-
-        var identity = GameIdentity.Read();
-        var reasons = new List<string>();
-        foreach (var (bound, where) in candidates)
+        var where = plan.Describe();
+        var snapshot = FloorEntrySnapshot.Read(plan.SnapshotKey, cacheDir);
+        if (snapshot is null)
         {
-            var snapshot = FloorEntrySnapshot.Read(bound.SnapshotKey, cacheDir);
-            if (snapshot is null)
-            {
-                reasons.Add(
-                    $"no floor-entry snapshot has been materialised for {where} under " +
-                    $"{bound.SnapshotKey.ToCacheDirectoryName()}");
-                continue;
-            }
-
-            var refusals = snapshot.Binds(recording, bound, identity.BuildVersion, identity.Commit);
-            if (refusals.Count > 0)
-            {
-                reasons.Add($"the cached snapshot for {where} does not bind: {string.Join(" ", refusals)}");
-                continue;
-            }
-
-            var saveJson = File.ReadAllText(
-                snapshot.SavePathIn(bound.SnapshotKey.ResolveCacheDirectory(cacheDir)));
-            if (snapshot.SaveIntegrity(saveJson) is { } damaged)
-            {
-                reasons.Add(damaged);
-                continue;
-            }
-
-            var walked = plan.PrefixActions.Count(action => action.Seq > bound.BoundarySeq);
-            source =
-                $"restored from the game's own save at {where}, cached under " +
-                $"{bound.SnapshotKey.ToCacheDirectoryName()}, verified at {snapshot.VerifiedDigest}" +
-                (walked == 0 ? string.Empty : $", then walked {Text(walked)} decision(s)");
-            return new RestorableSave(saveJson, bound.BoundarySeq);
+            source = Replayed(
+                $"no floor-entry snapshot has been materialised for {where} under " +
+                $"{plan.SnapshotKey.ToCacheDirectoryName()}");
+            return null;
         }
 
-        source = "replayed - " + string.Join("; ", reasons) + "; run floor-snapshot to make one";
-        return null;
+        var identity = GameIdentity.Read();
+        var refusals = snapshot.Binds(recording, plan, identity.BuildVersion, identity.Commit);
+        if (refusals.Count > 0)
+        {
+            source = Replayed($"the cached snapshot for {where} does not bind: {string.Join(" ", refusals)}");
+            return null;
+        }
+
+        var saveJson = File.ReadAllText(
+            snapshot.SavePathIn(plan.SnapshotKey.ResolveCacheDirectory(cacheDir)));
+        if (snapshot.SaveIntegrity(saveJson) is { } damaged)
+        {
+            source = Replayed(damaged);
+            return null;
+        }
+
+        source =
+            $"restored from the game's own save at {where}, cached under " +
+            $"{plan.SnapshotKey.ToCacheDirectoryName()}, verified at {snapshot.VerifiedDigest}";
+        return new RestorableSave(saveJson, plan.BoundarySeq);
     }
+
+    /// <summary>What the entry source reads where the cache could not answer. Every
+    /// reason is an ordinary one, so it says which and what would make one.</summary>
+    private static string Replayed(string reason) => $"replayed - {reason}; run floor-snapshot to make one";
 
     /// <summary>
     /// Plays the recording's own fight through the player-side capture and compares

@@ -69,30 +69,49 @@ public sealed class PackagedArbiterTests : IDisposable
     /// entry point taking one more string once bound them in expanded form, with the
     /// workspace as the arbiter directory. So the installed-directory path is driven
     /// exactly as the mod drives it: an arbiter laid beside the mod assembly, found.
+    ///
+    /// It stands one there only where there is none. The installed directory is this
+    /// assembly's own output directory, which is the layout a packaged build lays a
+    /// real arbiter into, and a test that wrote an empty file over it would leave it
+    /// truncated for everything that ran afterwards. Only what this test laid down is
+    /// taken away again.
     /// </summary>
     [Fact]
     public void TheInstalledArbiterIsTheOneBesideTheModAssembly()
     {
         var installed = PackagedArbiter.InstalledDirectory();
         Assert.Equal(Path.Combine(Path.GetDirectoryName(typeof(PackagedArbiter).Assembly.Location)!, "arbiter"), installed);
-        var created = !Directory.Exists(installed);
+
+        var executable = Path.Combine(installed, OperatingSystem.IsWindows() ? "sts2-arbiter.exe" : "sts2-arbiter");
+        var prepared = Path.Combine(installed, "lib", "prepared-assembly.json");
+        var createdTree = !Directory.Exists(installed);
+        var laidExecutable = !File.Exists(executable);
+        var laidPrepared = !File.Exists(prepared);
         Directory.CreateDirectory(Path.Combine(installed, "lib"));
         try
         {
-            File.WriteAllText(Path.Combine(installed, "sts2-arbiter"), string.Empty);
-            File.WriteAllText(Path.Combine(installed, "lib", "prepared-assembly.json"), "{}");
+            if (laidExecutable) File.WriteAllText(executable, string.Empty);
+            if (laidPrepared) File.WriteAllText(prepared, "{}");
 
             var start = PackagedArbiter.StartInfo(
                 Path.Combine(_root, "workspace"), Path.Combine(_root, "workspace", "sandbox"), "floor-snapshot", "r.json", "--floor", "3");
 
-            Assert.Equal(Path.Combine(installed, "sts2-arbiter"), start.FileName);
+            Assert.Equal(executable, start.FileName);
             Assert.Equal(Path.Combine(_root, "workspace"), start.WorkingDirectory);
             Assert.Equal(Path.Combine(_root, "workspace", "sandbox"), start.Environment["STS2_PILOT_TRAINER_SANDBOX"]);
             Assert.Equal(["floor-snapshot", "r.json", "--floor", "3"], start.ArgumentList);
         }
         finally
         {
-            if (created) Directory.Delete(installed, recursive: true);
+            if (createdTree)
+            {
+                Directory.Delete(installed, recursive: true);
+            }
+            else
+            {
+                if (laidExecutable) File.Delete(executable);
+                if (laidPrepared) File.Delete(prepared);
+            }
         }
     }
 

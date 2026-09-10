@@ -195,8 +195,9 @@ recordings and for the shipped video reconstruction; which of their arrivals are
 *eligible* is the live-fight split above, not this requirement.
 
 A snapshot binds by the moment it was taken at rather than by the plan's kind.
-A floor arrival and the combat start the same map move dealt carry one digest, because `RunCoverage` derives both from one engine state, so `FloorEntrySnapshot.Binds` accepts any plan whose boundary is after the snapshot's own action and whose declared digest equals the verified one.
-`enter-fight --fight n --restore` therefore restores a fight past the first from its arrival's save, and where no snapshot is cached at the boundary's own action it restores from the nearest earlier eligible arrival and walks the rest, reporting `then walked N decision(s)`.
+A floor arrival and the combat start the same map move dealt carry one digest, because `RunCoverage` derives both from one engine state, so `FloorEntrySnapshot.Binds` accepts any plan whose boundary is at the snapshot's own action and whose declared digest equals the verified one.
+`enter-fight --fight n --restore` therefore restores a fight past the first from its arrival's save, and where no snapshot is cached at the boundary's own action it replays the prefix instead.
+Restoring to an earlier arrival and walking the decisions after it is walking through a fight, which nothing on this build does, so no command asks for it.
 Measured on both committed player-made recordings: every fight past the first is a floor arrival with a live fight, snapshots, and restores to the fight's own combat-start digest; every floor between fights is refused by the eligibility rule.
 `RetailPlayback.RestorableArrivals` is the manifest's reading of that split - a floor entry with a combat start declared at the same action - and `OwnRunPlaybackTests` holds it against `floor-snapshot`'s own verdict on both recordings.
 

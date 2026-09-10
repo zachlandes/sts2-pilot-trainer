@@ -120,20 +120,24 @@ public static class TrainerCopy
         $"{step.ToString(CultureInfo.InvariantCulture)} of {count.ToString(CultureInfo.InvariantCulture)}";
 
     /// <summary>
+    /// What the player reads while the save their run is restored from is being
+    /// materialised, before there is a run at all.
+    ///
+    /// A headline and no more: the wait is a subprocess replaying the recording's own
+    /// history, which reports nothing until it has finished, so there is no honest
+    /// figure to put beside this. The ellipsis the surface animates after it is what
+    /// says the wait is alive.
+    /// </summary>
+    public const string RestoringYourRun = "Restoring your run";
+
+    /// <summary>
     /// What the counter reads in place of a step count on a run restored to a floor.
     ///
-    /// Short because it sits where "17 of 17" sits; the sentence is
-    /// <see cref="RestoredToFloorNote"/>'s. It names the floor and not a number of
-    /// decisions, because none were shown.
+    /// Short because it sits where "17 of 17" sits, and it is the whole of what that
+    /// window says: it names the floor and not a number of decisions, because none
+    /// were shown.
     /// </summary>
     public static string RestoredToFloor(int floor) => $"Floor {floor.ToString(CultureInfo.InvariantCulture)}";
-
-    /// <summary>Said once, while the fight opens, on a run that was restored rather
-    /// than walked: the choices before this floor were the recording's and were not
-    /// shown.</summary>
-    public static string RestoredToFloorNote(int floor) =>
-        $"Restored to floor {floor.ToString(CultureInfo.InvariantCulture)} from the recording; the choices " +
-        "before it were not shown.";
 
     // The ledger's rows. The tag hanging above them carries the credit once, so the
     // rows do not: five rows each opening with the same name is the repetition the

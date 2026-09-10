@@ -47,8 +47,8 @@ public sealed class RetailPlaybackTests
             Action(1, ActionVerb.SelectCardFromScreen),
             Action(2, ActionVerb.MapMove));
 
-        Assert.True(RetailPlayback.CanReach(recording, boundarySeq: 2));
         Assert.Null(RetailPlayback.FirstRefusal(recording, boundarySeq: 2));
+        Assert.IsType<PlaybackRoute.Walk>(RetailPlayback.RouteTo(recording, boundarySeq: 2));
     }
 
     /// <summary>
@@ -67,8 +67,6 @@ public sealed class RetailPlaybackTests
             Action(4, ActionVerb.ClaimReward),
             Action(5, ActionVerb.MapMove));
 
-        Assert.False(RetailPlayback.CanReach(recording, boundarySeq: 5));
-
         var refusal = RetailPlayback.FirstRefusal(recording, boundarySeq: 5);
         Assert.NotNull(refusal);
         Assert.Equal(2, refusal.Seq);
@@ -85,8 +83,8 @@ public sealed class RetailPlaybackTests
             Action(1, ActionVerb.MapMove),
             Action(2, ActionVerb.PlayCard));
 
-        Assert.True(RetailPlayback.CanReach(recording, boundarySeq: 1));
-        Assert.False(RetailPlayback.CanReach(recording, boundarySeq: 2));
+        Assert.Null(RetailPlayback.FirstRefusal(recording, boundarySeq: 1));
+        Assert.NotNull(RetailPlayback.FirstRefusal(recording, boundarySeq: 2));
     }
 
     /// <summary>A boundary before the first action - the run's own start - is reached
@@ -96,7 +94,8 @@ public sealed class RetailPlaybackTests
     {
         var recording = Recording(Action(0, ActionVerb.PlayCard));
 
-        Assert.True(RetailPlayback.CanReach(recording, boundarySeq: -1));
+        Assert.Null(RetailPlayback.FirstRefusal(recording, boundarySeq: -1));
+        Assert.IsType<PlaybackRoute.Walk>(RetailPlayback.RouteTo(recording, boundarySeq: -1));
     }
 }
 
