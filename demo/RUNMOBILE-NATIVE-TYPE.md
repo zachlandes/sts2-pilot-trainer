@@ -43,3 +43,4 @@ The retail captures prove the library parchment's Others, Mine, and opened-run s
 The playback transport, fight-result panel, chronology paging, and look-back ledger paging are also not proven in the client.
 Programmatic navigation was attempted and did not reach those surfaces, so they require manual navigation for a retail capture.
 This change covers them with automated paging and layout tests instead.
+Those tests do not read the game's scene files, and the look-back ledger's role named a node v0.111.0 has not: the role table is now held against the shipped pack, which `docs/in-game-host.md` owns.

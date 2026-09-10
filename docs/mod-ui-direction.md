@@ -158,6 +158,7 @@ Where that row hangs, what it reads, and where its drawing departs from the acce
 An auto-sizing native label contributes `MaxFontSize`; a fixed-size label contributes its own `font_size` override.
 There is no median, ratio, fallback size, or first-descendant search.
 Missing native furniture refuses the surface rather than substituting Godot's default or deriving a related size.
+Each role's node path is a claim about the shipped build, checked against the game's own pack and swept once at adoption; [in-game-host.md](in-game-host.md) owns that check and what it does where the pack and the prepared assemblies disagree.
 
 **Each piece of text has the native role of the same kind.**
 The settings row reads its row label, value, stepper numeral, and button caption from the named live controls on that settings screen; its supporting line uses the mapped native secondary-row role.
