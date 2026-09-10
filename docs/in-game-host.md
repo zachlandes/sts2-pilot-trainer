@@ -781,8 +781,14 @@ before the surface that asks for it refuses.
 It is named, not stood in for: missing native furniture still refuses the surface rather
 than substituting a size written down in the mod, which is what it has always cost.
 Godot loads no resources under `dotnet test`, so a path is checked by
-`NativeTextRoleTests`, which reads the game's own scene files out of the shipped pack
-and skips where there is no installation.
+`NativeTextRoleTests`, which reads the game's own scene files out of the shipped pack.
+`NativeScenes.Decide` is the one place that says what those facts do here, and a missing
+pack is not a benign green skip: they skip only where the game is not prepared at all,
+they *fail* where it is prepared and the pack cannot be found - naming `STS2_GAME_PCK`
+and the `--game-dir` that `scripts/build.sh` passes to the bootstrapper - and otherwise
+they run.
+A skip that read as green over an unchecked role table is how the ledger row reached a
+player.
 `RecorderPresence.For` derives what it says and its colour from exactly
 `RunRecorder.Active` and `RunCapture.State`; the row is re-derived every frame, because
 the recorder attaches after the overlay is built and a watch can break at any decision.

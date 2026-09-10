@@ -90,14 +90,7 @@ internal static class GameText
     ///
     /// Returns the roles this build could not answer, which is what a test reads.
     /// </summary>
-    internal static IReadOnlyList<NativeTextRole> Verify()
-    {
-        // One instance of each scene for the whole sweep rather than one per role.
-        // Twenty-six roles sit in eighteen scenes and two of those are whole screens,
-        // and this runs on a menu press a player is waiting through.
-        using var scenes = new Instances();
-        return Verify(role => Read(role, scenes));
-    }
+    internal static IReadOnlyList<NativeTextRole> Verify() => Verify(Read);
 
     /// <inheritdoc cref="Verify()"/>
     /// <param name="read">Where a role's style comes from. The game's own scene files
@@ -153,42 +146,24 @@ internal static class GameText
         return style;
     }
 
+    /// <summary>
+    /// One role, off the game's own scene. Nothing outlives the read: a role is a font
+    /// and a size, and the tree it was copied from is the game's, not this mod's.
+    /// </summary>
     private static GameTextStyle Read(NativeTextRole role)
     {
-        using var scenes = new Instances();
-        return Read(role, scenes);
-    }
-
-    private static GameTextStyle Read(NativeTextRole role, Instances scenes)
-    {
         var spec = Specs[role];
-        var control = scenes.Of(spec.Scene).GetNodeOrNull<Control>(spec.Node)
-            ?? throw new InvalidOperationException(
-                $"This build's '{spec.Scene}' has no '{spec.Node}' text role.");
-        return Require(control, spec.Name) with { LocaleBold = spec.Bold };
-    }
-
-    /// <summary>
-    /// The scenes standing up while their roles are read, one instance each, freed
-    /// together. Nothing outlives the read: a role is a font and a size, and the tree
-    /// it was copied from is the game's, not this mod's.
-    /// </summary>
-    private sealed class Instances : IDisposable
-    {
-        private readonly Dictionary<string, Node> _roots = [];
-
-        internal Node Of(string scene)
+        var root = Load(spec.Scene).Instantiate();
+        try
         {
-            if (_roots.TryGetValue(scene, out var root)) return root;
-            root = Load(scene).Instantiate();
-            _roots.Add(scene, root);
-            return root;
+            var control = root.GetNodeOrNull<Control>(spec.Node)
+                ?? throw new InvalidOperationException(
+                    $"This build's '{spec.Scene}' has no '{spec.Node}' text role.");
+            return Require(control, spec.Name) with { LocaleBold = spec.Bold };
         }
-
-        public void Dispose()
+        finally
         {
-            foreach (var root in _roots.Values) root.Free();
-            _roots.Clear();
+            root.Free();
         }
     }
 

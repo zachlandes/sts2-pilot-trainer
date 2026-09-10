@@ -181,10 +181,11 @@ internal static class NativeScenes
     }
 
     /// <summary>
-    /// Godot's own pack directory. Version 3 (Godot 4.5) keeps the directory at the
-    /// end of the file and names its offset in the header; earlier versions put it
-    /// straight after the reserved block. Only text resources are kept, because that
-    /// is all a scene path can be.
+    /// Godot's own pack directory. Version 3 (Godot 4.5) keeps the directory at the end
+    /// of the file and names its offset in the header, and version 3 is the only layout
+    /// read here: the mod compiles against one game build, so an older pack is refused
+    /// by name rather than parsed by a second rule this repository has no example of.
+    /// Only text resources are kept, because that is all a scene path can be.
     /// </summary>
     private static IReadOnlyDictionary<string, string> ReadDirectory(string pack)
     {
@@ -196,20 +197,21 @@ internal static class NativeScenes
             throw new InvalidDataException($"'{pack}' is not a Godot pack file.");
         }
 
+        const uint SupportedVersion = 3;
         var version = reader.ReadUInt32();
+        if (version != SupportedVersion)
+        {
+            throw new InvalidDataException(
+                $"'{pack}' is a version {version} Godot pack; only version {SupportedVersion} " +
+                "(Godot 4.5) is read here.");
+        }
+
         reader.ReadUInt32();
         reader.ReadUInt32();
         reader.ReadUInt32();
         var packFlags = reader.ReadUInt32();
         var fileBase = reader.ReadUInt64();
-        if (version >= 3)
-        {
-            stream.Position = (long)reader.ReadUInt64();
-        }
-        else
-        {
-            stream.Seek(16 * sizeof(uint), SeekOrigin.Current);
-        }
+        stream.Position = (long)reader.ReadUInt64();
 
         // Offsets are relative to the first file rather than to the start of the pack
         // when the pack says so.
