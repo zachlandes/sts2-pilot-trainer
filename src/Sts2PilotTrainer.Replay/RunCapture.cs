@@ -727,12 +727,18 @@ public sealed class RunCapture
     /// written - and the caller that owns the file writes it again. Every press is a
     /// line, so a mark taken off is on the file as what happened and the last line
     /// per fight is what the manifest emits.
+    ///
+    /// The press is placed at the last decision recorded, and takes that decision's
+    /// own run clock: on a loss the game's run is no longer in progress by the time the
+    /// death screen is drawn, so a clock read at the press is no reading at all. Both
+    /// halves of the evidence then name the same instant on the win path and the loss
+    /// path alike.
     /// </summary>
     /// <returns>The journal line to append for it, so the press survives this session
     /// the same way a decision does.</returns>
     /// <exception cref="ManifestException">When the fight is not one this recording
     /// has finished.</exception>
-    public string MarkBookmark(int fight, bool on, int? runClockMs = null)
+    public string MarkBookmark(int fight, bool on)
     {
         var finished = Coverage.Fights.FirstOrDefault(candidate => candidate.Fight == fight);
         if (finished is not { Finished: true })
@@ -742,12 +748,13 @@ public sealed class RunCapture
                 "finished, so there is no moment at which it could have been bookmarked.");
         }
 
+        var afterSeq = _entries.Count == 0 ? -1 : _entries[^1].Seq;
         var bookmark = new JournalBookmark
         {
             Fight = fight,
             On = on,
-            AfterSeq = _entries.Count == 0 ? -1 : _entries[^1].Seq,
-            RunClockMs = runClockMs,
+            AfterSeq = afterSeq,
+            RunClockMs = _clocks.GetValueOrDefault(afterSeq),
         };
         _bookmarks[fight] = bookmark;
         var line = RunJournal.RenderBookmark(bookmark);

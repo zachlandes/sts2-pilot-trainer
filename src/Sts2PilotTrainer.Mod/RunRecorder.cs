@@ -1389,7 +1389,7 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     private void Bookmark(int fight, bool on)
     {
-        Append(_journalPath, _capture.MarkBookmark(fight, on, LiveRun.RunClockMs()));
+        Append(_journalPath, _capture.MarkBookmark(fight, on));
         if (!_finished) return;
 
         var path = $"{RecordingsDirectory}/{_capture.RunId}{RecordingLibrary.ManifestExtension}";

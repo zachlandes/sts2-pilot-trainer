@@ -801,7 +801,7 @@ public sealed class RunCaptureTests
     {
         var capture = Played();
 
-        var line = capture.MarkBookmark(1, on: true, runClockMs: 812_340);
+        var line = capture.MarkBookmark(1, on: true);
         capture.Finish("won");
 
         Assert.Contains("\"bookmark\":{\"fight\":1,\"on\":true,\"after_seq\":4,\"run_clock_ms\":812340}", line, StringComparison.Ordinal);
@@ -846,16 +846,34 @@ public sealed class RunCaptureTests
         var capture = Played();
         capture.MarkBookmark(1, on: true);
         capture.MarkBookmark(1, on: false);
-        capture.MarkBookmark(1, on: true, runClockMs: 5);
+        capture.MarkBookmark(1, on: true);
 
         var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), capture.LastDigest);
         resumed.Finish("won");
 
         Assert.True(resumed.IsBookmarked(1));
         var bookmark = Assert.Single(resumed.ToManifest().Source.Native!.Bookmarks!);
-        Assert.Equal(5, bookmark.Bookmarked.Evidence!.RunClockMs);
+        Assert.Equal(812_340, bookmark.Bookmarked.Evidence!.RunClockMs);
         Assert.Equal(RunCaptureState.Finished, resumed.State);
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+    }
+
+    /// <summary>
+    /// A fight lost is bookmarked on the game's death screen, by which time the run is
+    /// over and the game's own clock reads nothing. The press still carries a run clock,
+    /// because it takes the one recorded at the decision it is placed at.
+    /// </summary>
+    [Fact]
+    public void ABookmarkPressedAfterTheRunEndedStillCarriesARunClock()
+    {
+        var capture = Played();
+        capture.Finish("lost");
+
+        capture.MarkBookmark(1, on: true);
+
+        var bookmark = Assert.Single(capture.ToManifest().Source.Native!.Bookmarks!);
+        Assert.Equal(4, bookmark.Bookmarked.Evidence!.ActionOrdinal);
+        Assert.Equal(812_340, bookmark.Bookmarked.Evidence.RunClockMs);
     }
 
     /// <summary>The control exists only once a fight has ended, so a press on any other
@@ -946,7 +964,7 @@ public sealed class RunCaptureTests
         capture.Record(ActionVerb.EndTurn, Args(), InFight(2, turn: 2, enemyHp: 30, hp: 58), Digest(3));
         capture.Record(
             ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
-            Won(2, hp: 58), Digest(4));
+            Won(2, hp: 58), Digest(4), runClockMs: 812_340);
         return capture;
     }
 
