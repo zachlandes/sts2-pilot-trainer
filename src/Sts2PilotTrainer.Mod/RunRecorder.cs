@@ -162,7 +162,7 @@ internal sealed class RunRecorder : IDisposable
         try
         {
             var abandoned = RunManager.Instance?.IsAbandoned ?? false;
-            recorder.Finish(abandoned ? "abandoned" : isVictory ? "won" : "lost");
+            recorder.End(abandoned ? "abandoned" : isVictory ? "won" : "lost");
         }
         catch (Exception ex)
         {
@@ -186,6 +186,7 @@ internal sealed class RunRecorder : IDisposable
         if (recorder is null) return;
 
         Active = null;
+        recorder.FinishIfStillWaitingForTheFightToEnd();
         recorder.Dispose();
     }
 
@@ -1276,14 +1277,22 @@ internal sealed class RunRecorder : IDisposable
         if (_openFightStep is not null)
         {
             CloseFightStep(final);
-            return;
+        }
+        else
+        {
+            const string reason =
+                "The fight ended with no action being sampled, so its end belongs to nothing the recording " +
+                "holds. The history is not a continuous account of this run.";
+            _capture.Fight?.MarkIncomplete(reason);
+            Refuse(reason);
         }
 
-        const string reason =
-            "The fight ended with no action being sampled, so its end belongs to nothing the recording holds. " +
-            "The history is not a continuous account of this run.";
-        _capture.Fight?.MarkIncomplete(reason);
-        Refuse(reason);
+        // The run ended inside this fight and waited for exactly this
+        if (_outcomeAwaitingFightEnd is { } pending)
+        {
+            _outcomeAwaitingFightEnd = null;
+            Finish(pending);
+        }
     }
 
     /// <summary>
@@ -1407,6 +1416,55 @@ internal sealed class RunRecorder : IDisposable
     }
 
     // ── Finishing ────────────────────────────────────────────────────────────────
+
+    /// <summary>The outcome the run ended with while its last fight was still
+    /// live, held until the engine says that fight is over.</summary>
+    private string? _outcomeAwaitingFightEnd;
+
+    /// <summary>
+    /// The run is over. Finishes the recording now, or once the fight it ended
+    /// inside has ended.
+    ///
+    /// The game ends a lost run from inside the enemy turn that killed the player -
+    /// <c>RunManager.OnEnded</c> and the death screen come first, and the combat
+    /// manager processes its pending loss and raises <c>CombatEnded</c> afterwards.
+    /// A recording finished at the first of those has the killing turn still open
+    /// and the fight left live, so the lost fight got no end, no boundary and no
+    /// line, and the history stopped one decision short of where the run did while
+    /// reporting a continuous watch. So a loss with a fight live waits for the
+    /// engine's own word, which <see cref="FinishFight"/> receives with the reading
+    /// the fight ended in, and finishes then. A win or a give-up has no such fight
+    /// live and finishes here.
+    /// </summary>
+    private void End(string outcome)
+    {
+        if (_finished) return;
+
+        if (string.Equals(outcome, "lost", StringComparison.Ordinal) && _capture.Fight is not null && _observer is not null)
+        {
+            _outcomeAwaitingFightEnd = outcome;
+            return;
+        }
+
+        Finish(outcome);
+    }
+
+    /// <summary>
+    /// The safety net under <see cref="End"/>: a lost run torn down before the engine
+    /// ended its fight is still finished, with the fight left as it stood. Said in
+    /// the log, because a recording finished here is one whose death screen offered
+    /// no bookmark.
+    /// </summary>
+    private void FinishIfStillWaitingForTheFightToEnd()
+    {
+        if (_outcomeAwaitingFightEnd is not { } pending || _finished) return;
+
+        Log.Warn(
+            $"[{RunmobileMod.ModId}] the run was torn down before the engine ended the fight it was lost in, " +
+            "so the recording is finished with that fight left open", 2);
+        _outcomeAwaitingFightEnd = null;
+        Finish(pending);
+    }
 
     private void Finish(string outcome)
     {

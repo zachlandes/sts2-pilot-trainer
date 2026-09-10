@@ -882,6 +882,23 @@ The control takes focus so a controller reaches it and hands it back on press, w
 the transport's own cost and fix; it carries no hotkey and no text, and its words are
 Godot's own tooltip.
 
+**A lost run is finished once the engine has ended the fight, not when the game says the
+run is over.** The retail proof found the order: `CreatureCmd` calls `RunManager.OnEnded`
+and shows the death screen from inside the enemy turn that killed the player, and the
+combat manager processes its pending loss - `IsInProgress` false, `CombatEnded` raised -
+only afterwards, from the next `CheckWinCondition`. A recording finished at `OnEnded`
+had the killing ended turn still open in `_openFightStep`, dropped it silently, left the
+fight live for `RunCapture.Finish` to abandon, and so wrote a lost run with no boundary
+and no line for the fight it was lost in while reporting a continuous watch - and the
+death screen, deriving from that, offered no bookmark. `RunRecorder.End` therefore holds
+the outcome of a loss with a fight live until the observer's own `CombatEnded` closes it
+through `FinishFight`, and finishes then, with the fight's end read as `defeat` because
+the manager has stopped; a win or a give-up finishes at once as before, and a run torn
+down before the engine got there is finished by `RunTornDown` with the fight left as it
+stood, said in the log. The proof is `demo/RUNMOBILE-BOOKMARK.md`: the same press on the
+same screen, empty before the change and a bookmark with the killing decision's own run
+clock after it.
+
 ## The run library
 
 The third module, and the only one with a surface a player browses. What it offers and
