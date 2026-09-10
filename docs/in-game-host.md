@@ -1146,6 +1146,8 @@ What it reads is a sum, and the sum goes through the containment gate.
 `RunmobileStore.SizeOf` measures one entry through `PathOf`, exactly as `Read` does, and refuses a directory the way `Remove` does; a file that is not there occupies nothing, so a run removed between the listing and the measuring is not a hole in the figure.
 `RecordingRetention.OnDisk` is what sums it, because that is already the one place that knows where recordings live and which files each is made of - a surface that listed the directory for itself would be a second thing to keep in step with the removal.
 It measures only what `RecordingLibrary` recognises, so the figure is what this mod's own runs take rather than what is in the directory.
+The snapshots those same runs have cached are summed with them, through `SnapshotStore.SizeOf` and file by file through the same gate, because Remove takes them with the run and a figure that left them out would promise less than the press frees.
+A cache directory whose record this build cannot read names no run, so it is in neither the sum nor the removal, and only a purge takes it.
 
 `MyRunsRow.For` derives every line, the same way `PlaybackTransport.For` derives the transport, and for the same reason: the policy's number, the disk's number and what a removal just did are three facts that can disagree, and a surface where each control set its own label would eventually show a reading taken before an act beside a receipt taken after it.
 The reading after a removal is re-taken from the disk rather than predicted, so a purge that left the continuable run's journal behind reads as the one run it actually left.

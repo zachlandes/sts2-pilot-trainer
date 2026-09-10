@@ -529,9 +529,11 @@ the reveal can point at. Every other screen between fights - loot, card rewards,
 rests, shops, treasure, act transitions - is refused by the reveal for the same
 reason the driver refuses its verb, and the transport says so rather than skipping it.
 The consequence for a whole run is that its first fight is the only boundary a client can
-be walked to, because every later one crosses a fight; the run library reads
-`RetailPlayback` and refuses those rows by name rather than starting a journey that
-aborts.
+be walked to, because every later one crosses a fight. A later fight is reached instead by
+restoring the game's own save at the arrival that dealt it, so what the client cannot walk
+to it may still stand somebody in; a floor between fights has no such save and stays
+refused. `RetailPlayback.RouteTo` is the one place that answers which, the run library
+reads it, and a row it refuses is named rather than started as a journey that aborts.
 
 **Only a prefix of the recording is transcribed.** Run start through the opening of
 the floor-5 fight's third turn, which is two whole fights, the loot each of them

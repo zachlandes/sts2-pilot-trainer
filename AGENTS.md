@@ -350,6 +350,7 @@ path that writes what the barrier suppresses.
 
 **No surface in this mod writes down or derives a font or font size.**
 `GameText` and `GameTextStyle` in `Sts2PilotTrainer.Mod` copy both from the native element whose role each Runmobile element fills, and missing native furniture refuses the surface rather than substituting a default.
+The one surface that says its line at Godot's own size instead of refusing is the restoring notice, because refusing there is the blank screen it exists to remove; `docs/mod-ui-direction.md` owns that exception and it is the only one.
 Which native element each role asks is a judgement per element and `docs/mod-ui-direction.md` owns it, along with the two surfaces that scale their whole geometry by the reading.
 A number here is a number that was right on one window and one build: the game carries no project theme, so nothing inherits, and the sizes it draws its own elements at are the only ones that read as native.
 A surface that sits inside one of the game's own containers is a child of it and asks it for height only, laid out again once that container has sorted - a settings screen has not been laid out when its `_Ready` runs, and a child's minimum width is a demand its host obeys.
