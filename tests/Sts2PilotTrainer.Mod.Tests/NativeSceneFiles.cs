@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
@@ -18,59 +19,101 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 internal static class NativeScenes
 {
     private const string PackOverride = "STS2_GAME_PCK";
+    private const string PreparedReleaseInfo = "release_info.json.copy";
 
-    /// <summary>The shipped pack, or null where this machine has no installation these
-    /// tests know how to find.</summary>
-    internal static string? Pack { get; } = FindPack();
+    /// <summary>Where the pack was looked for, and why the look failed where it
+    /// did: a declared path that is not there is a different fact from no
+    /// installation, and the reason is what a developer needs.</summary>
+    internal readonly record struct PackSearch(string? Path, string? Fault);
 
-    /// <summary>
-    /// What a native-scene fact does on this machine, from the two facts that decide it.
-    ///
-    /// The unresolved case fails rather than skips, and that is the whole point of this
-    /// function. These tests are the only thing that checks a role's node path against
-    /// the build the mod is compiled against, and a skip that reads as green is how a
-    /// wrong path reached a player: the mod being built is exactly the condition under
-    /// which the table has to be checked.
-    /// </summary>
-    internal static Availability Decide(bool gamePrepared, string? pack)
-    {
-        if (!gamePrepared)
-        {
-            return new Availability(
-                AvailabilityState.NotBuilt,
-                "Needs a prepared game assembly. Run ./scripts/build.sh, which copies your own " +
-                "Slay the Spire 2 installation into build/lib without modifying it.");
-        }
-
-        if (pack is null)
-        {
-            return new Availability(
-                AvailabilityState.Unresolved,
-                "These facts check this build's native text roles against the game's own scene " +
-                "files, and cannot do so without the shipped pack. This installation is not " +
-                $"where they look for it: either set {PackOverride} to the .pck file, or pass the " +
-                "same --game-dir that ./scripts/build.sh passes to tools/Sts2PilotTrainer.Bootstrap.");
-        }
-
-        return new Availability(AvailabilityState.Run, null);
-    }
+    /// <summary>The build a set of scene files belongs to. <c>commit</c> and
+    /// <c>main_assembly_hash</c> are what decide identity; the version is carried
+    /// because it is what a developer recognises.</summary>
+    internal readonly record struct BuildIdentity(string Version, string Commit, long MainAssemblyHash);
 
     internal enum AvailabilityState
     {
         Run,
-        NotBuilt,
-        Unresolved,
+        NotPrepared,
+        NoPack,
+        BuildMismatch,
     }
 
-    internal readonly record struct Availability(AvailabilityState State, string? Message);
+    internal readonly record struct Availability(AvailabilityState State, string Message);
+
+    /// <summary>
+    /// What a native-scene fact does on this machine, from the four facts that decide it.
+    ///
+    /// Every outcome that is not <see cref="AvailabilityState.Run"/> is a skip that says
+    /// which one it is, and none of them is silent. The pack comes out of the live
+    /// installation while the role table belongs to the assemblies in <c>build/lib</c>,
+    /// so a Steam update since the last bootstrap is a skip and not a red: failing there
+    /// would accuse the role table of a defect whose real cause is a different game
+    /// build. Where the two agree the facts run, and a wrong node path fails - that case
+    /// is the one this whole check exists for and it is never softened.
+    /// </summary>
+    internal static Availability Decide(
+        bool prepared,
+        BuildIdentity? preparedBuild,
+        PackSearch pack,
+        BuildIdentity? installed)
+    {
+        if (!prepared)
+        {
+            return new Availability(
+                AvailabilityState.NotPrepared,
+                "No prepared game assembly. Run ./scripts/build.sh, which copies your own " +
+                "Slay the Spire 2 installation into build/lib without modifying it.");
+        }
+
+        if (pack.Path is null)
+        {
+            return new Availability(
+                AvailabilityState.NoPack,
+                (pack.Fault ?? "No .pck was found beside an installed Slay the Spire 2.") +
+                $" Set {PackOverride} to the pack file to point these facts at an installation. " +
+                "Note that ./scripts/bootstrap.sh --archive prepares assemblies only and copies " +
+                "no pack, so a prepared build is not by itself a pack.");
+        }
+
+        if (preparedBuild is not { } prepared_ || installed is not { } live)
+        {
+            var missing = preparedBuild is null
+                ? $"build/lib/{PreparedReleaseInfo}"
+                : "the installation's own release_info.json";
+            return new Availability(
+                AvailabilityState.BuildMismatch,
+                $"Cannot tell which build these scene files belong to: {missing} could not be " +
+                "read, so the pack cannot be matched to the prepared assemblies. Rebuild " +
+                "against the installed game with ./scripts/build.sh.");
+        }
+
+        if (prepared_.Commit != live.Commit || prepared_.MainAssemblyHash != live.MainAssemblyHash)
+        {
+            return new Availability(
+                AvailabilityState.BuildMismatch,
+                $"Prepared {prepared_.Version} (commit {prepared_.Commit}) but the installed game " +
+                $"is {live.Version} (commit {live.Commit}), so this pack's scene files are not the " +
+                "ones the role table is compiled against. Rebuild against the installed game with " +
+                "./scripts/build.sh.");
+        }
+
+        return new Availability(AvailabilityState.Run, "");
+    }
+
+    private static readonly PackSearch Search = FindPack();
+
+    /// <summary>This machine's answer, derived once.</summary>
+    internal static Availability Here { get; } = Decide(
+        Arbiter.GamePrepared,
+        ReadIdentity(Path.Combine(Arbiter.RepoRoot, "build", "lib", PreparedReleaseInfo)),
+        Search,
+        Search.Path is { } pack ? ReadIdentity(FindReleaseInfo(pack)) : null);
 
     private static readonly Lazy<IReadOnlyDictionary<string, string>> Entries = new(() =>
-    {
-        var here = Decide(Arbiter.GamePrepared, Pack);
-        return here.State is AvailabilityState.Run
-            ? ReadDirectory(Pack!)
-            : throw new InvalidOperationException(here.Message);
-    });
+        Here.State is AvailabilityState.Run
+            ? ReadDirectory(Search.Path!)
+            : throw new InvalidOperationException(Here.Message));
 
     /// <summary>The text of one <c>res://</c> resource, or null where this build has
     /// no such file.</summary>
@@ -153,10 +196,15 @@ internal static class NativeScenes
         return end < 0 ? null : header[start..end];
     }
 
-    private static string? FindPack()
+    private static PackSearch FindPack()
     {
         var declared = Environment.GetEnvironmentVariable(PackOverride);
-        if (!string.IsNullOrEmpty(declared)) return File.Exists(declared) ? declared : null;
+        if (!string.IsNullOrEmpty(declared))
+        {
+            return File.Exists(declared)
+                ? new PackSearch(declared, null)
+                : new PackSearch(null, $"{PackOverride} names '{declared}', which is not a file.");
+        }
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string[] directories =
@@ -174,7 +222,47 @@ internal static class NativeScenes
         {
             if (!Directory.Exists(directory)) continue;
             var pack = Directory.GetFiles(directory, "*.pck").FirstOrDefault();
-            if (pack is not null) return pack;
+            if (pack is not null) return new PackSearch(pack, null);
+        }
+
+        return new PackSearch(null, null);
+    }
+
+    /// <summary>
+    /// The build identity one <c>release_info.json</c> publishes, or null where it
+    /// cannot be read. The game's own file and the bootstrapper's copy of it are the
+    /// same shape, which is what lets one reader answer for both.
+    /// </summary>
+    private static BuildIdentity? ReadIdentity(string? path)
+    {
+        if (path is null || !File.Exists(path)) return null;
+
+        try
+        {
+            var json = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+            return new BuildIdentity(
+                json["version"]!.GetValue<string>(),
+                json["commit"]!.GetValue<string>(),
+                json["main_assembly_hash"]!.GetValue<long>());
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The installation's own <c>release_info.json</c>, resolved from where the pack
+    /// was found the way the bootstrapper resolves it from the assembly: beside it on
+    /// macOS, and up to two directories above elsewhere.
+    /// </summary>
+    private static string? FindReleaseInfo(string pack)
+    {
+        var dir = new DirectoryInfo(Path.GetDirectoryName(pack)!);
+        for (var i = 0; i < 3 && dir is not null; i++, dir = dir.Parent)
+        {
+            var path = Path.Combine(dir.FullName, "release_info.json");
+            if (File.Exists(path)) return path;
         }
 
         return null;
@@ -246,19 +334,18 @@ internal static class NativeScenes
 }
 
 /// <summary>
-/// A fact that reads the game's own scene files. Skips only where the game is not
-/// prepared at all, the same bargain <c>GameFact</c> strikes off the same reading; a
-/// prepared game whose pack these tests cannot find fails inside the fact instead,
-/// because xunit cannot fail from an attribute.
+/// A fact that reads the game's own scene files. It runs where the installed pack is
+/// the build the role table is compiled against, and otherwise skips saying which of
+/// the three reasons it was - never silently, and never as a red that blames the role
+/// table for a Steam update. <c>NativeScenes.Decide</c> owns that answer.
 /// </summary>
 public sealed class NativeSceneFactAttribute : FactAttribute
 {
     public NativeSceneFactAttribute()
     {
-        var availability = NativeScenes.Decide(Arbiter.GamePrepared, NativeScenes.Pack);
-        if (availability.State is NativeScenes.AvailabilityState.NotBuilt)
+        if (NativeScenes.Here.State is not NativeScenes.AvailabilityState.Run)
         {
-            Skip = availability.Message;
+            Skip = NativeScenes.Here.Message;
         }
     }
 }

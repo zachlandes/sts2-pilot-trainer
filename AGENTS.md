@@ -346,6 +346,7 @@ A surface that sits inside one of the game's own containers is a child of it and
 It exists because a single wrong node path was noticed nowhere until the surface asking for it was drawn: v0.111.0's ledger row pointed one container too high and abandoned every recorded fight a player entered, with a message about text.
 The refusal itself is the rule above unchanged - nothing is substituted for missing native furniture.
 Nothing else checks a path, because Godot loads no resources under `dotnet test`: `NativeTextRoleTests` reads the shipped pack itself and is what holds the table to this build.
+`NativeScenes.Decide` owns whether it can - it runs where the installed pack is the build `build/lib` was copied from, and otherwise skips saying which of not-prepared, another build or no pack it was, because a green skip over an unchecked table is how this defect shipped and a red would blame the table for a Steam update.
 
 **A run a person plays is recorded by one owner, and refused rather than repaired.**
 `RunCapture` in `Sts2PilotTrainer.Replay` is the whole-run counterpart of `FightCapture` and delegates the inside of each fight to one, so there is one capture path.
