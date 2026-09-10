@@ -2,7 +2,7 @@ using System.Runtime.CompilerServices;
 
 namespace Godot;
 
-public class GodotObject
+public partial class GodotObject
 {
     private readonly Dictionary<string, List<Callable>> _connections = [];
     private readonly Dictionary<string, Variant> _properties = [];

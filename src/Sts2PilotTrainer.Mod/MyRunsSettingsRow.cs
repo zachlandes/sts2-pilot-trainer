@@ -341,7 +341,7 @@ internal sealed class MyRunsSettingsRow
         _reading.Text = row.Reading;
         _detail.Text = row.Detail;
         _remove.Text = row.RemoveLabel;
-        _fetch.Text = $"{LibraryCopy.ShowCommunityRuns}: {(fetchRunIndex ? "on" : "off")}";
+        _fetch.Text = LibraryCopy.CommunityRunsSetting(fetchRunIndex);
         _mainMenu.Text = row.MainMenu.SettingLabel;
 
         // The stepper refuses at its bottom rather than disappearing there, so the two

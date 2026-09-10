@@ -189,7 +189,33 @@ public static class LibraryCopy
     /// that can show a reading taken before a press beside a label written after it.
     /// </summary>
     public static string MainMenuRowSetting(bool shown) =>
-        $"{MainMenuRow} on the main menu: {(shown ? "on" : "off")}";
+        OurSetting($"On the main menu: {(shown ? "on" : "off")}");
+
+    /// <summary>
+    /// A settings control's line, said as Runmobile's.
+    ///
+    /// <para>Every control this mod contributes sits in the game's own General list,
+    /// among the game's own rows and drawn in the game's own type, so nothing on the
+    /// screen says which of them a player is looking at: "Keep my runs" reads as a
+    /// setting Slay the Spire 2 shipped. The mod's name in front of the line is what
+    /// says otherwise, and it is on every one of them - a player who scrolls to one
+    /// control should not have to have read another to know whose it is.</para>
+    ///
+    /// <para>The separator is the interpunct rather than a colon because these lines
+    /// already carry one: "Show community runs: on" states its own value that way, and
+    /// "Runmobile: Show community runs: on" reads as two labels. It is the mod's own
+    /// separator elsewhere on the same row - "9 runs · 1.7 MB" - so the row keeps one
+    /// punctuation.</para>
+    ///
+    /// <para>One owner, so the tag cannot be on three controls and missing from the
+    /// fourth. A caller states the setting; this states whose it is.</para>
+    /// </summary>
+    public static string OurSetting(string label) => $"{MainMenuRow} · {label}";
+
+    /// <summary>The control that governs whether the run index is fetched, value
+    /// included, said the way the main-menu control says its own.</summary>
+    public static string CommunityRunsSetting(bool fetching) =>
+        OurSetting($"{ShowCommunityRuns}: {(fetching ? "on" : "off")}");
 
     public const string FetchingRunIndex = "Fetching the run index…";
 

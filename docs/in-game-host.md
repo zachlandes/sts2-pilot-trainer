@@ -1137,6 +1137,11 @@ It cannot be mod start: the game has no chosen save profile then, so the store c
 ### The settings row, and the size figure
 
 All four members with a control are one row: `MyRunsSettingsRow` in the mod, drawn from `MyRunsRow` in `Sts2PilotTrainer.Trainer`, wired to the disk by `MyRunsSettings`.
+
+Every one of those controls says whose setting it is, through `LibraryCopy.OurSetting`.
+They sit in the game's own General list, among the game's own rows, in the game's own type, so nothing else on the screen distinguishes them: "Keep my runs" reads as a setting Slay the Spire 2 shipped.
+The tag is on all four rather than on a heading above them, because a player who scrolls to one control should not have had to read another to know whose it is.
+One owner, so it cannot be on three of them and missing from the fourth, and the separator is the interpunct because these lines already state their own value with a colon.
 It is a row and not a section.
 The retention policy, the removal act and the index-fetch choice are about the player's own runs; `show_main_menu_row` is about where Runmobile can be found.
 It is in the same row rather than a section of its own for the reason the section exists at all: this mod contributes one place a player configures it, and a second one would be a second thing to find.
@@ -1171,6 +1176,14 @@ Without that the row's own second line would be describing the next launch rathe
 That container is one entry in the column's `VBoxContainer`, and the column is where a new entry belongs: a VBoxContainer stacks what it holds from each child's minimum size, which `MyRunsSettingsRow` already carries, so everything below moves down on its own.
 Nothing is repositioned by hand, and growing the parent's minimum size reserves nothing here - the fix that looks obvious and does not work.
 `MyRunsSettings.Attach` places it directly after the modding entry so Runmobile's settings sit with the modding ones a player came there to find.
+
+**A row added to the column is not in the scroll extent until the panel is asked again.**
+`NSettingsTabManager` hands the whole `NSettingsPanel` to the screen's scroll container as its content, and `NScrollableContainer`'s bottom limit is `-(padding + panel.Size.Y) + viewport height` - so the panel's own `Size` *is* the scroll extent.
+The panel writes it in `RefreshSize`, from its column's minimum height, at its own `_Ready` and thereafter only when the viewport resizes.
+Godot readies children before parents, so that measurement has already happened by the time the `NSettingsScreen._Ready` postfix adds Runmobile's row: the extent stayed short by the row's height, the scrollbar reached its own bottom with the game's last General settings still below the fold, and a drag past the limit was lerped back to it on release.
+`MyRunsSettings.RefreshExtent` walks up to the `NSettingsPanel` the row landed inside and calls the panel's own command, once after the row is parented and again once the column has settled.
+Nothing here computes a size, and a failure logs and leaves the screen standing - a short extent is worse than it should be, and a settings screen taken down by an exception is gone.
+Resizing the window was the only thing that put it right, which is the same fact from the other side: the viewport's own `SizeChanged` is the panel's other caller.
 
 The store refuses until the game has chosen a save profile, and the settings section hangs off the main menu's own modding entry point, which is reachable before one is.
 `MyRunsSettings.Build` therefore catches and logs the way its other members do, and hands the derivation a `MyRunsDisk` fact of its own rather than a count of zero - no runs yet and cannot tell yet are different sentences.
