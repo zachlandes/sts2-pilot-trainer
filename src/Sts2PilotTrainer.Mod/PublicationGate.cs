@@ -27,7 +27,9 @@ internal static class PublicationGate
                 var removeWorkspace = true;
                 try
                 {
-                    var result = await PackagedArbiter.RunAsync(start).ConfigureAwait(false);
+                    var result = await PackagedArbiter
+                        .RunAsync(start, PackagedArbiter.PublicationTimeout)
+                        .ConfigureAwait(false);
                     if (result.TimedOut)
                     {
                         throw new ShareValidationException(

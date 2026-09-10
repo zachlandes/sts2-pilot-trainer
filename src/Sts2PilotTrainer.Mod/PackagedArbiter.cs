@@ -17,9 +17,25 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class PackagedArbiter
 {
-    /// <summary>Longer than any replay this build has measured, and the bound a run
-    /// that hung is killed at.</summary>
-    internal static readonly TimeSpan ProcessTimeout = TimeSpan.FromMinutes(15);
+    /// <summary>
+    /// The bound a publication gate is killed at.
+    ///
+    /// Longer than any replay this build has measured, and the longer of the two on
+    /// purpose: a gate replays a whole run to its end and nobody is sitting in front
+    /// of a blank screen while it does - the run is being shared, not entered.
+    /// </summary>
+    internal static readonly TimeSpan PublicationTimeout = TimeSpan.FromMinutes(15);
+
+    /// <summary>
+    /// The bound a snapshot materialisation is killed at.
+    ///
+    /// A player pressed Continue and is watching an indeterminate notice until this
+    /// answers, and this build has no way for them to call it off, so the bound is
+    /// what decides how long the worst case lasts. Measured at a little under a
+    /// minute on the retail proof; three is generous without being a quarter of an
+    /// hour, which is what the first retail press spent standing still.
+    /// </summary>
+    internal static readonly TimeSpan SnapshotTimeout = TimeSpan.FromMinutes(3);
 
     private static readonly TimeSpan TerminationTimeout = TimeSpan.FromSeconds(30);
 
@@ -113,22 +129,25 @@ internal static class PackagedArbiter
 
     /// <summary>
     /// Runs the arbiter to completion, off the game's thread, and answers what it
-    /// reported. A run that outlives the timeout is killed, and one that will not die is
+    /// reported. A run that outlives the bound is killed, and one that will not die is
     /// reported as such rather than abandoned quietly.
+    ///
+    /// The bound is the caller's, because the two callers are waited on differently:
+    /// see <see cref="PublicationTimeout"/> and <see cref="SnapshotTimeout"/>.
     /// </summary>
-    internal static async Task<Result> RunAsync(ProcessStartInfo start)
+    internal static async Task<Result> RunAsync(ProcessStartInfo start, TimeSpan timeout)
     {
         using var process = Process.Start(start)
             ?? throw new InvalidOperationException("The local replay arbiter could not start.");
         var output = process.StandardOutput.ReadToEndAsync();
         var errors = process.StandardError.ReadToEndAsync();
         var timedOut = false;
-        using var timeout = new CancellationTokenSource(ProcessTimeout);
+        using var bound = new CancellationTokenSource(timeout);
         try
         {
-            await process.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
+            await process.WaitForExitAsync(bound.Token).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        catch (OperationCanceledException) when (bound.IsCancellationRequested)
         {
             if (!process.HasExited)
             {

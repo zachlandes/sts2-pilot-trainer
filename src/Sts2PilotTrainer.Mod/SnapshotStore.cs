@@ -3,6 +3,7 @@ using System.Text.Json;
 using MegaCrit.Sts2.Core.Logging;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
+using Sts2PilotTrainer.Trainer;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -67,10 +68,23 @@ internal static class SnapshotStore
         var result = await MaterialiseAsync(recording, arrival.Floor).ConfigureAwait(false);
         if (Read(recording, plan, out whyNot) is { } materialised) return materialised;
 
-        throw new InvalidOperationException(
-            $"The packaged arbiter did not produce a verified snapshot for arrival on floor " +
-            $"{arrival.Floor.ToString(CultureInfo.InvariantCulture)} ({whyNot}). It reported: {result.Tail()}");
+        throw new InvalidOperationException(RefusalFor(result, arrival.Floor, whyNot));
     }
+
+    /// <summary>
+    /// Why the arbiter did not leave a snapshot behind, in the words the player who
+    /// pressed Continue reads.
+    ///
+    /// A run that outlived its bound is the one case with nothing to quote: it was
+    /// killed mid-replay, so its last few lines are a replay in progress rather than a
+    /// reason, and what a player needs to be told is that their run could not be
+    /// restored. Every other failure has the arbiter's own account and gives it.
+    /// </summary>
+    internal static string RefusalFor(PackagedArbiter.Result result, int floor, string whyNot) =>
+        result.TimedOut
+            ? TrainerCopy.CouldNotRestoreYourRun(PackagedArbiter.SnapshotTimeout.TotalMinutes)
+            : $"The packaged arbiter did not produce a verified snapshot for arrival on floor " +
+              $"{floor.ToString(CultureInfo.InvariantCulture)} ({whyNot}). It reported: {result.Tail()}";
 
     /// <summary>The cached snapshot for this plan where one is present, binds and is
     /// intact, or null with the reason.</summary>
@@ -149,7 +163,9 @@ internal static class SnapshotStore
                 "--cache", RunmobileStore.PathOf(CacheDirectory),
                 "--out", RunmobileStore.PathOf($"{workspace}/evidence"));
 
-            return await Task.Run(() => PackagedArbiter.RunAsync(start)).ConfigureAwait(false);
+            return await Task
+                .Run(() => PackagedArbiter.RunAsync(start, PackagedArbiter.SnapshotTimeout))
+                .ConfigureAwait(false);
         }
         catch (ArbiterStillRunningException)
         {

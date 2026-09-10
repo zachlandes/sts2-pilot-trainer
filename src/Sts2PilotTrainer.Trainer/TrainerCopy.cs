@@ -131,6 +131,21 @@ public static class TrainerCopy
     public const string RestoringYourRun = "Restoring your run";
 
     /// <summary>
+    /// What a player is told when the save their run had to be restored from could
+    /// not be prepared inside the time this mod allows for it.
+    ///
+    /// It says the run rather than the mechanism, because a player pressed Continue
+    /// on a fight and what failed is that: the snapshot, the arbiter and the replay
+    /// are this mod's business and appear in the log. The number is interpolated
+    /// from the bound actually in force, so a bound that moves does not leave a
+    /// sentence claiming the old one.
+    /// </summary>
+    public static string CouldNotRestoreYourRun(double minutes) =>
+        $"Runmobile could not restore your run: preparing it took longer than " +
+        $"{minutes.ToString("0.#", CultureInfo.InvariantCulture)} minutes and was stopped. " +
+        "Nothing was changed, and you can try again.";
+
+    /// <summary>
     /// What the counter reads in place of a step count on a run restored to a floor.
     ///
     /// Short because it sits where "17 of 17" sits, and it is the whole of what that

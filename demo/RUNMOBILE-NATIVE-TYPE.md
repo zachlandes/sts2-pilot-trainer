@@ -40,7 +40,8 @@ Its controls share the same right edge as the game's own controls on that screen
 
 The retail captures prove the library parchment's Others, Mine, and opened-run states at named-role typography, the run strip's native gold arrow art, the mod's refusal popup at its R1, R2, and R3 roles, and the My Runs settings row at its mapped native roles and full native column width.
 
-The playback transport, fight-result panel, chronology paging, and look-back ledger paging are also not proven in the client.
+The playback transport, fight-result panel, chronology paging, look-back ledger paging, and the restoring notice shown while a run is being restored are also not proven in the client.
 Programmatic navigation was attempted and did not reach those surfaces, so they require manual navigation for a retail capture.
+The restoring notice is the newest of them: it was added after the restore route's own retail proof was captured, so no capture covers either of its two drawings - the game's own loading overlay borrowed, or the mod's own plate where that borrow fails - and an in-client capture of it is still owed.
 This change covers them with automated paging and layout tests instead.
 Those tests do not read the game's scene files, and the look-back ledger's role named a node v0.111.0 has not: the role table is now held against the shipped pack, which `docs/in-game-host.md` owns.
