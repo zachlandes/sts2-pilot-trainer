@@ -498,7 +498,7 @@ internal sealed class PlaybackTransportStrip
             return;
         }
 
-        _numerals.Text = state.Counter.Count == 0 ? string.Empty : state.Counter.Numerals;
+        _numerals.Text = state.Counter.Numerals;
         _numerals.AddThemeColorOverride(FontColour, state.Counter.LookingAt is null ? Muted : Cream);
         Place(_numerals, left + (178 * _unit), top + (12 * _unit), 48 * _unit, 18 * _unit);
 
@@ -543,7 +543,7 @@ internal sealed class PlaybackTransportStrip
     private void ApplyPips(TransportCounter counter, TransportSurface surface, float x, float y)
     {
         Clear(_pips);
-        _pips.Visible = surface.Counter.Presence != Presence.Absent && counter.ShowPips && counter.Count > 0;
+        _pips.Visible = surface.Counter.Presence != Presence.Absent && counter.ShowPips;
         if (!_pips.Visible) return;
 
         Place(_pips, 0, 0, _viewport.X, _viewport.Y);

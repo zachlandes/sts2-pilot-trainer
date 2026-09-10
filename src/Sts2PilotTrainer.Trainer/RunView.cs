@@ -22,9 +22,11 @@ namespace Sts2PilotTrainer.Trainer;
 /// <param name="AfterSeq">The action the recording's own boundary for this floor
 /// follows, or -1 for the floor the run started on, which no boundary names. What the
 /// recording says at this place is read at that action.</param>
-/// <param name="Reachable">Whether a running retail client can actually walk the
-/// recording to here. <see cref="Replay.RetailPlayback"/> is the one owner of that
-/// question and the same set the driver enforces, so a place this says yes about is a
+/// <param name="Reachable">Whether a running retail client can actually get the
+/// recording to here - by walking its decisions, or by restoring the game's own save
+/// from a floor arrival where a fight is live. <see cref="Replay.RetailPlayback.RouteTo"/>
+/// is the one owner of that question, read from the same verb set the driver enforces
+/// and the same arrivals the journey restores from, so a place this says yes about is a
 /// place the journey can reach. It defaults to true for a caller building a position by
 /// hand; <see cref="RunView.PositionsIn"/>, which is what every surface reads, always
 /// asks.</param>
@@ -40,7 +42,7 @@ public sealed record RunViewPosition(
     /// playable is a cell the row offers. The run's own start is refused because
     /// "Start the run over" already puts a player there, an unfinished fight because
     /// there is no finished recorded line to set one against, and a place the client
-    /// cannot walk to because offering it would build the run, show a decision or two
+    /// has no route to because offering it would build the run, show a decision or two
     /// and then abort in front of the player.
     /// </summary>
     public bool Playable => !IsRunStart && !Unfinished && Reachable;
@@ -114,12 +116,14 @@ public sealed record RunViewRow(
 /// It computes nothing about the run and judges nothing about how it was played.
 /// Which places exist is <see cref="ReplayManifest.Boundaries"/>' answer - the same
 /// list <c>RecordedFightEntry</c> walks to and the same list the validator enforces.
-/// Which of those this client can actually be walked to is
-/// <see cref="Replay.RetailPlayback"/>'s, asked of the same verb set the driver
-/// enforces, so a row here can never offer a boundary the journey would refuse. Both
-/// questions have to be asked: existing and being reachable are different facts, and a
-/// surface that asked only the first offered a floor whose walk aborts after the run has
-/// been built and two decisions watched. Which of them this player has stood in is
+/// Which of those this client can actually reach is
+/// <see cref="Replay.RetailPlayback.RouteTo"/>'s - walked from the start, or restored
+/// from a floor arrival with a live fight - asked of the same verb set the driver
+/// enforces and the same arrivals the journey restores from, so a row here can never
+/// offer a boundary the journey would refuse. Both questions have to be asked: existing
+/// and being reachable are different facts, and a surface that asked only the first
+/// offered a floor whose walk aborts after the run has been built and two decisions
+/// watched. Which of them this player has stood in is
 /// <see cref="RunProgress"/>' answer, and the only thing on this screen that is about
 /// the person rather than the run.
 ///
@@ -255,7 +259,7 @@ public sealed record RunView(
                     fight is null && fought,
                     index == 0,
                     entry.AfterSeq,
-                    RetailPlayback.CanReach(recording, entry.AfterSeq));
+                    RetailPlayback.RouteTo(recording, entry.AfterSeq).Reachable);
             }),
         ];
     }

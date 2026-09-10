@@ -141,19 +141,29 @@ public sealed record TransportIdentity(
 /// <param name="Lit">Whether the current decision is revealed. The current pip is
 /// filled once it is and hollow until then, which is one of the two drawn signals
 /// that a decision is being considered rather than shown.</param>
-public sealed record TransportCounter(int Current, int Count, int? LookingAt, bool Lit = true)
+/// <param name="RestoredToFloor">The floor the run was restored to, where it was
+/// restored rather than walked. There is then nothing to count - no decision was
+/// shown - and the numerals name the floor instead, with no pips.</param>
+public sealed record TransportCounter(
+    int Current, int Count, int? LookingAt, bool Lit = true, int? RestoredToFloor = null)
 {
     /// <summary>Above this many decisions the pips stop being a picture and start
     /// being a texture.</summary>
     public const int MostPips = 12;
 
-    public bool ShowPips => Count <= MostPips;
+    public bool ShowPips => RestoredToFloor is null && Count > 0 && Count <= MostPips;
 
     /// <summary>The step the numerals name: the one being looked at, or the one about
     /// to happen.</summary>
     public int Shown => LookingAt ?? Current;
 
-    public string Numerals => TrainerCopy.StepCounter(Shown, Count);
+    /// <summary>What the counter's label reads: the step of the count, the floor a
+    /// restored run stands on, or nothing where there is nothing to count.</summary>
+    public string Numerals => RestoredToFloor is { } floor
+        ? TrainerCopy.RestoredToFloor(floor)
+        : Count == 0
+            ? string.Empty
+            : TrainerCopy.StepCounter(Shown, Count);
 }
 
 /// <summary>
@@ -239,6 +249,20 @@ public enum JourneyPhase
     /// <summary>There is no trainer run.</summary>
     None,
 
+    /// <summary>
+    /// The save the run will be restored from is being materialised, by the packaged
+    /// arbiter in its own process, and no run exists yet.
+    ///
+    /// A phase of its own rather than a moment inside <see cref="Starting"/> because it
+    /// is a different situation: a subprocess is replaying the recording's history and
+    /// nothing has been constructed in this game, so a refusal here has nothing to tear
+    /// down. The transport draws nothing for it, because it is parented to a run's own
+    /// interface and there is no run; what the player sees instead is
+    /// <see cref="RestoringNotice"/>, which is derived from this phase alone and drawn
+    /// in the game's own loading idiom.
+    /// </summary>
+    Preparing,
+
     /// <summary>The run exists and the game is putting it on screen.</summary>
     Starting,
 
@@ -294,6 +318,10 @@ public enum JourneyPhase
 /// their own fight. One card is enough; it is not a completed turn.</param>
 /// <param name="AfterTheFight">What the post-fight choice is derived from, once the
 /// fight has ended. Null until then.</param>
+/// <param name="RestoredToFloor">The floor the run was restored to from the game's own
+/// save, or null for a run walked from its start. A restored run has watched none of
+/// the decisions before that floor, and a counter that said it had would be the
+/// transport claiming something nobody was shown.</param>
 public sealed record TransportFacts(
     TransportIdentity Identity,
     IReadOnlyList<PrefightChoice> Made,
@@ -309,7 +337,8 @@ public sealed record TransportFacts(
     bool NoteShown,
     PlaybackSpeed Speed,
     bool AnythingPlayed,
-    PostFightFacts? AfterTheFight = null)
+    PostFightFacts? AfterTheFight = null,
+    int? RestoredToFloor = null)
 {
     /// <summary>
     /// Whether the decision about to be made gets a consider hold before its reveal.
@@ -560,9 +589,9 @@ public sealed record PlaybackTransport(
     /// <returns>What the tag says, or null while nothing is docked.</returns>
     public static PlaybackTransport? For(JourneyPhase phase, TransportFacts facts) => phase switch
     {
-        JourneyPhase.None or JourneyPhase.Starting => null,
+        JourneyPhase.None or JourneyPhase.Preparing or JourneyPhase.Starting => null,
         JourneyPhase.Watching when facts.AtCombatStart =>
-            OpeningTheFight(facts.Identity, facts.Count, facts.Speed),
+            OpeningTheFight(facts.Identity, facts.Count, facts.Speed, facts.RestoredToFloor),
         JourneyPhase.Watching when facts.LookingBackAt is { } step => LookingBackAt(
             facts.Identity, facts.Made, step, facts.StepsTaken + 1, facts.Count, Next(facts), facts.Speed),
         JourneyPhase.Watching => Revealing(
@@ -763,12 +792,18 @@ public sealed record PlaybackTransport(
     /// </summary>
     /// <param name="count">How many decisions the recording made, all of them now
     /// behind the run.</param>
+    /// <param name="restoredToFloor">The floor the run was restored to, where it was
+    /// restored rather than walked. The counter then names the floor instead of
+    /// counting decisions nobody watched. This window says nothing in words by the
+    /// captain's ruling, so the floor is the whole of what it says.</param>
     private static PlaybackTransport OpeningTheFight(
-        TransportIdentity identity, int count, PlaybackSpeed speed) =>
+        TransportIdentity identity, int count, PlaybackSpeed speed, int? restoredToFloor) =>
         new(
             Mode: TransportMode.Opening,
             Identity: identity,
-            Counter: new TransportCounter(count, count, null),
+            Counter: restoredToFloor is { } floor
+                ? new TransportCounter(0, 0, null, RestoredToFloor: floor)
+                : new TransportCounter(count, count, null),
             Speed: speed,
             Back: BackControl(false) with { DisabledReason = TrainerCopy.BetweenScreensDisabledReason },
             Play: PlayControl(playing: false) with

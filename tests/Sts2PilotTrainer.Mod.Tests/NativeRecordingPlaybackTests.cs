@@ -156,70 +156,89 @@ public sealed class NativeRecordingPlaybackTests
     /// <summary>
     /// The invariant, stated against the recordings that break it.
     ///
-    /// Every place the run view offers is a place whose decisions the driver will
-    /// issue. It reads <c>RunDriver</c>'s own list rather than a copy, so a verb added
-    /// to the client widens what the library offers in the same commit.
+    /// Every place the run view offers has a route the client can take, and the route
+    /// is the one owner's answer rather than a copy: the first fight is walked, every
+    /// later fight is restored from the arrival that dealt it, and every floor between
+    /// fights is refused naming the first decision no route gets past - the first card
+    /// played in the fight before it. <c>OwnRunPlaybackTests</c> drives those same
+    /// routes through the engine.
     /// </summary>
     [Theory]
     [MemberData(nameof(Recordings))]
-    public void EveryPlaceTheRunViewOffersIsOneTheClientCanWalkTo(string fileName)
+    public void EveryPlaceTheRunViewOffersHasARouteTheClientCanTake(string fileName)
     {
         var recording = Load(fileName);
-        var issued = RunDriver.VerbsIssuedInsideARunningGame;
 
-        foreach (var position in RunView.PositionsIn(recording).Where(position => position.Playable))
+        foreach (var position in RunView.PositionsIn(recording).Where(position => !position.IsRunStart))
         {
-            var refused = recording.Actions
-                .Where(action => action.Seq <= position.AfterSeq)
-                .OrderBy(action => action.Seq)
-                .FirstOrDefault(action => !issued.Contains(action.Verb));
+            var route = RetailPlayback.RouteTo(recording, position.AfterSeq);
+            Assert.Equal(position.Reachable, route.Reachable);
 
-            Assert.True(
-                refused is null,
-                $"Floor {position.Floor} is offered and the walk to it contains a {refused?.Verb} at action " +
-                $"{refused?.Seq}, which the driver refuses inside a running game. Offering it builds the run, " +
-                "shows a decision or two and then aborts in front of the player.");
+            switch (position)
+            {
+                case { Fight: 1 }:
+                    Assert.IsType<PlaybackRoute.Walk>(route);
+                    break;
+                case { Fight: not null }:
+                    var restore = Assert.IsType<PlaybackRoute.Restore>(route);
+                    Assert.Equal(position.Floor, restore.Floor);
+                    Assert.Equal(position.AfterSeq, restore.AfterSeq);
+                    break;
+                default:
+                    // The floors between fights, and a fight the recording stops inside:
+                    // the recording declares no combat start there, so the manifest's
+                    // reading offers no restore point, and the row is refused for its
+                    // own reason before the route is ever asked.
+                    var refused = Assert.IsType<PlaybackRoute.Unreachable>(route);
+                    Assert.Equal(ActionVerb.PlayCard, refused.Refused.Verb);
+                    break;
+            }
         }
     }
 
     /// <summary>
     /// And the rows that are refused say why rather than disappearing.
     ///
-    /// A recording of a whole run holds several fights, and on this build exactly one
-    /// place in each is reachable: the first fight, whose walk is an opening blessing
-    /// and a map move. The rest keep their place on the screen with the reason in the
-    /// second line, because a row that vanished would teach the player the feature does
-    /// not exist rather than that it does not reach here yet.
+    /// A recording of a whole run holds fights and the floors between them. Every fight
+    /// is offered - the first walked, the rest restored - and every floor between fights
+    /// keeps its place on the screen with the reason in the second line, because a row
+    /// that vanished would teach the player the feature does not exist rather than that
+    /// it does not reach here yet.
     /// </summary>
     [Theory]
     [MemberData(nameof(Recordings))]
-    public void TheDeeperFloorsAreRefusedByNameRatherThanOffered(string fileName)
+    public void TheFloorsBetweenFightsAreRefusedByNameRatherThanOffered(string fileName)
     {
         var recording = Load(fileName);
         var positions = RunView.PositionsIn(recording);
-
         Assert.True(positions.Count > 2, "This recording is too short to have a refused floor in it.");
-        Assert.Single(positions, position => position.Playable);
 
-        // The deepest floor refused for this reason rather than the deepest floor: a
-        // recording that stops inside its last fight refuses that one for its own
-        // reason, and the two are different facts a player is owed apart.
-        var deepest = positions.Last(position =>
-            !position.IsRunStart && !position.Unfinished && !position.Reachable);
-        var view = RunView.For(recording, RunProgress.Empty, selectedFloor: deepest.Floor);
-        var row = view.Rows.Single(candidate => candidate.Kind == RunViewRowKind.PlayFrom);
+        var fights = positions.Where(position => position.Fight is not null).ToList();
+        Assert.True(fights.Count > 1, "This recording has one fight, so restoring reaches nothing new.");
+        Assert.All(fights, position => Assert.True(position.Playable, $"Floor {position.Floor} holds a fight and is refused."));
 
-        Assert.False(row.Enabled);
-        Assert.Equal(LibraryCopy.EarlierFightNotReplayable, row.Reason);
+        var between = positions.Where(position =>
+            !position.IsRunStart && !position.Unfinished && position.Fight is null).ToList();
+        Assert.NotEmpty(between);
+        foreach (var floor in between)
+        {
+            Assert.False(floor.Reachable);
+            var view = RunView.For(recording, RunProgress.Empty, selectedFloor: floor.Floor);
+            var row = view.Rows.Single(candidate => candidate.Kind == RunViewRowKind.PlayFrom);
+
+            Assert.False(row.Enabled);
+            Assert.Equal(LibraryCopy.EarlierFightNotReplayable, row.Reason);
+        }
     }
 
     /// <summary>
     /// Continue is the affordance that used to walk straight into the wall: after the
-    /// first fight it names the second, which no run in this repository can reach.
+    /// first fight it names the second, which is now reached by restoring the arrival
+    /// that dealt it rather than by walking the first fight.
     /// </summary>
     [Theory]
     [MemberData(nameof(Recordings))]
-    public void ContinueRefusesOnceTheOnlyReachableFightHasBeenPlayed(string fileName)
+    public void ContinueReachesTheSecondFightByRestoring(string fileName)
     {
         var recording = Load(fileName);
         var played = RunProgress.Empty.WithFightPlayed(recording.RunId, 1);
@@ -228,8 +247,10 @@ public sealed class NativeRecordingPlaybackTests
             .Single(candidate => candidate.Kind == RunViewRowKind.Continue);
 
         Assert.Equal(2, row.Fight);
-        Assert.False(row.Enabled);
-        Assert.Equal(LibraryCopy.EarlierFightNotReplayable, row.Reason);
+        Assert.Equal(3, row.Floor);
+        Assert.True(row.Enabled);
+        Assert.Null(row.Reason);
+        Assert.IsType<PlaybackRoute.Restore>(RetailPlayback.RouteTo(recording, RecordedFightPlan.For(recording, 2)));
     }
 
     /// <summary>The plate under the game's own run history offers the furthest floor a

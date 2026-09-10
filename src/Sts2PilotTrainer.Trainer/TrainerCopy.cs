@@ -119,6 +119,41 @@ public static class TrainerCopy
     public static string StepCounter(int step, int count) =>
         $"{step.ToString(CultureInfo.InvariantCulture)} of {count.ToString(CultureInfo.InvariantCulture)}";
 
+    /// <summary>
+    /// What the player reads while the save their run is restored from is being
+    /// materialised, before there is a run at all.
+    ///
+    /// A headline and no more: the wait is a subprocess replaying the recording's own
+    /// history, which reports nothing until it has finished, so there is no honest
+    /// figure to put beside this. The ellipsis the surface animates after it is what
+    /// says the wait is alive.
+    /// </summary>
+    public const string RestoringYourRun = "Restoring your run";
+
+    /// <summary>
+    /// What a player is told when the save their run had to be restored from could
+    /// not be prepared inside the time this mod allows for it.
+    ///
+    /// It says the run rather than the mechanism, because a player pressed Continue
+    /// on a fight and what failed is that: the snapshot, the arbiter and the replay
+    /// are this mod's business and appear in the log. The number is interpolated
+    /// from the bound actually in force, so a bound that moves does not leave a
+    /// sentence claiming the old one.
+    /// </summary>
+    public static string CouldNotRestoreYourRun(double minutes) =>
+        $"Runmobile could not restore your run: preparing it took longer than " +
+        $"{minutes.ToString("0.#", CultureInfo.InvariantCulture)} minutes and was stopped. " +
+        "Nothing was changed, and you can try again.";
+
+    /// <summary>
+    /// What the counter reads in place of a step count on a run restored to a floor.
+    ///
+    /// Short because it sits where "17 of 17" sits, and it is the whole of what that
+    /// window says: it names the floor and not a number of decisions, because none
+    /// were shown.
+    /// </summary>
+    public static string RestoredToFloor(int floor) => $"Floor {floor.ToString(CultureInfo.InvariantCulture)}";
+
     // The ledger's rows. The tag hanging above them carries the credit once, so the
     // rows do not: five rows each opening with the same name is the repetition the
     // caption line was replaced to avoid.

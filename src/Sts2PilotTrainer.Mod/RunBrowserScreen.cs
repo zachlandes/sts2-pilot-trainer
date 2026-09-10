@@ -634,12 +634,13 @@ internal static class RunBrowserScreen
     /// <summary>
     /// Stands the player where the row says, through the one entry there is.
     ///
-    /// The progress record is written first and deliberately: it records that the
-    /// player asked to be stood here, which is what the strip's ticks, Continue's floor
-    /// and the Last floor replayed column are about. It is not a claim that the fight
-    /// was won, or finished, or even entered - the run they are about to be put in is
-    /// the recording's, and what happens in it is the comparison's business rather than
-    /// this file's.
+    /// The progress record is not written here. What the strip's ticks, Continue's
+    /// floor and the Last floor replayed column are about is where a player has been
+    /// stood, and that is not known at the press: a restore can refuse, fail or outlive
+    /// its bound after a wait. So the floor this row names travels with the journey and
+    /// <c>RecordedFightRun</c> writes both down once the boundary is proved. It is
+    /// still not a claim that the fight was won or finished - what happens in it is the
+    /// comparison's business rather than this file's.
     ///
     /// <para>Where a row stands a player follows the floor's own kind, which is the
     /// single play-from row's whole rule: a combat floor's fight start, and any other
@@ -654,9 +655,6 @@ internal static class RunBrowserScreen
             throw new InvalidOperationException($"'{runId}' is not a run this library holds.");
         }
 
-        if (fight is { } ordinal) RunLibraryStore.RecordFightPlayed(runId, ordinal);
-        if (floor is { } loaded) RunLibraryStore.RecordFloorLoaded(runId, loaded);
-
         var plan = (RunViewRowKind)kind switch
         {
             _ when fight is { } atFight => (IBoundaryPlan)RecordedFightPlan.For(recording, atFight),
@@ -666,7 +664,7 @@ internal static class RunBrowserScreen
         };
 
         var credit = RecordingIdentity.Credit(recording, isPlayersOwn);
-        _ = RecordedFightRun.Start(recording, plan, credit, runId);
+        _ = RecordedFightRun.Start(recording, plan, credit, runId, floor);
     }
 
     /// <summary>

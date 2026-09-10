@@ -144,6 +144,57 @@ public sealed class FloorEntrySnapshotTests
             refusal => refusal.Contains("not the key of the history", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// A snapshot binds by the moment it was taken at and not by the plan's kind: the
+    /// arrival and the fight the same move dealt are one engine state, and the digest
+    /// the recording declares for the fight is compared against the one the snapshot
+    /// was verified at, which is what keeps that more than an assertion.
+    /// </summary>
+    [Fact]
+    public void BindsAFightPlanWhoseBoundaryIsTheSameActionAsTheArrival()
+    {
+        var recording = EntryFixtures.WholeRun();
+        var arrival = FloorEntryPlan.For(recording, 2);
+        var fight = RecordedFightPlan.For(recording, 2);
+        Assert.Equal(arrival.BoundarySeq, fight.BoundarySeq);
+
+        Assert.Empty(Snapshot(recording, arrival).Binds(recording, fight, "v0.111.0", "41cef1ea"));
+    }
+
+    [Fact]
+    public void RefusesAFightPlanWhoseDeclaredDigestIsNotTheOneTheArrivalWasVerifiedAt()
+    {
+        var recording = EntryFixtures.WholeRun();
+        var arrival = FloorEntryPlan.For(recording, 2);
+        var edited = recording with
+        {
+            Boundaries =
+            [
+                .. recording.Boundaries.Select(boundary => boundary is { IsCombatStart: true, Fight: 2 }
+                    ? boundary with { Digest = Fact<string>.Engine("sha256:" + new string('1', 64)) }
+                    : boundary),
+            ],
+        };
+
+        var refusals = Snapshot(recording, arrival).Binds(
+            edited, RecordedFightPlan.For(edited, 2), "v0.111.0", "41cef1ea");
+
+        Assert.Contains(refusals, refusal => refusal.Contains("verified", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RefusesAFightPlanAtAnotherAction()
+    {
+        var recording = EntryFixtures.WholeRun();
+        var arrival = FloorEntryPlan.For(recording, 2);
+        var otherFight = RecordedFightPlan.For(recording, 3);
+        Assert.NotEqual(arrival.BoundarySeq, otherFight.BoundarySeq);
+
+        var refusals = Snapshot(recording, arrival).Binds(recording, otherFight, "v0.111.0", "41cef1ea");
+
+        Assert.Contains(refusals, refusal => refusal.Contains("after action", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void RefusesASnapshotTakenAtAnotherBoundary()
     {

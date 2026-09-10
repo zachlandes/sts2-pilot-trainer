@@ -1,4 +1,5 @@
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
@@ -265,6 +266,94 @@ public sealed class RunLibraryStoreTests : IDisposable
             RunLibraryStore.RecordingFor("native-a-20260906-120000")?.RunId);
         Assert.Null(RunLibraryStore.RecordingFor("native-bad-20260906-130000"));
         Assert.Null(RunLibraryStore.RecordingFor("nobody"));
+    }
+
+    /// <summary>
+    /// Continue means the next fight nobody has actually entered, so a journey that
+    /// never stood anybody anywhere writes nothing down.
+    ///
+    /// The press used to write it. Every fight past the first became reachable on this
+    /// branch and every one of them can fail after a wait - a refusal, an arbiter that
+    /// reported nothing, one that outlived its bound - and the retail proof spent two
+    /// such presses moving Continue past a fight nobody had seen, repaired by hand.
+    /// The write is the proved boundary's now, which is
+    /// <c>RecordedFightRun.HandOverTheFight</c>.
+    ///
+    /// Driven at a boundary this client has no route to, because that is the one
+    /// failure a process with no scene tree can reach: the journey refuses inside the
+    /// same try every other failure is caught by, and never reaches a wait.
+    /// </summary>
+    [GameFact]
+    public async Task AJourneyThatStoodNobodyAnywhereRecordsNoProgress()
+    {
+        var recording = ManifestJson.Deserialize(
+            File.ReadAllText(Path.Combine(
+                Arbiter.RepoRoot, "manifests", "native-3LACFJ5NJ371-20260906-015901.replay.json")));
+
+        var unreachable = RunView.PositionsIn(recording).First(position => !position.Reachable);
+        var plan = FloorEntryPlan.For(recording, unreachable.Floor);
+
+        try
+        {
+            await RecordedFightRun.Start(
+                recording, plan, RecordingIdentity.Credit(recording, isPlayersOwn: true), "native-a",
+                unreachable.Floor);
+
+            Assert.Equal(JourneyPhase.None, RecordedFightRun.Phase);
+            Assert.Empty(RunLibraryStore.ReadProgress().PlayedFrom("native-a"));
+            Assert.Empty(RunLibraryStore.ReadProgress().LastFloor);
+        }
+        finally
+        {
+            // Reading whether this game has a run touches the engine's own run manager,
+            // and a suite that shares one process starts its next run on whatever this
+            // left behind. The same reset every other test that reaches the engine does.
+            if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
+            HeadlessEngine.Forget();
+        }
+    }
+
+    /// <summary>
+    /// The same rule at the surface a player presses, which is where it was broken.
+    ///
+    /// The run browser's own row is built and pressed here, so what is under test is
+    /// the press rather than the journey it starts: the row wrote progress before the
+    /// journey had stood anybody anywhere, and this process cannot construct a run, so
+    /// the journey it starts refuses. Continue has to be where it was.
+    ///
+    /// It fails against the code it was written for: put
+    /// <c>RunLibraryStore.RecordFightPlayed</c> back into <c>Enter</c> and this goes red.
+    /// </summary>
+    [GameFact]
+    public void PressingARowWhoseJourneyRefusesLeavesContinueWhereItWas()
+    {
+        const string fileName = "native-3LACFJ5NJ371-20260906-015901.replay.json";
+        var recording = ManifestJson.Deserialize(
+            File.ReadAllText(Path.Combine(Arbiter.RepoRoot, "manifests", fileName)));
+        Write(fileName, ManifestJson.Serialize(recording));
+
+        var runId = recording.RunId;
+        Assert.NotNull(RunLibrary.RecordingFor(runId));
+
+        var view = RunView.For(recording, RunLibraryStore.ReadProgress(), progressId: runId);
+        var rows = RunBrowserScreen.EnteringRows(view, runId, isPlayersOwn: true);
+        var offered = view.Rows
+            .Select((row, index) => (row, index))
+            .First(pair => pair.row.Enabled && pair.row.Fight is not null);
+
+        try
+        {
+            rows[offered.index].Press();
+
+            Assert.Equal(JourneyPhase.None, RecordedFightRun.Phase);
+            Assert.Empty(RunLibraryStore.ReadProgress().PlayedFrom(runId));
+            Assert.Empty(RunLibraryStore.ReadProgress().LastFloor);
+        }
+        finally
+        {
+            if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
+            HeadlessEngine.Forget();
+        }
     }
 
     [GameFact]

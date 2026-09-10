@@ -169,6 +169,41 @@ public class ManifestJsonTests
         Assert.True(result.IsValid, result.Describe());
     }
 
+    /// <summary>
+    /// A version-5 native recording declares floor arrivals it cannot prove: its
+    /// recorder sampled no map coordinate, so no checkpoint at the arrival names the
+    /// fields a floor arrival is proved by, and the validator refuses it as written.
+    /// The reading derives that checkpoint from the map move the boundary already
+    /// names, through the one owner of the derivation, and says it was inferred. The
+    /// same file read as version 6 stays refused: this is what a version-5 recorder
+    /// could not write, not a waiver for anything a current one omits.
+    /// </summary>
+    [Fact]
+    public void ReadsAVersionFiveNativeRecordingWithTheArrivalsItsRecorderCouldNotSample()
+    {
+        var native = Fixtures.NativeManifest();
+        var arrival = ReplayBoundary.FloorEntry(2, 1, Fact<string>.Captured(Fixtures.Digest, FactEvidence.AtActionOrdinal(1)));
+        var withArrival = native with { Boundaries = [.. native.Boundaries, arrival] };
+        Assert.False(ManifestValidator.Validate(withArrival).IsValid);
+
+        var migrated = ManifestJson.Deserialize(VersionFive(withArrival));
+
+        var checkpoint = Assert.Single(migrated.Checkpoints, checkpoint => checkpoint.Kind == FloorArrival.CheckpointKind);
+        Assert.Equal(1, checkpoint.AfterSeq);
+        Assert.Equal("2", checkpoint.Expect["run.total_floor"].Value);
+        Assert.Equal("r1c3", checkpoint.Expect["run.map_coord"].Value);
+        Assert.All(checkpoint.Expect.Values, fact => Assert.Equal(FactSource.Inferred, fact.Source));
+        Assert.Equal(
+            ManifestJson.Serialize(FloorArrival.WithArrivalCheckpoints(ManifestJson.Deserialize(VersionFive(withArrival)))),
+            ManifestJson.Serialize(migrated));
+        var result = ManifestValidator.Validate(migrated);
+        Assert.True(result.IsValid, result.Describe());
+
+        var current = ManifestJson.Deserialize(ManifestJson.Serialize(withArrival));
+        Assert.DoesNotContain(current.Checkpoints, checkpoint => checkpoint.Kind == FloorArrival.CheckpointKind);
+        Assert.False(ManifestValidator.Validate(current).IsValid);
+    }
+
     /// <summary>A version-5 native file that already states an integrity keeps it:
     /// the console mark a version-5 recorder wrote is a reading, and the migration
     /// carries it as it was.</summary>

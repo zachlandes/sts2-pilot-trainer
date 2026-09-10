@@ -283,6 +283,71 @@ public sealed class PlaybackTransportTests
             "Makes the rest of the choices, pausing on each one.", transport.Surface.Play.TooltipBody);
     }
 
+    /// <summary>
+    /// A run restored to a floor watched none of the decisions before it, so the
+    /// counter names the floor rather than counting them and draws no pips. The window
+    /// says nothing in words, so the floor is the whole of what it says. Every control
+    /// that moves the run is refused exactly as it is when the fight opens after a
+    /// walk: this is the same state with a different origin.
+    /// </summary>
+    [Fact]
+    public void ARunRestoredToAFloorNamesTheFloorInPlaceOfACount()
+    {
+        var facts = new TransportFacts(
+            NaveGreed, [], null, StepsTaken: 17, Count: 17, AtCombatStart: true, Arrived: false, Lit: false,
+            NextOptionCount: null, LookingBackAt: null, Playing: false, NoteShown: false,
+            PlaybackSpeed.Normal, AnythingPlayed: false, RestoredToFloor: 3);
+
+        var transport = PlaybackTransport.For(JourneyPhase.Watching, facts);
+
+        Assert.NotNull(transport);
+        Assert.Equal(TransportMode.Opening, transport.Mode);
+        Assert.Equal("Floor 3", transport.Counter.Numerals);
+        Assert.False(transport.Counter.ShowPips);
+        Assert.Equal(3, transport.Counter.RestoredToFloor);
+        Assert.Equal(string.Empty, transport.Note);
+        Assert.False(transport.Surface.Note);
+        foreach (var control in new[] { transport.Back, transport.Play, transport.Step })
+        {
+            Assert.False(control.Enabled);
+        }
+    }
+
+    /// <summary>A walked run opening its fight says nothing about restoring: the fact is
+    /// absent, and the counter counts as it always did.</summary>
+    [Fact]
+    public void AWalkedRunOpeningItsFightStillCounts()
+    {
+        var transport = For(JourneyPhase.Watching, atCombatStart: true);
+
+        Assert.Null(transport.Counter.RestoredToFloor);
+        Assert.Equal("2 of 2", transport.Counter.Numerals);
+        Assert.True(transport.Counter.ShowPips);
+        Assert.Equal(string.Empty, transport.Note);
+    }
+
+    /// <summary>The wait for a save to be materialised happens before any run exists,
+    /// and the derivation is total over it: nothing is drawn, as for Starting.</summary>
+    [Fact]
+    public void PreparingDrawsNothingLikeStarting()
+    {
+        var facts = new TransportFacts(
+            NaveGreed, [], null, 0, 0, false, false, false, null, null, false, false,
+            PlaybackSpeed.Normal, false);
+
+        Assert.Null(PlaybackTransport.For(JourneyPhase.Preparing, facts));
+        Assert.Null(PlaybackTransport.For(JourneyPhase.Starting, facts));
+    }
+
+    /// <summary>A counter over nothing reads as nothing, which is what the strip draws
+    /// for it; only a restored run gets words there without a count.</summary>
+    [Fact]
+    public void ACounterOverNoDecisionsReadsAsNothing()
+    {
+        Assert.Equal(string.Empty, new TransportCounter(0, 0, null).Numerals);
+        Assert.False(new TransportCounter(0, 0, null).ShowPips);
+    }
+
     /// <summary>With nothing played there is no attempt to finish, so the end is
     /// refused, silently, rather than producing an empty result. One action clears
     /// it.</summary>

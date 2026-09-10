@@ -101,6 +101,31 @@ player's save progress and which this run needs to be the recording's complete o
 See [environment identity](environment-identity.md) on why a supplied progress model
 is not a reading of anybody.
 
+**A fight past the first is reached by the game's own continue path, from the recording's own save.**
+The client issues four decisions and none inside a fight, so the walk reaches the first fight and no further.
+`RetailPlayback.RouteTo` says how each boundary is reached - walked, restored, restored then walked, or not at all, naming the decision that stops it - from the recording alone, and the run library offers on that answer while `RecordedFightRun.Start` executes it.
+A restore is the retail continue handler's own sequence, split the way the new-run path is split.
+`GameSession.PrepareRestoreInRunningGame` reads the save with the game's own reader, `RunState.FromSerializable`, awaits `RunManager.SetUpSavedSingleplayer` and puts `ShouldSave` back to false; the mod then initialises the reaction container's networking with a fresh `NetSingleplayerGameService` and awaits the public `NGame.LoadRun(runState, preFinishedRoom)`, which preloads, launches, puts the scene up, generates the map and loads into the latest map coordinate with the save's own pre-finished room.
+Every retail route into a run initialises that networking immediately before the load, so this one does too rather than guessing which of the handler's steps matter.
+`SetUpSavedSingleplayer` awaits `SaveManager.IncrementNumReloads`, which is a write of the run save; it is on `ProfileWriteBarrier`'s list by name and the barrier is raised before the route is chosen, so inside a trainer run it completes without touching the disk.
+The engine half is awaited rather than blocked on for exactly that reason: a write that did happen would post its continuation back to the game's thread.
+The save comes from the mod's own store, `snapshots/cache` under `RunmobileStore`, keyed by `SnapshotCacheKey` as the headless cache is, and the mod never writes into it.
+Where none is cached the packaged arbiter is run once, in its own process with its workspace pointed at the `snapshots` subtree, exactly as the publication gate runs it; it replays the history to the arrival, restores the save in a fresh process, and writes the cache only once the restored state reproduced the digest the recording declares.
+That wait is `JourneyPhase.Preparing`, a phase before any run exists, and the transport draws nothing for it: it is parented to a run's own interface, and there is no run yet.
+What is drawn instead is a plate of this mod's own, and it is the only drawing there is.
+`RestoringNotice.For` in `Sts2PilotTrainer.Trainer` derives the headline from the phase alone - it is the whole of what is known then - and `RestoringOverlay` in the mod parents a scrim and one centred line under `NGame` rather than under a run, saying `Restoring your run` with an ellipsis that animates.
+The indicator is indeterminate, and that is a measurement rather than a shortcut: the packaged arbiter prints the floors it arrived on only after its replay has finished, so a floor-by-floor bar would need a channel out of that subprocess this build does not have.
+The client's own `res://scenes/screens/main_menu/loading_overlay.tscn` was borrowed here for a while and is not any more: it ships with `visible = false` on its root, so borrowing it drew a present-but-invisible surface over the whole wait - the blank screen the notice exists to remove - and it was the one half of the surface no test process could execute.
+The native loading-screen backdrop is what that costs; a follow-up may borrow the scene again with its visibility handled and an in-client capture behind it.
+The wait itself is bounded by `PackagedArbiter.SnapshotTimeout` at three minutes, which is the restore path's own bound and not the publication gate's fifteen: a gate replays a whole run with nobody watching, while this one is a player looking at an indeterminate notice this build gives them no way to call off.
+A materialisation that outlives it is killed, and the journey is abandoned in the player's own terms through `TrainerCopy.CouldNotRestoreYourRun` rather than by quoting a replay that was cut off mid-sentence.
+The first retail proof of that route found two things the headless suite could not, because every headless run of the arbiter happens inside a worktree with a shell's environment.
+The headless sandbox resolved its default root in its type initializer by finding the worktree, and a game installation has none, so the packaged arbiter died in that initializer before `EngineInitialization` could hand it the sandbox the mod had named; the default is now resolved on first use, and `PackagedArbiterTests` runs the built arbiter from a copy outside any worktree.
+And the game sets `SENTRY_GODOT_LIB_PATH` in its own process at runtime, which every child inherits and the game assembly's initializer acts on by loading Sentry's native library into a process with no Godot in it: dead from a terminal, stood still inside a type initializer from the client.
+`PackagedArbiter.StartInfo` leaves every `SENTRY_`-prefixed variable out of the child's environment, and its test holds that against a process that has one set.
+The restored run is bound, hashed and proved at the boundary the way a walked one is, and the transport says `Floor n` in place of a count of decisions nobody was shown; that window says nothing in words, after a restore as after a walk.
+`ClientCommands` is the table that says, per verb the client issues, which screen handler the retail button reaches, whether the driver calls the engine member or the host supplies the screen's command, and which members the deviation lock holds; `RecordedFightModule` refuses on its `Verify()` the way the recorder refuses on a renamed member.
+
 **Nothing this run does can be persisted.**
 `shouldSave: false` gates the run save and everything at the end of a run, and it
 does not gate two writes this fight's path reaches: winning a combat calls
@@ -286,6 +311,7 @@ Installing this mod turns the game's full console on: `NDevConsole` reads `ModMa
 The recording is still written to `user://Runmobile/recordings/`, because it is what the player played; what it is not is evidence anybody else can act on, since what a console command did to the state is not among the decisions the history holds.
 From format v6 the field is required, and `unmapped` is its third value: a recorder that met a decision it could not name stops there through `RunCapture.MarkUnmapped`, writes what it met to the journal as a stop line and to the manifest as `source.native.unmapped`, and records nothing past it - a prefix that skipped a decision and carried on would replay into a run that never made it.
 A version-5 recording states no integrity; the migration reads it as `complete` and says so in `migrated_from_version`, because a version-5 recorder refused rather than stopping at anything it could not name.
+It also states no map coordinate at a floor arrival, because the version-5 recorder never sampled one, and the validator refuses an arrival nothing proves; the same in-memory reading derives that checkpoint at every floor arrival the file declares, through `FloorArrival` from the map move the boundary names, marked inferred with its reasoning. The recordings a player made with that recorder are exactly the files in the store, so without it the library offered every one of them and the entry refused every one.
 The runtime that decides a decision is unmapped is not in this build; the format, the capture and the journal line are, so that build changes no file shape.
 
 **Every decision is read either side.**
@@ -947,7 +973,7 @@ The list keeps the settled compatibility filter and online sharing behavior rath
 The container holds one modal, so every step replaces the last, and the ribbon would otherwise drop a player out of the library from wherever they had got to.
 Each `LibraryPage` carries its way back rather than relying on a modal stack: an opened run returns to the tab and selection that opened it, and the submit flow returns to its selected Mine run.
 Only the browser itself, which is the screen a player enters on, closes the library.
-The tab travels as a bool because the way back ends up in a lambda's captured fields, and a captured `LibraryTab` has stopped this mod loading once already.
+The tab travels as a bool because the way back ends up in a lambda's captured fields, and a captured `LibraryTab` has stopped this mod loading once already; an async method's state machine has the same exposure through its awaiters, which is why the restore route awaits plain tasks and reads the entry back off a field.
 
 ## Four surfaces, and the hook each one needs
 
@@ -1072,6 +1098,10 @@ played through and its comparison.
 [demo/RUNMOBILE-MAIN-MENU.md](../demo/RUNMOBILE-MAIN-MENU.md) has the main-menu row on a
 zero-run profile, the library it opens, the settings control that hides it, and a
 progressed profile with no row and its Compendium card intact.
+[demo/RUNMOBILE-RESTORE-IN-CLIENT.md](../demo/RUNMOBILE-RESTORE-IN-CLIENT.md) has Continue pressed on
+the player's own version-5 recording and a later fight reached by restoring the recording's own save
+at the recorded digest - fight 4 on the head this branch ends on, after fight 2 on the head before it
+was rebased - with the defects those presses found on the way and the ledger after them.
 
 ### Keeping runs, and removing them
 
@@ -1095,7 +1125,7 @@ A file that is there and is not a settings object is refused rather than written
 
 Three properties hold, and each is asserted rather than described.
 Every file removed came back from `RecordingLibrary` as part of a recording written under the name this build writes, so a player's own file in that directory, a manifest they copied in, and this mod's `settings.json` all survive a purge.
-Every removal goes through `RunmobileStore.Remove`, which refuses a path outside the store, a path inside a game installation and a directory, exactly as a write does.
+Every removal of a recording's file goes through `RunmobileStore.Remove`, which refuses a path outside the store, a path inside a game installation and a directory, exactly as a write does; the snapshot cache directories the packaged arbiter wrote for a run go with the run through `RunmobileStore.RemoveTree`, the same removal the publication workspace uses, and a purge takes every one of them, the continuable run's included - a snapshot is of the recording's run and never of the live save.
 And the moment is the singleplayer menu: the shell's own patch asks for retention first and unconditionally, ahead of any question about which modules contributed a card and ahead of the adoption it attempts only where there is a card to draw, because keeping and removing a player's files is the shell's duty.
 `RunmobileMod.EnsureAdopted` asks for it again, so the recorder's own first adopted moment is covered too, and asking twice costs nothing: it is applied once per save profile whoever asks.
 No journal is being appended to when it runs - the recorder opens one only after passing that same adoption gate, and it has let go of the run it was recording before the singleplayer menu can be reached again - so a removal can never race a journal.
@@ -1117,6 +1147,8 @@ What it reads is a sum, and the sum goes through the containment gate.
 `RunmobileStore.SizeOf` measures one entry through `PathOf`, exactly as `Read` does, and refuses a directory the way `Remove` does; a file that is not there occupies nothing, so a run removed between the listing and the measuring is not a hole in the figure.
 `RecordingRetention.OnDisk` is what sums it, because that is already the one place that knows where recordings live and which files each is made of - a surface that listed the directory for itself would be a second thing to keep in step with the removal.
 It measures only what `RecordingLibrary` recognises, so the figure is what this mod's own runs take rather than what is in the directory.
+The snapshots those same runs have cached are summed with them, through `SnapshotStore.SizeOf` and file by file through the same gate, because Remove takes them with the run and a figure that left them out would promise less than the press frees.
+A cache directory whose record this build cannot read names no run, so it is in neither the sum nor the removal, and only a purge takes it.
 
 `MyRunsRow.For` derives every line, the same way `PlaybackTransport.For` derives the transport, and for the same reason: the policy's number, the disk's number and what a removal just did are three facts that can disagree, and a surface where each control set its own label would eventually show a reading taken before an act beside a receipt taken after it.
 The reading after a removal is re-taken from the disk rather than predicted, so a purge that left the continuable run's journal behind reads as the one run it actually left.

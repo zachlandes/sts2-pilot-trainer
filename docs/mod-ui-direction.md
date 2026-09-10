@@ -100,6 +100,15 @@ Looking back, with a ledger of the decisions already made hung beneath - it exis
 Step is offered there and walks the view forward through the ledger rather than committing, so its tooltip drops the sentence promising a commit; the counter and the caption still say which decision is on screen.
 A control's tooltip is part of what it is: one that names an action it does not perform is the same defect as one that cannot be pressed.
 Opening, between the last recorded choice and the fight it leads to: the tag stays exactly where it was and everything that would move the run is refused, because a run with nothing left to commit must not still be offering to commit it. The speed control is not refused there - it does not move the run.
+On a run restored to a floor rather than walked there, Opening is the first state the tag is in, and its counter reads the floor - `Floor 3` - with no pips, because a count of decisions would be the tag claiming somebody watched them.
+The window stays wordless, as it is after a walk: the floor is the whole of what it says.
+Preparing, before that, is the wait for the save to be materialised, and the tag draws nothing there because there is no run for it to hang under yet.
+What is drawn instead is not the tag at all but a plate of this mod's own: `RestoringNotice` in `Sts2PilotTrainer.Trainer` derives the headline from the phase, and `RestoringOverlay` in the mod parents a scrim and one centred line under `NGame` rather than under a run, at the native heading role, with an ellipsis that animates.
+One drawing, and this is it.
+The client's own `res://scenes/screens/main_menu/loading_overlay.tscn` was borrowed here for a while and is not any more: that scene ships hidden - its root is saved with `visible = false` - so borrowing it drew a present-but-invisible surface over the whole wait, which is the blank screen this surface exists to remove, and it was the half no test process could execute.
+What was dropped with it is the native loading-screen backdrop; a follow-up may borrow the scene again with its visibility handled and an in-client capture behind it.
+That plate is the one surface here that will draw its line at Godot's own size rather than refuse, and only where the native reading itself fails; every other surface refuses instead, and this one refusing would be the blank screen again.
+The indicator is indeterminate on purpose: the packaged arbiter prints its floor arrivals only once the replay it is doing has finished, so a floor-by-floor bar would need a channel out of that subprocess that this build does not have.
 Between screens, the window between committing one decision and revealing the next: look back, play and step are all refused, on the same rule and for the same reason - a press there acts on a state nobody has been shown, and the reveal that follows discards it a frame later.
 The one exception is play once it is already running: it is drawn as pause there and pause is never refused, because it stops the run rather than moving it.
 The speed control is offered, as it is in Opening.

@@ -35,7 +35,8 @@ The comparison puts the two fights side by side, won or lost: summary figures, t
 The two lines stay distinct by colour and marker and nothing scores either one.
 Built and shown in the retail client; [demo/PLAYBACK-TRANSPORT.md](demo/PLAYBACK-TRANSPORT.md) and [demo/VISUAL-COMPARISON.md](demo/VISUAL-COMPARISON.md) have the screenshots.
 Today that is one featured run, and both its menu card and the run library open its first fight.
-Later entry points remain visible but disabled until the client can replay the fights before them.
+A later fight is opened too, where the run's own save at the floor it was dealt on can be restored - that skips the decisions before it rather than walking them.
+The entry points neither reaches, the floors between fights, remain visible but disabled until the client can replay the fights before them.
 - **Coming soon:** more featured runs, from more creators, named on the page.
 - **Coming soon:** every screen between fights carried on the playback controls, so a featured run plays through as one journey.
 - **Coming soon:** watch the creator's own fight played through, and peek at it mid-fight if you choose to.
@@ -60,7 +61,8 @@ The arbiter enters fight 2 of that recording headlessly and reproduces the recor
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
 Settings show how much space recordings take, how many are kept, remove them on request, control whether the shared-run index is fetched, and let the player show or hide Runmobile on the main menu; index fetching defaults on.
 No setting shares a run automatically.
-Your recordings appear under Mine and can be played from their reachable first fight, credited as **Your run** throughout playback.
+Your recordings appear under Mine and can be played from any fight the client reaches - the first one walked, and every later one whose floor the run's own save can be restored to - credited as **Your run** throughout playback.
+Restoring takes a minute or so while the fight's save is materialised, with a notice on screen saying so.
 This build does not carry a recorded comparison line for them, so after the fight the comparison row states that instead of comparing against the included recording.
 - **Coming soon:** a control for turning recording itself off.
 
@@ -72,7 +74,7 @@ Both buttons open the same library.
 Its parchment browser has two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
 Each run row shows its character, act reached and leading relics, while the selected run's pane adds its complete relics, recorded deck count and a strip of the floors it reached.
 Opening that run makes the strip selectable and offers **Play from this floor**, **Continue** to the next unplayed fight, and **Start the run over** wherever the recording proves an entry point the client can reach.
-On this build only a supported first-fight prefix can be reachable; later rows stay visible and disabled with the reason that the client cannot yet replay the preceding fights.
+On this build the first fight is reached by walking the recording's decisions and a later fight by restoring the run's own save at the floor it was dealt on; a floor between fights has no such save, so its row stays visible and disabled with the reason that the client cannot yet replay the preceding fights.
 A native run under Mine is credited as **Your run**, while one received under Others is credited neutrally as **This run** because recordings carry no player identity.
 Long run strips page through fixed-width cells, open on the page containing the selected or last replayed floor, and let a focused Previous or Next control use the game's keyboard or controller confirm or select binding.
 [demo/RUNMOBILE-MAIN-MENU.md](demo/RUNMOBILE-MAIN-MENU.md) shows both defaults and the settings override in the retail client.
@@ -284,10 +286,11 @@ engine-produced values, and is what `--floor` is demonstrated on:
 [demo/RECORDED-FIGHT-ENTRY.md](demo/RECORDED-FIGHT-ENTRY.md) has it with its real
 output.
 
-A floor arrival can also be reached from the game's own save at that floor instead of by walking the decisions that lead to it.
+A floor arrival can also be reached from the game's own save at that floor instead of by walking the decisions that lead to it, and so can the fight the same move dealt.
 `./scripts/arbiter floor-snapshot <manifest> --floor <n>` materialises that snapshot, keyed by the whole history that produced it and cached only once a restore in a fresh process has reproduced the digest the recording declares.
-`enter-fight --floor <n> --restore` then uses it, and replays as usual where no such snapshot is there.
+`enter-fight --floor <n> --restore` and `enter-fight --fight <n> --restore` then use it, and replay as usual where no such snapshot is there.
 The boundary is proved the same way either way; only arrivals with a live fight are cached, and [docs/native-replay-format.md](docs/native-replay-format.md) owns why.
+Inside the game the same restore is how `Runmobile` stands a player in any fight of their own run past the first: the packaged arbiter materialises the save under the mod's store and the game's own continue path loads it.
 
 `./scripts/arbiter` with no arguments lists the rest: `gate`, `validate`,
 `engine-commands`, `verify-seed`, `determinism`, `negative-controls`,

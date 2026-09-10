@@ -194,6 +194,13 @@ So the cache is materialisable today for the whole-act fixture, for the native
 recordings and for the shipped video reconstruction; which of their arrivals are
 *eligible* is the live-fight split above, not this requirement.
 
+A snapshot binds by the moment it was taken at rather than by the plan's kind.
+A floor arrival and the combat start the same map move dealt carry one digest, because `RunCoverage` derives both from one engine state, so `FloorEntrySnapshot.Binds` accepts any plan whose boundary is at the snapshot's own action and whose declared digest equals the verified one.
+`enter-fight --fight n --restore` therefore restores a fight past the first from its arrival's save, and where no snapshot is cached at the boundary's own action it replays the prefix instead.
+Restoring to an earlier arrival and walking the decisions after it is walking through a fight, which nothing on this build does, so no command asks for it.
+Measured on both committed player-made recordings: every fight past the first is a floor arrival with a live fight, snapshots, and restores to the fight's own combat-start digest; every floor between fights is refused by the eligibility rule.
+`RetailPlayback.RestorableArrivals` is the manifest's reading of that split - a floor entry with a combat start declared at the same action - and `OwnRunPlaybackTests` holds it against `floor-snapshot`'s own verdict on both recordings.
+
 ### What this does not establish
 
 - **Act 1 only.** Every boundary measured sits at `act_index` 0, because no committed
@@ -201,11 +208,15 @@ recordings and for the shipped video reconstruction; which of their arrivals are
   arrival in a later act is gated by the digest like any other, so shipping it is safe;
   how often it *works* is unmeasured. `act_index` is recorded in every snapshot so the
   question stays answerable.
-- **Headless, not the retail client.** The restore runs in `EngineHost`, and the
-  presentation half of `NGame.LoadRun` is skipped, exactly as the combat-start probe skips
-  it. `GameSession.RestoreSavedRun` refuses to run inside a running game for that reason:
-  continuing a run in the client is the client's own path through its main menu, and it
-  has not been measured.
+- **The measurement is headless; the client path mirrors the retail handler.** The
+  restore measured here runs in `EngineHost`, and the presentation half of `NGame.LoadRun`
+  is skipped, exactly as the combat-start probe skips it. Inside the client
+  `GameSession.PrepareRestoreInRunningGame` does the handler's engine half and the mod
+  awaits the public `NGame.LoadRun` for the rest, with the save's own `preFinishedRoom`
+  and the reaction container's networking initialised as the handler initialises it. The
+  save it continues is the same verified snapshot, materialised by the packaged arbiter
+  into the mod's store; the run is proved at the boundary the way a walked one is, and
+  `protected-files.sh compare` is how "the client wrote nothing" is measured for it.
 - **A save this host collected, not a save file on disk.** The interception takes
   `RunManager.ToSave(preFinishedRoom)` at the game's own call site, upstream of the
   `ShouldSave` gate `RunSaveManager` consults. For a snapshot produced from a replay that

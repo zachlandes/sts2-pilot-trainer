@@ -99,7 +99,7 @@ internal static partial class Commands
         // is not simply is not used.
         var asked = PlanFor(recording, args);
         string restoreSource;
-        string? restoreFrom;
+        RestorableSave? restoreFrom;
         if (Args.Has(args, "--restore"))
         {
             restoreFrom = SnapshotToRestoreFrom(recording, asked, cacheDir, out restoreSource);
@@ -112,7 +112,8 @@ internal static partial class Commands
 
         using var entry = restoreFrom is null
             ? RecordedFightEntry.StartHeadless(recording, asked, progress)
-            : RecordedFightEntry.RestoreHeadless(recording, (FloorEntryPlan)asked, restoreFrom, progress);
+            : RecordedFightEntry.RestoreHeadless(
+                recording, asked, restoreFrom.SaveJson, restoreFrom.AfterSeq, progress);
         var plan = entry.Plan;
         Console.WriteLine($"entry           : {restoreSource}");
 
@@ -332,39 +333,41 @@ internal static partial class Commands
             .ParseFightOrFloor(Args.Value(args, "--fight"), Args.Value(args, "--floor"))
             .PlanFor(recording);
 
+    /// <summary>A verified save to restore from, and the action it was taken after.</summary>
+    private sealed record RestorableSave(string SaveJson, int AfterSeq);
+
     /// <summary>
     /// The game's own save this entry may be restored from, or null to walk the
     /// recording's decisions instead.
     ///
+    /// The snapshot asked for is the one at the boundary's own action, for any kind of
+    /// plan: a fight's start and the floor arrival the same move dealt are one moment,
+    /// and <see cref="FloorEntrySnapshot.Binds"/> binds by that moment. An earlier
+    /// arrival is not asked for, because restoring to one and walking the decisions
+    /// after it is walking through a fight, which nothing on this build does.
+    ///
     /// Null for every reason a cache can fail to answer, and each of them is an ordinary
-    /// thing rather than a defect: nothing has been materialised here, the boundary is a
-    /// fight's rather than a floor's, the cached snapshot is of another history or
-    /// another build, or the file on disk is not the one that was verified. What it must
-    /// never do is hand back a save that does not belong to this exact prefix of this
-    /// exact recording, so every field the key summarises is compared in the open rather
-    /// than inferred from the directory having been found.
+    /// thing rather than a defect: nothing has been materialised here, the cached
+    /// snapshot is of another history or another build, or the file on disk is not the
+    /// one that was verified. What it must never do is hand back a save that does not
+    /// belong to this exact prefix of this exact recording, so every field the key
+    /// summarises is compared in the open rather than inferred from the directory having
+    /// been found.
     ///
     /// A snapshot that binds is still not trusted: it is restored, and the state it
     /// reaches is compared against what the recording observed and the digest it
     /// declares, exactly as a walked entry is. See docs/native-replay-format.md.
     /// </summary>
-    private static string? SnapshotToRestoreFrom(
+    private static RestorableSave? SnapshotToRestoreFrom(
         ReplayManifest recording, IBoundaryPlan plan, string cacheDir, out string source)
     {
-        if (plan is not FloorEntryPlan)
-        {
-            source =
-                $"replayed - {plan.Describe()} is not a floor arrival, and only a floor arrival is stored as " +
-                "a serialized run";
-            return null;
-        }
-
+        var where = plan.Describe();
         var snapshot = FloorEntrySnapshot.Read(plan.SnapshotKey, cacheDir);
         if (snapshot is null)
         {
-            source =
-                "replayed - no floor-entry snapshot has been materialised for this history under " +
-                $"{plan.SnapshotKey.ToCacheDirectoryName()}; run floor-snapshot to make one";
+            source = Replayed(
+                $"no floor-entry snapshot has been materialised for {where} under " +
+                $"{plan.SnapshotKey.ToCacheDirectoryName()}");
             return null;
         }
 
@@ -372,7 +375,7 @@ internal static partial class Commands
         var refusals = snapshot.Binds(recording, plan, identity.BuildVersion, identity.Commit);
         if (refusals.Count > 0)
         {
-            source = "replayed - the cached snapshot does not bind: " + string.Join(" ", refusals);
+            source = Replayed($"the cached snapshot for {where} does not bind: {string.Join(" ", refusals)}");
             return null;
         }
 
@@ -380,15 +383,19 @@ internal static partial class Commands
             snapshot.SavePathIn(plan.SnapshotKey.ResolveCacheDirectory(cacheDir)));
         if (snapshot.SaveIntegrity(saveJson) is { } damaged)
         {
-            source = "replayed - " + damaged;
+            source = Replayed(damaged);
             return null;
         }
 
         source =
-            $"restored from the game's own save at {plan.Describe()}, cached under " +
+            $"restored from the game's own save at {where}, cached under " +
             $"{plan.SnapshotKey.ToCacheDirectoryName()}, verified at {snapshot.VerifiedDigest}";
-        return saveJson;
+        return new RestorableSave(saveJson, plan.BoundarySeq);
     }
+
+    /// <summary>What the entry source reads where the cache could not answer. Every
+    /// reason is an ordinary one, so it says which and what would make one.</summary>
+    private static string Replayed(string reason) => $"replayed - {reason}; run floor-snapshot to make one";
 
     /// <summary>
     /// Plays the recording's own fight through the player-side capture and compares

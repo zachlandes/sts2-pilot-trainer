@@ -14,12 +14,14 @@ internal static partial class Commands
     /// evidence as a side effect of looking at it, and the moment a file changes has to
     /// be a moment a person chose.
     ///
-    /// Without <c>--derive-boundaries</c> it copies and never derives. A version-5
-    /// native manifest gains the integrity it could not state and a note that it was
-    /// migrated, and nothing else: the option keys a version-5 recorder never read are
-    /// not invented, and the boundaries a manifest never had are facts about what the
-    /// engine did, so inventing either from the shape of a history would be exactly
-    /// the plausible wrong answer this project exists to prevent.
+    /// Without <c>--derive-boundaries</c> it writes what the reader read and never
+    /// replays. A version-5 native manifest gains the integrity it could not state, a
+    /// note that it was migrated, and at each floor arrival it already declares the
+    /// checkpoint its recorder could not sample, derived from its own map move the way
+    /// the validator re-derives it. Nothing else: the option keys a version-5 recorder
+    /// never read are not invented, and the boundaries a manifest never had are facts
+    /// about what the engine did, so inventing either from the shape of a history
+    /// would be exactly the plausible wrong answer this project exists to prevent.
     ///
     /// With it, the run is replayed through the real engine and every boundary the
     /// history passes is written in with the digest that replay produced. Still a

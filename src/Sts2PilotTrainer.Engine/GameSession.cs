@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
+using MegaCrit.Sts2.Core.Saves.Runs;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Engine;
@@ -26,9 +27,20 @@ namespace Sts2PilotTrainer.Engine;
 public sealed class GameSession
 {
     private RunState? _runState;
+    private SerializableRoom? _preFinishedRoom;
 
     public RunState RunState => _runState
         ?? throw new EngineException("No run has been started in this session.");
+
+    /// <summary>
+    /// The room the save this session was restored from had already finished, or null
+    /// for a run this session started, or a save taken at a floor arrival.
+    ///
+    /// Held because <c>NGame.LoadRun</c> takes it beside the run state, and the mod
+    /// must hand the game what the save said rather than a null that re-rolls the
+    /// room; see <see cref="RestoreSavedRun"/> on why that argument is load-bearing.
+    /// </summary>
+    public SerializableRoom? PreFinishedRoom => _preFinishedRoom;
 
     /// <summary>Whether the game would save this run if it asked to. False on both
     /// routes into a session, and read rather than asserted because "this host never
@@ -132,9 +144,8 @@ public sealed class GameSession
         if (EngineHost.Origin == EngineOrigin.RunningGame)
         {
             throw new EngineException(
-                "This is a running retail client, and continuing a run there is the client's own path through " +
-                "its main menu rather than this one. Restoring a snapshot inside the client has not been " +
-                "measured; see docs/native-replay-format.md.");
+                "This is a running retail client, and the headless restore path launches a run with no scene " +
+                "behind it. Use PrepareRestoreInRunningGame and let the game's own LoadRun finish the launch.");
         }
 
         if (_runState is not null)
@@ -144,15 +155,7 @@ public sealed class GameSession
 
         EngineHost.Start();
 
-        var read = JsonSerializationUtility.FromJson<SerializableRun>(saveJson);
-        var save = read.SaveData;
-        if (!read.Success || save is null)
-        {
-            throw new EngineException(
-                $"The game's own reader refused this save ({read.Status}): {read.ErrorMessage ?? "no detail"}. " +
-                "A run that cannot be read back is not a run that can be restored.");
-        }
-
+        var save = ReadSave(saveJson);
         var runState = RunState.FromSerializable(save);
 
         // The same restoration StartRun makes, for the same reason and scoped the same
@@ -169,6 +172,96 @@ public sealed class GameSession
             AbstractRoom.FromSerializable(save.PreFinishedRoom, runState)).GetAwaiter().GetResult();
 
         _runState = runState;
+        _preFinishedRoom = save.PreFinishedRoom;
+    }
+
+    /// <summary>
+    /// Continues a run from a save inside the retail client and stops where
+    /// presentation begins.
+    ///
+    /// The sibling of <see cref="PrepareRunInRunningGame"/> for the retail client's
+    /// own continue path, and split the same way. The main menu's continue handler
+    /// reads the save, calls <see cref="RunState.FromSerializable"/> and
+    /// <c>RunManager.SetUpSavedSingleplayer</c>, initialises the reaction container's
+    /// networking, and then awaits the public <c>NGame.LoadRun</c> - which preloads,
+    /// launches, puts the run's scene on screen, generates the map and loads into the
+    /// latest map coordinate with the save's own pre-finished room. This reproduces the
+    /// engine half and stops; the caller drives the game's own <c>LoadRun</c> with the
+    /// run state returned here and <see cref="PreFinishedRoom"/>.
+    ///
+    /// Awaited rather than blocked on, because <c>SetUpSavedSingleplayer</c> awaits
+    /// the save manager's reload count, which is a write of the run save. The in-game
+    /// host's profile write barrier answers that write as already complete while a
+    /// trainer run is live - it is on the barrier's list by name - and this method
+    /// neither knows nor checks that: it is the mod's to raise before anything here
+    /// runs, and <c>protected-files.sh</c> is how "nothing was written" is measured.
+    /// Blocking on the task instead would deadlock the game's main thread on a
+    /// continuation posted back to it wherever the write does happen.
+    ///
+    /// The retail path creates its run saving, so <see cref="StopSavingThisRun"/> puts
+    /// it back before this returns, as the headless restore does. The discovery-order
+    /// override is not applied: inside the retail client the game's own answer is the
+    /// right one, exactly as <see cref="PrepareRunInRunningGame"/> leaves it.
+    /// </summary>
+    public async Task<RunState> PrepareRestoreInRunningGame(string saveJson)
+    {
+        if (EngineHost.Origin != EngineOrigin.RunningGame)
+        {
+            throw new EngineException(
+                "There is no running game to continue a run inside. This path is for the in-game host; the " +
+                "headless host builds its own engine and restores runs through RestoreSavedRun.");
+        }
+
+        if (_runState is not null)
+        {
+            throw new EngineException("This session already has a run. Start a fresh process for a fresh run.");
+        }
+
+        if (RunInProgressRefusal() is { } inProgress) throw new EngineException(inProgress);
+
+        var save = ReadSave(saveJson);
+        var runState = RunState.FromSerializable(save);
+
+        await RunManager.Instance.SetUpSavedSingleplayer(runState, save);
+        StopSavingThisRun();
+
+        _runState = runState;
+        _preFinishedRoom = save.PreFinishedRoom;
+        return runState;
+    }
+
+    /// <summary>
+    /// The refusal a run already in progress earns, or null where the game has none.
+    ///
+    /// One sentence for both ways into a run, and public so that a host can ask before
+    /// it starts waiting rather than only when it is ready to build. The restore route
+    /// spends up to a couple of minutes materialising a save before it reaches
+    /// <see cref="PrepareRestoreInRunningGame"/>, and a player held behind a notice for
+    /// that long and then told they were never eligible has been refused at the wrong
+    /// moment. Both preparations still ask, because a host that forgot to is not
+    /// allowed to build a run over somebody else's.
+    /// </summary>
+    public static string? RunInProgressRefusal() =>
+        LocalEnvironment.ReadStartedRun() is not { } existing
+            ? null
+            : $"This game already has a run in progress ({existing.Seed}, ascension {existing.Ascension}). " +
+              "The recording's run cannot be started over it, and abandoning somebody's run is not this " +
+              "tool's decision. Finish or abandon it in the game, then start the recorded fight again.";
+
+    /// <summary>The game's own reader over a save, refused in its own words where it
+    /// refuses.</summary>
+    private static SerializableRun ReadSave(string saveJson)
+    {
+        var read = JsonSerializationUtility.FromJson<SerializableRun>(saveJson);
+        var save = read.SaveData;
+        if (!read.Success || save is null)
+        {
+            throw new EngineException(
+                $"The game's own reader refused this save ({read.Status}): {read.ErrorMessage ?? "no detail"}. " +
+                "A run that cannot be read back is not a run that can be restored.");
+        }
+
+        return save;
     }
 
     /// <summary>
@@ -238,13 +331,7 @@ public sealed class GameSession
             throw new EngineException("This session already has a run. Start a fresh process for a fresh run.");
         }
 
-        if (LocalEnvironment.ReadStartedRun() is { } existing)
-        {
-            throw new EngineException(
-                $"This game already has a run in progress ({existing.Seed}, ascension {existing.Ascension}). " +
-                "The recording's run cannot be constructed over it, and abandoning somebody's run is not this " +
-                "tool's decision. Finish or abandon it in the game, then start the recorded fight again.");
-        }
+        if (RunInProgressRefusal() is { } inProgress) throw new EngineException(inProgress);
 
         var runState = BuildRunState(
             seed, characterModelId, ascension, gameMode, actModelIds, progress, []);
