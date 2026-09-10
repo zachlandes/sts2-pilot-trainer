@@ -1,4 +1,4 @@
-# Continue into fight 2, restored from the recording's own save
+# Continue into a later fight, restored from the recording's own save
 
 *2026-09-09T21:29:29Z by Showboat 0.6.1*
 <!-- showboat-id: 54bb340e-9574-4278-b98f-195d7bab1abf -->
@@ -63,12 +63,12 @@ runmobile-restoring-your-run.png
 
 ![e8d1c719-2026-09-10](e8d1c719-2026-09-10.png)
 
-That press entered fight 2 at `combat_start:2`, `sha256:0079692657a84fd564e0ed3ea9d0f3c57aad9bc7cc4a59447803f84849297d38`, on 2026-09-09 at `4886ef7` - the first in-client entry, taken before this branch was rebased onto main; the press below on the current head proves the same thing at a later fight, so its log and capture are the ones kept.
+That press entered fight 2 at `combat_start:2`, `sha256:0079692657a84fd564e0ed3ea9d0f3c57aad9bc7cc4a59447803f84849297d38`, on 2026-09-09 at `4886ef7` - the first in-client entry, taken before this branch was rebased onto main; the press below on the fixed head proves the same thing at a later fight, so its log and capture are the ones kept.
 
 ## Proved again on the fixed head
 
 The ledger-role hotfix merged to main as #57 and is this branch's base commit, `6a5ace5`.
-The same installer built and installed this branch's head, `d0baf52`, on 2026-09-10, and the same isolated profile pressed Continue again on the player's own recording - now offering floor 7, fight 4, because the presses above had each recorded the fight they opened and nothing else.
+The same installer built and installed this branch's head at that point, `d0baf52`, on 2026-09-10, and the same isolated profile pressed Continue again on the player's own recording - now offering floor 7, fight 4, because the presses above had each recorded the fight they opened and nothing else.
 The arrival's save was already in the cache from an earlier press, so there was no wait: the run continued from it, the fight opened, and the mod stood in it at the digest the recording declares.
 
 ```
