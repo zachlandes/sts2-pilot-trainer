@@ -107,7 +107,23 @@ internal static class SnapshotStore
             return null;
         }
 
-        var snapshot = FloorEntrySnapshot.Parse(metadata, directory);
+        FloorEntrySnapshot snapshot;
+        try
+        {
+            snapshot = FloorEntrySnapshot.Parse(metadata, directory);
+        }
+        catch (Exception ex) when (ex is JsonException or ManifestException)
+        {
+            // A cache miss like any other, and it has to be: the only thing that
+            // rewrites a damaged record is the materialisation this refusal falls
+            // through to, so throwing here would refuse every later press the same way
+            // and the record would stay damaged. A record too old for this build to
+            // parse is the same case as one the schema field refuses.
+            whyNot =
+                $"the cached snapshot's own record under {plan.SnapshotKey.ToCacheDirectoryName()} could not " +
+                $"be read ({ex.GetType().Name}: {ex.Message})";
+            return null;
+        }
 
         var identity = GameIdentity.ReadForCurrentEngine();
         var refusals = snapshot.Binds(recording, plan, identity.BuildVersion, identity.Commit);

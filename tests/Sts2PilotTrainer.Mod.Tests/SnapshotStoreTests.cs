@@ -102,6 +102,29 @@ public sealed class SnapshotStoreTests : IDisposable
         Assert.Equal([($"{SnapshotStore.CacheDirectory}/stray", (string?)null)], SnapshotStore.Cached());
     }
 
+    /// <summary>
+    /// A record this build cannot read is a cache miss, not a refusal.
+    ///
+    /// Under the plan's own key rather than a stray directory, because this is the one
+    /// the press reads: a truncated write or a record from a build whose shape has
+    /// moved on would otherwise throw out of the read, past the materialisation that is
+    /// the only thing that rewrites it, and refuse every later press the same way.
+    /// </summary>
+    [Fact]
+    public void ARecordThisBuildCannotReadIsACacheMissRatherThanARefusal()
+    {
+        var recording = Recording();
+        var plan = FloorEntryPlan.For(recording, 3);
+        RunmobileStore.Write(
+            $"{SnapshotStore.CacheDirectory}/{plan.SnapshotKey.ToCacheDirectoryName()}/" +
+            FloorEntrySnapshot.MetadataFileName,
+            "{\"schema\":");
+
+        Assert.Null(SnapshotStore.Read(recording, plan, out var whyNot));
+        Assert.Contains("could not be read", whyNot, StringComparison.Ordinal);
+        Assert.Contains(plan.SnapshotKey.ToCacheDirectoryName(), whyNot, StringComparison.Ordinal);
+    }
+
     private static string Write(ReplayManifest recording, FloorEntryPlan plan, GameIdentity identity, string saveJson)
     {
         var declared = recording.BoundaryAt(ReplayBoundary.FloorEntryKind, floor: plan.FloorNumber)!.Digest.Value;

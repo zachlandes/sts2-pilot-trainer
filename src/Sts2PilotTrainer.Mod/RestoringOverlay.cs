@@ -167,16 +167,8 @@ internal static class RestoringOverlay
             // game's "Loading..." on it when it enters the tree, so a headline set
             // before that would be the one thing overwritten.
             parent.AddChild(overlay);
-            overlay.Visible = true;
             _overlay = overlay;
-
-            if (!overlay.IsVisibleInTree())
-            {
-                Log.Error(
-                    $"[{RunmobileMod.ModId}] this build's '{ScenePath}' is not on screen once asked to be; " +
-                    "drawing the restoring notice here instead", 2);
-                return false;
-            }
+            if (!SwitchOnTheBorrowedRoot(overlay)) return false;
 
             _borrowedLabel = overlay.GetNodeOrNull<MegaLabel>(LabelPath);
             if (_borrowedLabel is not null) return true;
@@ -193,6 +185,26 @@ internal static class RestoringOverlay
                 $"({ex.GetType().Name}: {ex.Message}); drawing it here instead", 2);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Switches a borrowed root on and says whether it is on screen once asked.
+    ///
+    /// The scene ships hidden - its root is saved with <c>visible = false</c> - and the
+    /// game's own callers hold it and set <c>Visible</c> when they show it, so this
+    /// does the same. Asking again afterwards is what covers the borrow that cannot be
+    /// shown at all, whatever is hiding it: present-but-invisible is the shape the
+    /// retail client drew, and it is indistinguishable from nothing.
+    /// </summary>
+    internal static bool SwitchOnTheBorrowedRoot(Control overlay)
+    {
+        overlay.Visible = true;
+        if (overlay.IsVisibleInTree()) return true;
+
+        Log.Error(
+            $"[{RunmobileMod.ModId}] this build's '{ScenePath}' is not on screen once asked to be; " +
+            "drawing the restoring notice here instead", 2);
+        return false;
     }
 
     /// <summary>This mod's own plate: a scrim over whatever is behind, and one line
