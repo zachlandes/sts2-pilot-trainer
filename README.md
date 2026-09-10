@@ -59,7 +59,7 @@ Three of the gate's conditions need a video, game-mode, seed-topology and eviden
 A fourth, baselib-path, is not asked either, and a weaker check stands in for it: the loaded mods' own declaration that they do not affect gameplay, which the gate's artifact says out loud.
 The arbiter enters fight 2 of that recording headlessly and reproduces the recorded digest byte for byte.
 Recording is on by default while the mod is unreleased; [docs/in-game-host.md](docs/in-game-host.md#producing-a-recording-and-checking-it) says how to turn it off.
-Settings show how much space recordings take, how many are kept, remove them on request, control whether the shared-run index is fetched, and let the player show or hide Runmobile on the main menu; index fetching defaults on.
+Settings show how much space recordings take, how many are kept, remove them on request, carry the **Show community runs** switch that controls whether the shared-run index is fetched, and let the player show or hide Runmobile on the main menu; showing community runs defaults on.
 No setting shares a run automatically.
 Your recordings appear under Mine and can be played from any fight the client reaches - the first one walked, and every later one whose floor the run's own save can be restored to - credited as **Your run** throughout playback.
 Restoring takes a minute or so while the fight's save is materialised, with a notice on screen saying so.
@@ -71,7 +71,8 @@ A player with no finished runs gets a Runmobile row on the main menu by default,
 A player with run history does not get that row by default and can instead use the Runmobile button in the Compendium's bottom row with Statistics and Run History.
 The settings page can show or hide the main-menu row for either player, overriding the run-count default.
 Both buttons open the same library.
-Its parchment browser has two tabs: Others - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
+Its parchment browser has two tabs: Community - the runs included with Runmobile, the featured ones and the recent ones, newest first - and Mine, your own recordings with a line under the list saying how many there are and what they take on this computer.
+With no sharing service configured, or with **Show community runs** off, the Community tab wears the game's own lock and says in one line what is missing and where the setting is; the runs included with Runmobile and any run opened by code are still listed under it.
 Each run row shows its character, act reached and leading relics, while the selected run's pane adds its complete relics, recorded deck count and a strip of the floors it reached.
 Opening that run makes the strip selectable and offers **Play from this floor**, **Continue** to the next unplayed fight, and **Start the run over** wherever the recording proves an entry point the client can reach.
 On this build the first fight is reached by walking the recording's decisions and a later fight by restoring the run's own save at the floor it was dealt on; a floor between fights has no such save, so its row stays visible and disabled with the reason that the client cannot yet replay the preceding fights.

@@ -38,8 +38,11 @@ internal sealed record ScreenRow(
     bool Selected = false, string? ActReached = null, string? Trailing = null,
     string? Character = null, bool Heading = false);
 
-/// <summary>One parchment tab across the top band.</summary>
-internal sealed record ScreenTab(string Label, bool Current, Action Press);
+/// <summary>One tab across the top band: the game's own settings tab.</summary>
+/// <param name="LockTooltip">The sentence behind the lock drawn over the tab, or null
+/// for a tab that is not locked. A locked tab is still pressable: what is behind it is
+/// what is there, and the lock says what is missing.</param>
+internal sealed record ScreenTab(string Label, bool Current, Action Press, string? LockTooltip = null);
 
 internal sealed record ScreenFilter(string Label, bool Checked, Action Toggle);
 
@@ -471,39 +474,29 @@ internal static class LibraryScreen
 
         var prototype = content.NoButton;
         var height = prototype.Size.Y;
-        var tabWidth = Math.Min(prototype.Size.X, area.Size.X * 0.17f);
+        // The game's own tab keeps its scene's proportions: at the ribbon's height
+        // where the band is wide enough for it, and shorter where the width cap binds,
+        // because a plate drawn narrower than 256:90 is a squashed plate
+        var tabWidth = Math.Min(height * LibraryTabArt.Aspect, area.Size.X * 0.2f);
+        var tabHeight = tabWidth / LibraryTabArt.Aspect;
         var at = area.Position.X;
         foreach (var tab in page.Tabs)
         {
-            var button = Duplicate(content, prototype, $"RunmobileTab{tab.Label}");
-            if (button is null) continue;
-
-            button.SetText(tab.Label);
-            button.Position = new Vector2(at, area.Position.Y);
-            button.Size = new Vector2(tabWidth, button.Size.Y);
-            button.CustomMinimumSize = button.Size;
-            button.Visible = true;
-
-            // The current tab is not pressable: pressing the tab you are on would
-            // rebuild the screen you are looking at, and a control that does nothing
-            // visible is a control a player presses twice. It is drawn at full weight
-            // and the others are dimmed, which is what says which one you are on.
-            if (tab.Current)
-            {
-                button.MouseFilter = Control.MouseFilterEnum.Ignore;
-                button.FocusMode = Control.FocusModeEnum.None;
-            }
-            else
-            {
-                button.Modulate = new Color(1f, 1f, 1f, 0.6f);
-                var press = tab.Press;
-                button.Connect(
-                    NClickableControl.SignalName.Released,
-                    Callable.From<NButton>(_ => Reopen(press)));
-                focusable.Add(button);
-            }
-
-            at += tabWidth * 1.04f;
+            // The current tab is selected and takes no press, as the game's own tab
+            // manager leaves it: pressing the tab you are on would rebuild the screen
+            // you are looking at. It still hovers, because the game's tabs do, but it
+            // is no controller stop - a press there does nothing, and the game's own
+            // tabs are not stops either. The other one is, because this band has no
+            // shoulder hotkeys and focus is the only controller route to it. A locked
+            // tab is still opened - the lock says what is missing from it and hides
+            // nothing that is there.
+            var press = tab.Press;
+            var button = LibraryTabArt.Add(
+                content, $"RunmobileTab{tab.Label}", tab.Label, tab.Current, tab.LockTooltip,
+                new Rect2(at, area.Position.Y + ((height - tabHeight) / 2f), tabWidth, tabHeight),
+                tab.Current ? null : () => Reopen(press));
+            if (!tab.Current) focusable.Add(button);
+            at += tabWidth + (height * 0.17f);
         }
 
         if (page.CodeSubmitted is { } submitted)
@@ -936,6 +929,9 @@ internal static class LibraryScreen
         if (prototype.Duplicate(duplicateFlags) is not NPopupYesNoButton button) return null;
 
         button.Name = name;
+        // Own materials first: a hover on one duplicate must light that one alone
+        LibraryRibbonArt.OwnMaterials(
+            LibraryRibbonArt.Part(button, "%Image"), LibraryRibbonArt.Part(button, "%Outline"));
         // The retail button caches its visual nodes and materials in _Ready
         if (ribbonWidth is { } width) LibraryRibbonArt.ReplaceTextures(button, width);
         content.AddChild(button);

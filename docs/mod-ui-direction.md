@@ -70,6 +70,9 @@ The candidates a designer should know exist, in `MegaCrit.Sts2.Core.Nodes.Common
 | `NTickbox`, `NDropdownContainer`, `NSearchBar` | Settings-screen furniture, for a catalogue rather than a transport. |
 | `NGenericPopup` + `NVerticalPopup` | The modal the trainer's refusal and eligibility screens already use. The captain's judgement is that the modals are the part that already feels right. |
 | `NSelectionReticle` (`Nodes.Combat`) | The ring the game puts round a controller-focused map node. |
+| `NSettingsTab` (`Nodes.Screens.Settings`, scene `scenes/screens/settings_tab.tscn`) | The squared tab the settings screen and the stats screen's Statistics and Achievements tabs are: stroked outline on the selected one, half-cream label going cream on selection and gold on hover, a hover scale on the whole plate. Instantiable from its scene, which the library's tabs now are. |
+| `submenu_lock.png` (`images/ui/main_menu`) | The lock the stats screen lays over its disabled Achievements tab, centred and overhanging the plate. The library's Community tab wears it while it is short of a service or the setting. |
+| `images/ui/run_history/<room>.png` + `_outline.png` | The run-history screen's floor icons, drawn by `NMapPointHistoryEntry` at 0.7 of a 60 box with the outline behind at a quarter of black. The library's run strip wears them per floor kind. |
 
 **There is no playback iconography in the game's own art.**
 No play, pause, step or skip glyph family appears in the resource paths the assembly references.
@@ -185,6 +188,30 @@ The look-back ledger measures its page from the viewport in the same way, and th
 The settings row is inserted into the modding entry's parent column immediately after that entry.
 It asks the container for height and never for width, then lays itself out again after the container sorts because the settings screen has not been laid out when its `_Ready` runs.
 `demo/RUNMOBILE-NATIVE-TYPE.md` records current retail captures of the library, refusal popup, and settings row, and names the surfaces that still require manual navigation for an in-client capture.
+
+## The library's borrowed furniture
+
+The captain's judgement on the first library was that its tabs read as buttons and its floor strip as a row of specks, and that the game already had the shapes.
+Three of them are borrowed rather than drawn, and the rule for each is the same: the game's own node or image where one exists, instantiated or loaded and never redrawn; the mod's own glyph only where the game has none.
+
+**The tabs are `NSettingsTab`**, the scene behind the stats screen's Statistics and Achievements tabs, at the scene's own 256:90 proportions and the ribbon's height, or shorter where a narrow window caps the width, because the proportions outrank the height.
+Selected and deselected through the tab's own `Select` and `Deselect`, exactly as `NStatsTabManager` does it, so the outline, the label weight and the hover are the game's.
+The current tab is selected and takes no press; it still hovers, as the game's do, but it is not a focus stop, and the other tab is - this band has no shoulder hotkeys, so focus is the only controller route to it.
+
+**The lock is the stats screen's**: `submenu_lock.png` over the Community tab, in the proportions `stats_screen.tscn` gives it over the Achievements tab, with the reason in the tab's tooltip.
+A locked tab here is still pressable, which is the one departure from the stats screen and is deliberate: what is behind it - the runs included with Runmobile and any run looked up by code - is still there, and the list is drawn as usual under it.
+The lock is the icon, its hover tooltip and one line over the tabs saying in plain words what is missing and where the setting is; nothing is laid over the list, because a player who cannot see the runs cannot press them.
+`CommunityLock.For` is the one derivation of both sentences.
+
+**The floor markers are the run-history screen's** icons, per floor kind, with the outline behind at the history entry's own quarter of black; the mod's hollow ring stands in only for a kind nothing established or an icon a build has not got.
+The played tick is the mod's own, filled and on a disc, hung off the icon's top-right corner where the history entry hangs its quest badge, and the numeral is under the marker with clear space rather than on it.
+`LibraryPaneArt.CellGeometry` is the one place the four parts of a cell are placed and the tests hold them apart.
+
+**Every duplicated ribbon owns its materials.**
+The retail popup button lights up by writing to its image's HSV shader and its outline's blend mode, and a `Duplicate` shares both with its prototype; one hover then lit the tab, the row and the pane's ribbon at once.
+`LibraryRibbonArt.OwnMaterials` copies both before the duplicate enters the tree, so a highlight is on the control it acts on and nowhere else.
+
+`demo/RUNMOBILE-UI-NATIVE-PASS.html` is what all of this looks like running in the player's client: every state captured, with a caption, in one self-contained page.
 
 ## What a redesign owns, and what it does not
 

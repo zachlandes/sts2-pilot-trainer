@@ -858,12 +858,12 @@ honest answer is no recording rather than the first of them - a plate offering t
 run's fights would stand somebody in a fight they never had.
 
 **The parchment browser is one measured page with a list and selected-run pane.**
-The browser duplicates the popup's own second ribbon for its tabs and rows, then gives each duplicate's hotkeys up immediately.
+Its tabs are the game's own `NSettingsTab`, instantiated from that scene; the rows are duplicates of the popup's own second ribbon, and each duplicate gives its hotkeys up immediately.
 For widened rows, `LibraryRibbonArt` replaces the ribbon's image and outline with nine-patches before the button's `_Ready` caches those nodes and their materials.
 Their outer quarters retain native horizontal resolution while the middle stretches; narrow rows reduce the margins to fit.
 The retail textures have different atlas padding, which `NinePatchRect` omits, so `LibraryRibbonArt` first reconstructs each logical texture in memory with its padding intact.
 Those derived textures are reused for the source texture's lifetime and never written to disk.
-The retail HSV and outline blend materials still receive the button's focus and press animations, and the selected run keeps its separate ink outline.
+The retail HSV and outline blend materials still receive the button's focus and press animations, on each duplicate's own copy of them, and the selected run keeps its separate ink outline.
 `NHotkeyManager` is a stack, so five rows all binding confirm would mean the key pressing whichever was pushed last rather than the one a player is looking at.
 The keys stay with the panel's ribbon and the rows are reached by focus.
 `LibraryScreen` measures the band, the list, the divider, the selected-run pane and the flat plate from the game's own panel nodes, so a build that changes the popup's layout moves the library with it.
@@ -919,13 +919,13 @@ The shell's permission to draw is asked first and a no draws nothing at all - no
 **The Compendium entry is present whenever the shell may draw.**
 It occupies the authored slot the game leaves when it hides Leaderboards, so the three visible bottom destinations remain inside the viewport and in the game's controller focus chain.
 It duplicates the Run History treatment, replaces its label, and loads the same packaged wagon used by the mod list.
-The browser is the only route to automatic index retrieval and direct run-code lookup, so an empty local library and a disabled `Fetch the run index` setting cannot hide it.
+The browser is the only route to automatic index retrieval and direct run-code lookup, so an empty local library and a disabled `Show community runs` setting cannot hide it.
 It reads no manifest and performs no network request merely to decide visibility.
 `RunLibrary.RecordingFor` resolves one run from the recorder's directory index - the id names the recording in the index, so pressing a row costs that recording's manifest and no other's, and a manifest whose own run id disagrees with its name answers nothing rather than answering with the wrong run.
 
 The browser still judges every run before showing it, and an empty or unavailable index is shown on that surface rather than represented by removing the way in.
 Its build reading comes from `GameIdentity.ReadForCurrentEngine`: the running client is its own authority in retail, while only a headless process consults the receipted prepared copy.
-Its player-facing tabs are Others and Mine; the Featured and Recent groups sit under Others.
+Its player-facing tabs are Community and Mine; the Featured and Recent groups sit under Community.
 The visible `Compatible with your game version` filter defaults on and hides incompatible runs during ordinary browsing.
 Turning the filter off reveals incompatible runs as disabled rows.
 An exact code does that automatically, selects its run in the sorted position, and shows both the required build and the current build.
@@ -964,7 +964,7 @@ Only after that local publication gate passes does submitting send the complete 
 Index fetching and exact-code lookup use that same configured service boundary; the `fetch_run_index` setting defaults on and controls index retrieval only.
 
 **The accepted parchment design is the implemented furniture.**
-The browser draws parchment tabs, headed groups, the two-line filter header, character portraits, the selected run's act reached, the run strip, relic icons and the recorded deck count.
+The browser draws the game's own squared tabs on its parchment, headed groups, the two-line filter header, character portraits, the selected run's act reached, the run strip, relic icons and the recorded deck count.
 The opened run uses the same pane drawing, adds deck tiles where the recording carries them, and keeps the selected floor ringed and loaded floors ticked.
 `RunHistoryPlateArt` hangs the flat plate beneath the game's own history pane.
 The list keeps the settled compatibility filter and online sharing behavior rather than introducing another owner for either.

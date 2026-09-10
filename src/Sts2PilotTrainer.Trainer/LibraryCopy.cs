@@ -23,7 +23,7 @@ namespace Sts2PilotTrainer.Trainer;
 /// a floor. A fight ordinal travels on a row for the entry to use and is never
 /// written.</para>
 ///
-/// <para><b>The run noun.</b> What a player has is runs - Others, Mine, "{n} runs".
+/// <para><b>The run noun.</b> What a player has is runs - Community, Mine, "{n} runs".
 /// "Recording", "manifest" and "journal" are this project's internal words for
 /// the file, and a player never sees one.</para>
 ///
@@ -48,7 +48,7 @@ public static class LibraryCopy
     // ── The browser ────────────────────────────────────────────────────────
 
     /// <summary>Runs anybody made. The tab a player opens on.</summary>
-    public const string CommunityTab = "Others";
+    public const string CommunityTab = "Community";
 
     /// <summary>Runs of the player's own, which the recorder wrote.</summary>
     public const string MyRunsTab = "Mine";
@@ -155,7 +155,25 @@ public static class LibraryCopy
 
     public const string CompatibleFilter = "Compatible with your game version";
 
-    public const string FetchRunIndex = "Fetch the run index";
+    public const string ShowCommunityRuns = "Show community runs";
+
+    /// <summary>Behind the lock on the Community tab while the setting is off. One
+    /// sentence, because a tooltip is read in passing; it names the setting by its own
+    /// label and says where it is.</summary>
+    public const string CommunityOffTooltip =
+        $"Community runs are off. Turn on \"{ShowCommunityRuns}\" in Settings, under Modding, to see them here.";
+
+    /// <summary>The one line over the tabs while the setting is off: the whole
+    /// instruction in a sentence, because a line the panel may have to shorten is a
+    /// line whose second half a player never reads.</summary>
+    public const string CommunityOffBody =
+        $"Community runs are off - turn on {ShowCommunityRuns} in Settings, under Modding, to see them.";
+
+    /// <summary>The same lock when no sharing service is configured: nothing a setting
+    /// can change, so the tooltip and the body line say what is missing rather than
+    /// pointing at a switch.</summary>
+    public const string CommunityUnavailableTooltip =
+        "Community runs are unavailable: no authorized sharing service is configured.";
 
     /// <summary>
     /// The main-menu row itself: the mod's own name, the same word the Compendium card
@@ -274,7 +292,7 @@ public static class LibraryCopy
 
     /// <inheritdoc cref="LookupNotFoundTitle"/>
     public const string LookupNotFound =
-        "Nothing here is that run. Check the code, or open Others and pick a run from the list.";
+        "Nothing here is that run. Check the code, or open Community and pick a run from the list.";
 
     /// <summary>Leaves any of the lookup's answers.</summary>
     public const string Back = "Back";
@@ -364,7 +382,7 @@ public static class LibraryCopy
 
     /// <summary>Why the run's first floor is not a floor to play from: it is where
     /// starting the run over already puts you.</summary>
-    public const string RunStartsHere = "the run starts here";
+    public const string RunStartsHere = $"the run begins on this floor · use {StartTheRunOver}";
 
     /// <summary>
     /// Why a place further into the run offers nothing yet: getting there means

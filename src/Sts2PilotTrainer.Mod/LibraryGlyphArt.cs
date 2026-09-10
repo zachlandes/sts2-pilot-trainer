@@ -14,10 +14,12 @@ namespace Sts2PilotTrainer.Mod;
 /// something this player did.
 ///
 /// They are the mod's own art and not the game's for the reason the transport's are:
-/// the game has no map-node glyph small enough to sit in a strip cell, no crown that
-/// is not part of a run-summary scene, and no free-standing tick. Where the game does
-/// have the art - a relic's icon, a card's portrait - this mod uses the game's, which
-/// is <c>ModelArt</c>'s job and not this one.
+/// the game has no crown that is not part of a run-summary scene and no free-standing
+/// tick. Where the game does have the art - a relic's icon, a card's portrait, the
+/// run-history screen's floor icons - this mod uses the game's, which is
+/// <c>ModelArt</c>'s and <c>FloorMarkerArt</c>'s job and not this one; the hollow
+/// floor glyphs here stand in only for a kind nothing established or an icon a build
+/// has not got.
 /// </summary>
 internal enum LibraryGlyph
 {
@@ -42,6 +44,10 @@ internal enum LibraryGlyph
 
     /// <summary>Filled: this player has stood in this floor's fight.</summary>
     Played,
+
+    /// <summary>A filled disc, the backing the played badge sits on so it reads over
+    /// whatever marker it hangs off.</summary>
+    Disc,
 
     /// <summary>The ring round the strip's selected cell. Hollow: selecting only
     /// looks.</summary>
@@ -135,6 +141,8 @@ internal static class LibraryGlyphArt
 
         // Filled: it is something this player did.
         LibraryGlyph.Played => [GlyphArt.Shape.Fill("Tick", [new(6, 16), new(13, 23), new(26, 8), new(13, 19.5f)])],
+
+        LibraryGlyph.Disc => [GlyphArt.Shape.Fill("Disc", GlyphArt.Circle(16, 16, 15))],
 
         LibraryGlyph.Selected =>
             [GlyphArt.Shape.Outline("Ring", GlyphArt.Circle(16, 16, 14), closed: true)],

@@ -1,0 +1,33 @@
+protected files (must not change):
+  changed  mods/Runmobile/Runmobile.dll
+  changed  mods/Runmobile/Sts2PilotTrainer.Engine.dll
+  changed  mods/Runmobile/Sts2PilotTrainer.IO.dll
+  changed  mods/Runmobile/Sts2PilotTrainer.Replay.dll
+  changed  mods/Runmobile/Sts2PilotTrainer.Trainer.dll
+  changed  mods/Runmobile/arbiter/GodotSharp.dll
+  changed  mods/Runmobile/arbiter/GodotSharp.pdb
+  changed  mods/Runmobile/arbiter/Sts2PilotTrainer.Engine.dll
+  changed  mods/Runmobile/arbiter/Sts2PilotTrainer.Engine.pdb
+  changed  mods/Runmobile/arbiter/Sts2PilotTrainer.IO.dll
+  changed  mods/Runmobile/arbiter/Sts2PilotTrainer.IO.pdb
+  changed  mods/Runmobile/arbiter/Sts2PilotTrainer.Replay.dll
+  changed  mods/Runmobile/arbiter/Sts2PilotTrainer.Replay.pdb
+  changed  mods/Runmobile/arbiter/Sts2PilotTrainer.Trainer.dll
+  changed  mods/Runmobile/arbiter/Sts2PilotTrainer.Trainer.pdb
+  changed  mods/Runmobile/arbiter/lib/prepared-assembly.json
+  changed  mods/Runmobile/arbiter/sts2-arbiter.dll
+  changed  mods/Runmobile/arbiter/sts2-arbiter.pdb
+
+user://Runmobile/ (this mod's own store):
+  nothing
+
+the game's own churn (written on any launch, mod or not):
+  added    user/logs/godot2026-09-09T14.55.43.log
+  added    user/logs/godot2026-09-09T15.00.27.log
+  added    user/logs/godot2026-09-09T15.02.57.log
+  added    user/logs/godot2026-09-09T15.05.14.log
+  changed  user/logs/godot.log
+  removed  user/logs/godot2026-09-09T13.48.32.log
+  removed  user/logs/godot2026-09-09T14.01.40.log
+  removed  user/logs/godot2026-09-09T14.21.48.log
+  removed  user/logs/godot2026-09-09T14.25.07.log

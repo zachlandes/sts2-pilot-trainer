@@ -1,0 +1,30 @@
+{
+  "head_captured": "7f34edd88f29dc199eec0ce8e9169bf4a520ef87",
+  "packaged_and_installed_runmobile_sha256": "ad24a227f38478345c84f645e1795f3ed47e7673869ad14e0fbdb4c4e50d1afb",
+  "retail": {
+    "game_build": "v0.111.0",
+    "arguments": [
+      "--force-steam=off"
+    ],
+    "profile": "isolated non-Steam test profile (default/1, profile1)",
+    "mods_loaded": "Runmobile only (Loaded 1 mods)",
+    "console_locked_before_launch": false,
+    "client_exited": true,
+    "bound_awake_assertion_exited": true,
+    "successful_after_protected_files_changed": "only mods/Runmobile, the installed head itself",
+    "successful_after_runmobile_store_changed": false,
+    "successful_after_game_churn": "logs only",
+    "states": {
+      "community-unavailable": "no sharing_service_url in the store's settings.json (default)",
+      "community-setting-off": "sharing_service_url set to a placeholder HTTPS URL, fetch_run_index false, written by hand into the isolated store for the capture and removed after",
+      "community-unlocked": "same URL, fetch_run_index true through the settings row's own toggle"
+    },
+    "note": "The client instance that was quit before the second rebuild aborted during teardown (SIGABRT in std::terminate after SIGTERM); macOS reported it as a crash. Every capture is from a later, healthy instance."
+  },
+  "images": {
+    "demo/RUNMOBILE-UI-NATIVE-PASS.html": {
+      "sha256": "0f447f13d33e27ca6746049706a811cfaa5f48f8751360f045b6a00b0cfb84f7",
+      "processing": "JPEG quality 82 at 1400 wide, embedded as data URIs"
+    }
+  }
+}

@@ -39,6 +39,10 @@ internal static class LibraryPalette
     /// red, and the one place the plate raises its voice.</summary>
     internal static readonly Color Red = new(0.878f, 0.459f, 0.353f);
 
+    /// <summary>The game's own text cream (<c>StsColors.cream</c>), for a mark drawn on
+    /// the teal that means "something you did".</summary>
+    internal static readonly Color Cream = new(1f, 0.964f, 0.886f);
+
     /// <summary>The game's own gold rarity frame, as the strip's Boon mark.</summary>
     internal static readonly Color Gold = new(0.847f, 0.706f, 0.353f);
 

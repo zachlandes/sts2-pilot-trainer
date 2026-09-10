@@ -10,6 +10,28 @@ internal readonly record struct GameTextStyle(
     Font? BoldFont = null,
     bool? LocaleBold = null)
 {
+    /// <summary>
+    /// How tall a sentence stands once wrapped to a width, in the font that will draw
+    /// it.
+    ///
+    /// Counting the newlines in the text is not enough: every sentence the mod draws
+    /// wraps by width, so a panel sized from the text alone runs short and cuts the
+    /// sentence off mid-word. Measured here in one place so a break flag changed for
+    /// one surface reaches the others. With no font - which is a test, and nothing in
+    /// the client - the caller's own estimate stands, because what a surface guesses
+    /// there is its own business.
+    /// </summary>
+    internal float WrappedHeight(string text, float width, float fallbackHeight) =>
+        Font is { } font
+            ? font.GetMultilineStringSize(
+                text,
+                HorizontalAlignment.Left,
+                width,
+                Size,
+                maxLines: -1,
+                brkFlags: TextServer.LineBreakFlag.Mandatory | TextServer.LineBreakFlag.WordBound).Y
+            : fallbackHeight;
+
     internal T ApplyTo<T>(T control)
         where T : Control
     {

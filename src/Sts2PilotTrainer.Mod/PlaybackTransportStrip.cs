@@ -1394,23 +1394,14 @@ internal sealed class PlaybackTransportStrip
     /// Counting the newlines in the text is not enough. Every sentence this tag says
     /// is wrapped by width, so a panel sized from the text alone runs short and cuts
     /// the sentence off mid-word - which is what the once-only note and the look-back
-    /// tooltip both did in the client. Measured with the font that will draw it;
-    /// with no font, which is every test here and nothing in the client, the caller's
-    /// own line count stands.
+    /// tooltip both did in the client. Measured by
+    /// <see cref="GameTextStyle.WrappedHeight"/> with the font that will draw it; with
+    /// no font, which is every test here and nothing in the client, the caller's own
+    /// line count stands.
     /// </summary>
     private static float WrappedHeight(
-        string text, GameTextStyle style, float width, int fallbackLines)
-    {
-        if (style.Font is not { } font) return fallbackLines * LineHeight * style.Size;
-
-        return font.GetMultilineStringSize(
-            text,
-            HorizontalAlignment.Left,
-            width,
-            style.Size,
-            maxLines: -1,
-            brkFlags: TextServer.LineBreakFlag.Mandatory | TextServer.LineBreakFlag.WordBound).Y;
-    }
+        string text, GameTextStyle style, float width, int fallbackLines) =>
+        style.WrappedHeight(text, width, fallbackLines * LineHeight * style.Size);
 
     private static Color Rgb(int red, int green, int blue, float alpha = 1f) =>
         new(red / 255f, green / 255f, blue / 255f, alpha);

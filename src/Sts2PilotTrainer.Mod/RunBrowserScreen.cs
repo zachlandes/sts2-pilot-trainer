@@ -78,6 +78,9 @@ internal static class RunBrowserScreen
                 selectedEntryId: selected,
                 submitAvailable: RunLibrary.SharingAvailable);
 
+            var showCommunityRuns = RunmobileSettings.Read().FetchRunIndex;
+            if (!showCommunityRuns) ForgetIndexFailure();
+            var locked = CommunityLock.For(RunLibrary.SharingAvailable, showCommunityRuns);
             var rows = ListRows(browser, community);
             var selectedRow = rows
                 .Select((row, index) => (row, index))
@@ -87,7 +90,7 @@ internal static class RunBrowserScreen
 
             LibraryScreen.Show(new LibraryPage(
                 LibraryCopy.CompendiumCard,
-                Tabs(community),
+                Tabs(community, locked),
                 LibraryCopy.ListHeader(),
                 rows,
                 Pane(browser, community, stripPage),
@@ -100,7 +103,7 @@ internal static class RunBrowserScreen
                         !compatibleOnly)),
                 CodeSubmitted: code => Look(code, !community),
                 CodePlaceholder: LibraryCopy.RunCodeField,
-                Body: BrowserStatus(),
+                Body: BrowserStatus(community ? locked : null),
                 ListFooter: BrowserFooter(browser),
                 ListFooterTooltip: browser.NotShownTooltipBody,
                 SelectedRow: selectedRow));
@@ -111,12 +114,13 @@ internal static class RunBrowserScreen
         }
     }
 
-    /// <summary>The two parchment tabs across the band. The one you are on is drawn at
-    /// full weight and takes no press; the other crosses to itself with nothing
-    /// selected, because a run of one tab is not a run of the other.</summary>
-    private static IReadOnlyList<ScreenTab> Tabs(bool community) =>
+    /// <summary>The two tabs across the band. The one you are on is selected and takes
+    /// no press; the other crosses to itself with nothing selected, because a run of
+    /// one tab is not a run of the other. Community wears the lock while it is short of
+    /// a service or the setting, with the reason behind it.</summary>
+    private static IReadOnlyList<ScreenTab> Tabs(bool community, CommunityLock? locked) =>
     [
-        new(LibraryCopy.CommunityTab, community, () => OpenTab(LibraryTab.Community)),
+        new(LibraryCopy.CommunityTab, community, () => OpenTab(LibraryTab.Community), locked?.Tooltip),
         new(LibraryCopy.MyRunsTab, !community, () => OpenTab(LibraryTab.MyRuns)),
     ];
 
@@ -217,8 +221,18 @@ internal static class RunBrowserScreen
     private sealed record IndexRequest(
         int Tab, bool CompatibleOnly, string? SelectedEntryId, long Surface, string Scope);
 
-    private static string? BrowserStatus()
+    /// <summary>
+    /// The one line over the tabs accounting for what the list is not showing.
+    ///
+    /// A locked Community tab says why it is locked and nothing else: a fetch this
+    /// sitting failed is not what a player is looking at once the setting is off, and
+    /// two accounts of one empty list is worse than the one that is still true.
+    /// <paramref name="locked"/> is the same <see cref="CommunityLock"/> the tab's
+    /// tooltip came from, so the hover and the line cannot give different reasons.
+    /// </summary>
+    private static string? BrowserStatus(CommunityLock? locked)
     {
+        if (locked is { } reason) return LibraryMarkup.Dim(reason.Body);
         if (!RunLibrary.SharingAvailable)
             return LibraryMarkup.Dim(LibraryCopy.SharingServiceUnavailable);
 
@@ -228,6 +242,17 @@ internal static class RunBrowserScreen
             ? LibraryMarkup.Dim(failure)
             : null;
     }
+
+    /// <summary>Drops a fetch failure this sitting recorded. A player who has turned
+    /// the setting off attempts no fetch, so a failure from before it is a line about
+    /// something that is no longer being tried.</summary>
+    private static void ForgetIndexFailure()
+    {
+        indexFailure = null;
+        indexFailureScope = null;
+    }
+
+
 
     /// <summary>
     /// The list, one row per run, in the groups the browser put them in.

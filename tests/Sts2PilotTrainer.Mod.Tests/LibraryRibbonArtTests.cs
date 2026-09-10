@@ -58,3 +58,42 @@ public sealed class LibraryRibbonArtTests
         Assert.Equal(Control.MouseFilterEnum.Ignore, patch.MouseFilter);
     }
 }
+
+public sealed class LibraryRibbonMaterialTests
+{
+    /// <summary>
+    /// A hover on one row lit every ribbon on the screen: the duplicates shared the
+    /// prototype's two materials, and the retail button lights up by writing to them.
+    /// Each duplicate now carries its own, so a highlight is on the control it acts on.
+    /// </summary>
+    [Fact]
+    public void EachDuplicateCarriesItsOwnHoverMaterials()
+    {
+        var sharedImage = new ShaderMaterial();
+        var sharedOutline = new CanvasItemMaterial();
+        var first = (new TextureRect { Material = sharedImage }, new TextureRect { Material = sharedOutline });
+        var second = (new TextureRect { Material = sharedImage }, new TextureRect { Material = sharedOutline });
+
+        LibraryRibbonArt.OwnMaterials(first.Item1, first.Item2);
+        LibraryRibbonArt.OwnMaterials(second.Item1, second.Item2);
+
+        Assert.NotSame(sharedImage, first.Item1.Material);
+        Assert.NotSame(sharedOutline, first.Item2.Material);
+        Assert.NotSame(first.Item1.Material, second.Item1.Material);
+        Assert.NotSame(first.Item2.Material, second.Item2.Material);
+        Assert.IsType<ShaderMaterial>(first.Item1.Material);
+        Assert.IsType<CanvasItemMaterial>(first.Item2.Material);
+    }
+
+    [Fact]
+    public void ARibbonWithNoMaterialIsLeftAlone()
+    {
+        var image = new TextureRect();
+        var outline = new TextureRect();
+
+        LibraryRibbonArt.OwnMaterials(image, outline);
+
+        Assert.Null(image.Material);
+        Assert.Null(outline.Material);
+    }
+}

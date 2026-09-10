@@ -17,9 +17,10 @@ namespace Sts2PilotTrainer.Mod;
 /// one of them and a strip in the other from drifting apart.
 ///
 /// <para><b>The game's art where the game has it, the mod's where it does not.</b> A
-/// relic is the game's own icon and a card is the game's own portrait, both through
-/// <see cref="ModelArt"/>, so this mod ships no resource pack. A strip cell, a tick, a
-/// ring and a crown are <see cref="LibraryGlyphArt"/>'s, because the game has no
+/// relic is the game's own icon, a card is the game's own portrait, and a floor's
+/// marker is the run-history screen's own icon, through <see cref="ModelArt"/> and
+/// <see cref="FloorMarkerArt"/>, so this mod ships no resource pack. A tick, a ring
+/// and a crown are <see cref="LibraryGlyphArt"/>'s, because the game has no
 /// free-standing glyph at that size to borrow. Where a piece of the game's art is
 /// missing on this build, the name is written where the picture would have been -
 /// which is the honest answer and never the wrong picture.</para>
@@ -32,15 +33,50 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class LibraryPaneArt
 {
-    /// <summary>How big a strip cell is, as a share of the strip's own height. The
-    /// selected ring is drawn in the rest of it.</summary>
-    private const float CellShare = 0.62f;
-
     /// <summary>How many card tiles a row of the deck holds before it wraps.</summary>
     private const int TilesPerRow = 8;
 
-    private const float MinimumStripPitch = 28f;
-    private const float StripBottomSpace = 1.55f;
+    /// <summary>
+    /// The narrowest a strip column may be: the run-history screen's own 60-unit floor
+    /// entry. A marker narrower than the game draws it stops being the game's icon and
+    /// becomes a speck - measured in the client at 46, where the played badge was a dot -
+    /// so the strip pages sooner rather than draw one.
+    /// </summary>
+    private const float MinimumStripPitch = 60f;
+
+    /// <summary>The icon box as a share of the column. The rest is the gap between
+    /// neighbours, so two markers never touch.</summary>
+    private const float IconShare = 0.78f;
+
+    /// <summary>The icon box is capped against the numeral under it, so a short strip
+    /// spread across a wide pane does not draw markers the size of relics.</summary>
+    private const float IconCapRatio = 2.6f;
+
+    /// <summary>The numeral's line, as a multiple of its size - the same line height
+    /// every other line of the mod's text stands at.</summary>
+    private const float NumeralLineRatio = 1.3f;
+
+    /// <summary>Clear space between the icon box and the numeral, as a share of the
+    /// box. The numeral is under the marker, never on it.</summary>
+    private const float NumeralGapShare = 0.2f;
+
+    /// <summary>The played badge's side as a share of the icon box, and how far past
+    /// the box's corner it sits: the run-history entry's own quest badge hangs off the
+    /// icon's top-right corner, and so does this.</summary>
+    private const float BadgeShare = 0.62f;
+    private const float BadgeOverhang = 0.4f;
+
+    /// <summary>The selected ring stands off the icon box by this share of it.</summary>
+    private const float RingStandoff = 0.1f;
+
+    /// <summary>The icon inside its box, and its outline behind it, as shares of the
+    /// box: the icon fills 0.8 of it and the outline 1.0, so the outline is a quarter
+    /// larger than the icon. Raised from the history entry's own 0.7 in a 60 box
+    /// because the strip's box is a share of a column and so smaller than 60.</summary>
+    private const float IconInBox = 0.8f;
+    private const float OutlineInBox = 1f;
+
+    private const float StripBottomSpace = 1.25f;
 
     internal readonly record struct StripLayout(
         int First, int Count, bool HasPrevious, bool HasNext, int Index, int Pages,
@@ -50,6 +86,17 @@ internal static class LibraryPaneArt
 
         internal int NextSlot => (HasPrevious ? 1 : 0) + Count;
     }
+
+    /// <summary>
+    /// Where each part of one strip cell is drawn, inside a box <c>Pitch</c> wide and
+    /// <c>Height</c> tall.
+    ///
+    /// The numeral is below the icon box with clear space between, the played badge
+    /// hangs off the box's top-right corner, and the selected ring stands off the box
+    /// - so nothing is drawn over the marker, which is what made the tick vanish and the
+    /// numeral collide with its ring before.
+    /// </summary>
+    internal readonly record struct StripCellGeometry(Rect2 Icon, Rect2 Numeral, Rect2 Badge, Rect2 Ring);
 
     internal static StripLayout LayoutStrip(
         int count, float width, int anchor, int lineSize, int? requestedPage = null)
@@ -61,12 +108,38 @@ internal static class LibraryPaneArt
             ? ScreenPage.For(count, places, requested)
             : ScreenPage.Containing(count, places, anchor);
         var pitch = page.Pages == 1 ? width / page.Count : width / places;
-        var cell = Math.Min(pitch * 0.9f, lineSize * 2.8f) * CellShare;
-        var height = cell / CellShare;
+        var cell = Math.Min(pitch * IconShare, lineSize * IconCapRatio);
+        var geometry = CellGeometry(pitch, cell, lineSize);
+        var height = geometry.Numeral.End.Y;
         var offset = (width - (page.Drawn * pitch)) / 2f;
         return new StripLayout(
             page.First, page.Count, page.HasPrevious, page.HasNext, page.Index,
             page.Pages, pitch, cell, height, offset);
+    }
+
+    internal static StripCellGeometry CellGeometry(StripLayout layout, int lineSize) =>
+        CellGeometry(layout.Pitch, layout.Cell, lineSize);
+
+    private static StripCellGeometry CellGeometry(float pitch, float cell, int lineSize)
+    {
+        var badge = cell * BadgeShare;
+        // The box starts under the badge's overhang and the ring's standoff, whichever
+        // reaches higher, so neither is clipped at the strip's top edge.
+        var top = Math.Max(badge * BadgeOverhang, cell * RingStandoff);
+        var icon = new Rect2((pitch - cell) / 2f, top, cell, cell);
+        var numeral = new Rect2(
+            0f, icon.End.Y + (cell * NumeralGapShare), pitch, lineSize * NumeralLineRatio);
+        // Off the corner, but never into the next column: the overhang is clamped at
+        // the column's edge so two neighbours' badges cannot meet
+        var badgeBox = new Rect2(
+            Math.Min(icon.End.X - (badge * (1f - BadgeOverhang)), pitch - badge),
+            icon.Position.Y - (badge * BadgeOverhang),
+            badge, badge);
+        var standoff = cell * RingStandoff;
+        var ring = new Rect2(
+            icon.Position.X - standoff, icon.Position.Y - standoff,
+            cell + (standoff * 2f), cell + (standoff * 2f));
+        return new StripCellGeometry(icon, numeral, badgeBox, ring);
     }
 
     /// <summary>
@@ -238,6 +311,7 @@ internal static class LibraryPaneArt
                     LibraryCopy.PreviousPage, () => previousPage(layout.Index - 1))));
         }
 
+        var geometry = CellGeometry(layout, line.Size);
         for (var index = layout.First; index < layout.First + layout.Count; index++)
         {
             var floor = pane.Strip[index];
@@ -254,33 +328,33 @@ internal static class LibraryPaneArt
             };
             content.AddChild(box);
 
-            var inset = (layout.Height - layout.Cell) / 2f;
-            var kind = LibraryGlyphArt.Of(
-                LibraryGlyphArt.For(floor.Kind),
-                "Kind",
-                layout.Cell,
-                floor.Playable ? LibraryPalette.Line : LibraryPalette.Line with { A = 0.45f });
-            kind.Position = new Vector2((layout.Pitch - layout.Cell) / 2f, inset);
-            box.AddChild(kind);
-            AddStripNumber(box, floor.Floor, layout, line);
+            AddMarker(box, floor, geometry.Icon);
+            AddStripNumber(box, floor.Floor, geometry.Numeral, line);
 
-            // Filled, over the cell: it is something this player did.
-            if (floor.Played)
-            {
-                var tick = LibraryGlyphArt.Of(
-                    LibraryGlyph.Played, "Played", layout.Cell * 0.7f, LibraryPalette.Teal);
-                tick.Position = new Vector2(
-                    (layout.Pitch - (layout.Cell * 0.7f)) / 2f,
-                    inset + (layout.Cell * 0.35f));
-                box.AddChild(tick);
-            }
-
+            // The ring stands off the marker rather than round the whole cell, so it
+            // reads as "this one" and not as a border on the numeral too.
             if (floor.Selected)
             {
                 var ring = LibraryGlyphArt.Of(
-                    LibraryGlyph.Selected, "Selected", layout.Height, LibraryPalette.Ink);
-                ring.Position = new Vector2((layout.Pitch - layout.Height) / 2f, 0f);
+                    LibraryGlyph.Selected, "Selected", geometry.Ring.Size.X, LibraryPalette.Ink);
+                ring.Position = geometry.Ring.Position;
                 box.AddChild(ring);
+            }
+
+            // Off the marker's corner, the way the history entry's own quest badge
+            // hangs off its icon: a teal disc, because it is something this player did
+            // and teal is that colour everywhere on this surface, with the tick in the
+            // game's own cream on it. A dark disc vanished against the parchment.
+            if (floor.Played)
+            {
+                var disc = LibraryGlyphArt.Of(
+                    LibraryGlyph.Disc, "PlayedDisc", geometry.Badge.Size.X, LibraryPalette.Teal);
+                disc.Position = geometry.Badge.Position;
+                box.AddChild(disc);
+                var tickSize = geometry.Badge.Size.X;
+                var tick = LibraryGlyphArt.Of(LibraryGlyph.Played, "Played", tickSize, LibraryPalette.Cream);
+                tick.Position = geometry.Badge.Position + ((geometry.Badge.Size - new Vector2(tickSize, tickSize)) / 2f);
+                box.AddChild(tick);
             }
 
             if (pane.SelectFloor is not { } select) continue;
@@ -333,16 +407,66 @@ internal static class LibraryPaneArt
             controls.LastOrDefault());
     }
 
-    /// <summary>The floor's number inside its own cell, in the native floor-numeral style.</summary>
-    private static void AddStripNumber(
-        Control box, int floor, StripLayout layout, GameTextStyle style)
+    /// <summary>
+    /// The floor's marker: the game's own run-history icon with its outline behind it,
+    /// or the mod's hollow ring where the kind is not established or the build has no
+    /// icon for it. Dimmed where the floor is not a place to stand.
+    /// </summary>
+    private static void AddMarker(Control box, RunStripCell floor, Rect2 icon)
+    {
+        var alpha = floor.Playable ? 1f : 0.45f;
+        if (FloorMarkerArt.Of(floor.Kind) is { } art)
+        {
+            var side = icon.Size.X * IconInBox;
+            var outlineSide = icon.Size.X * OutlineInBox;
+            var centre = icon.Position + (icon.Size / 2f);
+            if (art.Outline is { } outline)
+            {
+                // Ignore intrinsic size before assigning art or Godot keeps the texture's minimum
+                box.AddChild(new TextureRect
+                {
+                    Name = "Outline",
+                    ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                    StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                    Texture = outline,
+                    Position = centre - new Vector2(outlineSide, outlineSide) / 2f,
+                    Size = new Vector2(outlineSide, outlineSide),
+                    // The history entry's own quarter of black behind its icon
+                    Modulate = new Color(0f, 0f, 0f, 0.25f * alpha),
+                    MouseFilter = Control.MouseFilterEnum.Ignore,
+                });
+            }
+
+            box.AddChild(new TextureRect
+            {
+                Name = "Kind",
+                ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+                StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+                Texture = art.Icon,
+                Position = centre - new Vector2(side, side) / 2f,
+                Size = new Vector2(side, side),
+                Modulate = new Color(1f, 1f, 1f, alpha),
+                MouseFilter = Control.MouseFilterEnum.Ignore,
+            });
+            return;
+        }
+
+        var glyph = LibraryGlyphArt.Of(
+            LibraryGlyphArt.For(floor.Kind), "Kind", icon.Size.X,
+            LibraryPalette.Line with { A = alpha });
+        glyph.Position = icon.Position;
+        box.AddChild(glyph);
+    }
+
+    /// <summary>The floor's number under its marker, in the native floor-numeral style.</summary>
+    private static void AddStripNumber(Control box, int floor, Rect2 at, GameTextStyle style)
     {
         var label = new Label
         {
             Name = $"{box.Name}Floor",
             Text = floor.ToString(CultureInfo.InvariantCulture),
-            Position = new Vector2(0f, layout.Height * 0.72f),
-            Size = new Vector2(layout.Pitch, style.Size * 1.3f),
+            Position = at.Position,
+            Size = at.Size,
             MouseFilter = Control.MouseFilterEnum.Ignore,
             HorizontalAlignment = HorizontalAlignment.Center,
         };

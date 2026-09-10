@@ -30,11 +30,35 @@ internal static class LibraryRibbonArt
         return ImageTexture.CreateFromImage(padded);
     }
 
+    /// <summary>
+    /// Gives a duplicated ribbon its own copies of the two materials the retail button
+    /// animates.
+    ///
+    /// A duplicate shares its prototype's resources, and the retail button lights up
+    /// by writing to them: the image's HSV shader on hover, the outline's blend mode on
+    /// focus. Shared, one hover lit every ribbon on the screen - a run row, the tab
+    /// beside it and the pane's own "Open the run" all at once, while only the one
+    /// under the cursor would act. Done before the button enters the tree, because the
+    /// retail button caches both materials in its <c>_Ready</c>.
+    /// </summary>
+    internal static void OwnMaterials(CanvasItem image, CanvasItem outline)
+    {
+        if (image.Material is { } imageMaterial) image.Material = (Material)imageMaterial.Duplicate();
+        if (outline.Material is { } outlineMaterial) outline.Material = (Material)outlineMaterial.Duplicate();
+    }
+
+    /// <summary>One of the ribbon's two drawn parts, refused by name where a build's
+    /// popup scene has lost the unique name. The one lookup of either, so a missing
+    /// part is reported the same way whoever asked for it.</summary>
+    internal static CanvasItem Part(Control button, string path) =>
+        button.GetNodeOrNull<CanvasItem>(path)
+        ?? throw new InvalidOperationException($"The library ribbon has no texture at {path}");
+
     internal static void ReplaceTextures(Control button, float width)
     {
         foreach (var path in new[] { "%Image", "%Outline" })
         {
-            if (button.GetNode<Control>(path) is not TextureRect image || image.Texture is null)
+            if (Part(button, path) is not TextureRect image || image.Texture is null)
                 throw new InvalidOperationException($"The library ribbon has no texture at {path}");
 
             var owner = image.Owner;

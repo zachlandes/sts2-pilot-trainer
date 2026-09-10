@@ -12,7 +12,7 @@ internal readonly record struct MyRunsSettingsText(
 
 /// <summary>
 /// Runmobile's settings row, drawn: what the player keeps, what it takes on this
-/// computer, the way to take it back, whether the run index is fetched, and whether
+/// computer, the way to take it back, whether community runs are shown, and whether
 /// Runmobile puts a row on the game's main menu.
 ///
 /// It is a row rather than a section. Runmobile's settings section belongs to the run
@@ -82,6 +82,11 @@ internal sealed class MyRunsSettingsRow
     // boxes around them at an obsolete size.
 
     private const float LabelHeightRatio = 1.5f;
+
+    /// <summary>Clear space above the keep stepper and again below it, before the
+    /// rule: the game's own settings rows stand off their dividers by about this much,
+    /// and a stepper hard against the row above read as part of it.</summary>
+    private const float StepperPadRatio = 0.55f;
     private const float NoteHeightRatio = 1.5f;
     private const float RuleGapRatio = 0.95f;
     private const float StepSizeRatio = 1.6f;
@@ -229,7 +234,7 @@ internal sealed class MyRunsSettingsRow
         var reading = text.Reading.Size * LabelHeightRatio;
         var note = text.Detail.Size * NoteHeightRatio;
         var remove = text.Button.Size * RemoveHeightRatio;
-        return label + (text.Row.Size * RuleGapRatio) + reading + note +
+        return (text.Row.Size * StepperPadRatio * 2f) + label + (text.Row.Size * RuleGapRatio) + reading + note +
             (text.Row.Size * ControlGapRatio) + remove +
             (text.Row.Size * FetchGapRatio) + (text.Button.Size * FetchHeightRatio) +
             (text.Row.Size * MainMenuGapRatio) + (text.Button.Size * MainMenuHeightRatio);
@@ -336,7 +341,7 @@ internal sealed class MyRunsSettingsRow
         _reading.Text = row.Reading;
         _detail.Text = row.Detail;
         _remove.Text = row.RemoveLabel;
-        _fetch.Text = $"{LibraryCopy.FetchRunIndex}: {(fetchRunIndex ? "on" : "off")}";
+        _fetch.Text = $"{LibraryCopy.ShowCommunityRuns}: {(fetchRunIndex ? "on" : "off")}";
         _mainMenu.Text = row.MainMenu.SettingLabel;
 
         // The stepper refuses at its bottom rather than disappearing there, so the two
@@ -397,16 +402,17 @@ internal sealed class MyRunsSettingsRow
         var stepper = (stepSize * 2) + numeralWidth + (stepGap * 2);
         var removeWidth = Math.Min(width, ButtonBoxWidth(_remove.Text, _text.Button));
 
-        Place(_keepLabel, 0f, 0f, width - stepper - stepGap, labelHeight);
-        Place(_fewer, width - stepper, (labelHeight - stepSize) / 2f, stepSize, stepSize);
-        Place(_keepNumeral, width - stepper + stepSize + stepGap, 0f, numeralWidth, labelHeight);
+        var pad = unit * StepperPadRatio;
+        Place(_keepLabel, 0f, pad, width - stepper - stepGap, labelHeight);
+        Place(_fewer, width - stepper, pad + ((labelHeight - stepSize) / 2f), stepSize, stepSize);
+        Place(_keepNumeral, width - stepper + stepSize + stepGap, pad, numeralWidth, labelHeight);
         _keepNumeral.HorizontalAlignment = HorizontalAlignment.Center;
-        Place(_more, width - stepSize, (labelHeight - stepSize) / 2f, stepSize, stepSize);
+        Place(_more, width - stepSize, pad + ((labelHeight - stepSize) / 2f), stepSize, stepSize);
 
-        var ruleY = labelHeight + (ruleGap / 2f);
+        var ruleY = pad + labelHeight + pad + (ruleGap / 2f);
         _rule.Points = [new Vector2(0f, ruleY), new Vector2(width, ruleY)];
 
-        var lower = labelHeight + ruleGap;
+        var lower = (pad * 2f) + labelHeight + ruleGap;
         Place(_reading, 0f, lower, width, readingHeight);
         Place(_detail, 0f, lower + readingHeight, width, noteHeight);
 

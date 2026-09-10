@@ -84,7 +84,7 @@ public struct Color
     public override int GetHashCode() => HashCode.Combine(R, G, B, A);
 }
 
-public struct Rect2
+public partial struct Rect2
 {
     private Vector2 _position;
     private Vector2 _size;
