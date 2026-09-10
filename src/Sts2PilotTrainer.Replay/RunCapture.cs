@@ -87,6 +87,7 @@ public sealed class RunCapture
     private readonly List<DiscardedBranch> _discarded = [];
     private readonly List<JournalDiscardedBranch> _journalDiscarded = [];
     private readonly List<string> _journalRecords = [];
+    private readonly SortedDictionary<int, JournalBookmark> _bookmarks = [];
 
     private FightCapture? _fight;
     private JournalStop? _stop;
@@ -211,10 +212,42 @@ public sealed class RunCapture
         NonStandard = _nonStandard,
         Stop = _stop,
         Discarded = _journalDiscarded.ToList(),
+        Bookmarks = _bookmarks.Values.ToList(),
         SerializedRecords = _journalRecords.ToList(),
     };
 
     private bool _nonStandard;
+
+    /// <summary>Whether the player has this fight bookmarked right now.</summary>
+    public bool IsBookmarked(int fight) => _bookmarks.TryGetValue(fight, out var mark) && mark.On;
+
+    /// <summary>
+    /// The last fight this recording finished, or null while it has finished none or
+    /// is still inside one.
+    ///
+    /// Read off the same coverage the boundaries come from, so the fight it names is
+    /// one with a combat_start and an ordinal a bookmark can key on. Whether the run has
+    /// since left that fight's floor is <see cref="MovedOnFromLastFight"/>, the other
+    /// half of the one moment a bookmark can be pressed: from a fight's last action to
+    /// the map move that leaves its floor, which covers the loot screen and the card
+    /// screen behind it on a win and the game's ending on a loss, where the run never
+    /// moves on.
+    /// </summary>
+    public int? LastEndedFight => RunCoverage.Of(Trace).Fights.LastOrDefault() is { Finished: true } fight
+        ? fight.Fight
+        : null;
+
+    /// <summary>Whether a floor was entered after <see cref="LastEndedFight"/> ended.
+    /// False where there is no such fight.</summary>
+    public bool MovedOnFromLastFight
+    {
+        get
+        {
+            var coverage = RunCoverage.Of(Trace);
+            return coverage.Fights.LastOrDefault() is { Finished: true } fight &&
+                   coverage.Floors.Any(floor => floor.EnteredAfterSeq > fight.EndSeq);
+        }
+    }
 
     /// <summary>
     /// Starts recording a run at its beginning.
@@ -328,6 +361,10 @@ public sealed class RunCapture
         // been used in.
         if (journal.NonStandard) capture.MarkNonStandard();
 
+        // Each press stands as the file holds it, including one taken off: the line
+        // is on the file either way, and the manifest emits only what is on.
+        foreach (var bookmark in journal.Bookmarks) capture._bookmarks[bookmark.Fight] = bookmark;
+
         var last = capture._entries.Count > 0 ? capture._entries[^1] : journal.Opening;
         if (capture._stop is null && !string.Equals(last.Digest, liveDigest, StringComparison.Ordinal))
         {
@@ -417,6 +454,10 @@ public sealed class RunCapture
             rebuilt._nonStandard = true;
             rebuilt.Integrity = NativeSource.NonStandardIntegrity;
         }
+
+        // A rollback discards a fight still open, and a bookmark is only ever on a
+        // fight that finished, so every one of them is on the far side of the boundary
+        foreach (var (fight, bookmark) in _bookmarks) rebuilt._bookmarks[fight] = bookmark;
 
         rebuilt.ResumptionRecord = RunJournal.RenderRollback(rollback);
         return rebuilt;
@@ -654,6 +695,44 @@ public sealed class RunCapture
     }
 
     /// <summary>
+    /// The player marked a fight as worth attention, or took the mark off again.
+    ///
+    /// Only a fight the recording holds and finishes can be marked, because nothing
+    /// could have pressed it otherwise: the control exists from a fight's end to the
+    /// run moving on. Pressing after the run has ended is allowed - a lost fight is
+    /// bookmarked on the game's death screen, which is drawn after the manifest was
+    /// written - and the caller that owns the file writes it again. Every press is a
+    /// line, so a mark taken off is on the file as what happened and the last line
+    /// per fight is what the manifest emits.
+    /// </summary>
+    /// <returns>The journal line to append for it, so the press survives this session
+    /// the same way a decision does.</returns>
+    /// <exception cref="ManifestException">When the fight is not one this recording
+    /// has finished.</exception>
+    public string MarkBookmark(int fight, bool on, int? runClockMs = null)
+    {
+        var finished = RunCoverage.Of(Trace).Fights.FirstOrDefault(candidate => candidate.Fight == fight);
+        if (finished is not { Finished: true })
+        {
+            throw new ManifestException(
+                $"Fight {fight.ToString(CultureInfo.InvariantCulture)} is not one this recording has " +
+                "finished, so there is no moment at which it could have been bookmarked.");
+        }
+
+        var bookmark = new JournalBookmark
+        {
+            Fight = fight,
+            On = on,
+            AfterSeq = _entries.Count == 0 ? -1 : _entries[^1].Seq,
+            RunClockMs = runClockMs,
+        };
+        _bookmarks[fight] = bookmark;
+        var line = RunJournal.RenderBookmark(bookmark);
+        _journalRecords.Add(line);
+        return line;
+    }
+
+    /// <summary>
     /// This recording, as a manifest.
     ///
     /// Only once the run has ended, because a manifest says how it ended and that is
@@ -699,12 +778,25 @@ public sealed class RunCapture
                     Integrity = Integrity,
                     Unmapped = _stop is { } stop ? [stop.Decision] : null,
                     Discarded = _discarded.Count == 0 ? null : _discarded.ToList(),
+                    Bookmarks = Bookmarks(),
                 },
             },
             Actions = _actions.ToList(),
             Checkpoints = Checkpoints(locations),
             Boundaries = [.. locations.Select(location => location.With(Digest(location.AfterSeq)))],
         };
+    }
+
+    /// <summary>The marks that are on, as declared facts, or null where none is.</summary>
+    private IReadOnlyList<FightBookmark>? Bookmarks()
+    {
+        var on = _bookmarks.Values.Where(bookmark => bookmark.On).Select(bookmark => new FightBookmark
+        {
+            Fight = bookmark.Fight,
+            Bookmarked = new Fact<bool>(
+                true, FactSource.Declared, FactEvidence.AtActionOrdinal(bookmark.AfterSeq, bookmark.RunClockMs)),
+        }).ToList();
+        return on.Count == 0 ? null : on;
     }
 
     /// <summary>

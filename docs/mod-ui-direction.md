@@ -90,6 +90,11 @@ Same palette as the game, different material: the game's own furniture is torn s
 **Icon only, tooltips for words.** The captain's ruling: progressive disclosure is the game's own principle.
 There is no always-visible caption line; step's tooltip names the decision it is about to make.
 
+**The bookmark tag** is the same material on the same anchor at a fifth of the width: 120 by 56, the mark at the left and one 30-unit glyph control at the right, drawn by `FightMarkTag` for exactly the stretch between a fight ending and the run moving on, and absent everywhere else.
+Hollow cream at rest with the tooltip "Bookmark this fight"; filled gold with an ink hairline once pressed, with "Bookmarked · Press to remove"; pressing again is the undo, and the fill is the whole feedback.
+The glyph is a bookmark tab - a vertical rectangle with a swallow-tail foot - and the same tab in gold is what the run strip hangs off a cell's top-left corner for a bookmarked fight, opposite the teal played tick, because a bookmark is about the run and the tick is about the person.
+The whole-run save the browser design still owes gives up the bookmark for a keep glyph, an arrow into a tray, in teal; no star is used for either, because stars are held for a possible community rating.
+
 **The glyph family is the mod's own art**, because the game ships none - no play, pause, step or skip shape appears in any resource `sts2.dll` references.
 One rule carries meaning rather than decoration: **a filled shape moves the run, a hollow shape only looks.**
 

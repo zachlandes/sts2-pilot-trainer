@@ -193,7 +193,8 @@ public sealed record RunBrowser(
                     position.Kind,
                     Played: run.LastFloorReplayed == position.Floor,
                     Selected: false,
-                    position.Playable)),
+                    position.Playable,
+                    position.Bookmarked)),
             ],
             run.Listed
                 ? LibraryCopy.WorksWithYourVersion(thisBuild)

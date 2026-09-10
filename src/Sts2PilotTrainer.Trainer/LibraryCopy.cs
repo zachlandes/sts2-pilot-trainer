@@ -323,11 +323,24 @@ public static class LibraryCopy
     /// reads "Floor 7" and stops. That is the honest answer for a floor whose recording
     /// made no decision saying what was there.
     /// </summary>
-    public static string FloorLine(int floor, FloorKind kind = FloorKind.Unknown)
+    public static string FloorLine(int floor, FloorKind kind = FloorKind.Unknown, bool bookmarked = false)
     {
         var number = $"Floor {floor.ToString(CultureInfo.InvariantCulture)}";
-        return KindWord(kind) is { } word ? $"{number} · {word}" : number;
+        var line = KindWord(kind) is { } word ? $"{number} · {word}" : number;
+        return bookmarked ? $"{line} · {BookmarkedWord}" : line;
     }
+
+    /// <summary>What follows a bookmarked floor's line, in the same lower case as its
+    /// kind: "Floor 7 · combat · bookmarked".</summary>
+    public const string BookmarkedWord = "bookmarked";
+
+    /// <summary>
+    /// The one sentence the opened run adds where the selected floor's fight is
+    /// bookmarked: who marked it. The subject is the credit's, so a run of the player's
+    /// own reads "You bookmarked this fight." and anybody else's reads with their name
+    /// or "This run", never "You's".
+    /// </summary>
+    public static string BookmarkedFight(RecordingCredit credit) => $"{credit.OpeningSubject} bookmarked this fight.";
 
     /// <summary>
     /// What a floor's kind is called on this surface, or null where nothing established

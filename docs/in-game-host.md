@@ -836,6 +836,39 @@ fourth underscore to reach it - `____moddedWarning`, not the `___moddedWarning` 
 marker alone would suggest - caught here only by checking the decompiled name rather
 than guessing it.
 
+**The bookmark tag is the recorder's one control, and it exists for one stretch of the run.**
+`FightMark.For` in `Sts2PilotTrainer.Trainer` derives it from exactly the four facts
+`RunRecorder.FightMarkFacts` reads: a recorder attached, `RunCapture.LastEndedFight`,
+`RunCapture.MovedOnFromLastFight`, and whether that fight is marked.
+It is drawn only where a recorder is attached, a fight has ended and the run has not yet
+left its floor - which is the loot screen and the card-reward screen behind it on a win,
+and the game's death screen on a loss, where the run never moves on and the tag stays
+until `RunManager.CleanUp` tears the run down.
+Everywhere else it is absent rather than greyed, because a control that could not save
+anything would only be a control saying why: the recorder off, a trainer run, a build
+the recorder module refused, a multiplayer session through `RunmobileMod.MayDraw`.
+`FightMarkTag` draws it as stock nodes in the transport's material, and
+`PlaybackTransportDock` docks it on the same measured anchor under `NRun.GlobalUi`, so
+the band under the top bar is measured once for both tags; the two never coexist, because
+a trainer run is not recorded and a recorded run has no transport.
+It is re-derived every frame from `RunManager.SetUpNewSingleplayer` or
+`SetUpSavedSingleplayer` until `CleanUp`, the way the overlay row is, because a fight
+ends inside a sampled action and a map move leaves the floor with no event the tag is
+told about; `FightMarkTag.PatchClasses` is listed beside the overlay row in
+`RecorderModule.PresencePatchClasses` and installed the same way, so a patch that will
+not attach costs the tag and nothing else.
+The press is `RunRecorder.ToggleBookmark`, which appends the journal line
+`RunCapture.MarkBookmark` renders and, where `Finish` has already written the manifest -
+a lost fight is bookmarked on a screen the game draws after `RunManager.OnEnded` wrote
+its run history - serializes the capture again to the same path through
+`RunmobileStore.Write`.
+That is the one rewrite of a finished manifest the mod does, and it changes nothing but
+`source.native.bookmarks`: the history hash is over actions, every boundary digest is
+untouched, and `RunCaptureTests` holds both.
+The control takes focus so a controller reaches it and hands it back on press, which is
+the transport's own cost and fix; it carries no hotkey and no text, and its words are
+Godot's own tooltip.
+
 ## The run library
 
 The third module, and the only one with a surface a player browses. What it offers and

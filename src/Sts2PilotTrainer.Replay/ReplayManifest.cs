@@ -307,6 +307,28 @@ public sealed record NativeSource
     public IReadOnlyList<DiscardedBranch>? Discarded { get; init; }
 
     /// <summary>
+    /// The fights the player marked as worth attention, in fight order, and absent
+    /// where they marked none.
+    ///
+    /// Under the native block rather than at the top level because only a native
+    /// recording has a player present to declare one; a reconstruction from a video
+    /// has nobody to press it. Declared, because it is fixed by the one person entitled
+    /// to say it and carries no claim about the game. It travels with the run - into
+    /// the community browser, through a share - because a mark kept anywhere else could
+    /// not reach a stranger's copy of the run. Optional and absent when empty, so an
+    /// older reader misreads nothing about the run and no format version moves.
+    /// Nothing that identifies the run reads it: the history hash is over actions
+    /// only, and every boundary digest is untouched by it.
+    /// </summary>
+    [JsonPropertyName("bookmarks")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<FightBookmark>? Bookmarks { get; init; }
+
+    /// <summary>Whether the player bookmarked this fight.</summary>
+    public bool IsBookmarked(int fight) =>
+        Bookmarks?.Any(bookmark => bookmark.Fight == fight && bookmark.Bookmarked.Value) == true;
+
+    /// <summary>
     /// The oldest format this file was written in, when it was migrated from one.
     ///
     /// Written only by <c>arbiter migrate-manifest</c> and absent from a recording a
@@ -332,6 +354,25 @@ public sealed record NativeSource
     /// introduced a field, so that field's absence is the migration's rather than a
     /// recorder's omission.</summary>
     public bool PredatesVersion(int version) => MigratedFromVersion is { } from && from < version;
+}
+
+/// <summary>
+/// One fight the player marked, at the moment it ended.
+///
+/// Keyed by the fight's ordinal, the same number the combat_start boundary, the
+/// progress file and the run view's rows already share, so a bookmark is a place a
+/// player can already be stood. The fact's evidence is where in the run the press
+/// happened - the action ordinal and the run clock - so a reader can say which moment
+/// the player was looking at.
+/// </summary>
+public sealed record FightBookmark
+{
+    [JsonPropertyName("fight")]
+    public required int Fight { get; init; }
+
+    /// <summary>Declared, always: the player said so and the game was not asked.</summary>
+    [JsonPropertyName("bookmarked")]
+    public required Fact<bool> Bookmarked { get; init; }
 }
 
 /// <summary>A recorded branch removed by the game's observed room-entry rollback.</summary>

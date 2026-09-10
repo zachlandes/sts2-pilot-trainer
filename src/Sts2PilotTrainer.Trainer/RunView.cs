@@ -30,9 +30,13 @@ namespace Sts2PilotTrainer.Trainer;
 /// place the journey can reach. It defaults to true for a caller building a position by
 /// hand; <see cref="RunView.PositionsIn"/>, which is what every surface reads, always
 /// asks.</param>
+/// <param name="Bookmarked">Whether the player who made the recording bookmarked this
+/// floor's fight. A fact about the run and not about the person viewing it, read from
+/// the recording, so it is drawn in every strip: the opened run, the Mine pane and the
+/// Community pane alike.</param>
 public sealed record RunViewPosition(
     int Floor, int? Fight, FloorKind Kind, bool Unfinished, bool IsRunStart, int AfterSeq,
-    bool Reachable = true)
+    bool Reachable = true, bool Bookmarked = false)
 {
     /// <summary>
     /// Whether the play-from row will stand a player here.
@@ -57,8 +61,11 @@ public sealed record RunViewPosition(
 /// run.</param>
 /// <param name="Selected">Whether this is the position the view is showing. The
 /// strip's ring.</param>
+/// <param name="Bookmarked">Whether the recording's own player bookmarked this floor's
+/// fight. The strip's gold tab, hung off the opposite corner from the tick because it is
+/// about the run rather than about this player.</param>
 public sealed record RunStripCell(
-    int Floor, FloorKind Kind, bool Played, bool Selected, bool Playable);
+    int Floor, FloorKind Kind, bool Played, bool Selected, bool Playable, bool Bookmarked = false);
 
 /// <summary>Which offer a row is. Named rather than matched on its label, so the
 /// drawing never has to read a sentence to know what pressing it does.</summary>
@@ -146,7 +153,8 @@ public sealed record RunView(
     IReadOnlyList<RunRelic> Relics,
     RunReading Reading,
     string FloorNote,
-    string? NotSaved)
+    string? NotSaved,
+    string? BookmarkNote = null)
 {
     /// <summary>The deck at the selected position's start, as the tiles the pane draws,
     /// or null where the recording says nothing there. A gap, never a zero.</summary>
@@ -165,9 +173,12 @@ public sealed record RunView(
     /// shown this sitting. Held in memory by whoever draws the comparison and never
     /// written, so a later launch passes nothing and every fight is cold again.</param>
     /// <param name="progressId">The library entry whose progress this view displays.</param>
+    /// <param name="isPlayersOwn">Whether the library knows this recording is the
+    /// player's own, which is what decides who the bookmark sentence names.</param>
     public static RunView For(
         ReplayManifest recording, RunProgress progress, int? selectedFloor = null,
-        IReadOnlyCollection<int>? shownThisSitting = null, string? progressId = null)
+        IReadOnlyCollection<int>? shownThisSitting = null, string? progressId = null,
+        bool isPlayersOwn = false)
     {
         var progressKey = progressId ?? recording.RunId;
         var positions = PositionsIn(recording);
@@ -196,7 +207,8 @@ public sealed record RunView(
                     position.Kind,
                     position.Fight is { } fight && played.Contains(fight),
                     selected is not null && position.Floor == selected.Floor,
-                    position.Playable)),
+                    position.Playable,
+                    position.Bookmarked)),
             ],
             rows,
             RunReading.RelicsFound(recording),
@@ -205,7 +217,13 @@ public sealed record RunView(
             // Said once, beside the rows, and only where one of them would actually
             // stand a player somewhere. A screen whose rows are all refused has nothing
             // to warn anybody about.
-            rows.Any(row => row.Enabled) ? LibraryCopy.NotSaved : null);
+            rows.Any(row => row.Enabled) ? LibraryCopy.NotSaved : null,
+            // Who marked the selected fight, through the credit so the subject form is
+            // right. Only a native recording carries a bookmark, and every native
+            // recording has a credit, so a note here can always name somebody.
+            selected is { Bookmarked: true }
+                ? LibraryCopy.BookmarkedFight(RecordingIdentity.Credit(recording, isPlayersOwn))
+                : null);
     }
 
     /// <summary>
@@ -259,7 +277,8 @@ public sealed record RunView(
                     fight is null && fought,
                     index == 0,
                     entry.AfterSeq,
-                    RetailPlayback.RouteTo(recording, entry.AfterSeq).Reachable);
+                    RetailPlayback.RouteTo(recording, entry.AfterSeq).Reachable,
+                    fight is { } marked && (recording.Source.Native?.IsBookmarked(marked) ?? false));
             }),
         ];
     }

@@ -378,12 +378,13 @@ internal static class RunBrowserScreen
                 return;
             }
 
+            var isPlayersOwn = RunLibrary.Runs().FirstOrDefault(run =>
+                string.Equals(run.EntryId, runId, StringComparison.Ordinal))?.Origin == RunOrigin.Mine;
             var view = RunView.For(
                 recording, RunLibraryStore.ReadProgress(), floor,
                 RecordedFightModule.Instance.FightsShownThisSitting(runId),
-                progressId: runId);
-            var isPlayersOwn = RunLibrary.Runs().FirstOrDefault(run =>
-                string.Equals(run.EntryId, runId, StringComparison.Ordinal))?.Origin == RunOrigin.Mine;
+                progressId: runId,
+                isPlayersOwn: isPlayersOwn);
 
             var id = runId;
             var mine = fromMyRuns;
@@ -425,6 +426,10 @@ internal static class RunBrowserScreen
         }
 
         if (view.Reading is { Hp: { } hp, MaxHp: { } maxHp }) facts.Add(LibraryCopy.HealthAt(hp, maxHp));
+
+        // Who marked this fight, where somebody did. The view derives the sentence
+        // through the credit, so the subject form is the recording's own.
+        if (view.BookmarkNote is { Length: > 0 } bookmarkNote) facts.Add(bookmarkNote);
 
         // The floor pane's one sentence, said where a floor entry is what the row
         // offers: from there the run is the player's and nothing is compared.

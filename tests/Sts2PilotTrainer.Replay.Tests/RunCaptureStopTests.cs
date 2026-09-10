@@ -154,7 +154,7 @@ public sealed class RunCaptureStopTests
     [Fact]
     public void AVersionOneJournalIsRefusedRatherThanRepaired()
     {
-        var text = Played().Journal.Render().Replace("run-journal/v2", "run-journal/v1", StringComparison.Ordinal);
+        var text = Played().Journal.Render().Replace(RunJournal.Schema, "sts2-pilot-trainer/run-journal/v1", StringComparison.Ordinal);
 
         var refusal = Assert.Throws<ManifestException>(() => RunJournal.Parse(text));
 

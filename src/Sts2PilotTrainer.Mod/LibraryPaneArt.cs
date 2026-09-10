@@ -92,11 +92,13 @@ internal static class LibraryPaneArt
     /// <c>Height</c> tall.
     ///
     /// The numeral is below the icon box with clear space between, the played badge
-    /// hangs off the box's top-right corner, and the selected ring stands off the box
-    /// - so nothing is drawn over the marker, which is what made the tick vanish and the
-    /// numeral collide with its ring before.
+    /// hangs off the box's top-right corner, the bookmark tab off its top-left, and the
+    /// selected ring stands off the box - so nothing is drawn over the marker, which is
+    /// what made the tick vanish and the numeral collide with its ring before, and a
+    /// floor that is both played and bookmarked shows both with clear air between.
     /// </summary>
-    internal readonly record struct StripCellGeometry(Rect2 Icon, Rect2 Numeral, Rect2 Badge, Rect2 Ring);
+    internal readonly record struct StripCellGeometry(
+        Rect2 Icon, Rect2 Numeral, Rect2 Badge, Rect2 Ring, Rect2 Mark);
 
     internal static StripLayout LayoutStrip(
         int count, float width, int anchor, int lineSize, int? requestedPage = null)
@@ -139,7 +141,13 @@ internal static class LibraryPaneArt
         var ring = new Rect2(
             icon.Position.X - standoff, icon.Position.Y - standoff,
             cell + (standoff * 2f), cell + (standoff * 2f));
-        return new StripCellGeometry(icon, numeral, badgeBox, ring);
+        // The mirror of the badge, off the other corner and clamped at the column's
+        // other edge for the same reason
+        var mark = new Rect2(
+            Math.Max(icon.Position.X - (badge * BadgeOverhang), 0f),
+            icon.Position.Y - (badge * BadgeOverhang),
+            badge, badge);
+        return new StripCellGeometry(icon, numeral, badgeBox, ring, mark);
     }
 
     /// <summary>
@@ -324,7 +332,7 @@ internal static class LibraryPaneArt
                 Size = new Vector2(layout.Pitch, layout.Height),
                 CustomMinimumSize = new Vector2(layout.Pitch, layout.Height),
                 MouseFilter = Control.MouseFilterEnum.Ignore,
-                TooltipText = LibraryCopy.FloorLine(floor.Floor, floor.Kind),
+                TooltipText = LibraryCopy.FloorLine(floor.Floor, floor.Kind, floor.Bookmarked),
             };
             content.AddChild(box);
 
@@ -355,6 +363,22 @@ internal static class LibraryPaneArt
                 var tick = LibraryGlyphArt.Of(LibraryGlyph.Played, "Played", tickSize, LibraryPalette.Cream);
                 tick.Position = geometry.Badge.Position + ((geometry.Badge.Size - new Vector2(tickSize, tickSize)) / 2f);
                 box.AddChild(tick);
+            }
+
+            // Off the other corner: the recording's own player marked this fight. Gold
+            // rather than teal because it is about the run and not about this player,
+            // and drawn in every strip for the same reason. The ink hairline round it is
+            // what holds it on the parchment.
+            if (floor.Bookmarked)
+            {
+                var tab = LibraryGlyphArt.Of(
+                    LibraryGlyph.Bookmark, "Bookmark", geometry.Mark.Size.X, LibraryPalette.Gold);
+                tab.Position = geometry.Mark.Position;
+                box.AddChild(tab);
+                var hairline = LibraryGlyphArt.Of(
+                    LibraryGlyph.BookmarkOutline, "BookmarkOutline", geometry.Mark.Size.X, LibraryPalette.Ink);
+                hairline.Position = geometry.Mark.Position;
+                box.AddChild(hairline);
             }
 
             if (pane.SelectFloor is not { } select) continue;

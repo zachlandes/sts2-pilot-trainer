@@ -790,6 +790,136 @@ public sealed class RunCaptureTests
     /// <see cref="RunCapture.ToManifest"/> answers for: how a run ended is not a value
     /// it may guess.
     /// </summary>
+    // ── Bookmarks ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A press is a journal line and, in the manifest, a declared fact on the fight it
+    /// names, carrying where in the run the player was when they pressed it.
+    /// </summary>
+    [Fact]
+    public void ABookmarkIsAJournalLineAndADeclaredFactInTheManifest()
+    {
+        var capture = Played();
+
+        var line = capture.MarkBookmark(1, on: true, runClockMs: 812_340);
+        capture.Finish("won");
+
+        Assert.Contains("\"bookmark\":{\"fight\":1,\"on\":true,\"after_seq\":4,\"run_clock_ms\":812340}", line, StringComparison.Ordinal);
+        Assert.True(capture.IsBookmarked(1));
+
+        var bookmark = Assert.Single(capture.ToManifest().Source.Native!.Bookmarks!);
+        Assert.Equal(1, bookmark.Fight);
+        Assert.True(bookmark.Bookmarked.Value);
+        Assert.Equal(FactSource.Declared, bookmark.Bookmarked.Source);
+        Assert.Equal(4, bookmark.Bookmarked.Evidence!.ActionOrdinal);
+        Assert.Equal(812_340, bookmark.Bookmarked.Evidence.RunClockMs);
+
+        // And nothing that identifies the run moved: the history hash is over actions
+        // and the boundaries are untouched
+        var without = Played();
+        without.Finish("won");
+        Assert.Equal(SnapshotCacheKey.HashActions(without.ToManifest().Actions), SnapshotCacheKey.HashActions(capture.ToManifest().Actions));
+        Assert.Equal(without.ToManifest().Boundaries, capture.ToManifest().Boundaries);
+    }
+
+    /// <summary>Pressing again is the undo: another line, and no entry in the manifest,
+    /// which leaves the field absent rather than empty.</summary>
+    [Fact]
+    public void ABookmarkTakenOffLeavesTheManifestWithoutIt()
+    {
+        var capture = Played();
+        capture.MarkBookmark(1, on: true);
+        var off = capture.MarkBookmark(1, on: false);
+        capture.Finish("won");
+
+        Assert.Contains("\"on\":false", off, StringComparison.Ordinal);
+        Assert.False(capture.IsBookmarked(1));
+        Assert.Null(capture.ToManifest().Source.Native!.Bookmarks);
+        Assert.Equal(2, capture.Journal.Render().Split('\n').Count(line => line.Contains("\"bookmark\"", StringComparison.Ordinal)));
+    }
+
+    /// <summary>A crash keeps whatever was pressed, and the last press per fight is
+    /// what the resumed session holds.</summary>
+    [Fact]
+    public void ABookmarkSurvivesIntoTheSessionThatResumesTheRun()
+    {
+        var capture = Played();
+        capture.MarkBookmark(1, on: true);
+        capture.MarkBookmark(1, on: false);
+        capture.MarkBookmark(1, on: true, runClockMs: 5);
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(capture.Journal.Render()), capture.LastDigest);
+        resumed.Finish("won");
+
+        Assert.True(resumed.IsBookmarked(1));
+        var bookmark = Assert.Single(resumed.ToManifest().Source.Native!.Bookmarks!);
+        Assert.Equal(5, bookmark.Bookmarked.Evidence!.RunClockMs);
+        Assert.Equal(RunCaptureState.Finished, resumed.State);
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+    }
+
+    /// <summary>The control exists only once a fight has ended, so a press on any other
+    /// fight is one nothing could have made.</summary>
+    [Fact]
+    public void ABookmarkOnAFightTheRecordingHasNotFinishedIsRefused()
+    {
+        var capture = RunCapture.Begin(Start());
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")), InFight(2, turn: 1), Digest(0));
+
+        Assert.Throws<ManifestException>(() => capture.MarkBookmark(1, on: true));
+        Assert.Throws<ManifestException>(() => capture.MarkBookmark(2, on: true));
+    }
+
+    /// <summary>
+    /// The one moment the tag is drawn: from the fight's last action until the run
+    /// leaves its floor. A lost run never leaves, so the fact holds after the run ends.
+    /// </summary>
+    [Fact]
+    public void TheFightThatJustEndedIsKnownUntilTheRunMovesOn()
+    {
+        var capture = RunCapture.Begin(Start());
+        Assert.Null(capture.LastEndedFight);
+        Assert.False(capture.MovedOnFromLastFight);
+
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")), InFight(2, turn: 1), Digest(0));
+        Assert.Null(capture.LastEndedFight);
+
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")), Won(2, hp: 58), Digest(1));
+        Assert.Equal(1, capture.LastEndedFight);
+        Assert.False(capture.MovedOnFromLastFight);
+
+        // Claiming loot is a decision on the same floor
+        capture.Record(ActionVerb.ClaimReward, Args(("reward_index", "0")), Floor(2), Digest(2));
+        Assert.Equal(1, capture.LastEndedFight);
+        Assert.False(capture.MovedOnFromLastFight);
+
+        capture.Record(ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "3")), Floor(3), Digest(3));
+        Assert.Equal(1, capture.LastEndedFight);
+        Assert.True(capture.MovedOnFromLastFight);
+
+        capture.Finish("lost");
+        Assert.Equal(1, capture.LastEndedFight);
+        Assert.True(capture.MovedOnFromLastFight);
+    }
+
+    /// <summary>Every version-2 line is a version-3 line, so the journal a player's
+    /// run in progress was written in under the build before this one is read as-is
+    /// rather than costing them the recording.</summary>
+    [Fact]
+    public void AVersionTwoJournalIsReadAsIs()
+    {
+        var text = Played().Journal.Render().Replace(RunJournal.Schema, RunJournal.PreviousSchema, StringComparison.Ordinal);
+
+        var read = RunJournal.Parse(text);
+
+        Assert.Equal(RunJournal.PreviousSchema, read.SchemaId);
+        Assert.Equal(5, read.Decisions.Count());
+        Assert.Empty(read.Bookmarks);
+    }
+
     private static RunCapture Ended()
     {
         var capture = Played();
