@@ -42,7 +42,8 @@ It is a differently named entry point now, with a test through the installed pat
 
 ## Third press: Continue, restored
 
-The mod's progress file records a press, not a finished fight - that is its documented rule - so the two refused presses had moved Continue on to floor 5.
+The mod's progress file recorded a press rather than an entry at the time, so the two refused presses had moved Continue on to floor 5.
+That rule is gone: progress is written when the boundary is proved, in `RecordedFightRun`'s hand-over, so a press that is refused or cannot restore its run now leaves Continue exactly where it was.
 It was reset by hand to fight 1 played and floor 2 last loaded, which is the state the proof was specified from.
 With the head that carries both fixes installed, Continue offered floor 3, the fight the recording's second map move dealt.
 

@@ -298,21 +298,23 @@ internal static class RunHistoryPlateHost
         // Where a floor holds a fight the recording finished, the entry is that fight's
         // start - the same rule the run view's single play-from row follows, so a floor
         // named the same way on both surfaces stands a player in the same place.
-        RunLibraryStore.RecordFloorLoaded(runId, atFloor);
+        //
+        // The floor travels with the journey rather than being written down here: what
+        // this plate's own column reports is where a player was stood, and a press that
+        // is refused or cannot restore its run never stood them anywhere.
         var fight = RunView.PositionsIn(recording)
             .FirstOrDefault(position => position.Floor == atFloor)?.Fight;
         if (fight is { } ordinal)
         {
-            RunLibraryStore.RecordFightPlayed(runId, ordinal);
             _ = RecordedFightRun.Start(
                 recording, RecordedFightPlan.For(recording, ordinal),
-                RecordingIdentity.Credit(recording, isPlayersOwn: true));
+                RecordingIdentity.Credit(recording, isPlayersOwn: true), runId, atFloor);
             return;
         }
 
         _ = RecordedFightRun.Start(
             recording, FloorEntryPlan.For(recording, atFloor),
-            RecordingIdentity.Credit(recording, isPlayersOwn: true));
+            RecordingIdentity.Credit(recording, isPlayersOwn: true), runId, atFloor);
     }
 
     internal static void ShowShare(ReplayManifest recording, Action? back = null)

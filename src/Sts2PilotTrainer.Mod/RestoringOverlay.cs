@@ -28,8 +28,8 @@ namespace Sts2PilotTrainer.Mod;
 /// is loaded and has no <c>%Label</c> to say anything through, this draws its own
 /// plate instead: the whole point of the surface is that a minute of waiting is not
 /// spent looking at nothing, so a client that has moved the scene costs the native
-/// look and never the notice. <see cref="RestoringSurface"/> owns which of the two it
-/// is, and this only answers whether the borrow succeeded.
+/// look and never the notice. The two drawings say the same sentence, which is
+/// <see cref="RestoringNotice"/>'s.
 ///
 /// The one thing it substitutes a default for is the font, and only where the native
 /// reading itself fails: elsewhere in this mod missing native furniture refuses the
@@ -64,7 +64,7 @@ internal static class RestoringOverlay
     private static Control? _overlay;
     private static MegaLabel? _borrowedLabel;
     private static Label? _ownLabel;
-    private static RestoringSurface? _surface;
+    private static RestoringNotice? _notice;
     private static int _step;
 
     /// <summary>Puts the notice up, changes it, or takes it away - whichever the
@@ -77,9 +77,9 @@ internal static class RestoringOverlay
             return;
         }
 
+        _notice = notice;
         if (_overlay is { } up && GodotObject.IsInstanceValid(up))
         {
-            _surface = RestoringSurface.For(notice, _borrowedLabel is not null);
             Draw();
             return;
         }
@@ -114,7 +114,7 @@ internal static class RestoringOverlay
             if (!DrawItHere(game)) return;
         }
 
-        _surface = RestoringSurface.For(notice, _borrowedLabel is not null);
+        _notice = notice;
         Draw();
 
         var ellipsis = new Godot.Timer { WaitTime = EllipsisSeconds, Autostart = true, OneShot = false };
@@ -245,8 +245,8 @@ internal static class RestoringOverlay
 
     private static void Draw()
     {
-        if (_surface is not { } surface) return;
-        var line = surface.Line(_step);
+        if (_notice is not { } notice) return;
+        var line = notice.Line(_step);
 
         if (_borrowedLabel is { } borrowed && GodotObject.IsInstanceValid(borrowed))
         {
@@ -262,7 +262,7 @@ internal static class RestoringOverlay
         _overlay = null;
         _borrowedLabel = null;
         _ownLabel = null;
-        _surface = null;
+        _notice = null;
         _step = 0;
     }
 

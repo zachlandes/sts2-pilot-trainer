@@ -49,6 +49,11 @@ internal static class RecordedFightRun
     /// count decisions nobody was shown.</summary>
     private static int? _restoredToFloor;
 
+    /// <summary>Which floor of the recording the row that started this journey named,
+    /// or null where it named none. Written down when the boundary is proved, not when
+    /// the row was pressed.</summary>
+    private static int? _progressFloor;
+
     /// <summary>
     /// Which journey this is, counted up at every start and every finish.
     ///
@@ -259,7 +264,7 @@ internal static class RecordedFightRun
     /// wherever a player entered from.</param>
     internal static async Task Start(
         ReplayManifest recording, IBoundaryPlan plan, RecordingCredit credit,
-        string? progressRunId = null)
+        string? progressRunId = null, int? progressFloor = null)
     {
         if (Phase != JourneyPhase.None)
         {
@@ -272,6 +277,7 @@ internal static class RecordedFightRun
         ProfileWriteBarrier.Raise();
         _credit = credit;
         _progressRunId = progressRunId ?? recording.RunId;
+        _progressFloor = progressFloor ?? plan.Floor;
         var journey = ++_journey;
 
         // How the client reaches this boundary, asked once of the one owner the library
@@ -286,6 +292,15 @@ internal static class RecordedFightRun
         // of the shapes that stops the whole mod loading. See docs/in-game-host.md.
         try
         {
+            // Asked before the route is executed, because the restore route reaches the
+            // engine's own copy of this question only after the arbiter has spent up to
+            // a couple of minutes materialising a save behind a notice a player cannot
+            // dismiss. Both routes now refuse in the same words at the same moment.
+            if (GameSession.RunInProgressRefusal() is { } inProgress)
+            {
+                throw new InvalidOperationException(inProgress);
+            }
+
             switch (route)
             {
                 case PlaybackRoute.Walk:
@@ -1091,6 +1106,7 @@ internal static class RecordedFightRun
             var recording = _afterTheFight?.Manifest ?? _entry?.Manifest;
             var plan = _afterTheFight?.Plan ?? _entry?.Plan;
             var progressRunId = _progressRunId;
+            var progressFloor = _progressFloor;
             var credit = _afterTheFight?.Credit ?? _credit;
 
             // The attempt is being discarded rather than left, so the result the
@@ -1103,7 +1119,7 @@ internal static class RecordedFightRun
             // signal the run it is tearing down has gone, and building the next run
             // over it is building it on the old one.
             if (recording is not null && plan is not null && credit is not null)
-                await Start(recording, plan, credit, progressRunId);
+                await Start(recording, plan, credit, progressRunId, progressFloor);
         }
         catch (Exception ex)
         {
@@ -1705,6 +1721,28 @@ internal static class RecordedFightRun
     }
 
     /// <summary>
+    /// Writes down that this player has been stood here, once the boundary is proved.
+    ///
+    /// Here and not at the press. The strip's ticks, Continue's number and the Last
+    /// floor replayed column are what this feeds, and Continue means the next fight
+    /// somebody has not entered - so a press that was refused, that could not restore
+    /// its run, or whose arbiter outlived its bound leaves Continue where it was. It
+    /// read a press until this branch made every fight reachable and every one of them
+    /// able to fail after a wait; the retail proof spent two presses moving Continue
+    /// past a fight nobody had seen.
+    ///
+    /// Nothing here is load-bearing for a replay, which is why a failed write is
+    /// swallowed by the store rather than taking a player out of the fight that has
+    /// just opened.
+    /// </summary>
+    private static void RecordArrival(RecordedFightEntry entry)
+    {
+        var runId = _progressRunId ?? entry.Manifest.RunId;
+        if (_progressFloor is { } floor) RunLibraryStore.RecordFloorLoaded(runId, floor);
+        if (entry.Plan.Fight is { } fight) RunLibraryStore.RecordFightPlayed(runId, fight);
+    }
+
+    /// <summary>
     /// Waits for the fight to open and answers what to do about how that went: the
     /// sentence to refuse with, or null to hand the fight over.
     ///
@@ -1738,6 +1776,8 @@ internal static class RecordedFightRun
             Abandon(equality.Refusal ?? "This fight is not the recorded one.");
             return;
         }
+
+        RecordArrival(entry);
 
         Pause();
         RecordedFightReveal.Clear();
@@ -2131,6 +2171,7 @@ internal static class RecordedFightRun
         _observer = null;
         _afterTheFight = null;
         _progressRunId = null;
+        _progressFloor = null;
         _restoredToFloor = null;
         _journey++;
         _authorising = false;

@@ -217,13 +217,7 @@ public sealed class GameSession
             throw new EngineException("This session already has a run. Start a fresh process for a fresh run.");
         }
 
-        if (LocalEnvironment.ReadStartedRun() is { } existing)
-        {
-            throw new EngineException(
-                $"This game already has a run in progress ({existing.Seed}, ascension {existing.Ascension}). " +
-                "The recording's run cannot be restored over it, and abandoning somebody's run is not this " +
-                "tool's decision. Finish or abandon it in the game, then start the recorded fight again.");
-        }
+        if (RunInProgressRefusal() is { } inProgress) throw new EngineException(inProgress);
 
         var save = ReadSave(saveJson);
         var runState = RunState.FromSerializable(save);
@@ -235,6 +229,24 @@ public sealed class GameSession
         _preFinishedRoom = save.PreFinishedRoom;
         return runState;
     }
+
+    /// <summary>
+    /// The refusal a run already in progress earns, or null where the game has none.
+    ///
+    /// One sentence for both ways into a run, and public so that a host can ask before
+    /// it starts waiting rather than only when it is ready to build. The restore route
+    /// spends up to a couple of minutes materialising a save before it reaches
+    /// <see cref="PrepareRestoreInRunningGame"/>, and a player held behind a notice for
+    /// that long and then told they were never eligible has been refused at the wrong
+    /// moment. Both preparations still ask, because a host that forgot to is not
+    /// allowed to build a run over somebody else's.
+    /// </summary>
+    public static string? RunInProgressRefusal() =>
+        LocalEnvironment.ReadStartedRun() is not { } existing
+            ? null
+            : $"This game already has a run in progress ({existing.Seed}, ascension {existing.Ascension}). " +
+              "The recording's run cannot be started over it, and abandoning somebody's run is not this " +
+              "tool's decision. Finish or abandon it in the game, then start the recorded fight again.";
 
     /// <summary>The game's own reader over a save, refused in its own words where it
     /// refuses.</summary>
@@ -319,13 +331,7 @@ public sealed class GameSession
             throw new EngineException("This session already has a run. Start a fresh process for a fresh run.");
         }
 
-        if (LocalEnvironment.ReadStartedRun() is { } existing)
-        {
-            throw new EngineException(
-                $"This game already has a run in progress ({existing.Seed}, ascension {existing.Ascension}). " +
-                "The recording's run cannot be constructed over it, and abandoning somebody's run is not this " +
-                "tool's decision. Finish or abandon it in the game, then start the recorded fight again.");
-        }
+        if (RunInProgressRefusal() is { } inProgress) throw new EngineException(inProgress);
 
         var runState = BuildRunState(
             seed, characterModelId, ascension, gameMode, actModelIds, progress, []);

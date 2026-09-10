@@ -37,51 +37,30 @@ public sealed class RestoringNoticeTests
 }
 
 /// <summary>
-/// Which drawing the restoring notice gets, and what it reads.
+/// What the notice reads while it waits.
 ///
-/// The rule this holds is that there is no third answer. The wait it covers is the
-/// best part of a minute, so a client that cannot hand over its own loading overlay
-/// gets this mod's own plate rather than nothing: a press that draws nothing is
-/// indistinguishable from a press that did not work.
+/// The ellipsis is what says the wait is alive, and the sentence is the same whichever
+/// of the two drawings is up: a client that could not lend its own loading overlay
+/// changes what the notice looks like and never what it says.
 /// </summary>
-public sealed class RestoringSurfaceTests
+public sealed class RestoringNoticeLineTests
 {
-    private static readonly RestoringNotice Notice =
-        RestoringNotice.For(JourneyPhase.Preparing)!;
+    private static readonly RestoringNotice Notice = RestoringNotice.For(JourneyPhase.Preparing)!;
 
     [Fact]
-    public void TheGamesOwnOverlayIsUsedWhereItAnswers()
+    public void ItStartsOnTheSentenceRatherThanOnADot()
     {
-        var surface = RestoringSurface.For(Notice, borrowedTheGamesOverlay: true);
-
-        Assert.Equal(RestoringSurfaceKind.TheGamesLoadingOverlay, surface.Kind);
-        Assert.Equal("Restoring your run", surface.Headline);
+        Assert.Equal("Restoring your run", Notice.Line(0));
+        Assert.Equal("Restoring your run.", Notice.Line(1));
+        Assert.Equal("Restoring your run...", Notice.Line(3));
     }
 
-    /// <summary>A build with no such scene, or one whose scene carries no label, still
-    /// says the same sentence: the drawing changes and the notice does not.</summary>
+    /// <summary>A host that only counts up cannot run off the end.</summary>
     [Fact]
-    public void ABorrowThatFailedIsDrawnHereAndSaysTheSameThing()
+    public void TheEllipsisCycles()
     {
-        var surface = RestoringSurface.For(Notice, borrowedTheGamesOverlay: false);
-
-        Assert.Equal(RestoringSurfaceKind.DrawnHere, surface.Kind);
-        Assert.Equal("Restoring your run", surface.Headline);
-        Assert.NotEqual(string.Empty, surface.Line(0));
-    }
-
-    /// <summary>The ellipsis is what says the wait is alive, and it starts on the
-    /// sentence itself rather than on a dot.</summary>
-    [Fact]
-    public void TheEllipsisCyclesAndNeverRunsOffTheEnd()
-    {
-        var surface = RestoringSurface.For(Notice, borrowedTheGamesOverlay: false);
-
-        Assert.Equal("Restoring your run", surface.Line(0));
-        Assert.Equal("Restoring your run.", surface.Line(1));
-        Assert.Equal("Restoring your run...", surface.Line(3));
-        Assert.Equal(surface.Line(0), surface.Line(RestoringSurface.EllipsisSteps));
-        Assert.Equal(surface.Line(1), surface.Line(RestoringSurface.EllipsisSteps + 1));
+        Assert.Equal(Notice.Line(0), Notice.Line(RestoringNotice.EllipsisSteps));
+        Assert.Equal(Notice.Line(1), Notice.Line(RestoringNotice.EllipsisSteps + 1));
     }
 }
 

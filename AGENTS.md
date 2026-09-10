@@ -158,8 +158,11 @@ that quietly does something plausible is the failure mode this whole project exi
 to prevent.
 
 **What CI cannot run is recorded by name.** On a runner without the game, the 149
-tests named in `scripts/expected-hosted-skips.txt` skip out of
-`Sts2PilotTrainer.Arbiter.Tests`' 212 and the job still reports success.
+tests named in `scripts/expected-hosted-skips.txt` skip out of the 212 cases
+`Sts2PilotTrainer.Arbiter.Tests` reports there, and the job still reports success.
+Both figures are what a game-free run prints and neither can be arrived at by adding
+up attributes: a `[GameTheory]` skipped there is one case and expands into a row per
+datum where it runs, so a run with the game reports more cases than 212.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift

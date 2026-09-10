@@ -19,7 +19,22 @@ namespace Sts2PilotTrainer.Trainer;
 /// <param name="Headline">The one line the surface says.</param>
 public sealed record RestoringNotice(string Headline)
 {
+    /// <summary>How many steps the ellipsis cycles through, the first of them being
+    /// no dots at all.</summary>
+    public const int EllipsisSteps = 4;
+
     /// <summary>The notice this phase shows, or null where the phase draws none.</summary>
     public static RestoringNotice? For(JourneyPhase phase) =>
         phase == JourneyPhase.Preparing ? new RestoringNotice(TrainerCopy.RestoringYourRun) : null;
+
+    /// <summary>
+    /// What the notice reads at this step of its ellipsis.
+    ///
+    /// The step is taken modulo the cycle here, so a host that only ever counts up
+    /// cannot run off the end, and the sentence is the same whichever of the two
+    /// drawings is up: a client that could not lend its own loading overlay changes
+    /// what the notice looks like and never what it says.
+    /// </summary>
+    public string Line(int step) =>
+        Headline + new string('.', ((step % EllipsisSteps) + EllipsisSteps) % EllipsisSteps);
 }
