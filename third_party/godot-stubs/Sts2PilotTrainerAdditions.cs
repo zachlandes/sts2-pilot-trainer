@@ -341,7 +341,18 @@ public partial class Control
     public int GetThemeFontSize(StringName name, StringName themeType) =>
         _fontSizeOverrides.TryGetValue(name.ToString(), out var size) ? size : 16;
 
+    private readonly Dictionary<string, int> _constantOverrides = [];
+
+    public int GetThemeConstant(StringName name, StringName themeType) =>
+        _constantOverrides.TryGetValue(name.ToString(), out var value) ? value : 0;
+
+    public void AddThemeConstantOverride(StringName name, int value) =>
+        _constantOverrides[name.ToString()] = value;
+
     private readonly Dictionary<string, Color> _colorOverrides = [];
+
+    public Color GetThemeColor(StringName name, StringName themeType) =>
+        _colorOverrides.TryGetValue(name.ToString(), out var value) ? value : default;
 
     public void AddThemeColorOverride(StringName name, Color color) => _colorOverrides[name.ToString()] = color;
 
@@ -415,6 +426,7 @@ public partial class BaseButton
 
 public partial class CanvasItem
 {
+    public bool ShowBehindParent { get; set; }
     public Material? Material { get; set; }
     public bool UseParentMaterial { get; set; }
 }

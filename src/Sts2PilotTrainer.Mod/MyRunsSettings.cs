@@ -104,7 +104,10 @@ internal static class MyRunsSettings
     /// anchor inside it, and the host is grown to hold it.</para>
     /// </summary>
     internal static MyRunsSettingsText NativeText(NSettingsScreen screen, Control anchor) =>
-        NativeText(screen, anchor, GameText.Scene(NativeTextRole.Secondary));
+        NativeText(screen, anchor, GameText.Scene(NativeTextRole.Secondary)) with
+        {
+            Art = MyRunsSettingsArt.From(anchor),
+        };
 
     internal static MyRunsSettingsText NativeText(
         NSettingsScreen screen, Control anchor, GameTextStyle detail)

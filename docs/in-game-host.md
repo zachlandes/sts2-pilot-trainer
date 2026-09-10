@@ -1138,12 +1138,14 @@ It cannot be mod start: the game has no chosen save profile then, so the store c
 
 All four members with a control are one row: `MyRunsSettingsRow` in the mod, drawn from `MyRunsRow` in `Sts2PilotTrainer.Trainer`, wired to the disk by `MyRunsSettings`.
 
-Every one of those controls says whose setting it is, through `LibraryCopy.OurSetting`.
-They sit in the game's own General list, among the game's own rows, in the game's own type, so nothing else on the screen distinguishes them: "Keep my runs" reads as a setting Slay the Spire 2 shipped.
-The tag is on the control rather than on a heading above the group, because a player who scrolls to one control should not have had to read another to know whose it is.
-One owner, so it cannot be on two of them and missing from the third; the main-menu control takes no tag because it already names the mod inside its own sentence.
-The tagged captions fit the settings column the client draws them in - about a thousand units, measured off the committed retail capture and held by `MyRunsSettingsRowTests` - and outgrow only the 520-unit fallback width the row is given when the settings entry reports no size at all.
-It is a row and not a section.
+A left-aligned Runmobile heading scopes the group between its top divider and the game's Credits divider below it.
+The heading copies the native button-caption role, while setting labels copy the native row role; no new font or size is declared.
+The General page has dividers but no section-heading convention to borrow, so this is a deliberate addition rather than a claim that the game already titles its groups.
+Repeating `Runmobile: ` on every control made the switches read with two colons and competed with their actual labels.
+The switches now have left-hand labels and the game's own checked or unchecked image in the native controls column, and that image is the whole statement of their state.
+None of the row's controls carries a tooltip: Godot draws a tooltip in the engine's default theme, the one element on that screen that would not be the game's, and the first open of the screen left one standing wherever the mouse happened to be before the column sorted the row into place.
+A heading can scroll out of view; that is the tradeoff for scoping the group once rather than repeating attribution on each row.
+It remains one component built and placed as a whole.
 The retention policy, the removal act and the index-fetch choice are about the player's own runs; `show_main_menu_row` is about where Runmobile can be found.
 It is in the same row rather than a section of its own for the reason the section exists at all: this mod contributes one place a player configures it, and a second one would be a second thing to find.
 Where Runmobile's settings section hangs - `%ModdingButton` is the game's own modding entry point, and there is no Mods tab to extend - belongs to the run library along with everything else in it; this is one thing that section places, built whole so that placing it is all there is to do.
@@ -1201,10 +1203,19 @@ That makes the settings row `ContinuableRun`'s third caller, and its docstring n
 A game that cannot say which run it can continue refuses there as it does anywhere else, and the row shows the same could-not-be-read line rather than a pending count it could not compute.
 The confirmation is the game's own `NGenericPopup`, the one the eligibility screen uses, with the way out focused.
 
-Three deliberate departures from the design, all presentation rather than wording.
+The input controls remain stock Godot nodes, with presentation borrowed where the game has the corresponding art.
 The keep control is a stepper where the design says slider: Godot draws a slider's grabber from a theme *icon*, so a slider here would wear the engine's default grey on a screen made of torn stone or need art this mod does not ship, and the game's own `NSettingsSlider` cannot be had outside the settings scene it lives in.
-The removal is a stock Godot `Button` carrying the game's own red where the design says the game's red ribbon, and it is the same case: the game assembly ships no ribbon node at all - *ribbon* is the design's word for the button bar the game's own popup draws - and the game's settings furniture, `NSettingsButton` and its siblings, is scene-resident and cannot be instantiated standalone, so a hand-rolled section has nothing to duplicate.
-The design's ribbon material is where it actually exists: the confirm behind that button is the game's own `NGenericPopup`, with its two real ribbons.
+The removal follows the native Credits and Reset rows: `Remove all my runs` on the left, with the short verb `Remove` inside the button.
+It borrows the native settings button's beveled image and HSV material through `MyRunsSettingsArt`, using its proportions rather than drawing a rectangle.
+The first retail capture put the whole phrase inside that image and showed it overrunning the bevel; the short caption keeps the native proportions without shrinking its type.
+Its material is copied before tinting it burnt orange, between Credits' gold and Reset's maroon, so it changes neither native button.
+`GameTextOutline` copies the caption's native outline thickness, and the row takes its left and right insets from the native entry's margins.
+The outline's colour is not copied as it is: every native settings button's outline is a dark shade of its own face - green under Mod Settings, brown under Credits, maroon under Reset - so `MyRunsSettingsArt.DestructiveOutline` turns the anchor's through the rotation `hsv.gdshader` applies to the face, from the anchor's `h` to the button's own.
+That rule puts Reset's outline within a few hundredths of the one the game drew for it, which is what makes it the game's rule rather than a colour picked here; `MyRunsSettingsArtTests` holds it to that without the game.
+Only the image is borrowed: duplicating a Credits or Reset node would also bring that node's retail command.
+The stock input controls report to the existing handlers and keep no independent toggle state; applying the model swaps the checked image.
+Hover and keyboard focus brighten that control's image; these are stock-control interactions, not the retail button's scale tween or controller reticle.
+The confirmation behind Remove remains the game's own `NGenericPopup`, with its way out focused.
 The label and the numeral are exactly as the design settles them.
 And the numeral shows what the player's file says even where the control cannot reach it: a file that keeps zero is a standing purge and a row reading "1" over it would misstate the policy, so the numeral is the truth and the control is only how far a press reaches.
 

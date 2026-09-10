@@ -93,7 +93,8 @@ public class TextParagraph
     public float GetWidth() => 0;
 }
 
-public class StyleBoxEmpty : Resource { }
+// MODIFIED by sts2-pilot-trainer: see CHANGES.md
+public class StyleBoxEmpty : StyleBox { }
 
 public class GradientTexture2D : Texture2D { }
 public class Gradient : Resource { }

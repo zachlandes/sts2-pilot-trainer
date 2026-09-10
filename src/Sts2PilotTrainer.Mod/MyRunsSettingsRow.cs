@@ -8,7 +8,10 @@ internal readonly record struct MyRunsSettingsText(
     GameTextStyle Numeral,
     GameTextStyle Reading,
     GameTextStyle Detail,
-    GameTextStyle Button);
+    GameTextStyle Button)
+{
+    internal MyRunsSettingsArt? Art { get; init; }
+}
 
 /// <summary>
 /// Runmobile's settings row, drawn: what the player keeps, what it takes on this
@@ -38,14 +41,10 @@ internal readonly record struct MyRunsSettingsText(
 /// written. How the number moves is presentation, which
 /// docs/mod-ui-direction.md puts on this side of the line.</para>
 ///
-/// <para><b>The removal is a stock button and the design says the game's red
-/// ribbon.</b> The same case as the stepper. The game assembly ships no ribbon node -
-/// <em>ribbon</em> is the design's word for the button bar the game's own popup draws -
-/// and the game's settings furniture, <c>NSettingsButton</c> and its siblings, is
-/// scene-resident and cannot be had standalone, so a hand-rolled row has nothing to
-/// duplicate. The red is carried instead, by <see cref="Destructive"/>; the design's
-/// ribbon material is where it actually exists, on the game's own popup behind the
-/// press.</para>
+/// The heading scopes the group without repeating the mod on every setting.
+/// Native button and tickbox images distinguish acts from persistent settings.
+/// Input stays on stock controls: duplicating Credits or Reset would also duplicate
+/// their retail commands, while this row must only report to its existing owner.
 ///
 /// Built from stock Godot nodes for the reason the transport and the result panel are:
 /// this assembly has no Godot source generators, so a <c>Control</c> subclass of ours
@@ -65,9 +64,7 @@ internal sealed class MyRunsSettingsRow
     private static readonly Color Cream = Rgb(0xf1, 0xe4, 0xc0);
     private static readonly Color Muted = Rgb(0xa8, 0x9f, 0x8c);
     private static readonly Color Gold = Rgb(0xd9, 0xb2, 0x5f);
-    private static readonly Color Red = Rgb(0xc8, 0x46, 0x3a);
-    private static readonly Color RedFace = Rgb(0x3a, 0x1d, 0x1a);
-    private static readonly Color RuleLine = Rgb(0x3a, 0x33, 0x30);
+    private static readonly Color RuleLine = new(0.909804f, 0.862745f, 0.745098f, 0.25098f);
     private static readonly Color ButtonFace = Rgb(0x2a, 0x26, 0x2c);
     private static readonly Color ButtonEdge = Rgb(0x4a, 0x43, 0x40);
     private static readonly Color DisabledFace = Rgb(0x22, 0x1f, 0x24);
@@ -83,17 +80,13 @@ internal sealed class MyRunsSettingsRow
 
     private const float LabelHeightRatio = 1.5f;
 
-    /// <summary>Clear space above the keep stepper and again below it, before the
-    /// rule: the game's own settings rows stand off their dividers by about this much,
-    /// and a stepper hard against the row above read as part of it.</summary>
+    /// <summary>Clear space separates the heading, stepper and disk reading</summary>
     private const float StepperPadRatio = 0.55f;
     private const float NoteHeightRatio = 1.5f;
     private const float RuleGapRatio = 0.95f;
     private const float StepSizeRatio = 1.6f;
     private const float StepGapRatio = 0.4f;
     private const float NumeralWidthRatio = 2.3f;
-    private const float ButtonGlyphWidthRatio = 0.6f;
-    private const float ButtonPadRatio = 0.95f;
     private const float RemoveHeightRatio = 2f;
     private const float ControlGapRatio = 0.7f;
     private const float FetchGapRatio = 0.7f;
@@ -107,6 +100,13 @@ internal sealed class MyRunsSettingsRow
     private readonly MyRunsSettingsText _text;
 
     private readonly Control _root;
+    private readonly Label _heading;
+    private readonly Label _removeLabel;
+    private readonly Label _fetchLabel;
+    private readonly Label _mainMenuLabel;
+    private readonly TextureRect _removeArt;
+    private readonly TextureRect _fetchArt;
+    private readonly TextureRect _mainMenuArt;
     private readonly Label _keepLabel;
     private readonly Label _keepNumeral;
     private readonly Button _fewer;
@@ -146,6 +146,13 @@ internal sealed class MyRunsSettingsRow
     private MyRunsSettingsRow(Nodes nodes)
     {
         _root = nodes.Root;
+        _heading = nodes.Heading;
+        _removeLabel = nodes.RemoveLabel;
+        _fetchLabel = nodes.FetchLabel;
+        _mainMenuLabel = nodes.MainMenuLabel;
+        _removeArt = nodes.RemoveArt;
+        _fetchArt = nodes.FetchArt;
+        _mainMenuArt = nodes.MainMenuArt;
         _keepLabel = nodes.KeepLabel;
         _keepNumeral = nodes.KeepNumeral;
         _fewer = nodes.Fewer;
@@ -233,8 +240,9 @@ internal sealed class MyRunsSettingsRow
         var label = Math.Max(text.Row.Size, text.Numeral.Size) * LabelHeightRatio;
         var reading = text.Reading.Size * LabelHeightRatio;
         var note = text.Detail.Size * NoteHeightRatio;
-        var remove = text.Button.Size * RemoveHeightRatio;
-        return (text.Row.Size * StepperPadRatio * 2f) + label +
+        var remove = RemoveHeight(text);
+        return (text.Button.Size * LabelHeightRatio) + (text.Row.Size * StepperPadRatio * 2f) +
+            (text.Row.Size * StepperPadRatio * 2f) + label +
             (text.Row.Size * RuleGapRatio) + reading + note +
             (text.Row.Size * ControlGapRatio) + remove +
             (text.Row.Size * FetchGapRatio) + (text.Button.Size * FetchHeightRatio) +
@@ -266,6 +274,7 @@ internal sealed class MyRunsSettingsRow
         ArgumentNullException.ThrowIfNull(fetchChanged);
         ArgumentNullException.ThrowIfNull(mainMenuChanged);
 
+        var art = text.Art ?? throw new InvalidOperationException("Native settings art was not supplied.");
         var height = HeightFor(text);
         var root = new Control
         {
@@ -284,9 +293,13 @@ internal sealed class MyRunsSettingsRow
             Keep = keep,
             FetchRunIndex = fetchRunIndex,
             Text = text,
+            Heading = Add(root, Text("Heading", text.Button, Cream)),
+            RemoveLabel = Add(root, Text("RemoveLabel", text.Row, Cream)),
+            FetchLabel = Add(root, Text("FetchLabel", text.Row, Cream)),
+            MainMenuLabel = Add(root, Text("MainMenuLabel", text.Row, Cream)),
             KeepLabel = Add(root, Text("KeepLabel", text.Row, Cream)),
             KeepNumeral = Add(root, Text("KeepNumeral", text.Numeral, Cream)),
-            Rule = Add(root, new Line2D { Name = "Rule", DefaultColor = RuleLine, Width = 1f }),
+            Rule = Add(root, new Line2D { Name = "Rule", DefaultColor = RuleLine, Width = 2f }),
             Reading = Add(root, Text("Reading", text.Reading, Cream)),
             Detail = Add(root, Text("Detail", text.Detail, Muted)),
         };
@@ -296,6 +309,15 @@ internal sealed class MyRunsSettingsRow
         nodes.Remove = Add(root, Pressable("Remove", string.Empty, text.Button));
         nodes.Fetch = Add(root, Pressable("FetchRunIndex", string.Empty, text.Button));
         nodes.MainMenu = Add(root, Pressable("MainMenuRow", string.Empty, text.Button));
+
+        nodes.Heading.Text = LibraryCopy.SettingsHeading;
+        nodes.FetchLabel.Text = LibraryCopy.ShowCommunityRuns;
+        nodes.MainMenuLabel.Text = LibraryCopy.ShowOnMainMenu;
+        nodes.RemoveArt = Image(nodes.Remove, art.Action);
+        nodes.RemoveArt.Material = art.DestructiveMaterial();
+        nodes.RemoveArt.ShowBehindParent = true;
+        nodes.FetchArt = Image(nodes.Fetch, art.Ticked);
+        nodes.MainMenuArt = Image(nodes.MainMenu, art.Unticked);
 
         var built = new MyRunsSettingsRow(nodes);
 
@@ -341,9 +363,14 @@ internal sealed class MyRunsSettingsRow
         _keepNumeral.Text = row.KeepNumeral;
         _reading.Text = row.Reading;
         _detail.Text = row.Detail;
-        _remove.Text = row.RemoveLabel;
-        _fetch.Text = LibraryCopy.OurSetting($"{LibraryCopy.ShowCommunityRuns}: {(fetchRunIndex ? "on" : "off")}");
-        _mainMenu.Text = row.MainMenu.SettingLabel;
+        _removeLabel.Text = row.RemoveLabel;
+        _remove.Text = LibraryCopy.Remove;
+        // No tooltips: Godot draws its own in the engine's default theme, which is the
+        // one thing on this screen that is not the game's, and the first open of the
+        // screen left one standing wherever the mouse was before the column sorted.
+        // Each control's label sits beside it and each switch shows its own state
+        _fetchArt.Texture = fetchRunIndex ? _text.Art!.Ticked : _text.Art!.Unticked;
+        _mainMenuArt.Texture = row.MainMenu.Shown ? _text.Art!.Ticked : _text.Art!.Unticked;
 
         // The stepper refuses at its bottom rather than disappearing there, so the two
         // controls never move about under the player's aim. There is no top: a policy
@@ -356,9 +383,10 @@ internal sealed class MyRunsSettingsRow
 
         Face(_fewer, !_fewer.Disabled);
         Face(_more, !_more.Disabled);
-        Destructive(_remove, row.RemovePressable);
-        Face(_fetch, !_fetch.Disabled);
-        Face(_mainMenu, !_mainMenu.Disabled);
+        NativeFace(_remove, _removeArt);
+        _text.Art!.DestructiveOutline()?.ApplyTo(_remove);
+        NativeFace(_fetch, _fetchArt);
+        NativeFace(_mainMenu, _mainMenuArt);
 
         Layout(_root.Size.X);
     }
@@ -390,6 +418,9 @@ internal sealed class MyRunsSettingsRow
     /// </summary>
     private void Layout(float width)
     {
+        var fullWidth = width;
+        var insets = _text.Art!.Insets;
+        width = Math.Max(0f, width - insets.X - insets.Y);
         var unit = _text.Row.Size;
         var labelHeight = Math.Max(_text.Row.Size, _text.Numeral.Size) * LabelHeightRatio;
         var readingHeight = _text.Reading.Size * LabelHeightRatio;
@@ -398,62 +429,53 @@ internal sealed class MyRunsSettingsRow
         var stepGap = unit * StepGapRatio;
         var numeralWidth = unit * NumeralWidthRatio;
         var ruleGap = unit * RuleGapRatio;
-        var removeHeight = _text.Button.Size * RemoveHeightRatio;
+        var removeHeight = RemoveHeight(_text);
 
         var stepper = (stepSize * 2) + numeralWidth + (stepGap * 2);
-        var removeWidth = Math.Min(width, ButtonBoxWidth(_remove.Text, _text.Button));
+        var removeWidth = Math.Min(width, removeHeight * ActionAspect(_text));
 
+        var headingHeight = _text.Button.Size * LabelHeightRatio;
+        Place(_heading, 0f, unit * StepperPadRatio, width, headingHeight);
+        var headingSpace = headingHeight + unit * StepperPadRatio * 2f;
         var pad = unit * StepperPadRatio;
-        Place(_keepLabel, 0f, pad, width - stepper - stepGap, labelHeight);
-        Place(_fewer, width - stepper, pad + ((labelHeight - stepSize) / 2f), stepSize, stepSize);
-        Place(_keepNumeral, width - stepper + stepSize + stepGap, pad, numeralWidth, labelHeight);
+        Place(_keepLabel, 0f, headingSpace + pad, width - stepper - stepGap, labelHeight);
+        Place(_fewer, width - stepper, headingSpace + pad + ((labelHeight - stepSize) / 2f), stepSize, stepSize);
+        Place(_keepNumeral, width - stepper + stepSize + stepGap, headingSpace + pad, numeralWidth, labelHeight);
         _keepNumeral.HorizontalAlignment = HorizontalAlignment.Center;
-        Place(_more, width - stepSize, pad + ((labelHeight - stepSize) / 2f), stepSize, stepSize);
+        Place(_more, width - stepSize, headingSpace + pad + ((labelHeight - stepSize) / 2f), stepSize, stepSize);
 
-        var ruleY = pad + labelHeight + pad + (ruleGap / 2f);
-        _rule.Points = [new Vector2(0f, ruleY), new Vector2(width, ruleY)];
+        _rule.Points = [Vector2.Zero, new Vector2(fullWidth, 0f)];
 
-        var lower = (pad * 2f) + labelHeight + ruleGap;
+        var lower = headingSpace + (pad * 2f) + labelHeight + ruleGap;
         Place(_reading, 0f, lower, width, readingHeight);
         Place(_detail, 0f, lower + readingHeight, width, noteHeight);
 
         var removeY = lower + readingHeight + noteHeight + (unit * ControlGapRatio);
         Place(_remove, width - removeWidth, removeY, removeWidth, removeHeight);
+        Place(_removeLabel, 0f, removeY, Math.Max(0f, width - removeWidth - stepGap), removeHeight);
 
         var fetchHeight = _text.Button.Size * FetchHeightRatio;
-        var fetchWidth = Math.Min(width, ButtonBoxWidth(_fetch.Text, _text.Button));
+        var fetchWidth = fetchHeight;
         var fetchY = removeY + removeHeight + (unit * FetchGapRatio);
-        Place(_fetch, width - fetchWidth, fetchY, fetchWidth, fetchHeight);
+        var controlCentre = width - Math.Min(width, _text.Art!.ActionSize.X) / 2f;
+        Place(_fetch, controlCentre - fetchWidth / 2f, fetchY, fetchWidth, fetchHeight);
 
-        var mainMenuWidth = Math.Min(width, ButtonBoxWidth(_mainMenu.Text, _text.Button));
+        Place(_fetchLabel, 0f, fetchY, _fetch.Position.X - stepGap, fetchHeight);
+        var mainMenuWidth = _text.Button.Size * MainMenuHeightRatio;
         Place(
             _mainMenu,
-            width - mainMenuWidth,
+            controlCentre - mainMenuWidth / 2f,
             fetchY + fetchHeight + (unit * MainMenuGapRatio),
             mainMenuWidth,
             _text.Button.Size * MainMenuHeightRatio);
+        Place(_mainMenuLabel, 0f, _mainMenu.Position.Y, _mainMenu.Position.X - stepGap, _mainMenu.Size.Y);
+        Place(_removeArt, 0f, 0f, _remove.Size.X, _remove.Size.Y);
+        Place(_fetchArt, 0f, 0f, _fetch.Size.X, _fetch.Size.Y);
+        Place(_mainMenuArt, 0f, 0f, _mainMenu.Size.X, _mainMenu.Size.Y);
+        // The native entry's margins align every row, not just its button
+        foreach (var child in _root.GetChildren().OfType<Control>())
+            child.Position += new Vector2(insets.X, 0f);
     }
-
-    /// <summary>
-    /// How wide the destructive control's box has to be for its own word to fit in it.
-    ///
-    /// Measured rather than assumed, because a Button's own minimum width is its
-    /// unwrapped label and a box narrower than that is one the engine widens straight
-    /// back out of the row. The estimate stands in where there is no font to measure
-    /// with, which is the fallback the transport's own measuring uses: a process with no
-    /// game draws nothing, so an estimate there costs nothing.
-    /// </summary>
-    private static float ButtonBoxWidth(string label, GameTextStyle text) =>
-        (text.Font is not { } font
-            ? label.Length * text.Size * ButtonGlyphWidthRatio
-            : font.GetStringSize(
-                label,
-                HorizontalAlignment.Left,
-                width: -1f,
-                text.Size,
-                TextServer.JustificationFlag.None,
-                TextServer.Direction.Auto,
-                TextServer.Orientation.Horizontal).X) + (text.Size * ButtonPadRatio * 2);
 
     private static void Refuse(Button button, bool refused)
     {
@@ -481,34 +503,39 @@ internal sealed class MyRunsSettingsRow
         button.AddThemeColorOverride(FontColour, enabled ? Cream : Dim);
     }
 
-    /// <summary>
-    /// The one control here that cannot be undone, in the game's own red.
-    ///
-    /// The red is what the design's "red ribbon" lands as here, because there is no
-    /// ribbon node to reach for: the class docstring above says why, and the popup
-    /// behind this press is where the game's own ribbons do the asking.
-    ///
-    /// Red on its edge and its word rather than a red slab, because a filled red
-    /// rectangle on a settings screen reads as an error the player has already made.
-    /// Refused, it is drawn in the same grey every other refused control is: a player
-    /// with nothing to remove is not being warned about anything.
-    /// </summary>
-    private static void Destructive(Button button, bool enabled)
-    {
-        var style = new StyleBoxFlat
-        {
-            BgColor = enabled ? RedFace : DisabledFace,
-            BorderColor = enabled ? Red : DisabledEdge,
-        };
-        style.SetCornerRadiusAll(4);
-        style.SetBorderWidthAll(1);
-        foreach (var state in new[] { "normal", "pressed", "disabled" })
-        {
-            button.AddThemeStyleboxOverride(state, style);
-        }
+    private static float ActionAspect(MyRunsSettingsText text) =>
+        text.Art!.ActionSize.X / text.Art.ActionSize.Y;
 
-        Lit(button, enabled ? Red : DisabledEdge);
-        button.AddThemeColorOverride(FontColour, enabled ? Cream : Dim);
+    private static float RemoveHeight(MyRunsSettingsText text) => Math.Max(
+        text.Button.Size * RemoveHeightRatio,
+        text.Art!.ActionSize.Y);
+
+    private static void NativeFace(Button button, TextureRect image)
+    {
+        foreach (var state in new[] { "normal", "hover", "pressed", "disabled", "focus" })
+            button.AddThemeStyleboxOverride(state, new StyleBoxEmpty());
+        image.Modulate = button.Disabled ? Dim : Colors.White;
+        foreach (var state in new[] { "font_color", "font_hover_color", "font_pressed_color", "font_focus_color" })
+            button.AddThemeColorOverride(state, Cream);
+        button.AddThemeColorOverride("font_disabled_color", Dim);
+    }
+
+    private static TextureRect Image(Button button, Texture2D texture)
+    {
+        var image = Add(button, new TextureRect
+        {
+            Name = "NativeArt",
+            ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+            StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
+            Texture = texture,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        });
+        // Focus and hover light only this control's borrowed art
+        button.MouseEntered += () => { if (!button.Disabled) image.Modulate = new Color(1.2f, 1.2f, 1.2f); };
+        button.MouseExited += () => image.Modulate = button.Disabled ? Dim : Colors.White;
+        button.FocusEntered += () => { if (!button.Disabled) image.Modulate = new Color(1.2f, 1.2f, 1.2f); };
+        button.FocusExited += () => image.Modulate = button.Disabled ? Dim : Colors.White;
+        return image;
     }
 
     /// <summary>Hover and focus take a rim, which is the game's own language for "this
@@ -593,6 +620,14 @@ internal sealed class MyRunsSettingsRow
         internal required bool FetchRunIndex { get; init; }
 
         internal required MyRunsSettingsText Text { get; init; }
+
+        internal required Label Heading { get; init; }
+        internal required Label RemoveLabel { get; init; }
+        internal required Label FetchLabel { get; init; }
+        internal required Label MainMenuLabel { get; init; }
+        internal TextureRect RemoveArt { get; set; } = null!;
+        internal TextureRect FetchArt { get; set; } = null!;
+        internal TextureRect MainMenuArt { get; set; } = null!;
 
         internal required Label KeepLabel { get; init; }
 

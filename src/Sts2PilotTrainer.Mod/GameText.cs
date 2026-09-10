@@ -51,6 +51,20 @@ internal readonly record struct GameTextStyle(
     }
 }
 
+/// <summary>Decoration read from the same native caption as its font, not a second font role</summary>
+internal sealed record GameTextOutline(Color Colour, int Size)
+{
+    internal static GameTextOutline From(Control caption) => new(
+        caption.GetThemeColor("font_outline_color", "Label"),
+        caption.GetThemeConstant("outline_size", "Label"));
+
+    internal void ApplyTo(Control caption)
+    {
+        caption.AddThemeColorOverride("font_outline_color", Colour);
+        caption.AddThemeConstantOverride("outline_size", Size);
+    }
+}
+
 internal static class GameText
 {
     internal static readonly StringName FontEntry = "font";

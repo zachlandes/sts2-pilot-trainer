@@ -137,13 +137,14 @@ public sealed class MyRunsSettingsTests : IDisposable
         entry.AddChild(modding);
         column.AddChild(entry);
 
-        var row = MyRunsSettings.Attach(modding, Text());
+        var text = Text();
+        var row = MyRunsSettings.Attach(modding, text);
 
         Assert.Same(column, row.Root.GetParent());
-        Assert.Equal("Runmobile: Show community runs: on", row.Fetch.Text);
+        Assert.Same(text.Art!.Ticked, TickImage(row.Fetch).Texture);
         row.Fetch.EmitPressed();
         Assert.False(RunmobileSettings.Read().FetchRunIndex);
-        Assert.Equal("Runmobile: Show community runs: off", row.Fetch.Text);
+        Assert.Same(text.Art!.Unticked, TickImage(row.Fetch).Texture);
     }
 
     /// <summary>
@@ -246,8 +247,8 @@ public sealed class MyRunsSettingsTests : IDisposable
         Assert.True(Label(row, "Reading").Size.X > narrowReading);
         Assert.True(Label(row, "Detail").Size.X > narrowDetail);
         Assert.Equal(Width, row.Remove.Position.X + row.Remove.Size.X);
-        Assert.Equal(Width, row.Fetch.Position.X + row.Fetch.Size.X);
-        Assert.Equal(Width, row.MainMenu.Position.X + row.MainMenu.Size.X);
+        Assert.Equal(Width - Text().Art!.ActionSize.X / 2f, row.Fetch.Position.X + row.Fetch.Size.X / 2f);
+        Assert.Equal(Width - Text().Art!.ActionSize.X / 2f, row.MainMenu.Position.X + row.MainMenu.Size.X / 2f);
     }
 
     /// <summary>
@@ -366,13 +367,16 @@ public sealed class MyRunsSettingsTests : IDisposable
             RunmobileStore.ListFileNames(Recordings));
     }
 
+    private static TextureRect TickImage(Button control) =>
+        control.GetChildren().OfType<TextureRect>().Single(child => child.Name.ToString() == "NativeArt");
+
     private static MyRunsSettingsText Text(int rowSize = 16, int buttonSize = 16) =>
         new(
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
-            new GameTextStyle(null, buttonSize));
+            new GameTextStyle(null, buttonSize)) { Art = MyRunsSettingsArtTests.Art() };
 
     /// <summary>
     /// The scroll extent's owner is reachable from where the row is put.
@@ -468,19 +472,18 @@ public sealed class MyRunsSettingsTests : IDisposable
         Assert.Same(column, row.Root.GetParent());
     }
 
-    /// <summary>Every control Runmobile puts in the game's own settings list says whose
-    /// it is. They are drawn in the game's own type among the game's own rows, so nothing
-    /// else on the screen does. The main-menu control is the exception that names the mod
-    /// inside its own sentence rather than in front of it.</summary>
     [Fact]
-    public void EveryControlRunmobileAddsNamesTheModItBelongsTo()
+    public void OneLeftAlignedHeadingScopesTheRunmobileControls()
     {
         var row = MyRunsSettings.Build(Width, Text());
 
-        Assert.StartsWith("Runmobile: ", Label(row, "KeepLabel").Text, StringComparison.Ordinal);
-        Assert.StartsWith("Runmobile: ", row.Remove.Text, StringComparison.Ordinal);
-        Assert.StartsWith("Runmobile: ", row.Fetch.Text, StringComparison.Ordinal);
-        Assert.StartsWith("Runmobile ", row.MainMenu.Text, StringComparison.Ordinal);
+        Assert.Equal("Runmobile", Label(row, "Heading").Text);
+        Assert.Equal(HorizontalAlignment.Left, Label(row, "Heading").HorizontalAlignment);
+        Assert.Equal("Keep my runs", Label(row, "KeepLabel").Text);
+        Assert.Equal("Remove", row.Remove.Text);
+        Assert.Equal("Remove all my runs", Label(row, "RemoveLabel").Text);
+        Assert.Equal("Show community runs", Label(row, "FetchLabel").Text);
+        Assert.Equal("Show on the main menu", Label(row, "MainMenuLabel").Text);
     }
 
     private static Label Native(string name, int size)

@@ -265,7 +265,7 @@ public sealed class MyRunsRowTests
     {
         var row = MyRunsRow.For(new MyRunsFacts(Runs: 12, Bytes: 6 * Mb, Keep: 5));
 
-        Assert.Equal("Runmobile: Keep my runs", row.KeepLabel);
+        Assert.Equal("Keep my runs", row.KeepLabel);
         Assert.Equal("5", row.KeepNumeral);
         Assert.True(row.KeepPressable);
     }

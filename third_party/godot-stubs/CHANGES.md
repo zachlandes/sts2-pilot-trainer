@@ -1,5 +1,9 @@
 # Changes from upstream
 
+`CanvasItem.ShowBehindParent` lets the settings action's native art draw behind its stock input control's caption.
+`StyleBoxEmpty` inherits `StyleBox`, matching Godot, so a transparent control background reaches the same style-override contract as a filled one.
+Theme constants and `GetThemeColor` retain and return overrides, allowing the settings row to copy and test the native caption outline and entry margins.
+
 Vendored from [wuhao21/sts2-cli](https://github.com/wuhao21/sts2-cli) `src/GodotStubs`,
 commit `d11aa88`, fetched 2026-08-30. MIT licensed; see `LICENSE`.
 
