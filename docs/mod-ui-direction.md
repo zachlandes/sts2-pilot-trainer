@@ -174,6 +174,7 @@ Each role's node path is a claim about the shipped build, checked against the ga
 
 **Each piece of text has the native role of the same kind.**
 The settings row reads its row label, value, stepper numeral, and button caption from the named live controls on that settings screen; its supporting line uses the mapped native secondary-row role.
+Its Runmobile heading is at the button-caption role too, and its Remove caption copies the native settings button's outline thickness through `GameTextOutline`, with the colour turned to the button's own hue by the rule [in-game-host.md](in-game-host.md) owns under "The settings row, and the size figure".
 The run-history plate uses the history screen's fact role for its status, reason, and note, and the native button-caption role for pressable rows.
 The transport uses the profile identity roles for creator and title, the portrait-tip numeral for its counter, the dropdown value and item roles for speed and menus, the map-point reward role for its ledger, and the hover-tip title and body roles for its tooltip and note.
 The result panel resolves every role from named scene resources before it is attached: popup heading and body, list headings and numerals, score labels and values, section headings, chart numerals, card captions, and the button caption.
@@ -187,7 +188,8 @@ The look-back ledger measures its page from the viewport in the same way, and th
 **A surface that sits inside the game's own container is a child of it, and asks it for height only.**
 The settings row is inserted into the modding entry's parent column immediately after that entry.
 It asks the container for height and never for width, then lays itself out again after the container sorts because the settings screen has not been laid out when its `_Ready` runs.
-`demo/RUNMOBILE-NATIVE-TYPE.md` records current retail captures of the library, refusal popup, and settings row, and names the surfaces that still require manual navigation for an in-client capture.
+Adding it also leaves the screen's scroll extent short until the panel that owns the extent is asked to measure again; [in-game-host.md](in-game-host.md) owns why and how `MyRunsSettings.RefreshExtent` asks.
+`demo/RUNMOBILE-NATIVE-TYPE.md` records current retail captures of the library, refusal popup, and settings row, and names the surfaces that still require manual navigation for an in-client capture; `demo/RUNMOBILE-SETTINGS-SECTION.md` holds the settings section under its heading, with its native controls and the corrected scroll extent.
 
 ## The library's borrowed furniture
 
