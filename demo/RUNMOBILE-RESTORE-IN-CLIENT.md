@@ -54,6 +54,17 @@ runmobile-continue-offers-floor-3.png
 ![33508db5-2026-09-09](33508db5-2026-09-09.png)
 
 Pressing it, the mod asked the packaged arbiter for the arrival's save, which replayed the sixteen decisions before it, restored the save in a fresh process and wrote the cache only once the restored state reproduced the digest the recording declares - a little under a minute - and then continued the run through the retail continue handler's own sequence and the public `NGame.LoadRun`.
+
+That minute is `JourneyPhase.Preparing`, and this is what a player looks at while it passes: the mod's own plate over the Compendium screen the press came from, with the notice centred on it.
+
+```bash {image}
+runmobile-restoring-your-run.png
+```
+
+![e8d1c719-2026-09-10](e8d1c719-2026-09-10.png)
+
+Captured a second and a half after Continue was pressed on the player's own recording, at this branch's `adcf103`.
+Fight entry itself was still refused on that head by main's `LedgerRow` text-role mapping, which a separate hotfix addresses; the notice above is the surface under test here, and it is on screen.
 The client's log, in order, with nothing between the lines removed except the game's own asset chatter:
 
 ```
@@ -109,4 +120,3 @@ the game's own churn (written on any launch, mod or not):
 Every changed protected file is one this branch's installer wrote, twice more after the ledger; the game's own saves, profiles and run history did not move.
 Under the store, the cache holds exactly the one verified snapshot the press materialised, and the progress file is the hand reset above plus the press.
 The recording in the store is untouched: still the version-5 file the recorder wrote.
-

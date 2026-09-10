@@ -30,10 +30,10 @@ public sealed record RestoringNotice(string Headline)
     /// <summary>
     /// What the notice reads at this step of its ellipsis.
     ///
-    /// The step is taken modulo the cycle here, so a host that only ever counts up
-    /// cannot run off the end, and the sentence is the same whichever of the two
-    /// drawings is up: a client that could not lend its own loading overlay changes
-    /// what the notice looks like and never what it says.
+    /// The step is taken modulo the cycle here rather than by the host that draws it,
+    /// because the host only counts up: the wait has no end it knows about, so nothing
+    /// on that side has a reason to wrap, and a step that ran off the end would be a
+    /// line nobody wrote.
     /// </summary>
     public string Line(int step) =>
         Headline + new string('.', ((step % EllipsisSteps) + EllipsisSteps) % EllipsisSteps);

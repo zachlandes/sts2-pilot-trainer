@@ -39,9 +39,9 @@ public sealed class RestoringNoticeTests
 /// <summary>
 /// What the notice reads while it waits.
 ///
-/// The ellipsis is what says the wait is alive, and the sentence is the same whichever
-/// of the two drawings is up: a client that could not lend its own loading overlay
-/// changes what the notice looks like and never what it says.
+/// The ellipsis is what says the wait is alive - there is no figure to put beside it -
+/// and it starts on the sentence rather than on a dot. The host that draws it only
+/// counts up, so the wrap is this owner's.
 /// </summary>
 public sealed class RestoringNoticeLineTests
 {
