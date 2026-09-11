@@ -364,6 +364,7 @@ Equal means nothing happened in between that the recorder missed.
 The one unequal state that remains continuous is the game's own save behavior after a quit during a live fight: the live digest must equal that same open fight's room-entry decision in the journal, and the journal must contain decisions observed after it.
 Those decisions remain in an append-only rollback record and in `source.native.discarded`, while the replayable history resumes at the room-entry decision; the fact that Continue was pressed establishes none of this.
 For publication, `gate` replays every discarded branch from that verified room-entry state and requires its final engine state to match the final state the recorder captured.
+A live state that matches an earlier decision in the journal is a reload that rewound the run, the `rewound` case in the next paragraph.
 Any other mismatch marks the recording `continuity = broken` and it is refused for publication, because a history missing decisions replays into a different run while every value in it is individually true.
 Every rollback and refusal is appended to the journal as a line of its own, the moment it is established, and `Resume` applies each one back.
 Without that the break lives only in the session that decided on it: quit and continue once more and the next session finds a journal whose last digest is exactly the live one, sees nothing wrong, and publishes `continuity = continuous` over a hole - which is the one claim nothing downstream could check.
@@ -1158,7 +1159,7 @@ The same file says how many runs are kept and how to remove them all; "Keeping r
 To exercise continuity, quit to the main menu part way through a run and continue it from the game's own Continue.
 Outside a fight, `[Runmobile] continuing the recording of <id> at decision N; continuity continuous` is the pass.
 During a fight, Continue returns to that fight's room-entry boundary, the journal records the intervening decisions as discarded, and the same continuous line names the boundary's next decision.
-A `continuity broken` line names any other mismatch, and the recording is then refused for publication rather than repaired.
+A `continuity broken` line names a mismatch the recorder cannot place in its journal, and the recording is then refused for publication rather than repaired.
 To exercise the save-scum path, answer the Neow blessing, quit to the main menu, and continue: the game offers the blessing again, the `continuity rewound` line names the decision it came back at, the overlay goes on reading RECORDING, and the rest of the run goes on being recorded into a recording the run history offers to play from and refuses to submit.
 
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
