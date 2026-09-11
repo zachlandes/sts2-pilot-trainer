@@ -426,6 +426,11 @@ public sealed record RunJournal
 
                 discarded.Add(new JournalDiscardedBranch(rollback, entries[boundaryIndex], removed));
                 entries.RemoveRange(boundaryIndex + 1, removed.Count);
+
+                // A press on a fight the rollback removed goes with the branch: the
+                // continued run deals that ordinal to a different fight, and a mark
+                // read back onto it would be on a fight nobody pressed.
+                bookmarks.RemoveAll(marked => marked.AfterSeq > rollback.RollbackToSeq);
             }
             else if (stopped is not null)
             {
@@ -451,15 +456,6 @@ public sealed record RunJournal
 
                 entries.Add(entry);
             }
-        }
-
-        // A reload's rollback is written with the refusal that says what it cost, so a
-        // file holding the one without the other is one nothing finished writing.
-        if (discarded.Any(branch => branch.Rollback.Reload) && !refusals.Any(refusal => refusal.WatchContinues))
-        {
-            throw new ManifestException(
-                "This run journal holds a reload's rollback and no refusal saying the recorder went on past it. " +
-                "The recorder writes the two together, so a file with one alone is not one it finished writing.");
         }
 
         var journal = new RunJournal

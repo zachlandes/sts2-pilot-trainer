@@ -215,6 +215,7 @@ internal static class RunHistoryPlateHost
         return new RunHistoryFacts(
             HasRecording: recording is not null,
             HistoryWhole: recording?.Source.Native?.HistoryIsWhole ?? false,
+            Rewound: recording?.Source.Native?.IsRewound ?? false,
             ConsoleUsed: recording?.Source.Native is { Integrity: not null } native
                 ? native.StatesSomethingOtherThanComplete
                 : null,

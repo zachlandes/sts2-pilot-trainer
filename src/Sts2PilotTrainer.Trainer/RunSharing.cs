@@ -164,35 +164,12 @@ public sealed record ShareRunForm(
 {
     public static ShareRunForm For(ReplayManifest run) => new(
         $"{run.RunId} · {run.Environment.BuildVersion.Value}",
-        IntegritySealFor(run),
+        run.Source.Native is { IsContinuous: true, StatesSomethingOtherThanComplete: false }
+            ? "Complete recording · publication gate required"
+            : "Recording is not eligible to share",
         ShareSubmission.NameCharacterLimit,
         ShareSubmission.DescriptionCharacterLimit,
         LibraryCopy.SharePrivacy,
         LibraryCopy.ShareConsent,
         LibraryCopy.ShareLocalValidation);
-
-    /// <summary>
-    /// What the form says about whether this recording may be shared at all.
-    ///
-    /// A broken watch is named rather than folded into the general refusal, because it
-    /// is the one a player reaches by doing something ordinary - quitting and continuing
-    /// from a save behind what had been recorded - and the run went on being recorded
-    /// while it happened, so this is where they find out what it cost. The recording is
-    /// still theirs; it is the sharing that is gone.
-    ///
-    /// A rewound recording names the reload, because <c>continuity = rewound</c> is the
-    /// manifest stating it. A broken one says the watch has a hole in it and not what
-    /// made the hole: more than one thing puts a recording there, and a line naming a
-    /// cause would be a claim this form has not read.
-    /// </summary>
-    private static string IntegritySealFor(ReplayManifest run) => run.Source.Native switch
-    {
-        { IsContinuous: true, StatesSomethingOtherThanComplete: false } =>
-            "Complete recording · publication gate required",
-        { IsRewound: true } =>
-            "Not shareable · a reload rewound this run behind what was recorded",
-        { IsContinuous: false } =>
-            "Not shareable · the recorder could not account for this run from its start",
-        _ => "Recording is not eligible to share",
-    };
 }

@@ -16,6 +16,7 @@ public sealed class RunHistoryPlateTests
     private static RunHistoryFacts Facts(
         bool hasRecording = true,
         bool historyWhole = true,
+        bool rewound = false,
         bool? consoleUsed = null,
         string recordedBuild = Build,
         bool runInProgress = false,
@@ -23,7 +24,7 @@ public sealed class RunHistoryPlateTests
         int? lastFloor = 11,
         FloorKind lastFloorKind = FloorKind.Combat,
         bool hasOtherFloors = true) =>
-        new(hasRecording, historyWhole, consoleUsed, recordedBuild, Build,
+        new(hasRecording, historyWhole, rewound, consoleUsed, recordedBuild, Build,
             runInProgress, submitAvailable, lastFloor, lastFloorKind, hasOtherFloors);
 
     [Fact]
@@ -120,6 +121,24 @@ public sealed class RunHistoryPlateTests
         Assert.True(plate.Rows[1].Enabled);
         Assert.False(plate.Rows[2].Enabled);
         Assert.Equal(LibraryCopy.PlateConsoleUsed, plate.Reason);
+    }
+
+    /// <summary>
+    /// A reload that rewound the run behind what was recorded is the same shape: the
+    /// run as it stands is played from, and never submitted, and the plate says so here
+    /// rather than leaving the publication gate to refuse it after the form is filled in.
+    /// </summary>
+    [Fact]
+    public void ARewoundRunStopsTheSubmitRowAndNothingElse()
+    {
+        var plate = RunHistoryPlate.For(Facts(rewound: true, submitAvailable: true))!;
+
+        Assert.Null(plate.Head);
+        Assert.True(plate.Rows[0].Enabled);
+        Assert.True(plate.Rows[1].Enabled);
+        Assert.False(plate.Rows[2].Enabled);
+        Assert.Equal(LibraryCopy.PlateRewound, plate.Reason);
+        Assert.Equal(LibraryCopy.NotSaved, plate.NotSaved);
     }
 
     /// <summary>

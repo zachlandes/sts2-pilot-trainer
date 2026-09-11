@@ -257,45 +257,18 @@ public sealed class RunSharingTests
         Assert.Contains("locally", form.LocalValidation);
     }
 
-    /// <summary>
-    /// The seal on a run the recorder could not account for from its start.
-    ///
-    /// A reload behind what was recorded is how a player reaches this by doing something
-    /// ordinary, and the recording went on being made while it happened, so the form is
-    /// where they find out what it cost. It names the hole and not what made it: a
-    /// manifest states <c>continuity</c> and no cause, and more than one thing puts a
-    /// recording here.
-    /// </summary>
+    /// <summary>A rewound recording is the player's to play from and never theirs to
+    /// share, and the seal says so the way it does for every recording the gate would
+    /// refuse; a continuous one is still offered to the gate, so the seal is a branch
+    /// on continuity and not on integrity alone.</summary>
     [Fact]
-    public void ARecordingWithABrokenWatchIsSealedAsUnshareableAndSaysWhatIsWrong()
+    public void ARewoundRecordingIsSealedIneligibleAndAContinuousOneIsNot()
     {
-        var manifest = WithContinuity(Fixture(), NativeSource.BrokenContinuity);
+        var rewound = ShareRunForm.For(WithContinuity(Fixture(), NativeSource.RewoundContinuity));
+        var continuous = ShareRunForm.For(WithContinuity(Fixture(), NativeSource.ContinuousContinuity));
 
-        var form = ShareRunForm.For(manifest);
-
-        Assert.Contains("Not shareable", form.IntegritySeal, StringComparison.Ordinal);
-        Assert.Contains("from its start", form.IntegritySeal, StringComparison.Ordinal);
-    }
-
-    /// <summary>A rewound one is the player's to play from and never theirs to share,
-    /// and the seal says which of the two things happened to it.</summary>
-    [Fact]
-    public void ARewoundRecordingIsSealedAsUnshareableAndNamesTheReload()
-    {
-        var form = ShareRunForm.For(WithContinuity(Fixture(), NativeSource.RewoundContinuity));
-
-        Assert.Contains("Not shareable", form.IntegritySeal, StringComparison.Ordinal);
-        Assert.Contains("reload rewound", form.IntegritySeal, StringComparison.Ordinal);
-    }
-
-    /// <summary>And a continuous one is offered to the publication gate as before, so
-    /// the new seal is a branch and not a replacement.</summary>
-    [Fact]
-    public void AContinuousRecordingIsStillSealedForThePublicationGate()
-    {
-        var form = ShareRunForm.For(WithContinuity(Fixture(), NativeSource.ContinuousContinuity));
-
-        Assert.Contains("publication gate", form.IntegritySeal, StringComparison.Ordinal);
+        Assert.Equal("Recording is not eligible to share", rewound.IntegritySeal);
+        Assert.Contains("publication gate", continuous.IntegritySeal, StringComparison.Ordinal);
     }
 
     /// <summary>The fixture as a native recording of the given continuity. The fixture

@@ -389,6 +389,12 @@ public sealed class RunCapture
         // been used in.
         if (journal.NonStandard) capture.MarkNonStandard();
 
+        // Each press stands as the file holds it, including one taken off: the line
+        // is on the file either way, and the manifest emits only what is on. Applied
+        // before any rollback this resume decides on, so RollBack drops the presses on
+        // the branch it removes the way Parse drops them for a rollback on the file.
+        foreach (var bookmark in journal.Bookmarks) capture._bookmarks[bookmark.Fight] = bookmark;
+
         var last = capture._entries.Count > 0 ? capture._entries[^1] : journal.Opening;
         if (capture._stop is null && !string.Equals(last.Digest, liveDigest, StringComparison.Ordinal))
         {
@@ -431,15 +437,6 @@ public sealed class RunCapture
             }
         }
 
-        // Each press stands as the file holds it, including one taken off: the line
-        // is on the file either way, and the manifest emits only what is on. Applied
-        // after any rollback, and only where the kept history still has the fight,
-        // for the reason RollBack gives.
-        foreach (var bookmark in journal.Bookmarks)
-        {
-            if (capture.HasFinishedFight(bookmark.Fight)) capture._bookmarks[bookmark.Fight] = bookmark;
-        }
-
         if (!journal.WitnessedRunStart)
         {
             capture.Break(RunRefusal.Stopping(
@@ -450,11 +447,11 @@ public sealed class RunCapture
         capture._journalRecords.Clear();
         capture._journalRecords.AddRange(journal.SerializedRecords ??
             journal.Entries.Select(RunJournal.RenderEntry));
-        if (capture.ResumptionRecord is { } resumption) capture._journalRecords.Add(resumption);
         foreach (var refusal in capture.Refusals.Skip(journal.Refusals.Count))
         {
             capture._journalRecords.Add(RunJournal.RenderRefusal(refusal));
         }
+        if (capture.ResumptionRecord is { } resumption) capture._journalRecords.Add(resumption);
 
         return capture;
     }
@@ -521,18 +518,15 @@ public sealed class RunCapture
         // ever on a fight that finished, so every one of them is on the near side of
         // that boundary. A reload can rewind past finished fights, and a mark on one
         // of those would sit on a fight ordinal the continued run will deal again to a
-        // different fight, so only the marks on fights the kept history finished stay.
+        // different fight, so a press at a decision the rollback removed goes with it.
         foreach (var (fight, bookmark) in _bookmarks)
         {
-            if (rebuilt.HasFinishedFight(fight)) rebuilt._bookmarks[fight] = bookmark;
+            if (bookmark.AfterSeq <= target.Seq) rebuilt._bookmarks[fight] = bookmark;
         }
 
         rebuilt.ResumptionRecord = RunJournal.RenderRollback(rollback);
         return rebuilt;
     }
-
-    private bool HasFinishedFight(int fight) =>
-        Coverage.Fights.Any(candidate => candidate.Fight == fight && candidate.EndSeq is not null);
 
     private static DiscardedBranch ToDiscardedBranch(JournalDiscardedBranch branch) => new()
     {

@@ -470,6 +470,10 @@ public sealed class RunCaptureTests
     /// next quit resumes the rewound history rather than the abandoned one - and a
     /// rewind past a finished fight takes that fight's bookmark with it, because the
     /// continued run will deal the same ordinal to a different fight.
+    ///
+    /// The press stays on the file, so the fight is dealt again and won without a
+    /// press before the second resume: a session reading the line back onto the
+    /// re-dealt fight would be marking a fight nobody bookmarked.
     /// </summary>
     [Fact]
     public void AReloadsRollbackIsKeptByTheJournalAndDropsTheBookmarksItRewoundPast()
@@ -483,16 +487,40 @@ public sealed class RunCaptureTests
         rewound.Record(
             ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "2")),
             InFight(2, turn: 1), Digest(30));
+        rewound.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")), Won(2, hp: 58), Digest(31));
+        Assert.False(rewound.IsBookmarked(1));
 
-        var again = RunCapture.Resume(RunJournal.Parse(rewound.Journal.Render()), Digest(30));
+        var again = RunCapture.Resume(RunJournal.Parse(rewound.Journal.Render()), Digest(31));
 
         Assert.Equal(NativeSource.RewoundContinuity, again.Continuity);
         Assert.Equal(RunCaptureState.Recording, again.State);
-        Assert.Equal(2, again.NextSeq);
-        Assert.Equal([0, 1], again.Journal.Decisions.Select(entry => entry.Seq));
+        Assert.Equal(3, again.NextSeq);
+        Assert.Equal([0, 1, 2], again.Journal.Decisions.Select(entry => entry.Seq));
         Assert.True(Assert.Single(again.Discarded).Reload);
         Assert.False(again.IsBookmarked(1));
-        Assert.Equal(Digest(30), again.Journal.Entries[^1].Digest);
+        Assert.Equal(Digest(31), again.Journal.Entries[^1].Digest);
+        again.Finish("abandoned");
+        Assert.Null(again.ToManifest().Source.Native!.Bookmarks);
+    }
+
+    /// <summary>The refusal is on the file before the rollback receipt, so a crash
+    /// between the two leaves a journal the next session resumes - and rolls back
+    /// again, from the same live digest - rather than one it cannot read.</summary>
+    [Fact]
+    public void AReloadsRefusalAloneOnTheFileResumesAndRollsBackAgain()
+    {
+        var rewound = RunCapture.Resume(RunJournal.Parse(Played().Journal.Render()), Digest(0));
+        var text = rewound.Journal.Render();
+        Assert.EndsWith(RunJournal.RenderRefusal(rewound.Refusals[0]) + rewound.ResumptionRecord, text);
+
+        var interrupted = text[..^rewound.ResumptionRecord!.Length];
+        var again = RunCapture.Resume(RunJournal.Parse(interrupted), Digest(0));
+
+        Assert.Equal(NativeSource.RewoundContinuity, again.Continuity);
+        Assert.Equal(RunCaptureState.Recording, again.State);
+        Assert.Equal(1, again.NextSeq);
+        Assert.True(Assert.Single(again.Discarded).Reload);
     }
 
     /// <summary>A hole outranks a rewind: a reload the recorder can place after one it

@@ -16,7 +16,7 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void ARecordingInProgressReadsRecordingInTheOverlaysOwnColour()
     {
-        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording, Continuous: true));
+        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording));
 
         Assert.Equal(Presence.Drawn, presence.Row.Presence);
         Assert.False(presence.Row.Pressable);
@@ -27,7 +27,7 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void ABrokenWatchReadsRecordingStoppedInTheWarningHue()
     {
-        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken, Continuous: true));
+        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken));
 
         Assert.Equal(Presence.Drawn, presence.Row.Presence);
         Assert.False(presence.Row.Pressable);
@@ -38,7 +38,7 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void NoRecorderAttachedDrawsNoRowAtAll()
     {
-        var presence = RecorderPresence.For(new RecorderFacts(false, null, Continuous: true));
+        var presence = RecorderPresence.For(new RecorderFacts(false, null));
 
         Assert.Equal(Presence.Absent, presence.Row.Presence);
         Assert.Equal(string.Empty, presence.Text);
@@ -50,28 +50,8 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void ARecorderReportedInactiveDrawsNothingRegardlessOfWhyItIsInactive()
     {
-        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Recording, Continuous: true)));
-        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Broken, Continuous: true)));
-    }
-
-    /// <summary>
-    /// A reload that rewound the run behind what was recorded.
-    ///
-    /// The recorder goes on watching, so the capture is still Recording, and the
-    /// recording can never be shared, so its continuity is gone. The row states the
-    /// second: a player told only RECORDING would learn nothing changed, and one told
-    /// RECORDING STOPPED would be told the recorder gave up, which it did not.
-    /// </summary>
-    [Fact]
-    public void ARunStillRecordedAfterAReloadReadsNotShareableInTheWarningHue()
-    {
-        var presence = RecorderPresence.For(
-            new RecorderFacts(true, RunCaptureState.Recording, Continuous: false));
-
-        Assert.Equal(Presence.Drawn, presence.Row.Presence);
-        Assert.False(presence.Row.Pressable);
-        Assert.Equal(RecorderCopy.RecordingNotShareable, presence.Text);
-        Assert.Equal(RecorderRowTone.Warning, presence.Tone);
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Recording)));
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Broken)));
     }
 
     /// <summary>A finished capture is a run that is over; nothing is being recorded
@@ -79,7 +59,7 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void AFinishedCaptureDrawsNothing()
     {
-        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Finished, Continuous: true)));
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Finished)));
     }
 
     /// <summary>An active recorder with no capture state is a contradiction in the
@@ -88,6 +68,6 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void AnActiveRecorderWithNoCaptureStateDrawsNothing()
     {
-        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(true, null, Continuous: true)));
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(true, null)));
     }
 }
