@@ -608,7 +608,7 @@ public static partial class ManifestValidator
                 "no such branch is not one the recorder wrote.");
         }
 
-        if (!native.IsRewound && native.Discarded?.Any(branch => branch.Reload) == true)
+        if (native.IsContinuous && native.Discarded?.Any(branch => branch.Reload) == true)
         {
             problems.Add(
                 $"source.native.continuity is '{native.Continuity}' and a discarded branch is marked as a " +

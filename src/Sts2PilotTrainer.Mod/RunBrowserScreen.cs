@@ -343,15 +343,24 @@ internal static class RunBrowserScreen
                 skipIndexFetch: true,
                 stripPage: page),
             pane.Verdict,
-            // The pane says how far the run itself went; how far this player has
-            // replayed is the list's own column, so the two are not both here.
-            pane.Run.LastFloor is { } reached ? [LibraryCopy.RunReached(reached)] : [],
+            PaneFacts(pane),
             plate,
             new ScreenRow(
                 pane.Open, pane.OpenEnabled, () => OpenRun(
                     runId, fromMyRuns: mine, compatibleOnly: compatibleOnly),
                 Reason: pane.OpenEnabled ? null : pane.Verdict),
             VerdictPassed: pane.Run.Listed);
+    }
+
+    /// <summary>The pane's supporting lines: how far the run itself went - how far
+    /// this player has replayed is the list's own column - and why a plate row is
+    /// refused, where one is.</summary>
+    private static IReadOnlyList<string> PaneFacts(RunPane pane)
+    {
+        var facts = new List<string>();
+        if (pane.Run.LastFloor is { } reached) facts.Add(LibraryCopy.RunReached(reached));
+        if (pane.PlateReason is { } reason) facts.Add(reason);
+        return facts;
     }
 
     /// <summary>

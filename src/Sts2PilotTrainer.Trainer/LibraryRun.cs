@@ -105,6 +105,12 @@ public sealed record LibraryRun(
     /// <summary>The fight ordinals this player has already played from.</summary>
     public IReadOnlyList<int> FightsPlayed { get; init; } = [];
 
+    /// <summary>Whether a reload rewound the run behind what was recorded, as the
+    /// recording says of itself through <see cref="NativeSource.IsRewound"/>. The run
+    /// is played from and never submitted, and the pane's submit row reads this the way
+    /// the run-history plate does.</summary>
+    public bool Rewound { get; init; }
+
     /// <summary>The sharing service's identity for this submission.</summary>
     [JsonIgnore]
     public string? ShareId { get; init; }
@@ -201,6 +207,7 @@ public sealed record LibraryRun(
             recorded)
         {
             ActReached = RunReading.ActReached(recording),
+            Rewound = recording.Source.Native?.IsRewound ?? false,
         };
     }
 
