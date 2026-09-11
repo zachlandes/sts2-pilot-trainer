@@ -53,11 +53,14 @@ public sealed record StateReading(IReadOnlyDictionary<string, string> State, str
 /// did not witness. A recorder that resumes must account for the gap between sessions,
 /// so <see cref="Resume"/> compares the state the game resumed into against the state
 /// the journal last recorded and
-/// marks <see cref="Continuity"/> broken when they differ, except when the live state
-/// is the room-entry boundary of the fight the journal still held open. That is the
-/// game's observed save rollback: its later fight decisions remain as discarded
-/// evidence and recording resumes from the boundary. Every other mismatch stays a
-/// break rather than being repaired.
+/// marks <see cref="Continuity"/> broken when they differ, except in two cases that
+/// are both rollbacks of the history. The live state being the room-entry boundary
+/// of the fight the journal still held open is the game's observed save rollback:
+/// its later fight decisions remain as discarded evidence, recording resumes from
+/// the boundary, and continuity is untouched. The live state being any earlier
+/// decision the journal holds is a reload that rewound the run behind what was
+/// recorded: the same discarded branch, marked as the reload's, and continuity
+/// rewound - whole, replayable, never shareable. Every other mismatch is a break.
 ///
 /// Nothing here reads the game. Every reading arrives from the caller, which is what
 /// keeps every rule in this class testable on a machine that does not own the game.
@@ -336,8 +339,9 @@ public sealed class RunCapture
     /// the digest of the moment it resumed into. Equal means nothing happened in
     /// between that the recorder missed. A return to the entry of the fight the journal
     /// still holds open is the game's observed save rollback, so the unwound decisions
-    /// are marked discarded and the replayable history resumes there. Anything else is
-    /// marked broken rather than repaired.
+    /// are marked discarded and the replayable history resumes there. A return to any
+    /// other decision the journal holds is a reload that rewound the run, handled the
+    /// same way and marked rewound. Anything else is marked broken rather than repaired.
     /// </summary>
     /// <param name="journal">What the previous session wrote.</param>
     /// <param name="liveDigest">The complete canonical state digest of the run the
@@ -385,10 +389,6 @@ public sealed class RunCapture
         // been used in.
         if (journal.NonStandard) capture.MarkNonStandard();
 
-        // Each press stands as the file holds it, including one taken off: the line
-        // is on the file either way, and the manifest emits only what is on.
-        foreach (var bookmark in journal.Bookmarks) capture._bookmarks[bookmark.Fight] = bookmark;
-
         var last = capture._entries.Count > 0 ? capture._entries[^1] : journal.Opening;
         if (capture._stop is null && !string.Equals(last.Digest, liveDigest, StringComparison.Ordinal))
         {
@@ -398,28 +398,46 @@ public sealed class RunCapture
             {
                 capture = capture.RollBack(rolledBackTo);
             }
-            else
+            else if (rolledBackTo is not null)
             {
                 // A resume the recorder can place in its own history is a reload that
                 // rewound the run behind what it had recorded - the player quit and
-                // continued from an earlier save. It costs the recording its continuity
-                // and with it any chance of being shared, and it costs the watch
-                // nothing: everything from here on is as recordable as it was before,
-                // and a run somebody is still playing is one they are still recording.
+                // continued from an earlier save. The decisions past that point were
+                // played and then abandoned, so they go where the game's own rollback
+                // puts its unwound fight: a discarded branch, marked as the reload's,
+                // with the replayable history resuming at the decision the game came
+                // back to. That keeps the recording one the engine replays, and it
+                // costs the watch nothing: everything from here on is as recordable as
+                // it was before. What it costs is any chance of being shared, which
+                // the continuing refusal says.
+                var seenTo = last.Seq;
+                capture = capture.RollBack(rolledBackTo, reload: true);
+                capture.Break(RunRefusal.Continuing(
+                    $"The game resumed this run at decision " +
+                    $"{rolledBackTo.Seq.ToString(CultureInfo.InvariantCulture)}, and the recorder had " +
+                    $"watched it to decision {seenTo.ToString(CultureInfo.InvariantCulture)}. This is not " +
+                    "the game's rollback of a live fight to its room-entry boundary, so the recording can " +
+                    "no longer be shared. The decisions the reload abandoned are kept as a discarded branch " +
+                    "and the recorder goes on watching the run."));
+            }
+            else
+            {
                 // A resume it cannot place is the other thing, and it stops there:
                 // nothing establishes what the run even is from that point.
-                capture.Break(rolledBackTo is null
-                    ? RunRefusal.Stopping(
-                        "The run this session resumed into is not one this recording ever saw. The recorder " +
-                        "cannot say what happened between the decision it last watched and the state the game " +
-                        "came back in.")
-                    : RunRefusal.Continuing(
-                        $"The game resumed this run at decision " +
-                        $"{rolledBackTo.Seq.ToString(CultureInfo.InvariantCulture)}, and the recorder had " +
-                        $"watched it to decision {last.Seq.ToString(CultureInfo.InvariantCulture)}. This is not " +
-                        "the game's rollback of a live fight to its room-entry boundary, so the recording can " +
-                        "no longer be shared. The recorder goes on watching the run."));
+                capture.Break(RunRefusal.Stopping(
+                    "The run this session resumed into is not one this recording ever saw. The recorder " +
+                    "cannot say what happened between the decision it last watched and the state the game " +
+                    "came back in."));
             }
+        }
+
+        // Each press stands as the file holds it, including one taken off: the line
+        // is on the file either way, and the manifest emits only what is on. Applied
+        // after any rollback, and only where the kept history still has the fight,
+        // for the reason RollBack gives.
+        foreach (var bookmark in journal.Bookmarks)
+        {
+            if (capture.HasFinishedFight(bookmark.Fight)) capture._bookmarks[bookmark.Fight] = bookmark;
         }
 
         if (!journal.WitnessedRunStart)
@@ -454,7 +472,14 @@ public sealed class RunCapture
                _entries.Any(entry => entry.Seq > target.Seq);
     }
 
-    private RunCapture RollBack(RunJournalEntry target)
+    /// <summary>
+    /// The history cut back to <paramref name="target"/>, with everything after it
+    /// kept as a discarded branch. The game's own rollback of a live fight and a
+    /// reload that rewound the run are the same operation on the history and differ
+    /// in what they cost, which is the caller's to say; <paramref name="reload"/> is
+    /// written on the branch so a reader can tell the two apart.
+    /// </summary>
+    private RunCapture RollBack(RunJournalEntry target, bool reload = false)
     {
         var removed = _entries.Where(entry => entry.Seq > target.Seq).ToList();
         var rollback = new JournalRollback
@@ -463,6 +488,7 @@ public sealed class RunCapture
             RollbackToDigest = target.Digest,
             DiscardedFromSeq = removed[0].Seq,
             DiscardedThroughSeq = removed[^1].Seq,
+            Reload = reload,
         };
 
         var rebuilt = new RunCapture(
@@ -491,18 +517,28 @@ public sealed class RunCapture
             rebuilt.Integrity = NativeSource.NonStandardIntegrity;
         }
 
-        // A rollback discards a fight still open, and a bookmark is only ever on a
-        // fight that finished, so every one of them is on the far side of the boundary
-        foreach (var (fight, bookmark) in _bookmarks) rebuilt._bookmarks[fight] = bookmark;
+        // The game's own rollback discards a fight still open, and a bookmark is only
+        // ever on a fight that finished, so every one of them is on the near side of
+        // that boundary. A reload can rewind past finished fights, and a mark on one
+        // of those would sit on a fight ordinal the continued run will deal again to a
+        // different fight, so only the marks on fights the kept history finished stay.
+        foreach (var (fight, bookmark) in _bookmarks)
+        {
+            if (rebuilt.HasFinishedFight(fight)) rebuilt._bookmarks[fight] = bookmark;
+        }
 
         rebuilt.ResumptionRecord = RunJournal.RenderRollback(rollback);
         return rebuilt;
     }
 
+    private bool HasFinishedFight(int fight) =>
+        Coverage.Fights.Any(candidate => candidate.Fight == fight && candidate.EndSeq is not null);
+
     private static DiscardedBranch ToDiscardedBranch(JournalDiscardedBranch branch) => new()
     {
         RollbackToSeq = branch.Rollback.RollbackToSeq,
         RollbackToDigest = branch.Rollback.RollbackToDigest,
+        Reload = branch.Rollback.Reload,
         Actions = branch.Entries.Select(entry =>
         {
             if (!Enum.TryParse<ActionVerb>(entry.Verb, out var verb))
@@ -1053,6 +1089,11 @@ public sealed class RunCapture
             RunCaptureState.Finished => $"and the run ended {Outcome}",
             _ => "and the run was still being played when this was written",
         };
+        if (State != RunCaptureState.Broken &&
+            string.Equals(Continuity, NativeSource.RewoundContinuity, StringComparison.Ordinal))
+        {
+            ending += ", after a reload rewound it behind what had been recorded";
+        }
 
         return
             $"The whole run as it was played: " +
@@ -1074,7 +1115,12 @@ public sealed class RunCapture
     /// </summary>
     private void Break(RunRefusal refusal)
     {
-        Continuity = NativeSource.BrokenContinuity;
+        // A hole outranks a rewind: once the recorder could not place the run, no
+        // later reload it can place makes the history whole again.
+        Continuity = refusal.WatchContinues &&
+                     !string.Equals(Continuity, NativeSource.BrokenContinuity, StringComparison.Ordinal)
+            ? NativeSource.RewoundContinuity
+            : NativeSource.BrokenContinuity;
         _refusals.Add(refusal);
         if (!refusal.WatchContinues && State == RunCaptureState.Recording)
         {

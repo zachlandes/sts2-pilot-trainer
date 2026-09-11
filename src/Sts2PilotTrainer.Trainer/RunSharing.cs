@@ -180,14 +180,17 @@ public sealed record ShareRunForm(
     /// while it happened, so this is where they find out what it cost. The recording is
     /// still theirs; it is the sharing that is gone.
     ///
-    /// It says the watch has a hole in it and not what made the hole. A manifest states
-    /// <c>continuity</c> and no cause, and more than one thing puts a recording there,
-    /// so a line naming the reload would be a claim this form has not read.
+    /// A rewound recording names the reload, because <c>continuity = rewound</c> is the
+    /// manifest stating it. A broken one says the watch has a hole in it and not what
+    /// made the hole: more than one thing puts a recording there, and a line naming a
+    /// cause would be a claim this form has not read.
     /// </summary>
     private static string IntegritySealFor(ReplayManifest run) => run.Source.Native switch
     {
         { IsContinuous: true, StatesSomethingOtherThanComplete: false } =>
             "Complete recording · publication gate required",
+        { IsRewound: true } =>
+            "Not shareable · a reload rewound this run behind what was recorded",
         { IsContinuous: false } =>
             "Not shareable · the recorder could not account for this run from its start",
         _ => "Recording is not eligible to share",

@@ -42,8 +42,10 @@ public sealed record PlateRow(
 /// </summary>
 /// <param name="HasRecording">Whether a recording of this run exists at all. The plate
 /// is absent when it does not - not empty, absent.</param>
-/// <param name="Continuous">Whether the recorder watched the whole run. False is the
-/// recording saying so about itself.</param>
+/// <param name="HistoryWhole">Whether the recording holds every decision from run
+/// start - a continuous watch, or one a reload rewound and that went on recording.
+/// False is the recording saying so about itself. Whether it may be shared is a
+/// different question and the submit row's.</param>
 /// <param name="ConsoleUsed">Whether a console command was used during the run, or
 /// null when nothing established it. Null is not "no": it gates the submit row alone,
 /// and a plate claiming a clean run it never checked would be evidence nobody can
@@ -72,7 +74,7 @@ public sealed record PlateRow(
 /// drawn.</param>
 public sealed record RunHistoryFacts(
     bool HasRecording,
-    bool Continuous,
+    bool HistoryWhole,
     bool? ConsoleUsed,
     string RecordedBuild,
     string ThisBuild,
@@ -130,7 +132,7 @@ public sealed record RunHistoryPlate(
     {
         if (!facts.HasRecording) return null;
 
-        if (!facts.Continuous)
+        if (!facts.HistoryWhole)
         {
             return Refused(
                 PlateMark.Warning, LibraryCopy.PlateCantBeReplayed, facts,

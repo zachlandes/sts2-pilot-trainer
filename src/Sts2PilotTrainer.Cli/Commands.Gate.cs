@@ -71,6 +71,19 @@ internal static partial class Commands
             Check("provenance",
                 "The recording is of the run it claims, from that run's start.",
                 SelfProcess.Run("validate", manifestPath, "--show-rejections", "--out", outDir)),
+
+            // A rewound recording validates, because its history is whole and replays;
+            // it is refused here, because the run it holds is not the one the player
+            // would have played without the reload. The validator is what the
+            // recorded-fight entry asks, so this refusal cannot live there.
+            new(
+                "continuity",
+                "The recorder's account of the run was never rewound by a reload behind what it had recorded.",
+                manifest.Source.Native?.IsRewound != true,
+                manifest.Source.Native?.IsRewound == true
+                    ? $"source.native.continuity is '{NativeSource.RewoundContinuity}'. The run is the player's " +
+                      "to keep and play from, and is never published."
+                    : null),
         };
 
         if (conditions.All(condition => condition.Passed))

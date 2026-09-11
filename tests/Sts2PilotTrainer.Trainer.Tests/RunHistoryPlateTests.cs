@@ -15,7 +15,7 @@ public sealed class RunHistoryPlateTests
 
     private static RunHistoryFacts Facts(
         bool hasRecording = true,
-        bool continuous = true,
+        bool historyWhole = true,
         bool? consoleUsed = null,
         string recordedBuild = Build,
         bool runInProgress = false,
@@ -23,7 +23,7 @@ public sealed class RunHistoryPlateTests
         int? lastFloor = 11,
         FloorKind lastFloorKind = FloorKind.Combat,
         bool hasOtherFloors = true) =>
-        new(hasRecording, continuous, consoleUsed, recordedBuild, Build,
+        new(hasRecording, historyWhole, consoleUsed, recordedBuild, Build,
             runInProgress, submitAvailable, lastFloor, lastFloorKind, hasOtherFloors);
 
     [Fact]
@@ -69,7 +69,7 @@ public sealed class RunHistoryPlateTests
     public void TheNotSavedSentenceIsSaidBesideTheRowsAndNeverAtTheHead()
     {
         var offered = RunHistoryPlate.For(Facts())!;
-        var refused = RunHistoryPlate.For(Facts(continuous: false))!;
+        var refused = RunHistoryPlate.For(Facts(historyWhole: false))!;
 
         Assert.Equal(LibraryCopy.NotSaved, offered.NotSaved);
         Assert.Null(offered.Head);
@@ -155,7 +155,7 @@ public sealed class RunHistoryPlateTests
     public static TheoryData<RunHistoryFacts, PlateMark?, string?, string?> RefusedStates() => new()
     {
         {
-            Facts(continuous: false), PlateMark.Warning,
+            Facts(historyWhole: false), PlateMark.Warning,
             LibraryCopy.PlateCantBeReplayed, LibraryCopy.PlateContinuityBroken
         },
         {
@@ -179,7 +179,7 @@ public sealed class RunHistoryPlateTests
     [Fact]
     public void AnIncompleteRecordingSaysWhatHappenedRatherThanWhatTheRecorderSaw()
     {
-        var plate = RunHistoryPlate.For(Facts(continuous: false))!;
+        var plate = RunHistoryPlate.For(Facts(historyWhole: false))!;
 
         Assert.Equal(
             "Part of this run was played while Runmobile wasn't recording.", plate.Reason);

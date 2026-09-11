@@ -2008,6 +2008,20 @@ public class NativeManifestValidatorTests
             problem.Contains("stopped and started again", StringComparison.Ordinal));
     }
 
+    /// <summary>A rewound recording is whole - every decision from run start was
+    /// watched and the reload's branch is kept beside them - so it is not refused
+    /// here; that it may never be shared is the gate's. What it must carry is the
+    /// branch, and a branch marked as a reload's must be on a rewound recording.</summary>
+    [Fact]
+    public void ARewoundRecordingMustCarryTheReloadsBranchAndTheBranchMustBeOnARewoundRecording()
+    {
+        var rewoundWithoutBranch = Validate(Fixtures.NativeSourceBlock(continuity: NativeSource.RewoundContinuity));
+        Assert.DoesNotContain(rewoundWithoutBranch.Problems, problem =>
+            problem.Contains("stopped and started again", StringComparison.Ordinal));
+        Assert.Contains(rewoundWithoutBranch.Problems, problem =>
+            problem.Contains("no discarded branch is marked as the reload's", StringComparison.Ordinal));
+    }
+
     /// <summary>Giving up is a completed recording: the run is over, the history is
     /// whole, and the fights in it were really played.</summary>
     [Theory]

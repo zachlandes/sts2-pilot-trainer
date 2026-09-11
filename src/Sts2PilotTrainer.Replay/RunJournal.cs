@@ -153,11 +153,6 @@ public sealed record RunJournal
     public static string RenderEntry(RunJournalEntry entry) =>
         JsonSerializer.Serialize(entry, Compact) + "\n";
 
-    /// <summary>One refusal, as the line appended for it. Appended the moment it is
-    /// raised, for the same reason a decision is: a refusal only a running session
-    /// knows about is one the session after it cannot be told.</summary>
-    public static string RenderRefusal(string reason) => RenderRefusal(RunRefusal.Stopping(reason));
-
     /// <summary>The same, for a refusal that says whether the watch went on past it.
     /// A refusal the watch continued past carries <c>watch_continues</c> and one it
     /// did not carries nothing, so a journal written before this build reads as what
@@ -395,25 +390,31 @@ public sealed record RunJournal
                         "after it. The recorder only writes one after observing the resumed run at that boundary.");
                 }
 
-                var trace = new ReplayTrace
+                // A reload may rewind to any decision the recorder placed; the game's
+                // own rollback is only ever to the room entry of a live fight, and a
+                // line claiming to be one is held to that.
+                if (!rollback.Reload)
                 {
-                    Steps = entries.Select(candidate => new ReplayStep
+                    var trace = new ReplayTrace
                     {
-                        Seq = candidate.Seq,
-                        Verb = candidate.Verb,
-                        Args = candidate.Args,
-                        Before = candidate.Before ?? candidate.State,
-                        After = candidate.State,
-                    }).ToList(),
-                };
-                var coverage = RunCoverage.Of(trace);
-                var roomEntry = coverage.Floors.LastOrDefault();
-                var fight = roomEntry is null ? null : coverage.FightsOn(roomEntry).LastOrDefault();
-                if (fight is not { Finished: false } || roomEntry!.EnteredAfterSeq != rollback.RollbackToSeq)
-                {
-                    throw new ManifestException(
-                        "A run journal's rollback is not to the room-entry decision before the fight its history " +
-                        "still held open. Only the game's observed mid-fight save rollback is continuous.");
+                        Steps = entries.Select(candidate => new ReplayStep
+                        {
+                            Seq = candidate.Seq,
+                            Verb = candidate.Verb,
+                            Args = candidate.Args,
+                            Before = candidate.Before ?? candidate.State,
+                            After = candidate.State,
+                        }).ToList(),
+                    };
+                    var coverage = RunCoverage.Of(trace);
+                    var roomEntry = coverage.Floors.LastOrDefault();
+                    var fight = roomEntry is null ? null : coverage.FightsOn(roomEntry).LastOrDefault();
+                    if (fight is not { Finished: false } || roomEntry!.EnteredAfterSeq != rollback.RollbackToSeq)
+                    {
+                        throw new ManifestException(
+                            "A run journal's rollback is not to the room-entry decision before the fight its " +
+                            "history still held open. Only the game's observed mid-fight save rollback is continuous.");
+                    }
                 }
 
                 var removed = entries.Skip(boundaryIndex + 1).ToList();
@@ -450,6 +451,15 @@ public sealed record RunJournal
 
                 entries.Add(entry);
             }
+        }
+
+        // A reload's rollback is written with the refusal that says what it cost, so a
+        // file holding the one without the other is one nothing finished writing.
+        if (discarded.Any(branch => branch.Rollback.Reload) && !refusals.Any(refusal => refusal.WatchContinues))
+        {
+            throw new ManifestException(
+                "This run journal holds a reload's rollback and no refusal saying the recorder went on past it. " +
+                "The recorder writes the two together, so a file with one alone is not one it finished writing.");
         }
 
         var journal = new RunJournal
@@ -700,6 +710,14 @@ public sealed record JournalRollback
 
     [JsonPropertyName("discarded_through_seq")]
     public required int DiscardedThroughSeq { get; init; }
+
+    /// <summary>True for a reload that rewound the run behind what was recorded,
+    /// which is not a rollback to the room entry of a live fight and is read without
+    /// that rule. Absent on every rollback an older journal holds, all of which were
+    /// the game's own.</summary>
+    [JsonPropertyName("reload")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Reload { get; init; }
 }
 
 /// <summary>The journal entries one rollback removed from the continued history.</summary>

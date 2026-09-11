@@ -232,7 +232,16 @@ public sealed record NativeSource
     /// <summary>The recorder missed part of the run, so the history is not this run's.</summary>
     public const string BrokenContinuity = "broken";
 
-    public static readonly string[] Continuities = [ContinuousContinuity, BrokenContinuity];
+    /// <summary>A reload rewound the run behind what the recorder had written, and it
+    /// went on recording from there. The history is whole - every decision from run
+    /// start was watched, and the branch the reload abandoned is in <see
+    /// cref="Discarded"/> with the reload marked on it - so the run replays. It is not
+    /// the run the player would have played without the reload, so it is never shared:
+    /// <see cref="IsContinuous"/> is false and the share form and the publication gate
+    /// both read that.</summary>
+    public const string RewoundContinuity = "rewound";
+
+    public static readonly string[] Continuities = [ContinuousContinuity, BrokenContinuity, RewoundContinuity];
 
     /// <summary>The recorder met no decision it could not name and no console
     /// command.</summary>
@@ -344,6 +353,17 @@ public sealed record NativeSource
     [JsonIgnore]
     public bool IsContinuous => string.Equals(Continuity, ContinuousContinuity, StringComparison.Ordinal);
 
+    /// <summary>A reload rewound the run and the recorder kept its account of it: the
+    /// history replays and the run is not shareable. See <see cref="RewoundContinuity"/>.</summary>
+    [JsonIgnore]
+    public bool IsRewound => string.Equals(Continuity, RewoundContinuity, StringComparison.Ordinal);
+
+    /// <summary>Whether the history holds every decision from run start, whichever of
+    /// the two continuities says so. The recorded-fight entry and the run-history plate
+    /// read this; what may be shared is <see cref="IsContinuous"/>'s question.</summary>
+    [JsonIgnore]
+    public bool HistoryIsWhole => IsContinuous || IsRewound;
+
     /// <summary>Whether the recording states an integrity that is not
     /// <see cref="CompleteIntegrity"/>, which is what refuses it for publication.</summary>
     [JsonIgnore]
@@ -380,9 +400,20 @@ public sealed record FightBookmark
 /// <summary>A recorded branch removed by the game's observed room-entry rollback.</summary>
 public sealed record DiscardedBranch
 {
-    /// <summary>The room-entry action the continued run returned to.</summary>
+    /// <summary>The action the continued run returned to: a room entry for the game's
+    /// own rollback of a live fight, or any decision - the opening reading's -1
+    /// included - for a reload that rewound the run.</summary>
     [JsonPropertyName("rollback_to_seq")]
     public required int RollbackToSeq { get; init; }
+
+    /// <summary>True where a reload rewound the run behind what was recorded rather
+    /// than the game rolling a live fight back to its room entry. The branch is kept
+    /// as what was played before the reload; the validator asks nothing of it that
+    /// only a room-entry rollback can answer, and the recording carrying it is
+    /// <see cref="NativeSource.RewoundContinuity"/>.</summary>
+    [JsonPropertyName("reload")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Reload { get; init; }
 
     /// <summary>The captured digest which both the journal boundary and resumed run held.</summary>
     [JsonPropertyName("rollback_to_digest")]

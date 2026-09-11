@@ -277,6 +277,17 @@ public sealed class RunSharingTests
         Assert.Contains("from its start", form.IntegritySeal, StringComparison.Ordinal);
     }
 
+    /// <summary>A rewound one is the player's to play from and never theirs to share,
+    /// and the seal says which of the two things happened to it.</summary>
+    [Fact]
+    public void ARewoundRecordingIsSealedAsUnshareableAndNamesTheReload()
+    {
+        var form = ShareRunForm.For(WithContinuity(Fixture(), NativeSource.RewoundContinuity));
+
+        Assert.Contains("Not shareable", form.IntegritySeal, StringComparison.Ordinal);
+        Assert.Contains("reload rewound", form.IntegritySeal, StringComparison.Ordinal);
+    }
+
     /// <summary>And a continuous one is offered to the publication gate as before, so
     /// the new seal is a branch and not a replacement.</summary>
     [Fact]

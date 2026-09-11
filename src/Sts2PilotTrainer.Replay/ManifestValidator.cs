@@ -590,11 +590,30 @@ public static partial class ManifestValidator
                 "reconstructs a different run while every other gate passes.");
         }
 
-        if (!native.IsContinuous)
+        // Rewound is whole: every decision from run start was watched and the branch
+        // a reload abandoned is discarded beside them, so the history replays. That it
+        // may never be shared is the publication gate's refusal, not this one.
+        if (!native.HistoryIsWhole)
         {
             problems.Add(
                 $"source.native.continuity is '{native.Continuity}'. The recorder stopped and started again, so " +
                 "it cannot know what happened in between, and a history with a hole in it is not this run's.");
+        }
+
+        if (native.IsRewound && native.Discarded?.Any(branch => branch.Reload) != true)
+        {
+            problems.Add(
+                $"source.native.continuity is '{native.Continuity}' and no discarded branch is marked as the " +
+                "reload's. A rewind keeps what it abandoned, so a recording that says it was rewound and holds " +
+                "no such branch is not one the recorder wrote.");
+        }
+
+        if (!native.IsRewound && native.Discarded?.Any(branch => branch.Reload) == true)
+        {
+            problems.Add(
+                $"source.native.continuity is '{native.Continuity}' and a discarded branch is marked as a " +
+                "reload's. A reload rewinds the run behind what was recorded, and a recording holding one " +
+                $"is '{NativeSource.RewoundContinuity}'.");
         }
 
         if (native.MigratedFromVersion is { } from &&
@@ -726,7 +745,9 @@ public static partial class ManifestValidator
         {
             var branch = branches[branchIndex];
             var path = $"source.native.discarded[{branchIndex.ToString(CultureInfo.InvariantCulture)}]";
-            if (branch.RollbackToSeq < 0 || branch.RollbackToSeq >= actions.Count)
+            // A reload may have rewound to the opening reading, before any decision;
+            // the game's own rollback is always to a room entry the history holds.
+            if (branch.RollbackToSeq < (branch.Reload ? -1 : 0) || branch.RollbackToSeq >= actions.Count)
             {
                 problems.Add($"{path}.rollback_to_seq does not name a decision in the continued history.");
             }
@@ -764,11 +785,24 @@ public static partial class ManifestValidator
                 .Where(action => action.Seq == branch.RollbackToSeq)
                 .Concat(branch.Actions)
                 .ToList();
-            if (traceSteps.Count != expectedActions.Count ||
-                traceSteps.Where((step, index) => !Matches(step, expectedActions[index])).Any())
+            // The opening reading is a step of the trace and never an action, so a
+            // reload's branch from it is held to the same shape less that step.
+            var fromOpening = branch.Reload && branch.RollbackToSeq == -1;
+            var compared = fromOpening
+                ? traceSteps.SkipWhile(step => step.Seq == -1 && step.Verb == RunCapture.RunStartVerb).ToList()
+                : traceSteps;
+            if (compared.Count != expectedActions.Count ||
+                compared.Where((step, index) => !Matches(step, expectedActions[index])).Any() ||
+                (fromOpening && compared.Count == traceSteps.Count))
             {
                 problems.Add($"{path}.trace does not describe its rollback boundary and discarded actions.");
             }
+
+            // What the game's own rollback returns to is the room entry of a live
+            // fight, and the branch shows that fight beginning there. A reload returns
+            // to whatever decision the save held, and the branch is what was played
+            // after it; nothing about a fight is asked of it.
+            if (branch.Reload) continue;
 
             var branchCoverage = RunCoverage.Of(branch.Trace);
             var floor = branchCoverage.Floors.FirstOrDefault(entry =>
