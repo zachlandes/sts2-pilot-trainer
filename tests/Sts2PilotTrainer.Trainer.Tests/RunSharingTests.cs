@@ -257,6 +257,40 @@ public sealed class RunSharingTests
         Assert.Contains("locally", form.LocalValidation);
     }
 
+    /// <summary>A rewound recording is the player's to play from and never theirs to
+    /// share, and the seal says so the way it does for every recording the gate would
+    /// refuse; a continuous one is still offered to the gate, so the seal is a branch
+    /// on continuity and not on integrity alone.</summary>
+    [Fact]
+    public void ARewoundRecordingIsSealedIneligibleAndAContinuousOneIsNot()
+    {
+        var rewound = ShareRunForm.For(WithContinuity(Fixture(), NativeSource.RewoundContinuity));
+        var continuous = ShareRunForm.For(WithContinuity(Fixture(), NativeSource.ContinuousContinuity));
+
+        Assert.Equal("Recording is not eligible to share", rewound.IntegritySeal);
+        Assert.Contains("publication gate", continuous.IntegritySeal, StringComparison.Ordinal);
+    }
+
+    /// <summary>The fixture as a native recording of the given continuity. The fixture
+    /// itself is reconstructed from a video and carries no native source, and it is the
+    /// native source the seal reads.</summary>
+    private static ReplayManifest WithContinuity(ReplayManifest run, string continuity) => run with
+    {
+        Source = run.Source with
+        {
+            Kind = "native",
+            ExtractionMethod = "captured",
+            Native = new NativeSource
+            {
+                RecorderVersion = "runmobile-recorder/0.1.0",
+                WitnessedRunStart = Fact<bool>.Captured(true, FactEvidence.AtActionOrdinal(-1, 0)),
+                Continuity = continuity,
+                Outcome = "abandoned",
+                Integrity = NativeSource.CompleteIntegrity,
+            },
+        },
+    };
+
     private static IRunSharingApi Service(
         Func<ReplayManifest, bool> gate, Func<DateTimeOffset>? clock = null)
     {

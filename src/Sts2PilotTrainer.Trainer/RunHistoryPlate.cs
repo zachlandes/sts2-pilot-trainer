@@ -42,8 +42,14 @@ public sealed record PlateRow(
 /// </summary>
 /// <param name="HasRecording">Whether a recording of this run exists at all. The plate
 /// is absent when it does not - not empty, absent.</param>
-/// <param name="Continuous">Whether the recorder watched the whole run. False is the
-/// recording saying so about itself.</param>
+/// <param name="HistoryWhole">Whether the recording holds every decision from run
+/// start - a continuous watch, or one a reload rewound and that went on recording.
+/// False is the recording saying so about itself. Whether it may be shared is a
+/// different question and the submit row's.</param>
+/// <param name="Rewound">Whether a reload rewound the run behind what was recorded and
+/// the recorder went on from there. The recording says so about itself as
+/// <c>continuity = rewound</c>: whole and playable, and never shareable, so it gates the
+/// submit row alone, the way a console command does.</param>
 /// <param name="ConsoleUsed">Whether a console command was used during the run, or
 /// null when nothing established it. Null is not "no": it gates the submit row alone,
 /// and a plate claiming a clean run it never checked would be evidence nobody can
@@ -72,7 +78,8 @@ public sealed record PlateRow(
 /// drawn.</param>
 public sealed record RunHistoryFacts(
     bool HasRecording,
-    bool Continuous,
+    bool HistoryWhole,
+    bool Rewound,
     bool? ConsoleUsed,
     string RecordedBuild,
     string ThisBuild,
@@ -130,7 +137,7 @@ public sealed record RunHistoryPlate(
     {
         if (!facts.HasRecording) return null;
 
-        if (!facts.Continuous)
+        if (!facts.HistoryWhole)
         {
             return Refused(
                 PlateMark.Warning, LibraryCopy.PlateCantBeReplayed, facts,
@@ -154,16 +161,19 @@ public sealed record RunHistoryPlate(
 
         // A console command changes what the run was, so it stops the run being
         // published and stops nothing else: the fights really were fought and playing
-        // from one is still playing from what happened. It is named ahead of the
-        // missing flow because it is the more particular thing true of this run - the
+        // from one is still playing from what happened. A reload that rewound the run
+        // is the same shape - the run as it stands is the player's to play from and
+        // not one anybody else could have played. Both are named ahead of the missing
+        // flow because they are the more particular thing true of this run - the
         // flow's absence is true of every run on this build.
         var consoleUsed = facts.ConsoleUsed == true;
-        var submittable = !consoleUsed && facts.SubmitAvailable;
+        var submittable = !consoleUsed && !facts.Rewound && facts.SubmitAvailable;
         return new RunHistoryPlate(
             Mark: null,
             Head: null,
             RowsFor(facts, floorEnabled: facts.LastFloor is not null, submitEnabled: submittable),
             consoleUsed ? LibraryCopy.PlateConsoleUsed
+                : facts.Rewound ? LibraryCopy.PlateRewound
                 : submittable ? null : LibraryCopy.PlateSubmitComing,
             facts.LastFloor is not null ? LibraryCopy.NotSaved : null);
     }

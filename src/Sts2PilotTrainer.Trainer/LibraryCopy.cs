@@ -467,6 +467,11 @@ public static class LibraryCopy
     /// a run nobody can reproduce.</summary>
     public const string PlateConsoleUsed = "A console command was used, so it can't be submitted.";
 
+    /// <summary>Why a run a reload rewound cannot be submitted. The run as it stands was
+    /// played and can be played from; what it is not is the run that would have been
+    /// played without the reload, so it is never published.</summary>
+    public const string PlateRewound = "A reload rewound this run, so it can't be submitted.";
+
     /// <summary>Why the submit row is refused when its host has no sharing service.</summary>
     public const string PlateSubmitComing = "Submitting runs is unavailable";
 

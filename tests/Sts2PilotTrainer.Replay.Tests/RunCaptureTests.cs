@@ -374,14 +374,167 @@ public sealed class RunCaptureTests
             step.Seq == 6 && step.After["combat.outcome"] == "in_progress");
     }
 
+    /// <summary>
+    /// A reload that rewound the run behind what was recorded costs the recording its
+    /// sharing and the watch nothing, and keeps what the reload abandoned.
+    ///
+    /// The player quit and continued from an earlier save. The decisions past that
+    /// point were played and then abandoned, so they go where the game's own rollback
+    /// puts an unwound fight - a discarded branch, marked as the reload's - and the
+    /// replayable history resumes at the decision the game came back to. That is what
+    /// keeps the recording one the engine replays. What it can never be is shared,
+    /// which <see cref="NativeSource.RewoundContinuity"/> says and the share form and
+    /// the gate both read. What has not happened is the recorder giving up: it can
+    /// account for every decision from here on exactly as it could before.
+    /// </summary>
     [Fact]
-    public void ASessionThatResumesAtAnEarlierNonFightBoundaryIsBroken()
+    public void ASessionThatResumesAtAnEarlierNonFightBoundaryKeepsRecordingAndCannotBeShared()
     {
         var resumed = RunCapture.Resume(Played().Journal, Digest(0));
 
-        Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
-        Assert.Equal(RunCaptureState.Broken, resumed.State);
-        Assert.Contains("not the game's rollback of a live fight", resumed.Refusal!, StringComparison.Ordinal);
+        Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Contains("no longer be shared", resumed.Refusal!, StringComparison.Ordinal);
+        Assert.True(Assert.Single(resumed.Refusals).WatchContinues);
+        Assert.Equal(1, resumed.NextSeq);
+
+        var branch = Assert.Single(resumed.Discarded);
+        Assert.True(branch.Reload);
+        Assert.Equal(0, branch.RollbackToSeq);
+        Assert.Equal(Digest(0), branch.RollbackToDigest);
+        Assert.Equal([1, 2, 3, 4], branch.Actions.Select(action => action.Seq));
+    }
+
+    /// <summary>
+    /// The run the captain save-scummed, as a regression.
+    ///
+    /// He answered Neow, quit to the menu and continued, and the game gave him the
+    /// blessing to choose again: it came back at the reading before decision 0, which
+    /// is behind everything the recorder had written. The build he was on wrote a
+    /// refusal, stopped the watch, and put RECORDING STOPPED on the overlay while
+    /// carrying on writing decisions into the journal underneath it. The recorder now
+    /// keeps recording and says the one thing that changed - the run cannot be shared.
+    /// </summary>
+    [Fact]
+    public void AReloadThatUndoesTheNeowBlessingKeepsRecordingTheRestOfTheRun()
+    {
+        var first = RunCapture.Begin(Start());
+        first.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
+
+        var resumed = RunCapture.Resume(RunJournal.Parse(first.Journal.Render()), Digest(-1));
+
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
+        Assert.Equal(0, resumed.NextSeq);
+
+        // The blessing chosen a second time, and the run played on from it.
+        resumed.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "2"), ("option_key", "NEOW.OTHER")),
+            Floor(1), Digest(20));
+        resumed.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            InFight(2, turn: 1), Digest(21));
+        resumed.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")), Won(2, hp: 58), Digest(22));
+
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Equal(3, resumed.NextSeq);
+
+        resumed.Finish("abandoned");
+        var manifest = resumed.ToManifest();
+        Assert.Equal(NativeSource.RewoundContinuity, manifest.Source.Native!.Continuity);
+        Assert.False(manifest.Source.Native.IsContinuous);
+        Assert.True(manifest.Source.Native.HistoryIsWhole);
+
+        // The history is the run as it stands after the reload, and the first answer
+        // is kept beside it as what the reload abandoned.
+        Assert.Equal([0, 1, 2], manifest.Actions.Select(action => action.Seq));
+        Assert.Equal("2", manifest.Actions[0].Args["option_index"]);
+        Assert.Contains(manifest.Boundaries, boundary => boundary.Kind == ReplayBoundary.CombatStartKind);
+        var branch = Assert.Single(manifest.Source.Native.Discarded!);
+        Assert.True(branch.Reload);
+        Assert.Equal(-1, branch.RollbackToSeq);
+        Assert.Equal("0", Assert.Single(branch.Actions).Args["option_index"]);
+        Assert.Contains("after a reload rewound it", manifest.Source.Coverage, StringComparison.Ordinal);
+
+        // Replayable, and never shareable: the validator takes the whole history and
+        // the gate is what refuses it.
+        var validation = ManifestValidator.Validate(manifest);
+        Assert.True(validation.IsValid, validation.Describe());
+    }
+
+    /// <summary>
+    /// The reload's rollback and refusal survive the journal, so the session after the
+    /// next quit resumes the rewound history rather than the abandoned one - and a
+    /// rewind past a finished fight takes that fight's bookmark with it, because the
+    /// continued run will deal the same ordinal to a different fight.
+    ///
+    /// The press stays on the file, so the fight is dealt again and won without a
+    /// press before the second resume: a session reading the line back onto the
+    /// re-dealt fight would be marking a fight nobody bookmarked.
+    /// </summary>
+    [Fact]
+    public void AReloadsRollbackIsKeptByTheJournalAndDropsTheBookmarksItRewoundPast()
+    {
+        var played = Played();
+        played.MarkBookmark(1, on: true, _ => { });
+        Assert.True(played.IsBookmarked(1));
+
+        var rewound = RunCapture.Resume(RunJournal.Parse(played.Journal.Render()), Digest(0));
+        Assert.False(rewound.IsBookmarked(1));
+        rewound.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "2")),
+            InFight(2, turn: 1), Digest(30));
+        rewound.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")), Won(2, hp: 58), Digest(31));
+        Assert.False(rewound.IsBookmarked(1));
+
+        var again = RunCapture.Resume(RunJournal.Parse(rewound.Journal.Render()), Digest(31));
+
+        Assert.Equal(NativeSource.RewoundContinuity, again.Continuity);
+        Assert.Equal(RunCaptureState.Recording, again.State);
+        Assert.Equal(3, again.NextSeq);
+        Assert.Equal([0, 1, 2], again.Journal.Decisions.Select(entry => entry.Seq));
+        Assert.True(Assert.Single(again.Discarded).Reload);
+        Assert.False(again.IsBookmarked(1));
+        Assert.Equal(Digest(31), again.Journal.Entries[^1].Digest);
+        again.Finish("abandoned");
+        Assert.Null(again.ToManifest().Source.Native!.Bookmarks);
+    }
+
+    /// <summary>The refusal is on the file before the rollback receipt, so a crash
+    /// between the two leaves a journal the next session resumes - and rolls back
+    /// again, from the same live digest - rather than one it cannot read.</summary>
+    [Fact]
+    public void AReloadsRefusalAloneOnTheFileResumesAndRollsBackAgain()
+    {
+        var rewound = RunCapture.Resume(RunJournal.Parse(Played().Journal.Render()), Digest(0));
+        var text = rewound.Journal.Render();
+        Assert.EndsWith(RunJournal.RenderRefusal(rewound.Refusals[0]) + rewound.ResumptionRecord, text);
+
+        var interrupted = text[..^rewound.ResumptionRecord!.Length];
+        var again = RunCapture.Resume(RunJournal.Parse(interrupted), Digest(0));
+
+        Assert.Equal(NativeSource.RewoundContinuity, again.Continuity);
+        Assert.Equal(RunCaptureState.Recording, again.State);
+        Assert.Equal(1, again.NextSeq);
+        Assert.True(Assert.Single(again.Discarded).Reload);
+    }
+
+    /// <summary>A hole outranks a rewind: a reload the recorder can place after one it
+    /// could not does not make the history whole again.</summary>
+    [Fact]
+    public void AReloadAfterAHoleLeavesTheRecordingBroken()
+    {
+        var broken = RunCapture.Resume(Played().Journal, "sha256:" + new string('f', 64));
+        Assert.Equal(RunCaptureState.Broken, broken.State);
+
+        var again = RunCapture.Resume(RunJournal.Parse(broken.Journal.Render()), Digest(0));
+
+        Assert.Equal(NativeSource.BrokenContinuity, again.Continuity);
+        Assert.Equal(RunCaptureState.Broken, again.State);
     }
 
     /// <summary>
@@ -415,12 +568,17 @@ public sealed class RunCaptureTests
         Assert.Equal(Digest(1), resumed.Fight.CombatStartSnapshotDigest);
     }
 
+    /// <summary>A resume the recorder cannot place in its own history is the other
+    /// thing, and it stops the watch: nothing establishes what the run is from there,
+    /// so there is no account left to go on keeping.</summary>
     [Fact]
     public void ASessionThatResumesSomewhereTheRecorderNeverSawIsBrokenToo()
     {
         var resumed = RunCapture.Resume(Played().Journal, Digest(77));
 
         Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Broken, resumed.State);
+        Assert.False(Assert.Single(resumed.Refusals).WatchContinues);
         Assert.Contains("is not one this recording ever saw", resumed.Refusal!, StringComparison.Ordinal);
     }
 
@@ -438,28 +596,32 @@ public sealed class RunCaptureTests
     }
 
     /// <summary>
-    /// A break one session decided on is still a break two sessions later.
+    /// A rewind one session decided on is still a rewind two sessions later.
     ///
     /// The losing sequence without it: session one resumes at a rolled-back save and is
-    /// marked broken, carries on recording, and is quit to the main menu; session two
+    /// marked rewound, carries on recording, and is quit to the main menu; session two
     /// finds a journal whose last digest is exactly the live one, sees nothing wrong,
-    /// and publishes <c>continuity = continuous</c> over a history with a hole in it.
+    /// and publishes <c>continuity = continuous</c> over a run that was reloaded.
     /// Continuity is the one fact nothing downstream can re-derive, so that recording
     /// would carry a false claim nobody could check.
+    ///
+    /// The refusal's own class survives with it, so session two goes on recording where
+    /// session one did rather than reading the sentence and stopping.
     /// </summary>
     [Fact]
-    public void ASessionResumedAfterAnEarlierOneWasBrokenIsStillBroken()
+    public void ASessionResumedAfterAnEarlierOneWasRewoundIsStillRewound()
     {
         var first = RunCapture.Resume(Played().Journal, Digest(1));
-        Assert.Equal(NativeSource.BrokenContinuity, first.Continuity);
+        Assert.Equal(NativeSource.RewoundContinuity, first.Continuity);
         first.Record(ActionVerb.SkipRewards, Args(), Floor(2), Digest(5));
 
         var second = RunCapture.Resume(RunJournal.Parse(first.Journal.Render()), Digest(5));
 
-        Assert.Equal(NativeSource.BrokenContinuity, second.Continuity);
-        Assert.Equal(RunCaptureState.Broken, second.State);
+        Assert.Equal(NativeSource.RewoundContinuity, second.Continuity);
+        Assert.Equal(RunCaptureState.Recording, second.State);
         Assert.Contains("resumed this run at decision 1", second.Refusal!, StringComparison.Ordinal);
-        Assert.Equal(6, second.NextSeq);
+        Assert.True(Assert.Single(second.Refusals).WatchContinues);
+        Assert.Equal(3, second.NextSeq);
     }
 
     /// <summary>
@@ -494,9 +656,11 @@ public sealed class RunCaptureTests
 
         var read = RunJournal.Parse(capture.Journal.Render());
 
-        Assert.Equal("the engine never settled", Assert.Single(read.Refusals));
+        var kept = Assert.Single(read.Refusals);
+        Assert.Equal("the engine never settled", kept.Reason);
+        Assert.False(kept.WatchContinues);
         Assert.Equal(6, read.Entries.Count);
-        Assert.Equal(RunJournal.RenderRefusal("the engine never settled"), line);
+        Assert.Equal(RunJournal.RenderRefusal(RunRefusal.Stopping("the engine never settled")), line);
     }
 
     /// <summary>

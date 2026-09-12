@@ -15,7 +15,8 @@ public sealed class RunHistoryPlateTests
 
     private static RunHistoryFacts Facts(
         bool hasRecording = true,
-        bool continuous = true,
+        bool historyWhole = true,
+        bool rewound = false,
         bool? consoleUsed = null,
         string recordedBuild = Build,
         bool runInProgress = false,
@@ -23,7 +24,7 @@ public sealed class RunHistoryPlateTests
         int? lastFloor = 11,
         FloorKind lastFloorKind = FloorKind.Combat,
         bool hasOtherFloors = true) =>
-        new(hasRecording, continuous, consoleUsed, recordedBuild, Build,
+        new(hasRecording, historyWhole, rewound, consoleUsed, recordedBuild, Build,
             runInProgress, submitAvailable, lastFloor, lastFloorKind, hasOtherFloors);
 
     [Fact]
@@ -69,7 +70,7 @@ public sealed class RunHistoryPlateTests
     public void TheNotSavedSentenceIsSaidBesideTheRowsAndNeverAtTheHead()
     {
         var offered = RunHistoryPlate.For(Facts())!;
-        var refused = RunHistoryPlate.For(Facts(continuous: false))!;
+        var refused = RunHistoryPlate.For(Facts(historyWhole: false))!;
 
         Assert.Equal(LibraryCopy.NotSaved, offered.NotSaved);
         Assert.Null(offered.Head);
@@ -123,6 +124,24 @@ public sealed class RunHistoryPlateTests
     }
 
     /// <summary>
+    /// A reload that rewound the run behind what was recorded is the same shape: the
+    /// run as it stands is played from, and never submitted, and the plate says so here
+    /// rather than leaving the publication gate to refuse it after the form is filled in.
+    /// </summary>
+    [Fact]
+    public void ARewoundRunStopsTheSubmitRowAndNothingElse()
+    {
+        var plate = RunHistoryPlate.For(Facts(rewound: true, submitAvailable: true))!;
+
+        Assert.Null(plate.Head);
+        Assert.True(plate.Rows[0].Enabled);
+        Assert.True(plate.Rows[1].Enabled);
+        Assert.False(plate.Rows[2].Enabled);
+        Assert.Equal(LibraryCopy.PlateRewound, plate.Reason);
+        Assert.Equal(LibraryCopy.NotSaved, plate.NotSaved);
+    }
+
+    /// <summary>
     /// Nobody has established whether a console command was used, so nothing is claimed
     /// about it. Null is not "no": it is the absence of a reading, and the submit row is
     /// left as it is rather than being refused on a check that never ran. Asked with the
@@ -155,7 +174,7 @@ public sealed class RunHistoryPlateTests
     public static TheoryData<RunHistoryFacts, PlateMark?, string?, string?> RefusedStates() => new()
     {
         {
-            Facts(continuous: false), PlateMark.Warning,
+            Facts(historyWhole: false), PlateMark.Warning,
             LibraryCopy.PlateCantBeReplayed, LibraryCopy.PlateContinuityBroken
         },
         {
@@ -179,7 +198,7 @@ public sealed class RunHistoryPlateTests
     [Fact]
     public void AnIncompleteRecordingSaysWhatHappenedRatherThanWhatTheRecorderSaw()
     {
-        var plate = RunHistoryPlate.For(Facts(continuous: false))!;
+        var plate = RunHistoryPlate.For(Facts(historyWhole: false))!;
 
         Assert.Equal(
             "Part of this run was played while Runmobile wasn't recording.", plate.Reason);

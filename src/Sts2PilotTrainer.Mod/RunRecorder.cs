@@ -389,22 +389,24 @@ internal sealed class RunRecorder : IDisposable
                 }
             }
 
-            // The rollback receipt makes the discarded branch survive another quit.
-            // Appended before the recorder is live, so no repeated sequence number
-            // can be written before the line that explains why it is legitimate.
-            if (capture.ResumptionRecord is { } resumption)
-            {
-                Append(journalPath, resumption);
-            }
-
             // A break this resume decided on is a fact only this session knows, and
             // the session after it would compare its own live digest against a
             // journal that says nothing about the hole. Appended before the
             // recorder is live, so a crash between here and the next decision still
             // leaves the refusal on the file.
-            foreach (var reason in capture.Refusals.Skip(journal.Refusals.Count))
+            foreach (var raised in capture.Refusals.Skip(journal.Refusals.Count))
             {
-                Append(journalPath, RunJournal.RenderRefusal(reason));
+                Append(journalPath, RunJournal.RenderRefusal(raised));
+            }
+
+            // The rollback receipt makes the discarded branch survive another quit.
+            // Appended before the recorder is live, so no repeated sequence number
+            // can be written before the line that explains why it is legitimate, and
+            // after the refusal, so a crash between the two leaves a file the next
+            // session resumes and rolls back again rather than one it cannot read.
+            if (capture.ResumptionRecord is { } resumption)
+            {
+                Append(journalPath, resumption);
             }
 
             Log.Info(

@@ -18,7 +18,8 @@ public sealed class RunBrowserTests
         string build = Build,
         DateTimeOffset? recorded = null,
         int? lastFloorReplayed = null,
-        int? actReached = null) =>
+        int? actReached = null,
+        bool rewound = false) =>
         new LibraryRun(
             id, origin, "NaveGreed", "CHARACTER.IRONCLAD", 10, build,
             Fights: [1, 2, 3, 4, 5, 6], Floors: [2, 3, 4, 5, 6, 7], Outcome: "won", verdict,
@@ -26,6 +27,7 @@ public sealed class RunBrowserTests
             Positions: [], Deck: null, Recorded: recorded)
         {
             ActReached = actReached,
+            Rewound = rewound,
         };
 
     /// <summary>Every run actually drawn, in the order the groups draw them.</summary>
@@ -437,6 +439,26 @@ public sealed class RunBrowserTests
         Assert.False(without.Pane!.Plate[0].Enabled);
         Assert.True(with.Pane!.Plate[0].Enabled);
         Assert.Equal(without.Pane.Plate.Count, with.Pane.Plate.Count);
+    }
+
+    /// <summary>
+    /// A run a reload rewound is played from and never submitted, and the pane says so
+    /// under its rows the way the run-history plate does, rather than leaving the
+    /// publication gate to refuse it after the form is filled in.
+    /// </summary>
+    [Fact]
+    public void ARewoundRunRefusesTheSubmitRowWithAReasonAndNothingElse()
+    {
+        var browser = RunBrowser.For(
+            LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine, rewound: true)], Build, submitAvailable: true);
+        var pane = browser.Pane!;
+
+        Assert.False(pane.Plate[0].Enabled);
+        Assert.True(pane.Plate[1].Enabled);
+        Assert.True(pane.OpenEnabled);
+        Assert.Equal(LibraryCopy.PlateRewound, pane.PlateReason);
+        Assert.Null(RunBrowser.For(
+            LibraryTab.MyRuns, [Run("mine", RunOrigin.Mine)], Build, submitAvailable: true).Pane!.PlateReason);
     }
 
     /// <summary>

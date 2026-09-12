@@ -157,12 +157,12 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 149
-tests named in `scripts/expected-hosted-skips.txt` skip out of the 212 cases
+**What CI cannot run is recorded by name.** On a runner without the game, the 150
+tests named in `scripts/expected-hosted-skips.txt` skip out of the 214 cases
 `Sts2PilotTrainer.Arbiter.Tests` reports there, and the job still reports success.
 Both figures are what a game-free run prints and neither can be arrived at by adding
 up attributes: a `[GameTheory]` skipped there is one case and expands into a row per
-datum where it runs, so a run with the game reports more cases than 212.
+datum where it runs, so a run with the game reports more cases than 214.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift
@@ -373,8 +373,14 @@ It records singleplayer runs only, and which kind of run this is is read - `Live
 A run the console was used in is kept whole, recorded to its end, and marked `source.native.integrity = "non-standard"` through `RunCapture.MarkNonStandard`, which the validator refuses for publication; `integrity` is the one field that says this.
 `RunRecorder` in the mod owns only what a pure class cannot: which game member is which decision, what its arguments are, and when the engine has settled enough to read.
 Inside a fight it hands over to the same `PlayerFightObserver` the recorded-fight journey uses, through `IFightSampleSink`.
-The recorder refuses a run whose start it did not witness and marks `continuity = broken` when a resumed session's live state is not the state its journal last recorded, except for the game's observed rollback of a live fight to that fight's room-entry boundary.
-That rollback stays continuous, keeps the unwound fight decisions as discarded evidence in the journal and manifest, and resumes the replayable history at the boundary; no other mismatch is repaired.
+The recorder refuses a run whose start it did not witness and marks `continuity = broken` when a resumed session's live state is one its journal cannot place, with two exceptions: the game's observed rollback of a live fight to that fight's room-entry boundary, and a reload that rewound the run to a decision the journal holds.
+That rollback stays continuous, keeps the unwound fight decisions as discarded evidence in the journal and manifest, and resumes the replayable history at the boundary; the reload is the `rewound` case below, and no other mismatch is repaired.
+**A hole in the account of a run and a recorder that has stopped watching it are two things, and `RunRefusal` is where a refusal says which it is.**
+A resume the recorder can place in its own history is a reload that rewound the run behind what it had recorded - a save-scum - and it costs the recording its sharing and the watch nothing: the decisions the reload abandoned go where the game's own rollback puts an unwound fight, a discarded branch marked `reload` from the decision the game came back to, the replayable history resumes there, and the recorder goes on recording.
+That recording is `continuity = rewound`: whole, so the validator takes it and the run is the player's to play from, and never theirs to share, which the run-history plate's and the Mine pane's submit rows, `RunSharing`'s seal and the gate's `continuity` condition all refuse - the validator cannot, because it is what `RecordedFightEntry` asks before it stands anybody in a fight.
+A hole outranks a rewind: a reload the recorder can place after a resume it could not leaves the recording `broken`.
+A resume it cannot place stops the watch, because nothing establishes what the run is from there.
+The class is on the journal line as `watch_continues` rather than derived from the sentence, so a session after this one keeps the disposition rather than reading the words and guessing; a line without it is a refusal that stopped the watch, which is every refusal an older journal holds.
 `source.native.integrity` is the one field that says whether a recording may ever be published, and it is required from format v6: `complete`, `non-standard` for a run the console was used in, or `unmapped` for a recorder that stopped at a decision it could not name, with what it met in `source.native.unmapped` - `RunCapture.MarkNonStandard` and `RunCapture.MarkUnmapped` are the only writers.
 A version-5 file states none, and `ManifestJson.MigrateFromVersion5` reads it as `complete` with `migrated_from_version = 5` beside it; that note is what excuses the `option_key` a version-5 recorder never read, and nothing else is ever excused by it.
 A version-5 recorder sampled no map coordinate either, so the same reading derives the arrival checkpoint at every floor arrival the file declares, through `FloorArrival` and marked inferred, because the validator refuses a floor arrival nothing proves and a player's own recording in the store is the file the recorder wrote; `OwnRunPlaybackTests` drives the library's offer from that on-disk form as well as from the migrated copy.

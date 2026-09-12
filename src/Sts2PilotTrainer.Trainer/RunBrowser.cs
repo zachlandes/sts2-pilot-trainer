@@ -39,6 +39,9 @@ public sealed record PaneRow(PaneRowKind Kind, string Label, bool Enabled, bool 
 /// recording proves.
 /// </summary>
 /// <param name="Verdict">Whether this build has a passing verdict for the run.</param>
+/// <param name="PlateReason">Why a plate row is refused, or null where none is refused
+/// for a reason about this run: the same sentence the run-history plate says under its
+/// own rows, so the two surfaces refuse in one voice.</param>
 /// <param name="Open">The ribbon that opens the run view. The one way there, in either
 /// tab.</param>
 /// <param name="OpenEnabled">Whether that ribbon can be pressed.</param>
@@ -51,7 +54,8 @@ public sealed record RunPane(
     string Verdict,
     string Open,
     bool OpenEnabled,
-    IReadOnlyList<PaneRow> Plate);
+    IReadOnlyList<PaneRow> Plate,
+    string? PlateReason = null);
 
 /// <summary>
 /// What the browser shows for one tab, derived from the runs a host could find and
@@ -170,9 +174,11 @@ public sealed record RunBrowser(
         LibraryRun run, string thisBuild, bool submitAvailable)
     {
         var plate = new List<PaneRow>();
-        if (run.Origin == RunOrigin.Mine)
+        var mine = run.Origin == RunOrigin.Mine;
+        if (mine)
         {
-            plate.Add(new PaneRow(PaneRowKind.Submit, LibraryCopy.SubmitThisRun, submitAvailable));
+            plate.Add(new PaneRow(
+                PaneRowKind.Submit, LibraryCopy.SubmitThisRun, submitAvailable && !run.Rewound));
             plate.Add(new PaneRow(
                 PaneRowKind.Remove, LibraryCopy.RemoveThisRun, Enabled: true, Confirms: true));
         }
@@ -201,7 +207,8 @@ public sealed record RunBrowser(
                 : LibraryCopy.LookupRefusedBuild(run.RecordedBuild, thisBuild),
             LibraryCopy.OpenTheRun,
             run.Listed,
-            plate);
+            plate,
+            mine && run.Rewound ? LibraryCopy.PlateRewound : null);
     }
 
     /// <summary>

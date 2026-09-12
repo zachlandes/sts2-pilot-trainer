@@ -364,9 +364,23 @@ Equal means nothing happened in between that the recorder missed.
 The one unequal state that remains continuous is the game's own save behavior after a quit during a live fight: the live digest must equal that same open fight's room-entry decision in the journal, and the journal must contain decisions observed after it.
 Those decisions remain in an append-only rollback record and in `source.native.discarded`, while the replayable history resumes at the room-entry decision; the fact that Continue was pressed establishes none of this.
 For publication, `gate` replays every discarded branch from that verified room-entry state and requires its final engine state to match the final state the recorder captured.
+A live state that matches an earlier decision in the journal is a reload that rewound the run, the `rewound` case in the next paragraph.
 Any other mismatch marks the recording `continuity = broken` and it is refused for publication, because a history missing decisions replays into a different run while every value in it is individually true.
 Every rollback and refusal is appended to the journal as a line of its own, the moment it is established, and `Resume` applies each one back.
 Without that the break lives only in the session that decided on it: quit and continue once more and the next session finds a journal whose last digest is exactly the live one, sees nothing wrong, and publishes `continuity = continuous` over a hole - which is the one claim nothing downstream could check.
+
+**A hole in the account of a run and a recorder that has stopped watching it are two things, and `RunRefusal` says which a refusal is.**
+Both cost the recording any chance of being shared; only one of them stops the recording, and until this was separated every refusal did both.
+A resume whose live digest matches an earlier decision in the recorder's own history is a reload that rewound the run behind what had been recorded - the player quit and continued from an earlier save, which the game lets them do and which the mod does not prevent.
+The decisions past that point were played and then abandoned, and they go where the game's own rollback puts an unwound fight: `RunCapture.RollBack` cuts the history back to the decision the game came back to - the opening reading included - and keeps what it removed as a discarded branch, written to the journal with `reload` on it so `RunJournal.Parse` reads it without the room-entry rule the game's own rollback is held to.
+The recorder can account for every decision from there on exactly as it could before, so it goes on recording: `RunRefusal.Continuing` leaves `RunCapture.State` at `Recording` and the recording is `continuity = rewound`.
+Rewound is whole - every decision from run start was watched and the reload's branch is kept beside them - so `ManifestValidator` takes it, `RecordedFightEntry` stands a player in any of its fights, and the run-history plate offers them; a bookmark pressed at a decision the rewind removed goes with the branch, dropped by `RunJournal.Parse` at the rollback line as well as in memory, because the continued run deals that ordinal to a different fight and a press read back onto it would mark a fight nobody bookmarked.
+What it can never be is shared: the run-history plate and the library's Mine pane both refuse their submit row with the same reason line, read from `LibraryRun.Rewound` on the pane the way the plate reads `RunHistoryFacts.Rewound`, the share form seals it, and the gate's `continuity` condition refuses it; none of that lives in the validator because the validator is what the entry asks.
+The refusal line is appended before the rollback receipt, so a crash between the two leaves a journal the next session resumes and rolls back again rather than one it cannot read.
+The first build of this kept the abandoned decisions in the history and went on appending after them, which the browser offered and the entry aborted on; `RewoundRunPlaybackTests` drives a rewound copy of the committed recording into `enter-fight` and `gate` so that cannot come back.
+A resume whose digest matches nothing the recording ever saw is the other thing and stops the watch, because nothing establishes what the run even is from that point, and a hole outranks a rewind: a reload placed after it leaves the recording `broken`.
+The class travels on the journal line as `watch_continues` rather than being read back out of the sentence, so the session after a second quit keeps the disposition instead of guessing at it; a refusal line without the field is one that stopped the watch, which is every refusal a journal written before this holds.
+This was found by playing: a Neow blessing answered, a quit and continue, the blessing offered again, and an overlay reading RECORDING STOPPED over a journal that was still recording decisions underneath it; the overlay now goes on reading RECORDING, because what changed is said where sharing is offered and not in a column of short capitals.
 
 **Where the recorder stops, it says so.**
 A reward kind the format has no verb for, a card reward answered with one of its alternatives, a screen whose offered list this build no longer exposes, an engine that did not settle: each marks the recording broken with a sentence rather than writing a value it guessed.
@@ -1145,7 +1159,8 @@ The same file says how many runs are kept and how to remove them all; "Keeping r
 To exercise continuity, quit to the main menu part way through a run and continue it from the game's own Continue.
 Outside a fight, `[Runmobile] continuing the recording of <id> at decision N; continuity continuous` is the pass.
 During a fight, Continue returns to that fight's room-entry boundary, the journal records the intervening decisions as discarded, and the same continuous line names the boundary's next decision.
-A `continuity broken` line names any other mismatch, and the recording is then refused for publication rather than repaired.
+A `continuity broken` line names a mismatch the recorder cannot place in its journal, and the recording is then refused for publication rather than repaired.
+To exercise the save-scum path, answer the Neow blessing, quit to the main menu, and continue: the game offers the blessing again, the `continuity rewound` line names the decision it came back at, the overlay goes on reading RECORDING, and the rest of the run goes on being recorded into a recording the run history offers to play from and refuses to submit.
 
 `install-mod.sh` is the one script in this repository that writes inside a Slay the Spire 2 installation.
 Its final state is exactly `Runmobile` under the selected supported game mod directory, either `mods` or the game's Steam test-branch variant `mods_STEAMTEST`.
