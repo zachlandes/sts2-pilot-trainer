@@ -1349,11 +1349,20 @@ internal sealed class RunRecorder : IDisposable
     /// <summary>
     /// Exactly the facts the bookmark tag is derived over, read off the active
     /// recorder, or none where nothing is recording.
+    ///
+    /// Four are the capture's own. The fifth is this recorder's: whether a map move is
+    /// announced and not yet recorded. The capture cannot say that - a move reaches it
+    /// only once the engine has settled at the other end, by which time the next fight
+    /// is on screen and its first turn has begun - and a tag derived without it drew
+    /// the previous fight's bookmark over the opening frames of the next.
     /// </summary>
     internal static FightMarkFacts FightMarkFacts()
     {
         var recorder = Active;
-        if (recorder is null || recorder._disposed) return new FightMarkFacts(false, null, null, false, false);
+        if (recorder is null || recorder._disposed)
+        {
+            return new FightMarkFacts(false, null, null, MovedOn: false, LeavingTheFloor: false, Bookmarked: false);
+        }
 
         var capture = recorder._capture;
         var fight = capture.LastEndedFight;
@@ -1362,7 +1371,27 @@ internal sealed class RunRecorder : IDisposable
             capture.State,
             fight,
             capture.MovedOnFromLastFight,
+            recorder.MapMoveAnnounced(),
             fight is { } ended && capture.IsBookmarked(ended));
+    }
+
+    /// <summary>
+    /// Whether a map move has been announced to this recorder and is still waiting for
+    /// the engine to settle before it is recorded.
+    ///
+    /// The queue is the one place a decision is between announced and recorded, and a
+    /// map move is in it from the node being pressed - <see cref="MapMove"/>'s postfix
+    /// - to the room at the other end being built and its first fight, if any, begun.
+    /// A move the engine turned down leaves the queue unrecorded, and the tag comes
+    /// back with it, because the run is still on the floor it never left.
+    /// </summary>
+    private bool MapMoveAnnounced()
+    {
+        lock (Gate)
+        {
+            return _pending.Any(
+                decision => string.Equals(decision.Verb, nameof(ActionVerb.MapMove), StringComparison.Ordinal));
+        }
     }
 
     /// <summary>
@@ -1381,7 +1410,11 @@ internal sealed class RunRecorder : IDisposable
         try
         {
             var capture = recorder._capture;
-            if (capture.LastEndedFight is not { } fight || capture.MovedOnFromLastFight) return;
+            if (capture.LastEndedFight is not { } fight || capture.MovedOnFromLastFight || recorder.MapMoveAnnounced())
+            {
+                return;
+            }
+
             recorder.Bookmark(fight, !capture.IsBookmarked(fight));
         }
         catch (Exception ex)
