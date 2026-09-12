@@ -177,6 +177,10 @@ manager's own `TurnStarted` and `CombatEnded`, and to nothing else.
 It issues no command and patches nothing; `FightCapture` in `Sts2PilotTrainer.Replay`
 owns every rule about what the samples mean, and it is the same canonical projection
 the headless arbiter samples, filtered by the same `ReplayTrace.Sample`.
+The executor announces an action twice when the action paused for the player's choice: a card whose effect asks which card to discard or fetch pauses its own action, and when the answer is in the engine gives the action a new id (`GameAction.ResumeAfterGatheringPlayerChoice`), sets it `ReadyToResumeExecuting`, and announces it before execution again with no after-announcement between.
+`PlayerFightObserver.BeforeAction` reads that state on the action it already opened a step for and tells the sink `ResumeStep` instead of beginning another; the sink takes no sample, because the action has not finished, and refuses a resumption with nothing open.
+The overlap rule in `FightCapture.BeginStep` is unchanged and still refuses two actions genuinely open at once; before this every in-fight prompt and every potion was read as exactly that overlap and cost the fight its capture.
+`PlayerFightObserverTests` drives a self-pausing action through the engine's own queue and executor to hold the double announcement, its state and its new id to this build.
 
 **When the after-sample is taken is the one thing the observer owns.**
 An action finishing is not the engine settling: a card's effects run on the queue

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Godot;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Actions;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
@@ -66,6 +67,10 @@ internal sealed class PlayerFightObserver : IDisposable
     /// <summary>Whether the executor has reported the open step's action finished.
     /// What makes it safe to close that step with the next action's before-sample.</summary>
     private bool _openStepFinished;
+
+    /// <summary>The action the open step was opened for, so a second announcement of
+    /// the same action can be told from the next action beginning.</summary>
+    private GameAction? _openAction;
     private bool _ended;
     private bool _disposed;
 
@@ -133,6 +138,29 @@ internal sealed class PlayerFightObserver : IDisposable
     {
         if (_ended || action.OwnerId != _player.NetId) return;
 
+        // An action that paused for the player's choice - a card asking which card to
+        // discard, a potion asking which to fetch - is announced again when it carries
+        // on, under a new id and in this state, with no after-announcement between. It
+        // is the same decision still being made, so no step opens and nothing is
+        // sampled: the sink is told the open step resumed, and refuses if none is open.
+        // Measured in the retail client, where every prompt a card opened mid-fight
+        // read as a second action overlapping the first and cost the fight its capture.
+        if (action.State == GameActionState.ReadyToResumeExecuting)
+        {
+            if (!IsADecision(action)) return;
+
+            if (!ReferenceEquals(action, _openAction))
+            {
+                _sink.MarkIncomplete(
+                    $"A {action.GetType().Name} resumed after a player's choice that this observer did not see " +
+                    "begin, so the capture cannot say what it did.");
+                return;
+            }
+
+            _sink.ResumeStep();
+            return;
+        }
+
         // Whether the action still open had already finished executing. Only consulted
         // when one is open, which happens where two actions arrive with no frame
         // between them - one click that plays a held card and ends the turn does
@@ -146,20 +174,20 @@ internal sealed class PlayerFightObserver : IDisposable
             switch (action)
             {
                 case PlayCardAction play:
-                    opened = Begin(nameof(ActionVerb.PlayCard), PlayCardArgs(play), previousFinished);
+                    opened = Begin(action, nameof(ActionVerb.PlayCard), PlayCardArgs(play), previousFinished);
                     break;
                 case UsePotionAction potion:
                     opened = Begin(
-                        nameof(ActionVerb.UsePotion),
+                        action, nameof(ActionVerb.UsePotion),
                         PotionArgs(potion.PotionIndex, "drunk"), previousFinished);
                     break;
                 case DiscardPotionGameAction discard:
                     opened = Begin(
-                        nameof(ActionVerb.DiscardPotion),
+                        action, nameof(ActionVerb.DiscardPotion),
                         PotionArgs(SlotOf(discard), "discarded"), previousFinished);
                     break;
                 case EndPlayerTurnAction:
-                    opened = Begin(nameof(ActionVerb.EndTurn), new Arguments(Empty), previousFinished);
+                    opened = Begin(action, nameof(ActionVerb.EndTurn), new Arguments(Empty), previousFinished);
                     break;
                 case UndoEndPlayerTurnAction:
                     // The game took the ended turn back before the enemy turn began.
@@ -167,7 +195,7 @@ internal sealed class PlayerFightObserver : IDisposable
                     // sample as its after-state, and the undo opens as a step of its
                     // own, so a replay makes the same two decisions in the same order.
                     _awaitingPlayerTurn = false;
-                    opened = Begin(nameof(ActionVerb.UndoEndTurn), new Arguments(Empty), previousFinished);
+                    opened = Begin(action, nameof(ActionVerb.UndoEndTurn), new Arguments(Empty), previousFinished);
                     break;
             }
         }
@@ -199,7 +227,7 @@ internal sealed class PlayerFightObserver : IDisposable
     /// action that began while another was open closes that one here, and the wait
     /// still running for it must not then close this one with a state that is not its.
     /// </summary>
-    private bool Begin(string verb, Arguments arguments, bool previousFinished)
+    private bool Begin(GameAction action, string verb, Arguments arguments, bool previousFinished)
     {
         var before = _sample();
         if (arguments.Unresolved is { } unresolved)
@@ -214,8 +242,15 @@ internal sealed class PlayerFightObserver : IDisposable
 
         _openedSteps++;
         _openStepFinished = false;
+        _openAction = action;
         return true;
     }
+
+    /// <summary>The five actions a fight is made of, which is the set the switch in
+    /// <see cref="BeforeAction"/> opens steps for.</summary>
+    private static bool IsADecision(GameAction action) =>
+        action is PlayCardAction or UsePotionAction or DiscardPotionGameAction
+            or EndPlayerTurnAction or UndoEndPlayerTurnAction;
 
     /// <summary>
     /// What an action was described as, and - where one could not be resolved - the

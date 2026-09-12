@@ -1,5 +1,11 @@
 using System.Reflection;
 using System.Runtime.Loader;
+using MegaCrit.Sts2.Core.Entities.Actions;
+using MegaCrit.Sts2.Core.Entities.Multiplayer;
+using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Runs;
+using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -141,6 +147,105 @@ public sealed class PlayerFightObserverTests
         var queues = GameType("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSet");
         Assert.True(typeof(Task).IsAssignableFrom(queues.GetMethod("BecameEmpty")!.ReturnType));
         Assert.Equal(typeof(bool), queues.GetProperty("IsEmpty")!.PropertyType);
+    }
+
+    /// <summary>
+    /// The engine announces an action that paused for the player's choice a second
+    /// time when it carries on, and that is what the observer's resume rule is written
+    /// against: the same object, announced before execution twice, in
+    /// <see cref="GameActionState.ReadyToResumeExecuting"/> the second time and under a
+    /// new id, finished once. Driven through the engine's own queue and executor with
+    /// an action that pauses itself the way a card prompt does, because a build that
+    /// stopped re-announcing, or re-announced in another state, would leave the
+    /// observer opening a second step for one decision - the refusal every in-fight
+    /// prompt used to cost.
+    /// </summary>
+    [GameFact]
+    public void TheExecutorAnnouncesAResumedActionAgainInTheResumingState()
+    {
+        // Started before any game type is touched: this method's body names game types,
+        // and the runtime resolves them on entry, before the host has said where the
+        // game assembly is.
+        EngineHost.Start();
+        DriveAnActionThatPausesForAChoice();
+    }
+
+    private static void DriveAnActionThatPausesForAChoice()
+    {
+        if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
+        var session = new GameSession();
+        try
+        {
+            session.StartRun(
+                "P1L0TTRA1NER", "CHARACTER.IRONCLAD", 0, "standard",
+                ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"]);
+            // Entering the first room is what unpauses the executor: EnterMapPoint
+            // pauses it while a room is built and unpauses it for a room that is not a
+            // fight. An action enqueued before that waits on a frame that never comes.
+            using (var driver = new RunDriver(session)) driver.EnterFirstRoom();
+            var queues = RunManager.Instance.ActionQueueSet;
+            var executor = RunManager.Instance.ActionExecutor;
+            var action = new PausingAction(session.RunState.Players[0].NetId);
+            var announced = new List<(uint? Id, GameActionState State)>();
+            var finished = 0;
+            void Before(GameAction candidate)
+            {
+                if (ReferenceEquals(candidate, action)) announced.Add((candidate.Id, candidate.State));
+            }
+            void After(GameAction candidate)
+            {
+                if (ReferenceEquals(candidate, action)) finished++;
+            }
+
+            executor.BeforeActionExecuted += Before;
+            executor.AfterActionExecuted += After;
+            try
+            {
+                queues.EnqueueWithoutSynchronizing(action);
+                Pump.Drain();
+                Assert.Equal(GameActionState.GatheringPlayerChoice, action.State);
+                Assert.Equal(0, finished);
+
+                queues.ResumeActionWithoutSynchronizing(action.Id!.Value);
+                Pump.Drain();
+            }
+            finally
+            {
+                executor.BeforeActionExecuted -= Before;
+                executor.AfterActionExecuted -= After;
+            }
+
+            Assert.Equal(GameActionState.Finished, action.State);
+            Assert.Equal(1, finished);
+            Assert.Equal(
+                [GameActionState.WaitingForExecution, GameActionState.ReadyToResumeExecuting],
+                announced.Select(announcement => announcement.State));
+            Assert.NotEqual(announced[0].Id, announced[1].Id);
+        }
+        finally
+        {
+            if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
+            HeadlessEngine.Forget();
+        }
+    }
+
+    /// <summary>An action that pauses for a player's choice the way a card prompt
+    /// does, without a prompt: what <c>GameActionPlayerChoiceContext</c> does to the
+    /// action whose effect asked, done to itself.</summary>
+    private sealed class PausingAction(ulong ownerId) : GameAction
+    {
+        public override ulong OwnerId => ownerId;
+
+        public override GameActionType ActionType => GameActionType.Any;
+
+        protected override async Task ExecuteAction()
+        {
+            RunManager.Instance.ActionQueueSet.PauseActionForPlayerChoice(this, PlayerChoiceOptions.None);
+            await WaitForActionToResumeExecutingAfterPlayerChoice();
+        }
+
+        public override INetAction ToNetAction() =>
+            throw new NotSupportedException("A test action is never sent over the network.");
     }
 
     [ObserverFact]

@@ -1207,6 +1207,7 @@ internal sealed class RunRecorder : IDisposable
             Refuse(unresolved);
             _capture.Fight?.MarkIncomplete(unresolved);
         },
+        resumeStep: ResumeFightStep,
         completeStep: CloseFightStep,
         finish: FinishFight,
         markIncomplete: Refuse);
@@ -1245,6 +1246,23 @@ internal sealed class RunRecorder : IDisposable
 
         CommitFightStep(stranded.Verb, stranded.Args, stranded.Before, before);
         return true;
+    }
+
+    /// <summary>
+    /// The open decision's action paused for a choice and is carrying on. Nothing to
+    /// record: the decision closes when the action finishes, as it would have without
+    /// the pause. With no decision open it is the refusal <see cref="FightCapture.ResumeStep"/>
+    /// raises, said here because this sink holds the open step rather than that capture.
+    /// </summary>
+    private void ResumeFightStep()
+    {
+        if (_openFightStep is not null) return;
+
+        const string reason =
+            "An action resumed after a player's choice with no decision open, so the recording did not see " +
+            "it begin and cannot say what it did.";
+        Refuse(reason);
+        _capture.Fight?.MarkIncomplete(reason);
     }
 
     private void CloseFightStep(IReadOnlyDictionary<string, string> after)
