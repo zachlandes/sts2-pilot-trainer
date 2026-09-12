@@ -401,6 +401,7 @@ Combats only, in the moment only; a bookmark added later from the library would 
 
 **A fight a person plays is captured, never re-read.**
 `FightCapture` in `Sts2PilotTrainer.Replay` is the one owner of turning what the game's own action executor announces into the same `ReplayTrace` the headless arbiter produces; `PlayerFightObserver` in the mod only decides when a sample is taken.
+An action the engine announces a second time because it paused for the player's choice is the same decision resuming, told to the sink as `ResumeStep` and never opened as a step of its own; [docs/in-game-host.md](docs/in-game-host.md) owns the mechanism.
 A projection is handed over only once the fight ended inside a sampled action, and a gap between two samples is refused rather than bridged.
 The recording's side of the in-game comparison is `manifests/<id>.recorded-fights.json`, produced by `./scripts/arbiter recorded-fight` from a fresh replay and bound to the manifest per fight by run id, history hash and the combat-start boundary of the same ordinal; regenerate it in the same change that edits the manifest's fights.
 Do not add a second capture path, a turn-level reset, a score or a verdict; `docs/comparison-direction.md` owns why.

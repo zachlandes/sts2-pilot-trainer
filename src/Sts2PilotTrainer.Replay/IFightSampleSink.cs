@@ -9,8 +9,8 @@ namespace Sts2PilotTrainer.Replay;
 /// run, of which this fight is a part - so the observer needs to be able to hand its
 /// samples to either without either one knowing about the other.
 ///
-/// It is deliberately the same five calls <see cref="FightCapture"/> already had,
-/// and no more: what a sample means is that class's, and an implementation that
+/// It is deliberately the calls <see cref="FightCapture"/> already has, and no
+/// more: what a sample means is that class's, and an implementation that
 /// decided something different about a gap or an unfinished fight would be the second
 /// capture path <c>AGENTS.md</c> forbids. <see cref="RunCapture"/> reaches the same
 /// rules by holding one of these per fight rather than by restating them.
@@ -42,6 +42,18 @@ public interface IFightSampleSink
         bool previousActionFinished,
         string unresolved);
 
+    /// <summary>
+    /// The open action paused for the player's choice and is about to carry on.
+    ///
+    /// The engine announces a resumed action exactly as it announced it beginning, so
+    /// a watcher that could not tell the two apart opened a second step for the same
+    /// action and the capture refused the fight as two actions overlapping. Telling the
+    /// sink is the watcher's job; what it means - nothing is sampled, because the
+    /// action has not finished - is the sink's, and a resumption with no action open is
+    /// a hole the sink refuses.
+    /// </summary>
+    void ResumeStep();
+
     /// <summary>The state the open action left.</summary>
     void CompleteStep(IReadOnlyDictionary<string, string> after);
 
@@ -70,6 +82,7 @@ public sealed class DelegatingFightSampleSink(
     Action<string, IReadOnlyDictionary<string, string>, IReadOnlyDictionary<string, string>, bool> beginStep,
     Action<string, IReadOnlyDictionary<string, string>, IReadOnlyDictionary<string, string>, bool, string>
         beginStepWithUnresolvedArgument,
+    Action resumeStep,
     Action<IReadOnlyDictionary<string, string>> completeStep,
     Action<IReadOnlyDictionary<string, string>> finish,
     Action<string> markIncomplete) : IFightSampleSink
@@ -88,6 +101,8 @@ public sealed class DelegatingFightSampleSink(
         bool previousActionFinished,
         string unresolved) =>
         beginStepWithUnresolvedArgument(verb, resolved, before, previousActionFinished, unresolved);
+
+    public void ResumeStep() => resumeStep();
 
     public void CompleteStep(IReadOnlyDictionary<string, string> after) => completeStep(after);
 

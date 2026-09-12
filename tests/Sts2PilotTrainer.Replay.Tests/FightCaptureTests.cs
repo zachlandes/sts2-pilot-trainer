@@ -73,6 +73,53 @@ public sealed class FightCaptureTests
         Assert.Equal(card.Before, card.After);
     }
 
+    /// <summary>
+    /// A card whose effect asks the player something pauses its own action for the
+    /// answer, and the engine announces the action again when it carries on. That is
+    /// one decision, recorded as one step whose after-state is the state the whole
+    /// action left - not two actions overlapping, and not a sample taken mid-choice.
+    /// </summary>
+    [Fact]
+    public void AnActionThatResumesAfterAPlayersChoiceIsStillOneStep()
+    {
+        var capture = FightCapture.Begin("player", Sample("in_progress", 1, 64, 42), Digest);
+        capture.BeginStep("PlayCard", Args(("card_id", "CARD.SURVIVOR")), Sample("in_progress", 1, 64, 42));
+        capture.ResumeStep();
+        capture.CompleteStep(Sample("in_progress", 1, 64, 42, potions: "empty|empty"));
+
+        Assert.Equal(FightCaptureState.Live, capture.State);
+        Assert.Null(capture.Refusal);
+        Assert.False(capture.HasOpenStep);
+        Assert.Equal(["combat_start", "PlayCard"], capture.Trace.Steps.Select(step => step.Verb));
+        Assert.Equal("empty|empty", capture.Trace.Steps[1].After["player.potions"]);
+    }
+
+    /// <summary>A resumption of nothing the capture saw begin is a hole in the account,
+    /// not a step, and is refused the way every other hole is.</summary>
+    [Fact]
+    public void AnActionThatResumesWithNoneOpenIsRefused()
+    {
+        var capture = FightCapture.Begin("player", Sample("in_progress", 1, 64, 42), Digest);
+        capture.ResumeStep();
+
+        Assert.Equal(FightCaptureState.Incomplete, capture.State);
+        Assert.Contains("resumed after a player's choice with none open", capture.Refusal, StringComparison.Ordinal);
+    }
+
+    /// <summary>The resumption input adds no leniency to the overlap rule: two actions
+    /// genuinely open at once are refused exactly as before, resumed or not.</summary>
+    [Fact]
+    public void AResumedActionStillRefusesAnotherBeginningOverIt()
+    {
+        var capture = FightCapture.Begin("player", Sample("in_progress", 1, 64, 42), Digest);
+        capture.BeginStep("PlayCard", Args(("card_id", "CARD.SURVIVOR")), Sample("in_progress", 1, 64, 42));
+        capture.ResumeStep();
+        capture.BeginStep("UsePotion", Args(("slot_index", "0")), Sample("in_progress", 1, 64, 42));
+
+        Assert.Equal(FightCaptureState.Incomplete, capture.State);
+        Assert.Contains("had not been sampled afterwards", capture.Refusal, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void AnActionThatBeginsWhileTheOneBeforeItIsStillRunningIsStillRefused()
     {

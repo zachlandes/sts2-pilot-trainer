@@ -1,5 +1,20 @@
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.Loader;
+using MegaCrit.Sts2.Core.Commands;
+using MegaCrit.Sts2.Core.Entities.Actions;
+using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
+using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Multiplayer;
+using MegaCrit.Sts2.Core.Entities.Rewards;
+using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
+using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.TestSupport;
+using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
@@ -141,6 +156,254 @@ public sealed class PlayerFightObserverTests
         var queues = GameType("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSet");
         Assert.True(typeof(Task).IsAssignableFrom(queues.GetMethod("BecameEmpty")!.ReturnType));
         Assert.Equal(typeof(bool), queues.GetProperty("IsEmpty")!.PropertyType);
+    }
+
+    /// <summary>
+    /// The engine announces an action that paused for the player's choice a second
+    /// time when it carries on, and that is what the observer's resume rule is written
+    /// against: the same object, announced before execution twice, in
+    /// <see cref="GameActionState.ReadyToResumeExecuting"/> the second time and under a
+    /// new id, finished once. Driven through the engine's own queue and executor with
+    /// an action that pauses itself the way a card prompt does, because a build that
+    /// stopped re-announcing, or re-announced in another state, would leave the
+    /// observer opening a second step for one decision - the refusal every in-fight
+    /// prompt used to cost.
+    /// </summary>
+    [GameFact]
+    public void TheExecutorAnnouncesAResumedActionAgainInTheResumingState()
+    {
+        // Started before any game type is touched: this method's body names game types,
+        // and the runtime resolves them on entry, before the host has said where the
+        // game assembly is.
+        EngineHost.Start();
+        DriveAnActionThatPausesForAChoice();
+    }
+
+    private static void DriveAnActionThatPausesForAChoice()
+    {
+        if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
+        var session = new GameSession();
+        try
+        {
+            session.StartRun(
+                "P1L0TTRA1NER", "CHARACTER.IRONCLAD", 0, "standard",
+                ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"]);
+            // Entering the first room is what unpauses the executor: EnterMapPoint
+            // pauses it while a room is built and unpauses it for a room that is not a
+            // fight. An action enqueued before that waits on a frame that never comes.
+            using (var driver = new RunDriver(session)) driver.EnterFirstRoom();
+            var queues = RunManager.Instance.ActionQueueSet;
+            var executor = RunManager.Instance.ActionExecutor;
+            var action = new PausingAction(session.RunState.Players[0].NetId);
+            var announced = new List<(uint? Id, GameActionState State)>();
+            var finished = 0;
+            void Before(GameAction candidate)
+            {
+                if (ReferenceEquals(candidate, action)) announced.Add((candidate.Id, candidate.State));
+            }
+            void After(GameAction candidate)
+            {
+                if (ReferenceEquals(candidate, action)) finished++;
+            }
+
+            executor.BeforeActionExecuted += Before;
+            executor.AfterActionExecuted += After;
+            try
+            {
+                queues.EnqueueWithoutSynchronizing(action);
+                Pump.Drain();
+                Assert.Equal(GameActionState.GatheringPlayerChoice, action.State);
+                Assert.Equal(0, finished);
+
+                queues.ResumeActionWithoutSynchronizing(action.Id!.Value);
+                Pump.Drain();
+            }
+            finally
+            {
+                executor.BeforeActionExecuted -= Before;
+                executor.AfterActionExecuted -= After;
+            }
+
+            Assert.Equal(GameActionState.Finished, action.State);
+            Assert.Equal(1, finished);
+            Assert.Equal(
+                [GameActionState.WaitingForExecution, GameActionState.ReadyToResumeExecuting],
+                announced.Select(announcement => announcement.State));
+            Assert.NotEqual(announced[0].Id, announced[1].Id);
+        }
+        finally
+        {
+            if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
+            HeadlessEngine.Forget();
+        }
+    }
+
+    /// <summary>
+    /// The observer, watching a real card prompt take the retail path: Survivor asks
+    /// which card to discard, the engine pauses its PlayCardAction for the answer and
+    /// announces it again on resumption, and the observer opens one step for it, tells
+    /// the sink it resumed, and never opens a second. This is the recorder break the
+    /// retail client hit - two BeginSteps for one action, which the capture refused as
+    /// overlapping - reproduced against the engine's own pause rather than a stand-in
+    /// action, so a build that routed a prompt differently would fail here.
+    /// </summary>
+    [GameFact]
+    public void TheObserverTellsTheSinkAResumedCardPlayResumedRatherThanOpeningAnotherStep()
+    {
+        EngineHost.Start();
+        WatchAPromptingCardThroughTheObserver();
+    }
+
+    private static void WatchAPromptingCardThroughTheObserver()
+    {
+        if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
+        var session = new GameSession();
+        try
+        {
+            session.StartRun(
+                "P1L0TTRA1NER", "CHARACTER.IRONCLAD", 0, "standard",
+                ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"]);
+            var player = session.RunState.Players[0];
+            using var driver = new RunDriver(session);
+            EnterTheFirstFight(driver, session);
+
+            // Survivor: a card whose effect asks the player which card to discard.
+            var survivor = player.Creature.CombatState!.CreateCard(ModelDb.Card<Survivor>(), player);
+            CardPileCmd.AddGeneratedCardToCombat(survivor, PileType.Hand, player).GetAwaiter().GetResult();
+            Pump.Drain();
+            var inHand = player.PlayerCombatState!.Hand.Cards.Single(card => card.Id == survivor.Id);
+
+            var sink = new RecordingSink();
+            using var observer = PlayerFightObserver.Start(
+                player,
+                () => CanonicalStateProjection.Project(session.RunState).Fields,
+                sink,
+                fightEnded: () => { },
+                sampled: () => { });
+
+            // The driver's selector answers prompts inside the call that asks, which is
+            // the headless shortcut the engine takes only when one is installed. Suspend
+            // it so the prompt pauses the action the way the retail client's does, and
+            // answer the paused choice locally the way the client's hand would.
+            var hand = new FirstCard();
+            var play = new PlayCardAction(inHand, null);
+            using (CardSelectCmd.SuspendSelectorForTest())
+            using (CardSelectCmd.PushSelector(hand, localOnly: true))
+            {
+                RunManager.Instance.ActionQueueSet.EnqueueWithoutSynchronizing(play);
+                Pump.Drain();
+            }
+
+            // The engine did what the retail client does: paused the play for the
+            // discard, answered it, resumed it under a new id and finished it.
+            Assert.Equal(1, hand.Asked);
+            Assert.Equal(GameActionState.Finished, play.State);
+            Assert.DoesNotContain(inHand, player.PlayerCombatState!.Hand.Cards);
+
+            // And the observer read the re-announcement as the same decision carrying
+            // on. Before the resume rule the second announcement opened a second step,
+            // which is the overlap the capture refuses. The settle after the action is
+            // a Godot wait this process has no scene tree for, so what follows the
+            // resume is not this test's to assert.
+            Assert.Equal(["BeginStep:PlayCard", "ResumeStep"], sink.Calls.Take(2));
+            Assert.Single(sink.Calls, call => call.StartsWith("BeginStep", StringComparison.Ordinal));
+        }
+        finally
+        {
+            if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
+            HeadlessEngine.Forget();
+        }
+    }
+
+    /// <summary>Neow's first option and the map move into the first fight, the way
+    /// the first-fight fixture starts.</summary>
+    private static void EnterTheFirstFight(RunDriver driver, GameSession session)
+    {
+        driver.EnterFirstRoom();
+        driver.Apply(Record(0, ActionVerb.ChooseNeowBlessing, ("option_index", "0")));
+
+        var current = CanonicalStateProjection.Project(session.RunState).Fields["run.map_coord"];
+        var separator = current.IndexOf('c');
+        var row = int.Parse(current.AsSpan(1, separator - 1), CultureInfo.InvariantCulture);
+        var column = int.Parse(current.AsSpan(separator + 1), CultureInfo.InvariantCulture);
+        var edge = session.CurrentMapTopology().Edges
+            .Where(candidate => candidate.FromRow == row && candidate.FromColumn == column)
+            .OrderBy(candidate => candidate.ToColumn)
+            .First();
+        driver.Apply(Record(1, ActionVerb.MapMove,
+            ("act", session.RunState.CurrentActIndex.ToString(CultureInfo.InvariantCulture)),
+            ("row", edge.ToRow.ToString(CultureInfo.InvariantCulture)),
+            ("column", edge.ToColumn.ToString(CultureInfo.InvariantCulture))));
+
+        Assert.Equal("true", CanonicalStateProjection.Project(session.RunState).Fields["combat.in_progress"]);
+    }
+
+    private static ActionRecord Record(int seq, ActionVerb verb, params (string Key, string Value)[] args) => new()
+    {
+        Seq = seq,
+        Verb = verb,
+        Args = new SortedDictionary<string, string>(
+            args.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal), StringComparer.Ordinal),
+        Source = FactSource.Declared,
+    };
+
+    /// <summary>Every call the observer makes on its sink, in order. What each one
+    /// means is <see cref="FightCapture"/>'s and is held there; this records which were
+    /// made.</summary>
+    private sealed class RecordingSink : IFightSampleSink
+    {
+        public List<string> Calls { get; } = [];
+
+        public void BeginStep(
+            string verb, IReadOnlyDictionary<string, string> args, IReadOnlyDictionary<string, string> before,
+            bool previousActionFinished) => Calls.Add($"BeginStep:{verb}");
+
+        public void BeginStepWithUnresolvedArgument(
+            string verb, IReadOnlyDictionary<string, string> resolved, IReadOnlyDictionary<string, string> before,
+            bool previousActionFinished, string unresolved) => Calls.Add($"BeginStepWithUnresolvedArgument:{verb}");
+
+        public void ResumeStep() => Calls.Add("ResumeStep");
+
+        public void CompleteStep(IReadOnlyDictionary<string, string> after) => Calls.Add("CompleteStep");
+
+        public void Finish(IReadOnlyDictionary<string, string> final) => Calls.Add("Finish");
+
+        public void MarkIncomplete(string reason) => Calls.Add($"MarkIncomplete:{reason}");
+    }
+
+    /// <summary>The client's hand, answering the paused choice with its first card.</summary>
+    private sealed class FirstCard : ICardSelector
+    {
+        public int Asked { get; private set; }
+
+        public Task<IEnumerable<CardModel>> GetSelectedCards(IEnumerable<CardModel> options, int minSelect, int maxSelect)
+        {
+            Asked++;
+            return Task.FromResult(options.Take(Math.Max(minSelect, 1)));
+        }
+
+        public CardRewardSelection GetSelectedCardReward(
+            IReadOnlyList<CardCreationResult> options, IReadOnlyList<CardRewardAlternative> alternatives) =>
+            throw new NotSupportedException("This fight offers no card reward.");
+    }
+
+    /// <summary>An action that pauses for a player's choice the way a card prompt
+    /// does, without a prompt: what <c>GameActionPlayerChoiceContext</c> does to the
+    /// action whose effect asked, done to itself.</summary>
+    private sealed class PausingAction(ulong ownerId) : GameAction
+    {
+        public override ulong OwnerId => ownerId;
+
+        public override GameActionType ActionType => GameActionType.Any;
+
+        protected override async Task ExecuteAction()
+        {
+            RunManager.Instance.ActionQueueSet.PauseActionForPlayerChoice(this, PlayerChoiceOptions.None);
+            await WaitForActionToResumeExecutingAfterPlayerChoice();
+        }
+
+        public override INetAction ToNetAction() =>
+            throw new NotSupportedException("A test action is never sent over the network.");
     }
 
     [ObserverFact]

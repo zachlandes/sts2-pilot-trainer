@@ -225,6 +225,31 @@ public sealed class FightCapture : IFightSampleSink
         BeginStep(verb, resolved, before, previousActionFinished);
 
     /// <summary>
+    /// The open action paused for the player's choice and is resuming.
+    ///
+    /// A card whose effect asks the player something - which card to discard, which
+    /// to fetch from a pile - pauses its own action for the answer, and the engine
+    /// announces the action a second time when it carries on. Nothing is sampled here:
+    /// the action has not finished, and a reading taken now would be mid-action. The
+    /// overlap rule in <see cref="BeginStep"/> is unchanged; this is the input that lets
+    /// a watcher say "the same action, again" instead of "another action".
+    ///
+    /// Refused with no action open, because a resumption of nothing the capture saw
+    /// begin is an action the trace does not account for.
+    /// </summary>
+    public void ResumeStep()
+    {
+        if (State != FightCaptureState.Live) return;
+
+        if (_open is null)
+        {
+            Refuse(
+                "An action resumed after a player's choice with none open, so the capture did not see it begin " +
+                "and cannot say what it did.");
+        }
+    }
+
+    /// <summary>
     /// Records the state the open action left.
     ///
     /// If the fight is no longer in progress afterwards, the fight ended inside this
