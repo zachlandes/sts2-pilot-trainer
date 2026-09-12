@@ -852,16 +852,25 @@ marker alone would suggest - caught here only by checking the decompiled name ra
 than guessing it.
 
 **The bookmark tag is the recorder's one control, and it exists for one stretch of the run.**
-`FightMark.For` in `Sts2PilotTrainer.Trainer` derives it from exactly the five facts
+`FightMark.For` in `Sts2PilotTrainer.Trainer` derives it from exactly the six facts
 `RunRecorder.FightMarkFacts` reads: a recorder attached, `RunCapture.State`,
-`RunCapture.LastEndedFight`, `RunCapture.MovedOnFromLastFight`, and whether that fight is
-marked.
+`RunCapture.LastEndedFight`, `RunCapture.MovedOnFromLastFight`, whether a map move is
+announced to the recorder and not yet recorded (`RunRecorder.MapMoveAnnounced`), and
+whether that fight is marked.
+The pending move is a fact of its own because `MovedOnFromLastFight` is read off the
+recording, and a map move reaches the recording only once the engine has settled at the
+other end - the room built, its fight started, its first turn begun - so a tag derived
+over the recording alone drew the previous fight's bookmark over the opening frames of
+the next; the node press is the moment the player left the floor, and the tag goes down
+with it and comes back if the engine turns the move down.
+`ToggleBookmark` refuses on the same fact, so a press that lands in that window marks
+nothing.
 A capture still recording or recorded to its end offers the tag and one whose watch has a
 hole in it does not, so the control follows the overlay's own row rather than offering to
 save a fight into a recording the player has just been told stopped; the finished state is
 there because a lost fight is bookmarked after the run ended.
-It is drawn only where such a recorder is attached, a fight has ended and the run has not
-yet left its floor - which is the loot screen and the card-reward screen behind it on a win,
+It is drawn only where such a recorder is attached, a fight has ended and the run has
+neither left its floor nor pressed the node that leaves it - which is the loot screen and the card-reward screen behind it on a win,
 and the game's death screen on a loss, where the run never moves on and the tag stays
 until `RunManager.CleanUp` tears the run down.
 Everywhere else it is absent rather than greyed, because a control that could not save
