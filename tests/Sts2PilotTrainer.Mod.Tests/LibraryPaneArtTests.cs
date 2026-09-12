@@ -103,6 +103,166 @@ public sealed class LibraryPaneArtTests
         }
     }
 
+    /// <summary>
+    /// The strip's marker is the run-history entry's own: the icon a player sees on
+    /// the history screen is 44.8 units on a side, and that is the side the strip draws
+    /// it at wherever the pane is wide enough. It used to be capped at a multiple of
+    /// the numeral's font size, which drew a marker half again the game's and cost the
+    /// pane the room the plate then took from it.
+    /// </summary>
+    [Theory]
+    [InlineData(5, 456f, 22)]
+    [InlineData(3, 900f, 30)]
+    public void TheStripsMarkerIsTheRunHistoryEntrysOwnSize(int floors, float width, int lineSize)
+    {
+        var layout = LibraryPaneArt.LayoutStrip(floors, width, anchor: 0, lineSize);
+        var cell = LibraryPaneArt.CellGeometry(layout, lineSize);
+
+        Assert.Equal(LibraryPaneArt.NativeCell, layout.Cell, 3);
+        Assert.Equal(FloorMarkerArt.EntryIconSide, cell.Icon.Size.X * 0.8f, 3);
+    }
+
+    /// <summary>The largest cell that fits a room is the cell whose strip, air
+    /// included, is that room: the inverse of the cell's own geometry.</summary>
+    [Theory]
+    [InlineData(100f, 22)]
+    [InlineData(122.8f, 22)]
+    [InlineData(200f, 16)]
+    public void TheCellFittingARoomFillsIt(float room, int lineSize)
+    {
+        var cell = LibraryPaneArt.CellFitting(room, lineSize);
+        var layout = LibraryPaneArt.LayoutStrip(3, 900f, anchor: 0, lineSize, room: room);
+
+        Assert.True(layout.Cell <= cell + 0.001f);
+        Assert.True(layout.Room <= room + 0.01f, $"a strip of {layout.Room} in a room of {room}");
+        if (cell < LibraryPaneArt.NativeCell) Assert.Equal(room, layout.Room, 2);
+    }
+
+    /// <summary>
+    /// What the captain saw: "Open the run" across the floor numerals and the version
+    /// line under "Share this run". The plate keeps the pane's bottom, everything else
+    /// is measured, and the strip gives before anything overlaps.
+    /// </summary>
+    [Fact]
+    public void AShortPaneShrinksTheStripRatherThanDrawingThePlateOverIt()
+    {
+        var pane = MinePane();
+        var roomy = LibraryPaneArt.Lay(
+            pane.Above, pane.Below, 5, pane.Width, 0, pane.Numeral, null, 3, pane.Ribbon, pane.Height);
+        var short_ = LibraryPaneArt.Lay(
+            pane.Above, pane.Below, 5, pane.Width, 0, pane.Numeral, null, 3, pane.Ribbon, pane.Height - 30f);
+
+        Assert.Equal(LibraryPaneArt.NativeCell, roomy.Strip!.Value.Cell, 3);
+        Assert.True(short_.Strip!.Value.Cell < roomy.Strip.Value.Cell, "the strip gave");
+        Assert.True(short_.Strip.Value.Cell >= LibraryPaneArt.MinimumCell);
+        foreach (var layout in new[] { roomy, short_ })
+        {
+            Assert.True(layout.StripTop >= pane.Above);
+            Assert.True(layout.AfterStrip >= layout.StripTop + layout.Strip!.Value.Room - 0.01f, "the facts start under the strip");
+            Assert.True(layout.AfterStrip + pane.Below <= layout.PlateTop!.Value + 0.01f, "the plate starts under the facts");
+        }
+
+        Assert.Equal(pane.Height - LibraryPaneArt.PlateHeight(3, pane.Ribbon), roomy.PlateTop!.Value, 3);
+    }
+
+    /// <summary>A pane that cannot give the strip even its smallest marker refuses,
+    /// by name, rather than drawing the strip under the plate. So does one with no
+    /// strip and no room for its lines.</summary>
+    [Fact]
+    public void APaneTooShortForTheSmallestStripRefusesRatherThanOverlapping()
+    {
+        var pane = MinePane();
+
+        var refused = Assert.Throws<InvalidOperationException>(() => LibraryPaneArt.Lay(
+            pane.Above, pane.Below, 5, pane.Width, 0, pane.Numeral, null, 3, pane.Ribbon, pane.Height - 120f));
+        Assert.Contains("run strip", refused.Message);
+
+        var noStrip = Assert.Throws<InvalidOperationException>(() => LibraryPaneArt.Lay(
+            pane.Above, pane.Below, 0, pane.Width, 0, pane.Numeral, null, 3, pane.Ribbon, pane.Above + pane.Below));
+        Assert.Contains("short", noStrip.Message);
+    }
+
+    /// <summary>The opened run's pane has no plate and nothing at its foot to keep
+    /// clear of: its strip stays at the game's marker however tall its deck is, and
+    /// the pane flows rather than refusing a run for the size of its deck.</summary>
+    [Fact]
+    public void APaneWithNoPlateFlowsAndNeverGivesUpTheStrip()
+    {
+        var pane = MinePane();
+        var layout = LibraryPaneArt.Lay(
+            pane.Above, pane.Below + 400f, 5, pane.Width, 0, pane.Numeral, null, 0, pane.Ribbon, pane.Height);
+
+        Assert.Null(layout.PlateTop);
+        Assert.Equal(LibraryPaneArt.NativeCell, layout.Strip!.Value.Cell, 3);
+    }
+
+    /// <summary>
+    /// The Mine pane at v0.111.0's own sizes, on the popup as the library expands it,
+    /// fits with the strip at the game's marker and air to spare - the numbers the
+    /// captain's screen was drawn from. <see cref="NativePaneSizes"/> holds them to the
+    /// shipped scenes where the game is installed; this holds the arithmetic where it is
+    /// not, so a spacing change that would re-collide fails here first.
+    /// </summary>
+    [Fact]
+    public void TheMinePaneFitsAtThisBuildsSizesWithTheStripAtTheGamesOwnMarker()
+    {
+        AssertMinePaneFits(MinePane());
+    }
+
+    /// <summary>The Community pane carries a creator line and one ribbon; it too keeps
+    /// the strip at the game's marker.</summary>
+    [Fact]
+    public void TheCommunityPaneFitsAtThisBuildsSizesWithTheStripAtTheGamesOwnMarker()
+    {
+        var pane = MinePane();
+        var above = pane.Above + Line(pane.Secondary);
+        var layout = LibraryPaneArt.Lay(
+            above, pane.Below, 5, pane.Width, 0, pane.Numeral, null, 1, pane.Ribbon, pane.Height);
+
+        Assert.Equal(LibraryPaneArt.NativeCell, layout.Strip!.Value.Cell, 3);
+        Assert.True(layout.AfterStrip + pane.Below <= layout.PlateTop!.Value);
+    }
+
+    internal static void AssertMinePaneFits(NativePaneSizes pane)
+    {
+        var layout = LibraryPaneArt.Lay(
+            pane.Above, pane.Below, 5, pane.Width, 0, pane.Numeral, null, 3, pane.Ribbon, pane.Height);
+
+        var spare = layout.PlateTop!.Value - (layout.AfterStrip + pane.Below);
+        Assert.True(
+            layout.Strip!.Value.Cell >= LibraryPaneArt.NativeCell - 0.001f,
+            $"the strip shrank to {layout.Strip.Value.Cell} on a pane {pane.Height} tall");
+        Assert.True(spare >= 0f, $"the plate overlaps the facts by {-spare}");
+    }
+
+    /// <summary>
+    /// The sizes the library reads off v0.111.0's scenes, as the client reads them:
+    /// the design size of each native role the Mine pane draws with, the panel's ribbon
+    /// and the popup's body. The pane's height follows from those the way
+    /// <see cref="LibraryScreen.PaneHeight"/> derives it.
+    /// </summary>
+    internal sealed record NativePaneSizes(
+        int RowTitle, int Secondary, int Fact, int CardCaption, int Numeral, int Body, float Ribbon, float BodyTop)
+    {
+        internal float Width => (LibraryScreen.PopupWidth - 140f) * (1f - 0.54f - 0.03f);
+
+        internal float Height => LibraryScreen.PaneHeight(
+            BodyTop, (Body * LibraryScreen.LabelLineRatio) + (Body * 0.15f), Ribbon);
+
+        /// <summary>The heading and one row of relics with the deck count on it.</summary>
+        internal float Above =>
+            Line(RowTitle) + LibraryPaneArt.RelicRowsHeight(2, Width, CardCaption * 1.7f);
+
+        /// <summary>Reached floor, and the version line.</summary>
+        internal float Below => 2 * Line(Fact);
+    }
+
+    internal static NativePaneSizes MinePane() => new(
+        RowTitle: 28, Secondary: 24, Fact: 24, CardCaption: 24, Numeral: 22, Body: 26, Ribbon: 72f, BodyTop: 115f);
+
+    private static float Line(int size) =>
+        LibraryScreen.LineHeight("one line", 1000f, new GameTextStyle(null, size));
+
     [Fact]
     public void DeckRowsLeaveRoomForNativeCardCounts()
     {

@@ -12,21 +12,31 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// </summary>
 public sealed class LibraryNativeFurnitureTests
 {
-    /// <summary>The stats scene puts a 109-square lock centred on a 256 by 90
-    /// Achievements tab, overhanging its top and bottom. The same proportions at any
-    /// tab size.</summary>
+    /// <summary>
+    /// The lock was the stats screen's 109-square centred on the tab, which drew it
+    /// across the middle of "Community". It is now the run-history entry's own marker
+    /// size, in a column of its own at the tab's right end, and the label's box ends
+    /// where that column begins - so the word and the lock cannot meet at any tab
+    /// size, and the tab's own auto-size fits the word to what is left.
+    /// </summary>
     [Theory]
     [InlineData(256f, 90f)]
     [InlineData(205f, 72f)]
-    public void TheLockSitsWhereTheStatsScreenPutsIt(float width, float height)
+    [InlineData(170f, 60f)]
+    public void TheLockKeepsToItsOwnColumnAtTheRunHistoryMarkersSize(float width, float height)
     {
-        var lockBounds = LibraryTabArt.LockBounds(new Vector2(width, height));
+        var tab = new Vector2(width, height);
+        var lockBounds = LibraryTabArt.LockBounds(tab);
 
+        Assert.Equal(FloorMarkerArt.EntryIconSide, lockBounds.Size.X, 3);
         Assert.Equal(lockBounds.Size.X, lockBounds.Size.Y);
-        Assert.Equal(height * 109f / 90f, lockBounds.Size.Y, 3);
-        Assert.Equal(width / 2f, lockBounds.Position.X + (lockBounds.Size.X / 2f), 3);
+        Assert.True(lockBounds.Position.X >= 0f && lockBounds.End.X <= width, "the lock is inside the tab");
+        Assert.True(lockBounds.Position.Y >= 0f && lockBounds.End.Y <= height, "the lock is inside the tab");
         Assert.Equal(height / 2f, lockBounds.Position.Y + (lockBounds.Size.Y / 2f), 3);
-        Assert.True(lockBounds.Position.Y < 0f);
+        Assert.True(
+            lockBounds.Position.X >= width - LibraryTabArt.LabelInsetForLock,
+            "the label's box ends before the lock's column");
+        Assert.True(lockBounds.Position.X > width / 2f, "the lock is at the tab's right end");
     }
 
     [Fact]
@@ -87,6 +97,59 @@ public sealed class LibraryNativeFurnitureTests
         Assert.Equal($"res://images/ui/run_history/{icon}.png", FloorMarkerArt.IconPath(icon));
         Assert.Equal($"res://images/ui/run_history/{icon}_outline.png", FloorMarkerArt.OutlinePath(icon));
     }
+
+    /// <summary>
+    /// The three numbers the strip and the tab lock size themselves by, read off the
+    /// run-history entry's own scene: a 60 box, an icon 4 units over it, drawn at 0.7.
+    /// A build that redraws its history entry moves the marker here by name.
+    /// </summary>
+    [NativeSceneFact]
+    public void TheMarkerSizeIsTheRunHistoryEntrysOwn()
+    {
+        var scene = NativeScenes.Read(FloorMarkerArt.EntryScene);
+        Assert.NotNull(scene);
+
+        var root = NativeScenes.RootProperties(scene);
+        Assert.NotNull(root);
+        Assert.Equal($"Vector2({FloorMarkerArt.EntryBox:0}, {FloorMarkerArt.EntryBox:0})", root["custom_minimum_size"]);
+
+        var icon = NativeScenes.Properties(scene, "Icon");
+        Assert.NotNull(icon);
+        Assert.Equal($"{FloorMarkerArt.EntryIconOverhang:0.0}", icon["offset_right"]);
+        Assert.Equal($"Vector2({FloorMarkerArt.EntryIconScale:0.0}, {FloorMarkerArt.EntryIconScale:0.0})", icon["scale"]);
+    }
+
+    /// <summary>
+    /// The Mine pane fits on this build with the strip at the game's marker, from the
+    /// sizes the shipped scenes actually set: each role the pane draws with, the
+    /// panel's ribbon and the popup's body. The arithmetic is
+    /// <see cref="LibraryPaneArtTests.AssertMinePaneFits"/>'s; this is what holds it to
+    /// a build rather than to numbers copied into a test.
+    /// </summary>
+    [NativeSceneFact]
+    public void TheMinePaneFitsOnThisBuildAtTheGamesOwnMarker()
+    {
+        var sizes = new LibraryPaneArtTests.NativePaneSizes(
+            RowTitle: NativeScenes.DesignSize(RoleScene(NativeTextRole.RowTitle), RoleNode(NativeTextRole.RowTitle)),
+            Secondary: NativeScenes.DesignSize(RoleScene(NativeTextRole.Secondary), RoleNode(NativeTextRole.Secondary)),
+            Fact: NativeScenes.DesignSize(RoleScene(NativeTextRole.Fact), RoleNode(NativeTextRole.Fact)),
+            CardCaption: NativeScenes.DesignSize(RoleScene(NativeTextRole.CardCaption), RoleNode(NativeTextRole.CardCaption)),
+            Numeral: NativeScenes.DesignSize(RoleScene(NativeTextRole.FloorNumeral), RoleNode(NativeTextRole.FloorNumeral)),
+            Body: NativeScenes.DesignSize(RoleScene(NativeTextRole.PopupBody), RoleNode(NativeTextRole.PopupBody)),
+            Ribbon: NativeScenes.Vector2(NativeScenes.RootProperties(RoleScene(NativeTextRole.ButtonCaption))!["custom_minimum_size"]).Y,
+            BodyTop: float.Parse(
+                NativeScenes.Properties(RoleScene(NativeTextRole.PopupBody), RoleNode(NativeTextRole.PopupBody))!["offset_top"],
+                System.Globalization.CultureInfo.InvariantCulture));
+
+        Assert.Equal(LibraryPaneArtTests.MinePane(), sizes);
+        LibraryPaneArtTests.AssertMinePaneFits(sizes);
+    }
+
+    private static string RoleScene(NativeTextRole role) =>
+        NativeScenes.Read(GameText.Declarations.Single(d => d.Role == role).Scene)!;
+
+    private static string RoleNode(NativeTextRole role) =>
+        GameText.Declarations.Single(d => d.Role == role).Node.TrimStart('%');
 
     /// <summary>A process with no game has none of the icons, and the strip then draws
     /// the mod's own glyph rather than nothing.</summary>

@@ -24,6 +24,25 @@ internal static class FloorMarkerArt
 {
     private const string Directory = "res://images/ui/run_history/";
 
+    /// <summary>The scene the run-history screen draws one floor with, and the numbers
+    /// the strip sizes its markers by. <c>map_point_history_entry.tscn</c> is a 60-unit
+    /// box whose icon fills it plus a 4-unit overhang - 64 square - and is drawn at 0.7
+    /// of that, so the marker a player sees on the history screen is 44.8 units on a
+    /// side. The strip draws its markers at that side and paces its columns at that
+    /// box, which is what "the run-history entry's own icon size" means in numbers;
+    /// <c>NativeSceneFact</c> holds the three figures to the shipped scene.</summary>
+    internal const string EntryScene = "res://scenes/screens/run_history_screen/map_point_history_entry.tscn";
+
+    internal const float EntryBox = 60f;
+
+    internal const float EntryIconOverhang = 4f;
+
+    internal const float EntryIconScale = 0.7f;
+
+    /// <summary>The marker's side on the run-history screen: the icon box at its
+    /// scene's own scale.</summary>
+    internal const float EntryIconSide = (EntryBox + EntryIconOverhang) * EntryIconScale;
+
     private static readonly Dictionary<string, Texture2D?> Loaded = new(StringComparer.Ordinal);
 
     /// <summary>The game's own icon name for a floor's kind, or null for a kind that

@@ -10,27 +10,34 @@ public sealed class CommunityAccessTests
         Assert.Null(CommunityLock.For(sharingAvailable: true, showCommunityRuns: true));
     }
 
+    /// <summary>The setting-off lock is the captain's sentence, on the tab and over it:
+    /// it names the setting by its own label and the path to it.</summary>
     [Fact]
     public void TheSettingOffLocksTheTabAndPointsAtTheSetting()
     {
         var locked = CommunityLock.For(sharingAvailable: true, showCommunityRuns: false);
 
         Assert.NotNull(locked);
-        Assert.Contains(LibraryCopy.ShowCommunityRuns, locked.Tooltip);
-        Assert.Contains("Settings", locked.Tooltip);
-        Assert.Contains(LibraryCopy.ShowCommunityRuns, locked.Body);
-        Assert.Contains("Settings", locked.Body);
+        Assert.Equal(LibraryCopy.CommunityOff, locked.Tooltip);
+        Assert.Equal(locked.Tooltip, locked.Body);
+        Assert.StartsWith("Community runs are off.", locked.Body);
+        Assert.Contains("Settings > General > Runmobile", locked.Body);
+        Assert.EndsWith(LibraryCopy.ShowCommunityRuns, locked.Body);
     }
 
-    /// <summary>No service and the line is the standing fact the rest of the library
-    /// already says, rather than a second wording of it.</summary>
+    /// <summary>No service is the other cause and gets the other sentence: the
+    /// setting-off wording would send a player to a switch that adds no service, so
+    /// the line names the service and never the switch.</summary>
     [Fact]
-    public void NoServiceSaysWhatTheLibraryAlreadyCallsIt()
+    public void NoServiceNamesTheServiceAndNeverTheSwitch()
     {
         var locked = CommunityLock.For(sharingAvailable: false, showCommunityRuns: true);
 
         Assert.NotNull(locked);
-        Assert.Equal(LibraryCopy.SharingServiceUnavailable, locked.Body);
+        Assert.Equal(LibraryCopy.CommunityUnavailable, locked.Body);
+        Assert.Equal(locked.Tooltip, locked.Body);
+        Assert.DoesNotContain("Settings", locked.Body);
+        Assert.DoesNotContain("Toggle", locked.Body);
     }
 
     /// <summary>A switch that changes nothing is not what to point a player at: with no

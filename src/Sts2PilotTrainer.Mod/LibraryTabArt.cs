@@ -14,12 +14,15 @@ namespace Sts2PilotTrainer.Mod;
 /// whole tab. A ribbon duplicated from the popup's cancel button read as a button and
 /// not a tab, which is what this replaces.
 ///
-/// <para><b>The lock is the game's own too.</b> The stats screen lays
-/// <c>submenu_lock.png</c> over its Achievements tab while that tab is disabled; the
-/// same image over the Community tab says the same thing in the same place, with a
-/// tooltip naming what is short. The tab stays pressable under it because what is
-/// behind it - the runs included with Runmobile and a run looked up by code - is
-/// still there, and a locked tab a player cannot open would hide them.</para>
+/// <para><b>The lock is the game's own image, in the mod's own place.</b> The stats
+/// screen lays <c>submenu_lock.png</c> across the middle of its Achievements tab while
+/// that tab is disabled and its label dimmed. The Community tab stays pressable and its
+/// label has to read, so the same image sits at the tab's right end instead, at the
+/// run-history entry's own icon size, and the label's box ends where the lock's column
+/// begins - the tab's own auto-sizing label then fits its word to the room left rather
+/// than running under the lock. What is behind the tab - the runs included with
+/// Runmobile and a run looked up by code - is still there, and a locked tab a player
+/// cannot open would hide them.</para>
 ///
 /// <para>The tab's hover materials are declared local to its scene, so every instance
 /// animates its own; nothing here shares a material with a row or a ribbon.</para>
@@ -40,16 +43,32 @@ internal static class LibraryTabArt
     /// them, so the plate is never squashed.</summary>
     internal const float Aspect = 256f / 90f;
 
+    /// <summary>The lock's side: the run-history entry's own marker, which is the size
+    /// the captain asked these displays to be judged against.</summary>
+    internal const float LockSide = FloorMarkerArt.EntryIconSide;
+
+    /// <summary>The air either side of the lock, as a share of its side.</summary>
+    private const float LockInset = 0.1f;
+
     /// <summary>
-    /// Where the lock sits, from the stats scene: a square a little taller than the
-    /// tab, centred on it, so it overhangs the plate's top and bottom edges the way the
-    /// game's does (offsets 73..182 by -5.5..103.5 on a 256 by 90 tab).
+    /// Where the lock sits on a tab this size: a <see cref="LockSide"/> square at the
+    /// tab's right end, centred on its height, inset by its own air. The stats scene
+    /// centres a lock taller than the tab over a label it has dimmed; this tab's label
+    /// is read, so the lock keeps to a column of its own.
     /// </summary>
     internal static Rect2 LockBounds(Vector2 tab)
     {
-        var side = tab.Y * (109f / 90f);
-        return new Rect2((tab.X - side) / 2f, (tab.Y - side) / 2f, side, side);
+        var inset = LockSide * LockInset;
+        return new Rect2(tab.X - inset - LockSide, (tab.Y - LockSide) / 2f, LockSide, LockSide);
     }
+
+    /// <summary>
+    /// The width the lock's column takes off the label's box on a locked tab: the lock
+    /// and the air either side of it. The label is anchored to the whole tab and
+    /// centred, so ending its box here re-centres the word in the room that is left,
+    /// and the tab's own auto-size fits it there. The two cannot then overlap.
+    /// </summary>
+    internal static float LabelInsetForLock => LockSide * (1f + (2f * LockInset));
 
     /// <summary>
     /// Adds one tab, sized to the box it was given.
@@ -84,6 +103,16 @@ internal static class LibraryTabArt
         parent.AddChild(tab);
         // The scene sorts its own children on entering the tree and may clamp again
         tab.Size = at.Size;
+
+        // The label's box gives up the lock's column before the word is set, so the
+        // tab's own auto-size measures the room it will actually have
+        if (lockTooltip is { Length: > 0 })
+        {
+            var word = tab.GetNodeOrNull<Control>("Label")
+                ?? throw new InvalidOperationException(
+                    $"This build's '{Scene}' has no 'Label' to keep clear of the lock.");
+            word.OffsetRight = -LabelInsetForLock;
+        }
 
         tab.SetLabel(label);
         if (current) tab.Select();

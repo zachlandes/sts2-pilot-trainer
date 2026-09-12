@@ -199,6 +199,35 @@ internal static class LibraryScreen
     /// <summary>The gap between the panes, where the divider runs.</summary>
     private const float SeamShare = 0.03f;
 
+    /// <summary>The popup, expanded: the library's two panes need the width, and the
+    /// height is the game's own 16:9 canvas less nothing to spare, so every part laid
+    /// out inside it is measured against what is left rather than given a size of its
+    /// own.</summary>
+    internal const float PopupWidth = 1200f;
+    internal const float PopupHeight = 850f;
+
+    /// <summary>Where the panes begin under the band, as a multiple of a ribbon's
+    /// height: the tabs stand at that height, and the rest is the air under them.</summary>
+    internal const float BandStep = 1.3f;
+
+    /// <summary>A label's box as a multiple of its font size, and the advance to the
+    /// line after it. Every line of the mod's own text on this surface stands at these,
+    /// so a height computed here is the height drawn.</summary>
+    internal const float LabelLineRatio = 1.3f;
+    internal const float LineAdvanceRatio = 1.45f;
+
+    /// <summary>The air the body keeps under its last line, as a share of its size,
+    /// before the band starts.</summary>
+    private const float BodyBreath = 0.15f;
+
+    /// <summary>
+    /// The pane's height on this popup, from what the panel's own nodes measure: the
+    /// popup less the ribbons at its foot, less the body over the band, less the band.
+    /// Pure, so a test can ask what this build's scenes leave a pane without a game.
+    /// </summary>
+    internal static float PaneHeight(float bodyTop, float bodyHeight, float ribbon) =>
+        PopupHeight - ribbon - (bodyTop + bodyHeight) - (ribbon * BandStep);
+
     /// <summary>
     /// Shows one screen, replacing whatever this module had up.
     ///
@@ -405,7 +434,7 @@ internal static class LibraryScreen
     {
         // Keep the one-column popup centred while making room for both panes
         var oldSize = content.Size;
-        var newSize = new Vector2(1200f, 850f);
+        var newSize = new Vector2(PopupWidth, PopupHeight);
         // The native root is a TextureRect; keep-aspect leaves the paper behind its controls
         content.Set("expand_mode", (int)TextureRect.ExpandModeEnum.IgnoreSize);
         content.Set("stretch_mode", (int)TextureRect.StretchModeEnum.Scale);
@@ -426,7 +455,15 @@ internal static class LibraryScreen
         content.YesButton.Position = new Vector2(newSize.X - content.YesButton.Size.X - 70f, buttonY);
     }
 
-    /// <summary>Bounds the popup's scrolling body above the library furniture.</summary>
+    /// <summary>
+    /// Bounds the popup's scrolling body above the library furniture, at the height its
+    /// text needs.
+    ///
+    /// Measured in the body's own font rather than capped at a ribbon's height: the cap
+    /// gave a one-line banner a ribbon's worth of room, and on a pane already short of
+    /// it that room came out of the strip. A body the game cannot measure - which is
+    /// a test, and nothing in the client - keeps the cap.
+    /// </summary>
     private static void ReservePageRoom(NVerticalPopup content, LibraryPage page)
     {
         if (page.Rows.Count == 0 && page.Pane is null && page.Tabs.Count == 0) return;
@@ -434,9 +471,16 @@ internal static class LibraryScreen
         var label = content.BodyLabel();
         label.FitContent = false;
         label.CustomMinimumSize = new Vector2(label.CustomMinimumSize.X, 0f);
-        label.Size = new Vector2(
-            label.Size.X,
-            string.IsNullOrEmpty(page.Body) ? 0f : Math.Min(label.Size.Y, content.NoButton.Size.Y));
+        var height = 0f;
+        if (!string.IsNullOrEmpty(page.Body))
+        {
+            var capped = Math.Min(label.Size.Y, content.NoButton.Size.Y);
+            height = GameText.Of(label) is { } style
+                ? style.WrappedHeight(label.GetParsedText(), label.Size.X, capped) + (style.Size * BodyBreath)
+                : capped;
+        }
+
+        label.Size = new Vector2(label.Size.X, height);
     }
 
     /// <summary>
@@ -509,7 +553,7 @@ internal static class LibraryScreen
                 new Rect2(at, area.Position.Y, Math.Max(tabWidth, area.End.X - at), height)));
         }
 
-        return area.Position.Y + (height * 1.65f);
+        return area.Position.Y + (height * BandStep);
     }
 
     /// <summary>The line between the panes. It runs the whole height of the content
@@ -858,14 +902,17 @@ internal static class LibraryScreen
     /// </summary>
     private static void AddNote(NVerticalPopup content, Control row, string note)
     {
-        var style = GameText.Scene(NativeTextRole.Secondary);
+        // The dense-line role: the run-history hover tip's own card listing, which is
+        // the smallest text the run-history screen sets. A row's note is a list of
+        // relics and a card count, the same kind of line.
+        var style = GameText.Scene(NativeTextRole.DenseLine);
         var label = new Label
         {
             Name = $"{row.Name}Note",
             Text = note,
             Position = new Vector2(0f, row.Size.Y * NoteDrop),
             CustomMinimumSize = new Vector2(row.Size.X, 0f),
-            Size = new Vector2(row.Size.X, style.Size * 1.3f),
+            Size = new Vector2(row.Size.X, style.Size * LabelLineRatio),
             ClipText = true,
             TooltipText = note,
             MouseFilter = Control.MouseFilterEnum.Ignore,
@@ -890,8 +937,7 @@ internal static class LibraryScreen
         NVerticalPopup content, string text, Vector2 at, float width, Color colour, GameTextStyle style,
         HorizontalAlignment alignment = HorizontalAlignment.Left, string? tooltip = null)
     {
-        var lineCount = text.Count(character => character == '\n') + 1;
-        var height = style.Size * 1.3f * lineCount;
+        var height = LabelHeight(text, width, style);
         var label = new Label
         {
             Name = "RunmobileLine",
@@ -910,7 +956,27 @@ internal static class LibraryScreen
         style.ApplyTo(label);
         label.AddThemeColorOverride("font_color", colour);
         content.AddChild(label);
-        return at.Y + (style.Size * 1.45f * lineCount);
+        return at.Y + LineHeight(text, width, style);
+    }
+
+    /// <summary>
+    /// The room one line of the mod's text takes: its label's box and the air to the
+    /// next line. What <see cref="AddLine"/> advances by, so a layout that sums these
+    /// before drawing places the lines where they are then drawn.
+    /// </summary>
+    internal static float LineHeight(string text, float width, GameTextStyle style) =>
+        LabelHeight(text, width, style) + (style.Size * (LineAdvanceRatio - LabelLineRatio));
+
+    /// <summary>
+    /// The label's box: the text wrapped to the width in its own font where the font is
+    /// there to measure with, and a line per newline where it is not. A sentence that
+    /// wraps is a sentence that takes two lines, and a box sized for one clipped it.
+    /// </summary>
+    private static float LabelHeight(string text, float width, GameTextStyle style)
+    {
+        var lineCount = text.Count(character => character == '\n') + 1;
+        var estimate = style.Size * LabelLineRatio * lineCount;
+        return Math.Max(estimate, style.WrappedHeight(text, width, estimate));
     }
 
     /// <summary>

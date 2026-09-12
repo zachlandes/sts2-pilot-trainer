@@ -40,6 +40,12 @@ Both settings captures predate the change that put the row under a `Runmobile` h
 They show the captions under the short extent that hid View Credits and the settings below it, and the community-runs control under an earlier caption.
 What they still stand for is the roles and the column width, which that change did not move; `demo/RUNMOBILE-SETTINGS-SECTION.md` holds the section as it stands.
 
+## What changed since these captures
+
+The captures above predate the change that sized the run strip's markers and the Community tab's lock to the run-history entry's own icon, moved the lock into a column of its own at the tab's right end, put the deck count on the relic row, measured the body and the band, and set a list row's second line at the dense-line role - the run-history hover tip's own card listing.
+They show the strip's markers capped at a multiple of the floor numeral, the lock centred across the Community label, and the row note at the secondary role.
+`docs/mod-ui-direction.md` owns the layout as it now stands; an in-client capture of the Mine tab at the new sizes is still owed.
+
 ## What these captures prove
 
 The retail captures prove the library parchment's Others, Mine, and opened-run states at named-role typography, the run strip's native gold arrow art, the mod's refusal popup at its R1, R2, and R3 roles, and the My Runs settings row at its mapped native roles and full native column width as that row stood when the capture was taken.

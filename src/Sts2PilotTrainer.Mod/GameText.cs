@@ -262,6 +262,8 @@ internal static class GameText
             [NativeTextRole.LedgerRow] = new("res://scenes/ui/map_point_history_hover_tip.tscn",
                 "TextContainer/TopContainer/RewardStats/RewardRows/ObtainedRow1", "ledger row", false),
             [NativeTextRole.FloorNumeral] = new("res://scenes/ui/map_point_history_hover_tip.tscn", "TextContainer/TopContainer/Title", "floor numeral", true),
+            [NativeTextRole.DenseLine] = new("res://scenes/ui/map_point_history_hover_tip.tscn",
+                "TextContainer/TopContainer/VBoxContainer/CardStats", "dense line", false),
             [NativeTextRole.CardCaption] = new("res://scenes/screens/run_history_screen/deck_history_entry.tscn", "MarginContainer/Label", "card caption", false),
             [NativeTextRole.Input] = new("res://scenes/screens/card_library/card_library.tscn", "Sidebar/MarginContainer/TopVBox/SearchBar/TextArea", "input field", false),
             [NativeTextRole.Tickbox] = new("res://scenes/screens/card_library/rarity_tickbox.tscn", "Label", "tickbox label", true),
@@ -293,6 +295,9 @@ internal enum NativeTextRole
     DropdownItem,
     LedgerRow,
     FloorNumeral,
+    /// <summary>The run-history hover tip's card listing: the smallest text the
+    /// run-history screen sets, for a line that lists things rather than says one.</summary>
+    DenseLine,
     CardCaption,
     Input,
     Tickbox,

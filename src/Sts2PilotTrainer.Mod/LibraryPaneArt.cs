@@ -42,15 +42,35 @@ internal static class LibraryPaneArt
     /// becomes a speck - measured in the client at 46, where the played badge was a dot -
     /// so the strip pages sooner rather than draw one.
     /// </summary>
-    private const float MinimumStripPitch = 60f;
+    private const float MinimumStripPitch = FloorMarkerArt.EntryBox;
 
     /// <summary>The icon box as a share of the column. The rest is the gap between
     /// neighbours, so two markers never touch.</summary>
     private const float IconShare = 0.78f;
 
-    /// <summary>The icon box is capped against the numeral under it, so a short strip
-    /// spread across a wide pane does not draw markers the size of relics.</summary>
-    private const float IconCapRatio = 2.6f;
+    /// <summary>
+    /// The icon box at which the marker inside it is the run-history screen's own size:
+    /// the history entry draws its icon at 44.8 units and the box draws its icon at
+    /// <see cref="IconInBox"/> of itself. A short strip across a wide pane is capped
+    /// here, so it draws the game's markers at the game's size rather than markers the
+    /// size of relics; the cap used to be a multiple of the numeral's font size, which
+    /// tied a picture's size to a font's and drew a marker half again the game's.
+    /// </summary>
+    internal const float NativeCell = FloorMarkerArt.EntryIconSide / IconInBox;
+
+    /// <summary>
+    /// The smallest icon box the strip will draw when the pane is short of room:
+    /// seven tenths of the history entry's own marker, which keeps the played badge
+    /// above the size at which it read as a dot. Under that the marker is the speck the
+    /// 60-unit column exists to prevent, and a pane that cannot give the strip even
+    /// this refuses to lay out rather than drawing the strip over the plate.
+    /// </summary>
+    internal const float MinimumCell = NativeCell * 0.7f;
+
+    /// <summary>How far apart the plate's rows sit, as a multiple of a ribbon's own
+    /// height. The retail ribbon's art overhangs its control top and bottom, and this
+    /// is the step at which two ribbons read as two.</summary>
+    internal const float PlateStep = 1.12f;
 
     /// <summary>The numeral's line, as a multiple of its size - the same line height
     /// every other line of the mod's text stands at.</summary>
@@ -76,7 +96,14 @@ internal static class LibraryPaneArt
     private const float IconInBox = 0.8f;
     private const float OutlineInBox = 1f;
 
-    private const float StripBottomSpace = 1.25f;
+    /// <summary>The room a strip takes, as a multiple of its cell's height: the air
+    /// under the numerals before the next line.</summary>
+    internal const float StripBottomSpace = 1.12f;
+
+    /// <summary>A relic row's pitch, as a multiple of the icon's side, and the air
+    /// under the last row.</summary>
+    private const float RelicPitch = 1.15f;
+    private const float RelicRowSpace = 1.3f;
 
     internal readonly record struct StripLayout(
         int First, int Count, bool HasPrevious, bool HasNext, int Index, int Pages,
@@ -85,6 +112,96 @@ internal static class LibraryPaneArt
         internal int SlotOf(int index) => (HasPrevious ? 1 : 0) + index - First;
 
         internal int NextSlot => (HasPrevious ? 1 : 0) + Count;
+
+        /// <summary>The room the strip takes on the pane, air included.</summary>
+        internal float Room => Height * StripBottomSpace;
+    }
+
+    /// <summary>
+    /// Where the pane's parts go, top to bottom, inside a pane <c>Height</c> tall.
+    ///
+    /// The one place the pane is measured against the room it was given. Before this,
+    /// the strip was placed under the relics at its own size, the facts under the
+    /// strip, and the plate wherever the bottom left it - and on a pane too short for
+    /// all three the plate was drawn upward over the facts and the strip, which is
+    /// what a player saw as "Open the run" across the floor numerals and the version
+    /// line under "Share this run". The plate keeps the bottom, because it is the
+    /// pane's controls and they sit by the panel's own ribbon; the strip is the one
+    /// part that can give, down to <see cref="MinimumCell"/>, and past that the pane
+    /// refuses rather than overlapping. The numbers are measured, so a build that
+    /// changes a font moves the layout rather than the collision.
+    /// </summary>
+    /// <param name="StripTop">Where the strip starts, under the identity and the
+    /// relics.</param>
+    /// <param name="Strip">The strip at whatever cell the room allows, or null for a
+    /// run with no floors.</param>
+    /// <param name="AfterStrip">Where the deck, the facts and the verdict start.</param>
+    /// <param name="PlateTop">Where the plate's first ribbon sits, or null for a pane
+    /// with no plate. Never above where the facts end.</param>
+    internal readonly record struct PaneLayout(
+        float StripTop, StripLayout? Strip, float AfterStrip, float? PlateTop);
+
+    /// <summary>
+    /// Lays the pane out; see <see cref="PaneLayout"/>.
+    /// </summary>
+    /// <param name="above">The height of everything over the strip: the heading, a
+    /// subtitle, the relic rows.</param>
+    /// <param name="below">The height of everything between the strip and the plate:
+    /// the deck tiles, the facts, the verdict.</param>
+    /// <param name="plateRows">How many ribbons the plate holds, the pane's own ribbon
+    /// included.</param>
+    /// <param name="ribbon">A ribbon's height, measured off the panel's own.</param>
+    /// <param name="height">The pane's height.</param>
+    internal static PaneLayout Lay(
+        float above, float below, int stripCount, float width, int anchor, int numeralSize,
+        int? stripPage, int plateRows, float ribbon, float height)
+    {
+        var plate = PlateHeight(plateRows, ribbon);
+        // A pane with no plate has nothing at its foot to keep clear of, so its strip
+        // is never asked to give: the opened run's pane flows, and its deck is what
+        // decides how far. What the room bounds is the strip against the plate.
+        var room = plateRows == 0 ? (float?)null : height - above - below - plate;
+        StripLayout? strip = null;
+        if (stripCount > 0)
+        {
+            strip = LayoutStrip(stripCount, width, anchor, numeralSize, stripPage, room);
+        }
+        else if (room < 0f)
+        {
+            throw new InvalidOperationException(
+                $"This pane is {(-room.Value).ToString("0", CultureInfo.InvariantCulture)} units short of " +
+                "room for its lines and its plate, and has no strip to give it.");
+        }
+
+        var afterStrip = above + (strip?.Room ?? 0f);
+        return new PaneLayout(
+            above, strip, afterStrip, plateRows == 0 ? null : height - plate);
+    }
+
+    /// <summary>The plate's height: its rows a step apart, and the last one whole.</summary>
+    internal static float PlateHeight(int rows, float ribbon) =>
+        rows == 0 ? 0f : ((rows - 1) * ribbon * PlateStep) + ribbon;
+
+    /// <summary>The relic rows' height: the icons at <paramref name="side"/>, wrapped
+    /// to the width, with air under the last row. Zero for no relics.</summary>
+    internal static float RelicRowsHeight(int count, float width, float side)
+    {
+        if (count == 0) return 0f;
+        var perRow = RelicsPerRow(width, side);
+        var rows = (count + perRow - 1) / perRow;
+        return ((rows - 1) * side * RelicPitch) + (side * RelicRowSpace);
+    }
+
+    private static int RelicsPerRow(float width, float side) =>
+        Math.Max(1, (int)Math.Floor(width / (side * RelicPitch)));
+
+    /// <summary>The deck tiles' height for a deck of this many cards, or zero.</summary>
+    internal static float DeckHeight(int cards, float width, int captionSize)
+    {
+        if (cards == 0) return 0f;
+        var tile = width / TilesPerRow;
+        var rows = (cards + TilesPerRow - 1) / TilesPerRow;
+        return rows * DeckRowPitch(tile, captionSize);
     }
 
     /// <summary>
@@ -100,8 +217,15 @@ internal static class LibraryPaneArt
     internal readonly record struct StripCellGeometry(
         Rect2 Icon, Rect2 Numeral, Rect2 Badge, Rect2 Ring, Rect2 Mark);
 
+    /// <summary>
+    /// The strip's page and cell for this many floors across this width.
+    /// </summary>
+    /// <param name="room">The height the pane can give the strip, air included, or
+    /// null where nothing bounds it. A cell is shrunk to fit the room down to
+    /// <see cref="MinimumCell"/>; a room shorter than that refuses.</param>
     internal static StripLayout LayoutStrip(
-        int count, float width, int anchor, int lineSize, int? requestedPage = null)
+        int count, float width, int anchor, int lineSize, int? requestedPage = null,
+        float? room = null)
     {
         var places = Math.Max(
             ScreenPage.MinimumPerPage,
@@ -110,7 +234,22 @@ internal static class LibraryPaneArt
             ? ScreenPage.For(count, places, requested)
             : ScreenPage.Containing(count, places, anchor);
         var pitch = page.Pages == 1 ? width / page.Count : width / places;
-        var cell = Math.Min(pitch * IconShare, lineSize * IconCapRatio);
+        var cell = Math.Min(pitch * IconShare, NativeCell);
+        if (room is { } bounded)
+        {
+            var fits = CellFitting(bounded, lineSize);
+            if (fits < MinimumCell)
+            {
+                throw new InvalidOperationException(
+                    "This pane leaves the run strip " +
+                    $"{bounded.ToString("0", CultureInfo.InvariantCulture)} units of room, " +
+                    "which is short of the smallest marker it draws; the strip is refused " +
+                    "rather than drawn over the plate.");
+            }
+
+            cell = Math.Min(cell, fits);
+        }
+
         var geometry = CellGeometry(pitch, cell, lineSize);
         var height = geometry.Numeral.End.Y;
         var offset = (width - (page.Drawn * pitch)) / 2f;
@@ -121,6 +260,19 @@ internal static class LibraryPaneArt
 
     internal static StripCellGeometry CellGeometry(StripLayout layout, int lineSize) =>
         CellGeometry(layout.Pitch, layout.Cell, lineSize);
+
+    /// <summary>
+    /// The largest icon box whose cell, air included, fits in this much room: the
+    /// inverse of <see cref="CellGeometry(float, float, int)"/>'s height, which is the
+    /// box, what hangs over its top, the gap under it and the numeral's line.
+    /// </summary>
+    internal static float CellFitting(float room, int lineSize)
+    {
+        var overhang = Math.Max(BadgeShare * BadgeOverhang, RingStandoff);
+        var perCell = overhang + 1f + NumeralGapShare;
+        var numeral = lineSize * NumeralLineRatio;
+        return ((room / StripBottomSpace) - numeral) / perCell;
+    }
 
     private static StripCellGeometry CellGeometry(float pitch, float cell, int lineSize)
     {
@@ -180,42 +332,44 @@ internal static class LibraryPaneArt
 
         // Relics and the deck count top right, which is where the accepted layout puts
         // them: they are what the run carried, read across the top rather than down the
-        // pane.
-        y = AddRelics(content, pane, new Vector2(at.Position.X, y), at.Size.X, card);
-        if (pane.DeckCount is { } cards)
-        {
-            y = LibraryScreen.AddLine(
-                content,
-                LibraryCopy.DeckCount(cards),
-                new Vector2(at.Position.X, y),
-                at.Size.X,
-                LibraryPalette.Muted,
-                factStyle,
-                HorizontalAlignment.Right);
-        }
+        // pane. The count shares the first relic row's line; it used to take a line of
+        // its own under the relics, which was a line the strip and the plate then fought
+        // over.
+        y = AddRelics(content, pane, new Vector2(at.Position.X, y), at.Size.X, card, factStyle);
 
-        var strip = AddStrip(content, pane, new Vector2(at.Position.X, y), at.Size.X, floor);
-        y = strip.Bottom;
-        // Keep the deck in the opened-run pane when browser actions need its room
-        if (pane.Plate.Count == 0)
-            y = AddDeck(content, pane, new Vector2(at.Position.X, y), at.Size.X, card);
-
-        foreach (var fact in pane.Facts)
-        {
-            y = LibraryScreen.AddLine(
-                content, fact, new Vector2(at.Position.X, y), at.Size.X,
-                LibraryPalette.Muted, factStyle);
-        }
-
+        // Everything between the strip and the plate is measured before the strip is
+        // placed, so the strip is sized to the room those leave rather than the room it
+        // would like. A fact that wraps is measured wrapped.
+        var lines = new List<(string Text, Color Colour)>();
+        lines.AddRange(pane.Facts.Select(fact => (fact, LibraryPalette.Muted)));
         if (pane.Verdict is { Length: > 0 } verdict)
         {
-            y = LibraryScreen.AddLine(
-                content, verdict, new Vector2(at.Position.X, y), at.Size.X,
-                pane.VerdictPassed ? LibraryPalette.Green : LibraryPalette.Red, factStyle);
+            lines.Add((verdict, pane.VerdictPassed ? LibraryPalette.Green : LibraryPalette.Red));
         }
 
-        var plateFocus = AddPlate(
-            content, pane, new Vector2(at.Position.X, y), at.Size.X, at.End.Y);
+        var below = lines.Sum(line => LibraryScreen.LineHeight(line.Text, at.Size.X, factStyle));
+        // The deck stays in the opened-run pane, where no plate needs its room
+        var deck = pane.Plate.Count == 0 && pane.Ribbon is null && pane.Deck is { Count: > 0 } tiles
+            ? DeckHeight(tiles.Count, at.Size.X, card.Size)
+            : 0f;
+        var plateRows = (pane.Ribbon is null ? 0 : 1) + pane.Plate.Count;
+        var layout = Lay(
+            y - at.Position.Y, below + deck, pane.Strip.Count, at.Size.X, StripAnchor(pane),
+            floor.Size, pane.StripPage, plateRows, content.NoButton.Size.Y, at.Size.Y);
+
+        var strip = AddStrip(content, pane, new Vector2(at.Position.X, y), at.Size.X, floor, layout.Strip);
+        y = at.Position.Y + layout.AfterStrip;
+        if (deck > 0f) y = AddDeck(content, pane, new Vector2(at.Position.X, y), at.Size.X, card);
+
+        foreach (var (text, colour) in lines)
+        {
+            y = LibraryScreen.AddLine(
+                content, text, new Vector2(at.Position.X, y), at.Size.X, colour, factStyle);
+        }
+
+        var plateFocus = layout.PlateTop is { } plateTop
+            ? AddPlate(content, pane, new Vector2(at.Position.X, at.Position.Y + plateTop), at.Size.X)
+            : null;
         if (strip.Last is { } stripLast && plateFocus is not null)
         {
             stripLast.FocusNeighborBottom = plateFocus.GetPath();
@@ -235,20 +389,34 @@ internal static class LibraryPaneArt
     /// so the pane never has a hole where a relic was.
     /// </summary>
     private static float AddRelics(
-        NVerticalPopup content, ScreenPane pane, Vector2 at, float width, GameTextStyle line)
+        NVerticalPopup content, ScreenPane pane, Vector2 at, float width, GameTextStyle line,
+        GameTextStyle fact)
     {
+        var size = line.Size * 1.7f;
+        if (pane.DeckCount is { } cards)
+        {
+            // On the first relic row's line, right-aligned and centred on the icons;
+            // on a line of its own only where there are no relics to share one with
+            var count = LibraryCopy.DeckCount(cards);
+            var lineHeight = fact.Size * LibraryScreen.LabelLineRatio;
+            var countY = pane.Relics.Count == 0 ? at.Y : at.Y + ((size - lineHeight) / 2f);
+            var next = LibraryScreen.AddLine(
+                content, count, new Vector2(at.X, countY), width, LibraryPalette.Muted, fact,
+                HorizontalAlignment.Right);
+            if (pane.Relics.Count == 0) return next;
+        }
+
         if (pane.Relics.Count == 0) return at.Y;
 
-        var size = line.Size * 1.7f;
-        var perRow = Math.Max(1, (int)Math.Floor(width / (size * 1.15f)));
+        var perRow = RelicsPerRow(width, size);
         var y = at.Y;
         for (var index = 0; index < pane.Relics.Count; index++)
         {
             var id = pane.Relics[index];
             var column = index % perRow;
-            if (column == 0 && index > 0) y += size * 1.15f;
+            if (column == 0 && index > 0) y += size * RelicPitch;
 
-            var position = new Vector2(at.X + (column * size * 1.15f), y);
+            var position = new Vector2(at.X + (column * size * RelicPitch), y);
             if (ModelArt.Of(id) is { } icon)
             {
                 // Ignore intrinsic size before assigning art or Godot keeps the texture's minimum
@@ -276,7 +444,20 @@ internal static class LibraryPaneArt
             }
         }
 
-        return y + (size * 1.85f);
+        return y + (size * RelicRowSpace);
+    }
+
+    /// <summary>The floor the strip opens on: the selected one, else the last played.</summary>
+    private static int StripAnchor(ScreenPane pane)
+    {
+        var anchor = 0;
+        for (var index = 0; index < pane.Strip.Count; index++)
+        {
+            if (pane.Strip[index].Selected) return index;
+            if (pane.Strip[index].Played) anchor = index;
+        }
+
+        return anchor;
     }
 
     /// <summary>
@@ -290,24 +471,12 @@ internal static class LibraryPaneArt
     /// the strip says what the run did, and where a player can be stood is the rows'
     /// answer.
     /// </summary>
-    private static (float Bottom, Control? Focus, Control? Last) AddStrip(
-        NVerticalPopup content, ScreenPane pane, Vector2 at, float width, GameTextStyle line)
+    private static (Control? Focus, Control? Last) AddStrip(
+        NVerticalPopup content, ScreenPane pane, Vector2 at, float width, GameTextStyle line,
+        StripLayout? laidOut)
     {
-        if (pane.Strip.Count == 0) return (at.Y, null, null);
+        if (pane.Strip.Count == 0 || laidOut is not { } layout) return (null, null);
 
-        var anchor = 0;
-        for (var index = 0; index < pane.Strip.Count; index++)
-        {
-            if (pane.Strip[index].Selected)
-            {
-                anchor = index;
-                break;
-            }
-
-            if (pane.Strip[index].Played) anchor = index;
-        }
-
-        var layout = LayoutStrip(pane.Strip.Count, width, anchor, line.Size, pane.StripPage);
         var controls = new List<Control>();
         if (layout.HasPrevious && pane.SelectStripPage is { } previousPage)
         {
@@ -425,10 +594,7 @@ internal static class LibraryPaneArt
             controls[index].FocusNeighborBottom = controls[index].GetPath();
         }
 
-        return (
-            at.Y + (layout.Height * StripBottomSpace),
-            controls.FirstOrDefault(),
-            controls.LastOrDefault());
+        return (controls.FirstOrDefault(), controls.LastOrDefault());
     }
 
     /// <summary>
@@ -598,18 +764,17 @@ internal static class LibraryPaneArt
     /// Flat and hung under the pane rather than drawn as another modal: it is about the
     /// run the pane is showing, so it belongs to the pane. It is a fixed width - the
     /// pane's own control column - so a row keeps its size when its label changes
-    /// state.
+    /// state. Where it sits is <see cref="Lay"/>'s answer; this draws it there.
     /// </summary>
     private static Control? AddPlate(
-        NVerticalPopup content, ScreenPane pane, Vector2 at, float width, float bottom)
+        NVerticalPopup content, ScreenPane pane, Vector2 at, float width)
     {
         var rows = new List<ScreenRow>();
         if (pane.Ribbon is { } ribbon) rows.Add(ribbon);
         rows.AddRange(pane.Plate);
         if (rows.Count == 0) return null;
 
-        var step = content.NoButton.Size.Y * 1.12f;
-        var top = Math.Min(at.Y, bottom - (step * rows.Count));
+        var step = content.NoButton.Size.Y * PlateStep;
         var placed = new List<Control>();
         for (var index = 0; index < rows.Count; index++)
         {
@@ -617,7 +782,7 @@ internal static class LibraryPaneArt
                 content,
                 rows[index],
                 $"RunmobilePlate{index.ToString(CultureInfo.InvariantCulture)}",
-                new Vector2(at.X, top + (step * index)),
+                new Vector2(at.X, at.Y + (step * index)),
                 width);
             if (control is not null) placed.Add(control);
         }

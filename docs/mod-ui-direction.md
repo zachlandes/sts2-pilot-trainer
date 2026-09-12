@@ -184,6 +184,7 @@ The run-history plate uses the history screen's fact role for its status, reason
 The transport uses the profile identity roles for creator and title, the portrait-tip numeral for its counter, the dropdown value and item roles for speed and menus, the map-point reward role for its ledger, and the hover-tip title and body roles for its tooltip and note.
 The result panel resolves every role from named scene resources before it is attached: popup heading and body, list headings and numerals, score labels and values, section headings, chart numerals, card captions, and the button caption.
 The library likewise distinguishes list headings, row numerals, secondary lines, facts, floor numerals, card captions, fields, tickboxes, and footer counts rather than treating the popup body as all of them.
+A row's second line - the relics it carried and its card count - is the dense-line role, the run-history hover tip's own card listing, which is the smallest text the run-history screen sets and is what the captain asked a listing to stand at.
 
 **A surface whose boxes were measured around its own text scales with the native reading.**
 The tag and the result panel scale their geometry with the native reading rather than growing words outside fixed boxes.
@@ -205,14 +206,24 @@ Three of them are borrowed rather than drawn, and the rule for each is the same:
 Selected and deselected through the tab's own `Select` and `Deselect`, exactly as `NStatsTabManager` does it, so the outline, the label weight and the hover are the game's.
 The current tab is selected and takes no press; it still hovers, as the game's do, but it is not a focus stop, and the other tab is - this band has no shoulder hotkeys, so focus is the only controller route to it.
 
-**The lock is the stats screen's**: `submenu_lock.png` over the Community tab, in the proportions `stats_screen.tscn` gives it over the Achievements tab, with the reason in the tab's tooltip.
-A locked tab here is still pressable, which is the one departure from the stats screen and is deliberate: what is behind it - the runs included with Runmobile and any run looked up by code - is still there, and the list is drawn as usual under it.
-The lock is the icon, its hover tooltip and one line over the tabs saying in plain words what is missing and where the setting is; nothing is laid over the list, because a player who cannot see the runs cannot press them.
-`CommunityLock.For` is the one derivation of both sentences.
+**The lock is the stats screen's image in a column of its own**: `submenu_lock.png`, which `stats_screen.tscn` centres across its dimmed Achievements label, sits instead at the Community tab's right end at the run-history entry's own marker size, and the tab's label box ends where the lock's column begins, so the game's own auto-size fits the word to the room left rather than running under the lock.
+Centred as the stats screen has it, it drew across the middle of "Community" on a 2560 by 1440 window, and the reason it is not centred here is that this tab's label is read.
+A locked tab here is still pressable, which is the other departure from the stats screen and is deliberate: what is behind it - the runs included with Runmobile and any run looked up by code - is still there, and the list is drawn as usual under it, the included runs under no heading of their own.
+The lock is the icon, its hover tooltip and one line over the tabs, and the tooltip and the line are one sentence per cause: with the setting off it names the setting and the path to it, and with no sharing service it names the service, because the switch adds none and a line pointing at it would be wrong.
+`CommunityLock.For` is the one derivation of that sentence, and `LibraryTabArt.LockBounds` the one placement of the lock; `LibraryNativeFurnitureTests` holds the column clear of the label at every tab size.
 
 **The floor markers are the run-history screen's** icons, per floor kind, with the outline behind at the history entry's own quarter of black; the mod's hollow ring stands in only for a kind nothing established or an icon a build has not got.
+They are drawn at the history entry's own size: `map_point_history_entry.tscn` is a 60-unit box whose icon is drawn at 0.7 of 64, and `FloorMarkerArt.EntryIconSide` carries that 44.8 as the strip's marker and the tab lock's side, held to the shipped scene by a native-scene fact.
+The marker used to be capped at a multiple of the numeral's font size, which tied a picture to a font and drew it half again the game's.
 The played tick is the mod's own, filled and on a disc, hung off the icon's top-right corner where the history entry hangs its quest badge, and the numeral is under the marker with clear space rather than on it.
 `LibraryPaneArt.CellGeometry` is the one place the five parts of a cell are placed - icon, numeral, badge, ring and the bookmark tab - and the tests hold them apart.
+
+**The pane is measured against its room, and the plate keeps the bottom.**
+`LibraryPaneArt.Lay` is the one place the pane's parts are placed against each other: the identity and the relics over the strip, the deck count on the first relic row's line, the facts and the verdict under it, and the plate's ribbons at the pane's foot, a `PlateStep` apart, by the panel's own ribbon.
+The strip is the one part that gives - down to `MinimumCell`, seven tenths of the game's marker - and a pane that cannot give it even that refuses to lay out rather than drawing the strip over the plate; before this the plate was placed from the bottom and drawn upward over whatever was there, which put "Open the run" across the floor numerals and the version line under "Share this run".
+The popup is the game's own 16:9 canvas tall and cannot grow, so the room is what the body over the band and the band itself leave: the body is measured in its own font rather than given a ribbon's height, and the band is the tab and a breath.
+Every line's height is `LibraryScreen.LineHeight`, wrapped in its font where there is one, so the height summed before drawing is the height drawn.
+`LibraryPaneArtTests` hold the Mine and Community panes to fitting at v0.111.0's sizes with the strip at the game's marker, and `LibraryNativeFurnitureTests` reads those sizes off the shipped scenes so the fit is held to the build rather than to numbers copied into a test.
 
 **Every duplicated ribbon owns its materials.**
 The retail popup button lights up by writing to its image's HSV shader and its outline's blend mode, and a `Duplicate` shares both with its prototype; one hover then lit the tab, the row and the pane's ribbon at once.

@@ -172,6 +172,63 @@ internal static class NativeScenes
         return null;
     }
 
+    /// <summary>The root node's properties, which declares no parent and so has no
+    /// path <see cref="Properties"/> can name.</summary>
+    internal static IReadOnlyDictionary<string, string>? RootProperties(string sceneText)
+    {
+        foreach (var section in Sections(sceneText))
+        {
+            if (!section.Header.StartsWith("node ", StringComparison.Ordinal)) continue;
+            if (Attribute(section.Header, "parent") is not null) continue;
+
+            var properties = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var line in section.Body.Split('\n'))
+            {
+                var separator = line.IndexOf(" = ", StringComparison.Ordinal);
+                if (separator > 0) properties[line[..separator]] = line[(separator + 3)..].TrimEnd('\r');
+            }
+
+            return properties;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The size a text node is designed at, read the way <c>GameText.DesignSize</c>
+    /// reads the live control: an auto-sizing label contributes its <c>MaxFontSize</c>
+    /// and a fixed one its own font-size override. A node whose <c>%</c> spelling the
+    /// role uses is looked up by its unique name.
+    /// </summary>
+    internal static int DesignSize(string sceneText, string nodePath)
+    {
+        var properties = Properties(sceneText, nodePath)
+            ?? Nodes(sceneText).Keys
+                .Where(path => path.EndsWith("/" + nodePath, StringComparison.Ordinal) || path == nodePath)
+                .Select(path => Properties(sceneText, path))
+                .FirstOrDefault(found => found is not null)
+            ?? throw new InvalidOperationException($"no '{nodePath}' in the scene");
+        var autoSize = !properties.TryGetValue("AutoSizeEnabled", out var enabled) || enabled != "false";
+        if (autoSize && properties.TryGetValue("MaxFontSize", out var max))
+        {
+            return int.Parse(max, System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        var size = properties.TryGetValue("theme_override_font_sizes/font_size", out var plain)
+            ? plain
+            : properties["theme_override_font_sizes/normal_font_size"];
+        return int.Parse(size, System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>A <c>Vector2(x, y)</c> as the scene spells it.</summary>
+    internal static (float X, float Y) Vector2(string spelled)
+    {
+        var inner = spelled["Vector2(".Length..^1].Split(',');
+        return (
+            float.Parse(inner[0].Trim(), System.Globalization.CultureInfo.InvariantCulture),
+            float.Parse(inner[1].Trim(), System.Globalization.CultureInfo.InvariantCulture));
+    }
+
     /// <summary>
     /// The nodes of one scene, by the path <c>Node.GetNodeOrNull</c> would take to
     /// each: <c>"Parent/Child"</c> for an ordinary node, and additionally
