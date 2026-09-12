@@ -21,11 +21,11 @@ public sealed class FightMarkTagTests
         Assert.False(tag.Root.Visible);
         Assert.Equal(FightMarkTag.RootName, tag.Root.Name.ToString());
 
-        tag.Apply(FightMark.For(new FightMarkFacts(true, RunCaptureState.Recording, 2, false, false)), mayDraw: true);
+        tag.Apply(FightMark.For(new FightMarkFacts(true, RunCaptureState.Recording, 2, MovedOn: false, LeavingTheFloor: false, Bookmarked: false)), mayDraw: true);
         Assert.True(tag.Root.Visible);
         Assert.False(tag.Control.Disabled);
 
-        tag.Apply(FightMark.For(new FightMarkFacts(true, RunCaptureState.Recording, 2, false, false)), mayDraw: false);
+        tag.Apply(FightMark.For(new FightMarkFacts(true, RunCaptureState.Recording, 2, MovedOn: false, LeavingTheFloor: false, Bookmarked: false)), mayDraw: false);
         Assert.False(tag.Root.Visible);
 
         tag.Apply(FightMark.Nothing, mayDraw: true);
@@ -39,13 +39,13 @@ public sealed class FightMarkTagTests
     {
         var tag = FightMarkTag.Build(Viewport, Anchor, () => { });
 
-        tag.Apply(FightMark.For(new FightMarkFacts(true, RunCaptureState.Recording, 2, false, false)), mayDraw: true);
+        tag.Apply(FightMark.For(new FightMarkFacts(true, RunCaptureState.Recording, 2, MovedOn: false, LeavingTheFloor: false, Bookmarked: false)), mayDraw: true);
         Assert.False(tag.Bookmarked);
         Assert.Equal(["Glyph"], GlyphNames(tag.Control));
         Assert.Equal(RecorderCopy.BookmarkThisFight, tag.Control.TooltipText);
         Assert.Equal(string.Empty, tag.Control.Text);
 
-        tag.Apply(FightMark.For(new FightMarkFacts(true, RunCaptureState.Recording, 2, false, true)), mayDraw: true);
+        tag.Apply(FightMark.For(new FightMarkFacts(true, RunCaptureState.Recording, 2, MovedOn: false, LeavingTheFloor: false, Bookmarked: true)), mayDraw: true);
         Assert.True(tag.Bookmarked);
         Assert.Equal(["GlyphFill", "GlyphEdge"], GlyphNames(tag.Control));
         Assert.Contains(RecorderCopy.PressToRemoveBookmark, tag.Control.TooltipText, StringComparison.Ordinal);

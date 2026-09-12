@@ -5,13 +5,23 @@ namespace Sts2PilotTrainer.Trainer;
 /// <summary>
 /// What the bookmark tag can read, and nothing else.
 ///
-/// Five facts, all the recorder's. Whether it is attached to the run being played;
+/// Six facts, all the recorder's. Whether it is attached to the run being played;
 /// where its capture has got to; which fight has just ended with nothing happening
-/// since, or null; whether the run has moved on from that fight's floor; and whether
-/// that fight is bookmarked. The fourth is separate from the third rather than folded
-/// into it because the recorder reads them apart - a fight's end from its own capture
-/// closing, the move from the map - and a derivation over both is one that cannot draw
-/// a tag for a fight the run has already left.
+/// since, or null; whether the run has moved on from that fight's floor; whether it
+/// is in the middle of doing so; and whether that fight is bookmarked. The fourth and
+/// fifth are separate from the third rather than folded into it because the recorder
+/// reads them apart - a fight's end from its own capture closing, the move from the
+/// map - and a derivation over all of them is one that cannot draw a tag for a fight
+/// the run has already left.
+///
+/// The fifth exists because the fourth is read off the recording, and a map move is
+/// in the recording only once the engine has settled after it: the room is built,
+/// the fight it dealt has started and its first turn has begun. Until then the last
+/// fight the recording holds is still the one that just ended and no floor has been
+/// entered since, so a tag derived over the fourth alone drew the previous fight's
+/// bookmark over the opening frames of the next one. The recorder knows the moment
+/// the node was pressed - the move is announced to it before it settles - and that
+/// is the moment the player left the floor.
 /// </summary>
 /// <param name="RecorderActive">Whether a recorder is attached to the run being played.
 /// False when the player turned recording off, when the run is a trainer run this mod
@@ -21,10 +31,19 @@ namespace Sts2PilotTrainer.Trainer;
 /// <see cref="RecorderFacts"/> takes. Null exactly where no recorder is attached.</param>
 /// <param name="FightJustEnded">The ordinal of the fight that has just ended, or null
 /// when no fight has, or when something has happened since.</param>
-/// <param name="MovedOn">Whether the run has left the floor that fight was on.</param>
+/// <param name="MovedOn">Whether the run has left the floor that fight was on, as the
+/// recording reads it: a floor entered after the fight ended.</param>
+/// <param name="LeavingTheFloor">Whether a map move has been announced to the recorder
+/// and not yet recorded - the player has pressed the node, and the engine is still
+/// building the room at the other end of it.</param>
 /// <param name="Bookmarked">Whether that fight is bookmarked right now.</param>
 public sealed record FightMarkFacts(
-    bool RecorderActive, RunCaptureState? Capture, int? FightJustEnded, bool MovedOn, bool Bookmarked);
+    bool RecorderActive,
+    RunCaptureState? Capture,
+    int? FightJustEnded,
+    bool MovedOn,
+    bool LeavingTheFloor,
+    bool Bookmarked);
 
 /// <summary>
 /// The bookmark tag: one control, hung under the top bar for exactly the stretch
@@ -62,10 +81,11 @@ public sealed record FightMark(ElementSurface Control, int? Fight, bool Bookmark
     ///
     /// One state draws it: a recorder attached and still recording the run - or one
     /// that has recorded it to its end, which is where a lost fight is bookmarked on
-    /// the game's death screen - a fight just ended, and the run still on its floor.
-    /// Everything else is nothing. A capture whose watch has a hole in it draws no tag,
-    /// because the row on the overlay has just told the player the recording stopped and
-    /// a control offering to save into it would say the opposite. The control is always
+    /// the game's death screen - a fight just ended, and the run still on its floor,
+    /// neither gone from it nor on its way. Everything else is nothing. A capture whose
+    /// watch has a hole in it draws no tag, because the row on the overlay has just told
+    /// the player the recording stopped and a control offering to save into it would say
+    /// the opposite. The control is always
     /// pressable when it is drawn - there is no refused form of this tag, because a tag
     /// that could not save is absent.
     /// </summary>
@@ -76,7 +96,7 @@ public sealed record FightMark(ElementSurface Control, int? Fight, bool Bookmark
             return Nothing;
         }
 
-        if (facts.FightJustEnded is not { } fight || facts.MovedOn) return Nothing;
+        if (facts.FightJustEnded is not { } fight || facts.MovedOn || facts.LeavingTheFloor) return Nothing;
 
         return new FightMark(
             new ElementSurface(
