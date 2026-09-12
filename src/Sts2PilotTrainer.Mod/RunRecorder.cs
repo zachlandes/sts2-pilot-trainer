@@ -92,7 +92,7 @@ internal sealed class RunRecorder : IDisposable
     private bool _disposed;
     private bool _finished;
 
-    private RunRecorder(RunCapture capture, string journalPath)
+    internal RunRecorder(RunCapture capture, string journalPath)
     {
         _capture = capture;
         _journalPath = journalPath;
@@ -413,6 +413,13 @@ internal sealed class RunRecorder : IDisposable
                 $"[{RunmobileMod.ModId}] continuing the recording of {runId} at decision " +
                 $"{capture.NextSeq.ToString(CultureInfo.InvariantCulture)}; continuity {capture.Continuity}", 2);
             if (capture.Refusal is { } refusal) Log.Warn($"[{RunmobileMod.ModId}] {refusal}", 2);
+            if (capture.Stop is { } stopped)
+            {
+                Log.Warn(
+                    $"[{RunmobileMod.ModId}] this recording stopped at decision {Number(stopped.Decision.Seq)}, " +
+                    $"which the recorder could not name ({ManifestValidator.Describe(stopped.Decision)}), so " +
+                    "nothing this session plays is recorded past it", 2);
+            }
         }
         else
         {
@@ -625,11 +632,14 @@ internal sealed class RunRecorder : IDisposable
 
             if (index < 0)
             {
-                recorder.Refuse(
-                    $"A card screen returned {card.Id}, which is not one of the " +
-                    $"{offered.Count.ToString(CultureInfo.InvariantCulture)} card(s) it offered. The recorder " +
-                    "cannot say which option was picked, and a position it guessed would replay as a " +
-                    "different decision.");
+                // Seen and not nameable: a position the recorder guessed would replay as
+                // a different decision, so the decision this screen answers stops the
+                // recording instead.
+                StopAtScreenAnswer(MetAtScreen(
+                    nameof(NCardGridSelectionScreen), null,
+                    "The card is not one of the cards the screen offered, so the recorder cannot say which " +
+                    "option was picked.",
+                    ("card_id", card.Id.ToString()), ("offered", Number(offered.Count))));
                 return;
             }
 
@@ -678,9 +688,11 @@ internal sealed class RunRecorder : IDisposable
 
         if (index < 0 || index >= offered.Count)
         {
-            recorder.Refuse(
-                $"A bundle screen answered with position {Number(index)}, which is not one of the " +
-                $"{Number(offered.Count)} bundle(s) it offered, so the recorder cannot say which was picked.");
+            StopAtScreenAnswer(MetAtScreen(
+                nameof(CardSelectCmd.FromChooseABundleScreen), null,
+                "The position is not one of the bundles the screen offered, so the recorder cannot say which " +
+                "was picked.",
+                ("option_index", Number(index)), ("offered", Number(offered.Count))));
             return;
         }
 
@@ -712,9 +724,11 @@ internal sealed class RunRecorder : IDisposable
 
         if (index < 0 || index >= offered.Count)
         {
-            recorder.Refuse(
-                $"A relic screen answered with position {Number(index)}, which is not one of the " +
-                $"{Number(offered.Count)} relic(s) it offered, so the recorder cannot say which was picked.");
+            StopAtScreenAnswer(MetAtScreen(
+                nameof(RelicSelectCmd.FromChooseARelicScreen), null,
+                "The position is not one of the relics the screen offered, so the recorder cannot say which " +
+                "was picked.",
+                ("option_index", Number(index)), ("offered", Number(offered.Count))));
             return;
         }
 
@@ -835,10 +849,12 @@ internal sealed class RunRecorder : IDisposable
 
         if (index < 0 || index >= offered.Count + alternatives.Count)
         {
-            recorder.Refuse(
-                $"A card reward was answered with option {Number(index)}, which is past the " +
-                $"{Number(offered.Count)} card(s) and {Number(alternatives.Count)} alternative(s) it offered, " +
-                "so the recording cannot say what was taken.");
+            StopAtScreenAnswer(MetAtScreen(
+                nameof(NCardRewardSelectionScreen), null,
+                "The option is past the cards and alternatives the screen offered, so the recording cannot " +
+                "say what was taken.",
+                ("option_index", Number(index)), ("offered", Number(offered.Count)),
+                ("alternatives", Number(alternatives.Count))));
             return;
         }
 
@@ -898,6 +914,18 @@ internal sealed class RunRecorder : IDisposable
                     return;
                 }
 
+                // A stopped recording takes no decision, and nothing here waits on the
+                // engine for one it will not take.
+                if (_capture.Stop is { } stop)
+                {
+                    Log.Info(
+                        $"[{RunmobileMod.ModId}] {Number(_pending.Count)} decision(s) arrived after the " +
+                        $"recording stopped at decision {Number(stop.Decision.Seq)}, so they are not recorded", 2);
+                    _pending.Clear();
+                    _pumping = false;
+                    return;
+                }
+
                 next = _pending.Peek();
             }
 
@@ -932,6 +960,13 @@ internal sealed class RunRecorder : IDisposable
                 if (unsettled is not null)
                 {
                     Refuse($"A {next.Verb} could not be read: {unsettled}");
+                    continue;
+                }
+
+                // A decision the recorder saw and could not name, reached in its turn.
+                if (next.Unmapped is { } met)
+                {
+                    StopAt(met, next.Before);
                     continue;
                 }
 
@@ -1039,7 +1074,7 @@ internal sealed class RunRecorder : IDisposable
     /// headless driver reads them back the same way - the selection is confirmed and
     /// changes nothing - so the two traces have the same shape.
     /// </summary>
-    private void Commit(
+    internal void Commit(
         string verbName, IReadOnlyDictionary<string, string> args, TakenReading before, TakenReading? taken = null)
     {
         if (!Enum.TryParse<ActionVerb>(verbName, out var verb))
@@ -1058,6 +1093,15 @@ internal sealed class RunRecorder : IDisposable
         {
             answers = _screenAnswers.ToList();
             _screenAnswers.Clear();
+        }
+
+        // A screen this decision opened answered with something the recorder could
+        // not name, so the decision is the one the recording stops at: written without
+        // its answer it would be one a replay makes differently.
+        if (StopAmong(answers) is { } met)
+        {
+            StopAt(met, before);
+            return;
         }
 
         // A card reward names what came back itself - the card, or the alternative
@@ -1197,15 +1241,18 @@ internal sealed class RunRecorder : IDisposable
 
             _openFightStep = (verb, args, ReadingOf(before));
         },
-        beginStepWithUnresolvedArgument: (verb, _, before, previousFinished, unresolved) =>
+        beginStepWithUnresolvedArgument: (verb, args, before, previousFinished, unresolved) =>
         {
             // The decision before this one is closed the same way the ordinary path
-            // closes it. This one is not recorded at all - the format requires the
-            // argument, and a decision written without it is one nobody can replay.
+            // closes it. This one was seen and cannot be named - the format requires
+            // the argument, and a decision written without it is one nobody can
+            // replay - so the recording stops at it, with what the observer did read.
             if (!CloseStrandedFightStep(verb, before, previousFinished)) return;
 
-            Refuse(unresolved);
             _capture.Fight?.MarkIncomplete(unresolved);
+            StopAt(
+                new UnmappedFacts(UnmappedDecision.MemberSeam, verb, null, Args(args), unresolved),
+                ReadingOf(before));
         },
         resumeStep: ResumeFightStep,
         completeStep: CloseFightStep,
@@ -1332,6 +1379,16 @@ internal sealed class RunRecorder : IDisposable
     {
         if (_finished || _disposed) return;
 
+        // The fight is still watched past a stop, so its end is still seen; what it
+        // decides is not recorded, the way nothing after a stop is.
+        if (_capture.Stop is { } stop)
+        {
+            Log.Info(
+                $"[{RunmobileMod.ModId}] a {verb} inside a fight came after the recording stopped at decision " +
+                $"{Number(stop.Decision.Seq)}, so it is not recorded", 2);
+            return;
+        }
+
         try
         {
             if (!Enum.TryParse<ActionVerb>(verb, out var parsed))
@@ -1348,6 +1405,14 @@ internal sealed class RunRecorder : IDisposable
             {
                 answers = _screenAnswers.ToList();
                 _screenAnswers.Clear();
+            }
+
+            // As in Commit: a screen this step opened answered with something the
+            // recorder could not name, and the step is where the recording stops.
+            if (StopAmong(answers) is { } met)
+            {
+                StopAt(met, before);
+                return;
             }
 
             Write(_capture.Record(
@@ -1570,11 +1635,149 @@ internal sealed class RunRecorder : IDisposable
     /// this one would find a journal whose last digest matches the live game and
     /// publish the hole as a continuous account of the run.
     /// </summary>
-    private void Refuse(string reason)
+    internal void Refuse(string reason)
     {
+        // Past a stop nothing is recorded, so nothing past it can go unrecorded: the
+        // history already ends at the decision the recorder could not name, and a hole
+        // marked after it would claim a watch that stopped and started again, which
+        // is not what happened.
+        if (_capture.Stop is { } stop)
+        {
+            Log.Info(
+                $"[{RunmobileMod.ModId}] after the recording stopped at decision " +
+                $"{Number(stop.Decision.Seq)}: {reason}", 2);
+            return;
+        }
+
         var line = _capture.MarkBroken(reason);
         Log.Warn($"[{RunmobileMod.ModId}] {reason}", 2);
+        Journal(line, "the refusal above", "continuous");
+    }
 
+    /// <summary>
+    /// The recorder saw a decision and could not name it, and stops here.
+    ///
+    /// The other thing a refusal can be, and the one <see cref="Refuse"/> is not. The
+    /// watch has no hole: the decision was seen, at the seam it was seen at, and what
+    /// was met is written down raw so a later build can say what it was. The recording
+    /// ends here with its integrity <c>unmapped</c> and its continuity untouched, which
+    /// is what the format means by a stop; marking it broken instead would report a
+    /// watch that stopped and started again, a cause that did not happen.
+    ///
+    /// Nothing past the stop is recorded, and nothing past it is refused either: a
+    /// history that skipped a decision and carried on would replay into a run that
+    /// never made it, so the capture takes no decision after this one.
+    /// </summary>
+    /// <param name="met">What was met, as the game named it.</param>
+    /// <param name="before">The state the decision began from, which is the state the
+    /// recording ends in.</param>
+    internal void StopAt(UnmappedFacts met, TakenReading before)
+    {
+        if (_capture.Stop is { } already)
+        {
+            Log.Info(
+                $"[{RunmobileMod.ModId}] the recording had already stopped at decision " +
+                $"{Number(already.Decision.Seq)} when it met {met.Seam} {met.Name}", 2);
+            return;
+        }
+
+        var seq = _capture.NextSeq;
+        var decision = new UnmappedDecision
+        {
+            Seq = seq,
+            Seam = met.Seam,
+            Name = met.Name,
+            Discriminator = met.Discriminator,
+            Args = met.Args,
+            Evidence = FactEvidence.AtActionOrdinal(seq, before.RunClockMs, met.Note),
+        };
+
+        string line;
+        try
+        {
+            line = _capture.MarkUnmapped(decision, new StateReading(before.Sample, before.Digest));
+        }
+        catch (ManifestException ex)
+        {
+            // Not stopped, so the decision went unrecorded and the watch has a hole
+            // after all - which is the one claim Refuse makes.
+            Refuse(
+                $"The recorder met {ManifestValidator.Describe(decision)} and could not stop the recording " +
+                $"there: {ex.Message}");
+            return;
+        }
+
+        Log.Warn(
+            $"[{RunmobileMod.ModId}] the recording stopped at decision {Number(seq)}, which the recorder " +
+            $"could not name: {ManifestValidator.Describe(decision)}. Everything before it is kept and nothing " +
+            "after it is recorded.", 2);
+        Journal(line, "the stop above", "recording past its stop");
+    }
+
+    /// <summary>
+    /// A decision met at a member the recorder patches, outside a fight, which it saw
+    /// and could not name.
+    ///
+    /// Queued behind the decisions still settling rather than stopping the capture on
+    /// the spot, because a stop stands at the ordinal after the last decision recorded
+    /// and the decisions ahead of it in the queue are recorded first. Its reading is
+    /// taken now, in the prefix, the way every decision's is; a stop item brings it as
+    /// its after-reading too, so the pump takes it without waiting on the engine.
+    /// </summary>
+    private static void StopAtDecision(UnmappedFacts met)
+    {
+        var recorder = Active;
+        if (recorder is null || recorder._finished) return;
+        if (ReadBefore(met.Name) is not { } before) return;
+
+        lock (Gate)
+        {
+            recorder._pending.Enqueue(
+                new PendingDecision(met.Name, met.Args, null, before, before, met));
+            if (recorder._pumping) return;
+            recorder._pumping = true;
+        }
+
+        _ = recorder.Pump();
+    }
+
+    /// <summary>
+    /// A screen answered with something the recorder could not name.
+    ///
+    /// Held beside the screen's answers rather than stopping the capture now, because
+    /// the screen was answered from inside the decision that opened it and that
+    /// decision has not settled. When it does, the stop stands at that decision's
+    /// ordinal, with its before-reading: recorded without its answer, the decision
+    /// would be one a replay makes differently.
+    /// </summary>
+    private static void StopAtScreenAnswer(UnmappedFacts met)
+    {
+        var recorder = Active;
+        if (recorder is null || recorder._finished) return;
+
+        recorder.HoldScreenAnswerStop(met);
+    }
+
+    internal void HoldScreenAnswerStop(UnmappedFacts met)
+    {
+        lock (Gate)
+        {
+            _screenAnswers.Add(new ScreenAnswer(met.Name, met.Args, met));
+        }
+    }
+
+    /// <summary>The stop a screen's answers carry, if one of them is one.</summary>
+    private static UnmappedFacts? StopAmong(IEnumerable<ScreenAnswer> answers) =>
+        answers.Select(answer => answer.Unmapped).FirstOrDefault(met => met is not null);
+
+    /// <summary>
+    /// Writes a refusal's or a stop's line to the journal, or says why it could not.
+    /// </summary>
+    /// <param name="what">The log line above this one, for the error to point at.</param>
+    /// <param name="misread">What a session continued from a journal without the line
+    /// would take the recording for.</param>
+    private void Journal(string line, string what, string misread)
+    {
         try
         {
             Append(_journalPath, line);
@@ -1582,8 +1785,8 @@ internal sealed class RunRecorder : IDisposable
         catch (Exception ex)
         {
             Log.Error(
-                $"[{RunmobileMod.ModId}] the refusal above could not be written to the journal, so a session " +
-                $"continued from it would read this recording as continuous: {ex.GetType().Name}: {ex.Message}", 2);
+                $"[{RunmobileMod.ModId}] {what} could not be written to the journal, so a session " +
+                $"continued from it would read this recording as {misread}: {ex.GetType().Name}: {ex.Message}", 2);
         }
     }
 
@@ -1606,7 +1809,40 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     private sealed record PendingDecision(
         string Verb, IReadOnlyDictionary<string, string> Args, Task? EngineWork,
-        TakenReading Before, TakenReading? Reading = null);
+        TakenReading Before, TakenReading? Reading = null, UnmappedFacts? Unmapped = null);
+
+    /// <summary>
+    /// A decision the recorder saw and could not name, as the game named it.
+    ///
+    /// Strings and nothing else, for the reason <see cref="PendingDecision"/>'s verb is
+    /// a name: this is a field of two records in this assembly, and a field of a
+    /// sibling assembly's type decides this assembly's layout before the mod can say
+    /// where that sibling is. It becomes an <c>UnmappedDecision</c> at the one place
+    /// that stops the recording, where the ordinal it stands at is known.
+    /// </summary>
+    /// <param name="Seam">Where it was seen: one of <c>UnmappedDecision.Seams</c>.</param>
+    /// <param name="Name">The game's own name for the thing - the member it went
+    /// through, or the screen it was answered on.</param>
+    /// <param name="Discriminator">The subtype or kind the seam distinguishes by, where
+    /// it has one.</param>
+    /// <param name="Args">What the game handed over, as strings, uninterpreted.</param>
+    /// <param name="Note">What the recorder could not do with it, in its own words,
+    /// carried on the stop's evidence.</param>
+    internal sealed record UnmappedFacts(
+        string Seam, string Name, string? Discriminator, IReadOnlyDictionary<string, string> Args,
+        string? Note = null);
+
+    /// <summary>A decision met at a member this recorder patches, named by the
+    /// member's declaring type and name the way the format asks for it.</summary>
+    internal static UnmappedFacts MetAtMember(
+        Type declaringType, string member, string? discriminator, string note,
+        params (string Name, string Value)[] args) =>
+        new(UnmappedDecision.MemberSeam, $"{declaringType.Name}.{member}", discriminator, Args(args), note);
+
+    /// <summary>A decision met as the answer to one of the game's own screens.</summary>
+    internal static UnmappedFacts MetAtScreen(
+        string screen, string? discriminator, string note, params (string Name, string Value)[] args) =>
+        new(UnmappedDecision.PlayerChoiceSeam, screen, discriminator, Args(args), note);
 
     /// <summary>
     /// A reading of the run taken at one instant: the sample, the complete digest and
@@ -1637,11 +1873,16 @@ internal sealed class RunRecorder : IDisposable
     /// open, and it is what <c>take-a-different-card</c> and
     /// <c>enchant-a-different-card</c> take instead.
     /// </summary>
-    private readonly record struct ScreenAnswer(string Verb, IReadOnlyDictionary<string, string> Args);
+    private readonly record struct ScreenAnswer(
+        string Verb, IReadOnlyDictionary<string, string> Args, UnmappedFacts? Unmapped = null);
 
     private static IReadOnlyDictionary<string, string> Args(params (string Name, string Value)[] args) =>
         new SortedDictionary<string, string>(
             args.ToDictionary(arg => arg.Name, arg => arg.Value, StringComparer.Ordinal), StringComparer.Ordinal);
+
+    private static IReadOnlyDictionary<string, string> Args(IReadOnlyDictionary<string, string> args) =>
+        new SortedDictionary<string, string>(
+            args.ToDictionary(arg => arg.Key, arg => arg.Value, StringComparer.Ordinal), StringComparer.Ordinal);
 
     private static string Number(int value) => value.ToString(CultureInfo.InvariantCulture);
 
@@ -1828,9 +2069,10 @@ internal sealed class RunRecorder : IDisposable
                 var options = model.CurrentOptions;
                 if (index < 0 || index >= options.Count)
                 {
-                    Active?.Refuse(
-                        $"An event option {Number(index)} was chosen and the event offers " +
-                        $"{Number(options.Count)}. The recorder cannot say which one that was.");
+                    StopAtDecision(MetAtMember(
+                        typeof(EventSynchronizer), nameof(EventSynchronizer.ChooseLocalOption), model.Id.ToString(),
+                        "The option is not one the event offers, so the recorder cannot say which one was chosen.",
+                        ("option_index", Number(index)), ("offered", Number(options.Count))));
                     return;
                 }
 
@@ -1966,9 +2208,11 @@ internal sealed class RunRecorder : IDisposable
                     var idArgument = RewardKinds.IdArgument(kind);
                     if (idArgument is not null && id is null)
                     {
-                        Active?.Refuse(
-                            $"A '{kind}' reward was taken off a loot screen and this build did not give the " +
-                            "recorder its id, so the recording cannot say what was claimed.");
+                        StopAtDecision(MetAtMember(
+                            typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward), kind,
+                            "This build did not give the recorder the reward's id, so the recording cannot say " +
+                            "what was claimed.",
+                            ("reward", reward.GetType().Name)));
                         return;
                     }
 
@@ -1979,9 +2223,11 @@ internal sealed class RunRecorder : IDisposable
 
                 if (args is null)
                 {
-                    Active?.Refuse(
-                        $"A {reward.GetType().Name} was taken off a loot screen, and this format has no verb " +
-                        "for that kind of reward. The recording cannot say what was claimed.");
+                    StopAtDecision(MetAtMember(
+                        typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward), kind,
+                        "This format has no verb for that kind of reward, so the recording cannot say what was " +
+                        "claimed.",
+                        ("reward", reward.GetType().Name)));
                     return;
                 }
 
@@ -2088,9 +2334,11 @@ internal sealed class RunRecorder : IDisposable
                 var options = __instance.GetLocalOptions();
                 if (index < 0 || index >= options.Count)
                 {
-                    Active?.Refuse(
-                        $"A rest site option {Number(index)} was chosen and the rest site offers " +
-                        $"{Number(options.Count)}. The recorder cannot say which one that was.");
+                    StopAtDecision(MetAtMember(
+                        typeof(RestSiteSynchronizer), nameof(RestSiteSynchronizer.ChooseLocalOption), null,
+                        "The option is not one the rest site offers, so the recorder cannot say which one was " +
+                        "chosen.",
+                        ("option_index", Number(index)), ("offered", Number(options.Count))));
                     return;
                 }
 
@@ -2130,9 +2378,13 @@ internal sealed class RunRecorder : IDisposable
                 var relics = __instance.CurrentRelics;
                 if (index is not { } position || relics is null || position < 0 || position >= relics.Count)
                 {
-                    Active?.Refuse(
-                        "A treasure chest's relic was picked at a position this chest does not offer, so the " +
-                        "recorder cannot say which relic was taken.");
+                    StopAtDecision(MetAtMember(
+                        typeof(TreasureRoomRelicSynchronizer), nameof(TreasureRoomRelicSynchronizer.PickRelicLocally),
+                        null,
+                        "The position is not one this chest offers, so the recorder cannot say which relic was " +
+                        "taken.",
+                        ("option_index", index is { } picked ? Number(picked) : "none"),
+                        ("offered", relics is null ? "none" : Number(relics.Count))));
                     return;
                 }
 
@@ -2198,9 +2450,9 @@ internal sealed class RunRecorder : IDisposable
             {
                 if (inventory is null)
                 {
-                    Active?.Refuse(
-                        "Something was bought from a merchant with no inventory, so the recorder cannot say " +
-                        "which shelf it came off.");
+                    StopAtDecision(MetAtMember(
+                        typeof(MerchantEntry), nameof(MerchantEntry.OnTryPurchaseWrapper), __instance.GetType().Name,
+                        "The merchant has no inventory, so the recorder cannot say which shelf it came off."));
                     return;
                 }
 
@@ -2221,10 +2473,12 @@ internal sealed class RunRecorder : IDisposable
                     var id = IdOf(__instance);
                     if (id is null)
                     {
-                        Active?.Refuse(
-                            $"A {__instance.GetType().Name} was bought off the {kind} shelf at position " +
-                            $"{Number(index)} and this build did not give the recorder its id, so the recording " +
-                            "cannot say what was bought.");
+                        StopAtDecision(MetAtMember(
+                            typeof(MerchantEntry), nameof(MerchantEntry.OnTryPurchaseWrapper),
+                            __instance.GetType().Name,
+                            "This build did not give the recorder the entry's id, so the recording cannot say " +
+                            "what was bought.",
+                            ("kind", kind), ("option_index", Number(index))));
                         return;
                     }
 
@@ -2238,9 +2492,9 @@ internal sealed class RunRecorder : IDisposable
                     return;
                 }
 
-                Active?.Refuse(
-                    $"A {__instance.GetType().Name} was bought and it is not on any shelf this recorder " +
-                    "knows, so the recording cannot say what it was.");
+                StopAtDecision(MetAtMember(
+                    typeof(MerchantEntry), nameof(MerchantEntry.OnTryPurchaseWrapper), __instance.GetType().Name,
+                    "The entry is not on any shelf this recorder knows, so the recording cannot say what it was."));
             }
             catch (Exception ex)
             {
@@ -2321,9 +2575,11 @@ internal sealed class RunRecorder : IDisposable
                 if (CardScreensUp.OfferedTo(screen) is { } offered) CardScreenAnswered(offered, chosen);
                 else
                 {
-                    Refuse(
-                        "A card screen answered and this build does not expose what it offered, so the " +
-                        "recorder cannot say which option was picked.");
+                    StopAtScreenAnswer(MetAtScreen(
+                        screen.GetType().Name, null,
+                        "This build does not expose what the screen offered, so the recorder cannot say which " +
+                        "option was picked.",
+                        ("card_ids", string.Join(",", chosen.Select(card => card.Id.ToString())))));
                 }
             }
             catch (Exception ex)
@@ -2526,9 +2782,12 @@ internal sealed class RunRecorder : IDisposable
 
                 if (tool is null)
                 {
-                    Active?.Refuse(
-                        "A Crystal Sphere cell was revealed with no tool set, so the recorder cannot say what " +
-                        "the click revealed.");
+                    StopAtDecision(MetAtMember(
+                        typeof(CrystalSphereMinigame), nameof(CrystalSphereMinigame.CellClicked),
+                        __instance.CrystalSphereTool.ToString(),
+                        "The tool is not one this format names, so the recorder cannot say what the click " +
+                        "revealed.",
+                        ("x", Number(clickedCell.X)), ("y", Number(clickedCell.Y))));
                     return;
                 }
 
@@ -2583,9 +2842,11 @@ internal sealed class RunRecorder : IDisposable
             {
                 if (SlotOf(__instance) is not { } slot)
                 {
-                    Active?.Refuse(
-                        $"A {__instance.Id} was drunk and it is not on the belt this recorder can see, so the " +
-                        "recording cannot say which slot it came off.");
+                    StopAtDecision(MetAtMember(
+                        typeof(PotionModel), nameof(PotionModel.EnqueueManualUse), null,
+                        "The potion is not on the belt this recorder can see, so the recording cannot say which " +
+                        "slot it came off.",
+                        ("potion_id", __instance.Id.ToString())));
                     return;
                 }
 
@@ -2623,9 +2884,11 @@ internal sealed class RunRecorder : IDisposable
                 var slots = LiveRun.State is { Players.Count: > 0 } run ? run.Players[0].PotionSlots : null;
                 if (slots is null || slot < 0 || slot >= slots.Count || slots[slot] is not { } potion)
                 {
-                    Active?.Refuse(
-                        $"A potion was discarded from slot {Number(slot)}, which holds nothing this recorder " +
-                        "can see, so the recording cannot say which potion was given up.");
+                    StopAtDecision(MetAtMember(
+                        typeof(DiscardPotionGameAction), ".ctor", null,
+                        "The slot holds nothing this recorder can see, so the recording cannot say which potion " +
+                        "was given up.",
+                        ("slot_index", Number(slot))));
                     return;
                 }
 
