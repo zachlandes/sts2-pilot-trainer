@@ -5,12 +5,15 @@ namespace Sts2PilotTrainer.Trainer;
 /// <summary>
 /// Which colour the recorder's row is drawn in.
 ///
-/// Two, because the row makes two kinds of claim. The overlay's own colour says the row
-/// is one more line of the game's version information, and a recording under way is
+/// Three, because the row makes three kinds of claim. The overlay's own colour says the
+/// row is one more line of the game's version information, and a recording under way is
 /// exactly that: a fact about this session, stated where the build and the seed are.
 /// The warning hue is the eligibility screen's, and it is used for the one row that
 /// asks something of the player - a recording that stopped is a run they will not be
-/// able to play from, and the overlay is where they will notice.
+/// able to play from, and the overlay is where they will notice. The positive hue is
+/// the same screen's affirmative green, for the one row that says the opposite: a
+/// recording that finished whole is a run they can play from, and the moment they
+/// learn that is the moment the run ends, on the game's own death or victory screen.
 /// </summary>
 public enum RecorderRowTone
 {
@@ -20,21 +23,30 @@ public enum RecorderRowTone
 
     /// <summary>The eligibility screen's warning hue.</summary>
     Warning,
+
+    /// <summary>The eligibility screen's affirmative green.</summary>
+    Positive,
 }
 
 /// <summary>
 /// What the row can read, and nothing else.
 ///
 /// The recorder is either attached to the run being played or it is not, and where it
-/// is, its capture is at one of three states. A recorder that is not attached has no
-/// capture, so <paramref name="Capture"/> is null exactly there; the derivation treats
-/// an active recorder with no state as nothing established, rather than as a recording.
+/// is, its capture is at one of four states and states one integrity. A recorder that
+/// is not attached has no capture, so <paramref name="Capture"/> and
+/// <paramref name="Integrity"/> are null exactly there; the derivation treats an active
+/// recorder with no state as nothing established, rather than as a recording.
 /// </summary>
 /// <param name="RecorderActive">Whether a recorder is attached to the run being played.
 /// False when the player turned recording off, when the run is a trainer run this mod
 /// constructed, and when the recorder module refused this build.</param>
 /// <param name="Capture">Where that recorder's capture has got to.</param>
-public sealed record RecorderFacts(bool RecorderActive, RunCaptureState? Capture);
+/// <param name="Integrity">What that capture states as its
+/// <c>source.native.integrity</c>: <see cref="NativeSource.CompleteIntegrity"/> for a
+/// run played by the game's own rules, and another value for one the validator refuses.
+/// It is read because a finished capture is not a finished recording the player can
+/// play from unless it is complete.</param>
+public sealed record RecorderFacts(bool RecorderActive, RunCaptureState? Capture, string? Integrity);
 
 /// <summary>
 /// The recorder's presence on screen: one more row of the game's own version overlay.
@@ -70,16 +82,19 @@ public sealed record RecorderPresence(ElementSurface Row, string Text, RecorderR
     /// <summary>
     /// The row for these facts.
     ///
-    /// Three rows the design names and two it does not. A recorder attached and
+    /// Four rows the design names and one it does not. A recorder attached and
     /// recording is RECORDING in the overlay's colour; one attached that is no longer
     /// recording the run - a hole in its watch, or a decision it saw and could not
     /// name - is RECORDING STOPPED in the warning hue, because in both the run being
     /// played is one the player will not be able to play from and the row is where they
-    /// will notice; none attached is no row. A
-    /// capture that finished is a run that is over, so nothing is being recorded and the
-    /// row says nothing rather than something stale; an active recorder with no capture
-    /// state is a contradiction in the facts, and a contradiction draws nothing rather
-    /// than guessing which half is right.
+    /// will notice; one whose capture finished with its integrity complete is RECORDING
+    /// COMPLETE in the positive hue, because the run is over, the recording is whole and
+    /// the player's to play from, and the screen the run ended on is where they will
+    /// look for that; none attached is no row. A capture that finished with any other
+    /// integrity - a run the console was used in - is a run nothing will play, and the
+    /// row says nothing rather than well done over it. An active recorder with no
+    /// capture state is a contradiction in the facts, and a contradiction draws nothing
+    /// rather than guessing which half is right.
     /// </summary>
     public static RecorderPresence For(RecorderFacts facts)
     {
@@ -91,6 +106,8 @@ public sealed record RecorderPresence(ElementSurface Row, string Text, RecorderR
                 new RecorderPresence(ElementSurface.Shown(), RecorderCopy.Recording, RecorderRowTone.Overlay),
             RunCaptureState.Broken or RunCaptureState.Unmapped =>
                 new RecorderPresence(ElementSurface.Shown(), RecorderCopy.RecordingStopped, RecorderRowTone.Warning),
+            RunCaptureState.Finished when facts.Integrity == NativeSource.CompleteIntegrity =>
+                new RecorderPresence(ElementSurface.Shown(), RecorderCopy.RecordingComplete, RecorderRowTone.Positive),
             _ => Nothing,
         };
     }

@@ -324,6 +324,9 @@ A stop met at a member outside a fight is queued through the pump behind the dec
 Past a stop the recorder takes nothing and refuses nothing: the decisions the pump still holds are dropped with a log line, a fight still being watched is watched to its end and records no step, and a refusal raised there is a log line rather than a hole, because a hole marked after the stop would claim a re-attach that never happened.
 A stop met inside a fight is the observer's play whose argument it could not resolve, told to the recorder's sink through `IFightSampleSink.BeginStepWithUnresolvedArgument`, and it names the game's own action - the `GameAction` type the observer met, `PlayCardAction` - with the format verb as its discriminator, because the verb is this recorder's translation and names nothing a later build can read back to the game; `RunRecorder.StopAtFightStep` is the one writer of that stop.
 A stopped recorder is drawn as a stopped one: `RecorderPresence.For` reads `Unmapped` as the same RECORDING STOPPED row, in the same warning hue, as a broken watch, because in both the run being played is one the player cannot play from and the overlay is where they will notice; the cause is on the recording, where the validator names it.
+A finished one is drawn as finished only where it is the player's to play from: `Finished` with `RunCapture.Integrity` complete is RECORDING COMPLETE in the eligibility screen's affirmative green, because the run is over, won or lost, the recording is whole, and the death or victory screen the run ended on is where the player looks for that; the recorder stays attached until the run is torn down, so the row stands for as long as that screen does.
+A run the console was used in finishes with its integrity `non-standard` and the validator refuses it, so the same finish draws no row at all rather than a green claim over a recording nothing will play.
+Both hues are `LibraryPalette`'s and nothing the row writes down for itself.
 `RunRecorderStopTests` holds the two apart on the recording each writes.
 
 **Every decision is read either side.**
@@ -865,7 +868,7 @@ one, and noting that `./scripts/bootstrap.sh --archive` copies assemblies and no
 A skip that read as green over an unchecked role table is how the ledger row reached a
 player, so every one of those skips says which it is.
 `RecorderPresence.For` derives what it says and its colour from exactly
-`RunRecorder.Active` and `RunCapture.State`; the row is re-derived every frame, because
+`RunRecorder.Active`, `RunCapture.State` and `RunCapture.Integrity`; the row is re-derived every frame, because
 the recorder attaches after the overlay is built and a watch can break at any decision.
 It follows the MODDED label's own visibility, which is how hiding the overlay from the
 menu that put it up hides this with it, and it asks `RunmobileMod.MayDraw` the same way

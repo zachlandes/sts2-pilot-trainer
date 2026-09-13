@@ -12,7 +12,8 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// what the derivation says; this pins what <see cref="RecorderPresenceRow.Apply"/>
 /// does with it once it reaches an actual node - the overlay-hides-row rule, the
 /// shell's own draw gate, and the colour override that is the warning hue for a
-/// broken watch and no override at all for the overlay's own row.
+/// broken watch, the positive hue for a finished recording, and no override at all
+/// for the overlay's own row.
 /// </summary>
 public sealed class RecorderPresenceRowTests
 {
@@ -25,7 +26,7 @@ public sealed class RecorderPresenceRowTests
         var row = new Label();
 
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording)), mayDraw: true);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording, NativeSource.CompleteIntegrity)), mayDraw: true);
 
         Assert.True(row.Visible);
         Assert.Equal(RecorderCopy.Recording, row.Text);
@@ -39,11 +40,25 @@ public sealed class RecorderPresenceRowTests
         var row = new Label();
 
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken)), mayDraw: true);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken, NativeSource.CompleteIntegrity)), mayDraw: true);
 
         Assert.True(row.Visible);
         Assert.Equal(RecorderCopy.RecordingStopped, row.Text);
-        Assert.Equal(new Color(RecorderPresenceRow.WarningColorHex), row.ThemeColorOverride(FontColorEntry));
+        Assert.Equal(LibraryPalette.Red, row.ThemeColorOverride(FontColorEntry));
+    }
+
+    [Fact]
+    public void AFinishedRecordingIsVisibleInThePositiveHue()
+    {
+        var moddedRow = new Label { Visible = true };
+        var row = new Label();
+
+        RecorderPresenceRow.Apply(
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Finished, NativeSource.CompleteIntegrity)), mayDraw: true);
+
+        Assert.True(row.Visible);
+        Assert.Equal(RecorderCopy.RecordingComplete, row.Text);
+        Assert.Equal(LibraryPalette.Green, row.ThemeColorOverride(FontColorEntry));
     }
 
     /// <summary>A broken watch that recovers back to the overlay's own colour is the
@@ -55,10 +70,10 @@ public sealed class RecorderPresenceRowTests
         var moddedRow = new Label { Visible = true };
         var row = new Label();
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken)), mayDraw: true);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken, NativeSource.CompleteIntegrity)), mayDraw: true);
 
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording)), mayDraw: true);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording, NativeSource.CompleteIntegrity)), mayDraw: true);
 
         Assert.Null(row.ThemeColorOverride(FontColorEntry));
     }
@@ -72,7 +87,7 @@ public sealed class RecorderPresenceRowTests
         var row = new Label();
 
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording)), mayDraw: true);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording, NativeSource.CompleteIntegrity)), mayDraw: true);
 
         Assert.False(row.Visible);
     }
@@ -86,7 +101,7 @@ public sealed class RecorderPresenceRowTests
         var row = new Label();
 
         RecorderPresenceRow.Apply(
-            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording)), mayDraw: false);
+            row, moddedRow, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording, NativeSource.CompleteIntegrity)), mayDraw: false);
 
         Assert.False(row.Visible);
     }
@@ -97,7 +112,7 @@ public sealed class RecorderPresenceRowTests
         var moddedRow = new Label { Visible = true };
         var row = new Label();
 
-        RecorderPresenceRow.Apply(row, moddedRow, RecorderPresence.For(new RecorderFacts(false, null)), mayDraw: true);
+        RecorderPresenceRow.Apply(row, moddedRow, RecorderPresence.For(new RecorderFacts(false, null, null)), mayDraw: true);
 
         Assert.False(row.Visible);
         Assert.Equal(string.Empty, row.Text);
