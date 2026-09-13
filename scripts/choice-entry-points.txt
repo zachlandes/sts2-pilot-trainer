@@ -1,0 +1,78 @@
+# Every game type whose own code calls a player-choice entry point on this build,
+# read from the game assembly's IL by RunRecorderTests and grouped by the entry
+# point it reaches. The game's own mocks are left out. Regenerate with
+#   ./scripts/choice-entry-points.sh --update
+# so a card or relic that gains a prompt on a game update shows as a diff in the
+# change that adopted the build.
+
+CardSelectCmd.FromChooseABundleScreen(player, bundles)
+  Relics: ScrollBoxes
+
+CardSelectCmd.FromChooseACardScreen(context, cards, player, canSkip)
+  Cards: Abundance Discovery Quasar Splash
+  Monsters: KnowledgeDemon
+  Potions: AttackPotion ColorlessPotion PowerPotion SkillPotion
+  Relics: HeftyTablet LeadPaperweight MassiveScroll Toolbox
+
+CardSelectCmd.FromCombatPile(context, pile, player, prefs)
+  Cards: Charge Cleanse CosmicIndifference Dredge Graveblast Headbutt Hologram NeowsFury Seance Wish
+  Potions: DropletOfPrecognition LiquidMemories
+  Powers: ForegoneConclusionPower StratagemPower
+
+CardSelectCmd.FromCombatPile(context, pile, player, prefs, filter)
+  Cards: SecretTechnique SecretWeapon SeekerStrike Tutor
+
+CardSelectCmd.FromDeckForEnchantment(cards, enchantment, amount, prefs)
+  Events: SapphireSeed
+  Relics: RoyalStamp
+
+CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, additionalFilter, prefs)
+  Events: SelfHelpBook SpiralingWhirlpool
+
+CardSelectCmd.FromDeckForEnchantment(player, enchantment, amount, prefs)
+  Events: FieldOfManSizedHoles GraveOfTheForgotten StoneOfAllTime Symbiote WaterloggedScriptorium WoodCarvings
+  Relics: ElectricShrymp GnarledHammer Kifuda PaelsGrowth PunchDagger TriBoomerang
+
+CardSelectCmd.FromDeckForRemoval(player, prefs, filter)
+  Events: Amalgamator DoorsOfLightAndDark FieldOfManSizedHoles LuminousChoir Wellspring ZenWeaver
+  Game: OneOffSynchronizer RewardSynchronizer
+  Relics: BiiigHug EmptyCage PaelsTooth PrecariousShears PreciseScissors PreservedFog
+  RestSite: CookRestSiteOption
+
+CardSelectCmd.FromDeckForTransformation(player, prefs, cardToTransformation)
+  Events: AromaOfChaos EndlessConveyor MorphicGrove Symbiote Trial WhisperingHollow
+  Relics: Astrolabe Claws NewLeaf
+
+CardSelectCmd.FromDeckForUpgrade(player, prefs)
+  Events: AromaOfChaos SapphireSeed SpiritGrafter Trial
+  Relics: Pomander YummyCookie
+  RestSite: SmithRestSiteOption
+
+CardSelectCmd.FromDeckGeneric(player, prefs, filter, sortingOrder)
+  Events: WoodCarvings
+  Relics: DollysMirror
+
+CardSelectCmd.FromHand(context, player, prefs, filter, source)
+  Cards: Begone Brand BurningPact DecisionsDecisions DualWield Glimmer Guards HandTrick HeirloomHammer Nightmare PhotonCut Purity Scavenge SculptingStrike Snap ThinkingAhead Transfigure TrueGrit
+  Potions: Ashwater TouchOfInsanity
+  Powers: EntropyPower TyrannyPower
+  Relics: ToastyMittens
+
+CardSelectCmd.FromHandForDiscard(context, player, prefs, filter, source)
+  Cards: Acrobatics DaggerThrow HiddenDaggers Prepared Survivor
+  Potions: GamblersBrew
+  Powers: ToolsOfTheTradePower
+  Relics: GamblingChip
+
+CardSelectCmd.FromHandForUpgrade(context, player, source)
+  Cards: Armaments
+
+CardSelectCmd.FromSimpleGrid(context, cardsIn, player, prefs)
+  Relics: ChoicesParadox
+
+CardSelectCmd.FromSimpleGridForRewards(context, cards, player, prefs)
+  Models: EventModel
+  Modifiers: SealedDeck
+  Relics: SeaGlass
+
+RelicSelectCmd.FromChooseARelicScreen(player, relics)

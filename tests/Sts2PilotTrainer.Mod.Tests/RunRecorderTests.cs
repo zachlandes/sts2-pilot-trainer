@@ -1,5 +1,6 @@
 using System.Reflection;
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Models;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
@@ -96,6 +97,194 @@ public sealed class RunRecorderTests
         // has grown a patch of its own is no longer one of them.
         Assert.DoesNotContain(WatchedWithoutAPatch, verb => patched.Contains(Member(verb)));
     }
+
+    /// <summary>
+    /// And every card or relic prompt the game can put to a player is one something
+    /// watches, asked per entry point rather than per verb.
+    ///
+    /// The verb-level check above excuses <see cref="ActionVerb.SelectCardFromScreen"/>
+    /// by prose, and the gap that let three prompt shapes go unrecorded was per prompt:
+    /// a <c>CardSelectCmd</c> member nothing patched. So this enumerates the public entry
+    /// points of the two choice commands from the assembly, and each must be the target
+    /// of a patch on this build, or be excused in <see cref="CardPrompts.Forwarders"/>
+    /// with the entry point it forwards to - which its own body must actually call, and
+    /// which must itself be watched or excused. An entry point a game update adds, and a
+    /// forwarder it gives a screen of its own, fail naming themselves.
+    /// </summary>
+    [GameFact]
+    public void EveryChoiceEntryPointOnThisBuildIsWatchedOrExcusedByName()
+    {
+        var entryPoints = ChoiceEntryPoints.All();
+        var patched = ChoiceEntryPoints.Patched();
+        var bySignature = entryPoints.ToDictionary(ChoiceEntryPoints.Signature, StringComparer.Ordinal);
+
+        var problems = new List<string>();
+        foreach (var entryPoint in entryPoints)
+        {
+            if (patched.Contains(entryPoint)) continue;
+            var signature = ChoiceEntryPoints.Signature(entryPoint);
+            if (!CardPrompts.Forwarders.TryGetValue(signature, out var forwardsTo))
+            {
+                problems.Add($"{ChoiceEntryPoints.QualifiedSignature(entryPoint)} is neither patched nor excused.");
+                continue;
+            }
+
+            var called = ChoiceEntryPoints.EntryPointsCalledBy(entryPoint).Select(ChoiceEntryPoints.Signature).ToList();
+            if (called.Count != 1 || called[0] != forwardsTo)
+            {
+                problems.Add(
+                    $"{ChoiceEntryPoints.QualifiedSignature(entryPoint)} is excused as forwarding to {forwardsTo}, and " +
+                    $"its own body calls {(called.Count == 0 ? "no entry point" : string.Join(", ", called))}.");
+            }
+        }
+
+        // An excuse cannot outlive its reason: every forwarder still exists, is still
+        // unpatched, and forwards to something that is watched or excused in turn.
+        foreach (var (signature, forwardsTo) in CardPrompts.Forwarders)
+        {
+            if (!bySignature.TryGetValue(signature, out var forwarder))
+            {
+                problems.Add($"{signature} is excused as a forwarder and this build has no such entry point.");
+            }
+            else if (patched.Contains(forwarder))
+            {
+                problems.Add($"{signature} is excused as a forwarder and is patched; one of the two is stale.");
+            }
+
+            if (!bySignature.TryGetValue(forwardsTo, out var target))
+            {
+                problems.Add($"{signature} forwards to {forwardsTo}, which this build has not got.");
+            }
+            else if (!patched.Contains(target) && !CardPrompts.Forwarders.ContainsKey(forwardsTo))
+            {
+                problems.Add($"{signature} forwards to {forwardsTo}, which is neither patched nor excused.");
+            }
+        }
+
+        Assert.True(
+            problems.Count == 0,
+            "Every public choice entry point is patched by the recorder or the shell, or excused in " +
+            $"CardPrompts.Forwarders by name:\n  {string.Join("\n  ", problems)}");
+    }
+
+    /// <summary>
+    /// <c>CardSelectCmd</c> is still the only thing that opens a card prompt, which is
+    /// what makes the entry-point check above sufficient.
+    ///
+    /// Every method body in the game assembly is scanned for a call that creates or
+    /// shows a card-selection screen, or puts the hand into its selection mode. Each
+    /// caller must be <c>CardSelectCmd</c> or one of <see cref="PromptOpenersOutsideCardSelectCmd"/>,
+    /// with the reason there. A game update that opens a screen from a relic directly
+    /// would open a prompt no entry-point patch sees, and this is what says so.
+    ///
+    /// The scan sees only the screen types the vendored Godot stubs let load, so the
+    /// loaded set is held to the eleven expected first: a screen the stubs dropped would
+    /// otherwise scan as a screen nothing opens.
+    /// </summary>
+    [GameFact]
+    public void CardSelectCmdIsStillTheOnlyThingThatOpensACardPrompt()
+    {
+        Assert.Equal(ExpectedScreenTypes, ChoiceEntryPoints.LoadedScreenTypes());
+
+        // The scan reads past a body the Godot stubs cannot resolve, so before the
+        // callers are judged, every screen that can be opened must have been found
+        // opened by somebody: a scan that read nothing would otherwise pass.
+        var openings = ChoiceEntryPoints.PromptOpenings();
+        var found = openings.Where(opening => opening.Callers.Count > 0)
+            .Select(opening => opening.Opener.DeclaringType!.Name)
+            .ToHashSet(StringComparer.Ordinal);
+        Assert.Equal(
+            ExpectedScreenTypes.Where(name => !OpenedByNobody.Contains(name)).Order(StringComparer.Ordinal),
+            found.Order(StringComparer.Ordinal));
+
+        var problems = new List<string>();
+        foreach (var (opener, callers) in openings)
+        {
+            var openerName = $"{opener.DeclaringType!.Name}.{opener.Name}";
+            foreach (var caller in callers)
+            {
+                if (caller == typeof(CardSelectCmd)) continue;
+                if (PromptOpenersOutsideCardSelectCmd.ContainsKey((openerName, caller.Name))) continue;
+                problems.Add($"{caller.FullName} calls {openerName}.");
+            }
+        }
+
+        Assert.True(
+            problems.Count == 0,
+            "A card prompt is opened only by CardSelectCmd, or by an excused type with a written reason:\n  " +
+            string.Join("\n  ", problems));
+
+        // And the other direction, so an excuse cannot outlive the call it excuses.
+        var excusable = openings
+            .SelectMany(opening => opening.Callers.Select(caller =>
+                ($"{opening.Opener.DeclaringType!.Name}.{opening.Opener.Name}", caller.Name)))
+            .ToHashSet();
+        Assert.All(PromptOpenersOutsideCardSelectCmd.Keys, excused => Assert.Contains(excused, excusable));
+    }
+
+    /// <summary>
+    /// Which game types call each choice entry point is written down, so a card or
+    /// relic that gains a prompt on a game update shows up as a diff rather than as a
+    /// recording that stopped.
+    ///
+    /// Informational: the failing check is the entry-point one above. This holds the
+    /// committed file to the build the way <c>scripts/expected-hosted-skips.txt</c> holds
+    /// the hosted skip set, and is regenerated the same way.
+    /// </summary>
+    [GameFact]
+    public void TheTypesThatReachEachChoiceEntryPointAreTheRecordedOnes()
+    {
+        var path = Path.Combine(Arbiter.RepoRoot, "scripts", "choice-entry-points.txt");
+        var actual = ChoiceEntryPoints.Enumeration();
+
+        if (Environment.GetEnvironmentVariable("CHOICE_ENTRY_POINTS_UPDATE") == "1")
+        {
+            File.WriteAllText(path, actual);
+            return;
+        }
+
+        var recorded = File.Exists(path) ? File.ReadAllText(path) : null;
+        Assert.True(
+            recorded == actual,
+            "The game types that reach each choice entry point are not the recorded ones. If the game " +
+            "build changed, regenerate the list in the same change:\n\n    ./scripts/choice-entry-points.sh --update\n\n" +
+            $"Recorded in {path}:\n{recorded ?? "(no file)"}\nThis build:\n{actual}");
+    }
+
+    /// <summary>The card-selection screens this build has, plus the hand, by name; the
+    /// set the IL scan can see. A game update that adds a screen changes this list in
+    /// the change that adopts it.</summary>
+    private static readonly IReadOnlyList<string> ExpectedScreenTypes =
+    [
+        "NCardGridSelectionScreen",
+        "NCardRewardSelectionScreen",
+        "NChooseABundleSelectionScreen",
+        "NChooseACardSelectionScreen",
+        "NCombatPileCardSelectScreen",
+        "NDeckCardSelectScreen",
+        "NDeckEnchantSelectScreen",
+        "NDeckTransformSelectScreen",
+        "NDeckUpgradeSelectScreen",
+        "NPlayerHand",
+        "NSimpleCardSelectScreen",
+    ];
+
+    /// <summary>The one name in <see cref="ExpectedScreenTypes"/> nothing opens: the
+    /// grid base every deck and pile screen derives from.</summary>
+    private static readonly IReadOnlyList<string> OpenedByNobody = ["NCardGridSelectionScreen"];
+
+    /// <summary>
+    /// The one prompt opened from outside <c>CardSelectCmd</c>, keyed by the opening
+    /// member and the outermost type that calls it, with the reason it is watched anyway.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<(string Opener, string Caller), string> PromptOpenersOutsideCardSelectCmd =
+        new Dictionary<(string, string), string>
+        {
+            [("NCardRewardSelectionScreen.ShowScreen", "CardReward")] =
+                "The card reward's own screen, which no CardSelectCmd member asks for: the reward opens it " +
+                "itself and the shell watches it at the screen, in CardScreensUp.Reward, because its answer " +
+                "is a reward taken rather than a card chosen from a list the engine offered.",
+        };
 
     /// <summary>
     /// The five decisions no patch on their engine member watches, and why.

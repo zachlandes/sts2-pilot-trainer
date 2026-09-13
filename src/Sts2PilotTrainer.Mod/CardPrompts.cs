@@ -161,6 +161,36 @@ internal static class CardPrompts
     ];
 
     /// <summary>
+    /// The entry points this deliberately does not patch, each with the entry point it
+    /// forwards to in one call, both named the way <see cref="Signature"/> names one.
+    /// Patching a forwarder as well would announce one prompt twice. Held here so
+    /// <c>RunRecorderTests</c> can ask of the game's own IL whether every public entry
+    /// point is watched or excused by name, and whether each excuse still forwards
+    /// where it says: a forwarder that grows a screen of its own on a game update
+    /// fails there, naming itself.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string> Forwarders { get; } =
+        new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            [$"{nameof(CardSelectCmd.FromCombatPile)}(context, pile, player, prefs)"] =
+                $"{nameof(CardSelectCmd.FromCombatPile)}(context, pile, player, prefs, filter)",
+            [$"{nameof(CardSelectCmd.FromDeckForEnchantment)}(player, enchantment, amount, prefs)"] =
+                $"{nameof(CardSelectCmd.FromDeckForEnchantment)}(player, enchantment, amount, additionalFilter, prefs)",
+            [$"{nameof(CardSelectCmd.FromDeckForEnchantment)}(player, enchantment, amount, additionalFilter, prefs)"] =
+                $"{nameof(CardSelectCmd.FromDeckForEnchantment)}(cards, enchantment, amount, prefs)",
+            [$"{nameof(CardSelectCmd.FromDeckForRemoval)}(player, prefs, filter)"] =
+                $"{nameof(CardSelectCmd.FromDeckGeneric)}(player, prefs, filter, sortingOrder)",
+            [$"{nameof(CardSelectCmd.FromHandForDiscard)}(context, player, prefs, filter, source)"] =
+                $"{nameof(CardSelectCmd.FromHand)}(context, player, prefs, filter, source)",
+        };
+
+    /// <summary>How <see cref="Forwarders"/> names an entry point: its name and its
+    /// parameter names, which is what tells two overloads apart in the game's own
+    /// source and survives a parameter's type being renamed.</summary>
+    internal static string Signature(MethodBase method) =>
+        $"{method.Name}({string.Join(", ", method.GetParameters().Select(parameter => parameter.Name))})";
+
+    /// <summary>
     /// Opens a prompt for what an entry point was just asked.
     ///
     /// Derived now where the engine reads now - no context to pause with, a selector
