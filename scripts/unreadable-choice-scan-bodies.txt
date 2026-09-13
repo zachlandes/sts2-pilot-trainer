@@ -1,0 +1,942 @@
+# Every game type the choice-entry-point scan in RunRecorderTests could not read
+# whole on this build, because a signature, a call site or the type itself names a
+# Godot member the vendored stubs have not got. Each is code the funnel check does
+# not see, so the set is held here and a change to it fails until it is looked at.
+# Regenerate with
+#   ./scripts/choice-entry-points.sh --update
+
+# Types with method bodies the scan could not read, and how many:
+GodotPlugins.Game.Main 1
+MegaCrit.Sts2.Core.Animation.CreatureAnimator 1
+MegaCrit.Sts2.Core.Assets.AssetCache 2
+MegaCrit.Sts2.Core.Assets.AssetLoadingSession 4
+MegaCrit.Sts2.Core.Assets.AtlasManager 1
+MegaCrit.Sts2.Core.Assets.AtlasResourceLoader 6
+MegaCrit.Sts2.Core.Audio.Debug.NDebugAudioManager 12
+MegaCrit.Sts2.Core.AutoSlay.AutoSlayer 3
+MegaCrit.Sts2.Core.AutoSlay.Handlers.Rooms.EventRoomHandler 1
+MegaCrit.Sts2.Core.AutoSlay.Helpers.UiHelper 2
+MegaCrit.Sts2.Core.AutoSlay.Helpers.WaitHelper 3
+MegaCrit.Sts2.Core.AutoSlay.Helpers.Watchdog 1
+MegaCrit.Sts2.Core.AutoSlay.MemoryProfiler 1
+MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaAnimation 2
+MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaAnimationState 1
+MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaEventData 1
+MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSkeleton 1
+MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSkeletonDataResource 4
+MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSpineBinding 4
+MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSprite 1
+MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaTrackEntry 4
+MegaCrit.Sts2.Core.Commands.CardPileCmd 2
+MegaCrit.Sts2.Core.ControllerInput.GodotControllerInputStrategy 4
+MegaCrit.Sts2.Core.ControllerInput.SteamControllerInputStrategy 4
+MegaCrit.Sts2.Core.Debug.DebugActMap 6
+MegaCrit.Sts2.Core.Debug.FileDropHandler 1
+MegaCrit.Sts2.Core.Debug.NBgLayerDebug 11
+MegaCrit.Sts2.Core.Debug.NCombatVfxSpawner 12
+MegaCrit.Sts2.Core.Debug.NDebugVfxSpawner 6
+MegaCrit.Sts2.Core.Debug.NSpineSpriteCopierTester 8
+MegaCrit.Sts2.Core.Debug.NTrailTest 5
+MegaCrit.Sts2.Core.Debug.OsDebugInfo 1
+MegaCrit.Sts2.Core.Debug.SentryService 3
+MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.CloudConsoleCmd 1
+MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.GetLogsConsoleCmd 1
+MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.OpenConsoleCmd 1
+MegaCrit.Sts2.Core.DevConsole.ConsoleCommands.SentryConsoleCmd 1
+MegaCrit.Sts2.Core.DevConsole.DevConsole 2
+MegaCrit.Sts2.Core.Entities.RestSite.MendRestSiteOption 1
+MegaCrit.Sts2.Core.GameActions.GameAction 1
+MegaCrit.Sts2.Core.Helpers.GlyphConverter 3
+MegaCrit.Sts2.Core.Helpers.GodotTreeExtensions 3
+MegaCrit.Sts2.Core.Helpers.MathHelper 1
+MegaCrit.Sts2.Core.Helpers.OneTimeInitialization 1
+MegaCrit.Sts2.Core.Helpers.SceneHelper 1
+MegaCrit.Sts2.Core.Helpers.ScrollHelper 1
+MegaCrit.Sts2.Core.Localization.LocManager 1
+MegaCrit.Sts2.Core.Localization.LocTextLabel 8
+MegaCrit.Sts2.Core.Modding.ModManager 1
+MegaCrit.Sts2.Core.Modding.ModManagerFileIo 3
+MegaCrit.Sts2.Core.Models.Monsters.BowlbugEgg 1
+MegaCrit.Sts2.Core.Models.Monsters.Crusher 1
+MegaCrit.Sts2.Core.Models.Monsters.PhantasmalGardener 1
+MegaCrit.Sts2.Core.Models.Monsters.Rocket 1
+MegaCrit.Sts2.Core.Models.Monsters.TestSubject 1
+MegaCrit.Sts2.Core.Models.Monsters.TorchHeadAmalgam 1
+MegaCrit.Sts2.Core.Models.RelicModel 1
+MegaCrit.Sts2.Core.Multiplayer.Game.PeerInput.NetCursorHelper 1
+MegaCrit.Sts2.Core.Multiplayer.Game.PeerInput.PeerInputSynchronizer 1
+MegaCrit.Sts2.Core.Multiplayer.Game.PeerInput.ScreenStateTracker 1
+MegaCrit.Sts2.Core.Multiplayer.Transport.ENet.ENetClient 5
+MegaCrit.Sts2.Core.Multiplayer.Transport.ENet.ENetConnectionExtension 1
+MegaCrit.Sts2.Core.Multiplayer.Transport.ENet.ENetHost 9
+MegaCrit.Sts2.Core.Nodes.Animation.NDecimillipedeSegmentDriver 10
+MegaCrit.Sts2.Core.Nodes.Animation.NPhobiaAnimationToggler 9
+MegaCrit.Sts2.Core.Nodes.Animation.NSpineAutoPlayer 5
+MegaCrit.Sts2.Core.Nodes.Audio.NAudioManager 9
+MegaCrit.Sts2.Core.Nodes.Audio.NRunMusicController 9
+MegaCrit.Sts2.Core.Nodes.Cards.Holders.NCardHolder 14
+MegaCrit.Sts2.Core.Nodes.Cards.Holders.NCardHolderHitbox 5
+MegaCrit.Sts2.Core.Nodes.Cards.Holders.NGridCardHolder 10
+MegaCrit.Sts2.Core.Nodes.Cards.Holders.NHandCardHolder 19
+MegaCrit.Sts2.Core.Nodes.Cards.Holders.NPreviewCardHolder 9
+MegaCrit.Sts2.Core.Nodes.Cards.Holders.NSelectedHandCardHolder 9
+MegaCrit.Sts2.Core.Nodes.Cards.NCard 10
+MegaCrit.Sts2.Core.Nodes.Cards.NCardBundle 11
+MegaCrit.Sts2.Core.Nodes.Cards.NCardGrid 17
+MegaCrit.Sts2.Core.Nodes.Cards.NCardHighlight 9
+MegaCrit.Sts2.Core.Nodes.Cards.NEnchantPreview 9
+MegaCrit.Sts2.Core.Nodes.Cards.NTinyCard 8
+MegaCrit.Sts2.Core.Nodes.Cards.NTransformPreview 9
+MegaCrit.Sts2.Core.Nodes.Cards.NUpgradePreview 10
+MegaCrit.Sts2.Core.Nodes.Combat.NCardPlay 11
+MegaCrit.Sts2.Core.Nodes.Combat.NCardPlayQueue 8
+MegaCrit.Sts2.Core.Nodes.Combat.NCombatCardPile 8
+MegaCrit.Sts2.Core.Nodes.Combat.NCombatPilesContainer 8
+MegaCrit.Sts2.Core.Nodes.Combat.NCombatSceneContainer 9
+MegaCrit.Sts2.Core.Nodes.Combat.NCombatStartBanner 9
+MegaCrit.Sts2.Core.Nodes.Combat.NCombatUi 10
+MegaCrit.Sts2.Core.Nodes.Combat.NControllerCardPlay 13
+MegaCrit.Sts2.Core.Nodes.Combat.NCreature 11
+MegaCrit.Sts2.Core.Nodes.Combat.NCreatureStateDisplay 9
+MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals 10
+MegaCrit.Sts2.Core.Nodes.Combat.NDiscardPileButton 5
+MegaCrit.Sts2.Core.Nodes.Combat.NDrawPileButton 5
+MegaCrit.Sts2.Core.Nodes.Combat.NEndTurnButton 10
+MegaCrit.Sts2.Core.Nodes.Combat.NEndTurnLongPressBar 8
+MegaCrit.Sts2.Core.Nodes.Combat.NEnemyTurnBanner 10
+MegaCrit.Sts2.Core.Nodes.Combat.NEnergyCounter 10
+MegaCrit.Sts2.Core.Nodes.Combat.NExhaustPileButton 9
+MegaCrit.Sts2.Core.Nodes.Combat.NHealthBar 12
+MegaCrit.Sts2.Core.Nodes.Combat.NIntent 10
+MegaCrit.Sts2.Core.Nodes.Combat.NMouseCardPlay 10
+MegaCrit.Sts2.Core.Nodes.Combat.NPeekButton 13
+MegaCrit.Sts2.Core.Nodes.Combat.NPingButton 8
+MegaCrit.Sts2.Core.Nodes.Combat.NPlayerHand 17
+MegaCrit.Sts2.Core.Nodes.Combat.NPlayerTurnBanner 9
+MegaCrit.Sts2.Core.Nodes.Combat.NPower 9
+MegaCrit.Sts2.Core.Nodes.Combat.NPowerContainer 5
+MegaCrit.Sts2.Core.Nodes.Combat.NRemoteTargetingIndicator 13
+MegaCrit.Sts2.Core.Nodes.Combat.NSelectedHandCardContainer 9
+MegaCrit.Sts2.Core.Nodes.Combat.NSelectionReticle 8
+MegaCrit.Sts2.Core.Nodes.Combat.NStarCounter 10
+MegaCrit.Sts2.Core.Nodes.Combat.NTargetManager 13
+MegaCrit.Sts2.Core.Nodes.Combat.NTargetingArrow 14
+MegaCrit.Sts2.Core.Nodes.CommonUi.NAbandonRunConfirmPopup 9
+MegaCrit.Sts2.Core.Nodes.CommonUi.NBackButton 10
+MegaCrit.Sts2.Core.Nodes.CommonUi.NCardPreviewContainer 6
+MegaCrit.Sts2.Core.Nodes.CommonUi.NCardViewSortButton 10
+MegaCrit.Sts2.Core.Nodes.CommonUi.NCommonBanner 8
+MegaCrit.Sts2.Core.Nodes.CommonUi.NConfirmButton 11
+MegaCrit.Sts2.Core.Nodes.CommonUi.NControllerManager 16
+MegaCrit.Sts2.Core.Nodes.CommonUi.NCursorManager 12
+MegaCrit.Sts2.Core.Nodes.CommonUi.NDisconnectConfirmPopup 9
+MegaCrit.Sts2.Core.Nodes.CommonUi.NDropdownContainer 11
+MegaCrit.Sts2.Core.Nodes.CommonUi.NDropdownItem 11
+MegaCrit.Sts2.Core.Nodes.CommonUi.NDropdownScrollbar 11
+MegaCrit.Sts2.Core.Nodes.CommonUi.NErrorPopup 9
+MegaCrit.Sts2.Core.Nodes.CommonUi.NGlobalUi 9
+MegaCrit.Sts2.Core.Nodes.CommonUi.NGoldArrowButton 8
+MegaCrit.Sts2.Core.Nodes.CommonUi.NGridCardPreviewContainer 6
+MegaCrit.Sts2.Core.Nodes.CommonUi.NHotkeyIcon 8
+MegaCrit.Sts2.Core.Nodes.CommonUi.NHotkeyManager 6
+MegaCrit.Sts2.Core.Nodes.CommonUi.NInputManager 16
+MegaCrit.Sts2.Core.Nodes.CommonUi.NLoadingOverlay 5
+MegaCrit.Sts2.Core.Nodes.CommonUi.NMessyCardPreviewContainer 8
+MegaCrit.Sts2.Core.Nodes.CommonUi.NMiscConfirmButton 8
+MegaCrit.Sts2.Core.Nodes.CommonUi.NModalContainer 10
+MegaCrit.Sts2.Core.Nodes.CommonUi.NMultiplayerVoteContainer 5
+MegaCrit.Sts2.Core.Nodes.CommonUi.NPopupYesNoButton 12
+MegaCrit.Sts2.Core.Nodes.CommonUi.NProceedButton 9
+MegaCrit.Sts2.Core.Nodes.CommonUi.NSaveIndicator 8
+MegaCrit.Sts2.Core.Nodes.CommonUi.NScrollbarTrain 8
+MegaCrit.Sts2.Core.Nodes.CommonUi.NSearchBar 13
+MegaCrit.Sts2.Core.Nodes.CommonUi.NSettingsScreenPopup 8
+MegaCrit.Sts2.Core.Nodes.CommonUi.NTickbox 11
+MegaCrit.Sts2.Core.Nodes.CommonUi.NTopBar 12
+MegaCrit.Sts2.Core.Nodes.CommonUi.NVerticalPopup 8
+MegaCrit.Sts2.Core.Nodes.Debug.Multiplayer.NMultiplayerTest 11
+MegaCrit.Sts2.Core.Nodes.Debug.Multiplayer.NMultiplayerTestCharacterPaginator 3
+MegaCrit.Sts2.Core.Nodes.Debug.NDebugAspectRatio 9
+MegaCrit.Sts2.Core.Nodes.Debug.NDebugInfoLabelManager 10
+MegaCrit.Sts2.Core.Nodes.Debug.NDevConsole 21
+MegaCrit.Sts2.Core.Nodes.Debug.NFormVfxTester 9
+MegaCrit.Sts2.Core.Nodes.Debug.NFpsVisualizer 13
+MegaCrit.Sts2.Core.Nodes.Debug.NOrbVfxTester 9
+MegaCrit.Sts2.Core.Nodes.Debug.NParticleCounter 11
+MegaCrit.Sts2.Core.Nodes.Debug.NSceneBootstrapper 8
+MegaCrit.Sts2.Core.Nodes.Events.Custom.CrystalSphere.NCrystalSphereCell 8
+MegaCrit.Sts2.Core.Nodes.Events.Custom.CrystalSphere.NCrystalSphereDialogue 8
+MegaCrit.Sts2.Core.Nodes.Events.Custom.CrystalSphere.NCrystalSphereItem 8
+MegaCrit.Sts2.Core.Nodes.Events.Custom.CrystalSphere.NCrystalSphereMask 9
+MegaCrit.Sts2.Core.Nodes.Events.Custom.CrystalSphere.NCrystalSphereScreen 10
+MegaCrit.Sts2.Core.Nodes.Events.Custom.NFakeMerchant 8
+MegaCrit.Sts2.Core.Nodes.Events.NAncientDialogueHitbox 8
+MegaCrit.Sts2.Core.Nodes.Events.NAncientDialogueLine 8
+MegaCrit.Sts2.Core.Nodes.Events.NAncientEventLayout 13
+MegaCrit.Sts2.Core.Nodes.Events.NCombatEventLayout 8
+MegaCrit.Sts2.Core.Nodes.Events.NDivinationButton 8
+MegaCrit.Sts2.Core.Nodes.Events.NEventLayout 12
+MegaCrit.Sts2.Core.Nodes.Events.NEventOptionButton 9
+MegaCrit.Sts2.Core.Nodes.Ftue.NAcceptTutorialsFtue 8
+MegaCrit.Sts2.Core.Nodes.Ftue.NAscensionMultiplayerFtue 4
+MegaCrit.Sts2.Core.Nodes.Ftue.NAscensionSingleplayerFtue 4
+MegaCrit.Sts2.Core.Nodes.Ftue.NCanPlayCardsFtue 11
+MegaCrit.Sts2.Core.Nodes.Ftue.NCannotPlayCardFtue 11
+MegaCrit.Sts2.Core.Nodes.Ftue.NCombatRewardFtue 11
+MegaCrit.Sts2.Core.Nodes.Ftue.NCombatRulesFtue 10
+MegaCrit.Sts2.Core.Nodes.Ftue.NFtue 8
+MegaCrit.Sts2.Core.Nodes.Ftue.NFtueConfirmButton 8
+MegaCrit.Sts2.Core.Nodes.Ftue.NMapSelectFtue 11
+MegaCrit.Sts2.Core.Nodes.Ftue.NMerchantFtue 11
+MegaCrit.Sts2.Core.Nodes.Ftue.NObtainPotionFtue 11
+MegaCrit.Sts2.Core.Nodes.Ftue.NPowerCardFtue 11
+MegaCrit.Sts2.Core.Nodes.Ftue.NRelicRewardFtue 11
+MegaCrit.Sts2.Core.Nodes.Ftue.NRestSiteFtue 11
+MegaCrit.Sts2.Core.Nodes.Ftue.NShuffleFtue 11
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NButton 8
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NClickableControl 21
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NDropdown 11
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NMegaLineEdit 7
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NMegaTextEdit 10
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NScrollableContainer 15
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NScrollbar 12
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NSlider 12
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NodeUtil 5
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.TweenHelper 3
+MegaCrit.Sts2.Core.Nodes.HoverTips.NHoverTipCardContainer 5
+MegaCrit.Sts2.Core.Nodes.HoverTips.NHoverTipSet 13
+MegaCrit.Sts2.Core.Nodes.HoverTips.NMapPointHistoryHoverTip 8
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NGenericPopup 9
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NInvitePlayersButton 9
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerCardIntent 8
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerNetworkProblemIndicator 8
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerPlayerExpandedState 11
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerPlayerIntentHandler 14
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerPlayerState 14
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerPlayerStateContainer 13
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerTimeoutOverlay 8
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NMultiplayerWarningPopup 9
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NRemoteLoadLobbyPlayerContainer 8
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NRemoteLobbyPlayer 8
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NRemoteLobbyPlayerContainer 8
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NRemoteMouseCursor 13
+MegaCrit.Sts2.Core.Nodes.Multiplayer.NRemoteMouseCursorContainer 7
+MegaCrit.Sts2.Core.Nodes.NActBanner 8
+MegaCrit.Sts2.Core.Nodes.NAncientNameBanner 12
+MegaCrit.Sts2.Core.Nodes.NAssetLoader 7
+MegaCrit.Sts2.Core.Nodes.NBackgroundModeHandler 11
+MegaCrit.Sts2.Core.Nodes.NGame 25
+MegaCrit.Sts2.Core.Nodes.NMuteInBackgroundHandler 10
+MegaCrit.Sts2.Core.Nodes.NRun 8
+MegaCrit.Sts2.Core.Nodes.NSceneContainer 9
+MegaCrit.Sts2.Core.Nodes.NTransition 10
+MegaCrit.Sts2.Core.Nodes.Orbs.NDarkOrbVfx 9
+MegaCrit.Sts2.Core.Nodes.Orbs.NFrostOrbVfx 3
+MegaCrit.Sts2.Core.Nodes.Orbs.NGlassOrbVfx 8
+MegaCrit.Sts2.Core.Nodes.Orbs.NOrb 10
+MegaCrit.Sts2.Core.Nodes.Orbs.NOrbManager 10
+MegaCrit.Sts2.Core.Nodes.Orbs.NOrbVfx 9
+MegaCrit.Sts2.Core.Nodes.Orbs.NPlasmaOrbVfx 9
+MegaCrit.Sts2.Core.Nodes.Pooling.NodePool`1 4
+MegaCrit.Sts2.Core.Nodes.Potions.NPotion 9
+MegaCrit.Sts2.Core.Nodes.Potions.NPotionContainer 10
+MegaCrit.Sts2.Core.Nodes.Potions.NPotionHolder 15
+MegaCrit.Sts2.Core.Nodes.Potions.NPotionPopup 11
+MegaCrit.Sts2.Core.Nodes.Potions.NPotionPopupButton 8
+MegaCrit.Sts2.Core.Nodes.Potions.NPotionShortcutButton 5
+MegaCrit.Sts2.Core.Nodes.Reaction.NReaction 9
+MegaCrit.Sts2.Core.Nodes.Reaction.NReactionContainer 7
+MegaCrit.Sts2.Core.Nodes.Reaction.NReactionWheel 13
+MegaCrit.Sts2.Core.Nodes.Reaction.NReactionWheelWedge 9
+MegaCrit.Sts2.Core.Nodes.Relics.NRelic 8
+MegaCrit.Sts2.Core.Nodes.Relics.NRelicBasicHolder 8
+MegaCrit.Sts2.Core.Nodes.Relics.NRelicInventory 18
+MegaCrit.Sts2.Core.Nodes.Relics.NRelicInventoryHolder 9
+MegaCrit.Sts2.Core.Nodes.RestSite.NParticleSystemUpscaler 9
+MegaCrit.Sts2.Core.Nodes.RestSite.NRestSiteButton 8
+MegaCrit.Sts2.Core.Nodes.RestSite.NRestSiteCharacter 10
+MegaCrit.Sts2.Core.Nodes.Rewards.NLinkedRewardSet 11
+MegaCrit.Sts2.Core.Nodes.Rewards.NRewardButton 12
+MegaCrit.Sts2.Core.Nodes.Rooms.NCombatBackground 6
+MegaCrit.Sts2.Core.Nodes.Rooms.NCombatBackgroundLayer 8
+MegaCrit.Sts2.Core.Nodes.Rooms.NCombatRoom 14
+MegaCrit.Sts2.Core.Nodes.Rooms.NEventRoom 8
+MegaCrit.Sts2.Core.Nodes.Rooms.NMapRoom 8
+MegaCrit.Sts2.Core.Nodes.Rooms.NMerchantButton 12
+MegaCrit.Sts2.Core.Nodes.Rooms.NMerchantRoom 8
+MegaCrit.Sts2.Core.Nodes.Rooms.NRestSiteRoom 11
+MegaCrit.Sts2.Core.Nodes.Rooms.NTreasureRoom 8
+MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiary 14
+MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiaryCharacterFilter 12
+MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiaryEntry 9
+MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiaryLabelDivider 8
+MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiaryLayout 5
+MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiaryLayoutDecimillipede 9
+MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiaryLayoutDefault 9
+MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiaryLayoutKaiserCrab 10
+MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiaryModeButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Bestiary.NBestiaryMoveButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Capstones.NCapstoneContainer 14
+MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardCostTickbox 9
+MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardLibrary 9
+MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardLibraryGrid 11
+MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardLibraryStats 9
+MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardPoolFilter 13
+MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardRarityTickbox 9
+MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NCardTypeTickbox 12
+MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NClearSearchButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.CardLibrary.NLibraryStatTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardGridSelectionScreen 8
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardRewardAlternativeButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardRewardSelectionScreen 9
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NChoiceSelectionSkipButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NChooseABundleSelectionScreen 11
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NChooseACardSelectionScreen 9
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCombatPileCardSelectScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NDeckCardSelectScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NDeckEnchantSelectScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NDeckTransformSelectScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NDeckUpgradeSelectScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NSimpleCardSelectScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NActDropdown 9
+MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NAscensionPanel 11
+MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NCharacterSelectButton 13
+MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NCharacterSelectScreen 14
+MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NCharacterSelectScreenBg 9
+MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NMultiplayerLoadGameScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NRegentCharacterSelectBg 9
+MegaCrit.Sts2.Core.Nodes.Screens.Credits.NCreditsScreen 11
+MegaCrit.Sts2.Core.Nodes.Screens.CustomRun.NCustomRunLoadScreen 9
+MegaCrit.Sts2.Core.Nodes.Screens.CustomRun.NCustomRunRandomizeButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.CustomRun.NCustomRunScreen 15
+MegaCrit.Sts2.Core.Nodes.Screens.CustomRun.NRunModifierTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NDailyRunCharacterContainer 9
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NDailyRunLeaderboard 10
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NDailyRunLeaderboardHeader 9
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NDailyRunLeaderboardRow 9
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NDailyRunLeaderboardSeparator 6
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NDailyRunLoadScreen 9
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NDailyRunScoreWarning 3
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NDailyRunScreen 9
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NDailyRunScreenModifier 8
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NGlobalRankTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NLeaderboardDayPaginator 8
+MegaCrit.Sts2.Core.Nodes.Screens.DailyRun.NLeaderboardPageArrow 8
+MegaCrit.Sts2.Core.Nodes.Screens.FeedbackScreen.NFeedbackCategoryDropdown 9
+MegaCrit.Sts2.Core.Nodes.Screens.FeedbackScreen.NFeedbackCategoryDropdownItem 8
+MegaCrit.Sts2.Core.Nodes.Screens.FeedbackScreen.NFeedbackScreenOpener 7
+MegaCrit.Sts2.Core.Nodes.Screens.FeedbackScreen.NSendFeedbackButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.FeedbackScreen.NSendFeedbackCartoon 8
+MegaCrit.Sts2.Core.Nodes.Screens.FeedbackScreen.NSendFeedbackEmojiButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.FeedbackScreen.NSendFeedbackFlower 8
+MegaCrit.Sts2.Core.Nodes.Screens.FeedbackScreen.NSendFeedbackScreen 16
+MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen.NBadge 10
+MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen.NDiscoveredItem 9
+MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen.NGameOverContinueButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen.NGameOverScreen 12
+MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen.NReturnToMainMenuButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen.NRunSummary 11
+MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen.NScoreLine 9
+MegaCrit.Sts2.Core.Nodes.Screens.GameOverScreen.NViewRunButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.InspectScreens.NInspectRelicScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.InspectScreens.NUpgradePreviewTickbox 5
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NCompendiumBottomButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NCompendiumSubmenu 10
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NContinueRunInfo 8
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NCustomRunModifiersList 12
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NDisclaimerProceedButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NEarlyAccessDisclaimer 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NJoinFriendButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NJoinFriendRefreshButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NJoinFriendScreen 12
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NJoinFriendScreenButtonLayout 5
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NLogoAnimation 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NMainMenu 12
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NMainMenuBg 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NMainMenuContinueButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NMainMenuSubmenuStack 8
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NMainMenuTextButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NMultiplayerHostSubmenu 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NMultiplayerSubmenu 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NOpenProfileScreenButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NPatchNotesButton 10
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NPatchNotesScreen 12
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NShortSubmenuButton 10
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSingleplayerSubmenu 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSubmenu 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSubmenuButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSubmenuStack 11
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NAncientMapPoint 8
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NBossMapPoint 8
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NControllerMapDrawingInput 11
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapBg 9
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapClearButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapDrawButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapDrawingInput 12
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapDrawings 12
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapEraseButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapLegendItem 9
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapMarker 9
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapPoint 8
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapScreen 26
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapShareButton 12
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMouseHeldMapDrawingInput 8
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMouseModeMapDrawingInput 5
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NNormalMapPoint 10
+MegaCrit.Sts2.Core.Nodes.Screens.ModdingScreen.NConfirmModLoadingPopup 9
+MegaCrit.Sts2.Core.Nodes.Screens.ModdingScreen.NModInfoContainer 8
+MegaCrit.Sts2.Core.Nodes.Screens.ModdingScreen.NModMenuButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.ModdingScreen.NModMenuRow 10
+MegaCrit.Sts2.Core.Nodes.Screens.ModdingScreen.NModdingScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.NAncientBgContainer 9
+MegaCrit.Sts2.Core.Nodes.Screens.NCapstoneSubmenuStack 8
+MegaCrit.Sts2.Core.Nodes.Screens.NCardPileScreen 9
+MegaCrit.Sts2.Core.Nodes.Screens.NCardsViewScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.NChooseARelicSelection 9
+MegaCrit.Sts2.Core.Nodes.Screens.NDeckViewScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.NInspectCardScreen 12
+MegaCrit.Sts2.Core.Nodes.Screens.NRewardsScreen 14
+MegaCrit.Sts2.Core.Nodes.Screens.NRunSubmenuStack 8
+MegaCrit.Sts2.Core.Nodes.Screens.NShareButton 3
+MegaCrit.Sts2.Core.Nodes.Screens.NSimpleCardsViewScreen 8
+MegaCrit.Sts2.Core.Nodes.Screens.Overlays.NOverlayStack 13
+MegaCrit.Sts2.Core.Nodes.Screens.PauseMenu.NPauseMenu 9
+MegaCrit.Sts2.Core.Nodes.Screens.PauseMenu.NPauseMenuButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.PotionLab.NLabPotionHolder 8
+MegaCrit.Sts2.Core.Nodes.Screens.PotionLab.NPotionLab 10
+MegaCrit.Sts2.Core.Nodes.Screens.PotionLab.NPotionLabCategory 10
+MegaCrit.Sts2.Core.Nodes.Screens.ProfileScreen.NDeleteProfileButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.ProfileScreen.NProfileButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.ProfileScreen.NProfileIcon 8
+MegaCrit.Sts2.Core.Nodes.Screens.ProfileScreen.NProfileScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.RelicCollection.NRelicCollection 10
+MegaCrit.Sts2.Core.Nodes.Screens.RelicCollection.NRelicCollectionCategory 11
+MegaCrit.Sts2.Core.Nodes.Screens.RelicCollection.NRelicCollectionEntry 8
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NActHistoryEntry 8
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NDeckHistory 12
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NDeckHistoryEntry 12
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NMapPointHistory 9
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NMapPointHistoryEntry 9
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NRelicHistory 12
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NRunHistory 12
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NRunHistoryArrowButton 10
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NRunHistoryPlayerIcon 10
+MegaCrit.Sts2.Core.Nodes.Screens.ScreenContext.ActiveScreenContext 1
+MegaCrit.Sts2.Core.Nodes.Screens.ScreenContext.ScreenContextUtils 1
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NAbandonRunButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NAmbienceSlider 4
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NAspectRatioDropdown 10
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NAspectRatioDropdownItem 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NBackgroundModeHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NBackgroundModeTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NBgmVolumeSlider 3
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NCommonTooltipsHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NCommonTooltipsTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NCreditsButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NDisplayDropdown 11
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NDisplayDropdownItem 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NDropdownPositioner 9
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NFastModeHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NFastModeTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NFpsPaginator 4
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NFullscreenHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NFullscreenTickbox 5
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NHandCardCountHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NHandCardCountTickbox 9
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NInputSettingsEntry 10
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NInputSettingsPanel 11
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NIntroLogoHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NIntroLogoTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NKeyboardOnlyModeHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NKeyboardOnlyModeTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NLanguageButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NLanguageDropdown 10
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NLanguageDropdownItem 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NLongPressConfirmationHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NLongPressConfirmationTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NMasterVolumeSlider 3
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NMsaaHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NMsaaPaginator 4
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NMuteInBackgroundTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NOpenFeedbackScreenButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NOpenModdingScreenButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NPaginateArrow 9
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NPaginator 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NPhobiaModeHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NPhobiaModeTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NResetGameplayButton 3
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NResetGraphicsButton 3
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NResetToDefaultControlsButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NResetTutorialsButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NResolutionDropdown 12
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NResolutionDropdownItem 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NRunTimerHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NRunTimerTickbox 9
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NScreenshakeHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NScreenshakePaginator 4
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsDropdown 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsGradientMask 9
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsPaginatorArrow 9
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsPanel 11
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsScreen 17
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsSlider 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsTab 9
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsTabManager 11
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSettingsToast 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NSfxVolumeSlider 4
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NShowMpMapDrawingsHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NShowMpMapDrawingsTickbox 9
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NTextEffectsHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NTextEffectsTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NUploadDataTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NUploadGameplayDataHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NVSyncPaginator 4
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NWindowResizeHoverTip 6
+MegaCrit.Sts2.Core.Nodes.Screens.Settings.NWindowResizeTickbox 8
+MegaCrit.Sts2.Core.Nodes.Screens.Shops.NFakeMerchantInventory 4
+MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantCard 8
+MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantCardRemoval 9
+MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantCharacter 7
+MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantDialogue 8
+MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantHand 10
+MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantInventory 17
+MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantPotion 9
+MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantRelic 9
+MegaCrit.Sts2.Core.Nodes.Screens.Shops.NMerchantSlot 13
+MegaCrit.Sts2.Core.Nodes.Screens.StatsScreen.NAchievementHolder 9
+MegaCrit.Sts2.Core.Nodes.Screens.StatsScreen.NAchievementsGrid 8
+MegaCrit.Sts2.Core.Nodes.Screens.StatsScreen.NCharacterStats 8
+MegaCrit.Sts2.Core.Nodes.Screens.StatsScreen.NGeneralStatsGrid 8
+MegaCrit.Sts2.Core.Nodes.Screens.StatsScreen.NShareStatsButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.StatsScreen.NStatEntry 11
+MegaCrit.Sts2.Core.Nodes.Screens.StatsScreen.NStatsScreen 9
+MegaCrit.Sts2.Core.Nodes.Screens.StatsScreen.NStatsTabManager 10
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NAcknowledgeButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NChapterPaginateButton 10
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NCloseButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NEpochCard 11
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NEpochInspectScreen 13
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NEpochPaginateButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NEpochReminderText 8
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NEpochSlot 13
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NEraColumn 11
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NResetProgressButton 9
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NSlotsContainer 13
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NTimelineLineMask 5
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NTimelineScreen 17
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NTimelineTutorial 9
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NUnlockConfirmButton 8
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.NUnlockInfo 8
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.UnlockScreens.NUnlockCardsScreen 9
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.UnlockScreens.NUnlockCharacterScreen 8
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.UnlockScreens.NUnlockEpochScreen 8
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.UnlockScreens.NUnlockMiscScreen 9
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.UnlockScreens.NUnlockPotionsScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.UnlockScreens.NUnlockRelicsScreen 10
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.UnlockScreens.NUnlockScreen 8
+MegaCrit.Sts2.Core.Nodes.Screens.Timeline.UnlockScreens.NUnlockTimelineScreen 4
+MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NHandImage 11
+MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NHandImageCollection 10
+MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NTreasureRoomRelicCollection 12
+MegaCrit.Sts2.Core.Nodes.Screens.TreasureRoomRelic.NTreasureRoomRelicHolder 8
+MegaCrit.Sts2.Core.Nodes.SentryBootstrap 5
+MegaCrit.Sts2.Core.Nodes.TopBar.NRunTimer 8
+MegaCrit.Sts2.Core.Nodes.TopBar.NTopBarButton 11
+MegaCrit.Sts2.Core.Nodes.TopBar.NTopBarDeckButton 10
+MegaCrit.Sts2.Core.Nodes.TopBar.NTopBarMapButton 9
+MegaCrit.Sts2.Core.Nodes.TopBar.NTopBarPauseButton 9
+MegaCrit.Sts2.Core.Nodes.TreasureRooms.NTreasureButton 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Backgrounds.NCeremonialBeastBgVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Backgrounds.NKaiserCrabBossBackground 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Backgrounds.NQueenRepyBgVfx 5
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NBolasVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardExhaustQuickVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardExhaustVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardRareGlow 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardRemoveVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardTransformShineVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardUncommonGlow 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NFanOfKnivesVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NHellraiserAttackVfx 6
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NHellraiserSwordVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NHellraiserVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NNightmareHandsVfx 6
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NSpikeSplashVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NSpookyHandVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Events.NSymbioteEyeMovementVfx 5
+MegaCrit.Sts2.Core.Nodes.Vfx.Examples.NGlowExampleVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Examples.NNoiseScroller 10
+MegaCrit.Sts2.Core.Nodes.Vfx.Examples.NSaturationExampleVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NDemonFormVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NEchoFormVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NFormVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NReaperFormVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NSerpentFormVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NVoidFormVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NAdditiveOverlayVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NAeonGlassVfx 14
+MegaCrit.Sts2.Core.Nodes.Vfx.NAmalgamVfx 15
+MegaCrit.Sts2.Core.Nodes.Vfx.NArchitectVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NAxebotVfx 13
+MegaCrit.Sts2.Core.Nodes.Vfx.NBasicTrail 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NBattlewornDummyVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NBezierTrail 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NBgGroundSpikeVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NBigSlashImpactVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NBigSlashVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NBlockBrokenVfx 6
+MegaCrit.Sts2.Core.Nodes.Vfx.NBlockSparkVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NBounceSparkVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardEnchantVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardFlyPowerVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardFlyShuffleVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardFlyVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardSmithVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardTrail 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardTrailVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardTransformVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardUpgradeVfx 5
+MegaCrit.Sts2.Core.Nodes.Vfx.NCeremonialBeastVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NCubexConstructVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NDaggerSprayFlurryVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NDaggerSprayImpactVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NDamageBlockedVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NDamageNumVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NDecimillipedeRocksVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NDecimillipedeSegmentVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NDesaturateTransitionVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NDevotedSculptorVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NDoomOverlayVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NDoomSubEmitterVfx 13
+MegaCrit.Sts2.Core.Nodes.Vfx.NDoomVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NEntomancerVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NEpochHighlightVfx 6
+MegaCrit.Sts2.Core.Nodes.Vfx.NEpochOffscreenVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NEpochSlotParticle 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NFakeMerchantVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NFgGroundSpikeVfx 4
+MegaCrit.Sts2.Core.Nodes.Vfx.NFireBurningVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NFireBurstVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NFireSmokePuffVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NFlyconidSporesVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NFogmogVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NFollowCursor 5
+MegaCrit.Sts2.Core.Nodes.Vfx.NFossilStalkerVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NFullscreenTextVfx 6
+MegaCrit.Sts2.Core.Nodes.Vfx.NFuzzyWurmCrawlerSpitTrailVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NGainEpochVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NGasBombVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NGaseousImpactVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NGoopyImpactVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NGrandFinaleImpactVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NGrandFinaleVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NGroundFireVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NHauntedShipVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NHealNumVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NHeavyBluntVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NHitSparkVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NHorizontalLinesVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NHunterKillerVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NHyperbeamImpactVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NHyperbeamVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NIroncladVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NItemThrowVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NKaiserCrabBossExplosionVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NKaiserCrabBossVfx 14
+MegaCrit.Sts2.Core.Nodes.Vfx.NKinFollowerVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NKinPriestBeamVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NKinPriestGrenadeVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NKinPriestVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NKnowledgeDemonVfx 13
+MegaCrit.Sts2.Core.Nodes.Vfx.NLargeMagicMissileVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NLaserVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NLineBurstVfx 6
+MegaCrit.Sts2.Core.Nodes.Vfx.NLiquidOverlayVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NLivingGasVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NLostAndForgottenVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NMapCircleVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NMapNodeSelectVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NMapPingVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NMechaKnightVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NMinionDiveBombVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NMirrorVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NMonsterDeathVfx 4
+MegaCrit.Sts2.Core.Nodes.Vfx.NMyteVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NNecrobinderVfx 14
+MegaCrit.Sts2.Core.Nodes.Vfx.NOilSpillVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NParafrightVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NPhantasmalGardenerVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NPhrogParasiteVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NPoisonImpactVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NPotionFlashVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NPowerAppliedVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NPowerFlashVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NPowerRemovedVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NPowerUpVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NQueenVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NRadialBlurVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NRainVfx 6
+MegaCrit.Sts2.Core.Nodes.Vfx.NRegentVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NRelicFlashVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NRestSiteFireVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NRestSmokeVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NRollingBoulderVfx 13
+MegaCrit.Sts2.Core.Nodes.Vfx.NScratchVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NScreamVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NSeapunkVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NSewerClamVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NShivThrowVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NSkulkingColonyVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NSleepingVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NSlimedBerserkerVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NSmallMagicMissileVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NSmokePuffVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NSmokyVignetteVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NSnappingJaxfruitVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NSoulFyshVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NSoulNexusVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NSovereignBladeVfx 15
+MegaCrit.Sts2.Core.Nodes.Vfx.NSpectralKnightVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NSpeechBubbleVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NSpinyToadVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NSplashVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NSpookyScreamVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NSporeImpactVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NStabVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NStarryImpactVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NStunnedVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NSweepingBeamImpactVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NSweepingBeamVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NTestSubjectBurnVfx 6
+MegaCrit.Sts2.Core.Nodes.Vfx.NTestSubjectVfx 12
+MegaCrit.Sts2.Core.Nodes.Vfx.NTheInsatiableVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.NTheObscuraVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NThinSliceVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NThoughtBubbleVfx 8
+MegaCrit.Sts2.Core.Nodes.Vfx.NUiFlashVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.NVantomVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NVfxSpawner 6
+MegaCrit.Sts2.Core.Nodes.Vfx.NVineShamblerVinesVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.NWaterfallGiantVfx 13
+MegaCrit.Sts2.Core.Nodes.Vfx.NWormyImpactVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NEpochChains 12
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NFailedJoinVfx 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NGaseousScreenVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NLowHpBorderVfx 11
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NPowerAppliedBuffVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NPowerAppliedDebuffVfx 10
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.LocalizedTexture 5
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NHitStop 6
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NParticlesContainer 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NScreenShake 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NShaker 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NSpineSpriteBoneFollower 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NSpineSpriteCopier 6
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NSpriteAnimator 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NTrail2D 10
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NValueRamp 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NVfxParticleSystem 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NVfxProjectile 8
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NVfxProjectileHandler 11
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NVfxSpine 9
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ScreenPunchInstance 1
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ScreenRumbleInstance 2
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ScreenTraumaRumble 2
+MegaCrit.Sts2.Core.Platform.Null.NullPlatformUtilStrategy 1
+MegaCrit.Sts2.Core.Platform.Steam.SteamPlatformUtilStrategy 1
+MegaCrit.Sts2.Core.Rewards.RelicReward 1
+MegaCrit.Sts2.Core.Rewards.Reward 1
+MegaCrit.Sts2.Core.RichTextTags.AbstractMegaRichTextEffect 7
+MegaCrit.Sts2.Core.RichTextTags.RichTextAncientBanner 9
+MegaCrit.Sts2.Core.RichTextTags.RichTextAqua 8
+MegaCrit.Sts2.Core.RichTextTags.RichTextBlue 8
+MegaCrit.Sts2.Core.RichTextTags.RichTextFadeIn 10
+MegaCrit.Sts2.Core.RichTextTags.RichTextFlyIn 10
+MegaCrit.Sts2.Core.RichTextTags.RichTextGold 8
+MegaCrit.Sts2.Core.RichTextTags.RichTextGreen 8
+MegaCrit.Sts2.Core.RichTextTags.RichTextJitter 10
+MegaCrit.Sts2.Core.RichTextTags.RichTextOrange 8
+MegaCrit.Sts2.Core.RichTextTags.RichTextPink 8
+MegaCrit.Sts2.Core.RichTextTags.RichTextPurple 8
+MegaCrit.Sts2.Core.RichTextTags.RichTextRed 8
+MegaCrit.Sts2.Core.RichTextTags.RichTextScramble 9
+MegaCrit.Sts2.Core.RichTextTags.RichTextSine 9
+MegaCrit.Sts2.Core.RichTextTags.RichTextThinkyDots 9
+MegaCrit.Sts2.Core.RichTextTags.RichTextUtil 1
+MegaCrit.Sts2.Core.Rooms.BackgroundAssets 1
+MegaCrit.Sts2.Core.Runs.Metrics.MetricUtilities 1
+MegaCrit.Sts2.Core.Saves.FileAccessStream 11
+MegaCrit.Sts2.Core.Saves.GodotFileIo 9
+MegaCrit.Sts2.Core.Timeline.TimelineInfoDumper 6
+MegaCrit.Sts2.GameInfo.NGameInfoUploader 2
+MegaCrit.Sts2.addons.mega_text.MegaLabel 11
+MegaCrit.Sts2.addons.mega_text.MegaRichTextLabel 11
+MegaCrit.sts2.Core.Nodes.TopBar.NTopBarBossIcon 12
+MegaCrit.sts2.Core.Nodes.TopBar.NTopBarFloorIcon 9
+MegaCrit.sts2.Core.Nodes.TopBar.NTopBarGold 10
+MegaCrit.sts2.Core.Nodes.TopBar.NTopBarHp 9
+MegaCrit.sts2.Core.Nodes.TopBar.NTopBarModifier 9
+MegaCrit.sts2.Core.Nodes.TopBar.NTopBarPortrait 2
+MegaCrit.sts2.Core.Nodes.TopBar.NTopBarPortraitTip 9
+MegaCrit.sts2.Core.Nodes.TopBar.NTopBarRoomIcon 9
+NDefectVfx 11
+RiderTestRunner.CiCoreRunner 2
+RiderTestRunner.NetCoreRunner 2
+
+# Types the runtime could not load, so none of their bodies was scanned:
+MegaCrit.Sts2.Core.Localization.LocTextLabel+MethodName
+MegaCrit.Sts2.Core.Localization.LocTextLabel+PropertyName
+MegaCrit.Sts2.Core.Localization.LocTextLabel+SignalName
+MegaCrit.Sts2.Core.Multiplayer.Transport.ENet.ENetServiceData
+MegaCrit.Sts2.Core.Nodes.Combat.NEndTurnLongPressBar+MethodName
+MegaCrit.Sts2.Core.Nodes.Combat.NEndTurnLongPressBar+PropertyName
+MegaCrit.Sts2.Core.Nodes.Combat.NEndTurnLongPressBar+SignalName
+MegaCrit.Sts2.Core.Nodes.Debug.NDevConsole+MethodName
+MegaCrit.Sts2.Core.Nodes.Debug.NDevConsole+PropertyName
+MegaCrit.Sts2.Core.Nodes.Debug.NDevConsole+SignalName
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NMegaLineEdit+MethodName
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NMegaLineEdit+PropertyName
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NMegaTextEdit+MethodName
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NMegaTextEdit+PropertyName
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NMegaTextEdit+SignalName
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NScrollbar+MethodName
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NScrollbar+PropertyName
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NSlider+MethodName
+MegaCrit.Sts2.Core.Nodes.GodotExtensions.NSlider+PropertyName
+MegaCrit.Sts2.Core.Nodes.HoverTips.NMapPointHistoryHoverTip+MethodName
+MegaCrit.Sts2.Core.Nodes.HoverTips.NMapPointHistoryHoverTip+PropertyName
+MegaCrit.Sts2.Core.Nodes.HoverTips.NMapPointHistoryHoverTip+SignalName
+MegaCrit.Sts2.Core.Nodes.NTransition+MethodName
+MegaCrit.Sts2.Core.Nodes.NTransition+PropertyName
+MegaCrit.Sts2.Core.Nodes.NTransition+SignalName
+MegaCrit.Sts2.Core.Nodes.Potions.NPotionHolder+<TargetNode>d__42
+MegaCrit.Sts2.Core.Nodes.Relics.NRelicInventory+MethodName
+MegaCrit.Sts2.Core.Nodes.Relics.NRelicInventory+PropertyName
+MegaCrit.Sts2.Core.Nodes.Relics.NRelicInventory+SignalName
+MegaCrit.Sts2.Core.Nodes.RestSite.NParticleSystemUpscaler+MethodName
+MegaCrit.Sts2.Core.Nodes.RestSite.NParticleSystemUpscaler+PropertyName
+MegaCrit.Sts2.Core.Nodes.RestSite.NParticleSystemUpscaler+SignalName
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NJoinFriendScreenButtonLayout+MethodName
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NJoinFriendScreenButtonLayout+PropertyName
+MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NJoinFriendScreenButtonLayout+SignalName
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapBg+MethodName
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapBg+PropertyName
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapBg+SignalName
+MegaCrit.Sts2.Core.Nodes.Screens.PotionLab.NPotionLabCategory+MethodName
+MegaCrit.Sts2.Core.Nodes.Screens.PotionLab.NPotionLabCategory+PropertyName
+MegaCrit.Sts2.Core.Nodes.Screens.PotionLab.NPotionLabCategory+SignalName
+MegaCrit.Sts2.Core.Nodes.Screens.RelicCollection.NRelicCollectionCategory+MethodName
+MegaCrit.Sts2.Core.Nodes.Screens.RelicCollection.NRelicCollectionCategory+PropertyName
+MegaCrit.Sts2.Core.Nodes.Screens.RelicCollection.NRelicCollectionCategory+SignalName
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NActHistoryEntry+MethodName
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NActHistoryEntry+PropertyName
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NActHistoryEntry+SignalName
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NDeckHistory+MethodName
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NDeckHistory+PropertyName
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NDeckHistory+SignalName
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NRelicHistory+MethodName
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NRelicHistory+PropertyName
+MegaCrit.Sts2.Core.Nodes.Screens.RunHistoryScreen.NRelicHistory+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardRareGlow+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardRareGlow+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardRareGlow+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardUncommonGlow+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardUncommonGlow+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.Cards.NCardUncommonGlow+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.Events.NSymbioteEyeMovementVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.Events.NSymbioteEyeMovementVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.Events.NSymbioteEyeMovementVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NAdditiveOverlayVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NAdditiveOverlayVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NAdditiveOverlayVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBasicTrail+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBasicTrail+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBasicTrail+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBezierTrail+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBezierTrail+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBezierTrail+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBgGroundSpikeVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBgGroundSpikeVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBgGroundSpikeVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBlockBrokenVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBlockBrokenVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NBlockBrokenVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardTrail+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardTrail+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NCardTrail+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NDoomOverlayVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NDoomOverlayVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NDoomOverlayVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NEpochSlotParticle+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NEpochSlotParticle+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NEpochSlotParticle+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NFgGroundSpikeVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NFgGroundSpikeVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NFgGroundSpikeVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NHorizontalLinesVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NHorizontalLinesVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NHorizontalLinesVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NLineBurstVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NLineBurstVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NLineBurstVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NRadialBlurVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NRadialBlurVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NRadialBlurVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NRainVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NRainVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NRainVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.NTestSubjectBurnVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.NTestSubjectBurnVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.NTestSubjectBurnVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NGaseousScreenVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NGaseousScreenVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NGaseousScreenVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NLowHpBorderVfx+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NLowHpBorderVfx+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.Ui.NLowHpBorderVfx+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NSpriteAnimator+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NSpriteAnimator+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NSpriteAnimator+SignalName
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NTrail2D+MethodName
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NTrail2D+PropertyName
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NTrail2D+SignalName
+MegaCrit.Sts2.Core.RichTextTags.AbstractMegaRichTextEffect+MethodName
+MegaCrit.Sts2.Core.RichTextTags.AbstractMegaRichTextEffect+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextAncientBanner+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextAncientBanner+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextAqua+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextAqua+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextBlue+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextBlue+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextFadeIn+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextFadeIn+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextFlyIn+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextFlyIn+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextGold+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextGold+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextGreen+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextGreen+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextJitter+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextJitter+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextOrange+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextOrange+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextPink+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextPink+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextPurple+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextPurple+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextRed+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextRed+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextScramble+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextScramble+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextSine+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextSine+PropertyName
+MegaCrit.Sts2.Core.RichTextTags.RichTextThinkyDots+MethodName
+MegaCrit.Sts2.Core.RichTextTags.RichTextThinkyDots+PropertyName
+MegaCrit.Sts2.addons.mega_text.MegaLabel+MethodName
+MegaCrit.Sts2.addons.mega_text.MegaLabel+PropertyName
+MegaCrit.Sts2.addons.mega_text.MegaLabel+SignalName
+MegaCrit.Sts2.addons.mega_text.MegaRichTextLabel+MethodName
+MegaCrit.Sts2.addons.mega_text.MegaRichTextLabel+PropertyName
+MegaCrit.Sts2.addons.mega_text.MegaRichTextLabel+SignalName
