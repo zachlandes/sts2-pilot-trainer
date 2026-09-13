@@ -107,9 +107,11 @@ public sealed class RunRecorderTests
     /// points of the two choice commands from the assembly, and each must be the target
     /// of a patch on this build, or be excused in <see cref="CardPrompts.Forwarders"/>
     /// with the entry point it forwards to - which its own body must actually call, and
-    /// which must itself be watched or excused - while opening no prompt of its own. An
-    /// entry point a game update adds, and a forwarder it gives a screen of its own even
-    /// where it still forwards, fail naming themselves.
+    /// which must itself be watched or excused - while opening no prompt directly in its
+    /// own body. An entry point a game update adds, and a forwarder it has open a prompt
+    /// directly even where it still forwards, fail naming themselves. The reading is one
+    /// forwarder level deep; a prompt reached through a private helper of the funnel is
+    /// attributed to CardSelectCmd and not caught here.
     /// </summary>
     [GameFact]
     public void EveryChoiceEntryPointOnThisBuildIsWatchedOrExcusedByName()

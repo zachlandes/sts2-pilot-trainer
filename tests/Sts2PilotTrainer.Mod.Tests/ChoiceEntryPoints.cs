@@ -119,9 +119,9 @@ internal static class ChoiceEntryPoints
         return OwnCallees(method).Where(entryPoints.Contains).Distinct().ToList();
     }
 
-    /// <summary>The prompt-opening calls a method's own body makes, read the same way:
-    /// a forwarder that grew a screen of its own is one that still forwards, and only
-    /// this tells the two apart.</summary>
+    /// <summary>The prompt-opening calls a method's own body makes, read the same way
+    /// and no deeper: a forwarder that opens a prompt directly is one that still
+    /// forwards, and only this tells the two apart.</summary>
     internal static IReadOnlyList<MethodBase> PromptsOpenedBy(MethodInfo method) =>
         OwnCallees(method).Where(OpensAPrompt).Distinct().ToList();
 

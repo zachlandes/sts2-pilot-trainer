@@ -166,8 +166,9 @@ internal static class CardPrompts
     /// Patching a forwarder as well would announce one prompt twice. Held here so
     /// <c>RunRecorderTests</c> can ask of the game's own IL whether every public entry
     /// point is watched or excused by name, and whether each excuse still forwards
-    /// where it says: a forwarder that grows a screen of its own on a game update
-    /// fails there, naming itself.
+    /// where it says: a forwarder that comes to open a prompt directly in its own body
+    /// on a game update fails there, naming itself. The reading is one forwarder level
+    /// deep; a prompt reached through a private helper of the funnel is not caught.
     /// </summary>
     internal static IReadOnlyDictionary<string, string> Forwarders { get; } =
         new SortedDictionary<string, string>(StringComparer.Ordinal)
