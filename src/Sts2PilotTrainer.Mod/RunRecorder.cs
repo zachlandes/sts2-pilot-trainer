@@ -1147,12 +1147,12 @@ internal sealed class RunRecorder : IDisposable
             : "The run ended while the recorder was reading it.";
 
     /// <summary>
-    /// Writes one decision, and the card-screen picks it pulled out of the player,
+    /// Writes one decision, and the card-prompt picks it pulled out of the player,
     /// into the capture and the journal.
     ///
     /// The picks share this decision's reading because that is what they are: a card
-    /// screen is answered inside the call that opened it, so the state after the
-    /// screen's answer and the state after the decision are the same state. The
+    /// prompt is answered inside the call that opened it, so the state after the
+    /// prompt's answer and the state after the decision are the same state. The
     /// headless driver reads them back the same way - the selection is confirmed and
     /// changes nothing - so the two traces have the same shape.
     /// </summary>

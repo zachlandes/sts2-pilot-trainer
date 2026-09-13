@@ -190,9 +190,9 @@ after the card's own action reports finished, and an ended turn hands the whole 
 turn to the combat manager with the player's next turn beginning frames later.
 So the after-sample waits for the moment the headless driver's drain reaches: the queue empty and the executor idle.
 For an ended turn, it waits for the player's next `TurnStarted`.
-The entire settlement wait is bounded to the headless driver's 30-second budget, and that budget measures only the engine's own time: while a card screen the action opened is up in front of the player the budget is discarded, and the engine gets the whole of it again from the moment the last screen closes, however many one action puts up.
+The entire settlement wait is bounded to the headless driver's 30-second budget, and that budget measures only the engine's own time: while a card prompt the action opened is up in front of the player the budget is discarded, and the engine gets the whole of it again from the moment the last prompt settles, however many one action puts up.
 If either the queue or executor does not settle in time, the capture becomes incomplete without taking an after-sample.
-The wait is `RunRecorder.WaitForTheEngine`, asked here through `PlayerFightObserver.WaitUntilSettled`, so the fight and the run settle by one rule; the screen count it reads is the shell's `CardScreensUp`.
+The wait is `RunRecorder.WaitForTheEngine`, asked here through `PlayerFightObserver.WaitUntilSettled`, so the fight and the run settle by one rule; the prompt count it reads is the shell's `CardScreensUp`.
 If the combat manager already regards the fight as over or ending, the sample is left to `CombatEnded`, which closes the open action with the final state.
 That is how a capture completes at all: the killing blow, or the enemy turn the
 player did not survive, is the action the fight ended inside.
