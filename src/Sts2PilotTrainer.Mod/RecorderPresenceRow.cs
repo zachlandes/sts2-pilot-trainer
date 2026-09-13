@@ -142,11 +142,11 @@ internal static class RecorderPresenceRow
         }
     }
 
-    /// <summary>Exactly the two facts the derivation is over.</summary>
+    /// <summary>Exactly the three facts the derivation is over.</summary>
     private static RecorderFacts Facts()
     {
         var recorder = RunRecorder.Active;
-        return new RecorderFacts(recorder is not null, recorder?.Capture.State);
+        return new RecorderFacts(recorder is not null, recorder?.Capture.State, recorder?.Capture.Integrity);
     }
 
     /// <summary>

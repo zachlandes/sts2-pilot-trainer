@@ -6,8 +6,9 @@ namespace Sts2PilotTrainer.Trainer.Tests;
 /// The recorder's row of the game's own version overlay, state by state.
 ///
 /// Four rows the design names: recording, stopped, complete, and no recorder at all. The
-/// derivation reads exactly <see cref="RecorderFacts.RecorderActive"/> and
-/// <see cref="RecorderFacts.Capture"/>, so each case below pins the row, the exact
+/// derivation reads exactly <see cref="RecorderFacts.RecorderActive"/>,
+/// <see cref="RecorderFacts.Capture"/> and <see cref="RecorderFacts.Integrity"/>, so
+/// each case below pins the row, the exact
 /// approved text and the tone together, the way <see cref="PlaybackTransportTests"/>
 /// pins a whole transport rather than one field at a time.
 /// </summary>
@@ -16,7 +17,7 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void ARecordingInProgressReadsRecordingInTheOverlaysOwnColour()
     {
-        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording));
+        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Recording, NativeSource.CompleteIntegrity));
 
         Assert.Equal(Presence.Drawn, presence.Row.Presence);
         Assert.False(presence.Row.Pressable);
@@ -27,7 +28,7 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void ABrokenWatchReadsRecordingStoppedInTheWarningHue()
     {
-        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken));
+        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Broken, NativeSource.CompleteIntegrity));
 
         Assert.Equal(Presence.Drawn, presence.Row.Presence);
         Assert.False(presence.Row.Pressable);
@@ -43,7 +44,7 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void AStopAtAnUnmappedDecisionReadsRecordingStoppedInTheWarningHue()
     {
-        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Unmapped));
+        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Unmapped, NativeSource.UnmappedIntegrity));
 
         Assert.Equal(Presence.Drawn, presence.Row.Presence);
         Assert.False(presence.Row.Pressable);
@@ -54,7 +55,7 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void NoRecorderAttachedDrawsNoRowAtAll()
     {
-        var presence = RecorderPresence.For(new RecorderFacts(false, null));
+        var presence = RecorderPresence.For(new RecorderFacts(false, null, null));
 
         Assert.Equal(Presence.Absent, presence.Row.Presence);
         Assert.Equal(string.Empty, presence.Text);
@@ -66,9 +67,9 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void ARecorderReportedInactiveDrawsNothingRegardlessOfWhyItIsInactive()
     {
-        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Recording)));
-        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Broken)));
-        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Unmapped)));
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Recording, NativeSource.CompleteIntegrity)));
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Broken, NativeSource.CompleteIntegrity)));
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Unmapped, NativeSource.UnmappedIntegrity)));
     }
 
     /// <summary>A finished capture is a run that is over and a recording that is whole,
@@ -77,7 +78,7 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void AFinishedCaptureReadsRecordingCompleteInThePositiveHue()
     {
-        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Finished));
+        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Finished, NativeSource.CompleteIntegrity));
 
         Assert.Equal(Presence.Drawn, presence.Row.Presence);
         Assert.False(presence.Row.Pressable);
@@ -85,12 +86,24 @@ public sealed class RecorderPresenceTests
         Assert.Equal(RecorderRowTone.Positive, presence.Tone);
     }
 
+    /// <summary>A run the console was used in finishes like any other and is a run
+    /// nothing will play: the validator refuses it and the entry asks the validator. The
+    /// row draws nothing over it, as it did before COMPLETE existed, rather than a green
+    /// claim the recording cannot honour.</summary>
+    [Fact]
+    public void AFinishedCaptureOfANonStandardRunDrawsNothing()
+    {
+        Assert.Equal(
+            RecorderPresence.Nothing,
+            RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Finished, NativeSource.NonStandardIntegrity)));
+    }
+
     /// <summary>The recorder's inactive rule outranks a finished capture as it does
     /// every other state.</summary>
     [Fact]
     public void ARecorderReportedInactiveDrawsNothingForAFinishedCapture()
     {
-        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Finished)));
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Finished, NativeSource.CompleteIntegrity)));
     }
 
     /// <summary>An active recorder with no capture state is a contradiction in the
@@ -99,6 +112,6 @@ public sealed class RecorderPresenceTests
     [Fact]
     public void AnActiveRecorderWithNoCaptureStateDrawsNothing()
     {
-        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(true, null)));
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(true, null, null)));
     }
 }
