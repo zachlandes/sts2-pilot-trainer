@@ -1,10 +1,13 @@
-# Every game type with a method body the choice-entry-point scan in RunRecorderTests
-# could not read on this build, with how many of its bodies it could not read: a
-# signature or a call site naming a Godot member the vendored stubs have not got.
-# Each of these is a body the funnel check does not see, so the set is held here
-# and a change to it fails until it is looked at. Regenerate with
+# Every game type the choice-entry-point scan in RunRecorderTests could not read
+# whole on this build, because a signature, a call site or the type itself names a
+# Godot member the vendored stubs have not got. Each is code the funnel check does
+# not see, so the set is held here and a change to it fails until it is looked at.
+# Regenerate with
 #   ./scripts/choice-entry-points.sh --update
+
+# Types with method bodies the scan could not read, and how many:
 GodotPlugins.Game.Main 1
+MegaCrit.Sts2.Core.Animation.CreatureAnimator 1
 MegaCrit.Sts2.Core.Assets.AssetCache 2
 MegaCrit.Sts2.Core.Assets.AssetLoadingSession 4
 MegaCrit.Sts2.Core.Assets.AtlasManager 1
@@ -21,7 +24,7 @@ MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaAnimationState 1
 MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaEventData 1
 MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSkeleton 1
 MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSkeletonDataResource 4
-MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSpineBinding 3
+MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSpineBinding 4
 MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaSprite 1
 MegaCrit.Sts2.Core.Bindings.MegaSpine.MegaTrackEntry 4
 MegaCrit.Sts2.Core.Commands.CardPileCmd 2
@@ -234,7 +237,7 @@ MegaCrit.Sts2.Core.Nodes.Orbs.NOrb 10
 MegaCrit.Sts2.Core.Nodes.Orbs.NOrbManager 10
 MegaCrit.Sts2.Core.Nodes.Orbs.NOrbVfx 9
 MegaCrit.Sts2.Core.Nodes.Orbs.NPlasmaOrbVfx 9
-MegaCrit.Sts2.Core.Nodes.Pooling.NodePool`1 3
+MegaCrit.Sts2.Core.Nodes.Pooling.NodePool`1 4
 MegaCrit.Sts2.Core.Nodes.Potions.NPotion 9
 MegaCrit.Sts2.Core.Nodes.Potions.NPotionContainer 10
 MegaCrit.Sts2.Core.Nodes.Potions.NPotionHolder 15
@@ -739,8 +742,8 @@ MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NVfxProjectile 8
 MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NVfxProjectileHandler 11
 MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.NVfxSpine 9
 MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ScreenPunchInstance 1
-MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ScreenRumbleInstance 1
-MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ScreenTraumaRumble 1
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ScreenRumbleInstance 2
+MegaCrit.Sts2.Core.Nodes.Vfx.Utilities.ScreenTraumaRumble 2
 MegaCrit.Sts2.Core.Platform.Null.NullPlatformUtilStrategy 1
 MegaCrit.Sts2.Core.Platform.Steam.SteamPlatformUtilStrategy 1
 MegaCrit.Sts2.Core.Rewards.RelicReward 1
@@ -749,11 +752,11 @@ MegaCrit.Sts2.Core.RichTextTags.AbstractMegaRichTextEffect 7
 MegaCrit.Sts2.Core.RichTextTags.RichTextAncientBanner 9
 MegaCrit.Sts2.Core.RichTextTags.RichTextAqua 8
 MegaCrit.Sts2.Core.RichTextTags.RichTextBlue 8
-MegaCrit.Sts2.Core.RichTextTags.RichTextFadeIn 9
-MegaCrit.Sts2.Core.RichTextTags.RichTextFlyIn 9
+MegaCrit.Sts2.Core.RichTextTags.RichTextFadeIn 10
+MegaCrit.Sts2.Core.RichTextTags.RichTextFlyIn 10
 MegaCrit.Sts2.Core.RichTextTags.RichTextGold 8
 MegaCrit.Sts2.Core.RichTextTags.RichTextGreen 8
-MegaCrit.Sts2.Core.RichTextTags.RichTextJitter 9
+MegaCrit.Sts2.Core.RichTextTags.RichTextJitter 10
 MegaCrit.Sts2.Core.RichTextTags.RichTextOrange 8
 MegaCrit.Sts2.Core.RichTextTags.RichTextPink 8
 MegaCrit.Sts2.Core.RichTextTags.RichTextPurple 8
@@ -761,8 +764,10 @@ MegaCrit.Sts2.Core.RichTextTags.RichTextRed 8
 MegaCrit.Sts2.Core.RichTextTags.RichTextScramble 9
 MegaCrit.Sts2.Core.RichTextTags.RichTextSine 9
 MegaCrit.Sts2.Core.RichTextTags.RichTextThinkyDots 9
+MegaCrit.Sts2.Core.RichTextTags.RichTextUtil 1
+MegaCrit.Sts2.Core.Rooms.BackgroundAssets 1
 MegaCrit.Sts2.Core.Runs.Metrics.MetricUtilities 1
-MegaCrit.Sts2.Core.Saves.FileAccessStream 10
+MegaCrit.Sts2.Core.Saves.FileAccessStream 11
 MegaCrit.Sts2.Core.Saves.GodotFileIo 9
 MegaCrit.Sts2.Core.Timeline.TimelineInfoDumper 6
 MegaCrit.Sts2.GameInfo.NGameInfoUploader 2
@@ -779,3 +784,10 @@ MegaCrit.sts2.Core.Nodes.TopBar.NTopBarRoomIcon 9
 NDefectVfx 11
 RiderTestRunner.CiCoreRunner 2
 RiderTestRunner.NetCoreRunner 2
+
+# Types the runtime could not load, so none of their bodies was scanned:
+EventType 1
+FocusBehaviorRecursiveEnum 1
+MethodName 57
+PropertyName 57
+SignalName 38

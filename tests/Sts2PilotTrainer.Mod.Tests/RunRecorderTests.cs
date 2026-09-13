@@ -1,6 +1,5 @@
 using System.Reflection;
 using HarmonyLib;
-using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Models;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
@@ -177,9 +176,9 @@ public sealed class RunRecorderTests
     /// with the reason there. A game update that opens a screen from a relic directly
     /// would open a prompt no entry-point patch sees, and this is what says so.
     ///
-    /// The scan sees only the screen types the vendored Godot stubs let load, so the
-    /// loaded set is held to the eleven expected first: a screen the stubs dropped would
-    /// otherwise scan as a screen nothing opens.
+    /// The scan sees only the types the vendored Godot stubs let load, so the loaded
+    /// set of the screen namespace is held to the expected one first: a screen the stubs
+    /// dropped would otherwise scan as a screen nothing opens.
     /// </summary>
     [GameFact]
     public void CardSelectCmdIsStillTheOnlyThingThatOpensACardPrompt()
@@ -203,7 +202,7 @@ public sealed class RunRecorderTests
             var openerName = $"{opener.DeclaringType!.Name}.{opener.Name}";
             foreach (var caller in callers)
             {
-                if (caller == typeof(CardSelectCmd)) continue;
+                if (ChoiceEntryPoints.IsTheFunnel(caller)) continue;
                 if (PromptOpenersOutsideCardSelectCmd.ContainsKey((openerName, caller.Name))) continue;
                 problems.Add($"{caller.FullName} calls {openerName}.");
             }
@@ -278,13 +277,16 @@ public sealed class RunRecorderTests
             $"Recorded in {path}:\n{recorded ?? "(no file)"}\nThis build:\n{actual}");
     }
 
-    /// <summary>The card-selection screens this build has, plus the hand, by name; the
-    /// set the IL scan can see. A game update that adds a screen changes this list in
-    /// the change that adopts it.</summary>
+    /// <summary>Every top-level type of the card-selection screen namespace this build
+    /// has, plus the hand, by name; the set the IL scan can see. A game update that adds
+    /// one changes this list in the change that adopts it.</summary>
     private static readonly IReadOnlyList<string> ExpectedScreenTypes =
     [
+        "ICardSelector",
         "NCardGridSelectionScreen",
+        "NCardRewardAlternativeButton",
         "NCardRewardSelectionScreen",
+        "NChoiceSelectionSkipButton",
         "NChooseABundleSelectionScreen",
         "NChooseACardSelectionScreen",
         "NCombatPileCardSelectScreen",
@@ -296,13 +298,16 @@ public sealed class RunRecorderTests
         "NSimpleCardSelectScreen",
     ];
 
-    /// <summary>The one name in <see cref="ExpectedScreenTypes"/> nothing opens: the
-    /// grid base every deck and pile screen derives from.</summary>
-    private static readonly IReadOnlyList<string> OpenedByNobody = ["NCardGridSelectionScreen"];
+    /// <summary>The names in <see cref="ExpectedScreenTypes"/> with no Create or
+    /// ShowScreen anybody calls: the grid base every deck and pile screen derives from,
+    /// the selector seam and the skip button.</summary>
+    private static readonly IReadOnlyList<string> OpenedByNobody =
+        ["ICardSelector", "NCardGridSelectionScreen", "NChoiceSelectionSkipButton"];
 
     /// <summary>
-    /// The one prompt opened from outside <c>CardSelectCmd</c>, keyed by the opening
-    /// member and the outermost type that calls it, with the reason it is watched anyway.
+    /// The prompt-namespace members created or shown from outside <c>CardSelectCmd</c>,
+    /// keyed by the opening member and the outermost type that calls it, with the reason
+    /// each is not a prompt nothing watches.
     /// </summary>
     private static readonly IReadOnlyDictionary<(string Opener, string Caller), string> PromptOpenersOutsideCardSelectCmd =
         new Dictionary<(string, string), string>
@@ -311,6 +316,13 @@ public sealed class RunRecorderTests
                 "The card reward's own screen, which no CardSelectCmd member asks for: the reward opens it " +
                 "itself and the shell watches it at the screen, in CardScreensUp.Reward, because its answer " +
                 "is a reward taken rather than a card chosen from a list the engine offered.",
+            [("NCardRewardAlternativeButton.Create", "NCardRewardSelectionScreen")] =
+                "A button on the card reward's screen - skip, or the alternative a relic offers - built by " +
+                "the screen that shows it. It opens no prompt of its own; the prompt is the reward screen " +
+                "above, watched in CardScreensUp.Reward.",
+            [("NCardRewardAlternativeButton.Create", "NCardRewardAlternativeButton")] =
+                "The same button's own overload forwarding to its other Create; a node's constructor helper " +
+                "and not a prompt.",
         };
 
     /// <summary>

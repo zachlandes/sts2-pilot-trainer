@@ -10,8 +10,9 @@
 #
 # scripts/unreadable-choice-scan-bodies.txt lists every game type with a method body
 # that scan could not read, because its signature or a call site names a Godot member
-# the vendored stubs have not got. Each is a body the funnel check does not see, so
-# the set is held rather than tolerated and a stub gap fails as a diff.
+# the vendored stubs have not got, and every type the runtime could not load against
+# them at all. Each is code the funnel check does not see, so the set is held rather
+# than tolerated and a stub gap fails as a diff.
 #
 # Both readings are [GameFact]s in RunRecorderTests, in tests/Sts2PilotTrainer.Mod.Tests,
 # which need the prepared game and the built CLI and so cannot run on a hosted runner;

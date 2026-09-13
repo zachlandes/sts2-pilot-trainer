@@ -117,6 +117,11 @@ internal static class ChoiceEntryPoints
         return OwnCallees(method).Where(entryPoints.Contains).Distinct().ToList();
     }
 
+    /// <summary>Whether a caller is the funnel itself. Asked here rather than with a
+    /// <c>typeof</c> in a test body, which the runtime resolves at JIT time, before the
+    /// engine's resolver has been taught where the game is.</summary>
+    internal static bool IsTheFunnel(Type caller) => caller == typeof(CardSelectCmd);
+
     /// <summary>
     /// Whether a callee is one of the ways a card prompt is put in front of a player: a
     /// card-selection screen created or shown, or the hand told to select.
@@ -126,9 +131,7 @@ internal static class ChoiceEntryPoints
         var type = callee.DeclaringType;
         if (type is null) return false;
         if (type == typeof(NPlayerHand) && callee.Name == nameof(NPlayerHand.SelectCards)) return true;
-        return type.Namespace == ScreenNamespace
-               && type.Name.EndsWith("Screen", StringComparison.Ordinal)
-               && callee.Name is "Create" or "ShowScreen";
+        return type.Namespace == ScreenNamespace && callee.Name is "Create" or "ShowScreen";
     }
 
     /// <summary>
@@ -162,9 +165,8 @@ internal static class ChoiceEntryPoints
     /// by name - the set <see cref="OpensAPrompt"/> can see at all.
     /// </summary>
     internal static IReadOnlyList<string> LoadedScreenTypes() =>
-        LoadableTypes()
-            .Where(type => !type.IsNested && type.Namespace == ScreenNamespace
-                                          && type.Name.EndsWith("Screen", StringComparison.Ordinal))
+        Loaded.Value.Types
+            .Where(type => !type.IsNested && type.Namespace == ScreenNamespace)
             .Select(type => type.Name)
             .Append(nameof(NPlayerHand))
             .Order(StringComparer.Ordinal)
@@ -183,19 +185,36 @@ internal static class ChoiceEntryPoints
             .OrderBy(entry => entry.Key.FullName, StringComparer.Ordinal)
             .ToList();
 
-    /// <summary>The committed record of <see cref="UnreadableBodies"/>, one type per line.</summary>
+    /// <summary>
+    /// Every type the runtime could not load at all against the stubs, by the name the
+    /// loader reported and how many types failed under it: not one of their bodies was
+    /// scanned, so it is the same blind spot as an unreadable body and is held with them.
+    /// </summary>
+    internal static IReadOnlyList<(string Name, int Types)> UnloadableTypes() => Loaded.Value.Unloadable;
+
+    /// <summary>The committed record of <see cref="UnreadableBodies"/> and
+    /// <see cref="UnloadableTypes"/>, one type per line under two headings.</summary>
     internal static string UnreadableBodiesRecord()
     {
         var text = new StringBuilder();
-        text.AppendLine("# Every game type with a method body the choice-entry-point scan in RunRecorderTests");
-        text.AppendLine("# could not read on this build, with how many of its bodies it could not read: a");
-        text.AppendLine("# signature or a call site naming a Godot member the vendored stubs have not got.");
-        text.AppendLine("# Each of these is a body the funnel check does not see, so the set is held here");
-        text.AppendLine("# and a change to it fails until it is looked at. Regenerate with");
+        text.AppendLine("# Every game type the choice-entry-point scan in RunRecorderTests could not read");
+        text.AppendLine("# whole on this build, because a signature, a call site or the type itself names a");
+        text.AppendLine("# Godot member the vendored stubs have not got. Each is code the funnel check does");
+        text.AppendLine("# not see, so the set is held here and a change to it fails until it is looked at.");
+        text.AppendLine("# Regenerate with");
         text.AppendLine("#   ./scripts/choice-entry-points.sh --update");
+        text.AppendLine();
+        text.AppendLine("# Types with method bodies the scan could not read, and how many:");
         foreach (var (type, bodies) in UnreadableBodies())
         {
             text.AppendLine($"{type.FullName} {bodies}");
+        }
+
+        text.AppendLine();
+        text.AppendLine("# Types the runtime could not load, so none of their bodies was scanned:");
+        foreach (var (name, types) in UnloadableTypes())
+        {
+            text.AppendLine($"{name} {types}");
         }
 
         return text.ToString();
@@ -258,39 +277,53 @@ internal static class ChoiceEntryPoints
         return type;
     }
 
-    private static IEnumerable<Type> LoadableTypes()
+    private sealed record LoadedTypes(IReadOnlyList<Type> Types, IReadOnlyList<(string Name, int Types)> Unloadable);
+
+    private static readonly Lazy<LoadedTypes> Loaded = new(LoadAllTypes);
+
+    /// <summary>The game's types against the stubs: the ones that loaded, and the names
+    /// the loader gave for the ones that did not.</summary>
+    private static LoadedTypes LoadAllTypes()
     {
-        Type?[] types;
         try
         {
-            types = Game.GetTypes();
+            return new LoadedTypes(Game.GetTypes(), []);
         }
         catch (ReflectionTypeLoadException incomplete)
         {
-            types = incomplete.Types;
+            var unloadable = incomplete.LoaderExceptions
+                .Select(failure => failure switch
+                {
+                    TypeLoadException typeLoad when typeLoad.TypeName.Length > 0 => typeLoad.TypeName,
+                    _ => failure?.Message ?? "unknown",
+                })
+                .GroupBy(name => name, StringComparer.Ordinal)
+                .Select(group => (group.Key, group.Count()))
+                .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+                .ToList();
+            return new LoadedTypes(incomplete.Types.OfType<Type>().ToList(), unloadable);
         }
-
-        return types.OfType<Type>();
     }
 
     private sealed record Scan(
         IReadOnlyDictionary<MethodBase, IReadOnlySet<Type>> Callers,
         IReadOnlyDictionary<Type, int> UnreadableBodies);
 
-    /// <summary>One pass over every method body in the game: for each method called
-    /// anywhere, the outermost types whose bodies call it, and for each outermost type,
-    /// how many of its bodies could not be read. Compiler-generated state machines and
-    /// closures are nested types and count for the type that declares them.</summary>
+    /// <summary>One pass over every method and constructor body in the game: for each
+    /// method called anywhere, the outermost types whose bodies call it, and for each
+    /// outermost type, how many of its bodies could not be read. Compiler-generated
+    /// state machines and closures are nested types and count for the type that
+    /// declares them.</summary>
     private static Scan ScanAssembly()
     {
         var callers = new Dictionary<MethodBase, HashSet<Type>>();
         var unreadable = new Dictionary<Type, int>();
-        foreach (var type in LoadableTypes())
+        const BindingFlags every = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        foreach (var type in Loaded.Value.Types)
         {
             var outer = Outermost(type);
-            foreach (var method in type.GetMethods(
-                         BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic |
-                         BindingFlags.DeclaredOnly))
+            foreach (var method in type.GetConstructors(every).Concat<MethodBase>(type.GetMethods(every)))
             {
                 if (!TryReadCallees(method, out var callees))
                 {
