@@ -39,10 +39,13 @@ internal static class RecorderPresenceRow
 
     private static readonly StringName FontColorEntry = "font_color";
 
-    /// <summary>The warning hue for a recording that stopped.</summary>
-    internal const string WarningColorHex = "#e0755a";
+    /// <summary>The warning hue for a recording that stopped: the eligibility
+    /// screen's own red, through the one palette that names it.</summary>
+    internal static readonly Color WarningColor = LibraryPalette.Red;
 
-    private static readonly Color WarningColor = new(WarningColorHex);
+    /// <summary>The positive hue for a recording that finished whole: the eligibility
+    /// screen's own affirmative green, from the same palette.</summary>
+    internal static readonly Color PositiveColor = LibraryPalette.Green;
 
     /// <summary>
     /// The fill of the version overlay, where the row is added.
@@ -151,14 +154,19 @@ internal static class RecorderPresenceRow
     ///
     /// Visible only where the derivation drew it, the shell allows it and the MODDED row
     /// it follows is itself visible - the last is how hiding the overlay hides this. The
-    /// warning tone is a colour override; the overlay's own is the absence of one.
+    /// warning and positive tones are colour overrides; the overlay's own is the absence
+    /// of one.
     /// </summary>
     internal static void Apply(Label row, Label moddedRow, RecorderPresence presence, bool mayDraw)
     {
         row.Text = presence.Text;
         row.Visible = mayDraw && presence.Row.Presence == Presence.Drawn && moddedRow.Visible;
 
-        if (presence.Tone == RecorderRowTone.Warning) row.AddThemeColorOverride(FontColorEntry, WarningColor);
-        else row.RemoveThemeColorOverride(FontColorEntry);
+        switch (presence.Tone)
+        {
+            case RecorderRowTone.Warning: row.AddThemeColorOverride(FontColorEntry, WarningColor); break;
+            case RecorderRowTone.Positive: row.AddThemeColorOverride(FontColorEntry, PositiveColor); break;
+            default: row.RemoveThemeColorOverride(FontColorEntry); break;
+        }
     }
 }

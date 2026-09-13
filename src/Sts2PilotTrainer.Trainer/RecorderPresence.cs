@@ -5,12 +5,15 @@ namespace Sts2PilotTrainer.Trainer;
 /// <summary>
 /// Which colour the recorder's row is drawn in.
 ///
-/// Two, because the row makes two kinds of claim. The overlay's own colour says the row
-/// is one more line of the game's version information, and a recording under way is
+/// Three, because the row makes three kinds of claim. The overlay's own colour says the
+/// row is one more line of the game's version information, and a recording under way is
 /// exactly that: a fact about this session, stated where the build and the seed are.
 /// The warning hue is the eligibility screen's, and it is used for the one row that
 /// asks something of the player - a recording that stopped is a run they will not be
-/// able to play from, and the overlay is where they will notice.
+/// able to play from, and the overlay is where they will notice. The positive hue is
+/// the same screen's affirmative green, for the one row that says the opposite: a
+/// recording that finished whole is a run they can play from, and the moment they
+/// learn that is the moment the run ends, on the game's own death or victory screen.
 /// </summary>
 public enum RecorderRowTone
 {
@@ -20,6 +23,9 @@ public enum RecorderRowTone
 
     /// <summary>The eligibility screen's warning hue.</summary>
     Warning,
+
+    /// <summary>The eligibility screen's affirmative green.</summary>
+    Positive,
 }
 
 /// <summary>
@@ -70,16 +76,16 @@ public sealed record RecorderPresence(ElementSurface Row, string Text, RecorderR
     /// <summary>
     /// The row for these facts.
     ///
-    /// Three rows the design names and two it does not. A recorder attached and
+    /// Four rows the design names and one it does not. A recorder attached and
     /// recording is RECORDING in the overlay's colour; one attached that is no longer
     /// recording the run - a hole in its watch, or a decision it saw and could not
     /// name - is RECORDING STOPPED in the warning hue, because in both the run being
     /// played is one the player will not be able to play from and the row is where they
-    /// will notice; none attached is no row. A
-    /// capture that finished is a run that is over, so nothing is being recorded and the
-    /// row says nothing rather than something stale; an active recorder with no capture
-    /// state is a contradiction in the facts, and a contradiction draws nothing rather
-    /// than guessing which half is right.
+    /// will notice; one whose capture finished is RECORDING COMPLETE in the positive
+    /// hue, because the run is over, the recording is whole, and the screen the run
+    /// ended on is where the player will look for that; none attached is no row. An
+    /// active recorder with no capture state is a contradiction in the facts, and a
+    /// contradiction draws nothing rather than guessing which half is right.
     /// </summary>
     public static RecorderPresence For(RecorderFacts facts)
     {
@@ -91,6 +97,8 @@ public sealed record RecorderPresence(ElementSurface Row, string Text, RecorderR
                 new RecorderPresence(ElementSurface.Shown(), RecorderCopy.Recording, RecorderRowTone.Overlay),
             RunCaptureState.Broken or RunCaptureState.Unmapped =>
                 new RecorderPresence(ElementSurface.Shown(), RecorderCopy.RecordingStopped, RecorderRowTone.Warning),
+            RunCaptureState.Finished =>
+                new RecorderPresence(ElementSurface.Shown(), RecorderCopy.RecordingComplete, RecorderRowTone.Positive),
             _ => Nothing,
         };
     }

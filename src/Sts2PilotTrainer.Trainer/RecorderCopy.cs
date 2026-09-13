@@ -3,9 +3,9 @@ namespace Sts2PilotTrainer.Trainer;
 /// <summary>
 /// Every fixed word the recorder shows a player, in one place.
 ///
-/// Two are rows of the game's own version overlay rather than sentences: the overlay
+/// Three are rows of the game's own version overlay rather than sentences: the overlay
 /// is a column of short capitals at the corner of the screen, and a row in it reads
-/// like its neighbours or reads as a stranger. Neither carries a reason. Why a
+/// like its neighbours or reads as a stranger. None carries a reason. Why a
 /// recording stopped is written into the journal and said afterwards, on the run
 /// history's plate; the overlay is not a place for it. The rest are the bookmark tag's
 /// tooltip, because its one control is icon only and the sentence is a hover away.
@@ -22,6 +22,11 @@ public static class RecorderCopy
     /// continuously. Nothing recorded so far is discarded; the run is still the
     /// player's and goes on.</summary>
     public const string RecordingStopped = "RECORDING STOPPED";
+
+    /// <summary>The same row once the run is over and the recording is whole: every
+    /// decision from the run's start to its end, whether won or lost, is on disk and the
+    /// run is the player's to play from.</summary>
+    public const string RecordingComplete = "RECORDING COMPLETE";
 
     /// <summary>The bookmark tag's tooltip while the fight that just ended is not
     /// bookmarked.</summary>

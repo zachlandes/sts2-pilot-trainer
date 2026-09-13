@@ -5,7 +5,7 @@ namespace Sts2PilotTrainer.Trainer.Tests;
 /// <summary>
 /// The recorder's row of the game's own version overlay, state by state.
 ///
-/// Three rows the design names: recording, stopped, and no recorder at all. The
+/// Four rows the design names: recording, stopped, complete, and no recorder at all. The
 /// derivation reads exactly <see cref="RecorderFacts.RecorderActive"/> and
 /// <see cref="RecorderFacts.Capture"/>, so each case below pins the row, the exact
 /// approved text and the tone together, the way <see cref="PlaybackTransportTests"/>
@@ -71,12 +71,26 @@ public sealed class RecorderPresenceTests
         Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Unmapped)));
     }
 
-    /// <summary>A finished capture is a run that is over; nothing is being recorded
-    /// any more, so the row says nothing rather than a stale RECORDING.</summary>
+    /// <summary>A finished capture is a run that is over and a recording that is whole,
+    /// won or lost, so the row says so in the positive hue on the screen the run ended
+    /// on rather than a stale RECORDING or nothing at all.</summary>
     [Fact]
-    public void AFinishedCaptureDrawsNothing()
+    public void AFinishedCaptureReadsRecordingCompleteInThePositiveHue()
     {
-        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Finished)));
+        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Finished));
+
+        Assert.Equal(Presence.Drawn, presence.Row.Presence);
+        Assert.False(presence.Row.Pressable);
+        Assert.Equal(RecorderCopy.RecordingComplete, presence.Text);
+        Assert.Equal(RecorderRowTone.Positive, presence.Tone);
+    }
+
+    /// <summary>The recorder's inactive rule outranks a finished capture as it does
+    /// every other state.</summary>
+    [Fact]
+    public void ARecorderReportedInactiveDrawsNothingForAFinishedCapture()
+    {
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Finished)));
     }
 
     /// <summary>An active recorder with no capture state is a contradiction in the
