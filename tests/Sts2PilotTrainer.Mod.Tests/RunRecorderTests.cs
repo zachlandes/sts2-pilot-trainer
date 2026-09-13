@@ -203,7 +203,7 @@ public sealed class RunRecorderTests
             foreach (var caller in callers)
             {
                 if (ChoiceEntryPoints.IsTheFunnel(caller)) continue;
-                if (PromptOpenersOutsideCardSelectCmd.ContainsKey((openerName, caller.Name))) continue;
+                if (PromptOpenersOutsideCardSelectCmd.ContainsKey((openerName, caller.FullName!))) continue;
                 problems.Add($"{caller.FullName} calls {openerName}.");
             }
         }
@@ -216,7 +216,7 @@ public sealed class RunRecorderTests
         // And the other direction, so an excuse cannot outlive the call it excuses.
         var excusable = openings
             .SelectMany(opening => opening.Callers.Select(caller =>
-                ($"{opening.Opener.DeclaringType!.Name}.{opening.Opener.Name}", caller.Name)))
+                ($"{opening.Opener.DeclaringType!.Name}.{opening.Opener.Name}", caller.FullName!)))
             .ToHashSet();
         Assert.All(PromptOpenersOutsideCardSelectCmd.Keys, excused => Assert.Contains(excused, excusable));
     }
@@ -306,21 +306,21 @@ public sealed class RunRecorderTests
 
     /// <summary>
     /// The prompt-namespace members created or shown from outside <c>CardSelectCmd</c>,
-    /// keyed by the opening member and the outermost type that calls it, with the reason
-    /// each is not a prompt nothing watches.
+    /// keyed by the opening member and the full name of the outermost type that calls it,
+    /// with the reason each is not a prompt nothing watches.
     /// </summary>
     private static readonly IReadOnlyDictionary<(string Opener, string Caller), string> PromptOpenersOutsideCardSelectCmd =
         new Dictionary<(string, string), string>
         {
-            [("NCardRewardSelectionScreen.ShowScreen", "CardReward")] =
+            [("NCardRewardSelectionScreen.ShowScreen", "MegaCrit.Sts2.Core.Rewards.CardReward")] =
                 "The card reward's own screen, which no CardSelectCmd member asks for: the reward opens it " +
                 "itself and the shell watches it at the screen, in CardScreensUp.Reward, because its answer " +
                 "is a reward taken rather than a card chosen from a list the engine offered.",
-            [("NCardRewardAlternativeButton.Create", "NCardRewardSelectionScreen")] =
+            [("NCardRewardAlternativeButton.Create", $"{ChoiceEntryPoints.ScreenNamespace}.NCardRewardSelectionScreen")] =
                 "A button on the card reward's screen - skip, or the alternative a relic offers - built by " +
                 "the screen that shows it. It opens no prompt of its own; the prompt is the reward screen " +
                 "above, watched in CardScreensUp.Reward.",
-            [("NCardRewardAlternativeButton.Create", "NCardRewardAlternativeButton")] =
+            [("NCardRewardAlternativeButton.Create", $"{ChoiceEntryPoints.ScreenNamespace}.NCardRewardAlternativeButton")] =
                 "The same button's own overload forwarding to its other Create; a node's constructor helper " +
                 "and not a prompt.",
         };

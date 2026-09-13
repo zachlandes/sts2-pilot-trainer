@@ -55,7 +55,7 @@ done
 results="$(mktemp -d)"
 trap 'rm -rf "$results"' EXIT
 
-(cd "$REPO_ROOT" && dotnet test tests/Sts2PilotTrainer.Mod.Tests --nologo --verbosity quiet \
+(cd "$REPO_ROOT" && dotnet test tests/Sts2PilotTrainer.Mod.Tests -c Release --nologo --verbosity quiet \
   --filter "$filter" --logger "trx;LogFileName=choice-entry-points.trx" --results-directory "$results")
 
 # The verdict is read from the results and not from the exit code: a test that

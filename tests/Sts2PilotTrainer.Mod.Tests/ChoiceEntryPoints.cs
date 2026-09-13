@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Reflection.Metadata;
+using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Text;
 using HarmonyLib;
@@ -186,11 +188,12 @@ internal static class ChoiceEntryPoints
             .ToList();
 
     /// <summary>
-    /// Every type the runtime could not load at all against the stubs, by the name the
-    /// loader reported and how many types failed under it: not one of their bodies was
-    /// scanned, so it is the same blind spot as an unreadable body and is held with them.
+    /// Every type the game assembly defines that the runtime could not load against the
+    /// stubs, by full name: the assembly's own type table read from its metadata, less
+    /// the types that loaded. Not one of their bodies was scanned, so each is the same
+    /// blind spot as an unreadable body and is held with them.
     /// </summary>
-    internal static IReadOnlyList<(string Name, int Types)> UnloadableTypes() => Loaded.Value.Unloadable;
+    internal static IReadOnlyList<string> UnloadableTypes() => Loaded.Value.Unloadable;
 
     /// <summary>The committed record of <see cref="UnreadableBodies"/> and
     /// <see cref="UnloadableTypes"/>, one type per line under two headings.</summary>
@@ -212,9 +215,9 @@ internal static class ChoiceEntryPoints
 
         text.AppendLine();
         text.AppendLine("# Types the runtime could not load, so none of their bodies was scanned:");
-        foreach (var (name, types) in UnloadableTypes())
+        foreach (var name in UnloadableTypes())
         {
-            text.AppendLine($"{name} {types}");
+            text.AppendLine(name);
         }
 
         return text.ToString();
@@ -277,31 +280,61 @@ internal static class ChoiceEntryPoints
         return type;
     }
 
-    private sealed record LoadedTypes(IReadOnlyList<Type> Types, IReadOnlyList<(string Name, int Types)> Unloadable);
+    private sealed record LoadedTypes(IReadOnlyList<Type> Types, IReadOnlyList<string> Unloadable);
 
     private static readonly Lazy<LoadedTypes> Loaded = new(LoadAllTypes);
 
-    /// <summary>The game's types against the stubs: the ones that loaded, and the names
-    /// the loader gave for the ones that did not.</summary>
+    /// <summary>The game's types against the stubs: the ones that loaded, and the full
+    /// names of the ones that did not. The loader's own exceptions name the Godot member
+    /// it could not find rather than the game type that needed it, so the failed types
+    /// are found by reading the assembly's type table from its metadata - no loading -
+    /// and taking away what loaded.</summary>
     private static LoadedTypes LoadAllTypes()
     {
+        Type[] loaded;
         try
         {
-            return new LoadedTypes(Game.GetTypes(), []);
+            loaded = Game.GetTypes();
         }
         catch (ReflectionTypeLoadException incomplete)
         {
-            var unloadable = incomplete.LoaderExceptions
-                .Select(failure => failure switch
-                {
-                    TypeLoadException typeLoad when typeLoad.TypeName.Length > 0 => typeLoad.TypeName,
-                    _ => failure?.Message ?? "unknown",
-                })
-                .GroupBy(name => name, StringComparer.Ordinal)
-                .Select(group => (group.Key, group.Count()))
-                .OrderBy(entry => entry.Key, StringComparer.Ordinal)
-                .ToList();
-            return new LoadedTypes(incomplete.Types.OfType<Type>().ToList(), unloadable);
+            loaded = incomplete.Types.OfType<Type>().ToArray();
+        }
+
+        var loadedNames = loaded.Select(type => type.FullName).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        var unloadable = DefinedTypeNames()
+            .Where(name => !loadedNames.Contains(name))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        return new LoadedTypes(loaded, unloadable);
+    }
+
+    /// <summary>Every type the game assembly defines, by the full name reflection would
+    /// give it, read from the file's metadata without loading anything.</summary>
+    private static IEnumerable<string> DefinedTypeNames()
+    {
+        using var stream = File.OpenRead(Game.Location);
+        using var pe = new PEReader(stream);
+        var metadata = pe.GetMetadataReader();
+        var names = new Dictionary<TypeDefinitionHandle, string>();
+
+        string NameOf(TypeDefinitionHandle handle)
+        {
+            if (names.TryGetValue(handle, out var known)) return known;
+            var definition = metadata.GetTypeDefinition(handle);
+            var name = metadata.GetString(definition.Name);
+            var declaring = definition.GetDeclaringType();
+            var full = declaring.IsNil
+                ? definition.Namespace.IsNil ? name : $"{metadata.GetString(definition.Namespace)}.{name}"
+                : $"{NameOf(declaring)}+{name}";
+            names[handle] = full;
+            return full;
+        }
+
+        foreach (var handle in metadata.TypeDefinitions)
+        {
+            var full = NameOf(handle);
+            if (full != "<Module>") yield return full;
         }
     }
 
