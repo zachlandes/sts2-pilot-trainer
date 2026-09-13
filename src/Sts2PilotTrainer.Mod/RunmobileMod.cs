@@ -44,7 +44,10 @@ public static class RunmobileMod
     private const string HarmonyId = PatchRoster.HostOwnerId;
 
     internal static IReadOnlyList<Type> ShellPatchClasses { get; } =
-        [typeof(SingleplayerMenuRetention), .. CardScreensUp.PatchClasses, .. GameSessionWatch.PatchClasses];
+        [
+            typeof(SingleplayerMenuRetention), .. CardScreensUp.PatchClasses, .. CardPrompts.PatchClasses,
+            .. GameSessionWatch.PatchClasses,
+        ];
 
     private static readonly Lock AdoptionGate = new();
 

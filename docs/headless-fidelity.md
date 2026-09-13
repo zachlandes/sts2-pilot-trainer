@@ -179,7 +179,7 @@ The refusal had not gone away; it had moved from publication to the worst place 
 The first fix pushed the seam's own selector for that one step, which made the two hosts agree and left the player watching a blessing whose card they never saw.
 What replaced it is the product answer: nothing of the driver's is on the engine's stack in the client, the `CardSelectCmd` entry point for that relic takes its `Selector == null` branch, and the game puts up its own card screen in front of the player.
 Which screen depends on the relic and it is not one type: `FromDeckGeneric` opens `NDeckCardSelectScreen` for a removal and `FromDeckForTransformation` opens `NDeckTransformSelectScreen` for a transform, and they name their confirm buttons differently.
-Naming one of them is how the driver first refused a screen that was open in front of the player, so it is written to `NCardGridSelectionScreen` - the base that owns the grid, the offered list and the click - and finds the preview's confirm by type.
+Naming one of them is how the driver first refused a screen that was open in front of the player, so it is written to `NCardGridSelectionScreen` - the base that owns the grid and the click - and finds the preview's confirm by type; the list the recording's `option_index` indexes is the open `CardPrompts` prompt's rather than the screen's, which [docs/in-game-host.md](in-game-host.md) owns.
 The recording's card is then found on that screen, lit with the game's own focus and pressed, by `RecordedCardScreen` - one owner, so the card the reveal lights is the card the commit presses.
 There is no engine command for any of it, which is why `RunningGameCommands.SelectCard` is supplied by the host exactly as a map move is.
 

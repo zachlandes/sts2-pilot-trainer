@@ -119,15 +119,16 @@ public sealed class RunmobileModuleTests
     }
 
     [GameFact]
-    public void InstallingTheShellPatchesRetentionAndCardScreens()
+    public void InstallingTheShellPatchesRetentionAndCardPrompts()
     {
         _ = EngineHost.StartupPhase();
         var harmony = new Harmony($"sts2-pilot-trainer.shell-test.{Guid.NewGuid():N}");
         var boundaries = new[]
         {
             GameMethod("MegaCrit.Sts2.Core.Nodes.Screens.MainMenu.NSingleplayerSubmenu", "_Ready"),
-            GameMethod(
-                "MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardGridSelectionScreen", "CardsSelected"),
+            GameMethod("MegaCrit.Sts2.Core.Commands.CardSelectCmd", "FromHand"),
+            GameMethod("MegaCrit.Sts2.Core.Commands.CardSelectCmd", "FromDeckGeneric"),
+            GameMethod("MegaCrit.Sts2.Core.GameActions.Multiplayer.ActionQueueSet", "PauseActionForPlayerChoice"),
             GameMethod(
                 "MegaCrit.Sts2.Core.Nodes.Screens.CardSelection.NCardRewardSelectionScreen", "OptionSelected"),
         };

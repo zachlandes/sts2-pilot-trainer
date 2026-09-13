@@ -34,18 +34,18 @@ public sealed class ResidueVerbTests
     /// has not ended their turn, so no singleplayer run reaches the window.
     /// </summary>
     [GameFact]
-    public void AnEndedTurnGoesThroughTheActionAndTheUndoIsRefusedOnThisBuild() => WithARun(session =>
+    public void AnEndedTurnGoesThroughTheActionAndTheUndoIsRefusedOnThisBuild() => HeadlessRuns.WithARun(session =>
     {
         using var driver = new RunDriver(session);
-        EnterTheFirstFight(driver, session);
+        HeadlessRuns.EnterTheFirstFight(driver, session);
 
-        Assert.Equal("1", Field(session, "combat.turn"));
+        Assert.Equal("1", HeadlessRuns.Field(session, "combat.turn"));
 
-        var undo = Record(2, ActionVerb.UndoEndTurn);
-        driver.Apply(Record(1, ActionVerb.EndTurn), [undo]);
+        var undo = HeadlessRuns.Record(2, ActionVerb.UndoEndTurn);
+        driver.Apply(HeadlessRuns.Record(1, ActionVerb.EndTurn), [undo]);
 
-        Assert.Equal("2", Field(session, "combat.turn"));
-        Assert.Equal("true", Field(session, "combat.in_progress"));
+        Assert.Equal("2", HeadlessRuns.Field(session, "combat.turn"));
+        Assert.Equal("true", HeadlessRuns.Field(session, "combat.in_progress"));
 
         var refusal = Assert.Throws<EngineException>(() => driver.Apply(undo));
         Assert.Contains("no singleplayer run on v0.111.0 can", refusal.Message, StringComparison.Ordinal);
@@ -56,7 +56,7 @@ public sealed class ResidueVerbTests
     /// <summary>Obtaining Scroll Boxes asks which bundle; the stand-in hands the
     /// question to the answerer, and the engine adds the chosen bundle's cards.</summary>
     [GameFact]
-    public void ABundleScreenIsAnsweredFromTheManifestAndRefusedWhereItIsWrong() => WithARun(session =>
+    public void ABundleScreenIsAnsweredFromTheManifestAndRefusedWhereItIsWrong() => HeadlessRuns.WithARun(session =>
     {
         var player = session.RunState.Players[0];
         using (var driver = new RunDriver(session))
@@ -116,7 +116,7 @@ public sealed class ResidueVerbTests
     /// <summary>The relic screen answers through the same stand-in, and a history
     /// that records one on this build meets the no-caller sentence.</summary>
     [GameFact]
-    public void ARelicScreenIsAnsweredFromTheManifestAndNoActionOnThisBuildOpensOne() => WithARun(session =>
+    public void ARelicScreenIsAnsweredFromTheManifestAndNoActionOnThisBuildOpensOne() => HeadlessRuns.WithARun(session =>
     {
         var player = session.RunState.Players[0];
         var relics = ModelDb.AllRelics.Take(3).ToList();
@@ -154,7 +154,7 @@ public sealed class ResidueVerbTests
         // the screen, so the answer is one no screen consumed.
         using (var driver = new RunDriver(session))
         {
-            var refusal = Assert.Throws<EngineException>(() => driver.Apply(Record(
+            var refusal = Assert.Throws<EngineException>(() => driver.Apply(HeadlessRuns.Record(
                 1, ActionVerb.SelectRelicFromScreen, ("relic_id", "RELIC.ANCHOR"), ("option_index", "0"))));
 
             Assert.Contains("answers a relic screen no action opened", refusal.Message, StringComparison.Ordinal);
@@ -170,7 +170,7 @@ public sealed class ResidueVerbTests
     /// <summary>A card reward answered past its cards comes back through the same
     /// seam a card does, named by the alternative's own id.</summary>
     [GameFact]
-    public void ACardRewardsAlternativeIsAnsweredThroughTheSeamAndCheckedByIdAndPosition() => WithARun(session =>
+    public void ACardRewardsAlternativeIsAnsweredThroughTheSeamAndCheckedByIdAndPosition() => HeadlessRuns.WithARun(session =>
     {
         var player = session.RunState.Players[0];
         var options = player.Deck.Cards.Take(3).Select(card => new CardCreationResult(card)).ToList();
@@ -212,7 +212,7 @@ public sealed class ResidueVerbTests
     /// the minigame's own members with the recorded tool, and the minigame completes
     /// on its last divination.</summary>
     [GameFact]
-    public void ACrystalSphereIsRevealedFromTheManifestThroughTheStoodInScreen() => WithARun(session =>
+    public void ACrystalSphereIsRevealedFromTheManifestThroughTheStoodInScreen() => HeadlessRuns.WithARun(session =>
     {
         var player = session.RunState.Players[0];
         using var driver = new RunDriver(session);
@@ -220,7 +220,7 @@ public sealed class ResidueVerbTests
 
         Assert.Contains(
             "no Crystal Sphere is open",
-            Assert.Throws<EngineException>(() => driver.Apply(Record(
+            Assert.Throws<EngineException>(() => driver.Apply(HeadlessRuns.Record(
                 1, ActionVerb.RevealCrystalSphereCell, ("tool", "small"), ("x", "0"), ("y", "0")))).Message,
             StringComparison.Ordinal);
 
@@ -233,46 +233,46 @@ public sealed class ResidueVerbTests
         Assert.False(play.IsCompleted);
 
         var first = Hidden(minigame).First();
-        driver.Apply(Record(1, ActionVerb.RevealCrystalSphereCell,
-            ("tool", "small"), ("x", Number(first.X)), ("y", Number(first.Y))));
+        driver.Apply(HeadlessRuns.Record(1, ActionVerb.RevealCrystalSphereCell,
+            ("tool", "small"), ("x", HeadlessRuns.Number(first.X)), ("y", HeadlessRuns.Number(first.Y))));
 
         Assert.False(first.IsHidden);
         Assert.Equal(2, minigame.DivinationCount);
 
         Assert.Contains(
             "which is already revealed",
-            Assert.Throws<EngineException>(() => driver.Apply(Record(
+            Assert.Throws<EngineException>(() => driver.Apply(HeadlessRuns.Record(
                 2, ActionVerb.RevealCrystalSphereCell,
-                ("tool", "small"), ("x", Number(first.X)), ("y", Number(first.Y))))).Message,
+                ("tool", "small"), ("x", HeadlessRuns.Number(first.X)), ("y", HeadlessRuns.Number(first.Y))))).Message,
             StringComparison.Ordinal);
 
         Assert.Contains(
             "outside the 11x11 grid",
-            Assert.Throws<EngineException>(() => driver.Apply(Record(
+            Assert.Throws<EngineException>(() => driver.Apply(HeadlessRuns.Record(
                 2, ActionVerb.RevealCrystalSphereCell, ("tool", "small"), ("x", "11"), ("y", "0")))).Message,
             StringComparison.Ordinal);
 
         var second = Hidden(minigame).First();
         Assert.Contains(
             "has no tool for",
-            Assert.Throws<EngineException>(() => driver.Apply(Record(
+            Assert.Throws<EngineException>(() => driver.Apply(HeadlessRuns.Record(
                 2, ActionVerb.RevealCrystalSphereCell,
-                ("tool", "medium"), ("x", Number(second.X)), ("y", Number(second.Y))))).Message,
+                ("tool", "medium"), ("x", HeadlessRuns.Number(second.X)), ("y", HeadlessRuns.Number(second.Y))))).Message,
             StringComparison.Ordinal);
 
         // A big reveal on an interior hidden cell clears it and its neighbours.
         var interior = Hidden(minigame).First(cell => cell.X is > 0 and < 10 && cell.Y is > 0 and < 10);
         var hiddenBefore = Hidden(minigame).Count();
-        driver.Apply(Record(2, ActionVerb.RevealCrystalSphereCell,
-            ("tool", "big"), ("x", Number(interior.X)), ("y", Number(interior.Y))));
+        driver.Apply(HeadlessRuns.Record(2, ActionVerb.RevealCrystalSphereCell,
+            ("tool", "big"), ("x", HeadlessRuns.Number(interior.X)), ("y", HeadlessRuns.Number(interior.Y))));
 
         Assert.False(interior.IsHidden);
         Assert.True(hiddenBefore - Hidden(minigame).Count() > 1);
         Assert.Equal(1, minigame.DivinationCount);
 
         var last = Hidden(minigame).First();
-        driver.Apply(Record(3, ActionVerb.RevealCrystalSphereCell,
-            ("tool", "small"), ("x", Number(last.X)), ("y", Number(last.Y))));
+        driver.Apply(HeadlessRuns.Record(3, ActionVerb.RevealCrystalSphereCell,
+            ("tool", "small"), ("x", HeadlessRuns.Number(last.X)), ("y", HeadlessRuns.Number(last.Y))));
 
         // Finished, and still open while its loot is on offer.
         Assert.True(minigame.IsFinished);
@@ -281,14 +281,14 @@ public sealed class ResidueVerbTests
 
         Assert.Contains(
             "has no divination left",
-            Assert.Throws<EngineException>(() => driver.Apply(Record(
+            Assert.Throws<EngineException>(() => driver.Apply(HeadlessRuns.Record(
                 4, ActionVerb.RevealCrystalSphereCell, ("tool", "small"), ("x", "5"), ("y", "5")))).Message,
             StringComparison.Ordinal);
 
         // The minigame's own completion offers what was revealed as loot, and the
         // engine's task completes only once that loot is decided - like any loot
         // screen. Declined here, which is what a history records as SkipRewards.
-        if (driver.UnclaimedRewardKinds.Count > 0) driver.Apply(Record(4, ActionVerb.SkipRewards));
+        if (driver.UnclaimedRewardKinds.Count > 0) driver.Apply(HeadlessRuns.Record(4, ActionVerb.SkipRewards));
         Pump.Drain();
 
         Assert.True(play.IsCompletedSuccessfully);
@@ -296,68 +296,12 @@ public sealed class ResidueVerbTests
 
         Assert.Contains(
             "no Crystal Sphere is open",
-            Assert.Throws<EngineException>(() => driver.Apply(Record(
+            Assert.Throws<EngineException>(() => driver.Apply(HeadlessRuns.Record(
                 5, ActionVerb.RevealCrystalSphereCell, ("tool", "small"), ("x", "5"), ("y", "5")))).Message,
             StringComparison.Ordinal);
     });
 
     // ── helpers ────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// A run of the probe seed, started the way every headless caller starts one.
-    ///
-    /// Taken away again afterwards, because this assembly's other tests ask this
-    /// process what it is holding - and taken away first as well, because a run some
-    /// other test left loaded is one this run would be started on top of, and the
-    /// engine then hands out an opening event with no options at all.
-    /// </summary>
-    private static void WithARun(Action<GameSession> body)
-    {
-        EndAnyRun();
-        var session = new GameSession();
-        try
-        {
-            session.StartRun(
-                "P1L0TTRA1NER", "CHARACTER.IRONCLAD", 0, "standard",
-                ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"]);
-            body(session);
-        }
-        finally
-        {
-            EndAnyRun();
-            ScreenStandIns.Current = null;
-            ScreenStandIns.ForgetMinigame();
-            HeadlessEngine.Forget();
-        }
-    }
-
-    private static void EndAnyRun()
-    {
-        if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
-    }
-
-    /// <summary>Neow's first option and the map move into the first fight, the way
-    /// the first-fight fixture starts.</summary>
-    private static void EnterTheFirstFight(RunDriver driver, GameSession session)
-    {
-        driver.EnterFirstRoom();
-        driver.Apply(Record(0, ActionVerb.ChooseNeowBlessing, ("option_index", "0")));
-
-        var current = Field(session, "run.map_coord");
-        var separator = current.IndexOf('c');
-        var row = int.Parse(current.AsSpan(1, separator - 1), CultureInfo.InvariantCulture);
-        var column = int.Parse(current.AsSpan(separator + 1), CultureInfo.InvariantCulture);
-        var edge = session.CurrentMapTopology().Edges
-            .Where(candidate => candidate.FromRow == row && candidate.FromColumn == column)
-            .OrderBy(candidate => candidate.ToColumn)
-            .First();
-        driver.Apply(Record(1, ActionVerb.MapMove,
-            ("act", Number(session.RunState.CurrentActIndex)),
-            ("row", Number(edge.ToRow)),
-            ("column", Number(edge.ToColumn))));
-
-        Assert.Equal("true", Field(session, "combat.in_progress"));
-    }
 
     /// <summary>The refusal a selector recorded for one asking, on a selector of its
     /// own because a selector keeps its first refusal.</summary>
@@ -423,18 +367,4 @@ public sealed class ResidueVerbTests
             }
         }
     }
-
-    private static string Field(GameSession session, string field) =>
-        CanonicalStateProjection.Project(session.RunState).Fields[field];
-
-    private static string Number(int value) => value.ToString(CultureInfo.InvariantCulture);
-
-    private static ActionRecord Record(int seq, ActionVerb verb, params (string Key, string Value)[] args) => new()
-    {
-        Seq = seq,
-        Verb = verb,
-        Args = new SortedDictionary<string, string>(
-            args.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal), StringComparer.Ordinal),
-        Source = FactSource.Declared,
-    };
 }

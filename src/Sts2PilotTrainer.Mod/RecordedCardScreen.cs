@@ -1,5 +1,6 @@
 using System.Globalization;
 using Godot;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Cards;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
@@ -29,16 +30,20 @@ namespace Sts2PilotTrainer.Mod;
 ///
 /// The screen is reached where the engine put it, on the overlay stack, and its parts
 /// by the unique names the screens' own <c>_Ready</c> uses. Which card is which is read
-/// off the list the engine handed the screen rather than off the grid, because the grid
+/// off the list the prompt offers - <see cref="CardPrompts"/>'s derivation from the
+/// entry point that opened the screen - rather than off the grid, because the grid
 /// sorts what it was given before it draws it: the recording's <c>option_index</c> is a
 /// position in the engine's list and a position on screen is a layout detail. That is
 /// the same list, in the same order, that <c>ManifestCardSelector</c> is offered
-/// headlessly, so the two hosts pick the same card out of a deck holding four Strikes.
+/// headlessly and that the recorder wrote the position against, so the two hosts and
+/// the recording pick the same card out of a deck holding four Strikes.
 ///
 /// It refuses rather than approximating, in the two ways
 /// <see cref="RecordedFightReveal"/> does: a screen that has not arrived yet is a
 /// moment to wait out, and a screen holding something other than what the recording
-/// took is a reveal that would point at the wrong card.
+/// took is a reveal that would point at the wrong card. A third refusal is by the
+/// prompt's shape: <see cref="CannotLight"/> names the prompts whose answer this cannot
+/// point at, so a recording that reaches one is refused by name rather than waited on.
 /// </summary>
 internal static class RecordedCardScreen
 {
@@ -58,6 +63,29 @@ internal static class RecordedCardScreen
     internal sealed record Found(NCardGridSelectionScreen Screen, NGridCardHolder Holder, int Offered);
 
     /// <summary>
+    /// The prompts this cannot light, by entry point, each with why.
+    ///
+    /// Three shapes and one moment. The hand prompts draw no screen: the hand itself
+    /// goes into a selection mode this does not drive. The choose-a-card screen is not
+    /// a grid. The combat-pile screen is a grid, and is only ever opened inside a
+    /// fight, which is played and never replayed in the client. None of them is on the
+    /// walk to a first fight; the table is here so that a recording which reaches one
+    /// is refused by name rather than waited on until the retry gives up.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string> CannotLight { get; } =
+        new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            [nameof(CardSelectCmd.FromHand)] =
+                "a prompt over the hand draws no screen; the hand goes into a selection mode this does not drive",
+            [nameof(CardSelectCmd.FromHandForUpgrade)] =
+                "a prompt over the hand draws no screen; the hand goes into a selection mode this does not drive",
+            [nameof(CardSelectCmd.FromChooseACardScreen)] =
+                "the choose-a-card screen is not a grid screen",
+            [nameof(CardSelectCmd.FromCombatPile)] =
+                "a prompt over a combat pile is only opened inside a fight, which is played rather than replayed",
+        };
+
+    /// <summary>
     /// Finds the holder drawing the card the recording took, and establishes that the
     /// screen is showing what the recording was shown.
     /// </summary>
@@ -67,6 +95,22 @@ internal static class RecordedCardScreen
     /// than what the recording took.</exception>
     internal static Found Find(string cardModelId, int optionIndex)
     {
+        // The prompt first, because it is what says whether a screen is coming at all,
+        // and a prompt this cannot light is refused before any wait on a screen.
+        if (CardPrompts.Open is not { } prompt)
+        {
+            throw new RevealNotReadyException(
+                "The card screen for this recording's last decision hasn't opened yet.");
+        }
+
+        if (CannotLight.TryGetValue(prompt.EntryPoint, out var why))
+        {
+            throw new RevealRefusedException(
+                $"The recording's last decision answers {nameof(CardSelectCmd)}.{prompt.EntryPoint}, and " +
+                $"{why}. Refusing to point at a card this cannot find on screen.",
+                TrainerCopy.CardScreenName);
+        }
+
         // Not "a screen of this type somewhere in the tree": the one the engine last
         // pushed. A run that had left an older one up would otherwise be answered on
         // the wrong screen, and the engine is waiting on this one.
@@ -77,7 +121,7 @@ internal static class RecordedCardScreen
                 "The card screen for this recording's last decision hasn't opened yet.");
         }
 
-        var offered = OfferedTo(screen);
+        var offered = OfferedTo(prompt);
         if (optionIndex < 0 || optionIndex >= offered.Count)
         {
             throw new RevealRefusedException(
@@ -202,18 +246,19 @@ internal static class RecordedCardScreen
             : null;
 
     /// <summary>
-    /// The cards the engine handed this screen, in the order it handed them, which is
-    /// what the recording's <c>option_index</c> indexes.
+    /// The cards the engine offers on the prompt that is up, in the order its seam
+    /// receives them, which is what the recording's <c>option_index</c> indexes.
     ///
-    /// <see cref="CardScreensUp"/>'s reading, because a screen's contents are a fact
-    /// about the game that the recorder reads for the same thing. What a build without
-    /// it means is this caller's own to say, and it says refusal: falling back on the
-    /// grid's order would silently mean a different card, because the grid sorts what
-    /// it was given before it draws it.
+    /// <see cref="CardPrompts"/>'s derivation, because it is the one list the recorder
+    /// wrote the position against. A prompt the engine answered itself has no screen
+    /// coming, and one the engine has not read yet has no list yet; both are refused
+    /// rather than waited on, since the screen this was asked about is already up.
     /// </summary>
-    private static IReadOnlyList<CardModel> OfferedTo(NCardGridSelectionScreen screen) =>
-        CardScreensUp.OfferedTo(screen)
-        ?? throw new InvalidOperationException(
-            "This build does not expose what the card screen was offered, so which card the recording took " +
-            "cannot be told from the cards drawn beside it.");
+    private static IReadOnlyList<CardModel> OfferedTo(CardPrompts.Prompt prompt) =>
+        prompt.Offered
+        ?? throw new RevealRefusedException(
+            $"The recording's last decision answers {nameof(CardSelectCmd)}.{prompt.EntryPoint}, and the " +
+            "engine has not offered anybody a list for it, so which card the recording took cannot be told " +
+            "from the cards drawn on screen.",
+            TrainerCopy.CardScreenName);
 }

@@ -66,8 +66,23 @@ internal static class Localization
         }
     }
 
+    private static bool _patched;
+
+    /// <summary>
+    /// Applied once per process, however many times the engine is started in it.
+    ///
+    /// A test session forgets the started host after every run so the next test can
+    /// ask the process what it holds, and each start used to re-detour these same
+    /// methods with these same prefixes. Detouring a method the engine is calling
+    /// races with the runtime's own recompilation of it: about one run in three then
+    /// reached the original <c>LocString.GetFormattedText</c>, which formats through a
+    /// manager this process never initialised, and Neow's event built no options. The
+    /// patches are process-wide and the prefixes read only static state, so the first
+    /// application is the only one that does anything.
+    /// </summary>
     private static void ApplyPatches(List<string> warnings)
     {
+        if (_patched) return;
         var harmony = new Harmony("sts2-pilot-trainer.localization");
         var self = typeof(Localization);
 
@@ -85,6 +100,7 @@ internal static class Localization
         Patch(harmony, typeof(LocTable), "GetRawText", self, nameof(ReturnKey), warnings);
         Patch(harmony, typeof(LocTable), "GetLocStringsWithPrefix", self, nameof(ReturnEmptyLocStrings), warnings);
         Patch(harmony, typeof(LocString), "Exists", self, nameof(ReturnTrue), warnings);
+        _patched = true;
     }
 
     private static void Patch(

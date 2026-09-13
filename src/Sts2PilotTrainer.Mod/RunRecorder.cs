@@ -606,26 +606,100 @@ internal sealed class RunRecorder : IDisposable
     }
 
     /// <summary>
-    /// A card screen answered, with what it offered and what came back.
+    /// A card prompt answered, with the prompt as the entry point observed it and the
+    /// cards that came back.
     ///
-    /// Held rather than recorded, because a card screen is answered from inside the
+    /// Held rather than recorded, because a card prompt is answered from inside the
     /// call that opened it: the decision that opened it has not settled yet, and the
     /// format records the picks immediately after it. Which is also how the driver
     /// replays them.
     /// </summary>
-    /// <param name="screen">The game's own name for the screen that was up, so a stop
-    /// names the concrete screen rather than the base every card screen shares.</param>
-    internal static void CardScreenAnswered(
-        string screen, IReadOnlyList<CardModel> offered, IEnumerable<CardModel> chosen)
+    internal static void CardPromptAnswered(CardPrompts.Prompt prompt, IReadOnlyList<CardModel> chosen)
     {
         var recorder = Active;
         if (recorder is null || recorder._finished) return;
 
-        recorder.HoldCardScreenAnswers(screen, offered, chosen);
+        recorder.HoldCardPromptAnswers(prompt, chosen);
     }
 
+    /// <summary>
+    /// What a prompt's answer is to this recording, decided from what the prompt
+    /// established and nothing else.
+    ///
+    /// Three of the prompt's states are not an answer to write. Two prompts open at
+    /// once is a state nothing can order, so both are refused by name. A prompt the
+    /// engine answered itself - the fight ending, nothing to offer, the candidates
+    /// inside the minimum - is no decision, in this recording or in the replay that
+    /// reads it. And a prompt that settled without the recorder ever seeing the engine
+    /// read it is one whose offered list was never established, so the answer cannot
+    /// be placed in it and is refused rather than placed in a list read at some other
+    /// moment.
+    ///
+    /// An offered prompt is an answer only when it is the whole answer. The format
+    /// states a prompt's answer as exactly the picks the prompt asked for, and
+    /// <c>ManifestCardSelector</c> replays exactly that many: fewer - a choose-a-card
+    /// prompt skipped, an "up to N" answered with less - would replay as a refusal in
+    /// front of a player, so it stops the recording here, naming the shortfall, until
+    /// the format can say it.
+    /// </summary>
+    internal void HoldCardPromptAnswers(CardPrompts.Prompt prompt, IReadOnlyList<CardModel> chosen)
+    {
+        if (prompt.Conflict is { } other)
+        {
+            HoldScreenAnswerStop(MetAtScreen(
+                PromptName(prompt), prompt.Screen,
+                "Another card prompt was open while this one was asked, so the recorder cannot say which " +
+                "answer belongs to which.",
+                ("other_prompt", $"{nameof(CardSelectCmd)}.{other}"), ("chosen", Number(chosen.Count))));
+            return;
+        }
+
+        switch (prompt.State)
+        {
+            case CardPrompts.PromptState.EngineAnswered:
+                return;
+
+            case CardPrompts.PromptState.Asked:
+                HoldScreenAnswerStop(MetAtScreen(
+                    PromptName(prompt), prompt.Screen,
+                    "The prompt settled before the engine paused for the player, so the recorder never saw " +
+                    "what it offered and cannot say which option was picked.",
+                    ("card_ids", string.Join(",", chosen.Select(card => card.Id.ToString()))),
+                    ("chosen", Number(chosen.Count))));
+                return;
+        }
+
+        var offered = prompt.Offered!;
+        if (chosen.Count != prompt.MaxSelect)
+        {
+            HoldScreenAnswerStop(MetAtScreen(
+                PromptName(prompt), prompt.Screen,
+                chosen.Count == 0
+                    ? "The prompt was declined, and this format states a prompt's answer only as the picks it " +
+                      "asked for."
+                    : "The prompt was answered with fewer picks than it asked for, and this format states a " +
+                      "prompt's answer only as exactly that many.",
+                ("card_ids", string.Join(",", chosen.Select(card => card.Id.ToString()))),
+                ("chosen", Number(chosen.Count)), ("min_select", Number(prompt.MinSelect)),
+                ("max_select", Number(prompt.MaxSelect)), ("offered", Number(offered.Count))));
+            return;
+        }
+
+        HoldCardScreenAnswers(PromptName(prompt), prompt.Screen, offered, chosen);
+    }
+
+    /// <summary>The game's own name for a prompt: its entry point, on its command class.</summary>
+    private static string PromptName(CardPrompts.Prompt prompt) => $"{nameof(CardSelectCmd)}.{prompt.EntryPoint}";
+
+    /// <summary>
+    /// Maps each card that came back to its position in what the prompt offered, and
+    /// holds one <see cref="ActionVerb.SelectCardFromScreen"/> per card.
+    /// </summary>
+    /// <param name="prompt">The game's own name for what asked, so a stop names it.</param>
+    /// <param name="screen">What the retail client draws for it, as the stop's
+    /// discriminator.</param>
     internal void HoldCardScreenAnswers(
-        string screen, IReadOnlyList<CardModel> offered, IEnumerable<CardModel> chosen)
+        string prompt, string? screen, IReadOnlyList<CardModel> offered, IEnumerable<CardModel> chosen)
     {
         var taken = new List<(string CardId, int Index)>();
         foreach (var card in chosen)
@@ -641,11 +715,11 @@ internal sealed class RunRecorder : IDisposable
             if (index < 0)
             {
                 // Seen and not nameable: a position the recorder guessed would replay as
-                // a different decision, so the decision this screen answers stops the
+                // a different decision, so the decision this prompt answers stops the
                 // recording instead.
                 HoldScreenAnswerStop(MetAtScreen(
-                    screen, null,
-                    "The card is not one of the cards the screen offered, so the recorder cannot say which " +
+                    prompt, screen,
+                    "The card is not one of the cards the prompt offered, so the recorder cannot say which " +
                     "option was picked.",
                     ("card_id", card.Id.ToString()), ("offered", Number(offered.Count))));
                 return;
@@ -654,9 +728,9 @@ internal sealed class RunRecorder : IDisposable
             taken.Add((card.Id.ToString(), index));
         }
 
-        // Every answer from one screen is resolved before any of them is nominated
+        // Every answer from one prompt is resolved before any of them is nominated
         // against, because the alternative has to be a position none of them took. It
-        // is per answer rather than one for the screen: what each nominates is another
+        // is per answer rather than one for the prompt: what each nominates is another
         // copy of its own card.
         var offeredIds = offered.Select(card => card.Id.ToString()).ToList();
         var positions = taken.Select(pick => pick.Index).ToList();
@@ -1073,12 +1147,12 @@ internal sealed class RunRecorder : IDisposable
             : "The run ended while the recorder was reading it.";
 
     /// <summary>
-    /// Writes one decision, and the card-screen picks it pulled out of the player,
+    /// Writes one decision, and the card-prompt picks it pulled out of the player,
     /// into the capture and the journal.
     ///
     /// The picks share this decision's reading because that is what they are: a card
-    /// screen is answered inside the call that opened it, so the state after the
-    /// screen's answer and the state after the decision are the same state. The
+    /// prompt is answered inside the call that opened it, so the state after the
+    /// prompt's answer and the state after the decision are the same state. The
     /// headless driver reads them back the same way - the selection is confirmed and
     /// changes nothing - so the two traces have the same shape.
     /// </summary>
@@ -2580,12 +2654,12 @@ internal sealed class RunRecorder : IDisposable
     }
 
     /// <summary>
-    /// Reads what a card screen the shell counted was answered with.
+    /// Reads what a card prompt the shell watched was answered with.
     ///
-    /// The screen itself is <see cref="CardScreensUp"/>'s - a screen being up is a fact
-    /// about the game that both features read - and which card came off which offered
-    /// list is this one's, so the recorder subscribes rather than patching the screen a
-    /// second time.
+    /// The prompt itself is <see cref="CardPrompts"/>'s - a prompt being up, and the
+    /// list it offers, are facts about the game that both features read - and which
+    /// card came off which offered list is this one's, so the recorder subscribes
+    /// rather than patching the entry points a second time.
     ///
     /// Which is also why each handler carries its own try/catch: what a failure to read
     /// an answer means is this feature's to say, and it says it by marking the recording
@@ -2595,26 +2669,15 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     internal static void ReadTheAnswers()
     {
-        CardScreensUp.GridAnswered = (screen, chosen) =>
+        CardPrompts.Answered = (prompt, chosen) =>
         {
             try
             {
-                if (CardScreensUp.OfferedTo(screen) is { } offered)
-                {
-                    CardScreenAnswered(screen.GetType().Name, offered, chosen);
-                }
-                else
-                {
-                    StopAtScreenAnswer(MetAtScreen(
-                        screen.GetType().Name, null,
-                        "This build does not expose what the screen offered, so the recorder cannot say which " +
-                        "option was picked.",
-                        ("card_ids", string.Join(",", chosen.Select(card => card.Id.ToString())))));
-                }
+                CardPromptAnswered(prompt, chosen);
             }
             catch (Exception ex)
             {
-                Refuse($"A card screen's answer could not be read: {ex.GetType().Name}: {ex.Message}");
+                Refuse($"A card prompt's answer could not be read: {ex.GetType().Name}: {ex.Message}");
             }
         };
 

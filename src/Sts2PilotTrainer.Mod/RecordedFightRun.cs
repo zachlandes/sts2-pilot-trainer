@@ -864,9 +864,9 @@ internal static class RecordedFightRun
         //
         // So this waits for the engine to have opened it rather than for a length of
         // time, which is the rule everywhere else on this journey. CardScreensUp is the
-        // shell's count of the card screens the engine has put up and is waiting on, and
-        // it is incremented from the game's own CardsSelected - the call FromDeckGeneric
-        // suspends on immediately after pushing the screen.
+        // shell's count of the card prompts the engine has put up and is waiting on, and
+        // CardPrompts takes it at the CardSelectCmd entry point that opens the screen,
+        // from the moment the engine offers the prompt's list.
         if (entry.NextStepAnswersAScreenAlreadyOpened)
         {
             var up = await WaitUntil(

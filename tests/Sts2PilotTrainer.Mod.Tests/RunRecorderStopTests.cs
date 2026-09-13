@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Reflection;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Models;
@@ -211,13 +212,13 @@ public sealed class RunRecorderStopTests : IDisposable
     }
 
     /// <summary>
-    /// A card the screen never offered stops the recording at the screen that was up,
-    /// by the screen's own name: a removal and a transform share one base class and
-    /// open different screens, and a stop written against the base says less than the
-    /// recorder saw.
+    /// A card the prompt never offered stops the recording at the entry point that
+    /// asked, with the screen the client drew for it beside: a removal and a transform
+    /// go through different entry points and open different screens, and a stop written
+    /// against the base they share says less than the recorder saw.
     /// </summary>
     [GameFact]
-    public void ACardTheScreenNeverOfferedStopsAtTheConcreteScreenThatWasUp()
+    public void ACardThePromptNeverOfferedStopsAtTheEntryPointThatAsked()
     {
         EngineHost.Start();
         var (recorder, capture, _) = Recording();
@@ -225,7 +226,8 @@ public sealed class RunRecorderStopTests : IDisposable
         var offered = cards.Take(3).ToList();
         var stranger = cards[3];
 
-        recorder.HoldCardScreenAnswers("NDeckTransformSelectScreen", offered, [stranger]);
+        recorder.HoldCardScreenAnswers(
+            "CardSelectCmd.FromDeckForTransformation", "NDeckTransformSelectScreen", offered, [stranger]);
         recorder.Commit(
             nameof(ActionVerb.ChooseEventOption),
             Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
@@ -234,11 +236,168 @@ public sealed class RunRecorderStopTests : IDisposable
 
         var stop = Assert.IsType<JournalStop>(capture.Stop);
         Assert.Equal(UnmappedDecision.PlayerChoiceSeam, stop.Decision.Seam);
-        Assert.Equal("NDeckTransformSelectScreen", stop.Decision.Name);
+        Assert.Equal("CardSelectCmd.FromDeckForTransformation", stop.Decision.Name);
+        Assert.Equal("NDeckTransformSelectScreen", stop.Decision.Discriminator);
         Assert.Equal(stranger.Id.ToString(), stop.Decision.Args["card_id"]);
         Assert.Equal("3", stop.Decision.Args["offered"]);
         Assert.Equal(NativeSource.UnmappedIntegrity, capture.Integrity);
         Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+    }
+
+    // ── What a card prompt's answer becomes ───────────────────────────────────────
+
+    /// <summary>
+    /// A prompt answered with what it asked for is written as one
+    /// <c>SelectCardFromScreen</c> per pick, at the pick's position in the list the
+    /// prompt offered, after the decision that opened it.
+    /// </summary>
+    [GameFact]
+    public void APromptAnsweredWithWhatItAskedForIsWrittenAsPicksAfterTheDecision()
+    {
+        EngineHost.Start();
+        var (recorder, capture, _) = Recording();
+        var offered = ModelDb.AllCards.Take(4).ToList();
+        var prompt = Offered(nameof(CardSelectCmd.FromHand), "NPlayerHand", 1, 1, offered);
+
+        recorder.HoldCardPromptAnswers(prompt, [offered[2]]);
+        recorder.Commit(
+            nameof(ActionVerb.ChooseEventOption),
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        Assert.Null(capture.Stop);
+        capture.Finish("abandoned");
+        var actions = capture.ToManifest().Actions;
+        var pick = actions[^1];
+        Assert.Equal(ActionVerb.SelectCardFromScreen, pick.Verb);
+        Assert.Equal(offered[2].Id.ToString(), pick.Args["card_id"]);
+        Assert.Equal("2", pick.Args["option_index"]);
+        Assert.Equal(ActionVerb.ChooseEventOption, actions[^2].Verb);
+    }
+
+    /// <summary>
+    /// A prompt the engine answered for itself is no decision: nothing is written
+    /// and nothing stops, whatever the engine took.
+    /// </summary>
+    [GameFact]
+    public void APromptTheEngineAnsweredItselfWritesNothing()
+    {
+        EngineHost.Start();
+        var (recorder, capture, _) = Recording();
+        var prompt = new CardPrompts.Prompt(
+            nameof(CardSelectCmd.FromCombatPile), "NCombatPileCardSelectScreen", 1, 1, () => null);
+        prompt.Derive();
+        Assert.Equal(CardPrompts.PromptState.EngineAnswered, prompt.State);
+
+        recorder.HoldCardPromptAnswers(prompt, [ModelDb.AllCards.First()]);
+        recorder.Commit(
+            nameof(ActionVerb.ChooseEventOption),
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        Assert.Null(capture.Stop);
+        capture.Finish("abandoned");
+        Assert.Equal(ActionVerb.ChooseEventOption, capture.ToManifest().Actions[^1].Verb);
+    }
+
+    /// <summary>
+    /// A choose-a-card prompt that was declined, and an "up to N" prompt answered
+    /// with fewer, are answers this format cannot state yet, so each stops the
+    /// recording at the decision that opened it, naming the shortfall - rather than
+    /// being written as a recording that refuses in front of a player at replay.
+    /// </summary>
+    [GameFact]
+    public void ADeclinedOrPartialAnswerStopsTheRecordingNamingTheShortfall()
+    {
+        EngineHost.Start();
+        var offered = ModelDb.AllCards.Take(3).ToList();
+
+        var (declined, declinedCapture, _) = Recording();
+        declined.HoldCardPromptAnswers(
+            Offered(nameof(CardSelectCmd.FromChooseACardScreen), "NChooseACardSelectionScreen", 0, 1, offered), []);
+        declined.Commit(
+            nameof(ActionVerb.ChooseEventOption),
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        var stop = Assert.IsType<JournalStop>(declinedCapture.Stop);
+        Assert.Equal(UnmappedDecision.PlayerChoiceSeam, stop.Decision.Seam);
+        Assert.Equal("CardSelectCmd.FromChooseACardScreen", stop.Decision.Name);
+        Assert.Equal("NChooseACardSelectionScreen", stop.Decision.Discriminator);
+        Assert.Equal("0", stop.Decision.Args["chosen"]);
+        Assert.Equal("1", stop.Decision.Args["max_select"]);
+        Assert.Contains("declined", stop.Decision.Evidence.Note, StringComparison.Ordinal);
+        Assert.Equal(NativeSource.UnmappedIntegrity, declinedCapture.Integrity);
+        Assert.Equal(NativeSource.ContinuousContinuity, declinedCapture.Continuity);
+
+        var (partial, partialCapture, _) = Recording();
+        partial.HoldCardPromptAnswers(
+            Offered(nameof(CardSelectCmd.FromHand), "NPlayerHand", 0, 2, offered), [offered[1]]);
+        partial.Commit(
+            nameof(ActionVerb.ChooseEventOption),
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        stop = Assert.IsType<JournalStop>(partialCapture.Stop);
+        Assert.Equal("CardSelectCmd.FromHand", stop.Decision.Name);
+        Assert.Equal("1", stop.Decision.Args["chosen"]);
+        Assert.Equal("2", stop.Decision.Args["max_select"]);
+        Assert.Equal(offered[1].Id.ToString(), stop.Decision.Args["card_ids"]);
+        Assert.Contains("fewer picks", stop.Decision.Evidence.Note, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A prompt that settled before the recorder saw the engine read it has no
+    /// offered list to place the answer in, and one asked while another was still
+    /// open cannot be told from it; both stop the recording rather than guess.
+    /// </summary>
+    [GameFact]
+    public void APromptNeverReadOrOpenedOverAnotherStopsTheRecording()
+    {
+        EngineHost.Start();
+        var offered = ModelDb.AllCards.Take(3).ToList();
+
+        var (unread, unreadCapture, _) = Recording();
+        var neverRead = new CardPrompts.Prompt(nameof(CardSelectCmd.FromHand), "NPlayerHand", 1, 1, () => offered);
+        Assert.Equal(CardPrompts.PromptState.Asked, neverRead.State);
+        unread.HoldCardPromptAnswers(neverRead, [offered[0]]);
+        unread.Commit(
+            nameof(ActionVerb.ChooseEventOption),
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        var stop = Assert.IsType<JournalStop>(unreadCapture.Stop);
+        Assert.Equal("CardSelectCmd.FromHand", stop.Decision.Name);
+        Assert.Contains("before the engine paused", stop.Decision.Evidence.Note, StringComparison.Ordinal);
+
+        var (conflicted, conflictedCapture, _) = Recording();
+        var over = Offered(nameof(CardSelectCmd.FromCombatPile), "NCombatPileCardSelectScreen", 1, 1, offered);
+        over.Conflict = nameof(CardSelectCmd.FromHand);
+        conflicted.HoldCardPromptAnswers(over, [offered[0]]);
+        conflicted.Commit(
+            nameof(ActionVerb.ChooseEventOption),
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        stop = Assert.IsType<JournalStop>(conflictedCapture.Stop);
+        Assert.Equal("CardSelectCmd.FromCombatPile", stop.Decision.Name);
+        Assert.Equal("CardSelectCmd.FromHand", stop.Decision.Args["other_prompt"]);
+    }
+
+    /// <summary>A prompt the engine has read, offering these cards.</summary>
+    private static CardPrompts.Prompt Offered(
+        string entryPoint, string screen, int minSelect, int maxSelect, IReadOnlyList<CardModel> cards)
+    {
+        var prompt = new CardPrompts.Prompt(entryPoint, screen, minSelect, maxSelect, () => cards);
+        prompt.Derive();
+        Assert.Equal(CardPrompts.PromptState.Offered, prompt.State);
+        return prompt;
     }
 
     /// <summary>

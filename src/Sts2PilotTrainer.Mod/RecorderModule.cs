@@ -107,9 +107,10 @@ internal sealed class RecorderModule : IRunmobileModule
     /// names still maps onto a member the loaded assembly has - the same table the
     /// driver replays through, read from the other end. The patch list asks whether
     /// Harmony can resolve each method this module means to attach to, which is the
-    /// part <see cref="EngineCommands"/> cannot see: the run's own lifecycle. The two
-    /// card screens are not in it - they are the shell's, installed however this
-    /// module answers, and this module only subscribes to what they answered.
+    /// part <see cref="EngineCommands"/> cannot see: the run's own lifecycle. The card
+    /// prompts are not in it - <see cref="CardPrompts"/> and <see cref="CardScreensUp"/>
+    /// are the shell's, installed however this module answers, and this module only
+    /// subscribes to what they announced.
     /// </summary>
     private void Examine()
     {
