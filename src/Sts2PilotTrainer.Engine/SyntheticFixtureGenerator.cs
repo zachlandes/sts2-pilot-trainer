@@ -384,17 +384,13 @@ public static partial class SyntheticFixtureGenerator
         // no way to name a card before the call that offers it. What it answered is
         // written down here, immediately after the action that opened it, which is
         // exactly where a replay looks for it.
-        foreach (var (cardId, optionIndex) in driver.TakeImprovisedCardSelections())
+        foreach (var (answerVerb, answerArgs) in driver.TakeImprovisedCardSelections())
         {
             actions.Add(new ActionRecord
             {
                 Seq = actions.Count,
-                Verb = ActionVerb.SelectCardFromScreen,
-                Args = new SortedDictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["card_id"] = cardId,
-                    ["option_index"] = optionIndex.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                },
+                Verb = answerVerb,
+                Args = answerArgs,
                 Source = FactSource.Declared,
             });
         }

@@ -183,6 +183,48 @@ public class RewardAndScreenVerbTests
         Assert.Contains("the manifest supplies 1", result.All, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A confirmation belongs to a prompt that asked for a range. The Scriptorium's
+    /// sponge asks for exactly two, so a ConfirmCardScreen in place of its second pick
+    /// is refused by name rather than read as the player stopping at one; and one
+    /// after both picks is an answer no screen asked for, refused by the decision that
+    /// opened the screen, the way any stray answer is.
+    /// </summary>
+    [GameFact]
+    public void AConfirmationOnAPromptThatAskedForExactlyNIsRefused()
+    {
+        var inPlaceOfTheSecondPick = Replay(Actions(manifest =>
+        {
+            var actions = manifest.Actions.ToList();
+            var second = actions.Last(a => a.Verb == ActionVerb.SelectCardFromScreen);
+            actions[actions.IndexOf(second)] = second with
+            {
+                Verb = ActionVerb.ConfirmCardScreen,
+                Args = new SortedDictionary<string, string>(StringComparer.Ordinal) { ["count"] = "1" },
+            };
+            return actions;
+        }));
+
+        Assert.False(inPlaceOfTheSecondPick.Verified, inPlaceOfTheSecondPick.All);
+        Assert.Contains("asked for exactly 2 card(s)", inPlaceOfTheSecondPick.All, StringComparison.Ordinal);
+        Assert.Contains("confirms 1 pick(s) instead", inPlaceOfTheSecondPick.All, StringComparison.Ordinal);
+
+        var afterBothPicks = Replay(Actions(manifest =>
+        {
+            var actions = manifest.Actions.ToList();
+            var second = actions.Last(a => a.Verb == ActionVerb.SelectCardFromScreen);
+            actions.Insert(actions.IndexOf(second) + 1, second with
+            {
+                Verb = ActionVerb.ConfirmCardScreen,
+                Args = new SortedDictionary<string, string>(StringComparer.Ordinal) { ["count"] = "2" },
+            });
+            return actions.Select((action, index) => action with { Seq = index }).ToList();
+        }));
+
+        Assert.False(afterBothPicks.Verified, afterBothPicks.All);
+        Assert.Contains("no screen asked for: action 18 (confirms 2)", afterBothPicks.All, StringComparison.Ordinal);
+    }
+
     [GameTheory]
     [InlineData(16, 1)]
     public void APartialReplayCannotConsumeSelectionsOutsideItsHistory(

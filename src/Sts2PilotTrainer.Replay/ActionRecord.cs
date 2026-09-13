@@ -194,11 +194,14 @@ public sealed record ActionRecord
 /// stopped short would refuse the screen for an omission the truncation caused rather
 /// than one the recording made.
 ///
-/// Three verbs answer a screen this way. A card screen over the hand, the deck or a
+/// Four verbs answer a screen this way. A card screen over the hand, the deck or a
 /// pile, a bundle screen and a relic screen all suspend inside the engine call that
-/// opened them and pull the answer through a seam. A card reward's alternative is not
-/// one of them: on this build an alternative ends the reward's selection, so the
-/// record that takes one is the loot-screen decision itself, beside
+/// opened them and pull the answer through a seam, and a card prompt that asked for a
+/// range is confirmed after its picks by <see cref="ActionVerb.ConfirmCardScreen"/>,
+/// which is how a prompt answered with fewer than it allowed - none included - is
+/// told from one whose picks were cut short. A card reward's alternative is not one
+/// of them: on this build an alternative ends the reward's selection, so the record
+/// that takes one is the loot-screen decision itself, beside
 /// <see cref="ActionVerb.TakeCard"/>, rather than an answer following it.
 /// </summary>
 public static class CardScreenAnswers
@@ -206,6 +209,7 @@ public static class CardScreenAnswers
     public static readonly ActionVerb[] Verbs =
     [
         ActionVerb.SelectCardFromScreen,
+        ActionVerb.ConfirmCardScreen,
         ActionVerb.SelectBundleFromScreen,
         ActionVerb.SelectRelicFromScreen,
     ];
@@ -288,6 +292,16 @@ public enum ActionVerb
     /// <summary>Pick a card off a screen over the hand, the deck or a pile. Args:
     /// <c>card_id</c>, <c>option_index</c>.</summary>
     SelectCardFromScreen,
+
+    /// <summary>Confirm a card prompt that asked for a range of picks, with how many
+    /// were made. Args: <c>count</c>, the number of <see cref="SelectCardFromScreen"/>
+    /// records immediately before it that answer the same prompt; zero declines the
+    /// prompt. Written for exactly the prompts whose minimum is below their maximum -
+    /// "exhaust up to 3", a choose-a-card screen that can be skipped - because there
+    /// the picks alone cannot say whether the player stopped or the recording was cut
+    /// short. A prompt that asks for exactly N is answered by N picks and nothing
+    /// else.</summary>
+    ConfirmCardScreen,
 
     /// <summary>Pick a bundle of cards off the screen Scroll Boxes opens. Args:
     /// <c>option_index</c>, and <c>card_ids</c>, the bundle's cards joined with a comma

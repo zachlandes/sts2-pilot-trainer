@@ -157,12 +157,12 @@ the manifest says, a mismatched environment: each of these fails loudly. A repla
 that quietly does something plausible is the failure mode this whole project exists
 to prevent.
 
-**What CI cannot run is recorded by name.** On a runner without the game, the 150
-tests named in `scripts/expected-hosted-skips.txt` skip out of the 214 cases
+**What CI cannot run is recorded by name.** On a runner without the game, the 151
+tests named in `scripts/expected-hosted-skips.txt` skip out of the 215 cases
 `Sts2PilotTrainer.Arbiter.Tests` reports there, and the job still reports success.
 Both figures are what a game-free run prints and neither can be arrived at by adding
 up attributes: a `[GameTheory]` skipped there is one case and expands into a row per
-datum where it runs, so a run with the game reports more cases than 214.
+datum where it runs, so a run with the game reports more cases than 215.
 `./scripts/assert-expected-skips.sh` asserts the skipped set against that list, so
 adding a `[GameFact]`, moving a test behind one, or deleting one fails CI until the
 list is regenerated with `--update` in the same commit. It catches structural drift
@@ -407,7 +407,9 @@ The screens were what the recorder used to watch, and three of the five prompt s
 `CardPromptOffers` is duplicated game logic and says so; `CardPromptOfferTests` holds every derivation to the list the engine handed a recording selector, element for element, and that test is what permits the duplication.
 When the list is read is the engine's timing and not a choice: an entry point with a `PlayerChoiceContext` reads after the context has paused the action, which a hook's context does on a later frame, so those prompts are derived at `ActionQueueSet.PauseActionForPlayerChoice` and every other in the prefix.
 A selector of the game's own on the stack is the engine answering itself in both hosts and opens no prompt; an engine-side early return is derived to no decision.
-The recorder subscribes and `RunRecorder.HoldCardPromptAnswers` decides once what an answer is: exactly the picks the prompt asked for is written as `SelectCardFromScreen`, and a declined choose-a-card prompt, an "up to N" answered with fewer, a prompt that settled before the engine paused for it, or two prompts open at once each stop the recording `unmapped` at the decision that opened it, naming what was met, until the format can state them.
+The recorder subscribes and `RunRecorder.HoldCardPromptAnswers` decides once what an answer is: a prompt that asked for exactly N is written as N `SelectCardFromScreen`, a prompt that asked for a range - `MinSelect` below `MaxSelect`, which every choose-a-card screen is - as its picks and then one `ConfirmCardScreen` with their count, zero for a prompt declined, and a count outside what the prompt asked for, a prompt that settled before the engine paused for it, or two prompts open at once each stop the recording `unmapped` at the decision that opened it, naming what was met.
+`ManifestCardSelector` reads a range prompt's count from that record, refuses picks that stop short of the maximum and simply end, and refuses an exact prompt's confirmation by name; the validator holds a count to the picks before it and nothing more, because which prompts take one is the engine's knowledge.
+The verb is inside format v6 and a recording written before it is not edited to carry one: picks that reach the maximum are the whole answer with or without a confirmation, which is the one form such a recording can hold, so it still replays; [docs/headless-fidelity.md](docs/headless-fidelity.md) owns the rule.
 `CardScreensUp` keeps the count both settles read and the card reward's screen, and hands nobody a screen's list; `RecordedCardScreen` lights the recording's card off the open prompt's list and refuses the prompts in `RecordedCardScreen.CannotLight` by name.
 A prompt is counted only from the moment it is offered to the moment its task settles, never from the call: a hook's prompt whose action the fight ended before it ran is asked, never offered, and never settles, and counted from the call it would hold every later settle for the rest of the process; the same prompt is dropped as the open one when the fight ends and when the run is torn down, so it is not the conflict the next prompt meets.
 The count is the current run's and `CardScreensUp.RunTornDown` starts a fresh one at zero, because the hand's teardown completes its prompt instead of cancelling it and the entry point then waits for ever on a queue the teardown reset; a prompt gives back to the run it was counted in, so a torn-down run's prompt can neither hold the next run's count up nor take it below zero.

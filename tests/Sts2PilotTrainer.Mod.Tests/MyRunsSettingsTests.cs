@@ -376,7 +376,8 @@ public sealed class MyRunsSettingsTests : IDisposable
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
-            new GameTextStyle(null, buttonSize)) { Art = MyRunsSettingsArtTests.Art() };
+            new GameTextStyle(null, buttonSize))
+        { Art = MyRunsSettingsArtTests.Art() };
 
     /// <summary>
     /// The scroll extent's owner is reachable from where the row is put.

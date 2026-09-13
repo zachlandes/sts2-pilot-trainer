@@ -1879,6 +1879,53 @@ public class ManifestValidatorTests
         Assert.Contains(result.Problems, p => p.Contains("unknown argument 'hand_index'", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// A confirmation counts picks, and a count past the picks recorded since the
+    /// decision before them names picks the recording never made. A count within
+    /// them is accepted, and so is a confirmation of none directly after a decision -
+    /// a prompt declined.
+    /// </summary>
+    [Fact]
+    public void RejectsAConfirmationCountingMorePicksThanFollowTheDecisionBeforeIt()
+    {
+        var overCounted = ManifestValidator.Validate(WithActions(
+            Fixtures.Action(0, ActionVerb.PlayCard, ("card_id", "CARD.PURITY"), ("hand_index", "0")),
+            Fixtures.Action(1, ActionVerb.SelectCardFromScreen, ("card_id", "CARD.BASH"), ("option_index", "0")),
+            Fixtures.Action(2, ActionVerb.ConfirmCardScreen, ("count", "2"))));
+
+        Assert.False(overCounted.IsValid);
+        Assert.Contains(overCounted.Problems, p => p.Contains(
+            "confirms 2 pick(s) and only 1 SelectCardFromScreen follow", StringComparison.Ordinal));
+
+        var counted = ManifestValidator.Validate(WithActions(
+            Fixtures.Action(0, ActionVerb.PlayCard, ("card_id", "CARD.PURITY"), ("hand_index", "0")),
+            Fixtures.Action(1, ActionVerb.SelectCardFromScreen, ("card_id", "CARD.BASH"), ("option_index", "0")),
+            Fixtures.Action(2, ActionVerb.SelectCardFromScreen, ("card_id", "CARD.ANGER"), ("option_index", "3")),
+            Fixtures.Action(3, ActionVerb.ConfirmCardScreen, ("count", "1")),
+            Fixtures.Action(4, ActionVerb.PlayCard, ("card_id", "CARD.DISCOVERY"), ("hand_index", "0")),
+            Fixtures.Action(5, ActionVerb.ConfirmCardScreen, ("count", "0"))));
+
+        Assert.True(counted.IsValid, counted.Describe());
+    }
+
+    /// <summary>A confirmation's count is an integer like every position, and it
+    /// carries nothing else.</summary>
+    [Fact]
+    public void RejectsAConfirmationWhoseCountIsNotACountOrThatCarriesMore()
+    {
+        var negative = ManifestValidator.Validate(WithActions(
+            Fixtures.Action(0, ActionVerb.ConfirmCardScreen, ("count", "-1"))));
+        Assert.Contains(negative.Problems, p => p.Contains(
+            "argument 'count' must be a canonical non-negative integer", StringComparison.Ordinal));
+
+        var missing = ManifestValidator.Validate(WithActions(Fixtures.Action(0, ActionVerb.ConfirmCardScreen)));
+        Assert.Contains(missing.Problems, p => p.Contains("missing required argument 'count'", StringComparison.Ordinal));
+
+        var more = ManifestValidator.Validate(WithActions(
+            Fixtures.Action(0, ActionVerb.ConfirmCardScreen, ("count", "0"), ("card_id", "CARD.BASH"))));
+        Assert.Contains(more.Problems, p => p.Contains("unknown argument 'card_id'", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void RejectsAnEmptyEventId()
     {

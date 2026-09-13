@@ -303,51 +303,104 @@ public sealed class RunRecorderStopTests : IDisposable
     }
 
     /// <summary>
-    /// A choose-a-card prompt that was declined, and an "up to N" prompt answered
-    /// with fewer, are answers this format cannot state yet, so each stops the
-    /// recording at the decision that opened it, naming the shortfall - rather than
-    /// being written as a recording that refuses in front of a player at replay.
+    /// A prompt that asked for a range is written as its picks and then one
+    /// <c>ConfirmCardScreen</c> with their count: an "up to N" answered with fewer is
+    /// the picks it took and a confirmation of that many, and a choose-a-card prompt
+    /// declined is a confirmation of none directly after the decision that opened it.
+    /// Neither stops the recording, and both replay as the answer the player gave.
     /// </summary>
     [GameFact]
-    public void ADeclinedOrPartialAnswerStopsTheRecordingNamingTheShortfall()
+    public void ARangePromptIsWrittenAsItsPicksAndTheirConfirmationAndADeclineAsNone()
     {
         EngineHost.Start();
         var offered = ModelDb.AllCards.Take(3).ToList();
+
+        var (partial, partialCapture, _) = Recording();
+        partial.HoldCardPromptAnswers(
+            Offered(nameof(CardSelectCmd.FromHand), "NPlayerHand", 0, 3, offered), [offered[1]]);
+        partial.Commit(
+            nameof(ActionVerb.PlayCard),
+            Args(("card_id", "CARD.PURITY"), ("hand_index", "0")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        Assert.Null(partialCapture.Stop);
+        partialCapture.Finish("abandoned");
+        var actions = partialCapture.ToManifest().Actions;
+        Assert.Equal(ActionVerb.PlayCard, actions[^3].Verb);
+        Assert.Equal(ActionVerb.SelectCardFromScreen, actions[^2].Verb);
+        Assert.Equal(offered[1].Id.ToString(), actions[^2].Args["card_id"]);
+        Assert.Equal("1", actions[^2].Args["option_index"]);
+        Assert.Equal(ActionVerb.ConfirmCardScreen, actions[^1].Verb);
+        Assert.Equal(new Dictionary<string, string> { ["count"] = "1" }, actions[^1].Args);
+        Assert.Equal(NativeSource.CompleteIntegrity, partialCapture.Integrity);
 
         var (declined, declinedCapture, _) = Recording();
         declined.HoldCardPromptAnswers(
             Offered(nameof(CardSelectCmd.FromChooseACardScreen), "NChooseACardSelectionScreen", 0, 1, offered), []);
         declined.Commit(
+            nameof(ActionVerb.PlayCard),
+            Args(("card_id", "CARD.DISCOVERY"), ("hand_index", "0")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        Assert.Null(declinedCapture.Stop);
+        declinedCapture.Finish("abandoned");
+        actions = declinedCapture.ToManifest().Actions;
+        Assert.Equal(ActionVerb.PlayCard, actions[^2].Verb);
+        Assert.Equal(ActionVerb.ConfirmCardScreen, actions[^1].Verb);
+        Assert.Equal("0", actions[^1].Args["count"]);
+        Assert.Equal(NativeSource.CompleteIntegrity, declinedCapture.Integrity);
+    }
+
+    /// <summary>
+    /// A confirmation is written for a range prompt only. A prompt that asked for
+    /// exactly N and was answered with another count is one the format has no way to
+    /// state, so it still stops the recording at the decision that opened it, naming
+    /// the count; and a range prompt answered outside its range is met the same way,
+    /// because no screen of this build confirms such an answer.
+    /// </summary>
+    [GameFact]
+    public void ACountOutsideWhatThePromptAskedForStopsTheRecordingNamingIt()
+    {
+        EngineHost.Start();
+        var offered = ModelDb.AllCards.Take(3).ToList();
+
+        var (exact, exactCapture, _) = Recording();
+        exact.HoldCardPromptAnswers(
+            Offered(nameof(CardSelectCmd.FromDeckForEnchantment), "NDeckEnchantSelectScreen", 2, 2, offered),
+            [offered[1]]);
+        exact.Commit(
             nameof(ActionVerb.ChooseEventOption),
             Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
             Reading(Floor(2), Digest(1), 4200),
             Reading(Floor(2, hp: 60), Digest(2), 4600));
 
-        var stop = Assert.IsType<JournalStop>(declinedCapture.Stop);
+        var stop = Assert.IsType<JournalStop>(exactCapture.Stop);
         Assert.Equal(UnmappedDecision.PlayerChoiceSeam, stop.Decision.Seam);
-        Assert.Equal("CardSelectCmd.FromChooseACardScreen", stop.Decision.Name);
-        Assert.Equal("NChooseACardSelectionScreen", stop.Decision.Discriminator);
-        Assert.Equal("0", stop.Decision.Args["chosen"]);
-        Assert.Equal("1", stop.Decision.Args["max_select"]);
-        Assert.Contains("declined", stop.Decision.Evidence.Note, StringComparison.Ordinal);
-        Assert.Equal(NativeSource.UnmappedIntegrity, declinedCapture.Integrity);
-        Assert.Equal(NativeSource.ContinuousContinuity, declinedCapture.Continuity);
-
-        var (partial, partialCapture, _) = Recording();
-        partial.HoldCardPromptAnswers(
-            Offered(nameof(CardSelectCmd.FromHand), "NPlayerHand", 0, 2, offered), [offered[1]]);
-        partial.Commit(
-            nameof(ActionVerb.ChooseEventOption),
-            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
-            Reading(Floor(2), Digest(1), 4200),
-            Reading(Floor(2, hp: 60), Digest(2), 4600));
-
-        stop = Assert.IsType<JournalStop>(partialCapture.Stop);
-        Assert.Equal("CardSelectCmd.FromHand", stop.Decision.Name);
+        Assert.Equal("CardSelectCmd.FromDeckForEnchantment", stop.Decision.Name);
         Assert.Equal("1", stop.Decision.Args["chosen"]);
+        Assert.Equal("2", stop.Decision.Args["min_select"]);
         Assert.Equal("2", stop.Decision.Args["max_select"]);
         Assert.Equal(offered[1].Id.ToString(), stop.Decision.Args["card_ids"]);
-        Assert.Contains("fewer picks", stop.Decision.Evidence.Note, StringComparison.Ordinal);
+        Assert.Contains("exactly that many", stop.Decision.Evidence.Note, StringComparison.Ordinal);
+        Assert.Equal(NativeSource.UnmappedIntegrity, exactCapture.Integrity);
+        Assert.Equal(NativeSource.ContinuousContinuity, exactCapture.Continuity);
+
+        var (over, overCapture, _) = Recording();
+        over.HoldCardPromptAnswers(
+            Offered(nameof(CardSelectCmd.FromHand), "NPlayerHand", 0, 1, offered), [offered[0], offered[1]]);
+        over.Commit(
+            nameof(ActionVerb.PlayCard),
+            Args(("card_id", "CARD.PURITY"), ("hand_index", "0")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        stop = Assert.IsType<JournalStop>(overCapture.Stop);
+        Assert.Equal("CardSelectCmd.FromHand", stop.Decision.Name);
+        Assert.Equal("2", stop.Decision.Args["chosen"]);
+        Assert.Equal("1", stop.Decision.Args["max_select"]);
+        Assert.Contains("outside the range", stop.Decision.Evidence.Note, StringComparison.Ordinal);
     }
 
     /// <summary>

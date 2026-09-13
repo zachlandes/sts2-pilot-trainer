@@ -1373,6 +1373,8 @@ public static partial class ManifestValidator
             }
         }
 
+        ValidateCardScreenConfirmations(actions, problems);
+
         foreach (var action in actions)
         {
             ValidateActionArguments(action, problems);
@@ -1421,6 +1423,48 @@ public static partial class ManifestValidator
             {
                 ValidateVideoTimestamp(timestamp, $"actions[{action.Seq}] ({action.Verb})", videoDurationMs, problems);
             }
+        }
+    }
+
+    /// <summary>
+    /// A confirmation counts picks that are actually there.
+    ///
+    /// A <see cref="ActionVerb.ConfirmCardScreen"/> says how many of the card picks
+    /// before it answered one prompt, so its count can never exceed the picks
+    /// recorded since the last action that was not one - the decision that opened the
+    /// prompt, or the confirmation of the prompt before it. It can be fewer: two
+    /// prompts opened by one decision write their picks back to back, and only the
+    /// second's confirmation is counted here. Whether a prompt needed a confirmation
+    /// at all is the engine's knowledge - the prompt's minimum and maximum - and
+    /// <c>ManifestCardSelector</c> holds it at replay; this is the part of the rule
+    /// that needs no game.
+    /// </summary>
+    private static void ValidateCardScreenConfirmations(IReadOnlyList<ActionRecord> actions, List<string> problems)
+    {
+        var picksSincePrompt = 0;
+        foreach (var action in actions.OrderBy(action => action.Seq))
+        {
+            if (action.Verb == ActionVerb.SelectCardFromScreen)
+            {
+                picksSincePrompt++;
+                continue;
+            }
+
+            if (action.Verb == ActionVerb.ConfirmCardScreen
+                && action.Args is not null
+                && action.Args.TryGetValue("count", out var value)
+                && NonNegativeIntegerPattern.IsMatch(value)
+                && int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var count)
+                && count > picksSincePrompt)
+            {
+                problems.Add(
+                    $"actions[{action.Seq}] ({action.Verb}) confirms {count} pick(s) and only " +
+                    $"{picksSincePrompt} SelectCardFromScreen follow the decision before it. A confirmation " +
+                    "counts the picks recorded immediately before it, so a count past them names picks the " +
+                    "recording never made.");
+            }
+
+            picksSincePrompt = 0;
         }
     }
 
@@ -1592,6 +1636,15 @@ public static partial class ManifestValidator
                 required = ["card_id", "option_index"];
                 allowed = [.. required, Corruption.AlternativeOptionIndex];
                 nonNegativeIntegers = ["option_index", Corruption.AlternativeOptionIndex];
+                break;
+            case ActionVerb.ConfirmCardScreen:
+                // The count is how many of the picks before it this prompt took, and
+                // zero is a prompt declined. It can never exceed the picks that follow
+                // the decision that opened the prompt; ValidateCardScreenConfirmations
+                // holds that, because it relates one action to the ones before it.
+                required = ["count"];
+                allowed = required;
+                nonNegativeIntegers = ["count"];
                 break;
             case ActionVerb.SelectBundleFromScreen:
                 // A bundle has no id of its own, so its identity is its cards' ids

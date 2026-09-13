@@ -1,3 +1,4 @@
+using System.Globalization;
 using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Models;
@@ -26,8 +27,21 @@ namespace Sts2PilotTrainer.Engine;
 /// </summary>
 internal sealed class ManifestCardSelector : ICardSelector
 {
+    /// <summary>
+    /// One answer to a card prompt as the manifest recorded it, by the sequence number
+    /// of the action that recorded it. Two kinds, kept in one queue because the order
+    /// between them is the answer: a prompt that asked for a range is its picks and
+    /// then its confirmation, and a confirmation ahead of a pick would be a different
+    /// prompt's.
+    /// </summary>
+    internal abstract record CardAnswer(int Seq);
+
     /// <summary>One card the manifest says was picked off a selection screen.</summary>
-    internal readonly record struct Pick(int Seq, string CardId, int OptionIndex);
+    internal sealed record Pick(int Seq, string CardId, int OptionIndex) : CardAnswer(Seq);
+
+    /// <summary>The confirmation that ended a prompt which asked for a range, with how
+    /// many picks answered it - none, for a prompt declined.</summary>
+    internal sealed record Confirmation(int Seq, int Count) : CardAnswer(Seq);
 
     /// <summary>One alternative the manifest says a card reward was answered with.</summary>
     internal readonly record struct AlternativePick(int Seq, string OptionId, int OptionIndex);
@@ -43,7 +57,7 @@ internal sealed class ManifestCardSelector : ICardSelector
     /// prompt listed them.</summary>
     internal const char BundleSeparator = ',';
 
-    private readonly Queue<Pick> _pending = new();
+    private readonly Queue<CardAnswer> _pending = new();
     private readonly Queue<AlternativePick> _pendingAlternatives = new();
     private readonly Queue<BundlePick> _pendingBundles = new();
     private readonly Queue<RelicPick> _pendingRelics = new();
@@ -73,11 +87,13 @@ internal sealed class ManifestCardSelector : ICardSelector
     /// </summary>
     internal bool AnswersFromTheFrontWhenSilent { get; set; }
 
-    private readonly List<Pick> _improvised = [];
+    private readonly List<CardAnswer> _improvised = [];
 
     /// <summary>What this selector answered without being told, since the last time it
-    /// was asked. Empty unless <see cref="AnswersFromTheFrontWhenSilent"/> is on.</summary>
-    internal IReadOnlyList<Pick> TakeImprovised()
+    /// was asked, as the records a manifest would carry for it - the confirmation a
+    /// range prompt takes included. Empty unless
+    /// <see cref="AnswersFromTheFrontWhenSilent"/> is on.</summary>
+    internal IReadOnlyList<CardAnswer> TakeImprovised()
     {
         var taken = _improvised.ToList();
         _improvised.Clear();
@@ -87,7 +103,7 @@ internal sealed class ManifestCardSelector : ICardSelector
     /// <summary>Why the last selection could not be answered, if it could not be.</summary>
     internal string? Refusal { get; private set; }
 
-    internal void Enqueue(Pick pick) => _pending.Enqueue(pick);
+    internal void Enqueue(CardAnswer answer) => _pending.Enqueue(answer);
 
     internal void Enqueue(AlternativePick pick) => _pendingAlternatives.Enqueue(pick);
 
@@ -110,7 +126,13 @@ internal sealed class ManifestCardSelector : ICardSelector
     /// so a refusal names the stray decisions rather than counting them.</summary>
     internal string DescribePending() =>
         string.Join(", ",
-            _pending.Select(pick => $"action {pick.Seq} ({pick.CardId})")
+            _pending.Select(answer => answer switch
+                {
+                    Pick pick => $"action {pick.Seq} ({pick.CardId})",
+                    Confirmation confirmation =>
+                        $"action {confirmation.Seq} (confirms {confirmation.Count.ToString(CultureInfo.InvariantCulture)})",
+                    _ => $"action {answer.Seq}",
+                })
                 .Concat(_pendingAlternatives.Select(pick => $"action {pick.Seq} (alternative {pick.OptionId})"))
                 .Concat(_pendingBundles.Select(pick => $"action {pick.Seq} (bundle {pick.CardIds})"))
                 .Concat(_pendingRelics.Select(pick => $"action {pick.Seq} (relic {pick.RelicId})")));
@@ -276,7 +298,15 @@ internal sealed class ManifestCardSelector : ICardSelector
             return default;
         }
 
-        var pick = _pending.Dequeue();
+        if (_pending.Dequeue() is not Pick pick)
+        {
+            Refuse(
+                $"A card reward asked which of its {options.Count} card(s) was taken and the manifest " +
+                "confirms a card prompt instead. A card reward takes exactly one card; only a prompt that " +
+                "asked for a range is confirmed with a count.");
+            return default;
+        }
+
         var offered = options.Select(option => option.Card).ToList();
 
         if (pick.OptionIndex < 0 || pick.OptionIndex >= offered.Count)
@@ -302,78 +332,185 @@ internal sealed class ManifestCardSelector : ICardSelector
     }
 
     /// <summary>
-    /// Cards picked off a selection screen over the deck - the enchantment screen is
-    /// the only one this milestone's history reaches.
+    /// Cards picked off a selection screen over the hand, the deck or a pile.
     ///
-    /// The engine states how many it wants, and the manifest has to supply exactly
-    /// that many. Supplying fewer would let the engine fall back on its own
-    /// behaviour, and supplying more would mean an action nobody will ever consume.
+    /// The engine states how many it wants, and what the manifest has to supply
+    /// depends on whether that is one number or a range. A prompt that asks for
+    /// exactly N is answered by exactly N picks: fewer would let the engine fall back
+    /// on its own behaviour, and more would mean an action nobody will ever consume.
+    /// A prompt that asks for between a minimum and a maximum leaves the count to the
+    /// player, so its answer is the picks followed by the
+    /// <see cref="Confirmation"/> that says the player stopped there - none, for a
+    /// prompt declined - and picks that stop short of the maximum and simply end are
+    /// refused, because they cannot be told from a recording cut short.
     /// </summary>
     public Task<IEnumerable<CardModel>> GetSelectedCards(
         IEnumerable<CardModel> options, int minSelect, int maxSelect)
     {
         var offered = options.ToList();
+        var askedForARange = minSelect < maxSelect;
 
-        if (_pending.Count < maxSelect && AnswersFromTheFrontWhenSilent)
+        if (_pending.Count == 0 && AnswersFromTheFrontWhenSilent)
         {
-            var front = offered.Take(maxSelect).ToList();
-            if (front.Count < maxSelect)
+            return Task.FromResult<IEnumerable<CardModel>>(Improvise(offered, maxSelect, askedForARange));
+        }
+
+        var chosen = askedForARange
+            ? TakeUntilConfirmed(offered, minSelect, maxSelect)
+            : TakeExactly(offered, maxSelect);
+        return Task.FromResult<IEnumerable<CardModel>>(chosen);
+    }
+
+    /// <summary>
+    /// The front of what was offered, for the fixture generator. A range prompt takes
+    /// everything it allows and is confirmed at that count, so what is written back
+    /// is what a replay reads.
+    /// </summary>
+    private List<CardModel> Improvise(List<CardModel> offered, int maxSelect, bool askedForARange)
+    {
+        var front = offered.Take(maxSelect).ToList();
+        if (!askedForARange && front.Count < maxSelect)
+        {
+            Refuse($"A card-selection screen asked for {maxSelect} card(s) and offered {offered.Count}.");
+            return [];
+        }
+
+        _improvised.AddRange(front.Select((card, index) => new Pick(-1, card.Id.ToString(), index)));
+        if (askedForARange) _improvised.Add(new Confirmation(-1, front.Count));
+        return front;
+    }
+
+    /// <summary>Exactly <paramref name="maxSelect"/> picks, for a prompt that asked
+    /// for that many and no fewer.</summary>
+    private List<CardModel> TakeExactly(List<CardModel> offered, int maxSelect)
+    {
+        var supplied = _pending.TakeWhile(answer => answer is Pick).Count();
+        if (supplied < maxSelect)
+        {
+            if (_pending.Skip(supplied).FirstOrDefault() is Confirmation confirmation)
             {
                 Refuse(
-                    $"A card-selection screen asked for {maxSelect} card(s) and offered {offered.Count}.");
-                return Task.FromResult<IEnumerable<CardModel>>([]);
+                    $"A card-selection screen asked for exactly {maxSelect} card(s) from {offered.Count} " +
+                    $"option(s) and action {confirmation.Seq} confirms {supplied} pick(s) instead. Only a " +
+                    "prompt that asked for a range is confirmed with a count; one that asked for exactly " +
+                    "that many is answered by the picks alone.");
+            }
+            else
+            {
+                Refuse(
+                    $"A card-selection screen asked for {maxSelect} card(s) from {offered.Count} option(s) and the " +
+                    $"manifest supplies {supplied}. Every card picked off a screen has to be a recorded " +
+                    "decision; answering with fewer would let the engine choose the rest.");
             }
 
             _pending.Clear();
-            _improvised.AddRange(front.Select((card, index) => new Pick(-1, card.Id.ToString(), index)));
-            return Task.FromResult<IEnumerable<CardModel>>(front);
-        }
-
-        if (_pending.Count < maxSelect)
-        {
-            Refuse(
-                $"A card-selection screen asked for {maxSelect} card(s) from {offered.Count} option(s) and the " +
-                $"manifest supplies {_pending.Count}. Every card picked off a screen has to be a recorded " +
-                "decision; answering with fewer would let the engine choose the rest.");
-            _pending.Clear();
-            return Task.FromResult<IEnumerable<CardModel>>([]);
+            return [];
         }
 
         var chosen = new List<CardModel>();
         for (var i = 0; i < maxSelect; i++)
         {
-            var pick = _pending.Dequeue();
-            if (pick.OptionIndex < 0 || pick.OptionIndex >= offered.Count)
-            {
-                Refuse(
-                    $"Action {pick.Seq} selects screen option {pick.OptionIndex}, but the screen offers " +
-                    $"{offered.Count}: {Describe(offered)}.");
-                return Task.FromResult<IEnumerable<CardModel>>([]);
-            }
-
-            var card = offered[pick.OptionIndex];
-            if (card.Id.ToString() != pick.CardId)
-            {
-                Refuse(
-                    $"Action {pick.Seq} expects {pick.CardId} at screen option {pick.OptionIndex}, but the " +
-                    $"engine offers {card.Id}. The screen is {Describe(offered)}. The replay has diverged " +
-                    "from the recorded history before this point.");
-                return Task.FromResult<IEnumerable<CardModel>>([]);
-            }
-
-            if (chosen.Contains(card))
-            {
-                Refuse(
-                    $"Action {pick.Seq} selects screen option {pick.OptionIndex} a second time. One card " +
-                    "cannot be picked twice on one screen.");
-                return Task.FromResult<IEnumerable<CardModel>>([]);
-            }
-
-            chosen.Add(card);
-            _consumed.Add(pick.Seq);
+            if (Take(offered, (Pick)_pending.Dequeue(), chosen) is { } card) chosen.Add(card);
+            else return [];
         }
 
-        return Task.FromResult<IEnumerable<CardModel>>(chosen);
+        return chosen;
+    }
+
+    /// <summary>
+    /// The picks up to the confirmation that ends them, for a prompt that asked for a
+    /// range, holding the confirmed count to the picks it follows and to the range.
+    ///
+    /// One form without a confirmation is read, and it is the one form that is not
+    /// ambiguous: picks that reach the maximum are the whole answer whether or not a
+    /// confirmation follows, because nothing more could have been picked. That is how
+    /// a recording written before the verb existed - a choose-a-card screen taken, a
+    /// potion's card picked - still replays without being edited. Picks that stop
+    /// short of the maximum and simply end are refused, because that recording
+    /// cannot be told from one cut short.
+    /// </summary>
+    private List<CardModel> TakeUntilConfirmed(List<CardModel> offered, int minSelect, int maxSelect)
+    {
+        var chosen = new List<CardModel>();
+        while (chosen.Count < maxSelect && _pending.TryPeek(out var next) && next is Pick pick)
+        {
+            _pending.Dequeue();
+            if (Take(offered, pick, chosen) is { } card) chosen.Add(card);
+            else return [];
+        }
+
+        if (!(_pending.TryPeek(out var ending) && ending is Confirmation confirmation))
+        {
+            if (chosen.Count == maxSelect) return chosen;
+
+            Refuse(
+                $"A card-selection screen asked for between {minSelect} and {maxSelect} card(s) from " +
+                $"{offered.Count} option(s), the manifest supplies {chosen.Count} pick(s), and no " +
+                "ConfirmCardScreen says the player stopped there. A prompt that leaves the count to the " +
+                "player is answered by its picks and then their confirmation; picks that stop short and " +
+                "simply end cannot be told from a recording cut short.");
+            _pending.Clear();
+            return [];
+        }
+
+        _pending.Dequeue();
+        if (confirmation.Count != chosen.Count)
+        {
+            Refuse(
+                $"Action {confirmation.Seq} confirms {confirmation.Count} pick(s) and {chosen.Count} " +
+                "SelectCardFromScreen precede it for this prompt. The count and the picks are one answer " +
+                "and they disagree.");
+            return [];
+        }
+
+        if (confirmation.Count < minSelect || confirmation.Count > maxSelect)
+        {
+            Refuse(
+                $"Action {confirmation.Seq} confirms {confirmation.Count} pick(s), and this screen asks for " +
+                $"between {minSelect} and {maxSelect}. The replay has diverged from the recorded history " +
+                "before this point, or the recording answers a prompt this build asks differently.");
+            return [];
+        }
+
+        _consumed.Add(confirmation.Seq);
+        return chosen;
+    }
+
+    /// <summary>
+    /// One pick checked against what the screen offered: the position is in range, the
+    /// card at it is the one the manifest names, and it was not picked already. Null,
+    /// with the refusal recorded, when any of those fails.
+    /// </summary>
+    private CardModel? Take(List<CardModel> offered, Pick pick, List<CardModel> chosen)
+    {
+        if (pick.OptionIndex < 0 || pick.OptionIndex >= offered.Count)
+        {
+            Refuse(
+                $"Action {pick.Seq} selects screen option {pick.OptionIndex}, but the screen offers " +
+                $"{offered.Count}: {Describe(offered)}.");
+            return null;
+        }
+
+        var card = offered[pick.OptionIndex];
+        if (card.Id.ToString() != pick.CardId)
+        {
+            Refuse(
+                $"Action {pick.Seq} expects {pick.CardId} at screen option {pick.OptionIndex}, but the " +
+                $"engine offers {card.Id}. The screen is {Describe(offered)}. The replay has diverged " +
+                "from the recorded history before this point.");
+            return null;
+        }
+
+        if (chosen.Contains(card))
+        {
+            Refuse(
+                $"Action {pick.Seq} selects screen option {pick.OptionIndex} a second time. One card " +
+                "cannot be picked twice on one screen.");
+            return null;
+        }
+
+        _consumed.Add(pick.Seq);
+        return card;
     }
 
     private static string Describe(IEnumerable<CardModel> cards) =>

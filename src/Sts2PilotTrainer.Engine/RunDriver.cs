@@ -351,8 +351,9 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     /// <c>ChooseLocalOption</c> is still running. The decisions themselves are ordinary
     /// actions, recorded after the one that opened the screen because that is when the
     /// player made them; this is what lets the driver hand them over at the moment the
-    /// engine asks. Only a contiguous run of <see cref="ActionVerb.SelectCardFromScreen"/>
-    /// immediately after the opening action is ever read.
+    /// engine asks. Only a contiguous run of screen answers - the verbs
+    /// <see cref="CardScreenAnswers"/> lists - immediately after the opening action is
+    /// ever read.
     /// </param>
     public void Apply(ActionRecord action, IReadOnlyList<ActionRecord> upcoming)
     {
@@ -416,6 +417,7 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
                 break;
 
             case ActionVerb.SelectCardFromScreen:
+            case ActionVerb.ConfirmCardScreen:
             case ActionVerb.SelectBundleFromScreen:
             case ActionVerb.SelectRelicFromScreen:
                 ConfirmCardSelectionWasConsumed(action);
@@ -567,10 +569,28 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     internal void ImproviseUnrecordedCardSelections() =>
         _selector.AnswersFromTheFrontWhenSilent = true;
 
-    /// <summary>The screen answers the last action improvised, as the arguments a
-    /// <see cref="ActionVerb.SelectCardFromScreen"/> records, in order.</summary>
-    internal IReadOnlyList<(string CardId, int OptionIndex)> TakeImprovisedCardSelections() =>
-        _selector.TakeImprovised().Select(pick => (pick.CardId, pick.OptionIndex)).ToList();
+    /// <summary>The screen answers the last action improvised, as the verb and
+    /// arguments each records, in order - a <see cref="ActionVerb.SelectCardFromScreen"/>
+    /// per pick, and the <see cref="ActionVerb.ConfirmCardScreen"/> a range prompt ends
+    /// with.</summary>
+    internal IReadOnlyList<(ActionVerb Verb, IReadOnlyDictionary<string, string> Args)> TakeImprovisedCardSelections() =>
+        _selector.TakeImprovised().Select(answer => answer switch
+        {
+            ManifestCardSelector.Pick pick => (
+                ActionVerb.SelectCardFromScreen,
+                (IReadOnlyDictionary<string, string>)new SortedDictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["card_id"] = pick.CardId,
+                    ["option_index"] = pick.OptionIndex.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                }),
+            ManifestCardSelector.Confirmation confirmation => (
+                ActionVerb.ConfirmCardScreen,
+                (IReadOnlyDictionary<string, string>)new SortedDictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["count"] = confirmation.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                }),
+            _ => throw new EngineException($"An improvised answer of kind {answer.GetType().Name} has no record."),
+        }).ToList();
 
     /// <summary>
     /// The kinds still unclaimed on the loot screen, or empty when none is open.
@@ -1393,6 +1413,9 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
                 case ActionVerb.SelectCardFromScreen:
                     _selector.Enqueue(new ManifestCardSelector.Pick(
                         next.Seq, Arg.String(next, "card_id"), Arg.Int(next, "option_index")));
+                    break;
+                case ActionVerb.ConfirmCardScreen:
+                    _selector.Enqueue(new ManifestCardSelector.Confirmation(next.Seq, Arg.Int(next, "count")));
                     break;
                 case ActionVerb.SelectBundleFromScreen:
                     _selector.Enqueue(new ManifestCardSelector.BundlePick(

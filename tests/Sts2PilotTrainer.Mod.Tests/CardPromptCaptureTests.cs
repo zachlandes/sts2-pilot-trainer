@@ -2,8 +2,8 @@ using System.Globalization;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Commands;
-using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Actions;
+using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
@@ -34,6 +34,11 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// answer as <c>SelectCardFromScreen</c>; and a second run of the same seed, staged
 /// the same way, replays that answer through the arbiter's own driver and arrives at
 /// the same complete digest.
+///
+/// The same equivalence holds the prompts that leave the count to the player: an
+/// "up to N" answered with fewer, one answered with none, and a choose-a-card screen
+/// taken or declined, each written as its picks and a <c>ConfirmCardScreen</c> of
+/// their count and replayed to the same digest through the same selector.
 ///
 /// A harness rather than a fixture, and labelled as one: the card is put in the hand
 /// with the engine's own command at fight start, which no natural history does, so
@@ -75,8 +80,9 @@ public sealed class CardPromptCaptureTests : IDisposable
                 Discard(combat.Hand.Cards[0]);
                 Discard(combat.Hand.Cards[0]);
             },
-            chooses: offered => offered[^1],
-            leaves: (combat, chosen) => Assert.Same(chosen, combat.DrawPile.Cards[0]));
+            chooses: offered => [offered[^1]],
+            expects: [ActionVerb.SelectCardFromScreen],
+            leaves: (combat, chosen) => Assert.Same(Assert.Single(chosen), combat.DrawPile.Cards[0]));
 
     /// <summary>Burning Pact: a prompt over the hand, the other shape the screen read
     /// never saw at all, answered with a card that is exhausted.</summary>
@@ -85,31 +91,140 @@ public sealed class CardPromptCaptureTests : IDisposable
         CaptureAndReplay(
             () => ModelDb.Card<BurningPact>(),
             stage: _ => { },
-            chooses: offered => offered[^1],
-            leaves: (combat, chosen) => Assert.Contains(chosen, combat.ExhaustPile.Cards));
+            chooses: offered => [offered[^1]],
+            expects: [ActionVerb.SelectCardFromScreen],
+            leaves: (combat, chosen) => Assert.Contains(Assert.Single(chosen), combat.ExhaustPile.Cards));
+
+    /// <summary>Purity: exhaust up to three from the hand, answered with one. The pick
+    /// and then a confirmation of one, and the replay exhausts exactly that card.</summary>
+    [GameFact]
+    public void AnUpToNPromptAnsweredWithFewerIsRecordedAsItsPicksAndTheirCount() =>
+        CaptureAndReplay(
+            () => ModelDb.Card<Purity>(),
+            stage: _ => { },
+            chooses: offered => [offered[^1]],
+            expects: [ActionVerb.SelectCardFromScreen, ActionVerb.ConfirmCardScreen],
+            leaves: (combat, chosen) =>
+            {
+                Assert.Contains(Assert.Single(chosen), combat.ExhaustPile.Cards);
+                Assert.Single(combat.ExhaustPile.Cards, card => card.Id != ModelDb.Card<Purity>().Id);
+            });
+
+    /// <summary>The same prompt answered with none: a confirmation of zero directly
+    /// after the play, and the replay exhausts nothing but Purity itself.</summary>
+    [GameFact]
+    public void AnUpToNPromptAnsweredWithNoneIsRecordedAsAConfirmationOfZero() =>
+        CaptureAndReplay(
+            () => ModelDb.Card<Purity>(),
+            stage: _ => { },
+            chooses: _ => [],
+            expects: [ActionVerb.ConfirmCardScreen],
+            leaves: (combat, chosen) =>
+            {
+                Assert.Empty(chosen);
+                Assert.DoesNotContain(combat.ExhaustPile.Cards, card => card.Id != ModelDb.Card<Purity>().Id);
+            });
+
+    /// <summary>Discovery: a choose-a-card screen that can be skipped, taken. One pick
+    /// and a confirmation of one, and the replay puts that card in the hand.</summary>
+    [GameFact]
+    public void AChooseACardPromptTakenIsRecordedAsItsPickAndAConfirmationOfOne() =>
+        CaptureAndReplay(
+            () => ModelDb.Card<Discovery>(),
+            stage: _ => { },
+            chooses: offered => [offered[1]],
+            expects: [ActionVerb.SelectCardFromScreen, ActionVerb.ConfirmCardScreen],
+            leaves: (combat, chosen) => Assert.Contains(Assert.Single(chosen), combat.Hand.Cards));
+
+    /// <summary>Discovery declined: a confirmation of zero, and the replay adds nothing
+    /// to the hand.</summary>
+    [GameFact]
+    public void AChooseACardPromptDeclinedIsRecordedAsAConfirmationOfZero()
+    {
+        var handBefore = -1;
+        CaptureAndReplay(
+            () => ModelDb.Card<Discovery>(),
+            stage: combat => handBefore = combat.Hand.Cards.Count,
+            chooses: _ => [],
+            expects: [ActionVerb.ConfirmCardScreen],
+            leaves: (combat, chosen) =>
+            {
+                Assert.Empty(chosen);
+                // Discovery itself left the hand, and nothing came in.
+                Assert.Equal(handBefore - 1, combat.Hand.Cards.Count);
+            });
+    }
+
+    /// <summary>
+    /// The one form without a confirmation the replay reads, and the one it refuses.
+    /// A recording written before the verb existed carries a choose-a-card pick and
+    /// nothing after it; picks that reach the maximum are the whole answer, so it
+    /// replays to the same digest as one that confirms. Picks that stop short of the
+    /// maximum without a confirmation cannot be told from a recording cut short, and
+    /// the same recording of Purity with its confirmation removed is refused by name.
+    /// </summary>
+    [GameFact]
+    public void PicksThatReachTheMaximumReplayWithoutAConfirmationAndPicksThatStopShortDoNot()
+    {
+        var taken = Capture(
+            () => ModelDb.Card<Discovery>(), _ => { }, offered => [offered[1]],
+            (combat, chosen) => Assert.Contains(Assert.Single(chosen), combat.Hand.Cards));
+        var writtenBeforeTheVerb = taken with
+        {
+            Answers = taken.Answers.Where(answer => answer.Verb != ActionVerb.ConfirmCardScreen).ToList(),
+        };
+        Assert.Equal([ActionVerb.SelectCardFromScreen], writtenBeforeTheVerb.Answers.Select(answer => answer.Verb));
+
+        Assert.Equal(
+            taken.DigestAfter,
+            Replay(() => ModelDb.Card<Discovery>(), _ => { }, writtenBeforeTheVerb,
+                (combat, chosen) => Assert.Contains(Assert.Single(chosen), combat.Hand.Cards)));
+
+        var short_ = Capture(
+            () => ModelDb.Card<Purity>(), _ => { }, offered => [offered[^1]],
+            (combat, chosen) => Assert.Contains(Assert.Single(chosen), combat.ExhaustPile.Cards));
+        var cutShort = short_ with
+        {
+            Answers = short_.Answers.Where(answer => answer.Verb != ActionVerb.ConfirmCardScreen).ToList(),
+        };
+
+        var refusal = Assert.Throws<EngineException>(() =>
+            Replay(() => ModelDb.Card<Purity>(), _ => { }, cutShort, (_, _) => { }));
+        Assert.Contains("asked for between 0 and 3 card(s)", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("no ConfirmCardScreen says the player stopped there", refusal.Message, StringComparison.Ordinal);
+    }
 
     // ── The harness ──────────────────────────────────────────────────────────────
 
     /// <summary>What one run wrote down about the prompt, and where it ended.</summary>
     private sealed record Captured(
-        int HandIndex, IReadOnlyList<ActionRecord> Answers, string DigestAfter, string ChosenId);
+        int HandIndex, IReadOnlyList<ActionRecord> Answers, string DigestAfter, IReadOnlyList<string> ChosenIds);
 
     /// <summary>
     /// Two runs of the probe seed. The first plays the card through the retail path and
     /// records the prompt's answer; the second replays that answer through the driver.
     /// </summary>
+    /// <param name="expects">The answer records the recording is expected to carry
+    /// after the play, in order - the picks, and the confirmation a range prompt ends
+    /// with.</param>
     private static void CaptureAndReplay(
         Func<CardModel> card,
         Action<PlayerCombatState> stage,
-        Func<IReadOnlyList<CardModel>, CardModel> chooses,
-        Action<PlayerCombatState, CardModel> leaves)
+        Func<IReadOnlyList<CardModel>, IReadOnlyList<CardModel>> chooses,
+        IReadOnlyList<ActionVerb> expects,
+        Action<PlayerCombatState, IReadOnlyList<CardModel>> leaves)
     {
         var captured = Capture(card, stage, chooses, leaves);
 
-        Assert.Single(captured.Answers);
-        var answer = captured.Answers[0];
-        Assert.Equal(ActionVerb.SelectCardFromScreen, answer.Verb);
-        Assert.Equal(captured.ChosenId, answer.Args["card_id"]);
+        Assert.Equal(expects, captured.Answers.Select(answer => answer.Verb));
+        Assert.Equal(
+            captured.ChosenIds,
+            captured.Answers.Where(answer => answer.Verb == ActionVerb.SelectCardFromScreen)
+                .Select(answer => answer.Args["card_id"]));
+        if (captured.Answers.LastOrDefault(answer => answer.Verb == ActionVerb.ConfirmCardScreen) is { } confirmation)
+        {
+            Assert.Equal(captured.ChosenIds.Count.ToString(CultureInfo.InvariantCulture), confirmation.Args["count"]);
+        }
 
         var replayed = Replay(card, stage, captured, leaves);
 
@@ -127,8 +242,8 @@ public sealed class CardPromptCaptureTests : IDisposable
     private static Captured Capture(
         Func<CardModel> dealt,
         Action<PlayerCombatState> stage,
-        Func<IReadOnlyList<CardModel>, CardModel> chooses,
-        Action<PlayerCombatState, CardModel> leaves)
+        Func<IReadOnlyList<CardModel>, IReadOnlyList<CardModel>> chooses,
+        Action<PlayerCombatState, IReadOnlyList<CardModel>> leaves)
     {
         Captured? captured = null;
         HeadlessRuns.WithARun(session =>
@@ -172,7 +287,7 @@ public sealed class CardPromptCaptureTests : IDisposable
                 Assert.Equal(CardPrompts.PromptState.Offered, prompt!.State);
                 Assert.True(seam.PausedBeforeAsking, "the engine did not pause the action before reading the pile");
                 Assert.Equal(seam.Handed, prompt.Offered);
-                Assert.Same(seam.Chose, Assert.Single(chosen!));
+                Assert.Equal(seam.Chose, chosen);
 
                 recorder.Commit(nameof(ActionVerb.PlayCard), PlayArgs(card, handIndex), before);
             }
@@ -185,7 +300,7 @@ public sealed class CardPromptCaptureTests : IDisposable
                 handIndex,
                 actions.Where(action => action.Seq > play.Seq).ToList(),
                 LiveRun.Read().Digest,
-                seam.Chose!.Id.ToString());
+                seam.Chose!.Select(card => card.Id.ToString()).ToList());
         });
 
         return captured!;
@@ -195,7 +310,7 @@ public sealed class CardPromptCaptureTests : IDisposable
     /// same seed staged the same way.</summary>
     private static string Replay(
         Func<CardModel> dealt, Action<PlayerCombatState> stage, Captured captured,
-        Action<PlayerCombatState, CardModel> leaves)
+        Action<PlayerCombatState, IReadOnlyList<CardModel>> leaves)
     {
         string? digest = null;
         HeadlessRuns.WithARun(session =>
@@ -217,8 +332,12 @@ public sealed class CardPromptCaptureTests : IDisposable
             driver.Apply(play, upcoming);
             foreach (var answer in upcoming) driver.Apply(answer);
 
-            var chosen = combat.AllPiles.SelectMany(pile => pile.Cards)
-                .First(candidate => candidate.Id.ToString() == captured.ChosenId);
+            // The replay's copy of each chosen card, by id: a fresh run of the same
+            // seed staged the same way generates the same cards in the same places.
+            var inPlay = combat.AllPiles.SelectMany(pile => pile.Cards).ToList();
+            var chosen = captured.ChosenIds
+                .Select(id => inPlay.First(candidate => candidate.Id.ToString() == id))
+                .ToList();
             leaves(combat, chosen);
             digest = LiveRun.Read().Digest;
         });
@@ -287,11 +406,11 @@ public sealed class CardPromptCaptureTests : IDisposable
     /// The seam a player's client fills, on the local stack: the engine reaches it only
     /// after it has paused the action for the choice, which is the moment this records.
     /// </summary>
-    private sealed class LocalSeam(Func<IReadOnlyList<CardModel>, CardModel> chooses) : ICardSelector
+    private sealed class LocalSeam(Func<IReadOnlyList<CardModel>, IReadOnlyList<CardModel>> chooses) : ICardSelector
     {
         internal IReadOnlyList<CardModel>? Handed { get; private set; }
 
-        internal CardModel? Chose { get; private set; }
+        internal IReadOnlyList<CardModel>? Chose { get; private set; }
 
         internal bool PausedBeforeAsking { get; private set; }
 
@@ -300,9 +419,10 @@ public sealed class CardPromptCaptureTests : IDisposable
         {
             Handed = options.ToList();
             PausedBeforeAsking = RunManager.Instance.ActionExecutor.CurrentlyRunningAction is
-                { State: GameActionState.GatheringPlayerChoice };
+            { State: GameActionState.GatheringPlayerChoice };
             Chose = chooses(Handed);
-            return Task.FromResult<IEnumerable<CardModel>>([Chose]);
+            Assert.InRange(Chose.Count, minSelect, maxSelect);
+            return Task.FromResult<IEnumerable<CardModel>>(Chose);
         }
 
         public CardRewardSelection GetSelectedCardReward(

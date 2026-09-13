@@ -118,9 +118,17 @@ it can actually stop the replay.
 Because the answer is pulled from inside the opening call, the actions that record
 those clicks - which sit after it in the history, because that is when the player made
 them - are handed to the selector before the call is made. Only a contiguous run of
-screen answers - `SelectCardFromScreen`, `SelectBundleFromScreen`,
+screen answers - `SelectCardFromScreen`, `ConfirmCardScreen`, `SelectBundleFromScreen`,
 `SelectRelicFromScreen`, which `CardScreenAnswers.Verbs` lists - immediately after the
 opening action is ever read, and a selection no screen consumed is refused.
+
+How many picks a card prompt takes depends on what it asked for, and the selector reads it two ways.
+A prompt that asks for exactly N - a removal, an upgrade, the Scriptorium's two enchantments - is answered by exactly N `SelectCardFromScreen` records; fewer is refused, because the engine would choose the rest, and a `ConfirmCardScreen` there is refused by name, because only a range leaves the count to the player.
+A prompt that asks for a range - `MinSelect` below `MaxSelect`, which is Purity's "up to 3", Guards, Neow's Fury and every choose-a-card screen, whose seam asks for zero to one - is answered by its picks and then one `ConfirmCardScreen` whose `count` is how many there were, zero for a prompt declined; the selector takes picks until the confirmation, holds its count to the picks and to the range, and refuses picks that stop short of the maximum and simply end, because those cannot be told from a recording cut short.
+Picks that reach the maximum are the whole answer with or without a confirmation, because nothing more could have been picked, and that one form is read without one.
+The recorder writes the confirmation from the same prompt the picks came from, so the two sides cannot disagree about which prompts take one.
+The format's addition is inside version 6 and is why the legacy form is read: a manifest written before it - the previous recorder wrote a choose-a-card pick and nothing after it, and the committed whole-act fixture holds a potion's - carries no `ConfirmCardScreen`, is not edited to, and replays exactly as it did, while a build before it refuses a manifest that carries one at ingestion, as an unknown verb, rather than reading past it.
+`CardPromptCaptureTests` holds both forms: the legacy pick replays to the digest the confirmed one does, and the same recording cut short of its maximum is refused by name.
 
 A card reward's alternative is answered through the same seam and is not one of those
 followers. `ICardSelector.GetSelectedCardReward` hands back either a card or a
