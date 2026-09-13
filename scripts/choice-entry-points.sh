@@ -31,6 +31,21 @@ readonly TESTS=(
   "RunRecorderTests.TheMethodBodiesTheChoiceScanCannotReadAreTheRecordedOnes"
 )
 
+# The assertion message of one failed test in a trx, unescaped; the records' diff
+# lives there and nowhere on the console under quiet verbosity.
+failure_message() {
+  python3 - "$1" "$2" <<'PY'
+import sys, xml.etree.ElementTree as ET
+trx, test = sys.argv[1], sys.argv[2]
+ns = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
+for result in ET.parse(trx).getroot().iter("{%s}UnitTestResult" % ns["t"]):
+    if result.get("testName") == f"Sts2PilotTrainer.Arbiter.Tests.{test}":
+        message = result.find("t:Output/t:ErrorInfo/t:Message", ns)
+        if message is not None and message.text:
+            print(message.text)
+PY
+}
+
 update=0
 case "${1-}" in
   --update) update=1 ;;
@@ -55,8 +70,10 @@ done
 results="$(mktemp -d)"
 trap 'rm -rf "$results"' EXIT
 
+# A failed test is read below rather than aborting here: quiet verbosity prints no
+# assertion message, and the message is the diff the check exists to show.
 (cd "$REPO_ROOT" && dotnet test tests/Sts2PilotTrainer.Mod.Tests -c Release --nologo --verbosity quiet \
-  --filter "$filter" --logger "trx;LogFileName=choice-entry-points.trx" --results-directory "$results")
+  --filter "$filter" --logger "trx;LogFileName=choice-entry-points.trx" --results-directory "$results") || true
 
 # The verdict is read from the results and not from the exit code: a test that
 # skipped, or a filter that matched nothing, both exit zero.
@@ -65,6 +82,7 @@ for test in "${TESTS[@]}"; do
   if ! grep -oE '<UnitTestResult [^>]*' "$trx" 2>/dev/null \
        | grep -F "testName=\"Sts2PilotTrainer.Arbiter.Tests.$test\"" | grep -qF 'outcome="Passed"'; then
     echo "choice-entry-points: $test did not run to a pass, so nothing was checked or rewritten." >&2
+    failure_message "$trx" "$test" >&2
     exit 1
   fi
 done
