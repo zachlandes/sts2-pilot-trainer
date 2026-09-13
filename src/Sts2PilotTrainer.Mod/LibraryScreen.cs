@@ -208,7 +208,7 @@ internal static class LibraryScreen
 
     /// <summary>Where the panes begin under the band, as a multiple of a ribbon's
     /// height: the tabs stand at that height, and the rest is the air under them.</summary>
-    internal const float BandStep = 1.3f;
+    private const float BandStep = 1.3f;
 
     /// <summary>A label's box as a multiple of its font size, and the advance to the
     /// line after it. Every line of the mod's own text on this surface stands at these,
@@ -221,12 +221,19 @@ internal static class LibraryScreen
     private const float BodyBreath = 0.15f;
 
     /// <summary>
-    /// The pane's height on this popup, from what the panel's own nodes measure: the
-    /// popup less the ribbons at its foot, less the body over the band, less the band.
-    /// Pure, so a test can ask what this build's scenes leave a pane without a game.
+    /// The three placements the pane's height follows from, each the one the client
+    /// draws by: the ribbons at the expanded popup's foot, the body as tall as its
+    /// wrapped text and a breath, and the panes under the band. A test composes these
+    /// the way <see cref="Show"/> does - expand, measure the area, add the band - so
+    /// what it holds the pane to is what the client computes, not a restatement of it.
     /// </summary>
-    internal static float PaneHeight(float bodyTop, float bodyHeight, float ribbon) =>
-        PopupHeight - ribbon - (bodyTop + bodyHeight) - (ribbon * BandStep);
+    internal static float RibbonTop(float ribbon) => PopupHeight - ribbon;
+
+    /// <inheritdoc cref="RibbonTop"/>
+    internal static float BodyRoom(GameTextStyle style, float wrapped) => wrapped + (style.Size * BodyBreath);
+
+    /// <inheritdoc cref="RibbonTop"/>
+    internal static float BandBottom(float areaTop, float ribbon) => areaTop + (ribbon * BandStep);
 
     /// <summary>
     /// Shows one screen, replacing whatever this module had up.
@@ -450,7 +457,7 @@ internal static class LibraryScreen
             newSize.X - 140f,
             newSize.Y - description.Position.Y - content.YesButton.Size.Y - 12f);
 
-        var buttonY = newSize.Y - content.YesButton.Size.Y;
+        var buttonY = RibbonTop(content.YesButton.Size.Y);
         content.NoButton.Position = new Vector2(70f, buttonY);
         content.YesButton.Position = new Vector2(newSize.X - content.YesButton.Size.X - 70f, buttonY);
     }
@@ -476,7 +483,7 @@ internal static class LibraryScreen
         {
             var capped = Math.Min(label.Size.Y, content.NoButton.Size.Y);
             height = GameText.Of(label) is { } style
-                ? style.WrappedHeight(label.GetParsedText(), label.Size.X, capped) + (style.Size * BodyBreath)
+                ? BodyRoom(style, style.WrappedHeight(label.GetParsedText(), label.Size.X, capped))
                 : capped;
         }
 
@@ -553,7 +560,7 @@ internal static class LibraryScreen
                 new Rect2(at, area.Position.Y, Math.Max(tabWidth, area.End.X - at), height)));
         }
 
-        return area.Position.Y + (height * BandStep);
+        return BandBottom(area.Position.Y, height);
     }
 
     /// <summary>The line between the panes. It runs the whole height of the content
@@ -934,7 +941,7 @@ internal static class LibraryScreen
     /// is the only line on this surface that does - a numeral is what a player scans and
     /// the sentence is what they ask for.</param>
     internal static float AddLine(
-        NVerticalPopup content, string text, Vector2 at, float width, Color colour, GameTextStyle style,
+        Control content, string text, Vector2 at, float width, Color colour, GameTextStyle style,
         HorizontalAlignment alignment = HorizontalAlignment.Left, string? tooltip = null)
     {
         var height = LabelHeight(text, width, style);

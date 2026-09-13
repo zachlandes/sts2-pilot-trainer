@@ -219,11 +219,21 @@ The played tick is the mod's own, filled and on a disc, hung off the icon's top-
 `LibraryPaneArt.CellGeometry` is the one place the five parts of a cell are placed - icon, numeral, badge, ring and the bookmark tab - and the tests hold them apart.
 
 **The pane is measured against its room, and the plate keeps the bottom.**
-`LibraryPaneArt.Lay` is the one place the pane's parts are placed against each other: the identity and the relics over the strip, the deck count on the first relic row's line, the facts and the verdict under it, and the plate's ribbons at the pane's foot, a `PlateStep` apart, by the panel's own ribbon.
-The strip is the one part that gives - down to `MinimumCell`, seven tenths of the game's marker - and a pane that cannot give it even that refuses to lay out rather than drawing the strip over the plate; before this the plate was placed from the bottom and drawn upward over whatever was there, which put "Open the run" across the floor numerals and the version line under "Share this run".
+`LibraryPaneArt.Lay` is the one place the pane's parts are placed against each other: the identity over the relic rows, the deck count on the first row's line, the strip under them, the facts and the verdict under it, and the plate's ribbons at the pane's foot, a `PlateStep` apart, by the panel's own ribbon.
+Two parts give, in order.
+The strip gives first, down to `MinimumCell`, seven tenths of the game's marker.
+The relic rows give next and never in size: they scroll inside whatever window the pane has left, because a run carries as many relics as it found and a pane that refused a run for its relic count was a library that vanished when that run was pressed.
+A pane with no window at all for its relics refuses by name rather than drawing one part over another; before any of this the plate was placed from the bottom and drawn upward over whatever was there, which put "Open the run" across the floor numerals and the version line under "Share this run".
 The popup is the game's own 16:9 canvas tall and cannot grow, so the room is what the body over the band and the band itself leave: the body is measured in its own font rather than given a ribbon's height, and the band is the tab and a breath.
+`LibraryScreen.RibbonTop`, `BodyRoom` and `BandBottom` are those three placements, and the client and the fit tests compose the same three, so the height a test holds the pane to is the height the client computes.
 Every line's height is `LibraryScreen.LineHeight`, wrapped in its font where there is one, so the height summed before drawing is the height drawn.
-`LibraryPaneArtTests` hold the Mine and Community panes to fitting at v0.111.0's sizes with the strip at the game's marker, and `LibraryNativeFurnitureTests` reads those sizes off the shipped scenes so the fit is held to the build rather than to numbers copied into a test.
+On v0.111.0 the Mine pane's three ribbons take 233 of its 532 units, and what is left holds one relic row beside a strip at its smallest marker; a second row scrolls, and a third fact line - a rewound run's plate reason, or a verdict that wraps - leaves the one row a window shorter than itself.
+That is the pane's room and not a rule this mod can change; `LibraryPaneArtTests` hold the Mine and Community panes to laying out without refusing or overlapping at v0.111.0's sizes with dozens of relics, and `LibraryNativeFurnitureTests` reads those sizes off the shipped scenes so the fit is held to the build rather than to numbers copied into a test.
+
+**The relic rows are the run-history screen's own flow.**
+`NRelicHistory` fills an `HFlowContainer` with one `relic_basic_holder.tscn` per relic and nothing between them, so a relic on that screen takes the holder's own box and draws its icon inset from it by the icon's own offsets.
+`RelicHolderArt` reads both off the shipped holder the way `GameText` reads a text role - the scene instantiated once and freed - and `LibraryPaneArt.LayoutRelics` paces the rows at that box across the pane's width; the relics used to be drawn at a multiple of the card caption's font size, which was a picture sized by a font.
+The deck count shares the first row's line, right-aligned, and that row holds only as many relics as leave the count's measured width clear, because a row filled edge to edge put the count over its last icons; a count too wide to share a row with even one relic takes a line of its own over the rows.
 
 **Every duplicated ribbon owns its materials.**
 The retail popup button lights up by writing to its image's HSV shader and its outline's blend mode, and a `Duplicate` shares both with its prototype; one hover then lit the tab, the row and the pane's ribbon at once.

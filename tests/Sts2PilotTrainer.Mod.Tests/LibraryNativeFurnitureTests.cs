@@ -120,15 +120,38 @@ public sealed class LibraryNativeFurnitureTests
     }
 
     /// <summary>
-    /// The Mine pane fits on this build with the strip at the game's marker, from the
-    /// sizes the shipped scenes actually set: each role the pane draws with, the
-    /// panel's ribbon and the popup's body. The arithmetic is
+    /// The relic holder the run-history screen flows its relics with, read off its own
+    /// scene: a box, and an icon inset from it by its own offsets. The rows' pitch is
+    /// that box because the flow puts nothing between holders, and that is held here
+    /// too - a build that separates them moves the rows by name.
+    /// </summary>
+    [NativeSceneFact]
+    public void TheRelicRowsAreTheRunHistoryHoldersOwnSizeAndFlow()
+    {
+        var (box, icon) = RelicHolderOnThisBuild();
+        Assert.Equal(LibraryPaneArtTests.MinePane().RelicBox, box);
+        Assert.Equal(LibraryPaneArtTests.MinePane().RelicIcon, icon);
+
+        var history = NativeScenes.Read(GameText.Declarations.Single(d => d.Role == NativeTextRole.Fact).Scene);
+        Assert.NotNull(history);
+        var flow = NativeScenes.Properties(
+            history, "ScreenContents/Content/Container/RelicHistory/MarginContainer/RelicsContainer");
+        Assert.NotNull(flow);
+        Assert.Equal("0", flow["theme_override_constants/h_separation"]);
+        Assert.Equal("0", flow["theme_override_constants/v_separation"]);
+    }
+
+    /// <summary>
+    /// The Mine pane holds a run of dozens of relics on this build, from the sizes the
+    /// shipped scenes actually set: each role the pane draws with, the relic holder,
+    /// the panel's ribbon and the popup's body. The arithmetic is
     /// <see cref="LibraryPaneArtTests.AssertMinePaneFits"/>'s; this is what holds it to
     /// a build rather than to numbers copied into a test.
     /// </summary>
     [NativeSceneFact]
-    public void TheMinePaneFitsOnThisBuildAtTheGamesOwnMarker()
+    public void TheMinePaneFitsOnThisBuildWithDozensOfRelics()
     {
+        var (box, icon) = RelicHolderOnThisBuild();
         var sizes = new LibraryPaneArtTests.NativePaneSizes(
             RowTitle: NativeScenes.DesignSize(RoleScene(NativeTextRole.RowTitle), RoleNode(NativeTextRole.RowTitle)),
             Secondary: NativeScenes.DesignSize(RoleScene(NativeTextRole.Secondary), RoleNode(NativeTextRole.Secondary)),
@@ -139,10 +162,32 @@ public sealed class LibraryNativeFurnitureTests
             Ribbon: NativeScenes.Vector2(NativeScenes.RootProperties(RoleScene(NativeTextRole.ButtonCaption))!["custom_minimum_size"]).Y,
             BodyTop: float.Parse(
                 NativeScenes.Properties(RoleScene(NativeTextRole.PopupBody), RoleNode(NativeTextRole.PopupBody))!["offset_top"],
-                System.Globalization.CultureInfo.InvariantCulture));
+                System.Globalization.CultureInfo.InvariantCulture),
+            RelicBox: box,
+            RelicIcon: icon);
 
         Assert.Equal(LibraryPaneArtTests.MinePane(), sizes);
         LibraryPaneArtTests.AssertMinePaneFits(sizes);
+    }
+
+    /// <summary>The holder's box and its icon's side, read the way
+    /// <see cref="RelicHolderArt"/> reads the live scene: the root's minimum size, less
+    /// the icon's left offset in and its right offset back.</summary>
+    private static (float Box, float Icon) RelicHolderOnThisBuild()
+    {
+        var holder = NativeScenes.Read(RelicHolderArt.HolderScene);
+        Assert.NotNull(holder);
+        var box = NativeScenes.Vector2(NativeScenes.RootProperties(holder)!["custom_minimum_size"]).X;
+
+        var relicScene = NativeScenes.InstancedScene(holder, "Relic");
+        Assert.NotNull(relicScene);
+        var relicText = NativeScenes.Read(relicScene);
+        Assert.NotNull(relicText);
+        var iconNode = NativeScenes.Properties(relicText, "Icon");
+        Assert.NotNull(iconNode);
+        var left = float.Parse(iconNode["offset_left"], System.Globalization.CultureInfo.InvariantCulture);
+        var right = float.Parse(iconNode["offset_right"], System.Globalization.CultureInfo.InvariantCulture);
+        return (box, box - left + right);
     }
 
     private static string RoleScene(NativeTextRole role) =>

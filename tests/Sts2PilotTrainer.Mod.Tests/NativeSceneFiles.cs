@@ -220,6 +220,30 @@ internal static class NativeScenes
         return int.Parse(size, System.Globalization.CultureInfo.InvariantCulture);
     }
 
+    /// <summary>The scene a node instances, resolved through the scene's own external
+    /// resources: <c>instance=ExtResource("2_8vbgl")</c> on the node's header is the
+    /// <c>path</c> of that resource. Null where the node is not an instance.</summary>
+    internal static string? InstancedScene(string sceneText, string nodePath)
+    {
+        const string Key = "instance=ExtResource(\"";
+        foreach (var section in Sections(sceneText))
+        {
+            if (!section.Header.StartsWith("node ", StringComparison.Ordinal)) continue;
+            var name = Attribute(section.Header, "name");
+            var parent = Attribute(section.Header, "parent");
+            if (name is null || parent is null) continue;
+            if ((parent is "." ? name : $"{parent}/{name}") != nodePath) continue;
+
+            var start = section.Header.IndexOf(Key, StringComparison.Ordinal);
+            if (start < 0) return null;
+            start += Key.Length;
+            var end = section.Header.IndexOf('"', start);
+            return end < 0 ? null : ExternalResources(sceneText)[section.Header[start..end]];
+        }
+
+        return null;
+    }
+
     /// <summary>A <c>Vector2(x, y)</c> as the scene spells it.</summary>
     internal static (float X, float Y) Vector2(string spelled)
     {

@@ -32,6 +32,16 @@ internal readonly record struct GameTextStyle(
                 brkFlags: TextServer.LineBreakFlag.Mandatory | TextServer.LineBreakFlag.WordBound).Y
             : fallbackHeight;
 
+    /// <summary>
+    /// How wide one unwrapped line stands in the font that will draw it, so a layout
+    /// can keep the room beside it clear. With no font - a test - the caller's own
+    /// estimate stands, as with <see cref="WrappedHeight"/>.
+    /// </summary>
+    internal float Width(string text, float fallbackWidth) =>
+        Font is { } font
+            ? font.GetStringSize(text, HorizontalAlignment.Left, -1f, Size).X
+            : fallbackWidth;
+
     internal T ApplyTo<T>(T control)
         where T : Control
     {

@@ -100,10 +100,14 @@ internal static class LibraryPaneArt
     /// under the numerals before the next line.</summary>
     internal const float StripBottomSpace = 1.12f;
 
-    /// <summary>A relic row's pitch, as a multiple of the icon's side, and the air
-    /// under the last row.</summary>
-    private const float RelicPitch = 1.15f;
-    private const float RelicRowSpace = 1.3f;
+    /// <summary>The air under the relic rows before the strip, as a share of a relic's
+    /// box. The rows themselves are paced at the box with nothing between, which is
+    /// how the run-history screen's own flow lays its holders.</summary>
+    private const float RelicRowSpace = 0.3f;
+
+    /// <summary>Clear space between the last relic on the first row and the deck
+    /// count that shares its line, as a share of a relic's box.</summary>
+    internal const float CountGapShare = 0.25f;
 
     internal readonly record struct StripLayout(
         int First, int Count, bool HasPrevious, bool HasNext, int Index, int Pages,
@@ -126,26 +130,39 @@ internal static class LibraryPaneArt
     /// all three the plate was drawn upward over the facts and the strip, which is
     /// what a player saw as "Open the run" across the floor numerals and the version
     /// line under "Share this run". The plate keeps the bottom, because it is the
-    /// pane's controls and they sit by the panel's own ribbon; the strip is the one
-    /// part that can give, down to <see cref="MinimumCell"/>, and past that the pane
-    /// refuses rather than overlapping. The numbers are measured, so a build that
-    /// changes a font moves the layout rather than the collision.
+    /// pane's controls and they sit by the panel's own ribbon. Two parts give, in
+    /// order: the strip, down to <see cref="MinimumCell"/>, and then the relic rows,
+    /// which keep their size and scroll inside whatever window is left - a run
+    /// carries as many relics as it found, and a pane that refused a run for its
+    /// relic count was a library that vanished when that run was pressed. A pane
+    /// with no window at all for its relics refuses by name rather than overlapping.
+    /// The numbers are measured, so a build that changes a font moves the layout
+    /// rather than the collision.
     /// </summary>
-    /// <param name="StripTop">Where the strip starts, under the identity and the
-    /// relics.</param>
+    /// <param name="RelicsTop">Where the relic block starts, under the identity.</param>
+    /// <param name="RelicsWindow">The height the relic block is drawn in. Its own
+    /// height where the pane holds it, and less where it does not, in which case the
+    /// block scrolls inside the window.</param>
+    /// <param name="StripTop">Where the strip starts, under the relics.</param>
     /// <param name="Strip">The strip at whatever cell the room allows, or null for a
     /// run with no floors.</param>
     /// <param name="AfterStrip">Where the deck, the facts and the verdict start.</param>
     /// <param name="PlateTop">Where the plate's first ribbon sits, or null for a pane
     /// with no plate. Never above where the facts end.</param>
     internal readonly record struct PaneLayout(
-        float StripTop, StripLayout? Strip, float AfterStrip, float? PlateTop);
+        float RelicsTop, float RelicsWindow, float StripTop, StripLayout? Strip, float AfterStrip,
+        float? PlateTop)
+    {
+        internal float StripRoom => Strip?.Room ?? 0f;
+    }
 
     /// <summary>
     /// Lays the pane out; see <see cref="PaneLayout"/>.
     /// </summary>
-    /// <param name="above">The height of everything over the strip: the heading, a
-    /// subtitle, the relic rows.</param>
+    /// <param name="above">The height of everything over the relics: the heading and
+    /// a subtitle.</param>
+    /// <param name="relics">The relic block's own height, rows and air included -
+    /// <see cref="RelicBlock.Height"/> - or zero for none.</param>
     /// <param name="below">The height of everything between the strip and the plate:
     /// the deck tiles, the facts, the verdict.</param>
     /// <param name="plateRows">How many ribbons the plate holds, the pane's own ribbon
@@ -153,47 +170,95 @@ internal static class LibraryPaneArt
     /// <param name="ribbon">A ribbon's height, measured off the panel's own.</param>
     /// <param name="height">The pane's height.</param>
     internal static PaneLayout Lay(
-        float above, float below, int stripCount, float width, int anchor, int numeralSize,
-        int? stripPage, int plateRows, float ribbon, float height)
+        float above, float relics, float below, int stripCount, float width, int anchor,
+        int numeralSize, int? stripPage, int plateRows, float ribbon, float height)
     {
         var plate = PlateHeight(plateRows, ribbon);
-        // A pane with no plate has nothing at its foot to keep clear of, so its strip
-        // is never asked to give: the opened run's pane flows, and its deck is what
-        // decides how far. What the room bounds is the strip against the plate.
+        // A pane with no plate has nothing at its foot to keep clear of, so nothing in
+        // it is asked to give: the opened run's pane flows, and its deck is what
+        // decides how far. What the room bounds is the relics and the strip against
+        // the plate.
         var room = plateRows == 0 ? (float?)null : height - above - below - plate;
         StripLayout? strip = null;
+        var window = relics;
         if (stripCount > 0)
         {
-            strip = LayoutStrip(stripCount, width, anchor, numeralSize, stripPage, room);
+            // The strip gives first, and only down to its smallest marker; the relics
+            // take the rest of the room and scroll where that is less than their rows
+            float? stripRoom = room is { } bounded
+                ? Math.Max(bounded - relics, StripRoom(MinimumCell, numeralSize))
+                : null;
+            strip = LayoutStrip(stripCount, width, anchor, numeralSize, stripPage, stripRoom);
+            if (room is { } bound) window = Math.Min(relics, bound - strip.Value.Room);
         }
-        else if (room < 0f)
+        else if (room is { } bounded)
         {
-            throw new InvalidOperationException(
-                $"This pane is {(-room.Value).ToString("0", CultureInfo.InvariantCulture)} units short of " +
-                "room for its lines and its plate, and has no strip to give it.");
+            window = Math.Min(relics, bounded);
         }
 
-        var afterStrip = above + (strip?.Room ?? 0f);
+        if (relics > 0f ? window <= 0f : window < 0f)
+        {
+            throw new InvalidOperationException(
+                $"This pane leaves {window.ToString("0", CultureInfo.InvariantCulture)} units for its " +
+                "relics after its lines, its plate and the smallest run strip, and refuses rather " +
+                "than overlapping.");
+        }
+
+        var stripTop = above + window;
         return new PaneLayout(
-            above, strip, afterStrip, plateRows == 0 ? null : height - plate);
+            above, window, stripTop, strip, stripTop + (strip?.Room ?? 0f),
+            plateRows == 0 ? null : height - plate);
     }
 
     /// <summary>The plate's height: its rows a step apart, and the last one whole.</summary>
     internal static float PlateHeight(int rows, float ribbon) =>
         rows == 0 ? 0f : ((rows - 1) * ribbon * PlateStep) + ribbon;
 
-    /// <summary>The relic rows' height: the icons at <paramref name="side"/>, wrapped
-    /// to the width, with air under the last row. Zero for no relics.</summary>
-    internal static float RelicRowsHeight(int count, float width, float side)
+    /// <summary>
+    /// The relic rows and the deck count on the first one's line.
+    ///
+    /// The rows are the run-history screen's own flow: one relic per box across the
+    /// width, no separation, wrapped to the next row at the width. The count is
+    /// right-aligned on the first row's line, and that row holds only as many relics
+    /// as leave the count's own measured width clear - it used to fill the row edge to
+    /// edge and the count was drawn over its last icons. A count wider than the row
+    /// can spare beside even one relic takes a line of its own over the rows instead.
+    /// </summary>
+    /// <param name="PerRow">Relics per row from the second row on.</param>
+    /// <param name="FirstRow">Relics on the first row, beside the count.</param>
+    /// <param name="Rows">Rows of relics; zero for none.</param>
+    /// <param name="CountLine">The height of the count's own line over the rows, or
+    /// zero where it shares the first row or there is no count.</param>
+    /// <param name="Height">The block's height, its air under the last row included.</param>
+    internal readonly record struct RelicBlock(
+        int PerRow, int FirstRow, int Rows, float CountLine, float Height)
     {
-        if (count == 0) return 0f;
-        var perRow = RelicsPerRow(width, side);
-        var rows = (count + perRow - 1) / perRow;
-        return ((rows - 1) * side * RelicPitch) + (side * RelicRowSpace);
+        internal int RowOf(int index) => index < FirstRow ? 0 : 1 + ((index - FirstRow) / PerRow);
+
+        internal int ColumnOf(int index) => index < FirstRow ? index : (index - FirstRow) % PerRow;
     }
 
-    private static int RelicsPerRow(float width, float side) =>
-        Math.Max(1, (int)Math.Floor(width / (side * RelicPitch)));
+    /// <param name="countWidth">The count's measured width, or null for no count.</param>
+    /// <param name="countLine">The height the count takes on a line of its own.</param>
+    internal static RelicBlock LayoutRelics(
+        int relics, float width, float box, float? countWidth, float countLine)
+    {
+        var perRow = Math.Max(1, (int)Math.Floor(width / box));
+        if (relics == 0)
+        {
+            return new RelicBlock(perRow, 0, 0, countWidth is null ? 0f : countLine, countWidth is null ? 0f : countLine);
+        }
+
+        var firstRow = countWidth is { } reserved
+            ? Math.Clamp((int)Math.Floor((width - reserved - (box * CountGapShare)) / box), 0, perRow)
+            : perRow;
+        var ownLine = countWidth is not null && firstRow == 0;
+        if (ownLine) firstRow = perRow;
+        var rest = Math.Max(0, relics - firstRow);
+        var rows = 1 + ((rest + perRow - 1) / perRow);
+        var line = ownLine ? countLine : 0f;
+        return new RelicBlock(perRow, firstRow, rows, line, line + (rows * box) + (box * RelicRowSpace));
+    }
 
     /// <summary>The deck tiles' height for a deck of this many cards, or zero.</summary>
     internal static float DeckHeight(int cards, float width, int captionSize)
@@ -274,6 +339,11 @@ internal static class LibraryPaneArt
         return ((room / StripBottomSpace) - numeral) / perCell;
     }
 
+    /// <summary>The room a strip at this cell takes, air included: what
+    /// <see cref="CellFitting"/> inverts.</summary>
+    internal static float StripRoom(float cell, int lineSize) =>
+        CellGeometry(cell, cell, lineSize).Numeral.End.Y * StripBottomSpace;
+
     private static StripCellGeometry CellGeometry(float pitch, float cell, int lineSize)
     {
         var badge = cell * BadgeShare;
@@ -334,8 +404,11 @@ internal static class LibraryPaneArt
         // them: they are what the run carried, read across the top rather than down the
         // pane. The count shares the first relic row's line; it used to take a line of
         // its own under the relics, which was a line the strip and the plate then fought
-        // over.
-        y = AddRelics(content, pane, new Vector2(at.Position.X, y), at.Size.X, card, factStyle);
+        // over. The rows are measured here and drawn once the pane has said what window
+        // it can give them.
+        var holder = RelicHolderArt.Metrics();
+        var count = pane.DeckCount is { } cards ? LibraryCopy.DeckCount(cards) : null;
+        var relics = RelicBlockFor(pane, at.Size.X, holder, count, factStyle);
 
         // Everything between the strip and the plate is measured before the strip is
         // placed, so the strip is sized to the room those leave rather than the room it
@@ -354,9 +427,14 @@ internal static class LibraryPaneArt
             : 0f;
         var plateRows = (pane.Ribbon is null ? 0 : 1) + pane.Plate.Count;
         var layout = Lay(
-            y - at.Position.Y, below + deck, pane.Strip.Count, at.Size.X, StripAnchor(pane),
-            floor.Size, pane.StripPage, plateRows, content.NoButton.Size.Y, at.Size.Y);
+            y - at.Position.Y, relics.Height, below + deck, pane.Strip.Count, at.Size.X,
+            StripAnchor(pane), floor.Size, pane.StripPage, plateRows, content.NoButton.Size.Y,
+            at.Size.Y);
 
+        AddRelics(
+            content, pane, new Vector2(at.Position.X, at.Position.Y + layout.RelicsTop), at.Size.X,
+            layout.RelicsWindow, relics, holder, count, card, factStyle);
+        y = at.Position.Y + layout.StripTop;
         var strip = AddStrip(content, pane, new Vector2(at.Position.X, y), at.Size.X, floor, layout.Strip);
         y = at.Position.Y + layout.AfterStrip;
         if (deck > 0f) y = AddDeck(content, pane, new Vector2(at.Position.X, y), at.Size.X, card);
@@ -379,72 +457,112 @@ internal static class LibraryPaneArt
         return strip.Focus ?? plateFocus;
     }
 
+    /// <summary>The relic block across this width, with the count's measured width
+    /// kept clear on the first row.</summary>
+    private static RelicBlock RelicBlockFor(
+        ScreenPane pane, float width, RelicHolderMetrics holder, string? count, GameTextStyle fact)
+    {
+        float? countWidth = count is null ? null : fact.Width(count, fact.Size * 0.6f * count.Length);
+        return LayoutRelics(
+            pane.Relics.Count, width, holder.Box, countWidth,
+            count is null ? 0f : LibraryScreen.LineHeight(count, width, fact));
+    }
+
     /// <summary>
-    /// The relic strip: the game's own icons, in the order the run found them, laid
-    /// across the top of the pane.
+    /// The relic block: the game's own icons at the run-history holder's own size, in
+    /// the order the run found them, laid across the top of the pane in rows, with the
+    /// deck count on the first row's line.
     ///
     /// The pane carries every relic rather than the row's handful, which is why there
     /// is no hover here: each icon is the game's own art and the row above is where the
     /// scanning happens. A relic this build has no icon for is written by name instead,
-    /// so the pane never has a hole where a relic was.
+    /// so the pane never has a hole where a relic was. Where the pane's window is
+    /// shorter than the rows, the rows are drawn inside a scroll of that window rather
+    /// than over the strip - the run-history screen scrolls its own relic flow the same
+    /// way - and the bar's own width comes off the rows so no icon sits under it.
     /// </summary>
-    private static float AddRelics(
-        NVerticalPopup content, ScreenPane pane, Vector2 at, float width, GameTextStyle line,
+    private static void AddRelics(
+        NVerticalPopup content, ScreenPane pane, Vector2 at, float width, float window,
+        RelicBlock block, RelicHolderMetrics holder, string? count, GameTextStyle line,
         GameTextStyle fact)
     {
-        var size = line.Size * 1.7f;
-        if (pane.DeckCount is { } cards)
+        if (pane.Relics.Count == 0 && count is null) return;
+
+        Control parent = content;
+        var origin = at;
+        if (block.Height > window + 0.01f)
         {
-            // On the first relic row's line, right-aligned and centred on the icons;
-            // on a line of its own only where there are no relics to share one with
-            var count = LibraryCopy.DeckCount(cards);
-            var lineHeight = fact.Size * LibraryScreen.LabelLineRatio;
-            var countY = pane.Relics.Count == 0 ? at.Y : at.Y + ((size - lineHeight) / 2f);
-            var next = LibraryScreen.AddLine(
-                content, count, new Vector2(at.X, countY), width, LibraryPalette.Muted, fact,
-                HorizontalAlignment.Right);
-            if (pane.Relics.Count == 0) return next;
+            var scroll = new ScrollContainer
+            {
+                Name = "RunmobileRelics",
+                Position = at,
+                Size = new Vector2(width, window),
+                CustomMinimumSize = new Vector2(width, window),
+                HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled,
+                FocusMode = Control.FocusModeEnum.None,
+            };
+            content.AddChild(scroll);
+            width -= scroll.GetVScrollBar().GetCombinedMinimumSize().X;
+            block = RelicBlockFor(pane, width, holder, count, fact);
+            var rows = new Control
+            {
+                Name = "Rows",
+                CustomMinimumSize = new Vector2(width, block.Height),
+                MouseFilter = Control.MouseFilterEnum.Pass,
+            };
+            scroll.AddChild(rows);
+            parent = rows;
+            origin = Vector2.Zero;
         }
 
-        if (pane.Relics.Count == 0) return at.Y;
+        var y = origin.Y;
+        if (count is { } cards)
+        {
+            // On the first relic row's line, right-aligned and centred on the icons;
+            // on a line of its own only where the row cannot spare the width, or
+            // there are no relics to share one with
+            var lineHeight = fact.Size * LibraryScreen.LabelLineRatio;
+            var ownLine = block.Rows == 0 || block.CountLine > 0f;
+            var countY = ownLine ? y : y + ((holder.Box - lineHeight) / 2f);
+            var next = LibraryScreen.AddLine(
+                parent, cards, new Vector2(origin.X, countY), width, LibraryPalette.Muted, fact,
+                HorizontalAlignment.Right);
+            if (ownLine) y = next;
+        }
 
-        var perRow = RelicsPerRow(width, size);
-        var y = at.Y;
         for (var index = 0; index < pane.Relics.Count; index++)
         {
             var id = pane.Relics[index];
-            var column = index % perRow;
-            if (column == 0 && index > 0) y += size * RelicPitch;
-
-            var position = new Vector2(at.X + (column * size * RelicPitch), y);
+            var position = new Vector2(
+                origin.X + (block.ColumnOf(index) * holder.Box),
+                y + (block.RowOf(index) * holder.Box));
             if (ModelArt.Of(id) is { } icon)
             {
+                var inset = (holder.Box - holder.Icon) / 2f;
                 // Ignore intrinsic size before assigning art or Godot keeps the texture's minimum
                 var art = new TextureRect
                 {
                     Name = $"RunmobileRelic{index.ToString(CultureInfo.InvariantCulture)}",
                     ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
                     Texture = icon,
-                    Position = position,
+                    Position = position + new Vector2(inset, inset),
                     StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
-                    Size = new Vector2(size, size),
-                    CustomMinimumSize = new Vector2(size, size),
+                    Size = new Vector2(holder.Icon, holder.Icon),
+                    CustomMinimumSize = new Vector2(holder.Icon, holder.Icon),
                     // The game's own tooltip is the relic's, and it needs the mouse.
                     MouseFilter = Control.MouseFilterEnum.Stop,
                     ClipContents = true,
                     TooltipText = ModelIdNames.Display(id),
                 };
-                content.AddChild(art);
+                parent.AddChild(art);
             }
             else
             {
                 LibraryScreen.AddLine(
-                    content, ModelIdNames.Display(id), position, size * 1.1f,
+                    parent, ModelIdNames.Display(id), position, holder.Box,
                     LibraryPalette.Muted, line);
             }
         }
-
-        return y + (size * RelicRowSpace);
     }
 
     /// <summary>The floor the strip opens on: the selected one, else the last played.</summary>
