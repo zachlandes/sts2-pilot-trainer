@@ -1,7 +1,11 @@
 using System.Globalization;
+using System.Reflection;
 using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Rewards;
+using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
 using Sts2PilotTrainer.Replay;
 
@@ -24,6 +28,10 @@ public sealed class RunRecorderStopTests : IDisposable
 {
     private readonly string _root = Path.Combine(
         Path.GetTempPath(), $"runmobile-stop-{Guid.NewGuid():N}", "Runmobile", "steam", "test", "profile1");
+
+    /// <summary>Loading the engine assembly installs the resolver for the prepared
+    /// game copy; nothing here reaches a game type through the engine first.</summary>
+    static RunRecorderStopTests() => _ = typeof(EngineHost).Assembly;
 
     public RunRecorderStopTests()
     {
@@ -200,6 +208,63 @@ public sealed class RunRecorderStopTests : IDisposable
         Assert.Equal("CARD.STRANGE", stop.Decision.Args["card_id"]);
         Assert.Equal(Digest(1), stop.BeforeDigest);
         Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+    }
+
+    /// <summary>
+    /// A card the screen never offered stops the recording at the screen that was up,
+    /// by the screen's own name: a removal and a transform share one base class and
+    /// open different screens, and a stop written against the base says less than the
+    /// recorder saw.
+    /// </summary>
+    [GameFact]
+    public void ACardTheScreenNeverOfferedStopsAtTheConcreteScreenThatWasUp()
+    {
+        EngineHost.Start();
+        var (recorder, capture, _) = Recording();
+        var cards = ModelDb.AllCards.Take(4).ToList();
+        var offered = cards.Take(3).ToList();
+        var stranger = cards[3];
+
+        recorder.HoldCardScreenAnswers("NDeckTransformSelectScreen", offered, [stranger]);
+        recorder.Commit(
+            nameof(ActionVerb.ChooseEventOption),
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        var stop = Assert.IsType<JournalStop>(capture.Stop);
+        Assert.Equal(UnmappedDecision.PlayerChoiceSeam, stop.Decision.Seam);
+        Assert.Equal("NDeckTransformSelectScreen", stop.Decision.Name);
+        Assert.Equal(stranger.Id.ToString(), stop.Decision.Args["card_id"]);
+        Assert.Equal("3", stop.Decision.Args["offered"]);
+        Assert.Equal(NativeSource.UnmappedIntegrity, capture.Integrity);
+        Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+    }
+
+    /// <summary>
+    /// A stop at a constructor is one dotted name. The runtime spells a constructor
+    /// <c>.ctor</c>, and joined to its type with another dot the manifest read
+    /// <c>DiscardPotionGameAction..ctor</c>, a member no later build can look up.
+    /// </summary>
+    [GameFact]
+    public void AStopAtAConstructorIsOneDottedName()
+    {
+        var (recorder, capture, _) = Recording();
+
+        recorder.StopAt(
+            RunRecorder.MetAtMember(
+                typeof(DiscardPotionGameAction), ConstructorInfo.ConstructorName, null,
+                "The slot holds nothing this recorder can see.",
+                ("slot_index", "2")),
+            Reading(Floor(2), Digest(1), 4200));
+
+        var stop = Assert.IsType<JournalStop>(capture.Stop);
+        Assert.Equal("DiscardPotionGameAction.ctor", stop.Decision.Name);
+
+        capture.Finish("abandoned");
+        Assert.Contains(
+            "member DiscardPotionGameAction.ctor with slot_index=2",
+            ManifestValidator.Validate(capture.ToManifest()).Describe(), StringComparison.Ordinal);
     }
 
     /// <summary>

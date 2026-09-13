@@ -613,12 +613,20 @@ internal sealed class RunRecorder : IDisposable
     /// format records the picks immediately after it. Which is also how the driver
     /// replays them.
     /// </summary>
+    /// <param name="screen">The game's own name for the screen that was up, so a stop
+    /// names the concrete screen rather than the base every card screen shares.</param>
     internal static void CardScreenAnswered(
-        IReadOnlyList<CardModel> offered, IEnumerable<CardModel> chosen)
+        string screen, IReadOnlyList<CardModel> offered, IEnumerable<CardModel> chosen)
     {
         var recorder = Active;
         if (recorder is null || recorder._finished) return;
 
+        recorder.HoldCardScreenAnswers(screen, offered, chosen);
+    }
+
+    internal void HoldCardScreenAnswers(
+        string screen, IReadOnlyList<CardModel> offered, IEnumerable<CardModel> chosen)
+    {
         var taken = new List<(string CardId, int Index)>();
         foreach (var card in chosen)
         {
@@ -635,8 +643,8 @@ internal sealed class RunRecorder : IDisposable
                 // Seen and not nameable: a position the recorder guessed would replay as
                 // a different decision, so the decision this screen answers stops the
                 // recording instead.
-                StopAtScreenAnswer(MetAtScreen(
-                    nameof(NCardGridSelectionScreen), null,
+                HoldScreenAnswerStop(MetAtScreen(
+                    screen, null,
                     "The card is not one of the cards the screen offered, so the recorder cannot say which " +
                     "option was picked.",
                     ("card_id", card.Id.ToString()), ("offered", Number(offered.Count))));
@@ -667,7 +675,7 @@ internal sealed class RunRecorder : IDisposable
                     args[Corruption.AlternativeOptionIndex] = Number(alternative);
                 }
 
-                recorder._screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.SelectCardFromScreen), args));
+                _screenAnswers.Add(new ScreenAnswer(nameof(ActionVerb.SelectCardFromScreen), args));
             }
         }
     }
@@ -1848,11 +1856,15 @@ internal sealed class RunRecorder : IDisposable
         string? Note = null);
 
     /// <summary>A decision met at a member this recorder patches, named by the
-    /// member's declaring type and name the way the format asks for it.</summary>
+    /// member's declaring type and name the way the format asks for it. A constructor
+    /// is passed under the runtime's own spelling, <c>.ctor</c>, and renders as one
+    /// dotted name.</summary>
     internal static UnmappedFacts MetAtMember(
         Type declaringType, string member, string? discriminator, string note,
         params (string Name, string Value)[] args) =>
-        new(UnmappedDecision.MemberSeam, $"{declaringType.Name}.{member}", discriminator, Args(args), note);
+        new(
+            UnmappedDecision.MemberSeam, $"{declaringType.Name}.{member.TrimStart('.')}", discriminator,
+            Args(args), note);
 
     /// <summary>A decision met as the answer to one of the game's own screens.</summary>
     internal static UnmappedFacts MetAtScreen(
@@ -2587,7 +2599,10 @@ internal sealed class RunRecorder : IDisposable
         {
             try
             {
-                if (CardScreensUp.OfferedTo(screen) is { } offered) CardScreenAnswered(offered, chosen);
+                if (CardScreensUp.OfferedTo(screen) is { } offered)
+                {
+                    CardScreenAnswered(screen.GetType().Name, offered, chosen);
+                }
                 else
                 {
                     StopAtScreenAnswer(MetAtScreen(
@@ -2900,7 +2915,7 @@ internal sealed class RunRecorder : IDisposable
                 if (slots is null || slot < 0 || slot >= slots.Count || slots[slot] is not { } potion)
                 {
                     StopAtDecision(MetAtMember(
-                        typeof(DiscardPotionGameAction), ".ctor", null,
+                        typeof(DiscardPotionGameAction), ConstructorInfo.ConstructorName, null,
                         "The slot holds nothing this recorder can see, so the recording cannot say which potion " +
                         "was given up.",
                         ("slot_index", Number(slot))));
