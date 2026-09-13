@@ -32,7 +32,10 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// <c>Assembly.GetTypes</c> throws and the loadable types are kept. That tolerance is
 /// what makes <see cref="LoadedScreenTypes"/> necessary: a screen the stubs could not
 /// load would scan as a screen nothing opens, and a caller check over that would pass
-/// on nothing.
+/// on nothing. The same gap is met body by body, where a signature or a call site
+/// names a stubbed-out member: those bodies are counted by <see cref="UnreadableBodies"/>
+/// and held to a committed record, because a body the scan cannot read is a body that
+/// could open a prompt unseen.
 /// </summary>
 internal static class ChoiceEntryPoints
 {
@@ -49,7 +52,7 @@ internal static class ChoiceEntryPoints
         .Select(field => (OpCode)field.GetValue(null)!)
         .ToDictionary(op => op.Value, op => op);
 
-    private static readonly Lazy<IReadOnlyDictionary<MethodBase, IReadOnlySet<Type>>> CallerIndex = new(BuildCallerIndex);
+    private static readonly Lazy<Scan> Index = new(ScanAssembly);
 
     /// <summary>
     /// Loads the engine assembly before any member here names a game type. Its module
@@ -133,7 +136,7 @@ internal static class ChoiceEntryPoints
     /// bodies make it, the game's own mocks left out.
     /// </summary>
     internal static IReadOnlyList<(MethodBase Opener, IReadOnlyList<Type> Callers)> PromptOpenings() =>
-        CallerIndex.Value
+        Index.Value.Callers
             .Where(entry => OpensAPrompt(entry.Key))
             .Select(entry => (entry.Key, (IReadOnlyList<Type>)entry.Value
                 .Where(type => !IsMock(type))
@@ -147,7 +150,7 @@ internal static class ChoiceEntryPoints
     /// command types themselves and the game's own mocks.
     /// </summary>
     internal static IReadOnlyList<Type> ReachedBy(MethodBase entryPoint) =>
-        CallerIndex.Value.TryGetValue(entryPoint, out var callers)
+        Index.Value.Callers.TryGetValue(entryPoint, out var callers)
             ? callers
                 .Where(type => !CommandTypes.Contains(type) && !IsMock(type))
                 .OrderBy(type => type.FullName, StringComparer.Ordinal)
@@ -166,6 +169,37 @@ internal static class ChoiceEntryPoints
             .Append(nameof(NPlayerHand))
             .Order(StringComparer.Ordinal)
             .ToList();
+
+    /// <summary>
+    /// Every outermost type with a method body the scan could not read, with how many
+    /// of its bodies it could not read: a body whose signature or a call site names a
+    /// Godot member the vendored stubs have not got. Each is a body that could open a
+    /// prompt or reach an entry point unseen, which is why the set is committed and
+    /// held rather than tolerated.
+    /// </summary>
+    internal static IReadOnlyList<(Type Type, int Bodies)> UnreadableBodies() =>
+        Index.Value.UnreadableBodies
+            .Select(entry => (entry.Key, entry.Value))
+            .OrderBy(entry => entry.Key.FullName, StringComparer.Ordinal)
+            .ToList();
+
+    /// <summary>The committed record of <see cref="UnreadableBodies"/>, one type per line.</summary>
+    internal static string UnreadableBodiesRecord()
+    {
+        var text = new StringBuilder();
+        text.AppendLine("# Every game type with a method body the choice-entry-point scan in RunRecorderTests");
+        text.AppendLine("# could not read on this build, with how many of its bodies it could not read: a");
+        text.AppendLine("# signature or a call site naming a Godot member the vendored stubs have not got.");
+        text.AppendLine("# Each of these is a body the funnel check does not see, so the set is held here");
+        text.AppendLine("# and a change to it fails until it is looked at. Regenerate with");
+        text.AppendLine("#   ./scripts/choice-entry-points.sh --update");
+        foreach (var (type, bodies) in UnreadableBodies())
+        {
+            text.AppendLine($"{type.FullName} {bodies}");
+        }
+
+        return text.ToString();
+    }
 
     /// <summary>
     /// The committed enumeration: every model that reaches each entry point, grouped by
@@ -239,12 +273,18 @@ internal static class ChoiceEntryPoints
         return types.OfType<Type>();
     }
 
-    /// <summary>For each method called anywhere in the game, the outermost types whose
-    /// bodies call it; compiler-generated state machines and closures are nested types
-    /// and count for the type that declares them.</summary>
-    private static IReadOnlyDictionary<MethodBase, IReadOnlySet<Type>> BuildCallerIndex()
+    private sealed record Scan(
+        IReadOnlyDictionary<MethodBase, IReadOnlySet<Type>> Callers,
+        IReadOnlyDictionary<Type, int> UnreadableBodies);
+
+    /// <summary>One pass over every method body in the game: for each method called
+    /// anywhere, the outermost types whose bodies call it, and for each outermost type,
+    /// how many of its bodies could not be read. Compiler-generated state machines and
+    /// closures are nested types and count for the type that declares them.</summary>
+    private static Scan ScanAssembly()
     {
         var callers = new Dictionary<MethodBase, HashSet<Type>>();
+        var unreadable = new Dictionary<Type, int>();
         foreach (var type in LoadableTypes())
         {
             var outer = Outermost(type);
@@ -252,7 +292,12 @@ internal static class ChoiceEntryPoints
                          BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic |
                          BindingFlags.DeclaredOnly))
             {
-                foreach (var callee in Callees(method))
+                if (!TryReadCallees(method, out var callees))
+                {
+                    unreadable[outer] = unreadable.GetValueOrDefault(outer) + 1;
+                }
+
+                foreach (var callee in callees)
                 {
                     if (!callers.TryGetValue(callee, out var set)) callers[callee] = set = [];
                     set.Add(outer);
@@ -260,56 +305,70 @@ internal static class ChoiceEntryPoints
             }
         }
 
-        return callers.ToDictionary(entry => entry.Key, entry => (IReadOnlySet<Type>)entry.Value);
+        return new Scan(
+            callers.ToDictionary(entry => entry.Key, entry => (IReadOnlySet<Type>)entry.Value),
+            unreadable);
     }
 
     /// <summary>The callees of a method's own body, its async state machine's MoveNext,
-    /// and the display classes its lambdas were compiled into.</summary>
+    /// and of each lambda either of those takes the address of, read the same way. Only
+    /// the lambdas this method's code reaches are followed: a closure class is shared by
+    /// every lambda its declaring member wrote, and the game's compiler-generated lambda
+    /// class is shared by every member of the type.</summary>
     private static IEnumerable<MethodBase> OwnCallees(MethodInfo method)
     {
-        foreach (var callee in Callees(method)) yield return callee;
-        var stateMachine = method.GetCustomAttribute<AsyncStateMachineAttribute>();
-        if (stateMachine is null) yield break;
-        var moveNext = stateMachine.StateMachineType.GetMethod(
-            "MoveNext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        if (moveNext is not null)
+        var own = BodyAndStateMachineCallees(method).ToList();
+        foreach (var callee in own) yield return callee;
+        foreach (var lambda in own.OfType<MethodInfo>().Where(callee => IsLambdaOf(method, callee)).Distinct())
         {
-            foreach (var callee in Callees(moveNext)) yield return callee;
-        }
-
-        foreach (var nested in stateMachine.StateMachineType.DeclaringType!
-                     .GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Public))
-        {
-            if (!nested.Name.Contains("DisplayClass", StringComparison.Ordinal)) continue;
-            foreach (var lambda in nested.GetMethods(
-                         BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic |
-                         BindingFlags.DeclaredOnly))
-            {
-                foreach (var callee in Callees(lambda)) yield return callee;
-            }
+            foreach (var callee in BodyAndStateMachineCallees(lambda)) yield return callee;
         }
     }
 
-    /// <summary>Every method a body's call sites resolve to, read off the raw IL.</summary>
-    private static IEnumerable<MethodBase> Callees(MethodBase method)
+    private static bool IsLambdaOf(MethodInfo method, MethodInfo callee)
     {
+        var closure = callee.DeclaringType;
+        return closure is not null
+               && closure.DeclaringType == method.DeclaringType
+               && closure.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false);
+    }
+
+    private static IEnumerable<MethodBase> BodyAndStateMachineCallees(MethodInfo method)
+    {
+        TryReadCallees(method, out var callees);
+        foreach (var callee in callees) yield return callee;
+        var stateMachine = method.GetCustomAttribute<AsyncStateMachineAttribute>();
+        var moveNext = stateMachine?.StateMachineType.GetMethod(
+            "MoveNext", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        if (moveNext is null) yield break;
+        TryReadCallees(moveNext, out callees);
+        foreach (var callee in callees) yield return callee;
+    }
+
+    /// <summary>
+    /// Every method a body's call sites resolve to, read off the raw IL. False where the
+    /// body or one of its call sites could not be read, which is a body whose signature
+    /// or callee names a Godot member the vendored stubs have not got: the runtime
+    /// reports the gap as whichever exception the failing load happened to raise, and
+    /// the callees read before it are still returned.
+    /// </summary>
+    private static bool TryReadCallees(MethodBase method, out List<MethodBase> callees)
+    {
+        callees = [];
         byte[]? il;
         try
         {
             il = method.GetMethodBody()?.GetILAsByteArray();
         }
-#pragma warning disable CA1031 // The stubs are a partial mirror of GodotSharp and the runtime reports a gap in them as whichever exception the failing load happened to raise
+#pragma warning disable CA1031
         catch (Exception)
         {
-            // A body whose signature names a Godot member the stubs have not got cannot
-            // be read here. Which screens loaded is asserted separately, and the funnel
-            // test holds every one of them found opened, so a swallowed body cannot
-            // pass as a screen nothing opens
-            yield break;
+            return false;
         }
 #pragma warning restore CA1031
 
-        if (il is null) yield break;
+        if (il is null) return true;
+        var readable = true;
         var module = method.Module;
         var typeArguments = method.DeclaringType?.IsGenericType == true ? method.DeclaringType.GetGenericArguments() : null;
         var methodArguments = method.IsGenericMethod ? method.GetGenericArguments() : null;
@@ -318,7 +377,7 @@ internal static class ChoiceEntryPoints
         {
             short value = il[at++];
             if (value == 0xFE) value = (short)(0xFE00 | il[at++]);
-            if (!OpCodesByValue.TryGetValue(value, out var op)) yield break;
+            if (!OpCodesByValue.TryGetValue(value, out var op)) return false;
             var operandSize = op.OperandType switch
             {
                 OperandType.InlineNone => 0,
@@ -330,23 +389,21 @@ internal static class ChoiceEntryPoints
             };
             if (op.OperandType is OperandType.InlineMethod)
             {
-                MethodBase? callee = null;
                 try
                 {
-                    callee = module.ResolveMethod(BitConverter.ToInt32(il, at), typeArguments, methodArguments);
+                    callees.Add(module.ResolveMethod(BitConverter.ToInt32(il, at), typeArguments, methodArguments)!);
                 }
-#pragma warning disable CA1031 // Same gap, met at the call site rather than the signature
+#pragma warning disable CA1031
                 catch (Exception)
                 {
-                    // A call into a member the Godot stubs have not got resolves to
-                    // nothing, for the reason above
+                    readable = false;
                 }
 #pragma warning restore CA1031
-
-                if (callee is not null) yield return callee;
             }
 
             at += operandSize;
         }
+
+        return readable;
     }
 }

@@ -223,6 +223,24 @@ public sealed class RunRecorderTests
     }
 
     /// <summary>
+    /// The method bodies the IL scan could not read are the recorded ones, so the funnel
+    /// check's blind spot is measured rather than tolerated.
+    ///
+    /// A body whose signature or call site names a Godot member the vendored stubs have
+    /// not got cannot be read, and a body that cannot be read could create a screen or
+    /// call an entry point with nobody the wiser. This holds the set of such bodies, by
+    /// outermost type, to <c>scripts/unreadable-choice-scan-bodies.txt</c>, regenerated
+    /// with the enumeration below by the one script; a stub gap that opens on a game
+    /// update fails here as a diff, and each new line is a type to look at by hand.
+    /// </summary>
+    [GameFact]
+    public void TheMethodBodiesTheChoiceScanCannotReadAreTheRecordedOnes() =>
+        HoldToRecord(UnreadableBodiesRecordPath, ChoiceEntryPoints.UnreadableBodiesRecord(),
+            "The method bodies the choice-entry-point scan cannot read are not the recorded ones. Each is " +
+            "a body the funnel check does not see; look at every type that appeared, and if the change is " +
+            "the game build's, regenerate the record in the same change");
+
+    /// <summary>
     /// Which game types call each choice entry point is written down, so a card or
     /// relic that gains a prompt on a game update shows up as a diff rather than as a
     /// recording that stopped.
@@ -232,11 +250,21 @@ public sealed class RunRecorderTests
     /// the hosted skip set, and is regenerated the same way.
     /// </summary>
     [GameFact]
-    public void TheTypesThatReachEachChoiceEntryPointAreTheRecordedOnes()
-    {
-        var path = Path.Combine(Arbiter.RepoRoot, "scripts", "choice-entry-points.txt");
-        var actual = ChoiceEntryPoints.Enumeration();
+    public void TheTypesThatReachEachChoiceEntryPointAreTheRecordedOnes() =>
+        HoldToRecord(EnumerationPath, ChoiceEntryPoints.Enumeration(),
+            "The game types that reach each choice entry point are not the recorded ones. If the game " +
+            "build changed, regenerate the list in the same change");
 
+    private static string EnumerationPath => Path.Combine(Arbiter.RepoRoot, "scripts", "choice-entry-points.txt");
+
+    private static string UnreadableBodiesRecordPath =>
+        Path.Combine(Arbiter.RepoRoot, "scripts", "unreadable-choice-scan-bodies.txt");
+
+    /// <summary>Holds a committed record to what this build produces, or rewrites it
+    /// when <c>./scripts/choice-entry-points.sh --update</c> asks; both records are
+    /// written by the one run so neither can be regenerated without the other.</summary>
+    private static void HoldToRecord(string path, string actual, string whenDifferent)
+    {
         if (Environment.GetEnvironmentVariable("CHOICE_ENTRY_POINTS_UPDATE") == "1")
         {
             File.WriteAllText(path, actual);
@@ -246,8 +274,7 @@ public sealed class RunRecorderTests
         var recorded = File.Exists(path) ? File.ReadAllText(path) : null;
         Assert.True(
             recorded == actual,
-            "The game types that reach each choice entry point are not the recorded ones. If the game " +
-            "build changed, regenerate the list in the same change:\n\n    ./scripts/choice-entry-points.sh --update\n\n" +
+            $"{whenDifferent}:\n\n    ./scripts/choice-entry-points.sh --update\n\n" +
             $"Recorded in {path}:\n{recorded ?? "(no file)"}\nThis build:\n{actual}");
     }
 
