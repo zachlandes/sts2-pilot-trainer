@@ -428,6 +428,87 @@ public sealed class CardPromptOfferTests
     });
 
     /// <summary>
+    /// A prompt counted in a run is given back when that run is torn down, whether or
+    /// not its task ever settles, and the next run counts from zero. The hand prompt
+    /// is the shape that needs it - its own teardown completes the prompt instead of
+    /// cancelling it and the entry point then waits for ever on a reset queue - and it
+    /// is stood in for here by a selector that never answers, which never settles
+    /// either. The task is left outstanding across the teardown and the next run.
+    /// </summary>
+    [GameFact]
+    public void APromptCountedInARunIsGivenBackWhenTheRunIsTornDown()
+    {
+        var harmony = new Harmony($"sts2-pilot-trainer.card-prompt-test.{Guid.NewGuid():N}");
+        var previous = CardPrompts.Answered;
+        try
+        {
+            foreach (var patchClass in CardPrompts.PatchClasses.Concat(CardScreensUp.PatchClasses))
+            {
+                harmony.CreateClassProcessor(patchClass).Patch();
+            }
+
+            CardPrompts.Forget();
+            CardPrompts.Answered = null;
+
+            var held = new Holding(new TaskCompletionSource<IEnumerable<CardModel>>().Task);
+            Task<IEnumerable<CardModel>>? stranded = null;
+            HeadlessRuns.WithARun(session =>
+            {
+                using var driver = new RunDriver(session);
+                HeadlessRuns.EnterTheFirstFight(driver, session);
+                var player = session.RunState.Players[0];
+                Assert.Equal(0, CardScreensUp.Count);
+
+                using (CardSelectCmd.PushSelector(held))
+                {
+                    stranded = CardSelectCmd.FromHand(
+                        new BlockingPlayerChoiceContext(), player, Prefs(TakesOne), filter: null,
+                        source: player.PlayerCombatState!.Hand.Cards[0]);
+                }
+
+                Assert.False(stranded.IsCompleted);
+                Assert.Equal(CardPrompts.PromptState.Offered, CardPrompts.Open!.State);
+                Assert.Equal(1, CardScreensUp.Count);
+
+                HeadlessRuns.EndAnyRun();
+
+                Assert.Equal(0, CardScreensUp.Count);
+                Assert.Null(CardPrompts.Open);
+                Assert.False(stranded.IsCompleted);
+            });
+
+            HeadlessRuns.WithARun(session =>
+            {
+                using var driver = new RunDriver(session);
+                HeadlessRuns.EnterTheFirstFight(driver, session);
+                var player = session.RunState.Players[0];
+                Assert.Equal(0, CardScreensUp.Count);
+
+                var answer = new TaskCompletionSource<IEnumerable<CardModel>>();
+                var holding = new Holding(answer.Task);
+                using (CardSelectCmd.PushSelector(holding))
+                {
+                    var asking = CardSelectCmd.FromDeckForUpgrade(player, Prefs(TakesOne));
+                    Assert.Equal(1, CardScreensUp.Count);
+
+                    answer.SetResult([holding.Options![0]]);
+                    asking.GetAwaiter().GetResult();
+                    Pump.Drain();
+                }
+
+                Assert.Equal(0, CardScreensUp.Count);
+                Assert.False(stranded!.IsCompleted);
+            });
+        }
+        finally
+        {
+            CardPrompts.Answered = previous;
+            CardPrompts.Forget();
+            harmony.UnpatchAll(harmony.Id);
+        }
+    }
+
+    /// <summary>
     /// The recorded-fight journey lights the recording's card off the open prompt's
     /// list, and a prompt it cannot light is refused by name before any wait on a
     /// screen: here a hand prompt, held open by a selector that does not answer.

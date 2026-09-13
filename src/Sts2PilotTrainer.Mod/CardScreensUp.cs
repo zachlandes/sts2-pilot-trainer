@@ -2,6 +2,7 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
+using MegaCrit.Sts2.Core.Runs;
 
 namespace Sts2PilotTrainer.Mod;
 
@@ -19,7 +20,8 @@ namespace Sts2PilotTrainer.Mod;
 /// the engine.
 ///
 /// The count is taken and given back by <see cref="WhileOneIsUp{T}(Task{T}, Task)"/>
-/// alone, in one try/finally around the game's own task, so every increment has its
+/// alone, the take a synchronous continuation of the prompt being offered and the
+/// give-back the one finally around the game's own task, so every increment has its
 /// decrement and there is no bare decrement for a caller to reach - it cannot drift and
 /// it cannot go below zero. Every card prompt but the reward's is counted by
 /// <see cref="CardPrompts"/>, from the entry point that asks it, which is what covers
@@ -28,10 +30,14 @@ namespace Sts2PilotTrainer.Mod;
 /// A prompt is counted only from the moment the engine offers it: an entry point's
 /// task can be outstanding before that, and can stay outstanding for ever - a hook's
 /// prompt whose action the fight ended before it ran never settles - and a count taken
-/// at the call would then never come back. Both of the game's card screens complete
-/// their own completion source in <c>_ExitTree</c>, the grid by cancelling and the
-/// reward screen by faulting, so a screen torn down with its run still ends the task
-/// this waits on.
+/// at the call would then never come back. And it is counted for the run it was taken
+/// in and for no longer: the hand's own teardown completes its prompt with an empty
+/// answer rather than cancelling it, so the entry point goes on to wait for an action
+/// the torn-down queue will never resume, and a count held to that task would be held
+/// for the rest of the process. So the count is the current run's - <see cref="RunTornDown"/>
+/// starts a fresh one at zero - and a prompt takes from and gives back to the run it
+/// was counted in, so one of a torn-down run that settles later, or never, can neither
+/// hold the next run's count up nor take it below zero.
 ///
 /// What a screen offered and what came back is announced rather than interpreted:
 /// what a card off that list means is a subscriber's business, and this says only that
@@ -40,46 +46,65 @@ namespace Sts2PilotTrainer.Mod;
 /// </summary>
 internal static class CardScreensUp
 {
-    private static int _open;
+    /// <summary>One run's count, so a prompt of a torn-down run has a count of its
+    /// own to give back to.</summary>
+    private sealed class Run
+    {
+        internal int Open;
+    }
 
-    /// <summary>How many card prompts are open right now.</summary>
-    internal static int Count => Volatile.Read(ref _open);
+    private static Run _run = new();
+
+    /// <summary>How many card prompts are open right now, in the current run.</summary>
+    internal static int Count => Volatile.Read(ref Volatile.Read(ref _run).Open);
 
     /// <summary>A card reward's screen has been answered, by the position it reports.</summary>
     internal static Action<int?>? RewardAnswered { get; set; }
 
     /// <summary>Every patch class this owns, for the shell to install and for
     /// <c>RunmobileModuleTests</c> to hold to one owner.</summary>
-    internal static IReadOnlyList<Type> PatchClasses { get; } = [typeof(Reward)];
+    internal static IReadOnlyList<Type> PatchClasses { get; } = [typeof(Reward), typeof(RunTornDown)];
 
     /// <summary>Counts one card prompt from now for as long as the game's own task for
     /// it is outstanding.</summary>
     internal static Task<T> WhileOneIsUp<T>(Task<T> screen) => WhileOneIsUp(screen, Task.CompletedTask);
 
     /// <summary>
-    /// Counts one card prompt from the moment <paramref name="offered"/> completes for
-    /// as long as the game's own task for it is outstanding; a task that settles, or
-    /// never settles, without the prompt ever being offered is never counted.
+    /// Counts one card prompt in the current run from the moment
+    /// <paramref name="offered"/> completes for as long as the game's own task for it
+    /// is outstanding; a task that settles, or never settles, without the prompt ever
+    /// being offered is never counted.
     ///
-    /// The first await deliberately takes no context: the settle that reads the count
-    /// polls it by the frame, and a continuation posted back to the game's own context
-    /// would raise the count a frame after the engine read the list rather than in the
-    /// same call.
+    /// The take is a synchronous continuation rather than an await, because the settle
+    /// that reads the count polls it by the frame and an await's continuation is posted
+    /// to the game's own context, which would raise the count a frame after the engine
+    /// read the list rather than in the same call.
     /// </summary>
     internal static async Task<T> WhileOneIsUp<T>(Task<T> prompt, Task offered)
     {
-        await Task.WhenAny(prompt, offered).ConfigureAwait(false);
-        if (!offered.IsCompleted) return await prompt;
-
-        Interlocked.Increment(ref _open);
+        var run = Volatile.Read(ref _run);
+        var taken = offered.ContinueWith(
+            _ => Interlocked.Increment(ref run.Open),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnRanToCompletion,
+            TaskScheduler.Default);
         try
         {
             return await prompt;
         }
         finally
         {
-            Interlocked.Decrement(ref _open);
+            if (taken.IsCompletedSuccessfully) Interlocked.Decrement(ref run.Open);
         }
+    }
+
+    /// <summary>The run is being torn down: its count goes with it, and a prompt
+    /// offered from here on is counted in the next run's.</summary>
+    [HarmonyPatch(typeof(RunManager), nameof(RunManager.CleanUp))]
+    internal static class RunTornDown
+    {
+        [HarmonyPostfix]
+        internal static void After() => Volatile.Write(ref _run, new Run());
     }
 
     /// <summary>
