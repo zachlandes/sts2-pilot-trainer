@@ -635,12 +635,15 @@ internal sealed class RunRecorder : IDisposable
     /// be placed in it and is refused rather than placed in a list read at some other
     /// moment.
     ///
-    /// An offered prompt is an answer only when it is the whole answer. The format
-    /// states a prompt's answer as exactly the picks the prompt asked for, and
-    /// <c>ManifestCardSelector</c> replays exactly that many: fewer - a choose-a-card
-    /// prompt skipped, an "up to N" answered with less - would replay as a refusal in
-    /// front of a player, so it stops the recording here, naming the shortfall, until
-    /// the format can say it.
+    /// What an offered prompt's answer is depends on what it asked for. A prompt that
+    /// asked for exactly N is answered by N picks, and <c>ManifestCardSelector</c>
+    /// replays exactly that many; any other count is one the format has no way to
+    /// state for that prompt, so it stops the recording here, naming the count. A
+    /// prompt that asked for a range - "exhaust up to 3", a choose-a-card screen that
+    /// can be skipped - leaves the count to the player, so its answer is the picks and
+    /// then a <see cref="ActionVerb.ConfirmCardScreen"/> saying how many there were,
+    /// none included; the selector reads the count back from that record, so a prompt
+    /// declined replays as declined rather than as a refusal in front of a player.
     /// </summary>
     internal void HoldCardPromptAnswers(CardPrompts.Prompt prompt, IReadOnlyList<CardModel> chosen)
     {
@@ -670,15 +673,19 @@ internal sealed class RunRecorder : IDisposable
         }
 
         var offered = prompt.Offered!;
-        if (chosen.Count != prompt.MaxSelect)
+        var askedForARange = prompt.MinSelect < prompt.MaxSelect;
+        var outsideWhatItAsked = askedForARange
+            ? chosen.Count < prompt.MinSelect || chosen.Count > prompt.MaxSelect
+            : chosen.Count != prompt.MaxSelect;
+        if (outsideWhatItAsked)
         {
             HoldScreenAnswerStop(MetAtScreen(
                 PromptName(prompt), prompt.Screen,
-                chosen.Count == 0
-                    ? "The prompt was declined, and this format states a prompt's answer only as the picks it " +
-                      "asked for."
-                    : "The prompt was answered with fewer picks than it asked for, and this format states a " +
-                      "prompt's answer only as exactly that many.",
+                askedForARange
+                    ? "The prompt was answered with a count outside the range it asked for, which no screen " +
+                      "of this build confirms, so the recorder cannot say what was decided."
+                    : "The prompt asked for exactly that many picks and was answered with another count, and " +
+                      "this format states such a prompt's answer only as exactly that many.",
                 ("card_ids", string.Join(",", chosen.Select(card => card.Id.ToString()))),
                 ("chosen", Number(chosen.Count)), ("min_select", Number(prompt.MinSelect)),
                 ("max_select", Number(prompt.MaxSelect)), ("offered", Number(offered.Count))));
@@ -686,6 +693,25 @@ internal sealed class RunRecorder : IDisposable
         }
 
         HoldCardScreenAnswers(PromptName(prompt), prompt.Screen, offered, chosen);
+        if (askedForARange) HoldCardScreenConfirmation(chosen.Count);
+    }
+
+    /// <summary>
+    /// Holds the <see cref="ActionVerb.ConfirmCardScreen"/> that ends a range prompt's
+    /// picks, after them, with how many there were.
+    ///
+    /// Held even where a pick could not be placed and a stop is already among the
+    /// answers: the stop outranks everything held beside it, so the confirmation is
+    /// then never written.
+    /// </summary>
+    private void HoldCardScreenConfirmation(int count)
+    {
+        lock (Gate)
+        {
+            _screenAnswers.Add(new ScreenAnswer(
+                nameof(ActionVerb.ConfirmCardScreen),
+                new SortedDictionary<string, string>(StringComparer.Ordinal) { ["count"] = Number(count) }));
+        }
     }
 
     /// <summary>The game's own name for a prompt: its entry point, on its command class.</summary>
@@ -2027,6 +2053,7 @@ internal sealed class RunRecorder : IDisposable
         ActionVerb.TakeCardRewardAlternative,
         ActionVerb.SkipRewards,
         ActionVerb.SelectCardFromScreen,
+        ActionVerb.ConfirmCardScreen,
         ActionVerb.SelectBundleFromScreen,
         ActionVerb.SelectRelicFromScreen,
         ActionVerb.ChooseRestSiteOption,

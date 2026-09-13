@@ -104,14 +104,16 @@ public sealed class RunRecorderTests
     /// <see cref="ActionVerb.UndoEndTurn"/> exist only inside a fight, where the action
     /// executor runs them and <see cref="PlayerFightObserver"/> is attached for the
     /// whole of it; a patch as well would record each of them twice.
-    /// <see cref="ActionVerb.SelectCardFromScreen"/> and
+    /// <see cref="ActionVerb.SelectCardFromScreen"/>,
+    /// <see cref="ActionVerb.ConfirmCardScreen"/> and
     /// <see cref="ActionVerb.TakeCardRewardAlternative"/> are answered rather than
     /// commanded - their engine member is <c>ICardSelector</c>, which is the arbiter's
     /// own seam for the answer a player's client gives - so what watches them is the
     /// shell's: <see cref="CardPrompts"/> at every <c>CardSelectCmd</c> entry point
     /// that reaches a screen, held to the engine's own lists by
     /// <c>CardPromptOfferTests</c>, and <see cref="CardScreensUp"/> at the card
-    /// reward's screen. The recorder subscribes to both.
+    /// reward's screen. The recorder subscribes to both, and writes the confirmation
+    /// from the same prompt the picks came from.
     /// </summary>
     private static readonly IReadOnlyList<ActionVerb> WatchedWithoutAPatch =
     [
@@ -119,6 +121,7 @@ public sealed class RunRecorderTests
         ActionVerb.EndTurn,
         ActionVerb.UndoEndTurn,
         ActionVerb.SelectCardFromScreen,
+        ActionVerb.ConfirmCardScreen,
         ActionVerb.TakeCardRewardAlternative,
     ];
 

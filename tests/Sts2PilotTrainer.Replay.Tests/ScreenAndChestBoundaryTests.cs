@@ -41,8 +41,35 @@ public sealed class CardScreenAnswerWindowTests
 
         Assert.Equal([2, 3, 4], CardScreenAnswers.After(history, 1).Select(action => action.Seq));
         Assert.Equal(
-            [ActionVerb.SelectCardFromScreen, ActionVerb.SelectBundleFromScreen, ActionVerb.SelectRelicFromScreen],
+            [
+                ActionVerb.SelectCardFromScreen, ActionVerb.ConfirmCardScreen, ActionVerb.SelectBundleFromScreen,
+                ActionVerb.SelectRelicFromScreen,
+            ],
             CardScreenAnswers.Verbs);
+    }
+
+    /// <summary>
+    /// The confirmation that ends a range prompt's picks is an answer like the picks
+    /// before it, so the window a decision reads runs through it - a prompt declined
+    /// is a confirmation of none, directly after the decision that opened it - and
+    /// stops at the next decision as before.
+    /// </summary>
+    [Fact]
+    public void AConfirmationFollowsItsPicksInsideTheWindowAndADeclineIsOneAlone()
+    {
+        var history = new[]
+        {
+            Fixtures.Action(1, ActionVerb.PlayCard, ("card_id", "CARD.PURITY"), ("hand_index", "0")),
+            Select(2, "CARD.STRIKE_IRONCLAD"),
+            Fixtures.Action(3, ActionVerb.ConfirmCardScreen, ("count", "1")),
+            Fixtures.Action(4, ActionVerb.PlayCard, ("card_id", "CARD.DISCOVERY"), ("hand_index", "0")),
+            Fixtures.Action(5, ActionVerb.ConfirmCardScreen, ("count", "0")),
+            Fixtures.Action(6, ActionVerb.EndTurn),
+        };
+
+        Assert.Equal([2, 3], CardScreenAnswers.After(history, 1).Select(action => action.Seq));
+        Assert.Equal([5], CardScreenAnswers.After(history, 4).Select(action => action.Seq));
+        Assert.True(CardScreenAnswers.IsAnAnswer(history[4]));
     }
 
     [Fact]

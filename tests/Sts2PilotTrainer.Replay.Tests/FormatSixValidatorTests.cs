@@ -217,7 +217,7 @@ public sealed class FormatSixValidatorTests
     public void TheRemovedVerbsAreGoneFromTheAlphabet()
     {
         Assert.DoesNotContain(Enum.GetNames<ActionVerb>(), name => name is "CloseShop" or "ProceedToMap");
-        Assert.Equal(22, Enum.GetValues<ActionVerb>().Length);
+        Assert.Equal(23, Enum.GetValues<ActionVerb>().Length);
     }
 
     // ── helpers ────────────────────────────────────────────────────────────

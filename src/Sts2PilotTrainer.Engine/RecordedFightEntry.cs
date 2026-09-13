@@ -811,6 +811,7 @@ public sealed class RecordedFightEntry : IDisposable
         ActionVerb.UsePotion,
         ActionVerb.DiscardPotion,
         ActionVerb.SelectCardFromScreen,
+        ActionVerb.ConfirmCardScreen,
         ActionVerb.SelectHandCards,
     ];
 

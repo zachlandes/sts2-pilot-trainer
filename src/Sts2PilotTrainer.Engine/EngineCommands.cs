@@ -155,6 +155,18 @@ public static class EngineCommands
         },
         new()
         {
+            Verb = ActionVerb.ConfirmCardScreen,
+            Type = typeof(ICardSelector),
+            Member = nameof(ICardSelector.GetSelectedCards),
+            Kind = EngineCommandKind.Answered,
+            Note =
+                "The same seam, for a prompt that asked for a range: the selector hands back the picks " +
+                "recorded before this and stops at it, so a prompt answered with fewer than it allowed, none " +
+                "included, replays as that answer rather than as a refusal. A prompt that asks for exactly N " +
+                "takes N picks and refuses a confirmation, because only a range leaves the count to the player.",
+        },
+        new()
+        {
             Verb = ActionVerb.SelectBundleFromScreen,
             Type = typeof(CardSelectCmd),
             Member = nameof(CardSelectCmd.FromChooseABundleScreen),

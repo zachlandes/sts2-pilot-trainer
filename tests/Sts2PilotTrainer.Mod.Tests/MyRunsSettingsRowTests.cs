@@ -372,7 +372,8 @@ public sealed class MyRunsSettingsRowTests
             new GameTextStyle(null, 27),
             new GameTextStyle(null, 26),
             new GameTextStyle(null, 24),
-            new GameTextStyle(null, 22)) { Art = MyRunsSettingsArtTests.Art() };
+            new GameTextStyle(null, 22))
+        { Art = MyRunsSettingsArtTests.Art() };
         var row = Build(
             new MyRunsFacts(Runs: 12, Bytes: 6 * 1024 * 1024, Keep: 20),
             text: text);
@@ -540,7 +541,8 @@ public sealed class MyRunsSettingsRowTests
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
             new GameTextStyle(null, rowSize),
-            new GameTextStyle(null, buttonSize)) { Art = MyRunsSettingsArtTests.Art() };
+            new GameTextStyle(null, buttonSize))
+        { Art = MyRunsSettingsArtTests.Art() };
 
     private static void Apply(MyRunsSettingsRow row, MyRunsFacts facts) =>
         row.Apply(MyRunsRow.For(facts), facts.Keep);

@@ -36,6 +36,7 @@ Editing this file by hand only moves that failure to somebody else's branch.
 | [`TakeCardRewardAlternative`](#takecardrewardalternative) | `option_id`, `option_index` | `ICardSelector.GetSelectedCardReward` |
 | [`SkipRewards`](#skiprewards) | none | `RewardsSetSynchronizer.SkipLocalRewardsSet` |
 | [`SelectCardFromScreen`](#selectcardfromscreen) | `card_id`, `option_index` | `ICardSelector.GetSelectedCards` |
+| [`ConfirmCardScreen`](#confirmcardscreen) | `count` | `ICardSelector.GetSelectedCards` |
 | [`SelectBundleFromScreen`](#selectbundlefromscreen) | `card_ids`, `option_index` | `CardSelectCmd.FromChooseABundleScreen` |
 | [`SelectRelicFromScreen`](#selectrelicfromscreen) | `relic_id`, `option_index` | `RelicSelectCmd.FromChooseARelicScreen` |
 | [`UsePotion`](#usepotion) | `potion_id`, `slot_index` | `PotionModel.EnqueueManualUse` |
@@ -167,6 +168,16 @@ Carries no arguments. Any argument at all is refused.
 | `negative_control_alternative_option_index` | negative control | non-negative integer, canonical and within Int32 |
 
 `ICardSelector.GetSelectedCards`, answered rather than called. The engine asks. The driver queues the manifest's picks before the action that opens the screen and confirms afterwards that a screen consumed each one.
+
+## `ConfirmCardScreen`
+
+The count is how many of the picks before it this prompt took, and zero is a prompt declined. It can never exceed the picks that follow the decision that opened the prompt; ValidateCardScreenConfirmations holds that, because it relates one action to the ones before it.
+
+| Argument | Presence | Value |
+|---|---|---|
+| `count` | required | non-negative integer, canonical and within Int32 |
+
+`ICardSelector.GetSelectedCards`, answered rather than called. The same seam, for a prompt that asked for a range: the selector hands back the picks recorded before this and stops at it, so a prompt answered with fewer than it allowed, none included, replays as that answer rather than as a refusal. A prompt that asks for exactly N takes N picks and refuses a confirmation, because only a range leaves the count to the player.
 
 ## `SelectBundleFromScreen`
 
