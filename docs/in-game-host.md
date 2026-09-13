@@ -9,14 +9,15 @@ cannot establish what it needs is skipped by name in the game's log and the rest
 the mod loads without it.
 `SingleplayerMenuRetention` is a shell patch because retention applies even when
 nothing else can draw.
-So is `CardScreensUp`, whose two patch classes count the card screens up in front of
-the player: a screen being up is a fact about the game rather than about either
+So are `CardScreensUp` and `CardPrompts`, which together count the card prompts up in front of
+the player: a prompt being up is a fact about the game rather than about either
 feature, and both settles read it - the recorder's, to keep a reading off a decision
 somebody has not finished making, and the recorded-fight journey's, so a prompt a played card
 opens does not spend the engine's budget. Behind one feature's patches it would stop
 counting on a build that feature declines to watch, which is the build the other is
-meant to carry on through. What a screen answered is a feature's own business, and a
-module subscribes rather than patching the screens a second time.
+meant to carry on through. What a prompt answered is a feature's own business, and a
+module subscribes rather than patching the entry points a second time.
+`CardPrompts` observes every card prompt at the `CardSelectCmd` entry point that asks it and never at the screen that draws it; the paragraph on the recorder's patches below owns why, and the list a prompt offers is the one the recorded-fight journey finds the recording's card on.
 That promise is about a module which declares itself disabled: a module whose `Install` throws propagates out of the loop, aborts `Start` before the shell is marked started, and may leave its partial patches applied, which is a broken-build condition rather than a runtime one, and the failure-isolation lifecycle that would contain it is still not built.
 Shell ownership is paid for at the other end: `InstallShellPatches` treats a patch class Harmony cannot resolve as a broken build and lets it throw out of `Start`, so a game update that renames `NCardGridSelectionScreen.CardsSelected` or `NCardRewardSelectionScreen.OptionSelected` takes the whole mod down, where the same rename behind a module's own patches would disable only that module.
 `RecordedFightModule` and `RecorderModule` are built. The run library is the third.
@@ -347,11 +348,16 @@ The driver calls those members to make a recorded decision; a player clicking ma
 **Every patch reads and returns.**
 Nothing here issues a command, changes an argument, or changes what the game decides.
 Arguments are read in a prefix, while the shelf still holds the thing that was bought and the hand still holds the card that was played; the state is read at the other end of a settle.
-The one exception to "postfix and return" is the two card screens, whose returned task is handed back unchanged having been looked at on the way past: the engine pulls a card screen's answer through a seam the player's client fills, so there is no command anything else could observe.
-Those two patches are the shell's `CardScreensUp` rather than the recorder's, because the count they keep is read by both settles; the recorder subscribes to what a screen answered, which is its own business and nobody else's.
-`NCardGridSelectionScreen.CardsSelected` covers every screen over a deck, a pile or the hand, because they share that base and it holds both halves of the answer - the list offered and the cards that came back.
-`NCardRewardSelectionScreen.OptionSelected` covers the card reward, whose screen answers with a position into the list `ShowScreen` was given.
-A subscriber owns what its own failure means: an answer the recorder cannot read marks the recording broken and writes the reason into the journal, and the shell's own catch around a subscriber is there only so one of them cannot break the game's card-screen path or stop another running.
+The one exception to "postfix and return" is the card prompts, whose returned task is handed back having been looked at on the way past: the engine pulls a card prompt's answer through a seam the player's client fills, so there is no command anything else could observe.
+Those patches are the shell's `CardPrompts` and `CardScreensUp` rather than the recorder's, because the count they keep is read by both settles; the recorder subscribes to what a prompt answered, which is its own business and nobody else's.
+`CardPrompts` patches every `CardSelectCmd` entry point that reaches a screen - ten of them, with the five that forward to one of the ten written down as forwarders rather than patched twice - and never a screen.
+The screens were what the recorder used to watch, and three of the five prompt shapes went unrecorded or misrecorded there: the combat-pile screen keeps an empty list of its own and the live pile, the hand prompt draws no screen at all, and the choose-a-card screen shares no base with the grid, so Headbutt's discard prompt was refused as "not one of the 0 cards it offered" and a Burning Pact's hand prompt was never seen.
+A recording's `option_index` is a position in the list the engine hands its own seam, which no screen holds, so `CardPromptOffers` in the engine owner derives that list from the arguments the entry point was given by the entry point's own expression - the draw pile re-ordered by rarity then id, a removal with curses first - and `CardPromptOfferTests` holds every derivation to the list the engine handed a recording selector, element for element, which is what makes the transcription safe.
+When it is derived is the engine's timing: an entry point with a `PlayerChoiceContext` reads its pile or hand only after the context has paused the action for the choice, and a hook's context pauses on a later frame, so those prompts are derived by the postfix on `ActionQueueSet.PauseActionForPlayerChoice` and every other by the prefix.
+A prompt a selector of the game's own answers - Whispering Earring pushes one for the length of its effect - is not opened at all, because both hosts answer it engine-side and no decision exists; a prompt the engine's own early return settles is derived to nothing and told to nobody.
+What the recorder does with an answer is `RunRecorder.HoldCardPromptAnswers` and nothing else: a prompt answered with exactly the picks it asked for is written as `SelectCardFromScreen` records after the decision that opened it, and a declined choose-a-card prompt, an "up to N" answered with fewer, a prompt that settled before the engine paused for it, or two prompts open at once each stop the recording `unmapped` at that decision, naming what was met, because a recording that wrote less would refuse at replay in front of a player.
+`NCardRewardSelectionScreen.OptionSelected` covers the card reward, the one prompt outside that funnel, whose screen answers with a position into the list `ShowScreen` was given.
+A subscriber owns what its own failure means: an answer the recorder cannot read marks the recording broken and writes the reason into the journal, and the shell's own catch around a subscriber is there only so one of them cannot break the game's card-prompt path or stop another running.
 
 **The recorder never raises the write barrier.**
 The player's own run saves normally; suppressing that would take the run away from them in order to describe it.
@@ -746,16 +752,21 @@ run in front of a watcher before they were.
 The first is that it does not arrive on a screen transition: the blessing's own work
 awards the relic and animates it onto the belt before opening anything, which is longer
 than the settling budget every other screen on this journey needs. So the arrival waits
-for `CardScreensUp.Count` - the shell's count of card screens the engine has opened and
+for `CardScreensUp.Count` - the shell's count of card prompts the engine has opened and
 is waiting on - rather than for a length of time, which is this page's oldest rule.
 The second is that "the card screen" is not one screen. A removal opens
 `NDeckCardSelectScreen` through `FromDeckGeneric`; a transform opens
 `NDeckTransformSelectScreen` through `FromDeckForTransformation`, and its preview's
 confirm has a different node name. A driver written to the first refused the second while
 it stood open and drawn in front of the player, with a sentence saying it had not opened.
-Both are `NCardGridSelectionScreen`, which owns the grid, the offered list and the click,
+Both are `NCardGridSelectionScreen`, which owns the grid and the click,
 so that is what `RecordedCardScreen` is written to, and the confirm is found by type.
-Whatever a build calls its screens, the base and the count are the two things worth
+The list the recording's `option_index` indexes is not the screen's: it is the open
+`CardPrompts` prompt's, derived from the entry point that opened the screen, which is
+the same list the recorder wrote the position against. The prompts the journey cannot
+light - the hand, the choose-a-card screen, a combat pile - are named in
+`RecordedCardScreen.CannotLight` and refused by name rather than waited on.
+Whatever a build calls its screens, the base, the prompt and the count are the things worth
 depending on.
 
 Drawing that screen brought back the page's oldest trap in a new place, which is the

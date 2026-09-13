@@ -107,8 +107,11 @@ public sealed class RunRecorderTests
     /// <see cref="ActionVerb.SelectCardFromScreen"/> and
     /// <see cref="ActionVerb.TakeCardRewardAlternative"/> are answered rather than
     /// commanded - their engine member is <c>ICardSelector</c>, which is the arbiter's
-    /// own seam for the answer a player's client gives - so what the recorder watches
-    /// is the two screens that ask.
+    /// own seam for the answer a player's client gives - so what watches them is the
+    /// shell's: <see cref="CardPrompts"/> at every <c>CardSelectCmd</c> entry point
+    /// that reaches a screen, held to the engine's own lists by
+    /// <c>CardPromptOfferTests</c>, and <see cref="CardScreensUp"/> at the card
+    /// reward's screen. The recorder subscribes to both.
     /// </summary>
     private static readonly IReadOnlyList<ActionVerb> WatchedWithoutAPatch =
     [

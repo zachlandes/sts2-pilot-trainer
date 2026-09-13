@@ -1,4 +1,3 @@
-using System.Reflection;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
@@ -7,7 +6,8 @@ using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 namespace Sts2PilotTrainer.Mod;
 
 /// <summary>
-/// How many card screens are up in front of the player, and who answered them.
+/// How many card prompts are up in front of the player, and who answered the card
+/// reward's.
 ///
 /// A fact about the game rather than about either feature, which is why it is the
 /// shell's. Both settles read it - the recorder's, to keep a reading off a decision
@@ -19,55 +19,36 @@ namespace Sts2PilotTrainer.Mod;
 /// the engine.
 ///
 /// The count is taken and given back by <see cref="WhileOneIsUp{T}"/> alone, in one
-/// try/finally around the screen's own task, so every increment has its decrement and
+/// try/finally around the game's own task, so every increment has its decrement and
 /// there is no bare decrement for a caller to reach - it cannot drift and it cannot go
-/// below zero. Both of the game's card screens complete their own completion source in
-/// <c>_ExitTree</c>, the grid by cancelling and the reward screen by faulting, so a
-/// screen torn down with its run still ends the task this waits on.
+/// below zero. Every card prompt but the reward's is counted by <see cref="CardPrompts"/>,
+/// from the entry point that asks it, which is what covers the hand prompt and the
+/// choose-a-card screen that no grid patch ever saw; the reward screen is the one
+/// prompt outside that funnel and is counted here at its own screen. Both of the
+/// game's card screens complete their own completion source in <c>_ExitTree</c>, the
+/// grid by cancelling and the reward screen by faulting, so a screen torn down with its
+/// run still ends the task this waits on.
 ///
 /// What a screen offered and what came back is announced rather than interpreted:
 /// what a card off that list means is a subscriber's business, and this says only that
-/// an answer happened and hands over the list it was given. So is what a failure to read one means: a subscriber handles its
+/// an answer happened. So is what a failure to read one means: a subscriber handles its
 /// own, and <see cref="Announce"/> is only there so that one cannot take another down.
 /// </summary>
 internal static class CardScreensUp
 {
     private static int _open;
 
-    /// <summary>How many card screens are open right now.</summary>
+    /// <summary>How many card prompts are open right now.</summary>
     internal static int Count => Volatile.Read(ref _open);
-
-    /// <summary>A screen over a pile, a deck or a hand has been answered, with the
-    /// screen itself and the cards that came back.</summary>
-    internal static Action<NCardGridSelectionScreen, IEnumerable<CardModel>>? GridAnswered { get; set; }
 
     /// <summary>A card reward's screen has been answered, by the position it reports.</summary>
     internal static Action<int?>? RewardAnswered { get; set; }
 
     /// <summary>Every patch class this owns, for the shell to install and for
     /// <c>RunmobileModuleTests</c> to hold to one owner.</summary>
-    internal static IReadOnlyList<Type> PatchClasses { get; } = [typeof(Grid), typeof(Reward)];
+    internal static IReadOnlyList<Type> PatchClasses { get; } = [typeof(Reward)];
 
-    /// <summary>
-    /// The list a grid screen was built with, in the order the engine handed it over,
-    /// or null on a build that no longer exposes it.
-    ///
-    /// Here for the same reason the count is: a screen's own contents are a fact about
-    /// the game, and both features read them for the same thing - a position in this
-    /// list is what an <c>option_index</c> means, in the recording that writes one and
-    /// in the recorded-fight journey that finds the card again on screen. Two readers
-    /// of one private field is two builds this can break on separately.
-    ///
-    /// Read by name and answering null rather than throwing, because what a build
-    /// without it means is the caller's to say: the recorder marks the recording broken
-    /// and the journey refuses to point at a card it cannot identify.
-    /// </summary>
-    internal static IReadOnlyList<CardModel>? OfferedTo(NCardGridSelectionScreen screen) =>
-        typeof(NCardGridSelectionScreen)
-            .GetField("_cards", BindingFlags.Instance | BindingFlags.NonPublic)
-            ?.GetValue(screen) as IReadOnlyList<CardModel>;
-
-    /// <summary>Counts one card screen for as long as the game's own task for it is
+    /// <summary>Counts one card prompt for as long as the game's own task for it is
     /// outstanding.</summary>
     internal static async Task<T> WhileOneIsUp<T>(Task<T> screen)
     {
@@ -90,10 +71,11 @@ internal static class CardScreensUp
     /// subscriber's to say, and each of them says it - the recorder by marking the
     /// recording broken and writing the reason into its own journal. This catch is for
     /// the two things a subscriber must not be able to do, which are to break the game's
-    /// own card-screen path and to stop another subscriber running. Nothing should reach
+    /// own card-prompt path and to stop another subscriber running. Nothing should reach
     /// it, and something that does is a subscriber that did not handle its own failure.
+    /// <see cref="CardPrompts"/> announces through it for the same reason.
     /// </summary>
-    private static void Announce(string what, Action announce)
+    internal static void Announce(string what, Action announce)
     {
         try
         {
@@ -104,26 +86,6 @@ internal static class CardScreensUp
             Log.Error(
                 $"[{RunmobileMod.ModId}] {what} threw out of its own handler, which should have dealt with " +
                 $"it: {ex.GetType().Name}: {ex.Message}", 2);
-        }
-    }
-
-    /// <summary>Every card screen the game opens over a pile, a deck or a hand. One
-    /// patch for all of them, because they share the base that holds both halves of the
-    /// answer. The returned task is handed on unchanged, having been looked at.</summary>
-    [HarmonyPatch(typeof(NCardGridSelectionScreen), nameof(NCardGridSelectionScreen.CardsSelected))]
-    internal static class Grid
-    {
-        [HarmonyPostfix]
-        internal static void After(
-            NCardGridSelectionScreen __instance, ref Task<IEnumerable<CardModel>> __result) =>
-            __result = Observe(__instance, __result);
-
-        internal static async Task<IEnumerable<CardModel>> Observe(
-            NCardGridSelectionScreen screen, Task<IEnumerable<CardModel>> inner)
-        {
-            var chosen = await WhileOneIsUp(inner);
-            Announce("a card screen's answer", () => GridAnswered?.Invoke(screen, chosen));
-            return chosen;
         }
     }
 

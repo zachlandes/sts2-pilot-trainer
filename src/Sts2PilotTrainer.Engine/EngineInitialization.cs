@@ -224,8 +224,18 @@ internal static class HeadlessPatches
 {
     private const string HarmonyId = "sts2-pilot-trainer.headless";
 
+    private static bool _applied;
+
+    /// <summary>
+    /// Applied once per process, for the reason <c>Localization.ApplyPatches</c>
+    /// gives: re-detouring a method the engine is calling races with the runtime's own
+    /// recompilation of it, and a test session starts the engine once per run.
+    /// </summary>
     internal static void Apply(List<string> warnings)
     {
+        if (_applied) return;
+        _applied = true;
+
         var harmony = new Harmony(HarmonyId);
         var assembly = typeof(ModelDb).Assembly;
 
