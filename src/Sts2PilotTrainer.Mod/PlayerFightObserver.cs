@@ -232,8 +232,10 @@ internal sealed class PlayerFightObserver : IDisposable
         var before = _sample();
         if (arguments.Unresolved is { } unresolved)
         {
+            // The game's own name for what was met, for the recorder to write down;
+            // the verb is this mod's translation and names nothing in the game.
             _sink.BeginStepWithUnresolvedArgument(
-                verb, arguments.Args, before, previousFinished, unresolved);
+                verb, arguments.Args, before, previousFinished, action.GetType().Name, unresolved);
         }
         else
         {

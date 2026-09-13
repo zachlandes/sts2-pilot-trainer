@@ -315,6 +315,61 @@ public sealed class PlayerFightObserverTests
         }
     }
 
+    /// <summary>
+    /// A play the observer cannot place in the hand reaches the sink with the game's
+    /// own name for the action beside the format verb, so the recorder can write down
+    /// what was met rather than what it would have translated it to.
+    /// </summary>
+    [GameFact]
+    public void TheObserverNamesTheGameActionItMetWhenItCannotResolveAnArgument()
+    {
+        EngineHost.Start();
+        WatchAnUnplaceableCardThroughTheObserver();
+    }
+
+    /// <summary>Apart from the test so the game assembly is resolved before a game
+    /// type is JIT-compiled, the way the resumed-play test is arranged.</summary>
+    private static void WatchAnUnplaceableCardThroughTheObserver()
+    {
+        if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
+        var session = new GameSession();
+        try
+        {
+            session.StartRun(
+                "P1L0TTRA1NER", "CHARACTER.IRONCLAD", 0, "standard",
+                ["ACT.OVERGROWTH", "ACT.HIVE", "ACT.GLORY"]);
+            var player = session.RunState.Players[0];
+            using var driver = new RunDriver(session);
+            EnterTheFirstFight(driver, session);
+
+            // A card the fight holds and the hand does not: the observer reads the
+            // play, cannot find its position, and says so. Survivor, because the
+            // Ironclad's own deck holds no second one to match by id.
+            var survivor = player.Creature.CombatState!.CreateCard(ModelDb.Card<Survivor>(), player);
+            CardPileCmd.AddGeneratedCardToCombat(survivor, PileType.Draw, player).GetAwaiter().GetResult();
+            Pump.Drain();
+            var inDraw = player.PlayerCombatState!.DrawPile.Cards.Single(card => card.Id == survivor.Id);
+
+            var sink = new RecordingSink();
+            using var observer = PlayerFightObserver.Start(
+                player,
+                () => CanonicalStateProjection.Project(session.RunState).Fields,
+                sink,
+                fightEnded: () => { },
+                sampled: () => { });
+
+            RunManager.Instance.ActionQueueSet.EnqueueWithoutSynchronizing(new PlayCardAction(inDraw, null));
+            Pump.Drain();
+
+            Assert.Equal("BeginStepWithUnresolvedArgument:PlayCard:PlayCardAction", sink.Calls[0]);
+        }
+        finally
+        {
+            if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
+            HeadlessEngine.Forget();
+        }
+    }
+
     /// <summary>Neow's first option and the map move into the first fight, the way
     /// the first-fight fixture starts.</summary>
     private static void EnterTheFirstFight(RunDriver driver, GameSession session)
@@ -360,7 +415,8 @@ public sealed class PlayerFightObserverTests
 
         public void BeginStepWithUnresolvedArgument(
             string verb, IReadOnlyDictionary<string, string> resolved, IReadOnlyDictionary<string, string> before,
-            bool previousActionFinished, string unresolved) => Calls.Add($"BeginStepWithUnresolvedArgument:{verb}");
+            bool previousActionFinished, string member, string unresolved) =>
+            Calls.Add($"BeginStepWithUnresolvedArgument:{verb}:{member}");
 
         public void ResumeStep() => Calls.Add("ResumeStep");
 

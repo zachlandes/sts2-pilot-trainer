@@ -1241,23 +1241,38 @@ internal sealed class RunRecorder : IDisposable
 
             _openFightStep = (verb, args, ReadingOf(before));
         },
-        beginStepWithUnresolvedArgument: (verb, args, before, previousFinished, unresolved) =>
+        beginStepWithUnresolvedArgument: (verb, args, before, previousFinished, member, unresolved) =>
         {
             // The decision before this one is closed the same way the ordinary path
-            // closes it. This one was seen and cannot be named - the format requires
-            // the argument, and a decision written without it is one nobody can
-            // replay - so the recording stops at it, with what the observer did read.
+            // closes it.
             if (!CloseStrandedFightStep(verb, before, previousFinished)) return;
 
-            _capture.Fight?.MarkIncomplete(unresolved);
-            StopAt(
-                new UnmappedFacts(UnmappedDecision.MemberSeam, verb, null, Args(args), unresolved),
-                ReadingOf(before));
+            StopAtFightStep(member, verb, args, ReadingOf(before), unresolved);
         },
         resumeStep: ResumeFightStep,
         completeStep: CloseFightStep,
         finish: FinishFight,
         markIncomplete: Refuse);
+
+    /// <summary>
+    /// A decision inside a fight the observer saw and could describe only in part.
+    ///
+    /// The format requires the argument, and a decision written without it is one
+    /// nobody can replay, so the recording stops at it with what the observer did read.
+    /// What is written down is the game's own action - <paramref name="member"/> is the
+    /// <c>GameAction</c> type the observer met, <c>PlayCardAction</c> and not the
+    /// format's <c>PlayCard</c> - because a stop names what the recorder met for a
+    /// later build to read, and the verb is this recorder's translation of it; the verb
+    /// travels as the discriminator instead, so the stop still says which decision the
+    /// format would have made of it.
+    /// </summary>
+    internal void StopAtFightStep(
+        string member, string verb, IReadOnlyDictionary<string, string> args, TakenReading before,
+        string unresolved)
+    {
+        _capture.Fight?.MarkIncomplete(unresolved);
+        StopAt(new UnmappedFacts(UnmappedDecision.MemberSeam, member, verb, Args(args), unresolved), before);
+    }
 
     /// <summary>
     /// Closes the decision still open when another begins, and says whether the one

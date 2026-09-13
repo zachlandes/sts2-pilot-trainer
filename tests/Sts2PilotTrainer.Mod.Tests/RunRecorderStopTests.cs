@@ -202,6 +202,49 @@ public sealed class RunRecorderStopTests : IDisposable
         Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
     }
 
+    /// <summary>
+    /// A stop inside a fight names the game's own action, never the format's verb.
+    ///
+    /// The observer opens a step under the format verb it translates the action into,
+    /// and a stop that wrote that verb as what was met would name nothing in the game:
+    /// no later build can read <c>PlayCard</c> back to a member. So the recorder
+    /// writes the <c>GameAction</c> type the observer met, and the verb beside it as
+    /// the discriminator, with what the observer did resolve and the sentence saying
+    /// what it could not.
+    /// </summary>
+    [GameFact]
+    public void AStopInsideAFightNamesTheGamesOwnActionAndNotTheFormatVerb()
+    {
+        var (recorder, capture, _) = Recording();
+        var seq = capture.NextSeq;
+
+        recorder.StopAtFightStep(
+            "PlayCardAction", "PlayCard", Args(("card_id", "CARD.BASH")), Reading(Floor(2), Digest(1), 5000),
+            "A CARD.BASH was played and the hand this recorder can see does not hold it, so the recording " +
+            "cannot say which position it came from.");
+
+        Assert.Equal(NativeSource.UnmappedIntegrity, capture.Integrity);
+        Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+        Assert.Empty(capture.Refusals);
+
+        var stop = Assert.IsType<JournalStop>(capture.Stop);
+        Assert.Equal(seq, stop.Decision.Seq);
+        Assert.Equal(UnmappedDecision.MemberSeam, stop.Decision.Seam);
+        Assert.Equal("PlayCardAction", stop.Decision.Name);
+        Assert.Equal("PlayCard", stop.Decision.Discriminator);
+        Assert.Equal("CARD.BASH", stop.Decision.Args["card_id"]);
+        Assert.False(stop.Decision.Args.ContainsKey("hand_index"));
+        Assert.Contains("does not hold it", stop.Decision.Evidence.Note);
+
+        // And the validator's sentence names the action the game ran.
+        capture.Finish("abandoned");
+        var problems = ManifestValidator.Validate(capture.ToManifest()).Describe();
+        Assert.Contains(
+            "The recorder met: member PlayCardAction (PlayCard) with card_id=CARD.BASH",
+            problems, StringComparison.Ordinal);
+        Assert.DoesNotContain("stopped and started again", problems, StringComparison.Ordinal);
+    }
+
     // ── Fixtures ─────────────────────────────────────────────────────────────────
 
     /// <summary>A recorder over a capture one decision in, with its journal on the

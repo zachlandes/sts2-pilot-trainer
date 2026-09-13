@@ -221,6 +221,7 @@ public sealed class FightCapture : IFightSampleSink
         IReadOnlyDictionary<string, string> resolved,
         IReadOnlyDictionary<string, string> before,
         bool previousActionFinished,
+        string member,
         string unresolved) =>
         BeginStep(verb, resolved, before, previousActionFinished);
 
