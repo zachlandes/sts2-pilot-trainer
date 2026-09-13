@@ -71,8 +71,11 @@ public sealed record RecorderPresence(ElementSurface Row, string Text, RecorderR
     /// The row for these facts.
     ///
     /// Three rows the design names and two it does not. A recorder attached and
-    /// recording is RECORDING in the overlay's colour; one attached whose watch has a
-    /// hole in it is RECORDING STOPPED in the warning hue; none attached is no row. A
+    /// recording is RECORDING in the overlay's colour; one attached that is no longer
+    /// recording the run - a hole in its watch, or a decision it saw and could not
+    /// name - is RECORDING STOPPED in the warning hue, because in both the run being
+    /// played is one the player will not be able to play from and the row is where they
+    /// will notice; none attached is no row. A
     /// capture that finished is a run that is over, so nothing is being recorded and the
     /// row says nothing rather than something stale; an active recorder with no capture
     /// state is a contradiction in the facts, and a contradiction draws nothing rather
@@ -86,7 +89,7 @@ public sealed record RecorderPresence(ElementSurface Row, string Text, RecorderR
         {
             RunCaptureState.Recording =>
                 new RecorderPresence(ElementSurface.Shown(), RecorderCopy.Recording, RecorderRowTone.Overlay),
-            RunCaptureState.Broken =>
+            RunCaptureState.Broken or RunCaptureState.Unmapped =>
                 new RecorderPresence(ElementSurface.Shown(), RecorderCopy.RecordingStopped, RecorderRowTone.Warning),
             _ => Nothing,
         };

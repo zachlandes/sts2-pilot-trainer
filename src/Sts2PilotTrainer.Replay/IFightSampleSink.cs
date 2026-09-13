@@ -26,20 +26,27 @@ public interface IFightSampleSink
 
     /// <summary>
     /// An action the watcher could describe only in part, with the arguments it did
-    /// resolve, the state it happens from, and the sentence saying what it could not.
+    /// resolve, the state it happens from, the game's own name for the action it was
+    /// met as, and the sentence saying what it could not.
     ///
     /// The two sinks answer this differently, and that is why the question is asked
     /// here rather than settled by the watcher. A recording whose history is missing an
-    /// argument the format requires is a run nobody can replay, so the recorder refuses
-    /// and keeps nothing for this action; a fight being compared never reads that
+    /// argument the format requires is a run nobody can replay, so the recorder stops
+    /// at this action and keeps nothing for it; a fight being compared never reads that
     /// argument, so the capture keeps the step and carries on with the line the player
     /// took.
+    ///
+    /// <paramref name="member"/> is the game action's own type name - <c>PlayCardAction</c>,
+    /// never the format's <c>PlayCard</c> - because what the recorder writes down for a
+    /// stop is what it met, and a later build reads that name to say what the game did;
+    /// the format verb is this recorder's translation and names nothing in the game.
     /// </summary>
     void BeginStepWithUnresolvedArgument(
         string verb,
         IReadOnlyDictionary<string, string> resolved,
         IReadOnlyDictionary<string, string> before,
         bool previousActionFinished,
+        string member,
         string unresolved);
 
     /// <summary>
@@ -80,7 +87,7 @@ public interface IFightSampleSink
 /// </summary>
 public sealed class DelegatingFightSampleSink(
     Action<string, IReadOnlyDictionary<string, string>, IReadOnlyDictionary<string, string>, bool> beginStep,
-    Action<string, IReadOnlyDictionary<string, string>, IReadOnlyDictionary<string, string>, bool, string>
+    Action<string, IReadOnlyDictionary<string, string>, IReadOnlyDictionary<string, string>, bool, string, string>
         beginStepWithUnresolvedArgument,
     Action resumeStep,
     Action<IReadOnlyDictionary<string, string>> completeStep,
@@ -99,8 +106,9 @@ public sealed class DelegatingFightSampleSink(
         IReadOnlyDictionary<string, string> resolved,
         IReadOnlyDictionary<string, string> before,
         bool previousActionFinished,
+        string member,
         string unresolved) =>
-        beginStepWithUnresolvedArgument(verb, resolved, before, previousActionFinished, unresolved);
+        beginStepWithUnresolvedArgument(verb, resolved, before, previousActionFinished, member, unresolved);
 
     public void ResumeStep() => resumeStep();
 

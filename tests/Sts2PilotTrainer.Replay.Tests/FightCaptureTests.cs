@@ -224,6 +224,7 @@ public sealed class FightCaptureTests
         capture.BeginStepWithUnresolvedArgument(
             "PlayCard", Args(("card_id", "CARD.BASH")), Sample("in_progress", 1, 64, 42),
             previousActionFinished: false,
+            member: "PlayCardAction",
             unresolved: "the hand this recorder can see does not hold it");
         capture.CompleteStep(Sample("in_progress", 1, 64, 34));
         capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 34));

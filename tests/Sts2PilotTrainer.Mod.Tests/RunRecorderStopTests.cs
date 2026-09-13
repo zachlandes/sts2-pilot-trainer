@@ -1,0 +1,394 @@
+using System.Globalization;
+using System.Reflection;
+using MegaCrit.Sts2.Core.Entities.Merchant;
+using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Multiplayer.Game;
+using MegaCrit.Sts2.Core.Rewards;
+using Sts2PilotTrainer.Engine;
+using Sts2PilotTrainer.Mod;
+using Sts2PilotTrainer.Replay;
+
+namespace Sts2PilotTrainer.Arbiter.Tests;
+
+/// <summary>
+/// The two things a recorder's refusal can be, told apart on the recording it writes.
+///
+/// A hole in the watch - a decision that went by unread - breaks the recording:
+/// continuity <c>broken</c>, integrity untouched. A decision the recorder saw and could
+/// not name stops it: integrity <c>unmapped</c>, continuity untouched, and what was
+/// met written down raw. Every refusal used to be the first, so a recorder that met a
+/// reward this format has no verb for reported a watch that stopped and started
+/// again, which is not what happened, and the validator's sentence said so in those
+/// words. Driven here through the same two entry points the recorder's patches reach,
+/// against a store in a temporary directory, with the game loaded because the recorder
+/// is a type of the mod.
+/// </summary>
+public sealed class RunRecorderStopTests : IDisposable
+{
+    private readonly string _root = Path.Combine(
+        Path.GetTempPath(), $"runmobile-stop-{Guid.NewGuid():N}", "Runmobile", "steam", "test", "profile1");
+
+    /// <summary>Loading the engine assembly installs the resolver for the prepared
+    /// game copy; nothing here reaches a game type through the engine first.</summary>
+    static RunRecorderStopTests() => _ = typeof(EngineHost).Assembly;
+
+    public RunRecorderStopTests()
+    {
+        Directory.CreateDirectory(_root);
+        RunmobileStore.UseRootForTesting(_root);
+    }
+
+    public void Dispose()
+    {
+        RunmobileStore.UseRootForTesting(null);
+        var sandbox = _root[.._root.IndexOf("Runmobile", StringComparison.Ordinal)];
+        if (Directory.Exists(sandbox)) Directory.Delete(sandbox, recursive: true);
+    }
+
+    [GameFact]
+    public void ADecisionSeenAndNotNamedStopsTheRecordingWithItsWatchIntact()
+    {
+        var (recorder, capture, journalPath) = Recording();
+        var seq = capture.NextSeq;
+
+        recorder.StopAt(
+            RunRecorder.MetAtMember(
+                typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward), "mystery",
+                "This format has no verb for that kind of reward.",
+                ("reward", "MysteryReward")),
+            Reading(Floor(2), Digest(1), 4200));
+
+        Assert.Equal(NativeSource.UnmappedIntegrity, capture.Integrity);
+        Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+        Assert.Equal(RunCaptureState.Unmapped, capture.State);
+        Assert.Empty(capture.Refusals);
+
+        var stop = Assert.IsType<JournalStop>(capture.Stop);
+        Assert.Equal(seq, stop.Decision.Seq);
+        Assert.Equal(UnmappedDecision.MemberSeam, stop.Decision.Seam);
+        Assert.Equal("RewardsSetSynchronizer.SelectLocalReward", stop.Decision.Name);
+        Assert.Equal("mystery", stop.Decision.Discriminator);
+        Assert.Equal("MysteryReward", stop.Decision.Args["reward"]);
+        Assert.Equal(seq, stop.Decision.Evidence.ActionOrdinal);
+        Assert.Equal(4200, stop.Decision.Evidence.RunClockMs);
+        Assert.Equal("This format has no verb for that kind of reward.", stop.Decision.Evidence.Note);
+        Assert.Equal(Digest(1), stop.BeforeDigest);
+
+        // On the file as well as held, so a session continued from the journal stops
+        // where this one did rather than recording past it.
+        var journal = RunJournal.Parse(RunmobileStore.Read(journalPath)!);
+        Assert.NotNull(journal.Stop);
+        Assert.Equal(seq, journal.Stop!.Decision.Seq);
+        Assert.Empty(journal.Refusals);
+    }
+
+    [GameFact]
+    public void AHoleInTheWatchBreaksTheRecordingWithoutStoppingIt()
+    {
+        var (recorder, capture, journalPath) = Recording();
+
+        recorder.Refuse("A MapMove could not be read: the engine never settled.");
+
+        Assert.Equal(NativeSource.BrokenContinuity, capture.Continuity);
+        Assert.Equal(NativeSource.CompleteIntegrity, capture.Integrity);
+        Assert.Equal(RunCaptureState.Broken, capture.State);
+        Assert.Null(capture.Stop);
+
+        var journal = RunJournal.Parse(RunmobileStore.Read(journalPath)!);
+        Assert.Null(journal.Stop);
+        var refusal = Assert.Single(journal.Refusals);
+        Assert.Contains("never settled", refusal.Reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The validator's sentence is the reader's account of what happened, and the two
+    /// recordings get different ones: the stop names the decision the recorder met, and
+    /// only the hole says the recorder stopped and started again.
+    /// </summary>
+    [GameFact]
+    public void TheValidatorNamesTheDecisionForAStopAndTheHoleForABreak()
+    {
+        var (stopped, stoppedCapture, _) = Recording();
+        stopped.StopAt(
+            RunRecorder.MetAtMember(
+                typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward), "mystery",
+                "This format has no verb for that kind of reward.",
+                ("reward", "MysteryReward")),
+            Reading(Floor(2), Digest(1), 4200));
+        stoppedCapture.Finish("abandoned");
+        var stopProblems = ManifestValidator.Validate(stoppedCapture.ToManifest()).Describe();
+
+        Assert.Contains("source.native.integrity is 'unmapped'", stopProblems, StringComparison.Ordinal);
+        Assert.Contains(
+            "The recorder met: member RewardsSetSynchronizer.SelectLocalReward (mystery) with reward=MysteryReward",
+            stopProblems, StringComparison.Ordinal);
+        Assert.DoesNotContain("stopped and started again", stopProblems, StringComparison.Ordinal);
+
+        var (broken, brokenCapture, _) = Recording();
+        broken.Refuse("A MapMove could not be read: the engine never settled.");
+        brokenCapture.Finish("abandoned");
+        var breakProblems = ManifestValidator.Validate(brokenCapture.ToManifest()).Describe();
+
+        Assert.Contains("stopped and started again", breakProblems, StringComparison.Ordinal);
+        Assert.DoesNotContain("The recorder met", breakProblems, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Past a stop nothing is recorded, so nothing past it can go unrecorded: a
+    /// refusal raised there would claim a hole in a watch that is not watching.
+    /// </summary>
+    [GameFact]
+    public void ARefusalAfterAStopChangesNothing()
+    {
+        var (recorder, capture, journalPath) = Recording();
+        recorder.StopAt(
+            RunRecorder.MetAtMember(
+                typeof(MerchantEntry), nameof(MerchantEntry.OnTryPurchaseWrapper), "MerchantOddEntry",
+                "The entry is not on any shelf this recorder knows."),
+            Reading(Floor(2), Digest(1), 4200));
+        var written = RunmobileStore.Read(journalPath);
+
+        recorder.Refuse("A MapMove could not be read: the engine never settled.");
+
+        Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+        Assert.Equal(NativeSource.UnmappedIntegrity, capture.Integrity);
+        Assert.Empty(capture.Refusals);
+        Assert.Equal(written, RunmobileStore.Read(journalPath));
+    }
+
+    [GameFact]
+    public void ARecordingStopsOnceAtTheFirstDecisionItCouldNotName()
+    {
+        var (recorder, capture, _) = Recording();
+        recorder.StopAt(
+            RunRecorder.MetAtMember(
+                typeof(MerchantEntry), nameof(MerchantEntry.OnTryPurchaseWrapper), "MerchantOddEntry",
+                "The entry is not on any shelf this recorder knows."),
+            Reading(Floor(2), Digest(1), 4200));
+
+        recorder.StopAt(
+            RunRecorder.MetAtMember(
+                typeof(RewardsSetSynchronizer), nameof(RewardsSetSynchronizer.SelectLocalReward), "mystery",
+                "This format has no verb for that kind of reward."),
+            Reading(Floor(2), Digest(1), 4300));
+
+        Assert.Equal("MerchantEntry.OnTryPurchaseWrapper", capture.Stop!.Decision.Name);
+        Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+    }
+
+    /// <summary>
+    /// A screen is answered from inside the decision that opened it, so a stop held
+    /// beside the screen's answers stands at that decision's ordinal and with its
+    /// before-reading, and the decision is not recorded: written without its answer it
+    /// would be one a replay makes differently.
+    /// </summary>
+    [GameFact]
+    public void AStopHeldBesideAScreensAnswersStopsTheDecisionThatOpenedTheScreen()
+    {
+        var (recorder, capture, _) = Recording();
+        var seq = capture.NextSeq;
+        var before = Reading(Floor(2), Digest(1), 4200);
+
+        recorder.HoldScreenAnswerStop(RunRecorder.MetAtScreen(
+            "NCardGridSelectionScreen", null,
+            "The card is not one of the cards the screen offered.",
+            ("card_id", "CARD.STRANGE"), ("offered", "3")));
+        recorder.Commit(
+            nameof(ActionVerb.ChooseEventOption),
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
+            before,
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        var stop = Assert.IsType<JournalStop>(capture.Stop);
+        Assert.Equal(seq, capture.NextSeq);
+        Assert.Equal(seq, stop.Decision.Seq);
+        Assert.Equal(UnmappedDecision.PlayerChoiceSeam, stop.Decision.Seam);
+        Assert.Equal("NCardGridSelectionScreen", stop.Decision.Name);
+        Assert.Equal("CARD.STRANGE", stop.Decision.Args["card_id"]);
+        Assert.Equal(Digest(1), stop.BeforeDigest);
+        Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+    }
+
+    /// <summary>
+    /// A card the screen never offered stops the recording at the screen that was up,
+    /// by the screen's own name: a removal and a transform share one base class and
+    /// open different screens, and a stop written against the base says less than the
+    /// recorder saw.
+    /// </summary>
+    [GameFact]
+    public void ACardTheScreenNeverOfferedStopsAtTheConcreteScreenThatWasUp()
+    {
+        EngineHost.Start();
+        var (recorder, capture, _) = Recording();
+        var cards = ModelDb.AllCards.Take(4).ToList();
+        var offered = cards.Take(3).ToList();
+        var stranger = cards[3];
+
+        recorder.HoldCardScreenAnswers("NDeckTransformSelectScreen", offered, [stranger]);
+        recorder.Commit(
+            nameof(ActionVerb.ChooseEventOption),
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "OPTION.TEST")),
+            Reading(Floor(2), Digest(1), 4200),
+            Reading(Floor(2, hp: 60), Digest(2), 4600));
+
+        var stop = Assert.IsType<JournalStop>(capture.Stop);
+        Assert.Equal(UnmappedDecision.PlayerChoiceSeam, stop.Decision.Seam);
+        Assert.Equal("NDeckTransformSelectScreen", stop.Decision.Name);
+        Assert.Equal(stranger.Id.ToString(), stop.Decision.Args["card_id"]);
+        Assert.Equal("3", stop.Decision.Args["offered"]);
+        Assert.Equal(NativeSource.UnmappedIntegrity, capture.Integrity);
+        Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+    }
+
+    /// <summary>
+    /// A stop at a constructor is one dotted name. The runtime spells a constructor
+    /// <c>.ctor</c>, and joined to its type with another dot the manifest read
+    /// <c>DiscardPotionGameAction..ctor</c>, a member no later build can look up.
+    /// </summary>
+    [GameFact]
+    public void AStopAtAConstructorIsOneDottedName()
+    {
+        var (recorder, capture, _) = Recording();
+
+        recorder.StopAt(
+            RunRecorder.MetAtMember(
+                typeof(DiscardPotionGameAction), ConstructorInfo.ConstructorName, null,
+                "The slot holds nothing this recorder can see.",
+                ("slot_index", "2")),
+            Reading(Floor(2), Digest(1), 4200));
+
+        var stop = Assert.IsType<JournalStop>(capture.Stop);
+        Assert.Equal("DiscardPotionGameAction.ctor", stop.Decision.Name);
+
+        capture.Finish("abandoned");
+        Assert.Contains(
+            "member DiscardPotionGameAction.ctor with slot_index=2",
+            ManifestValidator.Validate(capture.ToManifest()).Describe(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A stop inside a fight names the game's own action, never the format's verb.
+    ///
+    /// The observer opens a step under the format verb it translates the action into,
+    /// and a stop that wrote that verb as what was met would name nothing in the game:
+    /// no later build can read <c>PlayCard</c> back to a member. So the recorder
+    /// writes the <c>GameAction</c> type the observer met, and the verb beside it as
+    /// the discriminator, with what the observer did resolve and the sentence saying
+    /// what it could not.
+    /// </summary>
+    [GameFact]
+    public void AStopInsideAFightNamesTheGamesOwnActionAndNotTheFormatVerb()
+    {
+        var (recorder, capture, _) = Recording();
+        var seq = capture.NextSeq;
+
+        recorder.StopAtFightStep(
+            "PlayCardAction", "PlayCard", Args(("card_id", "CARD.BASH")), Reading(Floor(2), Digest(1), 5000),
+            "A CARD.BASH was played and the hand this recorder can see does not hold it, so the recording " +
+            "cannot say which position it came from.");
+
+        Assert.Equal(NativeSource.UnmappedIntegrity, capture.Integrity);
+        Assert.Equal(NativeSource.ContinuousContinuity, capture.Continuity);
+        Assert.Empty(capture.Refusals);
+
+        var stop = Assert.IsType<JournalStop>(capture.Stop);
+        Assert.Equal(seq, stop.Decision.Seq);
+        Assert.Equal(UnmappedDecision.MemberSeam, stop.Decision.Seam);
+        Assert.Equal("PlayCardAction", stop.Decision.Name);
+        Assert.Equal("PlayCard", stop.Decision.Discriminator);
+        Assert.Equal("CARD.BASH", stop.Decision.Args["card_id"]);
+        Assert.False(stop.Decision.Args.ContainsKey("hand_index"));
+        Assert.Contains("does not hold it", stop.Decision.Evidence.Note);
+
+        // And the validator's sentence names the action the game ran.
+        capture.Finish("abandoned");
+        var problems = ManifestValidator.Validate(capture.ToManifest()).Describe();
+        Assert.Contains(
+            "The recorder met: member PlayCardAction (PlayCard) with card_id=CARD.BASH",
+            problems, StringComparison.Ordinal);
+        Assert.DoesNotContain("stopped and started again", problems, StringComparison.Ordinal);
+    }
+
+    // ── Fixtures ─────────────────────────────────────────────────────────────────
+
+    /// <summary>A recorder over a capture one decision in, with its journal on the
+    /// store the way <c>Attach</c> leaves it.</summary>
+    private static (RunRecorder Recorder, RunCapture Capture, string JournalPath) Recording()
+    {
+        var capture = RunCapture.Begin(Start());
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            new StateReading(Floor(1), Digest(-1)), new StateReading(Floor(2), Digest(1)), runClockMs: 1000);
+
+        var journalPath = $"{RunRecorder.RecordingsDirectory}/{capture.RunId}{RunJournal.FileExtension}";
+        RunmobileStore.Write(journalPath, capture.Journal.Render());
+        return (new RunRecorder(capture, journalPath), capture, journalPath);
+    }
+
+    private static RunRecorder.TakenReading Reading(
+        IReadOnlyDictionary<string, string> sample, string digest, int clock) => new(sample, digest, clock);
+
+    private static RunRecordingStart Start() => new()
+    {
+        RunId = "native-SFXT47K77RFK-20260905-030000",
+        RecorderVersion = "runmobile-recorder/0.1.0",
+        Identity = new RunIdentityReading
+        {
+            BuildVersion = "v0.111.0",
+            BuildDateUtc = "2026.08.14",
+            ContentHash = "1568834832",
+            GameMode = "standard",
+            Seed = "SFXT47K77RFK",
+            Ascension = 10,
+            Character = "CHARACTER.IRONCLAD",
+            Acts = ["ACT.UNDERDOCKS"],
+            Unlocks = new UnlockStateInventory
+            {
+                Epochs = ["EPOCH.ONE"],
+                EncountersSeen = ["ENCOUNTER.TEST"],
+                Runs = 137,
+            },
+            Mods = ModEnvironment.AsRecorded(
+                [new LocalMod("Runmobile", "Runmobile", "0.1.0", AffectsGameplay: false, "Loaded")],
+                HostRoster()),
+        },
+        State = Floor(1),
+        Digest = Digest(-1),
+        RunClockMs = 0,
+    };
+
+    /// <summary>A roster shaped like the real one: the shell patches the profile write
+    /// and the members it watches, and a roster with none of ours on it is the broken
+    /// reading the preflight refuses.</summary>
+    private static PatchRoster HostRoster() => new()
+    {
+        Members =
+        [
+            new PatchedMember(
+                "MegaCrit.Sts2.Core.Saving.ProgressSaveManager", "SaveProgressFile()", [PatchRoster.HostOwnerId],
+                Prefixes: 1, Postfixes: 0, Transpilers: 0, Finalizers: 0),
+            new PatchedMember(
+                "MegaCrit.Sts2.Core.Run.RunManager", "StartNewSingleplayerRun(RunSetup, Boolean)",
+                [PatchRoster.HostOwnerId], Prefixes: 1, Postfixes: 0, Transpilers: 0, Finalizers: 0),
+        ],
+    };
+
+    private static IReadOnlyDictionary<string, string> Floor(int floor, int hp = 68) => new Dictionary<string, string>(
+        StringComparer.Ordinal)
+    {
+        ["combat.in_progress"] = "false",
+        ["combat.outcome"] = "none",
+        ["run.total_floor"] = floor.ToString(CultureInfo.InvariantCulture),
+        ["run.map_coord"] = $"r{floor.ToString(CultureInfo.InvariantCulture)}c3",
+        ["run.act_floor"] = floor.ToString(CultureInfo.InvariantCulture),
+        ["player.hp"] = hp.ToString(CultureInfo.InvariantCulture),
+        ["player.max_hp"] = "68",
+    };
+
+    private static string Digest(int seq) =>
+        "sha256:" + (seq + 1).ToString("x2", CultureInfo.InvariantCulture).PadLeft(64, 'a');
+
+    private static IReadOnlyDictionary<string, string> Args(params (string Key, string Value)[] args) =>
+        args.ToDictionary(arg => arg.Key, arg => arg.Value, StringComparer.Ordinal);
+}
