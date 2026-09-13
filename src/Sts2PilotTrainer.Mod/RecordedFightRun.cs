@@ -1796,7 +1796,8 @@ internal static class RecordedFightRun
         // carries the digest the comparison will require to be the recording's.
         var capture = entry.BeginCapture(equality);
         _observer = PlayerFightObserver.Start(
-            entry.PreparedRun.Players[0], entry.SampleLiveState, capture, TheFightEnded, ShowTransport);
+            entry.PreparedRun.Players[0], entry.SampleLiveState, capture, TheFightEnded, ShowTransport,
+            SettleClock.SceneTree);
     }
 
     /// <summary>

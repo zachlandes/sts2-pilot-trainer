@@ -101,6 +101,43 @@ internal sealed class RunRecorder : IDisposable
     /// <summary>The run being recorded right now, or null when none is.</summary>
     internal static RunRecorder? Active { get; private set; }
 
+    /// <summary>
+    /// Whether the game's identity can be read for a recording in this process, and how.
+    ///
+    /// In the retail client the recorder attaches only once the mod has adopted the
+    /// running game, because until then the build and content it would write down come
+    /// out of the prepared copy on disk rather than out of the game the run is being
+    /// played in - three true values from a source nobody established. That is what
+    /// <see cref="RunmobileMod.EnsureAdopted"/> asks, and it is the default.
+    ///
+    /// A headless process is the other host, and it reaches this exactly once - from a
+    /// test that drives the recorder over a real headless engine. There <em>is</em> no
+    /// running game to adopt, and <c>AdoptRunningGame</c> refuses a process that started
+    /// its own headless engine by design; but the identity <see cref="LiveRun"/> writes
+    /// there comes from the prepared copy honestly, because that is the engine this
+    /// process is actually running. So a headless attach supplies a source that says the
+    /// engine is up rather than one that adopts, and the recorder reads its identity the
+    /// same way the arbiter does. Reset to the default when the test is done, the way
+    /// the store's test root is.
+    /// </summary>
+    internal static Func<bool> GameIdentitySource { get; set; } = RunmobileMod.EnsureAdopted;
+
+    /// <summary>
+    /// How this process waits for the engine to settle after a decision, supplied by the
+    /// attach site. The retail client's is the scene tree's own timer; a headless attach
+    /// supplies one driven by the arbiter's drain, because there are no frames to wait on.
+    /// See <see cref="SettleClock"/>.
+    /// </summary>
+    internal static SettleClock Clock { get; set; } = SettleClock.SceneTree;
+
+    /// <summary>Puts the process-wide seams back to the retail defaults, for a headless
+    /// test that set them.</summary>
+    internal static void ResetHostSeamsForTesting()
+    {
+        GameIdentitySource = RunmobileMod.EnsureAdopted;
+        Clock = SettleClock.SceneTree;
+    }
+
     /// <summary>What the capture holds, for a test and for a log line.</summary>
     internal RunCapture Capture => _capture;
 
@@ -356,7 +393,7 @@ internal sealed class RunRecorder : IDisposable
         // card's, and this module contributes no card to trigger it, so a trainer
         // that refuses on some future build must not leave the recorder reading
         // from somewhere else.
-        if (!RunmobileMod.EnsureAdopted())
+        if (!GameIdentitySource())
         {
             Log.Warn(
                 $"[{RunmobileMod.ModId}] not recording this run: the mod could not take this running " +
@@ -1160,8 +1197,8 @@ internal sealed class RunRecorder : IDisposable
             () => RunManager.Instance is { ActionExecutor.IsRunning: false } manager &&
                   manager.ActionQueueSet.IsEmpty &&
                   (!LiveRun.InCombat || LiveRun.ReadyForThePlayer()),
-            () => RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
-            () => RecordedFightRun.LetTheGameRun(SettlePollSeconds),
+            Clock.Budget,
+            Clock.Poll,
             spent => $"The engine did not settle {spent}, so the recorder cannot say what state this " +
                      "decision left.");
 
@@ -1313,9 +1350,11 @@ internal sealed class RunRecorder : IDisposable
             }
 
             // The recorder draws nothing, so it has nothing to re-derive when a sample
-            // is taken; the transport's callback is the recorded-fight journey's.
+            // is taken; the transport's callback is the recorded-fight journey's. The
+            // observer settles on this recorder's own clock, so a headless attach's
+            // fight is drained the same way its decisions are.
             _observer = PlayerFightObserver.Start(
-                run.Players[0], LiveRun.Sample, FightSink(), () => { }, () => { });
+                run.Players[0], LiveRun.Sample, FightSink(), () => { }, () => { }, Clock);
             return;
         }
 
