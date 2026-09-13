@@ -1,8 +1,11 @@
 using HarmonyLib;
 using MegaCrit.Sts2.Core.CardSelection;
+using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Cards;
+using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
@@ -348,6 +351,80 @@ public sealed class CardPromptOfferTests
         Assert.Equal(2, announced.Count);
         Assert.All(announced, prompt => Assert.NotNull(prompt.Conflict));
         Assert.Null(CardPrompts.Open);
+    });
+
+    /// <summary>
+    /// A prompt asked and never offered is never counted, and holds nothing open past
+    /// the fight. A hook's context asks the engine to pause an action that is never
+    /// run - here, never even handed the task it would run - so the entry point's task
+    /// never settles and the prompt stays asked. The count reads nothing for it, the
+    /// fight's end drops it, and the next prompt is asked with no conflict. Asked with
+    /// nothing on the engine's selector stack, because a selector there is the branch
+    /// that reads at the call.
+    /// </summary>
+    [GameFact]
+    public void APromptAskedAndNeverOfferedIsNotCountedAndDoesNotOutliveTheFight() => HeadlessRuns.WithARun(session =>
+    {
+        var player = session.RunState.Players[0];
+        using (var driver = new RunDriver(session))
+        {
+            HeadlessRuns.EnterTheFirstFight(driver, session);
+        }
+
+        var combat = player.PlayerCombatState!;
+        Discard(combat.Hand.Cards[0]);
+        Discard(combat.Hand.Cards[0]);
+        Assert.Null(CardSelectCmd.Selector);
+        Assert.Equal(0, CardScreensUp.Count);
+
+        var harmony = new Harmony($"sts2-pilot-trainer.card-prompt-test.{Guid.NewGuid():N}");
+        var previous = CardPrompts.Answered;
+        var announced = new List<CardPrompts.Prompt>();
+        try
+        {
+            foreach (var patchClass in CardPrompts.PatchClasses) harmony.CreateClassProcessor(patchClass).Patch();
+            CardPrompts.Forget();
+            CardPrompts.Answered = (prompt, _) => announced.Add(prompt);
+
+            var context = new HookPlayerChoiceContext(player, LocalContext.NetId!.Value, GameActionType.Combat);
+            var asking = CardSelectCmd.FromCombatPile(context, combat.DiscardPile, player, Prefs(TakesOne), filter: null);
+            Pump.Drain();
+
+            Assert.False(asking.IsCompleted);
+            var stranded = CardPrompts.Open;
+            Assert.NotNull(stranded);
+            Assert.Equal(CardPrompts.PromptState.Asked, stranded!.State);
+            Assert.Equal(0, CardScreensUp.Count);
+
+            var enemies = CombatManager.Instance.DebugOnlyGetState()!.Enemies.Where(enemy => enemy.IsAlive).ToList();
+            CreatureCmd.Kill(enemies, force: true).GetAwaiter().GetResult();
+            CombatManager.Instance.CheckWinCondition().GetAwaiter().GetResult();
+            Pump.Drain();
+
+            Assert.False(CombatManager.Instance.IsInProgress);
+            Assert.Null(CardPrompts.Open);
+            Assert.False(asking.IsCompleted);
+            Assert.Equal(0, CardScreensUp.Count);
+
+            var selector = new Recording();
+            using (CardSelectCmd.PushSelector(selector))
+            {
+                _ = CardSelectCmd.FromDeckForUpgrade(player, Prefs(TakesOne)).GetAwaiter().GetResult();
+                Pump.Drain();
+            }
+
+            var next = Assert.Single(announced);
+            Assert.Equal(nameof(CardSelectCmd.FromDeckForUpgrade), next.EntryPoint);
+            Assert.Null(next.Conflict);
+            Assert.Equal(selector.Options, next.Offered);
+            Assert.Equal(0, CardScreensUp.Count);
+        }
+        finally
+        {
+            CardPrompts.Answered = previous;
+            CardPrompts.Forget();
+            harmony.UnpatchAll(harmony.Id);
+        }
     });
 
     /// <summary>

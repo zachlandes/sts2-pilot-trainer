@@ -39,7 +39,10 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// with the engine's own command at fight start, which no natural history does, so
 /// the recording could not validate as a run. What it proves is the capture and the
 /// replay agreeing about one prompt shape, which is exactly what the screen read could
-/// not.
+/// not. It does not hold that a natural run through such a prompt finishes
+/// <c>continuity = continuous</c> and <c>integrity = complete</c>; that proof is a
+/// swept-seed fixture asserting both end to end, and lives in the slice-6 headless
+/// gameplay integration fixtures rather than here.
 /// </summary>
 public sealed class CardPromptCaptureTests : IDisposable
 {

@@ -234,7 +234,6 @@ internal static class HeadlessPatches
     internal static void Apply(List<string> warnings)
     {
         if (_applied) return;
-        _applied = true;
 
         var harmony = new Harmony(HarmonyId);
         var assembly = typeof(ModelDb).Assembly;
@@ -291,6 +290,7 @@ internal static class HeadlessPatches
         Neutralize(harmony, assembly, "MegaCrit.Sts2.Core.Runs.RunManager", "FadeIn", warnings);
         Neutralize(harmony, assembly, "MegaCrit.Sts2.Core.Runs.RunManager", "ClearScreens", warnings);
         Neutralize(harmony, assembly, "MegaCrit.Sts2.Core.Runs.RunManager", "UpdateRichPresence", warnings);
+        _applied = true;
     }
 
     /// <summary>

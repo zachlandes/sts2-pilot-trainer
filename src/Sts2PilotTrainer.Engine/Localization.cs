@@ -83,7 +83,6 @@ internal static class Localization
     private static void ApplyPatches(List<string> warnings)
     {
         if (_patched) return;
-        _patched = true;
         var harmony = new Harmony("sts2-pilot-trainer.localization");
         var self = typeof(Localization);
 
@@ -101,6 +100,7 @@ internal static class Localization
         Patch(harmony, typeof(LocTable), "GetRawText", self, nameof(ReturnKey), warnings);
         Patch(harmony, typeof(LocTable), "GetLocStringsWithPrefix", self, nameof(ReturnEmptyLocStrings), warnings);
         Patch(harmony, typeof(LocString), "Exists", self, nameof(ReturnTrue), warnings);
+        _patched = true;
     }
 
     private static void Patch(

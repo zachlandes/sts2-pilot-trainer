@@ -18,16 +18,20 @@ namespace Sts2PilotTrainer.Mod;
 /// on, and the trainer would quietly go back to charging a player's thinking against
 /// the engine.
 ///
-/// The count is taken and given back by <see cref="WhileOneIsUp{T}"/> alone, in one
-/// try/finally around the game's own task, so every increment has its decrement and
-/// there is no bare decrement for a caller to reach - it cannot drift and it cannot go
-/// below zero. Every card prompt but the reward's is counted by <see cref="CardPrompts"/>,
-/// from the entry point that asks it, which is what covers the hand prompt and the
-/// choose-a-card screen that no grid patch ever saw; the reward screen is the one
-/// prompt outside that funnel and is counted here at its own screen. Both of the
-/// game's card screens complete their own completion source in <c>_ExitTree</c>, the
-/// grid by cancelling and the reward screen by faulting, so a screen torn down with its
-/// run still ends the task this waits on.
+/// The count is taken and given back by <see cref="WhileOneIsUp{T}(Task{T}, Task)"/>
+/// alone, in one try/finally around the game's own task, so every increment has its
+/// decrement and there is no bare decrement for a caller to reach - it cannot drift and
+/// it cannot go below zero. Every card prompt but the reward's is counted by
+/// <see cref="CardPrompts"/>, from the entry point that asks it, which is what covers
+/// the hand prompt and the choose-a-card screen that no grid patch ever saw; the reward
+/// screen is the one prompt outside that funnel and is counted here at its own screen.
+/// A prompt is counted only from the moment the engine offers it: an entry point's
+/// task can be outstanding before that, and can stay outstanding for ever - a hook's
+/// prompt whose action the fight ended before it ran never settles - and a count taken
+/// at the call would then never come back. Both of the game's card screens complete
+/// their own completion source in <c>_ExitTree</c>, the grid by cancelling and the
+/// reward screen by faulting, so a screen torn down with its run still ends the task
+/// this waits on.
 ///
 /// What a screen offered and what came back is announced rather than interpreted:
 /// what a card off that list means is a subscriber's business, and this says only that
@@ -48,14 +52,29 @@ internal static class CardScreensUp
     /// <c>RunmobileModuleTests</c> to hold to one owner.</summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } = [typeof(Reward)];
 
-    /// <summary>Counts one card prompt for as long as the game's own task for it is
-    /// outstanding.</summary>
-    internal static async Task<T> WhileOneIsUp<T>(Task<T> screen)
+    /// <summary>Counts one card prompt from now for as long as the game's own task for
+    /// it is outstanding.</summary>
+    internal static Task<T> WhileOneIsUp<T>(Task<T> screen) => WhileOneIsUp(screen, Task.CompletedTask);
+
+    /// <summary>
+    /// Counts one card prompt from the moment <paramref name="offered"/> completes for
+    /// as long as the game's own task for it is outstanding; a task that settles, or
+    /// never settles, without the prompt ever being offered is never counted.
+    ///
+    /// The first await deliberately takes no context: the settle that reads the count
+    /// polls it by the frame, and a continuation posted back to the game's own context
+    /// would raise the count a frame after the engine read the list rather than in the
+    /// same call.
+    /// </summary>
+    internal static async Task<T> WhileOneIsUp<T>(Task<T> prompt, Task offered)
     {
+        await Task.WhenAny(prompt, offered).ConfigureAwait(false);
+        if (!offered.IsCompleted) return await prompt;
+
         Interlocked.Increment(ref _open);
         try
         {
-            return await screen;
+            return await prompt;
         }
         finally
         {

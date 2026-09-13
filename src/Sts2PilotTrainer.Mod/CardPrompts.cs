@@ -1,3 +1,4 @@
+using System.Reflection;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Combat;
@@ -55,6 +56,13 @@ namespace Sts2PilotTrainer.Mod;
 /// ending, nothing to offer, the candidates fit inside the minimum - is opened and
 /// derived to nothing, so its answer is told to nobody.
 ///
+/// A prompt is counted in <see cref="CardScreensUp"/> only from the moment it is
+/// offered, never from the moment it was asked. A hook's prompt whose action the fight
+/// ended before it ran is asked and never offered, and its task never settles: counted
+/// from the call it would hold the count up for the rest of the process, and every
+/// settle after it would wait for ever. The same prompt is dropped as <see cref="Open"/>
+/// when the fight ends, so it is not the conflict the next fight's first prompt meets.
+///
 /// This is the shell's rather than the recorder's, for the reason
 /// <see cref="CardScreensUp"/> is: a prompt being up is a fact about the game that both
 /// settles read, and the list it offers is the list the recorded-fight journey finds
@@ -83,6 +91,7 @@ internal static class CardPrompts
     internal sealed class Prompt
     {
         private readonly Func<IReadOnlyList<CardModel>?> _derive;
+        private readonly TaskCompletionSource _offered = new();
 
         internal Prompt(
             string entryPoint, string screen, int minSelect, int maxSelect, Func<IReadOnlyList<CardModel>?> derive)
@@ -112,6 +121,10 @@ internal static class CardPrompts
         /// where the engine answered itself.</summary>
         internal IReadOnlyList<CardModel>? Offered { get; private set; }
 
+        /// <summary>Completes the moment <see cref="State"/> becomes
+        /// <see cref="PromptState.Offered"/>, and never otherwise.</summary>
+        internal Task WhenOffered => _offered.Task;
+
         /// <summary>The entry point of another prompt that was still open when this one
         /// was asked, or that this one was still open for. Two prompts open at once is
         /// a state nothing here can order, so a subscriber refuses both.</summary>
@@ -123,6 +136,7 @@ internal static class CardPrompts
             if (State != PromptState.Asked) return;
             Offered = _derive();
             State = Offered is null ? PromptState.EngineAnswered : PromptState.Offered;
+            if (State == PromptState.Offered) _offered.SetResult();
         }
     }
 
@@ -135,33 +149,16 @@ internal static class CardPrompts
 
     /// <summary>Every patch class this owns, for the shell to install and for
     /// <c>RunmobileModuleTests</c> to hold to one owner. One per entry point that
-    /// reaches a screen, plus the pause and the teardown.</summary>
+    /// reaches a screen - the entry points that forward to one of these in one call
+    /// are not patched, because patching a forwarder as well would announce one prompt
+    /// twice - plus the pause, the fight's end and the teardown.</summary>
     internal static IReadOnlyList<Type> PatchClasses { get; } =
     [
         typeof(ChooseACard), typeof(SimpleGridForRewards), typeof(SimpleGrid), typeof(CombatPile),
         typeof(DeckForUpgrade), typeof(DeckForTransformation), typeof(DeckForEnchantment), typeof(DeckGeneric),
         typeof(Hand), typeof(HandForUpgrade),
-        typeof(Paused), typeof(RunTornDown),
+        typeof(Paused), typeof(FightEnded), typeof(RunTornDown),
     ];
-
-    /// <summary>
-    /// The entry points this deliberately does not patch, each with the entry point it
-    /// forwards to in one call. Patching a forwarder as well would announce one prompt
-    /// twice. Held here so a coverage check can ask whether every public entry point is
-    /// watched or excused by name.
-    /// </summary>
-    internal static IReadOnlyDictionary<string, string> Forwarders { get; } =
-        new SortedDictionary<string, string>(StringComparer.Ordinal)
-        {
-            [$"{nameof(CardSelectCmd.FromCombatPile)}(context, pile, player, prefs)"] =
-                $"{nameof(CardSelectCmd.FromCombatPile)}(context, pile, player, prefs, filter)",
-            [$"{nameof(CardSelectCmd.FromDeckForEnchantment)}(player, enchantment, amount, prefs)"] =
-                $"{nameof(CardSelectCmd.FromDeckForEnchantment)}(cards, enchantment, amount, prefs)",
-            [$"{nameof(CardSelectCmd.FromDeckForEnchantment)}(player, enchantment, amount, additionalFilter, prefs)"] =
-                $"{nameof(CardSelectCmd.FromDeckForEnchantment)}(cards, enchantment, amount, prefs)",
-            [nameof(CardSelectCmd.FromDeckForRemoval)] = nameof(CardSelectCmd.FromDeckGeneric),
-            [nameof(CardSelectCmd.FromHandForDiscard)] = nameof(CardSelectCmd.FromHand),
-        };
 
     /// <summary>
     /// Opens a prompt for what an entry point was just asked.
@@ -181,11 +178,8 @@ internal static class CardPrompts
         var prompt = new Prompt(entryPoint, screen, minSelect, maxSelect, derive);
         if (context is null || selector is not null || context is BlockingPlayerChoiceContext) prompt.Derive();
 
-        // Open is cleared the moment a prompt's task settles, so one still here is
-        // one the engine has not answered. The one way that is not a real conflict is
-        // a hook's prompt whose action the fight ended before it ran, which never
-        // settles; the next prompt then stops the recording rather than being read
-        // as that one's answer, which is the safe side of the two.
+        // Open is cleared the moment a prompt's task settles, and at the end of the
+        // fight and the run, so one still here is one the engine has not answered
         if (Open is { } other)
         {
             other.Conflict = prompt.EntryPoint;
@@ -207,19 +201,17 @@ internal static class CardPrompts
     private static bool CombatIsOverOrEnding => CombatManager.Instance is { IsOverOrEnding: true };
 
     /// <summary>
-    /// Watches the task an entry point handed back, counting the prompt as up for as
-    /// long as it is outstanding, and announces what came back. The task the caller
-    /// gets completes after the announcement, so a subscriber reads the answer before
-    /// the caller moves the cards it names.
+    /// Watches the task an entry point handed back, counting the prompt as up from the
+    /// moment it is offered for as long as the task is outstanding, and announces what
+    /// came back. The task the caller gets completes after the announcement, so a
+    /// subscriber reads the answer before the caller moves the cards it names.
     /// </summary>
     private static async Task<IEnumerable<CardModel>> Observe(Prompt prompt, Task<IEnumerable<CardModel>> inner)
     {
         IEnumerable<CardModel> chosen;
         try
         {
-            chosen = prompt.State == PromptState.EngineAnswered
-                ? await inner
-                : await CardScreensUp.WhileOneIsUp(inner);
+            chosen = await CardScreensUp.WhileOneIsUp(inner, prompt.WhenOffered);
         }
         finally
         {
@@ -236,9 +228,7 @@ internal static class CardPrompts
         CardModel? chosen;
         try
         {
-            chosen = prompt.State == PromptState.EngineAnswered
-                ? await inner
-                : await CardScreensUp.WhileOneIsUp(inner);
+            chosen = await CardScreensUp.WhileOneIsUp(inner, prompt.WhenOffered);
         }
         finally
         {
@@ -465,6 +455,29 @@ internal static class CardPrompts
     {
         [HarmonyPostfix]
         internal static void After() => Open?.Derive();
+    }
+
+    /// <summary>
+    /// A prompt still open when the fight ends is a prompt nobody will answer - a
+    /// hook's, asked in the fight and waiting on an action the end of the fight
+    /// cancelled - and it must not be the conflict the next prompt meets. The game ends
+    /// a fight along two paths, a win and a processed loss, and this is the first
+    /// thing either does.
+    /// </summary>
+    [HarmonyPatch]
+    internal static class FightEnded
+    {
+        [HarmonyTargetMethods]
+        internal static IEnumerable<MethodBase> Targets()
+        {
+            yield return typeof(CombatManager)
+                .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
+                .Single(method => method.Name == "EndCombatInternal" && method.GetParameters().Length == 1);
+            yield return AccessTools.DeclaredMethod(typeof(CombatManager), "ProcessPendingLoss");
+        }
+
+        [HarmonyPrefix]
+        internal static void Before() => Open = null;
     }
 
     /// <summary>A prompt still open when the run is torn down is a prompt nobody will
