@@ -119,6 +119,12 @@ internal static class ChoiceEntryPoints
         return OwnCallees(method).Where(entryPoints.Contains).Distinct().ToList();
     }
 
+    /// <summary>The prompt-opening calls a method's own body makes, read the same way:
+    /// a forwarder that grew a screen of its own is one that still forwards, and only
+    /// this tells the two apart.</summary>
+    internal static IReadOnlyList<MethodBase> PromptsOpenedBy(MethodInfo method) =>
+        OwnCallees(method).Where(OpensAPrompt).Distinct().ToList();
+
     /// <summary>Whether a caller is the funnel itself. Asked here rather than with a
     /// <c>typeof</c> in a test body, which the runtime resolves at JIT time, before the
     /// engine's resolver has been taught where the game is.</summary>
