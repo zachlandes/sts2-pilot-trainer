@@ -35,6 +35,22 @@ public sealed class RecorderPresenceTests
         Assert.Equal(RecorderRowTone.Warning, presence.Tone);
     }
 
+    /// <summary>A recorder that met a decision it could not name has stopped recording
+    /// the run as surely as one with a hole in its watch: the recording is whole up to
+    /// there and the run being played is one the player cannot play from, so the row
+    /// says the same thing in the same hue rather than distinguishing a cause the
+    /// overlay has no room to explain.</summary>
+    [Fact]
+    public void AStopAtAnUnmappedDecisionReadsRecordingStoppedInTheWarningHue()
+    {
+        var presence = RecorderPresence.For(new RecorderFacts(true, RunCaptureState.Unmapped));
+
+        Assert.Equal(Presence.Drawn, presence.Row.Presence);
+        Assert.False(presence.Row.Pressable);
+        Assert.Equal(RecorderCopy.RecordingStopped, presence.Text);
+        Assert.Equal(RecorderRowTone.Warning, presence.Tone);
+    }
+
     [Fact]
     public void NoRecorderAttachedDrawsNoRowAtAll()
     {
@@ -52,6 +68,7 @@ public sealed class RecorderPresenceTests
     {
         Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Recording)));
         Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Broken)));
+        Assert.Equal(RecorderPresence.Nothing, RecorderPresence.For(new RecorderFacts(false, RunCaptureState.Unmapped)));
     }
 
     /// <summary>A finished capture is a run that is over; nothing is being recorded
