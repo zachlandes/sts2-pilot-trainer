@@ -236,11 +236,13 @@ public sealed class RunRecorderTests
     /// check's blind spot is measured rather than tolerated.
     ///
     /// A body whose signature or call site names a Godot member the vendored stubs have
-    /// not got cannot be read, and a body that cannot be read could create a screen or
-    /// call an entry point with nobody the wiser. This holds the set of such bodies, by
-    /// outermost type, to <c>scripts/unreadable-choice-scan-bodies.txt</c>, regenerated
-    /// with the enumeration below by the one script; a stub gap that opens on a game
-    /// update fails here as a diff, and each new line is a type to look at by hand.
+    /// not got cannot be read, a type whose shape needs one cannot be loaded at all, and
+    /// either could create a screen or call an entry point with nobody the wiser. This
+    /// holds both sets - types with unreadable bodies, by outermost type, and the game's
+    /// own types the runtime could not load, read from the assembly's type table - to
+    /// <c>scripts/unreadable-choice-scan-bodies.txt</c>, regenerated with the
+    /// enumeration below by the one script; a stub gap that opens on a game update
+    /// fails here as a diff, and each new line is a type to look at by hand.
     /// </summary>
     [GameFact]
     public void TheMethodBodiesTheChoiceScanCannotReadAreTheRecordedOnes() =>
