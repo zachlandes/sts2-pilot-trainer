@@ -41,27 +41,31 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// sweep - which drives an in-combat <c>FromHandForDiscard</c> prompt through the whole
 /// recorder and observer.
 ///
-/// The other in-combat prompt shapes the report lists - Headbutt over the discard pile,
-/// a choose-a-card screen taken and skipped, an "up to N" answered with fewer and none,
-/// and a prompt the game's own selector answers - are covered as capture-versus-replay
-/// equivalence in <c>CardPromptCaptureTests</c> and <c>CardPromptOfferTests</c>, which
-/// this suite does not duplicate. Their card is put in the hand with the engine's own
-/// command at fight start, which changes the combat state after the recorder has sampled
-/// the fight's boundary; the observer's fight capture refuses a gap between two samples
-/// rather than bridging it, so a staged card cannot go through it and those tests answer
-/// the prompt without the observer on purpose. The natural run is the one that exercises
-/// an in-combat prompt through the observer, because its card was dealt before the
+/// The coverage split is deliberate and this is it. Survivor is the natural-run proof:
+/// the one in-combat prompt shape driven through <c>RunRecorder.Attach</c>, the
+/// <c>PlayerFightObserver</c>, and a full-chain replay of the recording it wrote. The
+/// other in-combat prompt shapes the report lists - Headbutt over the discard pile, a
+/// choose-a-card screen taken and skipped, an "up to N" answered with fewer and with
+/// none, and a prompt the game's own selector answers - are covered as
+/// capture-versus-replay equivalence in <c>CardPromptCaptureTests</c> and
+/// <c>CardPromptOfferTests</c>, on the same merge gate, and this suite does not
+/// duplicate them. Their card is put in the hand with the engine's own command at fight
+/// start, which changes the combat state after the recorder has sampled the fight's
+/// boundary; the observer's fight capture refuses a gap between two samples rather than
+/// bridging it, so a staged card cannot go through it and those tests answer the prompt
+/// without the observer on purpose. The natural run is the one that exercises an
+/// in-combat prompt through the observer, because its card was dealt before the
 /// boundary, by the seed.
 ///
 /// A fresh replay of the natural run's actions is done in this process rather than
 /// through <c>./scripts/arbiter replay</c>: a recording captured headlessly carries the
 /// headless host's own patch roster, which the retail environment preflight in front of
 /// the CLI's replay correctly refuses - that gate is about a clean retail game, which is
-/// orthogonal to whether the recorded actions reproduce. The in-process replay is the
-/// arbiter's own replay path (start the run, apply the actions, read the boundary digests
-/// off the trace through <see cref="RunCoverage"/>) run past that gate, which is what
-/// "reproduces every declared boundary digest" means here. <c>arbiter validate</c> is
-/// exercised in-process through <see cref="ManifestValidator"/>, the validator itself.
+/// orthogonal to whether the recorded actions reproduce. The in-process replay is
+/// <see cref="Engine.Arbiter.ReplayStartedRun"/>, the same method the CLI's replay runs past
+/// that gate, so what "reproduces every declared boundary digest" means here is what it
+/// means at the command line. <c>arbiter validate</c> is exercised in-process through
+/// <see cref="ManifestValidator"/>, the validator itself.
 /// </summary>
 public sealed class HeadlessGameplayCaptureTests : IDisposable
 {
@@ -143,8 +147,10 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
         Assert.NotEmpty(onSceneTree.Refusals);
         Assert.DoesNotContain(onSceneTree.Actions, action => action.Verb == ActionVerb.PlayCard);
 
-        RunmobileStore.UseRootForTesting(_root);
         RunRecorder.RunTornDown();
+        var freshRoot = Path.Combine(Path.GetDirectoryName(_root)!, "profile2");
+        Directory.CreateDirectory(freshRoot);
+        RunmobileStore.UseRootForTesting(freshRoot);
 
         var onPump = CaptureFirstInFightPlay(new PumpedSettleClock());
         Assert.Empty(onPump.Refusals);
@@ -258,45 +264,15 @@ public sealed class HeadlessGameplayCaptureTests : IDisposable
 
         try
         {
-            using var driver = new RunDriver(session);
-            driver.EnterFirstRoom();
+            var runIdentity = Preflight.EvaluateStartedRun(manifest.Environment);
+            Assert.True(runIdentity.Matches, "the started run is not the run the recording describes");
 
-            var steps = new List<ReplayStep>();
-            var digests = new Dictionary<int, string>();
-            var opening = CanonicalStateProjection.Project(session.RunState);
-            steps.Add(new ReplayStep
-            {
-                Seq = -1,
-                Verb = RunCapture.RunStartVerb,
-                Before = ReplayTrace.Sample(opening.Fields),
-                After = ReplayTrace.Sample(opening.Fields),
-            });
-            digests[-1] = opening.Digest();
-
-            var ordered = manifest.Actions.OrderBy(action => action.Seq).ToList();
-            for (var index = 0; index < ordered.Count; index++)
-            {
-                var action = ordered[index];
-                var before = ReplayTrace.Sample(CanonicalStateProjection.Project(session.RunState).Fields);
-                driver.Apply(action, ordered.Skip(index + 1).ToList());
-                var after = CanonicalStateProjection.Project(session.RunState);
-                steps.Add(new ReplayStep
-                {
-                    Seq = action.Seq,
-                    Verb = action.Verb.ToString(),
-                    Args = action.Args,
-                    Before = before,
-                    After = ReplayTrace.Sample(after.Fields),
-                });
-                digests[action.Seq] = after.Digest();
-            }
-
-            var trace = new ReplayTrace { Steps = steps };
-            var boundaries = RunCoverage.Of(trace).Boundaries()
-                .Where(boundary => digests.ContainsKey(boundary.AfterSeq))
-                .Select(boundary => boundary.With(Fact<string>.Engine(digests[boundary.AfterSeq])))
-                .ToList();
-            return (trace, boundaries);
+            var outcome = Engine.Arbiter.ReplayStartedRun(
+                session, manifest, runIdentity, stopAfterSeq: null, gameModeOverride: null);
+            Assert.True(
+                outcome.Report.Status == VerificationStatus.Verified,
+                $"the replay was {outcome.Report.Status}: {string.Join("; ", outcome.Report.Diagnostics)}");
+            return (outcome.Report.Trace!, outcome.Report.Boundaries);
         }
         finally
         {
