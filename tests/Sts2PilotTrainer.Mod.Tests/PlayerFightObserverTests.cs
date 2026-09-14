@@ -279,7 +279,8 @@ public sealed class PlayerFightObserverTests
                 () => CanonicalStateProjection.Project(session.RunState).Fields,
                 sink,
                 fightEnded: () => { },
-                sampled: () => { });
+                sampled: () => { },
+                SettleClock.SceneTree);
 
             // The driver's selector answers prompts inside the call that asks, which is
             // the headless shortcut the engine takes only when one is installed. Suspend
@@ -356,7 +357,8 @@ public sealed class PlayerFightObserverTests
                 () => CanonicalStateProjection.Project(session.RunState).Fields,
                 sink,
                 fightEnded: () => { },
-                sampled: () => { });
+                sampled: () => { },
+                SettleClock.SceneTree);
 
             RunManager.Instance.ActionQueueSet.EnqueueWithoutSynchronizing(new PlayCardAction(inDraw, null));
             Pump.Drain();

@@ -38,7 +38,9 @@ namespace Sts2PilotTrainer.Mod;
 /// event closes the sample instead, with the final state.
 ///
 /// Waiting here uses only what docs/in-game-host.md records as working in this
-/// process: a task the game completes, and the scene tree's timer.
+/// process: a task the game completes, and the clock the attach site supplied at
+/// <see cref="Start"/> - the scene tree's timer in the retail client, the arbiter's
+/// drain headlessly. See <see cref="SettleClock"/>.
 /// </summary>
 internal sealed class PlayerFightObserver : IDisposable
 {
@@ -57,6 +59,7 @@ internal sealed class PlayerFightObserver : IDisposable
     private readonly ActionExecutor _executor;
     private readonly Action _fightEnded;
     private readonly Action _sampled;
+    private readonly SettleClock _clock;
 
     private bool _awaitingPlayerTurn;
 
@@ -79,12 +82,14 @@ internal sealed class PlayerFightObserver : IDisposable
         Func<IReadOnlyDictionary<string, string>> sample,
         IFightSampleSink sink,
         Action fightEnded,
-        Action sampled)
+        Action sampled,
+        SettleClock clock)
     {
         _sample = sample;
         _sink = sink;
         _fightEnded = fightEnded;
         _sampled = sampled;
+        _clock = clock;
         _player = player;
         _combat = CombatManager.Instance
             ?? throw new InvalidOperationException("This build exposes no CombatManager to observe the fight through.");
@@ -111,14 +116,18 @@ internal sealed class PlayerFightObserver : IDisposable
     /// of them - it becomes true when a step closes, so a re-derivation only where one
     /// opens leaves the chip a whole action behind. The recorder draws nothing and
     /// passes a callback that does nothing.</param>
+    /// <param name="clock">How to wait for the engine to settle after an action. The
+    /// scene tree's timer in the retail client; a headless attach supplies one driven
+    /// by the arbiter's drain. See <see cref="SettleClock"/>.</param>
     internal static PlayerFightObserver Start(
         Player player,
         Func<IReadOnlyDictionary<string, string>> sample,
         IFightSampleSink sink,
         Action fightEnded,
-        Action sampled)
+        Action sampled,
+        SettleClock clock)
     {
-        var observer = new PlayerFightObserver(player, sample, sink, fightEnded, sampled);
+        var observer = new PlayerFightObserver(player, sample, sink, fightEnded, sampled, clock);
         observer._executor.BeforeActionExecuted += observer.BeforeAction;
         observer._executor.AfterActionExecuted += observer.AfterAction;
         observer._combat.TurnStarted += observer.TurnStarted;
@@ -355,8 +364,8 @@ internal sealed class PlayerFightObserver : IDisposable
                 queues.BecameEmpty(),
                 () => !_executor.IsRunning && queues.IsEmpty,
                 () => _ended || _disposed,
-                () => RecordedFightRun.LetTheGameRun(SettleBudgetSeconds),
-                () => RecordedFightRun.LetTheGameRun(SettlePollSeconds));
+                _clock.Budget,
+                _clock.Poll);
             if (!settled)
             {
                 if (!_ended && !_disposed)

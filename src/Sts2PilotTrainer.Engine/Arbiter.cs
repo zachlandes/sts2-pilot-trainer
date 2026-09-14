@@ -177,6 +177,24 @@ public static class Arbiter
                 FinalState: null);
         }
 
+        return ReplayStartedRun(session, manifest, preflight, stopAfterSeq, gameModeOverride);
+    }
+
+    /// <summary>
+    /// The replay itself, past every preflight: the run's actions applied in order, the
+    /// trace sampled either side of each, and the boundaries the history passed with the
+    /// digest the engine produced there.
+    ///
+    /// Split from the preflight so a caller that has already started the run, and has a
+    /// reason to stand past the retail preflight, replays exactly what the CLI replays: a
+    /// recording captured on the headless host carries that host's patch roster, which the
+    /// retail preflight correctly refuses, and a copy of this loop is the arbiter's replay
+    /// only until this one changes.
+    /// </summary>
+    internal static ArbiterOutcome ReplayStartedRun(
+        GameSession session, ReplayManifest manifest, PreflightResult preflight,
+        int? stopAfterSeq, string? gameModeOverride)
+    {
         using var driver = new RunDriver(session);
         driver.EnterFirstRoom();
 

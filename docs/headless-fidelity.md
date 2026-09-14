@@ -208,6 +208,39 @@ so waiting for it there wedges the game rather than settling it. The driver hand
 engine's task back through `RunDriver.Pending` and the in-game host waits for it on
 the game's own frames.
 
+### Recording a run headless, and the two seams it needs
+
+The recorder and its fight observer run in the retail client, and two things they lean
+on there are absent headless. Both are seams the attach site supplies rather than
+constants named inside the recorder, so the merge suite can drive a whole recorded run
+without a client - which is what `HeadlessGameplayCaptureTests` in
+`Sts2PilotTrainer.Mod.Tests` does, and why the recorder screen-coverage failure class is
+caught before a merge rather than by playing.
+
+- **The attach identity.** `RunRecorder.Attach` records the build and content the run is
+  played on, and in the client it takes them from adopting the running game -
+  `RunmobileMod.EnsureAdopted`, which `EngineHost.AdoptRunningGame` grants. That refuses a
+  process that started its own headless engine, by design, so `RunRecorder.GameIdentitySource`
+  is the seam: a headless attach supplies a source that says the engine is up, and the
+  identity `LiveRun` writes then comes from the prepared copy - honestly, because that is
+  the engine the process runs.
+- **The settle clock.** Both the recorder's between-decision settle and the observer's
+  after-action settle wait for the engine to go quiet on a clock, and in the client that
+  clock is the scene tree's timer (`RecordedFightRun.LetTheGameRun`), the only thing this
+  process's [in-game host](in-game-host.md) has for waiting. There is no scene tree
+  headless, so `SettleClock` is the seam and `RunRecorder.Clock` carries it: the retail
+  client's is `SettleClock.SceneTree`; a headless attach supplies one driven by the
+  arbiter's drain instead of by frames. The observer binds its clock at
+  `PlayerFightObserver.Start`, so the clock is chosen when the fight begins, not swapped
+  under it.
+
+A recording captured headlessly is a real recording, and it is not a retail-clean one:
+its patch roster names the headless host's own patches, which the environment preflight in
+front of `./scripts/arbiter replay` refuses - correctly, since that gate is about a clean
+retail game. So the merge-suite proof replays a natural run's own actions in-process, past
+that gate, to show the recorded actions reproduce every declared boundary digest; the
+retail-cleanliness the CLI checks is a separate question.
+
 ### The headless flag
 
 `TestMode.IsOn` is set. This is the switch the game's own automated tests use, and
