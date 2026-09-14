@@ -19,6 +19,7 @@ using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Nodes.Screens.CardSelection;
 using MegaCrit.Sts2.Core.Rewards;
+using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
@@ -312,7 +313,7 @@ internal sealed class RunRecorder : IDisposable
             while (true)
             {
                 if (Active is not null || ProfileWriteBarrier.IsActive) return;
-                if (HasEnteredItsFirstRoom()) break;
+                if (HasEnteredItsRoom()) break;
 
                 if (deadline.IsCompleted)
                 {
@@ -514,7 +515,26 @@ internal sealed class RunRecorder : IDisposable
     }
 
     /// <summary>
-    /// Whether the run exists and has entered its first room yet.
+    /// Whether the run exists, has a floor, and is standing in its room yet.
+    ///
+    /// The room is asked for as well as the floor because a continued run has the one
+    /// before the other. A new run gets its first floor inside the map-point entry that
+    /// then enters the room, so the floor count alone was the whole question for it. A
+    /// continued run carries its floor count on the save and is at act floor 0 from
+    /// <c>SetUpSavedSingleplayer</c> until <c>LoadIntoLatestMapCoord</c> re-enters the
+    /// coordinate the save names - <c>EnterMapPointInternal</c> is the one thing that
+    /// sets the act floor and the game does not save it - and a reading taken in that
+    /// gap is a state the journal never saw. An honest Continue at Neow's room resumed
+    /// as a broken watch that way, with every field but the act floor agreeing.
+    ///
+    /// A combat room is stood in before its fight is open: the room is pushed, its
+    /// assets are loaded over the frames after, and only then is the combat set up and
+    /// the opening hand dealt. A reading taken in that gap is not in combat and every
+    /// combat field the journal's room-entry decision carries is missing from it, so a
+    /// Continue into a live fight resumed as a broken watch the same way. The fight is
+    /// asked the question <see cref="LiveRun.ReadyForThePlayer(RunState)"/> owns, as the
+    /// settle after a map move asks it; a room restored already finished has no fight
+    /// to wait for.
     ///
     /// A projection of a run the game is still building throws rather than answering,
     /// and that is a "not yet" rather than a failure: this is polled from the moment
@@ -522,11 +542,12 @@ internal sealed class RunRecorder : IDisposable
     /// wrong here is still a not-yet on this poll and is the deadline's to give up on,
     /// so a run is never half-attached to because one reading came too early.
     /// </summary>
-    private static bool HasEnteredItsFirstRoom()
+    internal static bool HasEnteredItsRoom()
     {
         try
         {
-            return LiveRun.State is not null && Floor(LiveRun.Sample()) >= 1;
+            return LiveRun.State is { CurrentRoom: { } room } run && Floor(LiveRun.Sample()) >= 1 &&
+                   (room is not CombatRoom { IsPreFinished: false } || LiveRun.ReadyForThePlayer(run));
         }
         catch (Exception)
         {
