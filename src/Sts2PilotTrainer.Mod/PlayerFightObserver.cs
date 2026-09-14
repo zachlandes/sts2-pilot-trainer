@@ -38,7 +38,9 @@ namespace Sts2PilotTrainer.Mod;
 /// event closes the sample instead, with the final state.
 ///
 /// Waiting here uses only what docs/in-game-host.md records as working in this
-/// process: a task the game completes, and the scene tree's timer.
+/// process: a task the game completes, and the clock the attach site supplied at
+/// <see cref="Start"/> - the scene tree's timer in the retail client, the arbiter's
+/// drain headlessly. See <see cref="SettleClock"/>.
 /// </summary>
 internal sealed class PlayerFightObserver : IDisposable
 {
