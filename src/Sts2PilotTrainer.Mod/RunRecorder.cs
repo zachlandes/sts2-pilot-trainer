@@ -414,6 +414,7 @@ internal sealed class RunRecorder : IDisposable
         {
             var journal = RunJournal.Parse(existing);
             capture = RunCapture.Resume(journal, sample, digest);
+            var resumeRefusals = capture.Refusals.Count;
 
             // Before anything is appended, because an append onto a fragment a
             // crash left behind produces a line no later session can read.
@@ -458,7 +459,7 @@ internal sealed class RunRecorder : IDisposable
             // be rebuilt from the journal because the log said only that it broke.
             // Bounded, because a hand or a deck is a long value and a log line is not
             // the place for the whole reading.
-            if (capture.Refusals.Count > journal.Refusals.Count)
+            if (resumeRefusals > journal.Refusals.Count)
             {
                 Log.Warn($"[{RunmobileMod.ModId}] {DescribeResumeDifferences(journal.Entries[^1], sample)}", 2);
             }

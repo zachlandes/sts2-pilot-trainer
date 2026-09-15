@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json.Serialization;
 
 namespace Sts2PilotTrainer.Replay;
@@ -99,8 +97,9 @@ public sealed record ReplayTrace
     /// entry, where the fight opens again. So every <c>combat.</c> field is dropped
     /// unless the fight is in progress, and nothing else is: what a save carries of
     /// the run - floor, coordinate, health, gold, deck, relics, potions - is kept
-    /// whole. The prefix on the digest keeps it from ever being read as the complete
-    /// digest a boundary is identified by.
+    /// whole. Two readings are compared through <see cref="SameSample"/>; it is never
+    /// digested, so it cannot be mistaken for the complete digest a boundary is
+    /// identified by.
     /// </summary>
     public static IReadOnlyDictionary<string, string> SaveRepresentable(IReadOnlyDictionary<string, string> sample)
     {
@@ -122,21 +121,6 @@ public sealed record ReplayTrace
         sample.TryGetValue("combat.outcome", out var outcome) &&
         !string.Equals(outcome, "in_progress", StringComparison.Ordinal) &&
         !string.Equals(outcome, "none", StringComparison.Ordinal);
-
-    /// <summary>
-    /// SHA-256 over the save-representable part of a sample, prefixed so it cannot
-    /// be mistaken for a complete canonical digest.
-    /// </summary>
-    public static string SaveRepresentableDigest(IReadOnlyDictionary<string, string> sample)
-    {
-        var builder = new StringBuilder();
-        foreach (var (key, value) in SaveRepresentable(sample))
-        {
-            builder.Append(key).Append('=').Append(value).Append('\n');
-        }
-
-        return "sha256-sr:" + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString())));
-    }
 
     /// <summary>
     /// The fields in which two samples differ, one line each as

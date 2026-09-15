@@ -492,10 +492,9 @@ public sealed class RunCapture
     private static bool SameButForWhatNoSaveCarries(
         RunJournalEntry entry, IReadOnlyDictionary<string, string> liveSample) =>
         (ReplayTrace.CarriesFinishedCombat(entry.State) || ReplayTrace.CarriesFinishedCombat(liveSample)) &&
-        string.Equals(
-            ReplayTrace.SaveRepresentableDigest(entry.State),
-            ReplayTrace.SaveRepresentableDigest(liveSample),
-            StringComparison.Ordinal);
+        ReplayTrace.SameSample(
+            ReplayTrace.SaveRepresentable(entry.State),
+            ReplayTrace.SaveRepresentable(liveSample));
 
     /// <summary>
     /// True only for the game's observed save behavior: the recording ended in a

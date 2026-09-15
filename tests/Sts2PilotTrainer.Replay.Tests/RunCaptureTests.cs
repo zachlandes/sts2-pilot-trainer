@@ -323,13 +323,12 @@ public sealed class RunCaptureTests
         Assert.False(ReplayTrace.CarriesFinishedCombat(InFight(2)));
         Assert.False(ReplayTrace.CarriesFinishedCombat(Floor(1)));
 
-        Assert.StartsWith("sha256-sr:", ReplayTrace.SaveRepresentableDigest(Floor(1)), StringComparison.Ordinal);
-        Assert.Equal(
-            ReplayTrace.SaveRepresentableDigest(Won(2, hp: 58)),
-            ReplayTrace.SaveRepresentableDigest(Restored(Won(2, hp: 58))));
-        Assert.NotEqual(
-            ReplayTrace.SaveRepresentableDigest(Won(2, hp: 58)),
-            ReplayTrace.SaveRepresentableDigest(Won(2, hp: 57)));
+        Assert.True(ReplayTrace.SameSample(
+            ReplayTrace.SaveRepresentable(Won(2, hp: 58)),
+            ReplayTrace.SaveRepresentable(Restored(Won(2, hp: 58)))));
+        Assert.False(ReplayTrace.SameSample(
+            ReplayTrace.SaveRepresentable(Won(2, hp: 58)),
+            ReplayTrace.SaveRepresentable(Won(2, hp: 57))));
     }
 
     [Fact]
