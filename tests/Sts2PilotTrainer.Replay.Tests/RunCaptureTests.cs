@@ -553,6 +553,95 @@ public sealed class RunCaptureTests
         Assert.True(reread.IsValid, reread.Describe());
     }
 
+    /// <summary>
+    /// The game's own rollback at a fight's arrival, then a reload behind the shop
+    /// before it. The first branch was played from the shop arrival, the purchase and
+    /// the move to the fight; the reload made all three its own branch and the
+    /// continued history remade them. The recording says which decisions the first
+    /// branch was played from, and a branch the reload holds short of one of them is
+    /// refused by name rather than filled in from the remade history.
+    /// </summary>
+    [Fact]
+    public void ABranchIsHeldToTheHistoryItWasPlayedFromAndNotToTheOneRemadeBehindIt()
+    {
+        var capture = AtTheShop();
+        var bought = new Dictionary<string, string>(Shop(3, hp: 58), StringComparer.Ordinal)
+        {
+            ["player.gold"] = "63",
+        };
+        capture.Record(
+            ActionVerb.ShopPurchase, Args(("kind", "character_card"), ("card_id", "CARD.CLEAVE"), ("option_index", "2")),
+            bought, Digest(6));
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "3"), ("column", "3")),
+            InFight(4, turn: 1), Digest(7));
+        Saved(capture);
+        capture.Record(ActionVerb.EndTurn, Args(), InFight(4, turn: 2), Digest(8));
+
+        var continued = Resume(RunJournal.Parse(capture.Journal.Render()), Digest(7));
+        Assert.Equal(NativeSource.ContinuousContinuity, continued.Continuity);
+        Assert.Equal(7, Assert.Single(continued.Discarded).RollbackToSeq);
+        continued.Record(ActionVerb.EndTurn, Args(), InFight(4, turn: 2, hp: 60), Digest(9));
+
+        var rewound = Resume(RunJournal.Parse(continued.Journal.Render()), Digest(4));
+        Assert.Equal(NativeSource.RewoundContinuity, rewound.Continuity);
+        rewound.Record(ActionVerb.ClaimReward, Args(("reward_type", "gold")), Won(2, hp: 58), Digest(30));
+        rewound.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "2"), ("column", "2")),
+            InFight(3, turn: 1), Digest(31));
+        Saved(rewound);
+        rewound.Finish("abandoned");
+
+        var manifest = rewound.ToManifest();
+        var validation = ManifestValidator.Validate(manifest);
+        Assert.True(validation.IsValid, validation.Describe());
+        var branches = manifest.Source.Native!.Discarded!;
+        Assert.Equal(2, branches.Count);
+        Assert.Equal(7, branches[0].RollbackToSeq);
+        Assert.Equal([5, 6, 7, 8], branches[1].Actions.Select(action => action.Seq));
+
+        // The first branch was played from the reload's decisions 5-7, and the
+        // continued history's 5-6 are the remade ones.
+        var prefix = DiscardedBranchHistory.PrefixOf(branches, 0, manifest.Actions);
+        Assert.Equal(Enumerable.Range(0, 8), prefix.Select(action => action.Seq));
+        Assert.Equal(ActionVerb.MapMove, prefix[5].Verb);
+        Assert.Equal("1", prefix[5].Args["column"]);
+        Assert.Equal(ActionVerb.ShopPurchase, prefix[6].Verb);
+        Assert.Equal(ActionVerb.MapMove, prefix[7].Verb);
+        Assert.Equal(ActionVerb.ClaimReward, manifest.Actions[5].Verb);
+        Assert.Equal("2", manifest.Actions[6].Args["column"]);
+
+        var short_ = manifest with
+        {
+            Source = manifest.Source with
+            {
+                Native = manifest.Source.Native with
+                {
+                    Discarded =
+                    [
+                        branches[0],
+                        branches[1] with
+                        {
+                            Actions = branches[1].Actions.Where(action => action.Seq != 6).ToList(),
+                            Trace = branches[1].Trace with
+                            {
+                                Steps = branches[1].Trace.Steps.Where(step => step.Seq != 6).ToList(),
+                            },
+                        },
+                    ],
+                },
+            },
+        };
+        var refused = ManifestValidator.Validate(short_);
+        Assert.False(refused.IsValid);
+        Assert.Contains(
+            refused.Problems,
+            problem => problem.Contains(
+                "source.native.discarded[0] was played from a history that neither the continued history nor " +
+                "a later branch holds at decision 6", StringComparison.Ordinal));
+        Assert.Throws<ManifestException>(() => DiscardedBranchHistory.PrefixOf(short_.Source.Native!.Discarded!, 0, short_.Actions));
+    }
+
     /// <summary>Neow answered, the first fight won, and a shop entered straight after
     /// it, with the game's saves where it takes them: after the event, at each
     /// arrival and at the fight's end.</summary>

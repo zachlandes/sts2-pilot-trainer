@@ -777,25 +777,6 @@ public static partial class ManifestValidator
         }
     }
 
-    /// <summary>The decision at <paramref name="seq"/> as the history stood when
-    /// branch <paramref name="branchIndex"/> was discarded: the nearest later branch
-    /// whose rollback rewound behind it and whose actions reach it holds that
-    /// decision now, and the continued history holds it otherwise.</summary>
-    private static ActionRecord? ActionAsTheBranchSawIt(
-        IReadOnlyList<DiscardedBranch> branches, int branchIndex, IReadOnlyList<ActionRecord> actions, int seq)
-    {
-        for (var later = branchIndex + 1; later < branches.Count; later++)
-        {
-            var candidate = branches[later];
-            if (candidate.RollbackToSeq < seq && candidate.Actions.Count > 0 && seq <= candidate.Actions[^1].Seq)
-            {
-                return candidate.Actions.FirstOrDefault(action => action.Seq == seq);
-            }
-        }
-
-        return actions.FirstOrDefault(action => action.Seq == seq);
-    }
-
     private static void ValidateBranchSavePoint(SavePoint savePoint, string where, int rollbackToSeq, List<string> problems)
     {
         if (savePoint.AfterSeq != rollbackToSeq)
@@ -835,12 +816,27 @@ public static partial class ManifestValidator
             // that rewound behind it now carries that decision.
             var boundaryAction = branch.RollbackToSeq == -1
                 ? null
-                : ActionAsTheBranchSawIt(branches, branchIndex, actions, branch.RollbackToSeq);
+                : DiscardedBranchHistory.ActionAsTheBranchSawIt(branches, branchIndex, actions, branch.RollbackToSeq);
             if (branch.RollbackToSeq < -1 || (branch.RollbackToSeq != -1 && boundaryAction is null))
             {
                 problems.Add(
                     $"{path}.rollback_to_seq does not name a decision in the history as it stood when the " +
                     "branch was discarded.");
+            }
+            else if (branch.RollbackToSeq != -1)
+            {
+                // The branch replays from that whole history, so every decision on
+                // it has to be held by something, not only the one it returned to.
+                var missing = Enumerable.Range(0, branch.RollbackToSeq)
+                    .Where(seq => DiscardedBranchHistory.ActionAsTheBranchSawIt(branches, branchIndex, actions, seq) is null)
+                    .Select(seq => seq.ToString(CultureInfo.InvariantCulture))
+                    .ToList();
+                if (missing.Count > 0)
+                {
+                    problems.Add(
+                        $"{path} was played from a history that neither the continued history nor a later " +
+                        $"branch holds at decision {string.Join(", ", missing)}.");
+                }
             }
 
             // The game's own rollback returns to a save the recorder watched land,
@@ -946,8 +942,12 @@ public static partial class ManifestValidator
             // Where the save was a floor arrival, the verified history carries the
             // engine's digest of that very state, and the branch's has to be it. A
             // save taken anywhere else - a fight won, an ancient event finished - has
-            // no boundary there, and the branch replay is what holds its state.
-            var boundary = floor is null
+            // no boundary there, and the branch replay is what holds its state. So
+            // does a later reload that rewound behind the arrival: what the continued
+            // history was verified at that ordinal is then an arrival the branch
+            // never stood on.
+            var boundary = floor is null ||
+                !DiscardedBranchHistory.ContinuedHistoryHolds(branches, branchIndex, branch.RollbackToSeq)
                 ? null
                 : verification.Boundaries.FirstOrDefault(candidate =>
                     candidate.Kind == ReplayBoundary.FloorEntryKind && candidate.Floor == floor.Floor &&

@@ -22,8 +22,12 @@ public static class Arbiter
         RunCore(manifest, stopAfterSeq, progress, gameModeOverride, modifierTypeNames, validate: true);
 
     /// <summary>
-    /// Replays one discarded branch: the continued history to the decision the
-    /// branch left from, then the branch's own decisions, through the real engine.
+    /// Replays one discarded branch: the history as it stood when the branch was
+    /// made, to the decision the branch left from, then the branch's own decisions,
+    /// through the real engine. That history is <see cref="DiscardedBranchHistory"/>'s
+    /// answer and not the continued history's: a later reload that rewound behind
+    /// the branch's return point remade the decisions the branch was played from,
+    /// and a branch replayed from the remade ones runs in rooms it never stood in.
     ///
     /// Two states are held. The state the branch left from has to be the state the
     /// engine reaches at that decision - the save the game restored was of that
@@ -46,7 +50,7 @@ public static class Arbiter
         }
 
         var branch = DiscardedBranchAt(manifest, branchIndex);
-        var outcome = RunCore(DiscardedBranchManifest(manifest, branch), null, progress, null, null, validate: false);
+        var outcome = RunCore(DiscardedBranchManifest(manifest, branchIndex), null, progress, null, null, validate: false);
         return JudgeDiscardedBranch(manifest, branch, outcome);
     }
 
@@ -56,7 +60,7 @@ public static class Arbiter
         GameSession session, ReplayManifest manifest, int branchIndex, PreflightResult preflight)
     {
         var branch = DiscardedBranchAt(manifest, branchIndex);
-        var outcome = ReplayStartedRun(session, DiscardedBranchManifest(manifest, branch), preflight, null, null);
+        var outcome = ReplayStartedRun(session, DiscardedBranchManifest(manifest, branchIndex), preflight, null, null);
         return JudgeDiscardedBranch(manifest, branch, outcome);
     }
 
@@ -71,24 +75,31 @@ public static class Arbiter
         return branches[branchIndex];
     }
 
-    private static ReplayManifest DiscardedBranchManifest(ReplayManifest manifest, DiscardedBranch branch) =>
-        manifest with
+    private static ReplayManifest DiscardedBranchManifest(ReplayManifest manifest, int branchIndex)
+    {
+        var branches = manifest.Source.Native!.Discarded!;
+        var branch = branches[branchIndex];
+        return manifest with
         {
             Source = manifest.Source with
             {
-                Native = manifest.Source.Native! with { Discarded = null },
+                Native = manifest.Source.Native with { Discarded = null },
             },
             Actions =
             [
-                .. manifest.Actions.Where(action => action.Seq <= branch.RollbackToSeq),
+                .. DiscardedBranchHistory.PrefixOf(branches, branchIndex, manifest.Actions),
                 .. branch.Actions,
             ],
+            // A checkpoint was captured on the continued history, and is the
+            // branch's only where that history still holds the decision it follows.
             Checkpoints = manifest.Checkpoints
-                .Where(checkpoint => checkpoint.AfterSeq <= branch.RollbackToSeq)
+                .Where(checkpoint => checkpoint.AfterSeq <= branch.RollbackToSeq &&
+                                     DiscardedBranchHistory.ContinuedHistoryHolds(branches, branchIndex, checkpoint.AfterSeq))
                 .ToList(),
             Boundaries = [],
             Verification = null,
         };
+    }
 
     private static ArbiterOutcome JudgeDiscardedBranch(
         ReplayManifest manifest, DiscardedBranch branch, ArbiterOutcome outcome)

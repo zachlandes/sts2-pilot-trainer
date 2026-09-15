@@ -658,6 +658,14 @@ public sealed class RecorderContinueTests : IDisposable
     /// save before the shop - is a reload, and it takes the arrival's save off the
     /// continued history. The first branch carries the save it returned to itself,
     /// so the rewound recording validates and stays the player's to play from.
+    ///
+    /// The reload also remade the decisions the first branch was played from: the
+    /// loot and the move to the shop are now the reload's branch, and the continued
+    /// history holds what was played in their place. Each branch replays from the
+    /// decisions it saw - the first through the shop arrival the reload discarded,
+    /// the second from the fight-won save - and the continued history from its own;
+    /// replayed from the remade history, the first branch's purchase ran in a room
+    /// that was never a shop.
     /// </summary>
     [GameFact]
     public void AReloadBehindAnEarlierOwnRollbackLeavesARewoundRecordingTheValidatorTakes()
@@ -699,6 +707,23 @@ public sealed class RecorderContinueTests : IDisposable
         Assert.Equal(NativeSource.RewoundContinuity, manifest.Source.Native!.Continuity);
         Assert.Equal(arrival, manifest.Source.Native.Discarded![0].SavePoint?.AfterSeq);
         Assert.DoesNotContain(arrival, manifest.Source.Native.SavePoints!.Select(point => point.AfterSeq));
+
+        var whole = lab.ReplayTheWholeHistory(manifest);
+        var branches = lab.ReplayEveryBranch(manifest);
+        var shopArrivalAsTheBranchSawIt = manifest.Source.Native.Discarded[1].Actions
+            .Single(action => action.Seq == arrival);
+        Assert.Equal(ActionVerb.MapMove, shopArrivalAsTheBranchSawIt.Verb);
+        var ownBranchArrival = branches[0].Trace!.Steps.Single(step => step.Seq == arrival);
+        Assert.Equal(
+            shopArrivalAsTheBranchSawIt.Args.OrderBy(arg => arg.Key, StringComparer.Ordinal),
+            ownBranchArrival.Args.OrderBy(arg => arg.Key, StringComparer.Ordinal));
+        Assert.Equal(ActionVerb.ShopPurchase, manifest.Source.Native.Discarded[0].Actions[0].Verb);
+        // The continued history never stood there: the reload remade the loot
+        // decisions and ended short of any move.
+        var remade = whole.Trace!.Steps.SingleOrDefault(step => step.Seq == arrival);
+        Assert.True(
+            remade is null || remade.After["run.map_coord"] != ownBranchArrival.After["run.map_coord"],
+            "the continued history was replayed through the shop arrival the reload discarded");
     }
 
     /// <summary>A session the recorder was not watching won the fight and moved on,
@@ -1264,10 +1289,11 @@ public sealed class RecorderContinueTests : IDisposable
         /// continued history, past the retail preflight a headless recording's own
         /// patch roster rightly fails, and held to the state it left from and the
         /// state it ended in.</summary>
-        internal void ReplayEveryBranch(ReplayManifest manifest)
+        internal IReadOnlyList<VerificationReport> ReplayEveryBranch(ReplayManifest manifest)
         {
             var branches = manifest.Source.Native!.Discarded ?? [];
             Assert.NotEmpty(branches);
+            var reports = new List<VerificationReport>();
             for (var index = 0; index < branches.Count; index++)
             {
                 if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
@@ -1284,12 +1310,15 @@ public sealed class RecorderContinueTests : IDisposable
                     Assert.True(
                         outcome.Report.Status == VerificationStatus.Verified,
                         $"branch {index}: {outcome.Report.Status}; {string.Join(" / ", outcome.Report.Diagnostics)}");
+                    reports.Add(outcome.Report);
                 }
                 finally
                 {
                     if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
                 }
             }
+
+            return reports;
         }
     }
 
