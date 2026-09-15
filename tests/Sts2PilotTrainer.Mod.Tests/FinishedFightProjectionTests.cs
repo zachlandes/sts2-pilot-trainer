@@ -27,6 +27,14 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// </summary>
 public sealed class FinishedFightProjectionTests
 {
+    public FinishedFightProjectionTests()
+    {
+        // The escape-site fact names a game type in its own body, so the game assembly
+        // has to be resolvable before that body is compiled; the run-driven facts keep
+        // theirs inside lambdas and did not need this.
+        _ = EngineHost.StartupPhase();
+    }
+
     /// <summary>Every field of a live fight, before and after a play, so a
     /// projection that dropped the fight while it was still being fought would be
     /// caught here and not in a comparison.</summary>
