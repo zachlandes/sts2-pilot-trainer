@@ -271,7 +271,21 @@ public static partial class SyntheticFixtureGenerator
                 ]);
             }
 
-            if (Outcome(session) != "in_progress") return;
+            if (Outcome(session) != "in_progress")
+            {
+                // Said here rather than at the next map move, which the engine never
+                // finishes for a dead player
+                if (Outcome(session) != "victory")
+                {
+                    throw new EngineException(
+                        $"The generated fight ended in {Outcome(session)} after action " +
+                        $"{actions[^1].Seq.ToString(System.Globalization.CultureInfo.InvariantCulture)}. This " +
+                        "journey's rules did not survive it, so there is no history past here to emit.");
+                }
+
+                return;
+            }
+
             Apply(driver, actions, ActionVerb.EndTurn);
         }
 
@@ -364,6 +378,9 @@ public static partial class SyntheticFixtureGenerator
             : throw new EngineException($"Synthetic fixture hand has no {cardId}.");
     }
 
+    /// <summary>What <see cref="WalkTheAct"/> runs after each decision, while it runs.</summary>
+    private static Action? _afterEachDecision;
+
     private static void Apply(
         RunDriver driver, List<ActionRecord> actions, ActionVerb verb,
         params (string Key, string Value)[] args)
@@ -394,6 +411,8 @@ public static partial class SyntheticFixtureGenerator
                 Source = FactSource.Declared,
             });
         }
+
+        _afterEachDecision?.Invoke();
     }
 
     private static Checkpoint Capture(

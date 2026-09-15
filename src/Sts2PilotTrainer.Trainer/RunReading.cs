@@ -87,7 +87,9 @@ public sealed record RunReading(
         reached = Math.Max(
             reached,
             recording.Actions.Count(action => action.Verb == ActionVerb.ProceedToNextAct) + 1);
-        return reached;
+
+        // A won run's last act transition opens the victory room, not an act
+        return recording.Environment.Acts.Value is { Count: > 0 } acts ? Math.Min(reached, acts.Count) : reached;
     }
 
     /// <summary>

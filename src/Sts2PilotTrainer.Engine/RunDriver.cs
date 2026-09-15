@@ -359,6 +359,13 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     {
         Pending = null;
 
+        if (RunEnding.Reading is not null)
+        {
+            throw new EngineException(
+                $"Action {action.Seq} comes after the game ended the run, which it did inside an earlier " +
+                "decision. A history that goes on past the run's end is not this run's.");
+        }
+
         if (_insideRunningGame && !VerbsAllowedInRunningGame.Contains(action.Verb))
         {
             throw new EngineException(
@@ -1168,30 +1175,39 @@ public sealed class RunDriver : IDisposable, ScreenStandIns.IStandInAnswerer
     ///
     /// It is a decision because the run stays on the boss's floor until somebody makes
     /// it, and because everything still on offer there is discarded by it.
+    ///
+    /// The same press from the last act's boss is how a run is won: the client's
+    /// reward screen issues the same vote, and <c>EnterNextAct</c> opens the victory
+    /// room - the Architect's event - in place of an act. The run is then in that
+    /// room, in the same act, and the event's PROCEED is the decision that ends it.
     /// </summary>
     private void ProceedToNextAct()
     {
         RefuseToLeaveAnUndecidedRoom("Proceeding to the next act");
 
-        var from = _session.RunState.CurrentActIndex;
-        var acts = _session.RunState.Acts.Count;
-        if (from + 1 >= acts)
+        var state = _session.RunState;
+        var from = state.CurrentActIndex;
+        var lastAct = from + 1 >= state.Acts.Count;
+        if (lastAct && state.CurrentRoom is { IsVictoryRoom: true })
         {
             throw new EngineException(
-                $"Proceeding to the next act, but this run's last act is " +
-                $"{(acts - 1).ToString(System.Globalization.CultureInfo.InvariantCulture)} and it is " +
-                "already in it. There is no next act to enter.");
+                "Proceeding to the next act, but the run is already in the victory room. The run is won " +
+                "from there by the event's own option, not by another act transition.");
         }
 
         RunManager.Instance.ActChangeSynchronizer.SetLocalPlayerReady();
         Pump.Drain();
 
-        if (_session.RunState.CurrentActIndex == from)
+        var movedOn = lastAct
+            ? state.CurrentRoom is { IsVictoryRoom: true }
+            : state.CurrentActIndex != from;
+        if (!movedOn)
         {
             throw new EngineException(
                 $"The run said it was ready to leave act " +
                 $"{from.ToString(System.Globalization.CultureInfo.InvariantCulture)} and the engine did not " +
-                "move it on. An act transition is only offered once the act's boss is beaten.");
+                (lastAct ? "open the victory room" : "move it on") +
+                ". An act transition is only offered once the act's boss is beaten.");
         }
     }
 
