@@ -1,11 +1,12 @@
 # The game's save contract on this build, read by RunRecorderTests from the
-# assembly's own IL and type table rather than assumed: every member that calls
-# SaveManager.SaveRun, and every type that subclasses AncientEventModel. A build
-# that moves where the run saves, or adds or removes an ancient event, changes
-# this file in the change that adopts it. Regenerate with
+# assembly's own IL and type table rather than assumed: every SaveManager.SaveRun
+# overload, every member that calls each, and every type that subclasses
+# AncientEventModel. A build that adds a way to save, moves where the run saves,
+# or adds or removes an ancient event, changes this file in the change that
+# adopts it. Regenerate with
 #   ./scripts/save-points.sh --update
 
-# Members that call SaveManager.SaveRun:
+# Members that call SaveManager.SaveRun(AbstractRoom, Boolean):
 MegaCrit.Sts2.Core.Combat.CombatManager.EndCombatInternal
 MegaCrit.Sts2.Core.Nodes.Debug.Multiplayer.NMultiplayerTest.BeginRunAsync
 MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect.NCharacterSelectScreen.StartNewMultiplayerRun

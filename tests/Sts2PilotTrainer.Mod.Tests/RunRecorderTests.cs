@@ -283,7 +283,7 @@ public sealed class RunRecorderTests
     public void TheGamesSaveContractIsTheRecordedOne() =>
         HoldToRecord(SavePointsPath, SavePoints.Enumeration(),
             "SAVE_POINTS_UPDATE", "./scripts/save-points.sh --update",
-            "The game's save contract - who calls SaveManager.SaveRun and which types subclass " +
+            "The game's save contract - which SaveManager.SaveRun overloads exist, who calls each, and which types subclass " +
             "AncientEventModel - is not the recorded one. If the game build changed, regenerate " +
             "the list in the same change");
 

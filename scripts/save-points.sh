@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Holds scripts/save-points.txt to the game build this tree has prepared.
 #
-# The file lists every member whose own body calls SaveManager.SaveRun - the one
-# member the recorder's RunSaved patch watches - and every type this build subclasses
-# AncientEventModel with, both read from the game assembly's IL and type table. The
-# resume logic (RunCapture.Resume, IsObservedSaveRollback) and AGENTS.md's save
-# contract both assume this is a closed, known pair of sets; a game update that moves
-# where the run saves, or adds or removes an ancient event, now shows up as a diff in
+# The file lists every SaveManager.SaveRun overload - the recorder's RunSaved patch
+# watches exactly one - every member whose own body calls each, and every type this
+# build subclasses AncientEventModel with, all read from the game assembly's IL and
+# type table. The resume logic (RunCapture.Resume, IsObservedSaveRollback) and
+# AGENTS.md's save contract both assume these are closed, known sets; a game update
+# that adds a way to save, moves where the run saves, or adds or removes an ancient
+# event, now shows up as a diff in
 # the change that adopts the build, rather than as a save/resume test that keeps
 # passing against a set the game no longer has.
 #

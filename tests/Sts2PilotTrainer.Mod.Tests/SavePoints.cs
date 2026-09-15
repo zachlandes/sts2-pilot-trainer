@@ -1,17 +1,15 @@
 using System.Reflection;
 using System.Text;
-using HarmonyLib;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Saves;
 using Sts2PilotTrainer.Engine;
 
 namespace Sts2PilotTrainer.Arbiter.Tests;
 
 /// <summary>
-/// The game's own save contract, read from the assembly rather than assumed: which
-/// members call <c>SaveManager.SaveRun</c> - the one member the recorder's own
-/// <c>RunSaved</c> patch watches - and which types this build subclasses
+/// The game's own save contract, read from the assembly rather than assumed: every
+/// <c>SaveManager.SaveRun</c> overload - the recorder's own <c>RunSaved</c> patch watches
+/// exactly one - which members call each, and which types this build subclasses
 /// <c>AncientEventModel</c> with, the closed set an ancient event finishing can be.
 ///
 /// The resume logic (<c>RunCapture.Resume</c>, <c>IsObservedSaveRollback</c>) and
@@ -40,24 +38,43 @@ internal static class SavePoints
         _ = EngineHost.StartupPhase();
     }
 
-    /// <summary>The one member the recorder's <c>RunSaved</c> patch watches. Every
-    /// caller reaches it whatever its own call site wrote, because the compiler fills
-    /// in <c>saveProgress</c>'s default.</summary>
-    private static MethodBase SaveRun => AccessTools.Method(
-        typeof(SaveManager), nameof(SaveManager.SaveRun), [typeof(AbstractRoom), typeof(bool)]);
+    /// <summary>
+    /// Every <c>SaveManager.SaveRun</c> this build declares, by signature. The recorder's
+    /// <c>RunSaved</c> patch watches exactly one of them, so a second one is a save site
+    /// the recorder does not see, and it is enumerated here so that it shows as a diff
+    /// rather than as the callers of the watched one staying exactly what they were.
+    /// </summary>
+    internal static IReadOnlyList<MethodInfo> SaveRunOverloads()
+    {
+        const BindingFlags every = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        var overloads = typeof(SaveManager).GetMethods(every)
+            .Where(method => method.Name == nameof(SaveManager.SaveRun))
+            .OrderBy(Signature, StringComparer.Ordinal)
+            .ToList();
+        return overloads.Count > 0
+            ? overloads
+            : throw new InvalidOperationException(
+                $"{typeof(SaveManager).FullName}.{nameof(SaveManager.SaveRun)} is not declared on this build; " +
+                "the recorder's RunSaved patch and this reading both name it.");
+    }
 
     /// <summary>
-    /// Every member whose own body calls <see cref="SaveRun"/>, read by its declared
-    /// name: an async method's compiler-generated state machine resolves back to the
-    /// method that declared it, so a caller reads the way a person would name it.
+    /// Every member whose own body calls the given <see cref="SaveRunOverloads"/> member,
+    /// read by its declared name: an async method's compiler-generated state machine
+    /// resolves back to the method that declared it, so a caller reads the way a person
+    /// would name it.
     /// </summary>
-    internal static IReadOnlyList<MethodBase> SaveRunCallers() =>
-        ChoiceEntryPoints.MethodsNaming(SaveRun)
+    internal static IReadOnlyList<MethodBase> CallersOf(MethodBase saveRun) =>
+        ChoiceEntryPoints.MethodsNaming(saveRun)
             .Select(ChoiceEntryPoints.DeclaredMember)
             .Distinct()
             .OrderBy(method => method.DeclaringType!.FullName, StringComparer.Ordinal)
             .ThenBy(method => method.Name, StringComparer.Ordinal)
             .ToList();
+
+    private static string Signature(MethodInfo method) =>
+        $"{method.Name}({string.Join(", ", method.GetParameters().Select(parameter => parameter.ParameterType.Name))})";
 
     /// <summary>Every type this build subclasses <c>AncientEventModel</c> with.</summary>
     internal static IReadOnlyList<Type> AncientEventSubclasses() =>
@@ -67,8 +84,9 @@ internal static class SavePoints
             .ToList();
 
     /// <summary>
-    /// The committed record: every <see cref="SaveRunCallers"/> member and every
-    /// <see cref="AncientEventSubclasses"/> name, one per line under its own heading.
+    /// The committed record: every <see cref="SaveRunOverloads"/> member with every
+    /// <see cref="CallersOf"/> member under it, and every <see cref="AncientEventSubclasses"/>
+    /// name, one per line under its own heading.
     /// Regenerate with <c>./scripts/save-points.sh --update</c> so a game update that
     /// adds or removes either shows as a diff in the change that adopts the build.
     /// </summary>
@@ -76,19 +94,24 @@ internal static class SavePoints
     {
         var text = new StringBuilder();
         text.AppendLine("# The game's save contract on this build, read by RunRecorderTests from the");
-        text.AppendLine("# assembly's own IL and type table rather than assumed: every member that calls");
-        text.AppendLine("# SaveManager.SaveRun, and every type that subclasses AncientEventModel. A build");
-        text.AppendLine("# that moves where the run saves, or adds or removes an ancient event, changes");
-        text.AppendLine("# this file in the change that adopts it. Regenerate with");
+        text.AppendLine("# assembly's own IL and type table rather than assumed: every SaveManager.SaveRun");
+        text.AppendLine("# overload, every member that calls each, and every type that subclasses");
+        text.AppendLine("# AncientEventModel. A build that adds a way to save, moves where the run saves,");
+        text.AppendLine("# or adds or removes an ancient event, changes this file in the change that");
+        text.AppendLine("# adopts it. Regenerate with");
         text.AppendLine("#   ./scripts/save-points.sh --update");
         text.AppendLine();
-        text.AppendLine("# Members that call SaveManager.SaveRun:");
-        foreach (var method in SaveRunCallers())
+        foreach (var saveRun in SaveRunOverloads())
         {
-            text.AppendLine($"{method.DeclaringType!.FullName}.{method.Name}");
+            text.AppendLine($"# Members that call SaveManager.{Signature(saveRun)}:");
+            foreach (var method in CallersOf(saveRun))
+            {
+                text.AppendLine($"{method.DeclaringType!.FullName}.{method.Name}");
+            }
+
+            text.AppendLine();
         }
 
-        text.AppendLine();
         text.AppendLine("# Types that subclass AncientEventModel:");
         foreach (var type in AncientEventSubclasses())
         {
