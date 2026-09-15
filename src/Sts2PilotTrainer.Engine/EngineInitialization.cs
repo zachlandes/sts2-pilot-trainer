@@ -543,7 +543,7 @@ internal static class HeadlessPatches
     }
 
     /// <summary>Harmony postfix on <c>RunManager.OnEnded</c>.</summary>
-    private static void RunEnded(bool isVictory) => RunEnding.Observe(isVictory);
+    private static void RunEnded() => RunEnding.Observe();
 
     /// <summary>Harmony postfix on <c>RunManager.CleanUp</c>.</summary>
     private static void RunCleanedUp() => RunEnding.Forget();

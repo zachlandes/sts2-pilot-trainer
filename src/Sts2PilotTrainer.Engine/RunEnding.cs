@@ -25,18 +25,14 @@ public static class RunEnding
     /// that follows a win reaches <c>OnEnded</c> a second time with the player dead.</summary>
     internal static CanonicalState? Reading { get; private set; }
 
-    /// <summary>Whether the game ended the run as a victory, once it has.</summary>
-    internal static bool? Victory { get; private set; }
-
     /// <summary>Called from the <c>RunManager.OnEnded</c> postfix.</summary>
-    internal static void Observe(bool isVictory)
+    internal static void Observe()
     {
         if (Reading is not null) return;
         var state = RunManager.Instance?.DebugOnlyGetState();
         if (state is null) return;
 
         Reading = CanonicalStateProjection.Project(state);
-        Victory = isVictory;
     }
 
     /// <summary>Called from the <c>RunManager.CleanUp</c> postfix: the next run starts
@@ -44,6 +40,5 @@ public static class RunEnding
     internal static void Forget()
     {
         Reading = null;
-        Victory = null;
     }
 }

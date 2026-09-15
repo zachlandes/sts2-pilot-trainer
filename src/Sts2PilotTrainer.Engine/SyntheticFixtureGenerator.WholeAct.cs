@@ -117,19 +117,18 @@ public static partial class SyntheticFixtureGenerator
     /// <param name="afterEachDecision">Run after every decision the walk applies,
     /// including the screen answers the driver improvised for it; a recorder watching
     /// the walk settles each decision here before the next is made.</param>
-    /// <param name="takeCardRewards">Whether a won fight's card reward is taken.</param>
     /// <param name="visitEveryRoomType">Whether the route has to visit a shop, a rest
     /// site, a treasure room and an elite on the way, which the fixture needs for the
     /// verbs that only exist there; a walk that only has to reach the boss takes the
     /// cheapest route there instead.</param>
     internal static List<ActionRecord> WalkTheAct(
         GameSession session, RunDriver driver, List<Checkpoint> checkpoints,
-        Action? afterEachDecision = null, bool takeCardRewards = true, bool visitEveryRoomType = true)
+        Action? afterEachDecision = null, bool visitEveryRoomType = true)
     {
         var actions = new List<ActionRecord>();
-        var previous = (_afterEachDecision, _takeCardRewards, _requiredCoverage);
-        (_afterEachDecision, _takeCardRewards, _requiredCoverage) =
-            (afterEachDecision, takeCardRewards, visitEveryRoomType ? RequiredCoverage : 0);
+        var previous = (_afterEachDecision, _requiredCoverage);
+        (_afterEachDecision, _requiredCoverage) =
+            (afterEachDecision, visitEveryRoomType ? RequiredCoverage : 0);
         try
         {
             WalkTheActFrom(session, driver, actions, checkpoints);
@@ -137,12 +136,9 @@ public static partial class SyntheticFixtureGenerator
         }
         finally
         {
-            (_afterEachDecision, _takeCardRewards, _requiredCoverage) = previous;
+            (_afterEachDecision, _requiredCoverage) = previous;
         }
     }
-
-    /// <summary>Whether the walk under way takes card rewards; see <see cref="WalkTheAct"/>.</summary>
-    private static bool _takeCardRewards = true;
 
     private static void WalkTheActFrom(
         GameSession session, RunDriver driver, List<ActionRecord> actions, List<Checkpoint> checkpoints)
@@ -396,7 +392,7 @@ public static partial class SyntheticFixtureGenerator
             Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "gold"));
         }
 
-        if (_takeCardRewards && driver.OfferedCardIds is [var firstCard, ..])
+        if (driver.OfferedCardIds is [var firstCard, ..])
         {
             Apply(driver, actions, ActionVerb.TakeCard, ("card_id", firstCard), ("option_index", "0"));
         }
