@@ -805,11 +805,10 @@ public sealed class RecorderContinueTests : IDisposable
     /// continuous, with the first answer kept as the branch. Where that save did
     /// land, the same Continue is a reload of the older run-start save.
     ///
-    /// The re-offered state is a fresh run on the same seed stood in its first room,
-    /// which is what the retail restore of the run-start save produces; headlessly the
-    /// restore itself stops short of the room. The save that never landed is a journal
-    /// with no line for it, which is what a crash before the game's write completed
-    /// leaves.
+    /// The re-offered state is the game's own restore of the run-start save, which
+    /// re-enters Neow's room and reads as the opening. The save that never landed is
+    /// a journal with no line for it, which is what a crash before the game's write
+    /// completed leaves. Either way the branch replays from the opening reading.
     /// </summary>
     [GameTheory]
     [InlineData(true)]
@@ -839,9 +838,8 @@ public sealed class RecorderContinueTests : IDisposable
 
         using (lab.Recording())
         {
-            lab.StartAtTheFirstRoom();
+            lab.QuitAndContinue(lab.RunStartSave);
             Assert.Equal(RunJournal.Parse(File.ReadAllText(journalPath)).Opening.Digest, LiveRun.Read().Digest);
-            lab.Attach();
 
             var resumed = lab.Capture;
             Assert.Equal(0, resumed.NextSeq);
@@ -868,15 +866,10 @@ public sealed class RecorderContinueTests : IDisposable
             manifest = lab.Abandon();
         }
 
-        if (finishSaveLanded)
-        {
-            Assert.Equal(NativeSource.RewoundContinuity, manifest.Source.Native!.Continuity);
-        }
-        else
-        {
-            Assert.Equal(NativeSource.ContinuousContinuity, manifest.Source.Native!.Continuity);
-            lab.ReplayEveryBranch(manifest);
-        }
+        Assert.Equal(
+            finishSaveLanded ? NativeSource.RewoundContinuity : NativeSource.ContinuousContinuity,
+            manifest.Source.Native!.Continuity);
+        lab.ReplayEveryBranch(manifest);
     }
 
     /// <summary>The line the recorder logs beside a refusal names the fields, in
@@ -917,9 +910,10 @@ public sealed class RecorderContinueTests : IDisposable
     /// made - <see cref="Lab.ContinueAtTheLatestSave"/> - and then gives the run up
     /// from the pause menu and holds the recording it leaves to one of four verdicts:
     /// publishable, playable but never shareable, refused for want of a finished
-    /// fight, or refused for a hole in the watch. A publishable recording is replayed
-    /// through the engine at every checkpoint, every boundary and every discarded
-    /// branch before the row passes. A row that fails on a Continue names the fields
+    /// fight, or refused for a hole in the watch. A recording the validator takes is
+    /// replayed through the engine at every checkpoint, every boundary and every
+    /// discarded branch before the row passes, a reload's branch from the opening
+    /// reading included. A row that fails on a Continue names the fields
     /// the restored run differed in, which is what every diagnosis so far had to be
     /// rebuilt from a journal to learn.
     /// </summary>
@@ -955,6 +949,7 @@ public sealed class RecorderContinueTests : IDisposable
                 Assert.True(native.IsRewound);
                 Assert.Contains(native.Discarded!, branch => branch.Reload);
                 lab.ReplayTheWholeHistory(given.Manifest);
+                lab.ReplayEveryBranch(given.Manifest);
                 break;
             case Verdict.NoFinishedFight:
                 Assert.False(given.Validation.IsValid);
@@ -1246,15 +1241,14 @@ public sealed class RecorderContinueTests : IDisposable
         private GameSession? _session;
         private RunDriver? _driver;
         private string? _runId;
-        private DateTimeOffset? _startedUtc;
         private Watched? _lastWatched;
 
         internal List<InterceptedRunSave> Saves { get; } = [];
 
-        /// <summary>The run-start save, taken through the game's own serializer at the
-        /// moment the retail character-select screen takes it: before the first act
-        /// is entered, which no headless path saves at.</summary>
-        internal InterceptedRunSave RunStartSave { get; private set; } = null!;
+        /// <summary>The run-start save: the first save the game asks for, inside the
+        /// arrival at Neow's room that entering the first act makes, before the
+        /// recorder can watch. Continue restores it by re-entering that room.</summary>
+        internal InterceptedRunSave RunStartSave => Saves[0];
 
         internal RunCapture Capture => RunRecorder.Active!.Capture;
 
@@ -1274,12 +1268,9 @@ public sealed class RecorderContinueTests : IDisposable
                 _session = StartIronclad();
                 _driver = new RunDriver(_session);
                 _driver.ImproviseUnrecordedCardSelections();
-                var runStart = RunManager.Instance.ToSave(null);
-                RunStartSave = new InterceptedRunSave(
-                    JsonSerializationUtility.ToJson(runStart), runStart.SchemaVersion,
-                    InterceptedRunSave.NoPreFinishedRoom, _session.RunState.TotalFloor, _session.RunState.ActFloor,
-                    Field("run.map_coord"));
                 _driver.EnterFirstRoom();
+                var runStart = Assert.Single(Saves);
+                Assert.True(runStart.IsFloorEntry && runStart.ActFloor == 1, runStart.Describe());
                 Attach();
             }
 
@@ -1303,25 +1294,7 @@ public sealed class RecorderContinueTests : IDisposable
             Assert.True(RunRecorder.HasEnteredItsRoom());
             Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
             _runId ??= Capture.RunId;
-            _startedUtc ??= LiveRun.RunStartedUtc();
             Assert.Equal(_runId, Capture.RunId);
-        }
-
-        /// <summary>A fresh run on the same seed stood in its first room: the state
-        /// the retail restore of the run-start save produces. The restored run keeps
-        /// the start time the save holds, which is what names the recording, so the
-        /// fresh run is given the recorded run's.</summary>
-        internal void StartAtTheFirstRoom()
-        {
-            _session = StartIronclad();
-            var startTime = typeof(RunManager).GetField(
-                "_startTime", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
-            startTime.SetValue(RunManager.Instance, Convert.ChangeType(
-                _startedUtc!.Value.ToUnixTimeSeconds(), startTime.FieldType,
-                System.Globalization.CultureInfo.InvariantCulture));
-            _driver = new RunDriver(_session);
-            _driver.ImproviseUnrecordedCardSelections();
-            _driver.EnterFirstRoom();
         }
 
         internal string Field(string field) => RecorderContinueTests.Field(_session!, field);
@@ -1621,22 +1594,12 @@ public sealed class RecorderContinueTests : IDisposable
 
         /// <summary>
         /// Quits and continues from the run-start save while a later save is on disk:
-        /// a reload of an older save, so the resume is rewound with every decision
-        /// since as the reload's branch. The headless restore of that save stops one
-        /// step short of the room the retail restore re-enters, and the recorder must
-        /// not read a run that has no room yet - that gap is what broke every retail
-        /// Continue - so the row holds that first and then stands the run where the
-        /// retail restore leaves it.
+        /// a reload of an older save, so the resume is rewound, at the opening
+        /// reading, with every decision since as the reload's branch.
         /// </summary>
         internal void ContinueFromTheRunStartSave()
         {
-            Quit();
-            Continue(RunStartSave, attachRecorder: false);
-            Assert.False(RunRecorder.HasEnteredItsRoom());
-            Quit();
-
-            StartAtTheFirstRoom();
-            Attach();
+            QuitAndContinue(RunStartSave);
             var watched = _lastWatched!;
             var resumed = Capture;
             Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
