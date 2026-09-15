@@ -242,7 +242,9 @@ public sealed record CombatProjection
             turns[index] = turns[index] with
             {
                 Actions = [.. turns[index].Actions, new TurnAction(step.Seq, step.Verb, step.Args)],
-                EnemyHealthLost = turns[index].EnemyHealthLost + EnemyHealthLost(step),
+                EnemyHealthLost = turns[index].EnemyHealthLost is { } soFar && EnemyHealthLost(step) is { } dealt
+                    ? soFar + dealt
+                    : null,
                 HealthLost = turns[index].HealthLost +
                              Math.Max(0, Int(step.Before, "player.hp") - Int(step.After, "player.hp")),
                 ConsumablesUsed = [.. turns[index].ConsumablesUsed, .. potions],
@@ -266,19 +268,36 @@ public sealed record CombatProjection
     /// project is built to refuse.
     ///
     /// The step that ends the fight samples no roster afterwards, because nothing of
-    /// a finished fight is projected. What ended it is the engine's own rule: a fight
-    /// is won once no living enemy is primary, so every primary enemy standing before
-    /// the step is gone after it and its remaining health is what the step dealt. A
+    /// a finished fight is projected, so what it took off the enemy is read from how
+    /// the fight ended. Won, the engine's own rule says what happened: a fight is won
+    /// once no living enemy is primary, so every primary enemy standing before the
+    /// step is gone after it and its remaining health is what the step dealt. A
     /// secondary enemy - one carrying a power in <see cref="SecondaryEnemyPowers"/> -
     /// may still be standing, and whether it is went unsampled with the rest of the
     /// finished fight, so a fight ended around one is refused rather than credited
-    /// with its health.
+    /// with its health. Lost, the enemy that killed the player was left at a health
+    /// nothing sampled, so the step's enemy health lost is not derivable and is null:
+    /// the turn it fell in carries no number rather than a zero or the roster's
+    /// whole health, and every turn before it keeps its own.
     /// </summary>
-    private static int EnemyHealthLost(ReplayStep step)
+    private static int? EnemyHealthLost(ReplayStep step)
     {
         var before = Int(step.Before, "combat.enemy_count");
         if (!step.After.TryGetValue("combat.enemy_count", out var raw))
         {
+            switch (Outcome(step.After))
+            {
+                case "defeat":
+                    return null;
+                case "victory":
+                    break;
+                default:
+                    throw new ManifestException(
+                        $"Step {step.Seq} ({step.Verb}) leaves the fight with no enemy roster and an outcome of " +
+                        $"'{Outcome(step.After)}', which is neither a win nor a loss. Refusing to say what it " +
+                        "took off the enemy.");
+            }
+
             var secondary = Enumerable.Range(0, before)
                 .Where(i => IsSecondaryEnemy(step.Before.GetValueOrDefault($"combat.enemy.{i}.powers") ?? string.Empty))
                 .Select(i => step.Before.GetValueOrDefault($"combat.enemy.{i}.model") ?? $"enemy {i}")
@@ -470,10 +489,13 @@ public sealed record CombatTurn
     [JsonPropertyName("actions")]
     public required IReadOnlyList<TurnAction> Actions { get; init; }
 
-    /// <summary>Enemy health that actually came off. Damage absorbed by enemy block
-    /// is deliberately not included.</summary>
+    /// <summary>Enemy health that actually came off, or null where the turn holds a
+    /// step whose enemy damage was never sampled - the step the fight was lost on,
+    /// which leaves nothing of the enemy in the reading after it. Null rather than
+    /// zero, because a zero would say the turn was fought and took nothing off.
+    /// Damage absorbed by enemy block is deliberately not included.</summary>
     [JsonPropertyName("enemy_health_lost")]
-    public required int EnemyHealthLost { get; init; }
+    public required int? EnemyHealthLost { get; init; }
 
     [JsonPropertyName("health_lost")]
     public required int HealthLost { get; init; }

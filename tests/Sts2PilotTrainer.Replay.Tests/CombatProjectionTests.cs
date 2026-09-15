@@ -217,6 +217,37 @@ public class CombatProjectionTests
     /// was refused as a re-indexed roster; it is refused now for the reason that is
     /// true now, rather than read as a full clear.
     /// </summary>
+    /// <summary>
+    /// The step the fight is lost on samples nothing of the enemy afterwards, so what
+    /// it took off the enemy is not in the trace: the turn it fell in carries no
+    /// number, every turn before it keeps its own, and the summary says the fight
+    /// was lost at the health it was lost at. Read as a full clear, a lost fight
+    /// would credit the enemy's whole remaining health as damage dealt.
+    /// </summary>
+    [Fact]
+    public void ADefeatLeavesItsTurnsEnemyHealthLostUnavailableAndTheEarlierTurnsKnown()
+    {
+        var start = InCombat(1, 12, 50);
+        var struck = InCombat(1, 12, 44);
+        var secondTurn = InCombat(2, 12, 44);
+        var dead = Outside();
+        dead["combat.outcome"] = "defeat";
+        dead["player.hp"] = "0";
+
+        var projection = Project("lost", Trace(
+            Step(-1, "run_start", Outside(), start),
+            Step(0, "PlayCard", start, struck),
+            Step(1, "EndTurn", struck, secondTurn),
+            Step(2, "EndTurn", secondTurn, dead)));
+
+        Assert.Equal("defeat", projection.Summary.Outcome);
+        Assert.Equal(0, projection.Summary.FinalHealth);
+        Assert.Equal([1, 2], projection.Turns.Select(turn => turn.Turn));
+        Assert.Equal(6, projection.Turns[0].EnemyHealthLost);
+        Assert.Null(projection.Turns[1].EnemyHealthLost);
+        Assert.Equal(12, projection.Turns[1].HealthLost);
+    }
+
     [Fact]
     public void RefusesToCreditASecondaryEnemyThatMayHaveOutlivedTheFight()
     {

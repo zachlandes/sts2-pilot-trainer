@@ -88,6 +88,41 @@ public sealed class FightResultChartTests
 
     // ── The two lines ─────────────────────────────────────────────────────
 
+    /// <summary>A line that lost the fight reached the turn it was lost on - its
+    /// own health lost is drawn there - and has no enemy measurement for it, because
+    /// the killing step left nothing of the enemy in the reading after it. A gap
+    /// rather than a zero, and never the enemy's remaining health.</summary>
+    [Fact]
+    public void ALostLinesLastTurnHasNoEnemyMeasurementAndIsStillReached()
+    {
+        var chart = FightResultChart.From(RecordingCredit.Named("NaveGreed"), CombatComparison.Between(Lost(), Theirs()));
+
+        Assert.Equal([8, null], chart.Yours.Points.Select(point => point.EnemyHealthLost));
+        Assert.Equal([6, 58], chart.Yours.Points.Select(point => point.HealthLost));
+        Assert.All(chart.Yours.Points, point => Assert.True(point.Reached));
+        Assert.Equal(58, chart.Ceiling);
+    }
+
+    /// <summary>Two turns, the second of which the enemy's turn kills the player, as
+    /// the projection reads a lost fight: nothing of the enemy after the killing step.</summary>
+    private static CombatProjection Lost()
+    {
+        var capture = Live("lost");
+        capture.BeginStep("PlayCard", Card("CARD.STRIKE_IRONCLAD"), Sample("in_progress", 1, 64, 42));
+        capture.CompleteStep(Sample("in_progress", 1, 64, 34));
+        capture.BeginStep("EndTurn", Args(), Sample("in_progress", 1, 64, 34));
+        capture.CompleteStep(Sample("in_progress", 2, 58, 34));
+        capture.BeginStep("EndTurn", Args(), Sample("in_progress", 2, 58, 34));
+        var dead = Sample("defeat", 2, 0, 34, enemies: 0);
+        foreach (var field in dead.Keys.Where(key => key.StartsWith("combat.", StringComparison.Ordinal) &&
+                                                     key is not "combat.in_progress" and not "combat.outcome").ToList())
+        {
+            dead.Remove(field);
+        }
+        capture.CompleteStep(dead);
+        return capture.Project();
+    }
+
     /// <summary>Three turns against two, with the player spending a potion on turn 2
     /// and the recording ending its fight on it.</summary>
     private static CombatComparison Comparison() => CombatComparison.Between(Yours(), Theirs());
