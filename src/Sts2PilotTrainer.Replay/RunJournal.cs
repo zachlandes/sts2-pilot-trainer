@@ -889,6 +889,14 @@ public sealed record RunJournalEntry
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? BeforeDigest { get; init; }
 
+    /// <summary>The save-representable digest of the state this decision began
+    /// from - see <see cref="SaveRepresentableDigest"/> - which for the decision
+    /// after a won fight is the first reading taken once the client has rolled the
+    /// rewards. Absent on a line an earlier recorder wrote.</summary>
+    [JsonPropertyName("before_sr_digest")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? BeforeSaveRepresentableDigest { get; init; }
+
     /// <summary>The sampled canonical state after this decision settled.</summary>
     [JsonPropertyName("state")]
     public required IReadOnlyDictionary<string, string> State { get; init; }

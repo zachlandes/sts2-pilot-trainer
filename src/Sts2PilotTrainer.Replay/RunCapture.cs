@@ -448,17 +448,21 @@ public sealed class RunCapture
         // the branch it removes the way Parse drops them for a rollback on the file.
         foreach (var bookmark in journal.Bookmarks) capture._bookmarks[bookmark.Fight] = bookmark;
 
-        var last = capture._entries.Count > 0 ? capture._entries[^1] : journal.Opening;
+        var entries = capture.Journal.Entries;
+        var last = entries[^1];
         if (capture._stop is null && !string.Equals(last.Digest, liveDigest, StringComparison.Ordinal) &&
-            !SameButForWhatNoSaveCarries(last, liveSample, liveSaveRepresentableDigest))
+            !SameButForWhatNoSaveCarries(last, null, liveSample, liveSaveRepresentableDigest))
         {
             // The complete digest first; only where no entry carries it, the part of
             // each entry's reading a save can carry, so a finished fight's residue in
             // the journal cannot hide the entry the game came back to.
-            var rolledBackTo = capture.Journal.Entries
+            var rolledBackTo = entries
                 .LastOrDefault(entry => string.Equals(entry.Digest, liveDigest, StringComparison.Ordinal))
-                ?? capture.Journal.Entries.LastOrDefault(entry =>
-                    SameButForWhatNoSaveCarries(entry, liveSample, liveSaveRepresentableDigest));
+                ?? entries
+                    .Select((entry, index) => (Entry: entry, Next: index + 1 < entries.Count ? entries[index + 1] : null))
+                    .LastOrDefault(pair =>
+                        SameButForWhatNoSaveCarries(pair.Entry, pair.Next, liveSample, liveSaveRepresentableDigest))
+                    .Entry;
             if (rolledBackTo is not null && capture.IsTheGamesOwnRollback(rolledBackTo))
             {
                 capture = capture.RollBack(rolledBackTo);
@@ -531,24 +535,48 @@ public sealed class RunCapture
     /// included, so an event page the game rolled back cannot pass as nothing
     /// having happened. Where either side is a reading an earlier recorder took, the
     /// sample is all there is to compare, and it is compared.
+    ///
+    /// The decision that won a fight is the one moment the exact question has to be
+    /// asked of a different reading. The retail client rolls the rewards on its own
+    /// clock, after the engine has settled and the fight-won save has been taken,
+    /// and the game's restore of that save rolls them again as it re-enters the
+    /// room: so the run comes back at the state the <em>next</em> decision began
+    /// from - the claim, the skip - and never at the state the killing play settled
+    /// into. That entry is matched through its successor's before-reading where it
+    /// has one, and, where the player quit before deciding anything on the loot
+    /// screen, through the sample, which is everything the journal holds of that
+    /// moment. Headlessly the rewards are rolled before the engine settles and the
+    /// killing play's own reading matches as well.
     /// </summary>
     private static bool SameButForWhatNoSaveCarries(
-        RunJournalEntry entry, IReadOnlyDictionary<string, string> liveSample, string? liveSaveRepresentableDigest)
+        RunJournalEntry entry, RunJournalEntry? next, IReadOnlyDictionary<string, string> liveSample,
+        string? liveSaveRepresentableDigest)
     {
         if (!ReplayTrace.CarriesFinishedCombat(entry.State) && !ReplayTrace.CarriesFinishedCombat(liveSample))
         {
             return false;
         }
 
-        if (entry.SaveRepresentableDigest is { } recorded && liveSaveRepresentableDigest is { } live)
-        {
-            return string.Equals(recorded, live, StringComparison.Ordinal);
-        }
-
-        return ReplayTrace.SameSample(
+        var sameSample = ReplayTrace.SameSample(
             ReplayTrace.SaveRepresentable(entry.State),
             ReplayTrace.SaveRepresentable(liveSample));
+        if (entry.SaveRepresentableDigest is not { } recorded || liveSaveRepresentableDigest is not { } live)
+        {
+            return sameSample;
+        }
+
+        if (string.Equals(recorded, live, StringComparison.Ordinal)) return true;
+        if (!EndedAFight(entry)) return false;
+
+        return next is { BeforeSaveRepresentableDigest: { } rolled }
+            ? string.Equals(rolled, live, StringComparison.Ordinal)
+            : sameSample;
     }
+
+    /// <summary>Whether a decision began inside a fight and settled with it over:
+    /// the killing play, whose settled reading precedes the rewards the client rolls.</summary>
+    private static bool EndedAFight(RunJournalEntry entry) =>
+        entry.Before is { } before && InCombat(before) && !InCombat(entry.State);
 
     /// <summary>
     /// Whether a return to <paramref name="target"/> is the game's own rollback: its
@@ -771,6 +799,7 @@ public sealed class RunCapture
             Args = Sorted(args),
             Before = ReplayTrace.Sample(before.State),
             BeforeDigest = before.Digest,
+            BeforeSaveRepresentableDigest = before.SaveRepresentableDigest,
             State = ReplayTrace.Sample(after.State),
             Digest = after.Digest,
             SaveRepresentableDigest = after.SaveRepresentableDigest,

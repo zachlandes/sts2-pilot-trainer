@@ -95,12 +95,19 @@ internal sealed class RunRecorder : IDisposable
     private bool _disposed;
     private bool _finished;
 
-    /// <summary>Whether a decision has been read at its prefix and not yet
-    /// announced from its postfix: the member is executing between the two, and a
-    /// save the game asks for there is that decision's. Cleared when the pump has
-    /// dealt with a decision, so a prefix whose postfix never came cannot hold it
-    /// past the next decision.</summary>
-    private bool _decisionOpening;
+    /// <summary>
+    /// Every reading a decision begins from takes a ticket, issued in order, and the
+    /// ticket is open from the prefix that read it until the pump has dealt with the
+    /// decision. A save the game asks for while any ticket is open is placed on the
+    /// latest one - the member executing is the one most recently read - and is
+    /// written once that decision is. Two decisions can be open at once: the loot
+    /// screen's skip is still settling when the map node is pressed, and the
+    /// arrival's save was placed on the skip by a rule that knew only "something is
+    /// in flight".
+    /// </summary>
+    private long _tickets;
+
+    private readonly HashSet<long> _openTickets = [];
 
     internal RunRecorder(RunCapture capture, string journalPath)
     {
@@ -640,8 +647,8 @@ internal sealed class RunRecorder : IDisposable
         try
         {
             var (sample, digest, saveRepresentable) = LiveRun.Read();
-            lock (Gate) recorder._decisionOpening = true;
-            return new TakenReading(sample, digest, LiveRun.RunClockMs(), saveRepresentable);
+            return new TakenReading(
+                sample, digest, LiveRun.RunClockMs(), saveRepresentable, recorder.OpenTicket());
         }
         catch (Exception ex)
         {
@@ -1226,7 +1233,7 @@ internal sealed class RunRecorder : IDisposable
                 // it was in flight holds the state the history now ends in: after
                 // the decision where it was written, and after the one before it
                 // where the engine turned it down and left the run as it was.
-                PlaceTheSavesAskedDuringTheDecision();
+                PlaceTheSavesAskedDuringTheDecision(next.Before.Ticket);
             }
         }
     }
@@ -1564,11 +1571,24 @@ internal sealed class RunRecorder : IDisposable
     /// observer samples the moment an action begins and this runs inside that same
     /// call, so the two are readings of one instant.
     /// </summary>
-    private static TakenReading ReadingOf(IReadOnlyDictionary<string, string> sample)
+    private TakenReading ReadingOf(IReadOnlyDictionary<string, string> sample)
     {
         var projection = LiveRun.Project();
         return new TakenReading(
-            sample, projection.Digest(), LiveRun.RunClockMs(), ReplayTrace.SaveRepresentableDigest(projection.Fields));
+            sample, projection.Digest(), LiveRun.RunClockMs(), ReplayTrace.SaveRepresentableDigest(projection.Fields),
+            OpenTicket());
+    }
+
+    /// <summary>A ticket for a decision being read now, open until the pump or the
+    /// fight observer has dealt with it.</summary>
+    private long OpenTicket()
+    {
+        lock (Gate)
+        {
+            var ticket = ++_tickets;
+            _openTickets.Add(ticket);
+            return ticket;
+        }
     }
 
     /// <summary>
@@ -1700,7 +1720,7 @@ internal sealed class RunRecorder : IDisposable
         {
             // The save a won fight takes is asked inside the killing play, and holds
             // the state that play left.
-            PlaceTheSavesAskedDuringTheDecision();
+            PlaceTheSavesAskedDuringTheDecision(before.Ticket);
         }
     }
 
@@ -1749,7 +1769,8 @@ internal sealed class RunRecorder : IDisposable
     /// one asked with nothing in flight holds the state after the last decision
     /// recorded. In flight is from the prefix that reads the decision's before-state
     /// to the pump writing it: the member executes between the two, and the map
-    /// move's save is asked inside it, before its postfix has announced anything. And whether the save reached the disk: the Continue button restores
+    /// move's save is asked inside it, before its postfix has announced anything.
+    /// Which decision, where two are in flight, is the one read most recently. And whether the save reached the disk: the Continue button restores
     /// what is there, so a save the game asked for and never finished writing is no
     /// save point, and a line for it would read the honest Continue after it as a
     /// reload of an older save. The game's own task says when it has landed.
@@ -1759,8 +1780,8 @@ internal sealed class RunRecorder : IDisposable
         var pending = new PendingSave();
         lock (Gate)
         {
-            var inFlight = _decisionOpening || _pending.Count > 0 || _openFightStep is not null;
-            if (!inFlight) pending.AfterSeq = _capture.NextSeq - 1;
+            if (_openTickets.Count == 0) pending.AfterSeq = _capture.NextSeq - 1;
+            else pending.Ticket = _openTickets.Max();
             _saves.Add(pending);
         }
 
@@ -1786,21 +1807,40 @@ internal sealed class RunRecorder : IDisposable
         WriteSavePointIfSettled(pending);
     }
 
-    /// <summary>The decision the pump or the fight observer was handling is on the
-    /// file, or was dropped: every save asked while it was in flight holds the state
-    /// the history now ends in.</summary>
-    private void PlaceTheSavesAskedDuringTheDecision()
+    /// <summary>
+    /// The decision holding <paramref name="ticket"/> is on the file, or was dropped:
+    /// every save asked while it was the one executing holds the state the history
+    /// now ends in.
+    ///
+    /// Only that ticket closes. An older ticket still open is not necessarily
+    /// stale: the loot screen's skip is declined from inside the map move that
+    /// leaves the room, so the move's ticket is older than the skip's and is still
+    /// executing when the skip commits, and the arrival's save is asked after that.
+    /// A ticket whose decision never reaches the pump - a prefix read, and the member
+    /// threw - would hold its saves for ever, so a save that has watched three later
+    /// decisions commit is placed on the history as it then stands rather than kept.
+    /// </summary>
+    private void PlaceTheSavesAskedDuringTheDecision(long ticket)
     {
         List<PendingSave> placed;
         lock (Gate)
         {
-            _decisionOpening = false;
-            placed = _saves.Where(save => save.AfterSeq is null).ToList();
-            foreach (var save in placed) save.AfterSeq = _capture.NextSeq - 1;
+            _openTickets.Remove(ticket);
+            placed = [];
+            foreach (var save in _saves.Where(save => save.AfterSeq is null))
+            {
+                if (save.Ticket == ticket || ++save.CommitsWaited >= StaleTicketCommits)
+                {
+                    save.AfterSeq = _capture.NextSeq - 1;
+                    placed.Add(save);
+                }
+            }
         }
 
         foreach (var save in placed) WriteSavePointIfSettled(save);
     }
+
+    private const int StaleTicketCommits = 3;
 
     /// <summary>Writes the save point once it is both placed and landed, whichever
     /// came second.</summary>
@@ -1836,6 +1876,8 @@ internal sealed class RunRecorder : IDisposable
     private sealed class PendingSave
     {
         internal int? AfterSeq;
+        internal long Ticket;
+        internal int CommitsWaited;
         internal bool Landed;
     }
 
@@ -2024,7 +2066,7 @@ internal sealed class RunRecorder : IDisposable
                 Refuse($"A {step.Verb} that ended the run's last fight could not be recorded: {ex.GetType().Name}: {ex.Message}");
             }
 
-            PlaceTheSavesAskedDuringTheDecision();
+            PlaceTheSavesAskedDuringTheDecision(step.Before.Ticket);
         }
 
         // A decision announced and not yet read is a decision this recording cannot
@@ -2298,7 +2340,7 @@ internal sealed class RunRecorder : IDisposable
     /// </summary>
     internal sealed record TakenReading(
         IReadOnlyDictionary<string, string> Sample, string Digest, int? RunClockMs,
-        string? SaveRepresentableDigest = null)
+        string? SaveRepresentableDigest = null, long Ticket = 0)
     {
         internal StateReading AsStateReading() => new(Sample, Digest, SaveRepresentableDigest);
     }

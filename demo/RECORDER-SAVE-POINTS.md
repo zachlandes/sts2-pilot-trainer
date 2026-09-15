@@ -58,4 +58,48 @@ structure: VALID
 
 ```
 
-What this document does not show is the retail client: the overlay reading RECORDING across each of these Continues and the log lines the recorder writes there - `continuing the recording of <id> at decision N; continuity continuous` followed by `the game returned this run to decision K, its latest save; M decision(s) made after it are kept as a discarded branch`. The client procedure is the one [RECORDER-CONTINUE-RESIDUE.md](RECORDER-CONTINUE-RESIDUE.md) followed, on the isolated non-Steam save tree and never the player's own.
+## The retail client
+
+The v0.111.0 client ran this branch on 2026-09-14, built and installed through `scripts/install-mod.sh`, launched directly with `--force-steam=off` and never through Steam, on the isolated non-Steam save tree's first profile, whose runs are only this project's; the captain's Steam tree hashed identical before and after, and the profile pointer was put back to where it was. Every click checked the console lock and that the game was frontmost and refused otherwise. Screenshots are the 1512 × 982-point display scaled to 1600 pixels wide. Ironclad, no ascension, run `native-T1J5B8MK762U-20260915-062336`: the blessing, a fight won, the loot screen, a ? node that resolved to an event, and Save and Quit followed by Continue at two moments before a Give Up. Two earlier runs on this branch found two defects the headless suite could not: the client rolls the rewards on its own clock after the killing play has settled, so the play's own reading never matches the restored loot screen and the claim's before-reading is what does; and the loot screen's skip is declined from inside the map move that leaves the room, so the arrival's save was placed on the skip by a rule that only knew something was in flight. Both are in the code above this document and in the suite.
+
+The loot screen with the 15 gold claimed (114 gold), then Save and Quit from the pause menu and Continue from the main menu.
+
+```bash {image}
+![The loot screen with the gold claimed, before the quit](recorder-save-points-loot-claimed.png)
+```
+
+![The loot screen with the gold claimed, before the quit](2a40ffc4-2026-09-15.png)
+
+Continue brings the loot screen back with the 15 gold on offer again and the overlay reading RECORDING. The log: `continuing the recording of native-T1J5B8MK762U-20260915-062336 at decision 8; continuity continuous`, then `the game returned this run to decision 7, its latest save; 1 decision(s) made after it are kept as a discarded branch`. Decision 7 is the killing play, where the fight-won save landed; the claim is the branch.
+
+```bash {image}
+![The loot screen after Continue: RECORDING, the claimed gold back on offer](recorder-save-points-loot-continued.png)
+```
+
+![The loot screen after Continue: RECORDING, the claimed gold back on offer](0ed0bfad-2026-09-15.png)
+
+The gold claimed again, the rest skipped, and the ? node above resolved to Doors of Light and Dark. The Light Door chosen: two random cards upgraded, the event on its Proceed page.
+
+```bash {image}
+![The event with its first option chosen, before the quit](recorder-save-points-event-chosen.png)
+```
+
+![The event with its first option chosen, before the quit](45a87e64-2026-09-15.png)
+
+Save and Quit on that page, Continue: an ordinary event takes no save of its own, so the game restores the arrival and offers both doors again, and the log reads `continuing the recording ... at decision 11; continuity continuous` then `the game returned this run to decision 10, its latest save; 1 decision(s) made after it are kept as a discarded branch` - decision 10 is the arrival, and the door is the branch.
+
+```bash {image}
+![The event after Continue: both doors offered again, RECORDING](recorder-save-points-event-continued.png)
+```
+
+![The event after Continue: both doors offered again, RECORDING](ccef017a-2026-09-15.png)
+
+Give Up from the pause menu. The overlay reads RECORDING COMPLETE and the log `recorded native-T1J5B8MK762U-20260915-062336: abandoned, 11 decision(s), 5 boundary/boundaries, continuity continuous, integrity complete`; `./scripts/arbiter validate` says VALID and the manifest lists save points after decisions 0, 1, 7 and 10 with two branches, neither a reload's.
+
+```bash {image}
+![The death screen after the give-up: RECORDING COMPLETE](recorder-save-points-given-up.png)
+```
+
+![The death screen after the give-up: RECORDING COMPLETE](774a4db7-2026-09-15.png)
+
+`./scripts/arbiter gate` on that recording: **pass** publication-source, provenance, **continuity** - which is what this change is for, and which the loot-screen Continue alone refused before it - and environment; **FAIL** reproduction, at the floor-3-entry checkpoint: `combat.turn observed '1', engine produced '2'`, with the discarded-branches, covered-fight, declared-boundaries, combat-boundary, determinism and rejection conditions failing behind it for want of a verified reproduction. That checkpoint is the arrival at the event, and the value is the previous fight's residue: the run the game restored on the loot screen carries a fresh combat state in place of the fight's own, the engine carries the fight as it was fought, and `CanonicalStateProjection` emits that residue into every reading until the next fight replaces it. The recording is honest about what the client showed; the projection is what has to stop carrying a finished fight, and AGENTS.md reserves that change for its own migration because every committed boundary digest moves with it. Until then a run continued outside a fight is continuous, playable and validates, and fails the gate at the first non-fight arrival after the Continue.

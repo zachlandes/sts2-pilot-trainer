@@ -560,6 +560,112 @@ public sealed class RunCaptureTests
         Assert.Equal(ActionVerb.ClaimReward, Assert.Single(branch.Actions).Verb);
     }
 
+    /// <summary>
+    /// The loot screen as the retail client records it. The client rolls the rewards
+    /// on its own clock, after the killing play has settled, so the play's own
+    /// save-representable digest is of a state before the roll, and the claim after
+    /// it begins from the state after; the game's restore of the fight-won save rolls
+    /// the rewards again, so the run comes back at the claim's before-reading and
+    /// never at the play's. That entry is matched through its successor, and the
+    /// recording is continuous with the claim as the branch.
+    /// </summary>
+    [Fact]
+    public void ALootScreenQuitInTheClientIsMatchedThroughTheClaimsBeforeReading()
+    {
+        var capture = RunCapture.Begin(Start());
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
+        Saved(capture);
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            InFight(2, turn: 1), Digest(1));
+        Saved(capture);
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
+            new StateReading(InFight(2, turn: 2, enemyHp: 6, hp: 58), Digest(3), "sha256-sr:before-the-blow"),
+            new StateReading(Won(2, hp: 58), Digest(4), "sha256-sr:before-the-rewards-rolled"));
+        Saved(capture);
+        var claimed = new Dictionary<string, string>(Won(2, hp: 58), StringComparer.Ordinal) { ["player.gold"] = "118" };
+        capture.Record(
+            ActionVerb.ClaimReward, Args(("reward_type", "gold")),
+            new StateReading(Won(2, hp: 58), Digest(4), "sha256-sr:after-the-rewards-rolled"),
+            new StateReading(claimed, Digest(5), "sha256-sr:after-the-claim"));
+
+        var resumed = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)),
+            "sha256:" + new string('e', 64), "sha256-sr:after-the-rewards-rolled");
+
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.Equal(3, resumed.NextSeq);
+        var branch = Assert.Single(resumed.Discarded);
+        Assert.False(branch.Reload);
+        Assert.Equal(2, branch.RollbackToSeq);
+
+        // A state that is none of those readings, however alike its sample, is not
+        // the loot screen the journal knows.
+        var elsewhere = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)),
+            "sha256:" + new string('e', 64), "sha256-sr:somewhere-else");
+        Assert.Equal(NativeSource.BrokenContinuity, elsewhere.Continuity);
+    }
+
+    /// <summary>With no decision made on the loot screen before the quit, the
+    /// journal holds no reading of the rolled rewards, and the sample is what there
+    /// is to compare: continuous, nothing discarded.</summary>
+    [Fact]
+    public void ALootScreenQuitBeforeAnyClaimIsMatchedBySampleWhereNothingExactIsHeld()
+    {
+        var capture = RunCapture.Begin(Start());
+        capture.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
+        Saved(capture);
+        capture.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            InFight(2, turn: 1), Digest(1));
+        Saved(capture);
+        capture.Record(
+            ActionVerb.PlayCard, Args(("card_id", "CARD.STRIKE_IRONCLAD"), ("hand_index", "1")),
+            new StateReading(InFight(2, turn: 2, enemyHp: 6, hp: 58), Digest(3), "sha256-sr:before-the-blow"),
+            new StateReading(Won(2, hp: 58), Digest(4), "sha256-sr:before-the-rewards-rolled"));
+        Saved(capture);
+
+        var resumed = RunCapture.Resume(
+            RunJournal.Parse(capture.Journal.Render()), Restored(Won(2, hp: 58)),
+            "sha256:" + new string('e', 64), "sha256-sr:after-the-rewards-rolled");
+
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.Empty(resumed.Discarded);
+        Assert.Equal(3, resumed.NextSeq);
+
+        // An entry that did not end a fight gets no such latitude: its settled
+        // reading is exact, and an event page the game rolled back differs there.
+        var atAnEvent = RunCapture.Begin(Start());
+        atAnEvent.Record(
+            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
+            Floor(1), Digest(0));
+        atAnEvent.Record(
+            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
+            new StateReading(Floor(1), Digest(0), "sha256-sr:neow"),
+            new StateReading(ShopAfter(Won(3, hp: 58)), Digest(5), "sha256-sr:the-arrival"));
+        Saved(atAnEvent);
+        atAnEvent.Record(
+            ActionVerb.ChooseEventOption,
+            Args(("event_id", "EVENT.TEST"), ("option_index", "0"), ("option_key", "EVENT.PAGE")),
+            new StateReading(ShopAfter(Won(3, hp: 58)), Digest(5), "sha256-sr:the-arrival"),
+            new StateReading(ShopAfter(Won(3, hp: 58)), Digest(6), "sha256-sr:the-page-turned"));
+
+        var pageRolledBack = RunCapture.Resume(
+            RunJournal.Parse(atAnEvent.Journal.Render()), Restored(ShopAfter(Won(3, hp: 58))),
+            "sha256:" + new string('e', 64), "sha256-sr:the-arrival");
+
+        Assert.Equal(NativeSource.ContinuousContinuity, pageRolledBack.Continuity);
+        var page = Assert.Single(pageRolledBack.Discarded);
+        Assert.Equal(1, page.RollbackToSeq);
+        Assert.Equal(ActionVerb.ChooseEventOption, Assert.Single(page.Actions).Verb);
+    }
+
     /// <summary>The same quit where the fight-won save never landed on the disk - the
     /// journal holds no save point for it - is a return to the arrival save the game
     /// took before the fight, behind the recorder's latest: a reload that rewound
