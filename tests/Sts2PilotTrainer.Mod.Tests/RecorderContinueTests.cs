@@ -8,6 +8,7 @@ using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.TestSupport;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Mod;
@@ -901,6 +902,288 @@ public sealed class RecorderContinueTests : IDisposable
         Assert.EndsWith("; and 4 more", line, StringComparison.Ordinal);
     }
 
+    // ── The save, Continue and give-up matrix ────────────────────────────────────
+
+    /// <summary>
+    /// Every way a player can leave a run and come back to it, or give it up, as one
+    /// table. The rows are the scout matrix of 2026-09-14 that found the three
+    /// resume defects the tests above each hold one of, and whose treasure-room row
+    /// then found the headless host opening a chest inside the map move that entered
+    /// it, ahead of the click the client opens it on; here they are kept whole so a
+    /// regression in any of them is caught before a player meets it.
+    ///
+    /// Each row plays its steps through the game's own saves and the game's own
+    /// restore, holds every Continue to the recorder's contract at the moment it is
+    /// made - <see cref="Lab.ContinueAtTheLatestSave"/> - and then gives the run up
+    /// from the pause menu and holds the recording it leaves to one of four verdicts:
+    /// publishable, playable but never shareable, refused for want of a finished
+    /// fight, or refused for a hole in the watch. A publishable recording is replayed
+    /// through the engine at every checkpoint, every boundary and every discarded
+    /// branch before the row passes. A row that fails on a Continue names the fields
+    /// the restored run differed in, which is what every diagnosis so far had to be
+    /// rebuilt from a journal to learn.
+    /// </summary>
+    public static TheoryData<string> MatrixRows => new(Matrix.Keys);
+
+    [GameTheory]
+    [MemberData(nameof(MatrixRows))]
+    public void EverySaveContinueAndGiveUpScenarioLeavesTheRecordingItSaysItDoes(string row)
+    {
+        var scenario = Matrix[row];
+        var lab = new Lab(this);
+        Lab.GivenUp given;
+        using (lab.Recording())
+        {
+            scenario.Steps(lab);
+            given = lab.GiveUp();
+        }
+
+        var native = given.Manifest.Source.Native!;
+        Assert.Equal("abandoned", native.Outcome);
+        Assert.Equal(scenario.Continuity, native.Continuity);
+        Assert.Equal(scenario.Branches, native.Discarded?.Count ?? 0);
+        switch (scenario.Verdict)
+        {
+            case Verdict.Publishable:
+                Assert.True(given.Validation.IsValid, given.Validation.Describe());
+                Assert.False(native.IsRewound);
+                lab.ReplayTheWholeHistory(given.Manifest);
+                if (scenario.Branches > 0) lab.ReplayEveryBranch(given.Manifest);
+                break;
+            case Verdict.PlayableNeverShared:
+                Assert.True(given.Validation.IsValid, given.Validation.Describe());
+                Assert.True(native.IsRewound);
+                Assert.Contains(native.Discarded!, branch => branch.Reload);
+                lab.ReplayTheWholeHistory(given.Manifest);
+                break;
+            case Verdict.NoFinishedFight:
+                Assert.False(given.Validation.IsValid);
+                Assert.Contains("boundaries names no combat_start", given.Validation.Describe(), StringComparison.Ordinal);
+                break;
+            case Verdict.Hole:
+                Assert.False(given.Validation.IsValid);
+                Assert.Contains($"continuity is '{NativeSource.BrokenContinuity}'", given.Validation.Describe(), StringComparison.Ordinal);
+                break;
+        }
+    }
+
+    /// <summary>What a recording is once the run is given up. The first two are the
+    /// validator's answer and the gate's continuity condition together; the last two
+    /// are the validator's refusal, in its own words.</summary>
+    private enum Verdict
+    {
+        /// <summary>Valid, continuous, and reproduces whole through the engine.</summary>
+        Publishable,
+
+        /// <summary>Valid and rewound: the player's to play from, refused by the gate.</summary>
+        PlayableNeverShared,
+
+        /// <summary>Refused: no fight finished, so no combat_start to be stood in.</summary>
+        NoFinishedFight,
+
+        /// <summary>Refused: the watch has a hole in it.</summary>
+        Hole,
+    }
+
+    private sealed record Scenario(Action<Lab> Steps, string Continuity, int Branches, Verdict Verdict);
+
+    private static Scenario Continuous(int branches, Verdict verdict, Action<Lab> steps) =>
+        new(steps, NativeSource.ContinuousContinuity, branches, verdict);
+
+    private static readonly IReadOnlyDictionary<string, Scenario> Matrix = new Dictionary<string, Scenario>(StringComparer.Ordinal)
+    {
+        ["S01 Neow answered, quit, continue"] = Continuous(0, Verdict.NoFinishedFight, lab =>
+        {
+            lab.Neow();
+            lab.ContinueAtTheLatestSave();
+        }),
+        ["S01b Neow answered, continue from the run-start save"] = new(lab =>
+        {
+            lab.Neow();
+            lab.ContinueFromTheRunStartSave();
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayToVictory();
+        }, NativeSource.RewoundContinuity, 1, Verdict.PlayableNeverShared),
+        ["S02 quit on arrival at the first fight, continue, finish"] = Continuous(0, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.ContinueAtTheLatestSave();
+            lab.PlayToVictory();
+        }),
+        ["S03 one card on turn 1, quit, continue, finish"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayOneCard();
+            lab.ContinueAtTheLatestSave();
+            lab.PlayToVictory();
+        }),
+        ["S04 a full turn 1 and one card on turn 2, quit, continue, finish"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayTheTurnOut();
+            lab.PlayOneCard();
+            lab.ContinueAtTheLatestSave();
+            lab.PlayToVictory();
+        }),
+        ["S05 quit mid-fight twice"] = Continuous(2, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayOneCard();
+            lab.ContinueAtTheLatestSave();
+            lab.PlayOneCard();
+            lab.PlayOneCard();
+            lab.ContinueAtTheLatestSave();
+            lab.PlayToVictory();
+        }),
+        ["S06 fight won, quit on the loot screen untouched, continue, take the loot"] = Continuous(0, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayToVictory();
+            lab.ContinueAtTheLatestSave();
+            lab.TakeGoldAndSkipTheRest();
+        }),
+        ["S07 fight won, gold claimed, quit before the card, continue"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayToVictory();
+            lab.Apply(ActionVerb.ClaimReward, ("reward_type", "gold"));
+            lab.ContinueAtTheLatestSave();
+            lab.TakeGoldAndSkipTheRest();
+        }),
+        ["S08 fight won, rewards done, quit on the map, continue"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayToVictory();
+            lab.TakeGoldAndSkipTheRest();
+            lab.ContinueAtTheLatestSave();
+            lab.TakeGoldAndSkipTheRest();
+        }),
+        ["S09 fight won, rewards done, moved on, quit on arrival, continue"] = Continuous(0, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayToVictory();
+            lab.TakeGoldAndSkipTheRest();
+            lab.MoveOn();
+            lab.ContinueAtTheLatestSave();
+            lab.HandleRoomToEnd();
+        }),
+        ["S10 shop: quit on arrival, continue, buy, quit, continue"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.WalkTo(MapPointType.Shop);
+            lab.ContinueAtTheLatestSave();
+            lab.BuyOneThing();
+            lab.ContinueAtTheLatestSave();
+        }),
+        ["S11 rest site: quit on arrival, continue, rest, quit, continue"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.WalkTo(MapPointType.RestSite);
+            lab.ContinueAtTheLatestSave();
+            lab.Rest();
+            lab.ContinueAtTheLatestSave();
+        }),
+        ["S12 event: quit on arrival, continue, choose, quit, continue"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.WalkToAnEvent();
+            lab.ContinueAtTheLatestSave();
+            lab.ChooseEventOption();
+            lab.ContinueAtTheLatestSave();
+        }),
+        ["S13 treasure: quit on arrival, continue, take the relic, quit, continue"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.WalkTo(MapPointType.Treasure);
+            lab.ContinueAtTheLatestSave();
+            lab.TakeChest();
+            lab.ContinueAtTheLatestSave();
+        }),
+        ["S14 give up mid-fight"] = Continuous(0, Verdict.NoFinishedFight, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayOneCard();
+        }),
+        ["S15 give up on the loot screen after a won fight"] = Continuous(0, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayToVictory();
+        }),
+        ["S16 quit mid-fight, continue, give up mid-fight"] = Continuous(1, Verdict.NoFinishedFight, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayOneCard();
+            lab.ContinueAtTheLatestSave();
+            lab.PlayOneCard();
+        }),
+        ["S17 quit on the loot screen untouched, continue, quit again, continue"] = Continuous(0, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayToVictory();
+            lab.ContinueAtTheLatestSave();
+            lab.ContinueAtTheLatestSave();
+            lab.TakeGoldAndSkipTheRest();
+        }),
+        ["S18 quit on arrival, continue, one card, quit, continue, finish"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.ContinueAtTheLatestSave();
+            lab.PlayOneCard();
+            lab.ContinueAtTheLatestSave();
+            lab.PlayToVictory();
+        }),
+        ["S19 event page chosen, quit on the map, continue"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.WalkToAnEvent();
+            lab.ChooseEventOption();
+            lab.ContinueAtTheLatestSave();
+        }),
+        ["S20 rest site arrival right after a won fight, quit, continue"] = Continuous(0, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.WalkTo(MapPointType.RestSite);
+            lab.ArrivedStraightFromAWonFight();
+            lab.ContinueAtTheLatestSave();
+        }),
+        ["S21 mod off for a session that won the fight and moved on"] = new(lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayOneCard();
+            lab.ContinueWithoutTheRecorder();
+            lab.PlayToVictory();
+            lab.TakeGoldAndSkipTheRest();
+            lab.MoveOn();
+            lab.ContinueIntoAStateTheJournalNeverSaw();
+        }, NativeSource.BrokenContinuity, 0, Verdict.Hole),
+        ["S22 mod off for a session whose plays were rolled back"] = Continuous(1, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayOneCard();
+            lab.ContinueWithoutTheRecorder();
+            lab.PlayOneCard();
+            lab.PlayOneCard();
+            lab.ContinueAtTheLatestSave();
+            lab.PlayToVictory();
+        }),
+    };
+
     // ── The moment between the run and its room ──────────────────────────────────
 
     /// <summary>Runs <paramref name="observe"/> when the retail continue sequence is
@@ -964,8 +1247,14 @@ public sealed class RecorderContinueTests : IDisposable
         private RunDriver? _driver;
         private string? _runId;
         private DateTimeOffset? _startedUtc;
+        private Watched? _lastWatched;
 
         internal List<InterceptedRunSave> Saves { get; } = [];
+
+        /// <summary>The run-start save, taken through the game's own serializer at the
+        /// moment the retail character-select screen takes it: before the first act
+        /// is entered, which no headless path saves at.</summary>
+        internal InterceptedRunSave RunStartSave { get; private set; } = null!;
 
         internal RunCapture Capture => RunRecorder.Active!.Capture;
 
@@ -985,6 +1274,11 @@ public sealed class RecorderContinueTests : IDisposable
                 _session = StartIronclad();
                 _driver = new RunDriver(_session);
                 _driver.ImproviseUnrecordedCardSelections();
+                var runStart = RunManager.Instance.ToSave(null);
+                RunStartSave = new InterceptedRunSave(
+                    JsonSerializationUtility.ToJson(runStart), runStart.SchemaVersion,
+                    InterceptedRunSave.NoPreFinishedRoom, _session.RunState.TotalFloor, _session.RunState.ActFloor,
+                    Field("run.map_coord"));
                 _driver.EnterFirstRoom();
                 Attach();
             }
@@ -1070,7 +1364,25 @@ public sealed class RecorderContinueTests : IDisposable
             ]);
         }
 
+        /// <summary>Plays every playable card and ends the turn.</summary>
+        internal void PlayTheTurnOut()
+        {
+            while (Field("combat.outcome") == "in_progress" &&
+                   _session!.RunState.Players[0].PlayerCombatState!.Hand.Cards.Any(card => card.CanPlay(out _, out _)))
+            {
+                PlayOneCard();
+            }
+
+            Assert.Equal("in_progress", Field("combat.outcome"));
+            Apply(ActionVerb.EndTurn);
+        }
+
         internal void TakeGoldAndSkipTheRest() => RecorderContinueTests.TakeGoldAndSkipTheRest(_driver!, _actions);
+
+        /// <summary>Moves to the next floor, an ordinary fight where there is one.</summary>
+        internal void MoveOn() =>
+            Move(_driver!, _actions, _session!, Current(_session!).Children
+                .OrderBy(child => child.PointType == MapPointType.Monster ? 0 : 1).ThenBy(child => child.coord.col).First());
 
         /// <summary>Walks to the nearest node of the given type, playing every room on
         /// the way to its end.</summary>
@@ -1082,6 +1394,15 @@ public sealed class RecorderContinueTests : IDisposable
                 if (node.PointType == type) return;
                 HandleRoomToEnd();
             }
+        }
+
+        /// <summary>The floor just arrived on was entered from a won fight's loot
+        /// screen, so the arrival is the first reading past that fight.</summary>
+        internal void ArrivedStraightFromAWonFight()
+        {
+            Assert.Equal(ActionVerb.MapMove, _actions[^1].Verb);
+            Assert.Contains(_actions[^2].Verb, new[] { ActionVerb.ClaimReward, ActionVerb.SkipRewards });
+            Assert.Equal("none", Field("combat.outcome"));
         }
 
         /// <summary>Walks the cheapest route to the nearest node of the given type
@@ -1121,7 +1442,8 @@ public sealed class RecorderContinueTests : IDisposable
             throw new InvalidOperationException("no ? node resolved to an event on this seed");
         }
 
-        private void HandleRoomToEnd()
+        /// <summary>Plays the room the run stands in to its end, whatever it is.</summary>
+        internal void HandleRoomToEnd()
         {
             switch (_session!.RunState.CurrentRoom?.RoomType)
             {
@@ -1162,7 +1484,7 @@ public sealed class RecorderContinueTests : IDisposable
             Apply(ActionVerb.ChooseRestSiteOption, ("option_id", options[index].OptionId), ("option_index", N(index)));
         }
 
-        private void TakeChest()
+        internal void TakeChest()
         {
             var relics = RunManager.Instance.TreasureRoomRelicSynchronizer.CurrentRelics
                 ?? throw new InvalidOperationException("the chest offers no relic");
@@ -1203,7 +1525,14 @@ public sealed class RecorderContinueTests : IDisposable
         /// recorder detaches, keeping the journal.</summary>
         internal void Quit()
         {
-            if (RunRecorder.Active is { } recorder) _runId ??= recorder.Capture.RunId;
+            if (RunRecorder.Active is { } recorder)
+            {
+                _runId ??= recorder.Capture.RunId;
+                _lastWatched = new Watched(
+                    recorder.Capture.LatestSavePointSeq, recorder.Capture.NextSeq, recorder.Capture.Discarded.Count,
+                    recorder.Capture.Journal.Entries[^1]);
+            }
+
             _driver?.Dispose();
             _driver = null;
             RunManager.Instance.CleanUp();
@@ -1229,9 +1558,102 @@ public sealed class RecorderContinueTests : IDisposable
             if (attachRecorder) Attach();
         }
 
+        /// <summary>What the recorder held when the run was last quit under its watch:
+        /// the decision the game's latest save holds the state after, how many
+        /// decisions there were, how many branches, and its last reading.</summary>
+        private sealed record Watched(int LatestSave, int NextSeq, int Branches, RunJournalEntry LastEntry);
+
+        /// <summary>
+        /// Quits and continues from the game's latest save, which is what the game's
+        /// own Continue restores, and holds the resume to the recorder's contract for
+        /// it: continuous, resumed at the save's own decision, with exactly the
+        /// decisions made after that save kept as one more discarded branch and no
+        /// branch at all where there were none. The contract is the same whatever
+        /// room the save was taken in, and the same across a session the recorder
+        /// was not watching, whose plays the game rolled back. A refusal fails with
+        /// the fields the restored run differed in.
+        /// </summary>
+        internal void ContinueAtTheLatestSave()
+        {
+            QuitAndContinue(Saves.Last());
+            var watched = _lastWatched!;
+            var resumed = Capture;
+            Assert.True(
+                resumed.Continuity == NativeSource.ContinuousContinuity && resumed.Refusals.Count == 0,
+                $"continuity {resumed.Continuity}: {resumed.Refusal}; " +
+                RunRecorder.DescribeResumeDifferences(watched.LastEntry, LiveRun.Read().Sample));
+            Assert.Equal(RunCaptureState.Recording, resumed.State);
+            Assert.Equal(watched.LatestSave + 1, resumed.NextSeq);
+            Assert.Equal(watched.LatestSave, resumed.LatestSavePointSeq);
+            var undone = watched.NextSeq - 1 - watched.LatestSave;
+            if (undone == 0)
+            {
+                Assert.Equal(watched.Branches, resumed.Discarded.Count);
+                return;
+            }
+
+            Assert.Equal(watched.Branches + 1, resumed.Discarded.Count);
+            var branch = resumed.Discarded[^1];
+            Assert.False(branch.Reload);
+            Assert.Equal(watched.LatestSave, branch.RollbackToSeq);
+            Assert.Equal(undone, branch.Actions.Count);
+        }
+
+        /// <summary>Quits and continues from the latest save with the mod off for
+        /// the session: nothing watches what is played next.</summary>
+        internal void ContinueWithoutTheRecorder()
+        {
+            QuitAndContinue(Saves.Last(), attachRecorder: false);
+            Assert.Null(RunRecorder.Active);
+        }
+
+        /// <summary>Quits and continues from a save the game took while nobody was
+        /// recording, at a moment the journal never saw: the watch is broken and says
+        /// so, and goes on recording into a recording that can never be published.</summary>
+        internal void ContinueIntoAStateTheJournalNeverSaw()
+        {
+            QuitAndContinue(Saves.Last());
+            var resumed = Capture;
+            Assert.Equal(NativeSource.BrokenContinuity, resumed.Continuity);
+            Assert.Equal(RunCaptureState.Broken, resumed.State);
+            Assert.Contains("not one this recording ever saw", resumed.Refusal!, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Quits and continues from the run-start save while a later save is on disk:
+        /// a reload of an older save, so the resume is rewound with every decision
+        /// since as the reload's branch. The headless restore of that save stops one
+        /// step short of the room the retail restore re-enters, and the recorder must
+        /// not read a run that has no room yet - that gap is what broke every retail
+        /// Continue - so the row holds that first and then stands the run where the
+        /// retail restore leaves it.
+        /// </summary>
+        internal void ContinueFromTheRunStartSave()
+        {
+            Quit();
+            Continue(RunStartSave, attachRecorder: false);
+            Assert.False(RunRecorder.HasEnteredItsRoom());
+            Quit();
+
+            StartAtTheFirstRoom();
+            Attach();
+            var watched = _lastWatched!;
+            var resumed = Capture;
+            Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
+            Assert.Equal(0, resumed.NextSeq);
+            Assert.Equal(watched.Branches + 1, resumed.Discarded.Count);
+            var branch = resumed.Discarded[^1];
+            Assert.True(branch.Reload);
+            Assert.Equal(-1, branch.RollbackToSeq);
+            Assert.Equal(watched.NextSeq, branch.Actions.Count);
+        }
+
+        /// <summary>The recording a given-up run leaves, and the validator's answer on it.</summary>
+        internal sealed record GivenUp(ReplayManifest Manifest, ManifestValidator.ValidationResult Validation);
+
         /// <summary>Gives the run up from the pause menu, which writes the manifest,
-        /// and hands it back validated.</summary>
-        internal ReplayManifest Abandon()
+        /// and hands it back with the validator's answer on it, whatever that is.</summary>
+        internal GivenUp GiveUp()
         {
             Assert.NotNull(_session);
             typeof(RunManager).GetProperty(nameof(RunManager.IsAbandoned))!.SetValue(RunManager.Instance, true);
@@ -1240,9 +1662,15 @@ public sealed class RecorderContinueTests : IDisposable
             var path = Path.Combine(owner._root, "recordings", $"{_runId}{RecordingLibrary.ManifestExtension}");
             var manifest = ManifestJson.Deserialize(File.ReadAllText(path));
             Assert.Equal("abandoned", manifest.Source.Native!.Outcome);
-            var validation = ManifestValidator.Validate(manifest);
-            Assert.True(validation.IsValid, validation.Describe());
-            return manifest;
+            return new GivenUp(manifest, ManifestValidator.Validate(manifest));
+        }
+
+        /// <summary>Gives the run up and hands the manifest back validated.</summary>
+        internal ReplayManifest Abandon()
+        {
+            var given = GiveUp();
+            Assert.True(given.Validation.IsValid, given.Validation.Describe());
+            return given.Manifest;
         }
 
         /// <summary>The continued history replayed through the engine from run start,

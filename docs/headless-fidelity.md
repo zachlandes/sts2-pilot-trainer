@@ -173,10 +173,13 @@ Where the manifest is silent each of the three refuses, as the card seam does.
 is what calls `TreasureRoom.DoNormalRewards` and `TreasureRoom.DoExtraRewardsIfNeeded`,
 and nothing else does, so a headless replay that walked into a treasure room would
 find an unopened chest and refuse every decision about it.
-The driver calls the same two methods at the same point - immediately after the map
-move that entered the room - and generates nothing itself: the relics were rolled by
+The driver calls the same two methods and generates nothing itself: the relics were rolled by
 the engine's own `BeginRelicPicking` when the room was entered, and the gold and any
 extra rewards are the engine's too.
+It calls them at the first decision about what the chest holds - the relic, or a reward the chest put up - and never inside the map move that entered the room, because the client opens the chest on a click after the arrival.
+`RunDriver.Approach` is where a replay that reads the state before each decision opens it, so the reading before the relic pick is taken with the chest open, as the recorder's is; `Apply` opens it too for a caller that takes no such reading.
+The chest's gold therefore lands after the game's arrival save and after the reading a recorder takes of the arrival, in both hosts.
+Opened inside the map move, as it was, that gold was in the arrival reading headlessly and not in the client's: a Continue at a treasure-room arrival read as a hole headlessly (matrix row S13 in `RecorderContinueTests`), and the floor-entry boundary a retail recording declares there was one no replay could reproduce.
 
 Opening is not a decision. Taking the relic is `TakeChestRelic` and leaving it is
 `SkipChestRelic`, for exactly the reason `SkipRewards` exists: the engine discards an
