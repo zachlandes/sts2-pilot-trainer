@@ -869,6 +869,7 @@ public sealed class RecorderContinueTests : IDisposable
         Assert.Equal(
             finishSaveLanded ? NativeSource.RewoundContinuity : NativeSource.ContinuousContinuity,
             manifest.Source.Native!.Continuity);
+        lab.ReplayTheWholeHistory(manifest);
         lab.ReplayEveryBranch(manifest);
     }
 
@@ -1000,6 +1001,13 @@ public sealed class RecorderContinueTests : IDisposable
             lab.MoveTo(MapPointType.Monster);
             lab.PlayToVictory();
         }, NativeSource.RewoundContinuity, 1, Verdict.PlayableNeverShared),
+        ["S01c Neow answered, quit, continue at the event's own finish save, fight, finish"] = Continuous(0, Verdict.Publishable, lab =>
+        {
+            lab.Neow();
+            lab.ContinueAtTheAncientEventsFinishSave();
+            lab.MoveTo(MapPointType.Monster);
+            lab.PlayToVictory();
+        }),
         ["S02 quit on arrival at the first fight, continue, finish"] = Continuous(0, Verdict.Publishable, lab =>
         {
             lab.Neow();
@@ -1260,28 +1268,54 @@ public sealed class RecorderContinueTests : IDisposable
         internal IDisposable Recording()
         {
             var patches = Patched();
-            RunRecorder.GameIdentitySource = HeadlessIdentity;
-            RunRecorder.Clock = new PumpedSettleClock();
-            var collecting = RunSaveInterception.Collect(Saves.Add);
-            if (_runId is null)
+            IDisposable? collecting = null;
+            try
             {
-                _session = StartIronclad();
-                _driver = new RunDriver(_session);
-                _driver.ImproviseUnrecordedCardSelections();
-                _driver.EnterFirstRoom();
-                var runStart = Assert.Single(Saves);
-                Assert.True(runStart.IsFloorEntry && runStart.ActFloor == 1, runStart.Describe());
-                Attach();
+                RunRecorder.GameIdentitySource = HeadlessIdentity;
+                RunRecorder.Clock = new PumpedSettleClock();
+                collecting = RunSaveInterception.Collect(Saves.Add);
+                if (_runId is null)
+                {
+                    _session = StartIronclad();
+                    _driver = new RunDriver(_session);
+                    _driver.ImproviseUnrecordedCardSelections();
+                    _driver.EnterFirstRoom();
+                    var runStart = Assert.Single(Saves);
+                    Assert.True(runStart.IsFloorEntry && runStart.ActFloor == 1, runStart.Describe());
+                    Attach();
+                }
+            }
+            catch
+            {
+                Release(collecting, patches);
+                throw;
             }
 
-            return new Scope(() =>
+            return new Scope(() => Release(collecting, patches));
+        }
+
+        /// <summary>Every exit from a recording scope, whichever step failed: the
+        /// patches are process-wide and a set left installed fails every test after
+        /// this one, in another class, on a state mismatch it cannot explain.</summary>
+        private void Release(IDisposable? collecting, Patches patches)
+        {
+            try
             {
-                collecting.Dispose();
+                collecting?.Dispose();
                 if (RunManager.Instance is { IsInProgress: true }) Quit();
-                _driver?.Dispose();
-                _driver = null;
-                patches.Dispose();
-            });
+            }
+            finally
+            {
+                try
+                {
+                    _driver?.Dispose();
+                    _driver = null;
+                }
+                finally
+                {
+                    patches.Dispose();
+                }
+            }
         }
 
         private sealed class Scope(Action dispose) : IDisposable
@@ -1572,6 +1606,21 @@ public sealed class RecorderContinueTests : IDisposable
             Assert.Equal(undone, branch.Actions.Count);
         }
 
+        /// <summary>Quits and continues at the latest save, having first held that
+        /// save to be the one an ancient event's finish asked for - taken in the
+        /// event's own room, after the run-start save, at the decision that finished
+        /// it - so the Continue is of the event-finished save and not of the arrival
+        /// before it.</summary>
+        internal void ContinueAtTheAncientEventsFinishSave()
+        {
+            Assert.True(Saves.Count >= 2, "the game has taken no save past the run start");
+            var finish = Saves[^1];
+            Assert.True(!finish.IsFloorEntry && finish.PreFinishedRoom == RoomType.Event.ToString(), finish.Describe());
+            Assert.Equal(RunStartSave.MapCoord, finish.MapCoord);
+            Assert.Equal(Capture.NextSeq - 1, Capture.LatestSavePointSeq);
+            ContinueAtTheLatestSave();
+        }
+
         /// <summary>Quits and continues from the latest save with the mod off for
         /// the session: nothing watches what is played next.</summary>
         internal void ContinueWithoutTheRecorder()
@@ -1763,12 +1812,18 @@ public sealed class RecorderContinueTests : IDisposable
 
         public void Dispose()
         {
-            if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
-            RunRecorder.RunTornDown();
-            _harmony.UnpatchAll(_harmony.Id);
-            CardPrompts.Answered = _previousAnswered;
-            CardScreensUp.RewardAnswered = _previousReward;
-            CardPrompts.Forget();
+            try
+            {
+                if (RunManager.Instance is { IsInProgress: true } manager) manager.CleanUp();
+                RunRecorder.RunTornDown();
+            }
+            finally
+            {
+                _harmony.UnpatchAll(_harmony.Id);
+                CardPrompts.Answered = _previousAnswered;
+                CardScreensUp.RewardAnswered = _previousReward;
+                CardPrompts.Forget();
+            }
         }
     }
 
