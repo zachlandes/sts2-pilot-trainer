@@ -29,27 +29,25 @@ namespace Sts2PilotTrainer.Replay;
 public sealed record RunJournal
 {
     /// <summary>
-    /// Version 4 adds the save-point line, and with it the promise that every save the
-    /// game asked for while the recorder watched is on the file - which is what lets a
-    /// resume tell the game's own return to its latest save from a reload of an older
-    /// one. A journal declaring an older schema makes no such promise, so it keeps
-    /// the rule it was written under: only a live fight's return to its room entry is
-    /// the game's own rollback there. Every version-3 line is a version-4 line and
-    /// every version-2 line a version-3 one, so both are read as-is: each is a run in
-    /// progress on a player's disk under an earlier build, and refusing it would cost
-    /// them the recording for a field they never had. Version 3 added the bookmark
-    /// line; version 2 samples the state before every decision as well as after it. A
-    /// version-1 journal is refused exactly as any other schema this build does not
-    /// read is: the recorder's resume path refuses a journal it cannot parse rather
-    /// than repairing it, so the run is simply not continued as a recording.
+    /// Version 5 samples nothing of a finished fight. Every reading a version-4
+    /// journal took after a fight until the next one carried that fight's residue -
+    /// its turn, energy, empty piles and a victory that outlived the room - and every
+    /// complete digest on those lines hashes it, because the projection of the build
+    /// that wrote them did; the projection now emits nothing of a fight outside a live
+    /// one, so a recording continued from such a journal would be two projections in
+    /// one file, with the older half's boundary digests reproducible by nothing. It is
+    /// refused on resume, as a version-1 journal always was: the recorder's resume
+    /// path refuses a journal it cannot read rather than repairing it, and the run is
+    /// simply not continued as a recording. Version 4 added the save-point line, and
+    /// with it the promise that every save the game asked for while the recorder
+    /// watched is on the file, which is what lets a resume tell the game's own return
+    /// to its latest save from a reload of an older one; version 3 added the bookmark
+    /// line; version 2 samples the state before every decision as well as after it.
     /// </summary>
-    public const string Schema = "sts2-pilot-trainer/run-journal/v4";
+    public const string Schema = "sts2-pilot-trainer/run-journal/v5";
 
-    /// <summary>The schema before this one, read unchanged.</summary>
-    public const string PreviousSchema = "sts2-pilot-trainer/run-journal/v3";
-
-    public static readonly string[] ReadableSchemas =
-        [Schema, PreviousSchema, "sts2-pilot-trainer/run-journal/v2"];
+    /// <summary>The schemas this build reads: only its own, for the reason above.</summary>
+    public static readonly string[] ReadableSchemas = [Schema];
 
     /// <summary>The file extension for a journal, so the store's entries say what they
     /// are. JSON Lines rather than JSON, because appending to a JSON document means
@@ -142,19 +140,13 @@ public sealed record RunJournal
     /// On the file for the reason the rollback receipt is: whether a resumed run is
     /// the game's own return to its latest save or a reload of an older one is
     /// decided by where the saves were, and no later reading of the live game can
-    /// recover where they were. Written only into a journal whose schema promises
-    /// them complete - <see cref="RecordsSavePoints"/> - because a list that might be
-    /// missing entries would make an honest Continue read as a reload.
+    /// recover where they were. The schema promises them complete, because a list
+    /// that might be missing entries would make an honest Continue read as a reload.
     /// </summary>
     public IReadOnlyList<JournalSavePoint> SavePoints { get; init; } = [];
 
-    /// <summary>Whether this journal's schema promises every save the game asked for
-    /// is on the file. The resume rule reads this, and never the count.</summary>
-    public bool RecordsSavePoints => string.Equals(SchemaId, Schema, StringComparison.Ordinal);
-
     /// <summary>The seq of the latest save point on the continued history, or -1 for
-    /// the run-start save the game takes before the recorder can watch. Meaningful
-    /// only where <see cref="RecordsSavePoints"/>.</summary>
+    /// the run-start save the game takes before the recorder can watch.</summary>
     public int LatestSavePointSeq => SavePoints.Count == 0 ? -1 : SavePoints.Max(point => point.AfterSeq);
 
     /// <summary>The journal's body in append order, retained across a resume.</summary>
@@ -395,7 +387,6 @@ public sealed record RunJournal
                 $"'{string.Join("', '", ReadableSchemas)}'. Refusing rather than reading it partially.");
         }
 
-        var recordsSavePoints = string.Equals(header.SchemaId, Schema, StringComparison.Ordinal);
         var entries = new List<RunJournalEntry>();
         var refusals = new List<RunRefusal>();
         var discarded = new List<JournalDiscardedBranch>();
@@ -453,32 +444,19 @@ public sealed record RunJournal
 
                 // A reload may rewind to any decision the recorder placed; the game's
                 // own rollback is only ever to its latest save, and a line claiming to
-                // be one is held to that. Where the journal's schema promises the save
-                // points complete, the latest is the last one on the file, or the
-                // run-start save when there is none; an older journal made no such
-                // promise, and there the game's own rollback is the one shape its
-                // recorder could recognise, the return of a live fight to its room
-                // entry.
+                // be one is held to that: the last save point on the file, or the
+                // run-start save when there is none.
                 if (!rollback.Reload)
                 {
-                    if (recordsSavePoints)
-                    {
-                        var latest = savePoints.Count == 0 ? -1 : savePoints.Max(point => point.AfterSeq);
-                        if (rollback.RollbackToSeq != latest)
-                        {
-                            throw new ManifestException(
-                                $"A run journal's rollback to decision " +
-                                $"{rollback.RollbackToSeq.ToString(CultureInfo.InvariantCulture)} claims to be " +
-                                $"the game's own, and the latest save on the file is after decision " +
-                                $"{latest.ToString(CultureInfo.InvariantCulture)}. Only the game's return to its " +
-                                "latest save is continuous.");
-                        }
-                    }
-                    else if (!IsTheReturnOfALiveFightToItsRoomEntry(entries, rollback.RollbackToSeq))
+                    var latest = savePoints.Count == 0 ? -1 : savePoints.Max(point => point.AfterSeq);
+                    if (rollback.RollbackToSeq != latest)
                     {
                         throw new ManifestException(
-                            "A run journal's rollback is not to the room-entry decision before the fight its " +
-                            "history still held open. Only the game's observed mid-fight save rollback is continuous.");
+                            $"A run journal's rollback to decision " +
+                            $"{rollback.RollbackToSeq.ToString(CultureInfo.InvariantCulture)} claims to be " +
+                            $"the game's own, and the latest save on the file is after decision " +
+                            $"{latest.ToString(CultureInfo.InvariantCulture)}. Only the game's return to its " +
+                            "latest save is continuous.");
                     }
                 }
 
@@ -546,30 +524,6 @@ public sealed record RunJournal
         };
         journal.RequireReadable();
         return journal;
-    }
-
-    /// <summary>
-    /// The one rollback shape a journal written before save points were recorded can
-    /// call the game's own: the recording ended in a live fight, and the target is
-    /// the room-entry decision that fight opened after.
-    /// </summary>
-    internal static bool IsTheReturnOfALiveFightToItsRoomEntry(IReadOnlyList<RunJournalEntry> entries, int target)
-    {
-        var trace = new ReplayTrace
-        {
-            Steps = entries.Select(candidate => new ReplayStep
-            {
-                Seq = candidate.Seq,
-                Verb = candidate.Verb,
-                Args = candidate.Args,
-                Before = candidate.Before ?? candidate.State,
-                After = candidate.State,
-            }).ToList(),
-        };
-        var coverage = RunCoverage.Of(trace);
-        var roomEntry = coverage.Floors.LastOrDefault();
-        var fight = roomEntry is null ? null : coverage.FightsOn(roomEntry).LastOrDefault();
-        return fight is { Finished: false } && roomEntry!.EnteredAfterSeq == target;
     }
 
     /// <summary>

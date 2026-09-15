@@ -397,7 +397,8 @@ internal static partial class Commands
     {
         try
         {
-            var declared = ManifestJson.Load(manifestPath).Boundaries;
+            var manifest = ManifestJson.Load(manifestPath);
+            var declared = manifest.Boundaries;
             var derived = ManifestJson.Load(verifiedManifestPath).Verification?.Boundaries
                 ?? throw new InvalidOperationException(
                     "the verified manifest carries no verification report, so its boundaries cannot be read");
@@ -419,7 +420,14 @@ internal static partial class Commands
                     pair.Declared.Digest.Value, pair.Derived!.Digest.Value, StringComparison.Ordinal))
                 .Select(pair =>
                     $"{pair.Declared.Describe()}: the recording declares {pair.Declared.Digest.Value}, " +
-                    $"the engine produced {pair.Derived!.Digest.Value}")
+                    $"the engine produced {pair.Derived!.Digest.Value}" +
+                    // Named here because the mismatch is the format's and not the run's:
+                    // the digest hashes a finished fight this projection no longer
+                    // carries, and nothing this gate replays can reproduce it.
+                    (FinishedFightResidue.PredatesThisProjection(manifest, pair.Declared)
+                        ? " (captured under a format that projected the finished fight before this arrival; " +
+                          "re-derive it with `migrate-manifest --derive-boundaries`)"
+                        : string.Empty))
                 .ToList();
 
             return new Condition(

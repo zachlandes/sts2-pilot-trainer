@@ -1,5 +1,5 @@
 {
-  "manifest_version": 6,
+  "manifest_version": 7,
   "run_id": "native-9F8CY60C5BK7-20260906-005737",
   "environment": {
     "build_version": {
@@ -3572,72 +3572,8 @@
       "after_seq": 28,
       "kind": "floor_entry",
       "expect": {
-        "combat.block": {
-          "Value": "0",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.enemy_count": {
-          "Value": "0",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.energy": {
-          "Value": "2",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.hand": {
-          "Value": "",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
         "combat.in_progress": {
           "Value": "false",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.outcome": {
-          "Value": "victory",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.player_hp": {
-          "Value": "54",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.player_powers": {
-          "Value": "",
-          "Source": "Captured",
-          "Evidence": {
-            "action_ordinal": 28,
-            "run_clock_ms": 435000
-          }
-        },
-        "combat.turn": {
-          "Value": "4",
           "Source": "Captured",
           "Evidence": {
             "action_ordinal": 28,
@@ -6498,12 +6434,8 @@
       "after_seq": 28,
       "floor": 4,
       "digest": {
-        "Value": "sha256:dd0eebd906b01e7e96a897f30a7f25935e505b109fa50fc55ad1c2f2cb407336",
-        "Source": "Captured",
-        "Evidence": {
-          "action_ordinal": 28,
-          "run_clock_ms": 435000
-        }
+        "Value": "sha256:1a62071ea5b7dac6e84f455e36b278697869dba174b8f29b26d6edbeae1b1d9a",
+        "Source": "Engine"
       }
     },
     {
@@ -6594,11 +6526,7 @@
       "floor": 6,
       "digest": {
         "Value": "sha256:ddb67770a6ae99d2f391f36863837bbb059231bdc6552687b3a187e5fa5e5e72",
-        "Source": "Captured",
-        "Evidence": {
-          "action_ordinal": 46,
-          "run_clock_ms": 759000
-        }
+        "Source": "Engine"
       }
     }
   ]

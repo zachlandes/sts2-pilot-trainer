@@ -219,12 +219,6 @@ public sealed class RunCapture
     /// journal holds them. See <see cref="MarkSavePoint"/>.</summary>
     public IReadOnlyList<JournalSavePoint> SavePoints => _savePoints;
 
-    /// <summary>Whether this recording's journal promises every save the game asked
-    /// for is on the file, which is the schema it was opened under: a recording
-    /// begun by this build does, and one resumed from a journal an earlier build
-    /// opened keeps that build's promise and that build's rollback rule.</summary>
-    public bool RecordsSavePoints => string.Equals(_schemaId, RunJournal.Schema, StringComparison.Ordinal);
-
     /// <summary>The rollback line a caller must append while attaching, if any.</summary>
     public string? ResumptionRecord { get; private set; }
 
@@ -581,29 +575,20 @@ public sealed class RunCapture
     /// <summary>
     /// Whether a return to <paramref name="target"/> is the game's own rollback: its
     /// restore of the latest save it took, which is the one the Continue button
-    /// reads. Where this journal records save points that is the decision the last
-    /// of them named, or the opening reading where none has landed; a journal from
-    /// before save points were recorded can recognise only the shape its recorder
-    /// could, a live fight's return to its room entry.
+    /// reads - the decision the last recorded save point named, or the opening
+    /// reading where none has landed.
     /// </summary>
-    private bool IsTheGamesOwnRollback(RunJournalEntry target)
-    {
-        if (!_entries.Any(entry => entry.Seq > target.Seq)) return false;
-        return RecordsSavePoints
-            ? target.Seq == LatestSavePointSeq
-            : RunJournal.IsTheReturnOfALiveFightToItsRoomEntry(_entries, target.Seq);
-    }
+    private bool IsTheGamesOwnRollback(RunJournalEntry target) =>
+        _entries.Any(entry => entry.Seq > target.Seq) && target.Seq == LatestSavePointSeq;
 
     /// <summary>The seq of the latest save on the continued history, or -1 for the
     /// run-start save. See <see cref="RunJournal.LatestSavePointSeq"/>.</summary>
     public int LatestSavePointSeq => _savePoints.Count == 0 ? -1 : _savePoints.Max(point => point.AfterSeq);
 
     private string LatestSaveDescription() =>
-        !RecordsSavePoints
-            ? "the room entry of the fight the recording holds open"
-            : LatestSavePointSeq == -1
-                ? "the run-start save"
-                : $"after decision {LatestSavePointSeq.ToString(CultureInfo.InvariantCulture)}";
+        LatestSavePointSeq == -1
+            ? "the run-start save"
+            : $"after decision {LatestSavePointSeq.ToString(CultureInfo.InvariantCulture)}";
 
     /// <summary>
     /// The game saved the run, and the save holds the state after the decision
@@ -616,18 +601,14 @@ public sealed class RunCapture
     /// save was asked inside a decision the engine was still making - the map move
     /// that saved on arrival, the card play that ended the fight - or after the last
     /// one settled.
-    ///
-    /// Written only into a journal that promises save points complete; a recording
-    /// resumed from an older journal keeps that journal's rule and takes no line, so
-    /// the file stays what its schema says it is.
     /// </summary>
-    /// <returns>The journal line to append, or null where this recording writes
-    /// none.</returns>
+    /// <returns>The journal line to append, or null where this recording is finished
+    /// or stopped and writes none.</returns>
     /// <exception cref="ManifestException">When the decision named is not one this
     /// history holds.</exception>
     public string? MarkSavePoint(int afterSeq)
     {
-        if (!RecordsSavePoints || State == RunCaptureState.Finished || _stop is not null) return null;
+        if (State == RunCaptureState.Finished || _stop is not null) return null;
         if (afterSeq < -1 || afterSeq >= NextSeq)
         {
             throw new ManifestException(
@@ -1069,15 +1050,12 @@ public sealed class RunCapture
     }
 
     /// <summary>Where the game saved, as captured facts, in history order; an empty
-    /// list where it saved only at run start, and none where this recording's
-    /// journal made no promise about them.</summary>
-    private IReadOnlyList<SavePoint>? SavePointFacts() =>
-        !RecordsSavePoints
-            ? null
-            : _savePoints
-                .OrderBy(point => point.AfterSeq)
-                .Select(SavePointFact)
-                .ToList();
+    /// list where it saved only at run start.</summary>
+    private IReadOnlyList<SavePoint> SavePointFacts() =>
+        _savePoints
+            .OrderBy(point => point.AfterSeq)
+            .Select(SavePointFact)
+            .ToList();
 
     private static SavePoint SavePointFact(JournalSavePoint point) => new()
     {

@@ -1,5 +1,5 @@
 {
-  "manifest_version": 6,
+  "manifest_version": 7,
   "run_id": "navegreed-OJ-6QXhNgdg",
   "environment": {
     "build_version": {
@@ -1369,14 +1369,6 @@
             "note": "The End Turn button is still drawn in this frame, which is why the enemy rather than the button is what this reads."
           }
         },
-        "combat.player_hp": {
-          "Value": "57",
-          "Source": "Observed",
-          "Evidence": {
-            "video_t_ms": 94500,
-            "method": "health bar reads 57/68"
-          }
-        },
         "player.hp": {
           "Value": "57",
           "Source": "Observed",
@@ -1889,14 +1881,6 @@
             "method": "the enemy's bar reads Dead and telegraphs no intent; the hand stops being interactive and the Loot! window replaces the fight"
           }
         },
-        "combat.player_hp": {
-          "Value": "54",
-          "Source": "Observed",
-          "Evidence": {
-            "video_t_ms": 169000,
-            "method": "health bar reads 54/68"
-          }
-        },
         "player.hp": {
           "Value": "54",
           "Source": "Observed",
@@ -2363,7 +2347,7 @@
       "after_seq": 14,
       "floor": 3,
       "digest": {
-        "Value": "sha256:bb179be58cbc236a495c722af146481a206df6ea1a41273b1d718b075d4d0db0",
+        "Value": "sha256:dbc4a5152e815560cb6f4e3faf86832c067a2c5bc463e4755e75157c1b024b12",
         "Source": "Engine"
       }
     },

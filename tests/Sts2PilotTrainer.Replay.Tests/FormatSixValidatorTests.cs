@@ -160,7 +160,7 @@ public sealed class FormatSixValidatorTests
         var result = ManifestValidator.Validate(manifest);
 
         Assert.Contains(result.Problems, p =>
-            p.Contains("migrated_from_version is 4, which is not a format this build migrates from (5)", StringComparison.Ordinal));
+            p.Contains("migrated_from_version is 4, which is not a format this build migrates from (5, 6)", StringComparison.Ordinal));
     }
 
     // ── discarded fight branches ──────────────────────────────────────────

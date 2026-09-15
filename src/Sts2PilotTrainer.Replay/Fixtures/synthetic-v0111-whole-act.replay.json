@@ -1,5 +1,5 @@
 {
-  "manifest_version": 5,
+  "manifest_version": 7,
   "run_id": "synthetic-v0111-whole-act",
   "environment": {
     "build_version": {
@@ -1718,10 +1718,9 @@
     },
     {
       "seq": 188,
-      "verb": "PlayCard",
+      "verb": "ConfirmCardScreen",
       "args": {
-        "card_id": "CARD.HEMOKINESIS",
-        "hand_index": "1"
+        "count": "1"
       },
       "source": "Declared"
     },
@@ -1729,7 +1728,7 @@
       "seq": 189,
       "verb": "PlayCard",
       "args": {
-        "card_id": "CARD.BULLY",
+        "card_id": "CARD.HEMOKINESIS",
         "hand_index": "1"
       },
       "source": "Declared"
@@ -1738,13 +1737,22 @@
       "seq": 190,
       "verb": "PlayCard",
       "args": {
+        "card_id": "CARD.BULLY",
+        "hand_index": "1"
+      },
+      "source": "Declared"
+    },
+    {
+      "seq": 191,
+      "verb": "PlayCard",
+      "args": {
         "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "2"
       },
       "source": "Declared"
     },
     {
-      "seq": 191,
+      "seq": 192,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.INFLAME",
@@ -1753,7 +1761,7 @@
       "source": "Declared"
     },
     {
-      "seq": 192,
+      "seq": 193,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.INFERNO",
@@ -1762,25 +1770,16 @@
       "source": "Declared"
     },
     {
-      "seq": 193,
+      "seq": 194,
       "verb": "EndTurn",
       "args": {},
-      "source": "Declared"
-    },
-    {
-      "seq": 194,
-      "verb": "PlayCard",
-      "args": {
-        "card_id": "CARD.STRIKE_IRONCLAD",
-        "hand_index": "0"
-      },
       "source": "Declared"
     },
     {
       "seq": 195,
       "verb": "PlayCard",
       "args": {
-        "card_id": "CARD.ANGER",
+        "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "0"
       },
       "source": "Declared"
@@ -1789,13 +1788,22 @@
       "seq": 196,
       "verb": "PlayCard",
       "args": {
+        "card_id": "CARD.ANGER",
+        "hand_index": "0"
+      },
+      "source": "Declared"
+    },
+    {
+      "seq": 197,
+      "verb": "PlayCard",
+      "args": {
         "card_id": "CARD.STRIKE_IRONCLAD",
         "hand_index": "1"
       },
       "source": "Declared"
     },
     {
-      "seq": 197,
+      "seq": 198,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.FEEL_NO_PAIN",
@@ -1804,13 +1812,13 @@
       "source": "Declared"
     },
     {
-      "seq": 198,
+      "seq": 199,
       "verb": "EndTurn",
       "args": {},
       "source": "Declared"
     },
     {
-      "seq": 199,
+      "seq": 200,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.STRIKE_IRONCLAD",
@@ -1819,7 +1827,7 @@
       "source": "Declared"
     },
     {
-      "seq": 200,
+      "seq": 201,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.BASH",
@@ -1828,13 +1836,13 @@
       "source": "Declared"
     },
     {
-      "seq": 201,
+      "seq": 202,
       "verb": "EndTurn",
       "args": {},
       "source": "Declared"
     },
     {
-      "seq": 202,
+      "seq": 203,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.HEADBUTT",
@@ -1843,7 +1851,7 @@
       "source": "Declared"
     },
     {
-      "seq": 203,
+      "seq": 204,
       "verb": "SelectCardFromScreen",
       "args": {
         "card_id": "CARD.HEMOKINESIS",
@@ -1852,7 +1860,7 @@
       "source": "Declared"
     },
     {
-      "seq": 204,
+      "seq": 205,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.MOLTEN_FIST",
@@ -1861,7 +1869,7 @@
       "source": "Declared"
     },
     {
-      "seq": 205,
+      "seq": 206,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.EVIL_EYE",
@@ -1870,7 +1878,7 @@
       "source": "Declared"
     },
     {
-      "seq": 206,
+      "seq": 207,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.BLOODLETTING",
@@ -1879,7 +1887,7 @@
       "source": "Declared"
     },
     {
-      "seq": 207,
+      "seq": 208,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.DEFEND_IRONCLAD",
@@ -1888,13 +1896,13 @@
       "source": "Declared"
     },
     {
-      "seq": 208,
+      "seq": 209,
       "verb": "EndTurn",
       "args": {},
       "source": "Declared"
     },
     {
-      "seq": 209,
+      "seq": 210,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.HEMOKINESIS",
@@ -1903,7 +1911,7 @@
       "source": "Declared"
     },
     {
-      "seq": 210,
+      "seq": 211,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.STRIKE_IRONCLAD",
@@ -1912,7 +1920,7 @@
       "source": "Declared"
     },
     {
-      "seq": 211,
+      "seq": 212,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.ANGER",
@@ -1921,7 +1929,7 @@
       "source": "Declared"
     },
     {
-      "seq": 212,
+      "seq": 213,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.DEFEND_IRONCLAD",
@@ -1930,13 +1938,13 @@
       "source": "Declared"
     },
     {
-      "seq": 213,
+      "seq": 214,
       "verb": "EndTurn",
       "args": {},
       "source": "Declared"
     },
     {
-      "seq": 214,
+      "seq": 215,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.HEADBUTT",
@@ -1945,7 +1953,7 @@
       "source": "Declared"
     },
     {
-      "seq": 215,
+      "seq": 216,
       "verb": "SelectCardFromScreen",
       "args": {
         "card_id": "CARD.HEMOKINESIS",
@@ -1954,7 +1962,7 @@
       "source": "Declared"
     },
     {
-      "seq": 216,
+      "seq": 217,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.FLAME_BARRIER",
@@ -1963,13 +1971,13 @@
       "source": "Declared"
     },
     {
-      "seq": 217,
+      "seq": 218,
       "verb": "EndTurn",
       "args": {},
       "source": "Declared"
     },
     {
-      "seq": 218,
+      "seq": 219,
       "verb": "PlayCard",
       "args": {
         "card_id": "CARD.HEMOKINESIS",
@@ -1978,7 +1986,7 @@
       "source": "Declared"
     },
     {
-      "seq": 219,
+      "seq": 220,
       "verb": "ClaimReward",
       "args": {
         "reward_type": "gold"
@@ -1986,7 +1994,7 @@
       "source": "Declared"
     },
     {
-      "seq": 220,
+      "seq": 221,
       "verb": "TakeCard",
       "args": {
         "card_id": "CARD.IMPERVIOUS",
@@ -1995,7 +2003,7 @@
       "source": "Declared"
     },
     {
-      "seq": 221,
+      "seq": 222,
       "verb": "ProceedToNextAct",
       "args": {},
       "source": "Declared"
@@ -2949,8 +2957,8 @@
       }
     },
     {
-      "id": "boss-218-combat-end",
-      "after_seq": 218,
+      "id": "boss-219-combat-end",
+      "after_seq": 219,
       "kind": "synthetic-engine",
       "expect": {
         "combat.outcome": {
@@ -2973,7 +2981,7 @@
     },
     {
       "id": "act-two-entry",
-      "after_seq": 221,
+      "after_seq": 222,
       "kind": "synthetic-engine",
       "expect": {
         "run.act_index": {
@@ -3101,7 +3109,7 @@
       "after_seq": 28,
       "floor": 4,
       "digest": {
-        "Value": "sha256:fd68b29f3f8215c8e4cd1c6bcf467c26b768b49fe22822d271a5cdb306f8d9bd",
+        "Value": "sha256:a843cb5919ea5d2fae0370a68e74d769e63862b6a1a1b22c61b87c7a3b12f1a5",
         "Source": "Engine"
       }
     },
@@ -3236,7 +3244,7 @@
       "after_seq": 72,
       "floor": 7,
       "digest": {
-        "Value": "sha256:aab912017dc235497cedcdb8908eb283fa3d22d845f7fb63431df61bbac72a89",
+        "Value": "sha256:3ef02cebc98094f4b51c2aa88fad3a92c65acf328d0901c3ae2e87d83d757ce4",
         "Source": "Engine"
       }
     },
@@ -3391,7 +3399,7 @@
       "after_seq": 130,
       "floor": 10,
       "digest": {
-        "Value": "sha256:b82298e7bbc2ce819c06e6baae448b0d1e8e566afad1c146555b52ed3ea8b8a1",
+        "Value": "sha256:168e5c06a80c5b19c681fd9deb6b8aedae467ac301c27ce41960c7609cf5a595",
         "Source": "Engine"
       }
     },
@@ -3400,7 +3408,7 @@
       "after_seq": 132,
       "floor": 11,
       "digest": {
-        "Value": "sha256:b683cbfd1bc3a6dbfad1e63d5d34d677bbbacb62dbf3c8ea0c53546e4a5c21f5",
+        "Value": "sha256:1c42f9e4b12199e0839e93fd6c3330a5e529bfded882d7d921ae9e496019b890",
         "Source": "Engine"
       }
     },
@@ -3467,7 +3475,7 @@
       "after_seq": 152,
       "floor": 13,
       "digest": {
-        "Value": "sha256:2c068e103437e157680257d8d6b945c60d85f1bdad2aaccaee062b1604823801",
+        "Value": "sha256:037ddb2969fbbd499fa51ef05b0a76237444186f38b781741d6daec57b40fd6a",
         "Source": "Engine"
       }
     },
@@ -3476,7 +3484,7 @@
       "after_seq": 154,
       "floor": 14,
       "digest": {
-        "Value": "sha256:2c872b7bbbef5d2b379d9d2f055fde63383746706f946117060d289fce8bb2e2",
+        "Value": "sha256:118d0f09ee7fd0b93c7062f2a5524465ec87cf941e6ad31c467181b0f0dd0e5c",
         "Source": "Engine"
       }
     },
@@ -3543,7 +3551,7 @@
       "after_seq": 180,
       "floor": 16,
       "digest": {
-        "Value": "sha256:dfea17880334c86658f0b4ffbab3273e7623d626683701f07281f214f5ebc8ef",
+        "Value": "sha256:a20ab709287135506fa21c9af687bffe88ddf8feb36eec9eb20f280245c89f8c",
         "Source": "Engine"
       }
     },
@@ -3577,7 +3585,7 @@
     },
     {
       "kind": "turn_start",
-      "after_seq": 193,
+      "after_seq": 194,
       "fight": 9,
       "turn": 2,
       "digest": {
@@ -3587,7 +3595,7 @@
     },
     {
       "kind": "turn_start",
-      "after_seq": 198,
+      "after_seq": 199,
       "fight": 9,
       "turn": 3,
       "digest": {
@@ -3597,7 +3605,7 @@
     },
     {
       "kind": "turn_start",
-      "after_seq": 201,
+      "after_seq": 202,
       "fight": 9,
       "turn": 4,
       "digest": {
@@ -3607,7 +3615,7 @@
     },
     {
       "kind": "turn_start",
-      "after_seq": 208,
+      "after_seq": 209,
       "fight": 9,
       "turn": 5,
       "digest": {
@@ -3617,7 +3625,7 @@
     },
     {
       "kind": "turn_start",
-      "after_seq": 213,
+      "after_seq": 214,
       "fight": 9,
       "turn": 6,
       "digest": {
@@ -3627,7 +3635,7 @@
     },
     {
       "kind": "turn_start",
-      "after_seq": 217,
+      "after_seq": 218,
       "fight": 9,
       "turn": 7,
       "digest": {

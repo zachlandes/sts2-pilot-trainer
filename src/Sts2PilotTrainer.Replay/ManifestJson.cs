@@ -42,31 +42,43 @@ public static class ManifestJson
         }
 
         var version = versionElement.GetInt32();
-        if (version == PreviousManifestVersion) return MigrateFromVersion5(json);
+        if (version == ReplayManifest.CurrentManifestVersion)
+        {
+            var manifest = JsonSerializer.Deserialize<ReplayManifest>(json, Options)
+                ?? throw new ManifestException("Manifest deserialized to null.");
+            ValidateRequiredMembers(manifest, "Manifest");
+            return manifest;
+        }
 
-        if (version != ReplayManifest.CurrentManifestVersion)
+        if (!MigratedVersions.Contains(version))
         {
             throw new ManifestException(
                 $"Manifest version {version} is not supported by this build " +
-                $"(which reads version {ReplayManifest.CurrentManifestVersion}, and migrates version " +
-                $"{PreviousManifestVersion} in memory). Refusing rather than reading it partially.");
+                $"(which reads version {ReplayManifest.CurrentManifestVersion}, and migrates versions " +
+                $"{string.Join(" and ", MigratedVersions)} in memory). Refusing rather than reading it partially.");
         }
 
-        var manifest = JsonSerializer.Deserialize<ReplayManifest>(json, Options)
-            ?? throw new ManifestException("Manifest deserialized to null.");
-        ValidateRequiredMembers(manifest, "Manifest");
-        return manifest;
+        return MigrateFromVersion6(version == OldestMigratedVersion ? MigrateFromVersion5(json) : json, version);
     }
 
     /// <summary>
-    /// The one older version this build still reads. Version 5 carried no integrity
-    /// on a native source and named no event option by key; version 6 requires the
-    /// first and, of a native recording, the second.
+    /// The older versions this build still reads, each migrated in memory to the
+    /// current one. Version 5 carried no integrity on a native source and named no
+    /// event option by key; version 6 required the first and, of a native recording,
+    /// the second. Version 6 projected a finished fight into every state after it
+    /// until the next fight; version 7 projects nothing of a fight outside a live one.
     /// </summary>
-    public const int PreviousManifestVersion = 5;
+    public static readonly int[] MigratedVersions = [5, 6];
+
+    /// <summary>The version before this one: what the newest migration reads.</summary>
+    public const int PreviousManifestVersion = 6;
+
+    /// <summary>The oldest version this build still reads.</summary>
+    public const int OldestMigratedVersion = 5;
 
     /// <summary>
-    /// Reads a version-5 manifest as the version-6 manifest it means.
+    /// Reads a version-5 manifest as the version-6 manifest it means, as text, for
+    /// the version-6 migration to read on.
     ///
     /// In memory and never on disk: a file on disk is migrated once, deliberately, by
     /// <c>arbiter migrate-manifest</c>, so a reader can never silently rewrite
@@ -83,7 +95,44 @@ public static class ManifestJson
     /// validator re-derives it. No action and no boundary is touched, so the history
     /// hash and every captured digest stay exactly what they were.
     /// </summary>
-    private static ReplayManifest MigrateFromVersion5(string json)
+    private static string MigrateFromVersion5(string json)
+    {
+        var node = JsonNode.Parse(json)?.AsObject()
+            ?? throw new ManifestException("Manifest deserialized to null.");
+        node["manifest_version"] = PreviousManifestVersion;
+
+        var source = node["source"]?.AsObject();
+        if (source?["kind"]?.GetValue<string>() == "native" && source["native"] is JsonObject native)
+        {
+            native["integrity"] ??= NativeSource.CompleteIntegrity;
+            native["migrated_from_version"] = OldestMigratedVersion;
+        }
+
+        return node.ToJsonString();
+    }
+
+    /// <summary>
+    /// Reads a version-6 manifest as the version-7 manifest it means.
+    ///
+    /// Version 6 projected a finished fight into every state after it until the next
+    /// fight, and version 7 projects nothing of a fight outside a live one, so a
+    /// version-6 checkpoint taken outside a live fight expects fields this build never
+    /// produces. <see cref="FinishedFightResidue"/> owns which those are and takes
+    /// them away; nothing else in the file is read differently, and no digest is
+    /// touched - a digest is a hash of the whole state and cannot be migrated, so a
+    /// version-6 boundary at a floor arrival with no live fight after a fight is left
+    /// as the older claim it is, which the gate names and
+    /// <c>migrate-manifest --derive-boundaries</c> re-derives. A native source
+    /// declares the oldest format the file was written in, so the validator and the
+    /// gate can say what it predates; where a version-5 file passed through here it
+    /// keeps saying 5. Every kind remembers, in memory only, which version it was
+    /// read from - <see cref="ReplayManifest.ReadFromVersion"/> - so a video
+    /// reconstruction's engine-derived boundaries can be told apart from ones this
+    /// build derived. A native recording migrated from 5 also gains the arrival
+    /// checkpoints described on <see cref="MigrateFromVersion5"/>, here, because that
+    /// derivation reads the typed manifest.
+    /// </summary>
+    private static ReplayManifest MigrateFromVersion6(string json, int writtenIn)
     {
         var node = JsonNode.Parse(json)?.AsObject()
             ?? throw new ManifestException("Manifest deserialized to null.");
@@ -92,14 +141,16 @@ public static class ManifestJson
         var source = node["source"]?.AsObject();
         if (source?["kind"]?.GetValue<string>() == "native" && source["native"] is JsonObject native)
         {
-            native["integrity"] ??= NativeSource.CompleteIntegrity;
-            native["migrated_from_version"] = PreviousManifestVersion;
+            native["migrated_from_version"] ??= writtenIn;
         }
 
         var migrated = JsonSerializer.Deserialize<ReplayManifest>(node.ToJsonString(), Options)
             ?? throw new ManifestException("Manifest deserialized to null.");
         ValidateRequiredMembers(migrated, "Manifest");
-        return migrated.Source.Native is null ? migrated : FloorArrival.WithArrivalCheckpoints(migrated);
+        migrated = FinishedFightResidue.StripExpectations(migrated with { ReadFromVersion = writtenIn });
+        return migrated.Source.Native is null || writtenIn != OldestMigratedVersion
+            ? migrated
+            : FloorArrival.WithArrivalCheckpoints(migrated);
     }
 
     public static ReplayManifest Load(string path) => Deserialize(File.ReadAllText(path));

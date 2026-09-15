@@ -6,6 +6,7 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.Random;
+using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using Sts2PilotTrainer.Replay;
 
@@ -48,7 +49,7 @@ public static class CanonicalStateProjection
         ProjectRunRng(builder, run);
         ProjectActContent(builder, run);
         ProjectPlayer(builder, player);
-        ProjectCombat(builder, player);
+        ProjectCombat(builder, run, player);
 
         return builder.ToState();
     }
@@ -168,19 +169,50 @@ public static class CanonicalStateProjection
         }
     }
 
-    private static void ProjectCombat(CanonicalState.Builder builder, Player player)
+    /// <summary>
+    /// The fight, while one is live; outside one, only that none is, and how the last
+    /// one ended where the run is still standing in it.
+    ///
+    /// A finished fight stays on the player until the next fight replaces it -
+    /// <c>PlayerCombatState</c> is reset at the next <c>SetUpCombat</c>, not at the
+    /// end of the fight - and the game's own save carries no combat at all. So a run
+    /// continued from the fight-won save stands on the same loot screen with a fresh
+    /// combat state at turn 1, and one continued from an arrival save stands on the
+    /// same floor with none, while the engine replaying the same history carries the
+    /// fight as it was fought. Projecting that residue put every reading taken at a
+    /// shop, a rest site, an event or a loot screen after a fight into the digest,
+    /// and a Save and Quit there - the most ordinary thing a player does - made the
+    /// recording fail reproduction at its next arrival with every decision in it
+    /// individually true. Outside a live fight there is no fight to describe, so
+    /// nothing of one is projected: the two hosts read the same state because the
+    /// state they read is the same.
+    ///
+    /// Whether a fight is live is the combat manager's word and not the player's
+    /// state, because that state outlives the fight, and asking it would report a
+    /// finished fight as an active one - the reading that would let a whole-combat
+    /// comparison compute total turns over a fight that had not finished.
+    /// </summary>
+    private static void ProjectCombat(CanonicalState.Builder builder, RunState run, Player player)
     {
+        var manager = CombatManager.Instance;
+        if (manager is null && player.PlayerCombatState is not null)
+        {
+            throw new EngineException(
+                "The player is in a combat state but this build exposes no CombatManager, so whether the " +
+                "fight is still running cannot be read. Refusing: a finished fight reported as an active " +
+                "one is precisely the error this field exists to prevent.");
+        }
+
         var combat = player.PlayerCombatState;
-        if (combat is null)
+        if (manager is not { IsInProgress: true } || combat is null)
         {
             builder.Add("combat.in_progress", false);
-            builder.Add("combat.outcome", "none");
+            builder.Add("combat.outcome", OutcomeOutsideALiveFight(run, player));
             return;
         }
 
-        var outcome = CombatOutcome(player);
-        builder.Add("combat.in_progress", outcome == "in_progress");
-        builder.Add("combat.outcome", outcome);
+        builder.Add("combat.in_progress", true);
+        builder.Add("combat.outcome", "in_progress");
         builder.Add("combat.turn", combat.TurnNumber);
         builder.Add("combat.phase", combat.Phase.ToString());
         builder.Add("combat.energy", combat.Energy);
@@ -202,7 +234,7 @@ public static class CanonicalStateProjection
         builder.Add("combat.player_hp", creature?.CurrentHp ?? -1);
         builder.AddSequence("combat.player_powers", Powers(creature));
 
-        var state = CombatManager.Instance.DebugOnlyGetState();
+        var state = manager.DebugOnlyGetState();
         if (state is null)
         {
             builder.Add("combat.enemy_count", 0);
@@ -233,44 +265,32 @@ public static class CanonicalStateProjection
     }
 
     /// <summary>
-    /// Whether the fight is still running, and if it is not, how it ended.
+    /// How the last fight ended, read from where the run is standing rather than
+    /// from what the fight left behind.
     ///
-    /// Read from the combat manager rather than from the player's combat state,
-    /// because that state outlives the fight: once the last enemy dies it is still
-    /// there, holding the final hand and pile order, with its turn phase set to None.
-    /// Asking it whether a combat is in progress therefore reports a finished fight as
-    /// an active one - which is exactly the reading that would let a whole-combat
-    /// comparison compute total turns, net health change and final health over a fight
-    /// that had not finished.
+    /// <c>defeat</c> is a player who is dead: no save carries one and no restore
+    /// produces one, so it is the run's own fact. <c>victory</c> is a run still in the
+    /// room of a fight the engine ended, which the room says of itself: the engine
+    /// marks a combat room pre-finished when its combat ends, whatever ended it, and
+    /// the game's save carries that mark - it is what puts the loot screen back on a
+    /// Continue - so a run played through the fight and a run restored onto its loot
+    /// screen say the same thing. Leaving the room is what takes the mark out of
+    /// the reading, on both, and from then on the answer is <c>none</c>. The finished
+    /// fight's own last frame is still sampled: the killing action's after-reading is
+    /// taken once the engine has settled, by which time the room is marked, so the
+    /// comparison's final frame keeps its outcome, and everything else it derives
+    /// comes from the player, whose health, deck and potions are projected whatever
+    /// the room.
     ///
-    /// The finished fight's other combat fields are still projected, on purpose. The
-    /// last frame of a fight is part of its result, and dropping it the moment the
-    /// fight ended would throw away the end of every quantity the comparison needs.
+    /// The <c>ended</c> reading an older projection gave a fight the manager had
+    /// stopped with a non-primary enemy alive is not derivable without the residue,
+    /// and is not given: such a fight's room is marked like any other's.
     /// </summary>
-    private static string CombatOutcome(Player player)
+    private static string OutcomeOutsideALiveFight(RunState run, Player player)
     {
-        var manager = CombatManager.Instance
-            ?? throw new EngineException(
-                "The player is in a combat state but this build exposes no CombatManager, so whether the " +
-                "fight is still running cannot be read. Refusing: a finished fight reported as an active " +
-                "one is precisely the error this field exists to prevent.");
-
-        if (manager.IsInProgress) return "in_progress";
-
         if (player.Creature is { IsAlive: false }) return "defeat";
-
-        // The engine takes a dead enemy out of the combat state rather than leaving it
-        // there at zero health, so a won fight ends with no enemies at all. "No living
-        // enemy" therefore has to cover the empty list, and it is reached only after
-        // the combat manager has already said the fight is over.
-        var enemies = manager.DebugOnlyGetState()?.Enemies.Where(enemy => enemy is not null).ToList() ?? [];
-        if (enemies.TrueForAll(enemy => !enemy.IsAlive)) return "victory";
-
-        // A fight that stopped with the player and an enemy both alive is a real
-        // engine state and not one this milestone has seen. It is named rather than
-        // folded into victory, because a comparison computed over a fight nobody can
-        // characterise should say so rather than pick the flattering reading.
-        return "ended";
+        if (run.CurrentRoom is CombatRoom { IsPreFinished: true }) return "victory";
+        return "none";
     }
 
     /// <summary>

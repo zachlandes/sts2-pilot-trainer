@@ -146,7 +146,11 @@ public static partial class SyntheticFixtureGenerator
             ("act", session.RunState.CurrentActIndex.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             ("row", edge.ToRow.ToString(System.Globalization.CultureInfo.InvariantCulture)),
             ("column", edge.ToColumn.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        // The floor and coordinate beside the fight: the map move is a floor arrival
+        // as well as a combat start, and an arrival is proved by both, so the fixture
+        // states them itself rather than having the deriver infer them.
         checkpoints.Add(Capture("combat-start", actions[^1].Seq, session,
+            "run.total_floor", "run.map_coord",
             "combat.turn", "combat.energy", "combat.player_hp", "combat.hand",
             "combat.enemy.0.model", "combat.enemy.0.hp", "combat.enemy.0.intent"));
 
@@ -168,9 +172,10 @@ public static partial class SyntheticFixtureGenerator
         }
 
         PlayToTheEndOfTheFight(driver, session, actions, line);
+        // Nothing of the fight itself: the projection carries only whether one is
+        // live and how the last one ended once it is over.
         checkpoints.Add(Capture("combat-complete", actions[^1].Seq, session,
-            "combat.outcome", "combat.in_progress", "combat.turn", "player.hp",
-            "combat.enemy_count", "run.act_floor"));
+            "combat.outcome", "combat.in_progress", "player.hp", "run.act_floor"));
 
         return new ReplayManifest
         {

@@ -348,40 +348,29 @@ public sealed class RunCaptureTests
         Assert.True(validation.IsValid, validation.Describe());
     }
 
-    /// <summary>A journal written before save points were recorded made no promise
-    /// about them, so it keeps the rule it was written under: a live fight's return
-    /// to its room entry is the game's own, and everything else is a reload. It takes
-    /// no save-point line and its manifest lists none.</summary>
-    [Fact]
-    public void AnOlderJournalKeepsTheFightOnlyRuleAndTakesNoSavePoints()
+    /// <summary>
+    /// A journal an earlier build wrote is refused on resume, whatever it holds.
+    ///
+    /// Every reading a version-4 journal took after a fight carried that fight until
+    /// the next one, and every complete digest on those lines hashes it; the
+    /// projection now carries nothing of a fight outside a live one. A recording
+    /// continued from such a journal would be two projections in one file, so the
+    /// resume path refuses it the way it always refused a schema it does not read,
+    /// and the run is simply not continued as a recording.
+    /// </summary>
+    [Theory]
+    [InlineData("sts2-pilot-trainer/run-journal/v4")]
+    [InlineData("sts2-pilot-trainer/run-journal/v3")]
+    [InlineData("sts2-pilot-trainer/run-journal/v2")]
+    [InlineData("sts2-pilot-trainer/run-journal/v1")]
+    public void AJournalAnEarlierBuildWroteIsRefusedOnResume(string schema)
     {
-        var capture = RunCapture.Begin(Start());
-        capture.Record(
-            ActionVerb.ChooseNeowBlessing, Args(("option_index", "0"), ("option_key", "NEOW.BLESSING")),
-            Floor(1), Digest(0));
-        capture.Record(
-            ActionVerb.MapMove, Args(("act", "0"), ("row", "1"), ("column", "3")),
-            InFight(2, turn: 1), Digest(1));
-        capture.Record(
-            ActionVerb.PlayCard, Args(("card_id", "CARD.BASH"), ("hand_index", "0")),
-            InFight(2, turn: 1, enemyHp: 30), Digest(2));
-        var older = RunJournal.Parse(
-            capture.Journal.Render().Replace(RunJournal.Schema, RunJournal.PreviousSchema, StringComparison.Ordinal));
-        Assert.False(older.RecordsSavePoints);
+        var text = Played().Journal.Render().Replace(RunJournal.Schema, schema, StringComparison.Ordinal);
 
-        var midFight = Resume(older, Digest(1));
-        Assert.Equal(NativeSource.ContinuousContinuity, midFight.Continuity);
-        Assert.False(midFight.RecordsSavePoints);
-        Assert.Null(midFight.MarkSavePoint(1));
-        Assert.Empty(midFight.SavePoints);
-        Assert.DoesNotContain("save_point", midFight.Journal.Render(), StringComparison.Ordinal);
+        var refusal = Assert.Throws<ManifestException>(() => RunJournal.Parse(text));
 
-        var behindTheFight = Resume(older, Digest(0));
-        Assert.Equal(NativeSource.RewoundContinuity, behindTheFight.Continuity);
-        Assert.Contains("the room entry of the fight", behindTheFight.Refusal!, StringComparison.Ordinal);
-
-        midFight.Finish("abandoned");
-        Assert.Null(midFight.ToManifest().Source.Native!.SavePoints);
+        Assert.Contains($"declares schema '{schema}'", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(RunJournal.Schema, refusal.Message, StringComparison.Ordinal);
     }
 
     /// <summary>The save-point line survives a quit and comes back where it was; a
@@ -1761,21 +1750,6 @@ public sealed class RunCaptureTests
         capture.Finish("lost");
         Assert.Equal(1, capture.LastEndedFight);
         Assert.True(capture.MovedOnFromLastFight);
-    }
-
-    /// <summary>Every version-2 line is a version-3 line, so the journal a player's
-    /// run in progress was written in under the build before this one is read as-is
-    /// rather than costing them the recording.</summary>
-    [Fact]
-    public void AVersionTwoJournalIsReadAsIs()
-    {
-        var text = Played().Journal.Render().Replace(RunJournal.Schema, RunJournal.PreviousSchema, StringComparison.Ordinal);
-
-        var read = RunJournal.Parse(text);
-
-        Assert.Equal(RunJournal.PreviousSchema, read.SchemaId);
-        Assert.Equal(5, read.Decisions.Count());
-        Assert.Empty(read.Bookmarks);
     }
 
     private static RunCapture Ended()

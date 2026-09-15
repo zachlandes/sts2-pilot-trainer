@@ -591,6 +591,7 @@ public sealed class RecorderContinueTests : IDisposable
             lab.MoveTo(MapPointType.Shop);
             var arrival = lab.Capture.NextSeq - 1;
             Assert.Equal("false", lab.Field("combat.in_progress"));
+            Assert.Equal("none", lab.Field("combat.outcome"));
             Assert.Equal(arrival, lab.Capture.LatestSavePointSeq);
 
             manifest = lab.Abandon();

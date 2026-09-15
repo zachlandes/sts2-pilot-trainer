@@ -126,7 +126,7 @@ public class ManifestJsonTests
     [Theory]
     [InlineData(3)]
     [InlineData(4)]
-    [InlineData(7)]
+    [InlineData(8)]
     [InlineData(99)]
     public void RefusesAVersionThisBuildDoesNotRead(int version)
     {
@@ -140,11 +140,11 @@ public class ManifestJsonTests
     }
 
     /// <summary>
-    /// A version-5 video manifest reads as version 6 with only its version changed:
+    /// A version-5 video manifest reads as the current version with only its version changed:
     /// nothing in it was missing, and the migration invents nothing.
     /// </summary>
     [Fact]
-    public void ReadsAVersionFiveManifestAsItsVersionSixMeaning()
+    public void ReadsAVersionFiveManifestAsItsCurrentMeaning()
     {
         var original = Fixtures.ValidManifest();
         var migrated = ManifestJson.Deserialize(VersionFive(original));
@@ -167,7 +167,7 @@ public class ManifestJsonTests
     /// for a file that says it was written before the key existed.
     /// </summary>
     [Fact]
-    public void ReadsAVersionFiveNativeManifestAsItsVersionSixMeaning()
+    public void ReadsAVersionFiveNativeManifestAsItsCurrentMeaning()
     {
         var original = Fixtures.NativeManifest() with
         {
@@ -364,7 +364,117 @@ public class ManifestJsonTests
     private static string VersionFive(ReplayManifest manifest)
     {
         var document = System.Text.Json.Nodes.JsonNode.Parse(ManifestJson.Serialize(manifest))!.AsObject();
+        document["manifest_version"] = ManifestJson.OldestMigratedVersion;
+        return document.ToJsonString();
+    }
+
+    private static string VersionSix(ReplayManifest manifest)
+    {
+        var document = System.Text.Json.Nodes.JsonNode.Parse(ManifestJson.Serialize(manifest))!.AsObject();
         document["manifest_version"] = ManifestJson.PreviousManifestVersion;
         return document.ToJsonString();
+    }
+
+    /// <summary>
+    /// A version-6 video manifest whose checkpoints were all taken inside a live
+    /// fight reads as version 7 with only its version changed: nothing in it
+    /// describes a finished fight, and the migration invents nothing.
+    /// </summary>
+    [Fact]
+    public void ReadsAVersionSixManifestAsItsCurrentMeaning()
+    {
+        var original = Fixtures.ValidManifest();
+        var migrated = ManifestJson.Deserialize(VersionSix(original));
+
+        Assert.Equal(ReplayManifest.CurrentManifestVersion, migrated.ManifestVersion);
+        Assert.Null(migrated.Source.Native);
+        Assert.Equal(ManifestJson.Serialize(original), ManifestJson.Serialize(migrated));
+        Assert.True(ManifestValidator.Validate(migrated).IsValid);
+    }
+
+    /// <summary>
+    /// A version-6 checkpoint taken outside a live fight expects the finished fight
+    /// its projection carried - its turn, its energy, a victory that outlived the
+    /// room - and this projection never produces those, so the reading takes them
+    /// away and keeps everything else the checkpoint observed. A checkpoint taken
+    /// inside a live fight is untouched, and so is one that says nothing about
+    /// whether a fight is live. A native recording says it was written in 6, so the
+    /// gate and the migration can tell which of its boundaries predate this
+    /// projection; a file that already said 5 keeps saying 5.
+    /// </summary>
+    [Fact]
+    public void ReadingAVersionSixManifestTakesAwayWhatItExpectedOfAFinishedFight()
+    {
+        var native = Fixtures.NativeManifest();
+        var original = native with
+        {
+            Checkpoints =
+            [
+                .. native.Checkpoints,
+                new Checkpoint
+                {
+                    Id = "after-the-fight",
+                    AfterSeq = 1,
+                    Kind = "floor_entry",
+                    Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+                    {
+                        ["combat.in_progress"] = Fact<string>.Captured("false", FactEvidence.AtActionOrdinal(1)),
+                        ["combat.outcome"] = Fact<string>.Captured("victory", FactEvidence.AtActionOrdinal(1)),
+                        ["combat.turn"] = Fact<string>.Captured("4", FactEvidence.AtActionOrdinal(1)),
+                        ["combat.enemy_count"] = Fact<string>.Captured("0", FactEvidence.AtActionOrdinal(1)),
+                        ["player.hp"] = Fact<string>.Captured("63", FactEvidence.AtActionOrdinal(1)),
+                        ["run.total_floor"] = Fact<string>.Captured("2", FactEvidence.AtActionOrdinal(1)),
+                    },
+                },
+                new Checkpoint
+                {
+                    Id = "a-health-bar-mid-fight",
+                    AfterSeq = 1,
+                    Kind = "mid_turn",
+                    Expect = new Dictionary<string, Fact<string>>(StringComparer.Ordinal)
+                    {
+                        ["combat.player_hp"] = Fact<string>.Captured("63", FactEvidence.AtActionOrdinal(1)),
+                    },
+                },
+            ],
+        };
+
+        var migrated = ManifestJson.Deserialize(VersionSix(original));
+
+        Assert.Equal(ReplayManifest.CurrentManifestVersion, migrated.ManifestVersion);
+        Assert.Equal(6, migrated.Source.Native!.MigratedFromVersion);
+        var afterTheFight = Assert.Single(migrated.Checkpoints, checkpoint => checkpoint.Id == "after-the-fight");
+        Assert.Equal(
+            ["combat.in_progress", "player.hp", "run.total_floor"],
+            afterTheFight.Expect.Keys.OrderBy(key => key, StringComparer.Ordinal));
+        Assert.Equal("false", afterTheFight.Expect["combat.in_progress"].Value);
+        Assert.Equal(
+            original.Checkpoints[0].Expect.Keys,
+            Assert.Single(migrated.Checkpoints, checkpoint => checkpoint.Id == "combat-start").Expect.Keys);
+        Assert.Equal(
+            ["combat.player_hp"],
+            Assert.Single(migrated.Checkpoints, checkpoint => checkpoint.Id == "a-health-bar-mid-fight").Expect.Keys);
+        Assert.Equal(
+            ManifestJson.Serialize(original with { Checkpoints = [] }),
+            ManifestJson.Serialize(migrated with
+            {
+                Checkpoints = [],
+                Source = migrated.Source with { Native = migrated.Source.Native with { MigratedFromVersion = null } },
+            }));
+        var result = ManifestValidator.Validate(migrated);
+        Assert.True(result.IsValid, result.Describe());
+
+        var fromFive = ManifestJson.Deserialize(VersionFive(original));
+        Assert.Equal(5, fromFive.Source.Native!.MigratedFromVersion);
+        Assert.Equal(
+            ["combat.in_progress", "player.hp", "run.total_floor"],
+            Assert.Single(fromFive.Checkpoints, checkpoint => checkpoint.Id == "after-the-fight")
+                .Expect.Keys.OrderBy(key => key, StringComparer.Ordinal));
+
+        // A current file is read as written: the residue rule is the migration's.
+        var current = ManifestJson.Deserialize(ManifestJson.Serialize(original));
+        Assert.Equal(
+            original.Checkpoints.Select(checkpoint => checkpoint.Expect.Count),
+            current.Checkpoints.Select(checkpoint => checkpoint.Expect.Count));
     }
 }

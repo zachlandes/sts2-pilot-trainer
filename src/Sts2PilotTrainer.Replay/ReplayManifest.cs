@@ -15,10 +15,28 @@ public sealed record ReplayManifest
 {
     /// <summary>Bumped whenever a change would make an older arbiter misread a
     /// newer manifest. Readers must refuse an unknown version rather than guess.</summary>
-    public const int CurrentManifestVersion = 6;
+    public const int CurrentManifestVersion = 7;
 
     [JsonPropertyName("manifest_version")]
     public int ManifestVersion { get; init; } = CurrentManifestVersion;
+
+    /// <summary>
+    /// The version the file on disk declared when <see cref="ManifestJson"/> read it,
+    /// where that was an older one it migrated in memory; null for a file in the
+    /// current format. Never written: the file's own version field says what the
+    /// file is, and this says what it was.
+    /// </summary>
+    [JsonIgnore]
+    public int? ReadFromVersion { get; init; }
+
+    /// <summary>
+    /// The oldest format this manifest was written in: what a native recording
+    /// records of itself in <c>source.native.migrated_from_version</c> across every
+    /// migration on disk, or else the version the file declared when it was read.
+    /// What a rule about an older format's readings asks.
+    /// </summary>
+    [JsonIgnore]
+    public int WrittenIn => Source.Native?.MigratedFromVersion ?? ReadFromVersion ?? ManifestVersion;
 
     /// <summary>Stable identifier for this reconstruction. Never derived from a
     /// video title: this creator A/B-tests titles, so a title is not an identifier.</summary>
@@ -262,9 +280,9 @@ public sealed record NativeSource
 
     public static readonly string[] Integrities = [CompleteIntegrity, UnmappedIntegrity, NonStandardIntegrity];
 
-    /// <summary>The one older format a migrated file may declare it was written in.
+    /// <summary>The older formats a migrated file may declare it was written in.
     /// A later format widens this when it adds a migration of its own.</summary>
-    public static readonly int[] MigratableVersions = [5];
+    public static readonly int[] MigratableVersions = [5, 6];
 
     /// <summary>Won, lost, or given up. A give-up is a completed recording: the run is
     /// over, the history is whole, and the fights in it were really played.</summary>
