@@ -88,6 +88,12 @@ public static class FinishedFightResidue
         checkpoint.Expect.TryGetValue(LiveField, out var live) &&
         string.Equals(live.Value, "false", StringComparison.Ordinal);
 
+    /// <summary>Whether a sampled reading says no fight is live, so that any combat
+    /// field an older projection put in it is the residue and not the fight.</summary>
+    public static bool TakenOutsideALiveFight(IReadOnlyDictionary<string, string> sample) =>
+        sample.TryGetValue(LiveField, out var live) &&
+        string.Equals(live, "false", StringComparison.Ordinal);
+
     /// <summary>
     /// Whether a declared boundary's digest was produced under a projection that
     /// carried a finished fight, so that this build cannot reproduce it and a

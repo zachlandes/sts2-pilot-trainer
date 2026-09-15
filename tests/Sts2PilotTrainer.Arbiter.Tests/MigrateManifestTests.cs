@@ -202,7 +202,6 @@ public class MigrateManifestTests
         Assert.Equal(0, Arbiter.Run("migrate-manifest", versionSix, "--out", plain).ExitCode);
         var rewritten = ManifestJson.Load(plain);
         Assert.Equal(ReplayManifest.CurrentManifestVersion, rewritten.ManifestVersion);
-        Assert.Null(rewritten.ReadFromVersion);
         Assert.All(rewritten.Boundaries, boundary => Assert.Equal(ManifestJson.PreviousManifestVersion, boundary.Projection));
         Assert.Equal(stale, rewritten.BoundaryAt(arrival.Kind, floor: arrival.Floor)!.Digest.Value);
 

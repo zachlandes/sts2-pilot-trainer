@@ -209,15 +209,6 @@ public class CombatProjectionTests
     }
 
     /// <summary>
-    /// The engine ends a fight once no primary enemy is alive, and a secondary one -
-    /// a minion - may still be standing when it does. The step that ended the fight
-    /// samples nothing of the finished roster, so whether that minion survived is not
-    /// in the trace, and its remaining health is not damage anyone can be credited
-    /// with. Under the older projection the survivor was still sampled and the step
-    /// was refused as a re-indexed roster; it is refused now for the reason that is
-    /// true now, rather than read as a full clear.
-    /// </summary>
-    /// <summary>
     /// The step the fight is lost on samples nothing of the enemy afterwards, so what
     /// it took off the enemy is not in the trace: the turn it fell in carries no
     /// number, every turn before it keeps its own, and the summary says the fight
@@ -248,6 +239,15 @@ public class CombatProjectionTests
         Assert.Equal(12, projection.Turns[1].HealthLost);
     }
 
+    /// <summary>
+    /// The engine ends a fight once no primary enemy is alive, and a secondary one -
+    /// a minion - may still be standing when it does. The step that ended the fight
+    /// samples nothing of the finished roster, so whether that minion survived is not
+    /// in the trace, and its remaining health is not damage anyone can be credited
+    /// with. Under the older projection the survivor was still sampled and the step
+    /// was refused as a re-indexed roster; it is refused now for the reason that is
+    /// true now, rather than read as a full clear.
+    /// </summary>
     [Fact]
     public void RefusesToCreditASecondaryEnemyThatMayHaveOutlivedTheFight()
     {
@@ -276,6 +276,46 @@ public class CombatProjectionTests
             Step(-1, "run_start", Outside(), before),
             Step(0, "PlayCard", before, end)));
         Assert.Equal(30, projection.Turns.Sum(turn => turn.EnemyHealthLost));
+    }
+
+    /// <summary>
+    /// An enemy that telegraphs an escape leaves the fight alive on its turn, and the
+    /// engine counts the fight won once no primary enemy is left in it. Its health was
+    /// not taken off it, so it is not credited; the enemy the same step did kill is.
+    /// The same enemy is left out where an older trace still samples the emptied
+    /// roster after the step.
+    /// </summary>
+    [Fact]
+    public void LeavesAnEscapingEnemysHealthOutOfTheCreditWhenItsFlightEndsTheFight()
+    {
+        var before = InCombat(1, 80, 12);
+        before["combat.enemy_count"] = "2";
+        before["combat.enemy.0.intent"] = CombatProjection.EscapeIntent;
+        before["combat.enemy.1.model"] = "MONSTER.LOUSE";
+        before["combat.enemy.1.hp"] = "5";
+        before["combat.enemy.1.intent"] = "Attack:6";
+
+        var end = Outside();
+        end["combat.outcome"] = "victory";
+        end["player.hp"] = "80";
+
+        var projection = Project("escape", Trace(
+            Step(-1, "run_start", Outside(), before),
+            Step(0, "EndTurn", before, end)));
+        Assert.Equal(5, projection.Turns.Sum(turn => turn.EnemyHealthLost));
+
+        var emptied = new Dictionary<string, string>(end, StringComparer.Ordinal)
+        {
+            ["combat.in_progress"] = "true",
+            ["combat.outcome"] = "in_progress",
+            ["combat.turn"] = "1",
+            ["combat.enemy_count"] = "0",
+        };
+        var older = Project("escape-older", Trace(
+            Step(-1, "run_start", Outside(), before),
+            Step(0, "EndTurn", before, emptied),
+            Step(1, "EndTurn", emptied, end)));
+        Assert.Equal(5, older.Turns.Sum(turn => turn.EnemyHealthLost));
     }
 
     [Fact]

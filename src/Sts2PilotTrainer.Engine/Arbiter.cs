@@ -94,8 +94,10 @@ public static class Arbiter
         ReplayManifest manifest, DiscardedBranch branch, ArbiterOutcome outcome)
     {
         // A branch a format-6 recorder captured carries the finished fight in every
-        // reading after one, which this projection never produces; it is held exactly
-        // on everything else, which is everything a branch is evidence of.
+        // reading taken outside a live one, which this projection never produces; a
+        // reading taken inside a fight is the same projection then as now, and every
+        // reading is held exactly on everything else, which is everything a branch is
+        // evidence of.
         var residue = manifest.WrittenIn < FinishedFightResidue.FirstFormatWithout;
         var diagnostics = new List<string>();
         var capturedOrigin = branch.Trace.Steps.SingleOrDefault(step => step.Seq == branch.RollbackToSeq)?.After;
@@ -139,9 +141,10 @@ public static class Arbiter
     {
         if (actual is null) return ["the replay produced no final sample"];
 
+        var residue = ignoreFinishedFightResidue && FinishedFightResidue.TakenOutsideALiveFight(expected);
         return expected.Keys
             .Union(actual.Keys, StringComparer.Ordinal)
-            .Where(field => !ignoreFinishedFightResidue || !FinishedFightResidue.IsResidueField(field))
+            .Where(field => !residue || !FinishedFightResidue.IsResidueField(field))
             .OrderBy(field => field, StringComparer.Ordinal)
             .Where(field => !expected.TryGetValue(field, out var expectedValue) ||
                             !actual.TryGetValue(field, out var actualValue) ||

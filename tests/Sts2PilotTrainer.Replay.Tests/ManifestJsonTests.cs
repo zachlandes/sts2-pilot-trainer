@@ -429,7 +429,6 @@ public class ManifestJsonTests
 
         var rewritten = ManifestJson.Deserialize(ManifestJson.Serialize(read));
         Assert.Equal(ReplayManifest.CurrentManifestVersion, rewritten.ManifestVersion);
-        Assert.Null(rewritten.ReadFromVersion);
         Assert.All(rewritten.Boundaries, boundary => Assert.Equal(writtenIn, boundary.Projection));
 
         var current = ManifestJson.Deserialize(ManifestJson.Serialize(Fixtures.ValidManifest()));

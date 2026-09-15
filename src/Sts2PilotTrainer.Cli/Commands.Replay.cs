@@ -335,7 +335,9 @@ internal static partial class Commands
                 : "The discarded decisions left a floor arrival whose digest is not the one the engine produced there." +
                   // The same class of digest the gate names on a boundary: hashed under
                   // a projection that carried the finished fight, reproducible by nothing.
-                  (boundary is not null && FinishedFightResidue.PredatesThisProjection(manifest, boundary)
+                  (manifest.Boundaries.FirstOrDefault(declared =>
+                       declared.IsFloorEntry && declared.AfterSeq == branch.RollbackToSeq) is { } declared &&
+                   FinishedFightResidue.PredatesThisProjection(manifest, declared)
                       ? " The recording was written under a format that projected the finished fight before that " +
                         "arrival; re-derive it with `migrate-manifest --derive-boundaries`."
                       : string.Empty);

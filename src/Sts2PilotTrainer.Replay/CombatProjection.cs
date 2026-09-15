@@ -271,14 +271,18 @@ public sealed record CombatProjection
     /// a finished fight is projected, so what it took off the enemy is read from how
     /// the fight ended. Won, the engine's own rule says what happened: a fight is won
     /// once no living enemy is primary, so every primary enemy standing before the
-    /// step is gone after it and its remaining health is what the step dealt. A
-    /// secondary enemy - one carrying a power in <see cref="SecondaryEnemyPowers"/> -
-    /// may still be standing, and whether it is went unsampled with the rest of the
-    /// finished fight, so a fight ended around one is refused rather than credited
-    /// with its health. Lost, the enemy that killed the player was left at a health
-    /// nothing sampled, so the step's enemy health lost is not derivable and is null:
-    /// the turn it fell in carries no number rather than a zero or the roster's
-    /// whole health, and every turn before it keeps its own.
+    /// step is gone after it - dead, or escaped. An enemy whose telegraphed intent was
+    /// <see cref="EscapeIntent"/> leaves the fight alive on its turn, at whatever
+    /// health it had, and that health was not taken off it; it is left out of the
+    /// credit, on the step that ends the fight and on the one that empties the
+    /// roster alike. A secondary enemy - one carrying a power in
+    /// <see cref="SecondaryEnemyPowers"/> - may still be standing, and whether it is
+    /// went unsampled with the rest of the finished fight, so a fight ended around
+    /// one is refused rather than credited with its health. Lost, the enemy that
+    /// killed the player was left at a health nothing sampled, so the step's enemy
+    /// health lost is not derivable and is null: the turn it fell in carries no
+    /// number rather than a zero or the roster's whole health, and every turn before
+    /// it keeps its own.
     /// </summary>
     private static int? EnemyHealthLost(ReplayStep step)
     {
@@ -311,13 +315,13 @@ public sealed record CombatProjection
                     "whether it survived is not in the trace. Refusing to count its health as damage dealt.");
             }
 
-            return Enumerable.Range(0, before).Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"));
+            return HealthOfTheEnemiesTheStepTookDown(step, before);
         }
 
         var after = int.Parse(raw, System.Globalization.CultureInfo.InvariantCulture);
         if (after == 0)
         {
-            return Enumerable.Range(0, before).Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"));
+            return HealthOfTheEnemiesTheStepTookDown(step, before);
         }
 
         if (after != before)
@@ -345,6 +349,19 @@ public sealed record CombatProjection
 
         return dealt;
     }
+
+    /// <summary>The intent the projection writes for an enemy about to leave the
+    /// fight alive, as <c>CanonicalStateProjection.DescribeIntent</c> renders the
+    /// engine's own intent type.</summary>
+    public const string EscapeIntent = "Escape";
+
+    private static int HealthOfTheEnemiesTheStepTookDown(ReplayStep step, int before) =>
+        Enumerable.Range(0, before)
+            .Where(i => !IsEscaping(step.Before.GetValueOrDefault($"combat.enemy.{i}.intent") ?? string.Empty))
+            .Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"));
+
+    private static bool IsEscaping(string intent) =>
+        intent.Split('+').Contains(EscapeIntent, StringComparer.Ordinal);
 
     /// <summary>
     /// The powers whose owner the engine counts as a secondary enemy, by the id the
