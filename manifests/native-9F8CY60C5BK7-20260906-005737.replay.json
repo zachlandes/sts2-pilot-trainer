@@ -6544,7 +6544,11 @@
       "floor": 6,
       "digest": {
         "Value": "sha256:ddb67770a6ae99d2f391f36863837bbb059231bdc6552687b3a187e5fa5e5e72",
-        "Source": "Engine"
+        "Source": "Captured",
+        "Evidence": {
+          "action_ordinal": 46,
+          "run_clock_ms": 759000
+        }
       },
       "projection": 7
     }
