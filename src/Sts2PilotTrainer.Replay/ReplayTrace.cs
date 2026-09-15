@@ -85,6 +85,60 @@ public sealed record ReplayTrace
                 .ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal),
             StringComparer.Ordinal);
 
+    /// <summary>
+    /// The part of a sample the game's own save can carry.
+    ///
+    /// A finished fight stays on the player until the next fight replaces it, and
+    /// <c>CanonicalStateProjection</c> keeps projecting it, so every reading taken at
+    /// a shop, a rest site, an event or a loot screen after a fight carries that
+    /// fight's residue. <c>SerializableRun</c> has no combat member, so a run
+    /// continued from the game's save comes back without it, and a live fight is the
+    /// one combat state the save has an answer for: it is rolled back to the room's
+    /// entry, where the fight opens again. So every <c>combat.</c> field is dropped
+    /// unless the fight is in progress, and nothing else is: what a save carries of
+    /// the run - floor, coordinate, health, gold, deck, relics, potions - is kept
+    /// whole. Two readings are compared through <see cref="SameSample"/>; it is never
+    /// digested, so it cannot be mistaken for the complete digest a boundary is
+    /// identified by.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> SaveRepresentable(IReadOnlyDictionary<string, string> sample)
+    {
+        var inProgress = string.Equals(
+            sample.GetValueOrDefault("combat.outcome"), "in_progress", StringComparison.Ordinal);
+        return new SortedDictionary<string, string>(
+            sample
+                .Where(field => inProgress || !field.Key.StartsWith("combat.", StringComparison.Ordinal))
+                .ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal),
+            StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Whether a sample carries a finished fight: a combat outcome that is neither a
+    /// fight in progress nor the projection's "none" for a run with no combat state
+    /// at all. This is the residue <see cref="SaveRepresentable"/> takes away.
+    /// </summary>
+    public static bool CarriesFinishedCombat(IReadOnlyDictionary<string, string> sample) =>
+        sample.TryGetValue("combat.outcome", out var outcome) &&
+        !string.Equals(outcome, "in_progress", StringComparison.Ordinal) &&
+        !string.Equals(outcome, "none", StringComparison.Ordinal);
+
+    /// <summary>
+    /// The fields in which two samples differ, one line each as
+    /// <c>field: left -> right</c>, ordered by field; an absent field reads as
+    /// <c>absent</c>. For a log line or a failure message, never for a comparison.
+    /// </summary>
+    public static IReadOnlyList<string> Differences(
+        IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right) =>
+        left.Keys.Union(right.Keys, StringComparer.Ordinal)
+            .OrderBy(field => field, StringComparer.Ordinal)
+            .Where(field =>
+                !left.TryGetValue(field, out var l) || !right.TryGetValue(field, out var r) ||
+                !string.Equals(l, r, StringComparison.Ordinal))
+            .Select(field =>
+                $"{field}: {(left.TryGetValue(field, out var l) ? l : "absent")} -> " +
+                $"{(right.TryGetValue(field, out var r) ? r : "absent")}")
+            .ToList();
+
     /// <summary>Whether two samples carry the same fields with the same values.</summary>
     public static bool SameSample(
         IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right) =>

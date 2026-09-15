@@ -413,7 +413,8 @@ internal sealed class RunRecorder : IDisposable
         if (RunmobileStore.Read(journalPath) is { } existing)
         {
             var journal = RunJournal.Parse(existing);
-            capture = RunCapture.Resume(journal, digest);
+            capture = RunCapture.Resume(journal, sample, digest);
+            var resumeRefusals = capture.Refusals.Count;
 
             // Before anything is appended, because an append onto a fragment a
             // crash left behind produces a line no later session can read.
@@ -452,6 +453,16 @@ internal sealed class RunRecorder : IDisposable
                 $"[{RunmobileMod.ModId}] continuing the recording of {runId} at decision " +
                 $"{capture.NextSeq.ToString(CultureInfo.InvariantCulture)}; continuity {capture.Continuity}", 2);
             if (capture.Refusal is { } refusal) Log.Warn($"[{RunmobileMod.ModId}] {refusal}", 2);
+
+            // Where this resume refused, the fields the game came back different in,
+            // beside the refusal: every diagnosis of a broken Continue so far had to
+            // be rebuilt from the journal because the log said only that it broke.
+            // Bounded, because a hand or a deck is a long value and a log line is not
+            // the place for the whole reading.
+            if (resumeRefusals > journal.Refusals.Count)
+            {
+                Log.Warn($"[{RunmobileMod.ModId}] {DescribeResumeDifferences(journal.Entries[^1], sample)}", 2);
+            }
             if (capture.Stop is { } stopped)
             {
                 Log.Warn(
@@ -513,6 +524,27 @@ internal sealed class RunRecorder : IDisposable
         recorder.StartOrStopWatchingTheFight();
 
         Active = recorder;
+    }
+
+    private const int ResumeDifferenceFields = 8;
+    private const int ResumeDifferenceValueLength = 160;
+
+    /// <summary>The fields the resumed run differs in from the journal's last
+    /// reading, as one bounded line for the log.</summary>
+    internal static string DescribeResumeDifferences(
+        RunJournalEntry last, IReadOnlyDictionary<string, string> live)
+    {
+        var differences = ReplayTrace.Differences(last.State, live);
+        var shown = differences
+            .Take(ResumeDifferenceFields)
+            .Select(line => line.Length > ResumeDifferenceValueLength
+                ? line[..(ResumeDifferenceValueLength - 3)] + "..."
+                : line);
+        var more = differences.Count > ResumeDifferenceFields
+            ? $"; and {Number(differences.Count - ResumeDifferenceFields)} more"
+            : "";
+        return $"the run resumed differs from the journal's reading after decision {Number(last.Seq)} " +
+               $"({last.Verb}) in {Number(differences.Count)} field(s): {string.Join("; ", shown)}{more}";
     }
 
     /// <summary>

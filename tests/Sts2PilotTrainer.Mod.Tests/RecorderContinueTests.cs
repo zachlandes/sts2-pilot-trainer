@@ -3,6 +3,7 @@ using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.Map;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
@@ -43,6 +44,18 @@ namespace Sts2PilotTrainer.Arbiter.Tests;
 /// at the moment the retail attach used to read and again once the run is where the
 /// game's own Continue leaves it. Headlessly nothing yields inside those gaps, so each
 /// is observed from a prefix on the game member that ends it.
+///
+/// Two more Continues break for a different reason, one the timing above cannot
+/// reach: the state itself. A finished fight stays on the player until the next fight
+/// and the projection keeps emitting it, so every reading taken at a shop, a rest
+/// site, an event or a loot screen after a won fight carries that fight's residue,
+/// and the game's save carries none of it - <c>SerializableRun</c> has no combat
+/// member. Continued from that save, the run reads as a moment the journal never saw
+/// in exactly the residue fields and nothing else. The last two tests hold the resume
+/// to comparing what a save can carry once the complete digests have disagreed, from
+/// the game's own saves, with the Ironclad on the whole-act seed because its first
+/// two fights are won on attacks alone; the one card screen on the way, the opening
+/// blessing's, is answered by the driver's own improvisation.
 /// </summary>
 public sealed class RecorderContinueTests : IDisposable
 {
@@ -228,6 +241,170 @@ public sealed class RecorderContinueTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// Arrive at a shop straight after a won fight, quit, continue: the recorder's
+    /// reading at the arrival carries the finished fight and the restored run does
+    /// not, and nothing else differs, so nothing happened that the recorder missed.
+    /// </summary>
+    [GameFact]
+    public void AnHonestContinueAtAShopArrivalAfterAWonFightResumesContinuously()
+    {
+        using var recording = Patched();
+        RunRecorder.GameIdentitySource = HeadlessIdentity;
+        RunRecorder.Clock = new PumpedSettleClock();
+
+        var saves = new List<InterceptedRunSave>();
+        string lastDigest;
+        IReadOnlyDictionary<string, string> lastReading;
+        string runId;
+        int seq;
+        using (RunSaveInterception.Collect(saves.Add))
+        {
+            var session = StartIronclad();
+            using var driver = new RunDriver(session);
+            driver.ImproviseUnrecordedCardSelections();
+            driver.EnterFirstRoom();
+            Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
+            var actions = new List<ActionRecord>();
+
+            Apply(driver, actions, ActionVerb.ChooseNeowBlessing, ("option_index", "0"));
+            DrainSettles();
+            foreach (var node in RouteTo(session, MapPointType.Shop))
+            {
+                Move(driver, actions, session, node);
+                if (node.PointType == MapPointType.Shop) break;
+                Assert.Equal(MapPointType.Monster, node.PointType);
+                PlayToVictory(driver, actions, session);
+                TakeGoldAndSkipTheRest(driver, actions);
+            }
+
+            Assert.Equal(RoomType.Shop, session.RunState.CurrentRoom!.RoomType);
+
+            var capture = RunRecorder.Active!.Capture;
+            Assert.Empty(capture.Refusals);
+            lastDigest = capture.LastDigest;
+            lastReading = capture.Trace.Steps[^1].After;
+            Assert.True(ReplayTrace.CarriesFinishedCombat(lastReading), "the arrival reading carries no finished fight");
+            runId = capture.RunId;
+            seq = capture.NextSeq;
+
+            RunManager.Instance.CleanUp();
+        }
+
+        Assert.Null(RunRecorder.Active);
+        var arrival = saves.Last(taken => taken.IsFloorEntry);
+
+        var continued = new GameSession();
+        using var continuedDriver = new RunDriver(continued);
+        continuedDriver.ImproviseUnrecordedCardSelections();
+        continued.RestoreSavedRun(arrival.Json);
+        Pump.Drain();
+
+        Assert.True(RunRecorder.HasEnteredItsRoom());
+        var (live, liveDigest) = LiveRun.Read();
+        Assert.NotEqual(lastDigest, liveDigest);
+        Assert.False(ReplayTrace.CarriesFinishedCombat(live));
+        Assert.All(ReplayTrace.Differences(lastReading, live),
+            difference => Assert.StartsWith("combat.", difference, StringComparison.Ordinal));
+
+        Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
+        var resumed = RunRecorder.Active!.Capture;
+        Assert.Equal(runId, resumed.RunId);
+        Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
+        Assert.Empty(resumed.Refusals);
+        Assert.Empty(resumed.Discarded);
+        Assert.Equal(seq, resumed.NextSeq);
+    }
+
+    /// <summary>
+    /// Claim the gold on the loot screen, quit, continue: the game restores its
+    /// fight-won save, so the loot screen comes back with the gold on offer again and
+    /// the run carries no combat state. Under the fight-only rollback rule the match
+    /// is the killing play, a finished fight and not a room entry, so the resume is a
+    /// rewind that keeps the claim as a discarded branch: whole, playable, not a hole.
+    /// </summary>
+    [GameFact]
+    public void AnHonestContinueOnTheLootScreenIsARewindNotAHole()
+    {
+        using var recording = Patched();
+        RunRecorder.GameIdentitySource = HeadlessIdentity;
+        RunRecorder.Clock = new PumpedSettleClock();
+
+        var saves = new List<InterceptedRunSave>();
+        string runId;
+        int killingPlay;
+        using (RunSaveInterception.Collect(saves.Add))
+        {
+            var session = StartIronclad();
+            using var driver = new RunDriver(session);
+            driver.ImproviseUnrecordedCardSelections();
+            driver.EnterFirstRoom();
+            Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
+            var actions = new List<ActionRecord>();
+
+            Apply(driver, actions, ActionVerb.ChooseNeowBlessing, ("option_index", "0"));
+            DrainSettles();
+            MoveTo(driver, actions, session, MapPointType.Monster);
+            PlayToVictory(driver, actions, session);
+            var capture = RunRecorder.Active!.Capture;
+            killingPlay = capture.NextSeq - 1;
+            Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "gold"));
+            DrainSettles();
+            Assert.Equal(ActionVerb.ClaimReward, capture.Actions[^1].Verb);
+            runId = capture.RunId;
+
+            RunManager.Instance.CleanUp();
+        }
+
+        Assert.Null(RunRecorder.Active);
+        var won = saves.Last();
+        Assert.Equal("Monster", won.PreFinishedRoom);
+
+        // The driver first, so the rewards the restored room re-offers are parked the
+        // way the client's own loot screen holds them.
+        var continued = new GameSession();
+        using var continuedDriver = new RunDriver(continued);
+        continuedDriver.ImproviseUnrecordedCardSelections();
+        continued.RestoreSavedRun(won.Json);
+        Pump.Drain();
+
+        Assert.True(RunRecorder.HasEnteredItsRoom());
+        Assert.Equal(RunAttachment.Attached, RunRecorder.Attach());
+        var resumed = RunRecorder.Active!.Capture;
+        Assert.Equal(runId, resumed.RunId);
+        Assert.NotEqual(NativeSource.BrokenContinuity, resumed.Continuity);
+        Assert.Equal(NativeSource.RewoundContinuity, resumed.Continuity);
+        Assert.Equal(RunCaptureState.Recording, resumed.State);
+        Assert.Equal(killingPlay + 1, resumed.NextSeq);
+        var discarded = Assert.Single(resumed.Discarded);
+        Assert.Equal(killingPlay, discarded.RollbackToSeq);
+        Assert.True(discarded.Reload);
+        Assert.Equal(ActionVerb.ClaimReward, Assert.Single(discarded.Actions).Verb);
+    }
+
+    /// <summary>The line the recorder logs beside a refusal names the fields, in
+    /// order, and no more than eight of them.</summary>
+    [Fact]
+    public void TheResumeDifferenceLineIsBounded()
+    {
+        var last = new RunJournalEntry
+        {
+            Seq = 7,
+            Verb = "MapMove",
+            State = Enumerable.Range(0, 12).ToDictionary(i => $"field.{i:d2}", i => "old", StringComparer.Ordinal),
+            Digest = "sha256:" + new string('a', 64),
+        };
+        var live = Enumerable.Range(0, 12).ToDictionary(i => $"field.{i:d2}", i => "new", StringComparer.Ordinal);
+
+        var line = RunRecorder.DescribeResumeDifferences(last, live);
+
+        Assert.StartsWith("the run resumed differs from the journal's reading after decision 7 (MapMove) in 12 field(s): ", line, StringComparison.Ordinal);
+        Assert.Contains("field.00: old -> new", line, StringComparison.Ordinal);
+        Assert.Contains("field.07: old -> new", line, StringComparison.Ordinal);
+        Assert.DoesNotContain("field.08", line, StringComparison.Ordinal);
+        Assert.EndsWith("; and 4 more", line, StringComparison.Ordinal);
+    }
+
     // ── The moment between the run and its room ──────────────────────────────────
 
     /// <summary>Runs <paramref name="observe"/> when the retail continue sequence is
@@ -356,4 +533,104 @@ public sealed class RecorderContinueTests : IDisposable
             args.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal), StringComparer.Ordinal),
         Source = FactSource.Declared,
     };
+
+    // ── An Ironclad run that wins on attacks alone ───────────────────────────────
+
+    private const string IroncladSeed = "67L571H38L";
+
+    private static GameSession StartIronclad()
+    {
+        if (RunManager.Instance is { IsInProgress: true } stale) stale.CleanUp();
+        var session = new GameSession();
+        session.StartRun(IroncladSeed, "CHARACTER.IRONCLAD", 0, "standard", Acts);
+        return session;
+    }
+
+    private static void Apply(
+        RunDriver driver, List<ActionRecord> actions, ActionVerb verb, params (string Key, string Value)[] args)
+    {
+        var action = Record(actions.Count, verb, args);
+        driver.Apply(action);
+        actions.Add(action);
+        DrainSettles();
+    }
+
+    private static MapPoint Current(GameSession session)
+    {
+        var coord = session.RunState.CurrentMapCoord!.Value;
+        return session.RunState.Map!.GetPoint(coord.col, coord.row)!;
+    }
+
+    private static void MoveTo(RunDriver driver, List<ActionRecord> actions, GameSession session, MapPointType type) =>
+        Move(driver, actions, session,
+            Current(session).Children.Where(child => child.PointType == type).OrderBy(child => child.coord.col).First());
+
+    private static void Move(RunDriver driver, List<ActionRecord> actions, GameSession session, MapPoint next) =>
+        Apply(driver, actions, ActionVerb.MapMove,
+            ("act", N(session.RunState.CurrentActIndex)),
+            ("row", N(next.coord.row)), ("column", N(next.coord.col)));
+
+    /// <summary>The shortest route from the run's node to the nearest node of the
+    /// given type through ordinary fights only, so every room on the way is one
+    /// <see cref="PlayToVictory"/> has a rule for.</summary>
+    private static IReadOnlyList<MapPoint> RouteTo(GameSession session, MapPointType type)
+    {
+        var start = Current(session);
+        var queue = new Queue<(MapPoint Node, List<MapPoint> Path)>();
+        queue.Enqueue((start, []));
+        var seen = new HashSet<MapPoint> { start };
+        while (queue.Count > 0)
+        {
+            var (node, path) = queue.Dequeue();
+            foreach (var child in node.Children.OrderBy(child => child.coord.col))
+            {
+                if (!seen.Add(child)) continue;
+                var next = new List<MapPoint>(path) { child };
+                if (child.PointType == type) return next;
+                if (child.PointType == MapPointType.Monster) queue.Enqueue((child, next));
+            }
+        }
+
+        throw new InvalidOperationException($"no route to a {type} node through ordinary fights on this seed");
+    }
+
+    /// <summary>The first playable attack, else the first playable card, to the end
+    /// of the fight: the whole-act fixture's own rule, which wins this seed's first
+    /// two fights.</summary>
+    private static void PlayToVictory(RunDriver driver, List<ActionRecord> actions, GameSession session)
+    {
+        for (var turn = 0; turn < 40 && Field(session, "combat.outcome") == "in_progress"; turn++)
+        {
+            while (Field(session, "combat.outcome") == "in_progress")
+            {
+                var hand = session.RunState.Players[0].PlayerCombatState!.Hand.Cards;
+                var playable = Enumerable.Range(0, hand.Count).Where(i => hand[i].CanPlay(out _, out _)).ToList();
+                var index = playable.FirstOrDefault(i => hand[i].Type == CardType.Attack, playable.Count > 0 ? playable[0] : -1);
+                if (index < 0) break;
+                var card = hand[index];
+                var alive = CombatManager.Instance!.DebugOnlyGetState()!.Enemies.Count(enemy => enemy is { IsAlive: true });
+                Apply(driver, actions, ActionVerb.PlayCard,
+                [
+                    ("card_id", card.Id.ToString()),
+                    ("hand_index", N(index)),
+                    .. card.TargetType == TargetType.AnyEnemy && alive > 1 ? new[] { ("target_index", "0") } : [],
+                ]);
+            }
+
+            if (Field(session, "combat.outcome") != "in_progress") break;
+            Apply(driver, actions, ActionVerb.EndTurn);
+        }
+
+        Assert.Equal("victory", Field(session, "combat.outcome"));
+    }
+
+    private static void TakeGoldAndSkipTheRest(RunDriver driver, List<ActionRecord> actions)
+    {
+        if (driver.UnclaimedRewardKinds.Contains("gold", StringComparer.Ordinal))
+        {
+            Apply(driver, actions, ActionVerb.ClaimReward, ("reward_type", "gold"));
+        }
+
+        if (driver.UnclaimedRewardKinds.Count > 0) Apply(driver, actions, ActionVerb.SkipRewards);
+    }
 }
