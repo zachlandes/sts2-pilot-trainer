@@ -2,6 +2,29 @@ namespace Sts2PilotTrainer.Replay.Tests;
 
 public class CanonicalStateTests
 {
+    /// <summary>A field kept outside the digest is projected, sampled and read, and
+    /// changes neither the digest nor the rendering the digest hashes; a sample is
+    /// the same state with it, without it, or with it different.</summary>
+    [Fact]
+    public void AFieldOutsideTheDigestIsReadAndNeverHashed()
+    {
+        var without = CanonicalState.Build().Add("player.hp", 1).ToState();
+        var with = CanonicalState.Build().Add("player.hp", 1).AddOutsideTheDigest(ReplayTrace.EndedOnSideField, "player").ToState();
+        var other = CanonicalState.Build().Add("player.hp", 1).AddOutsideTheDigest(ReplayTrace.EndedOnSideField, "enemy").ToState();
+
+        Assert.Equal("player", with.Fields[ReplayTrace.EndedOnSideField]);
+        Assert.Equal([ReplayTrace.EndedOnSideField], with.OutsideTheDigest);
+        Assert.Equal(without.Render(), with.Render());
+        Assert.Equal(without.Digest(), with.Digest());
+        Assert.Equal(without.Digest(), other.Digest());
+
+        Assert.True(ReplayTrace.SameSample(ReplayTrace.Sample(without.Fields), ReplayTrace.Sample(with.Fields)));
+        Assert.True(ReplayTrace.SameSample(ReplayTrace.Sample(with.Fields), ReplayTrace.Sample(other.Fields)));
+        Assert.False(ReplayTrace.SameSample(
+            ReplayTrace.Sample(with.Fields),
+            ReplayTrace.Sample(CanonicalState.Build().Add("player.hp", 2).ToState().Fields)));
+    }
+
     [Fact]
     public void OrdersFieldsSoTwoBuildOrdersProduceTheSameDigest()
     {

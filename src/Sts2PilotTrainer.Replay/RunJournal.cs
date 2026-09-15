@@ -29,7 +29,8 @@ namespace Sts2PilotTrainer.Replay;
 public sealed record RunJournal
 {
     /// <summary>
-    /// Version 5 samples nothing of a finished fight. Every reading a version-4
+    /// Version 5 samples nothing of a finished fight into the digest, and beside it
+    /// only which side's turn the fight ended in. Every reading a version-4
     /// journal took after a fight until the next one carried that fight's residue -
     /// its turn, energy, empty piles and a victory that outlived the room - and every
     /// complete digest on those lines hashes it, because the projection of the build

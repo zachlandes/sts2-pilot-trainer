@@ -269,16 +269,17 @@ public sealed record CombatProjection
     ///
     /// The step that ends the fight samples no roster afterwards, because nothing of
     /// a finished fight is projected, so what it took off the enemy is read from how
-    /// the fight ended and what the step was. Won, the engine's own rule says what
+    /// the fight ended and whose turn it ended in. Won, the engine's own rule says what
     /// happened: a fight is won once no living enemy is primary, so every primary
     /// enemy standing before the step is gone after it - dead, or escaped, and the
-    /// two are told apart by the action and not by anything the enemy telegraphed.
-    /// An enemy leaves alive only on its own side's turn, which runs inside the
-    /// player's end of turn and nowhere else, so a fight the player's own action ended
-    /// killed every primary enemy in it and each one's remaining health is what that
-    /// action dealt; a fight that ended inside an end of turn may have been won by a
-    /// kill or by a flight, nothing after the step says which, and its enemy health
-    /// lost is null. A secondary enemy - one carrying a power in
+    /// two are told apart by the side the after-sample says the fight ended on, not
+    /// by the action's verb and not by anything the enemy telegraphed. An enemy leaves
+    /// alive only during its own side's turn, so a fight that ended on the player's
+    /// side was ended by a kill and each primary enemy's remaining health is what the
+    /// step dealt; one that ended on the enemy's side - an ordinary end of turn, or a
+    /// card that ended the turn inside its own play - may have been won by a kill or
+    /// by a flight, nothing after the step says which, and its enemy health lost is
+    /// null, as it is where the sample names no side at all. A secondary enemy - one carrying a power in
     /// <see cref="SecondaryEnemyPowers"/> - may still be standing, and whether it is
     /// went unsampled with the rest of the finished fight, so a fight ended around
     /// one is refused rather than credited with its health. Lost, the enemy that
@@ -323,7 +324,7 @@ public sealed record CombatProjection
         var after = int.Parse(raw, System.Globalization.CultureInfo.InvariantCulture);
         if (after == 0)
         {
-            return HealthOfTheEnemiesTheStepTookDown(step, before);
+            return Enumerable.Range(0, before).Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"));
         }
 
         if (after != before)
@@ -352,17 +353,17 @@ public sealed record CombatProjection
         return dealt;
     }
 
-    /// <summary>The one step inside a fight during which the enemy side acts: the only
-    /// step on which an enemy can leave the fight alive rather than dead. Duplicated
-    /// game knowledge, held to the engine's own call sites by
+    /// <summary>The sampled side whose turn a finished fight ended in, as the
+    /// projection writes it beside the digest. That an enemy leaves a fight alive only
+    /// during its own side's turn is duplicated game knowledge, held to the engine's
+    /// own call sites by
     /// <c>FinishedFightProjectionTests.AnEnemyLeavesAFightAliveOnlyDuringTheEnemySideOfTheTurn</c>.</summary>
-    private static bool TheEnemySideActsDuring(ReplayStep step) =>
-        string.Equals(step.Verb, nameof(ActionVerb.EndTurn), StringComparison.Ordinal);
+    public const string EndedOnSideField = ReplayTrace.EndedOnSideField;
 
     private static int? HealthOfTheEnemiesTheStepTookDown(ReplayStep step, int before) =>
-        TheEnemySideActsDuring(step)
-            ? null
-            : Enumerable.Range(0, before).Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"));
+        string.Equals(step.After.GetValueOrDefault(EndedOnSideField), "player", StringComparison.Ordinal)
+            ? Enumerable.Range(0, before).Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"))
+            : null;
 
     /// <summary>
     /// The powers whose owner the engine counts as a secondary enemy, by the id the

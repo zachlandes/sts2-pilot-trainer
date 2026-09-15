@@ -674,6 +674,7 @@
               "run.total_floor": "2"
             },
             "after": {
+              "combat.ended_on_side": "player",
               "combat.in_progress": "false",
               "combat.outcome": "victory",
               "player.deck": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.BASH|CARD.ASCENDERS_BANE|CARD.HELLRAISER|CARD.HELLRAISER",
@@ -1973,6 +1974,7 @@
               "run.total_floor": "4"
             },
             "after": {
+              "combat.ended_on_side": "player",
               "combat.in_progress": "false",
               "combat.outcome": "victory",
               "player.deck": "CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.STRIKE_IRONCLAD|CARD.DEFEND_IRONCLAD|CARD.DEFEND_IRONCLAD@ENCHANTMENT.STEADY|CARD.DEFEND_IRONCLAD|CARD.BASH@ENCHANTMENT.STEADY|CARD.ASCENDERS_BANE|CARD.HELLRAISER|CARD.HELLRAISER|CARD.POMMEL_STRIKE",

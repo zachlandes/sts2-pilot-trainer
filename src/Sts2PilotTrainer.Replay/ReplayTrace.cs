@@ -39,6 +39,7 @@ public sealed record ReplayTrace
     [
         "combat.in_progress",
         "combat.outcome",
+        EndedOnSideField,
         "combat.turn",
         "combat.round",
         "combat.encounter",
@@ -65,6 +66,22 @@ public sealed record ReplayTrace
 
     /// <summary>Per-enemy fields are numbered, so they are selected by prefix.</summary>
     public const string EnemyFieldPrefix = "combat.enemy.";
+
+    /// <summary>
+    /// Which side's turn a finished fight ended in, <c>player</c> or <c>enemy</c>: the
+    /// one reading of a finished fight a trace keeps, and the one sampled field the
+    /// digest does not hash. The game's save carries no combat state, so a run
+    /// continued onto the loot screen has no such reading where the run that was
+    /// never quit does; a comparison that holds two hosts to one state therefore
+    /// leaves it out, as <see cref="HeldToTheDigest"/> says, and the step that ends a
+    /// fight reads it to tell a kill from a flight.
+    /// </summary>
+    public const string EndedOnSideField = "combat.ended_on_side";
+
+    /// <summary>Whether a sampled field is one two hosts have to agree on: every
+    /// field but the ones the projection keeps outside the digest.</summary>
+    public static bool HeldToTheDigest(string field) =>
+        !string.Equals(field, EndedOnSideField, StringComparison.Ordinal);
 
     /// <summary>Whether a canonical field belongs in a trace sample.</summary>
     public static bool IsSampled(string field) =>
@@ -102,13 +119,16 @@ public sealed record ReplayTrace
                 $"{(right.TryGetValue(field, out var r) ? r : "absent")}")
             .ToList();
 
-    /// <summary>Whether two samples carry the same fields with the same values.</summary>
+    /// <summary>Whether two samples read the same state: the same fields with the
+    /// same values, over the fields two hosts have to agree on.</summary>
     public static bool SameSample(
-        IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right) =>
-        left.Count == right.Count &&
-        left.All(field =>
-            right.TryGetValue(field.Key, out var value) &&
-            string.Equals(field.Value, value, StringComparison.Ordinal));
+        IReadOnlyDictionary<string, string> left, IReadOnlyDictionary<string, string> right)
+    {
+        var held = left.Keys.Union(right.Keys, StringComparer.Ordinal).Where(HeldToTheDigest);
+        return held.All(field =>
+            left.TryGetValue(field, out var l) && right.TryGetValue(field, out var r) &&
+            string.Equals(l, r, StringComparison.Ordinal));
+    }
 
     [JsonPropertyName("steps")]
     public required IReadOnlyList<ReplayStep> Steps { get; init; }

@@ -193,6 +193,7 @@ public sealed class FightCapture : IFightSampleSink
         if (!ReplayTrace.SameSample(last, sample))
         {
             var differences = last.Keys.Union(sample.Keys, StringComparer.Ordinal)
+                .Where(ReplayTrace.HeldToTheDigest)
                 .Order(StringComparer.Ordinal)
                 .Where(field => !string.Equals(
                     last.GetValueOrDefault(field), sample.GetValueOrDefault(field), StringComparison.Ordinal))

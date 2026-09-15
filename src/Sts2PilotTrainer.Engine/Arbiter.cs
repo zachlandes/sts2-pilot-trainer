@@ -144,6 +144,7 @@ public static class Arbiter
         var residue = ignoreFinishedFightResidue && FinishedFightResidue.TakenOutsideALiveFight(expected);
         return expected.Keys
             .Union(actual.Keys, StringComparer.Ordinal)
+            .Where(ReplayTrace.HeldToTheDigest)
             .Where(field => !residue || !FinishedFightResidue.IsResidueField(field))
             .OrderBy(field => field, StringComparer.Ordinal)
             .Where(field => !expected.TryGetValue(field, out var expectedValue) ||

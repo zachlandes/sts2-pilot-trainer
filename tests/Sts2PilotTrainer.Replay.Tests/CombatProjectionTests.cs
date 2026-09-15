@@ -272,6 +272,7 @@ public class CombatProjectionTests
         // primary, the fight's end is the whole roster's, and each one's remaining
         // health is what the step dealt.
         before["combat.enemy.1.powers"] = "POWER.THORNS_POWER:2";
+        end[CombatProjection.EndedOnSideField] = "player";
         var projection = Project("clear", Trace(
             Step(-1, "run_start", Outside(), before),
             Step(0, "PlayCard", before, end)));
@@ -279,78 +280,50 @@ public class CombatProjectionTests
     }
 
     /// <summary>
-    /// A fight the player's own action ended was won by killing what stood there,
-    /// whatever the enemy had telegraphed: a Thieving Hopper announcing its flight and
-    /// struck down first is credited at its remaining health.
-    /// </summary>
-    [Fact]
-    public void CreditsAKillThePlayersOwnActionMadeWhateverTheEnemyTelegraphed()
-    {
-        var before = InCombat(1, 80, 12);
-        before["combat.enemy.0.intent"] = "Escape";
-        var end = Outside();
-        end["combat.outcome"] = "victory";
-        end["player.hp"] = "80";
-
-        var projection = Project("hopper-killed", Trace(
-            Step(-1, "run_start", Outside(), before),
-            Step(0, "PlayCard", before, end, ("card_id", "CARD.STRIKE_IRONCLAD"))));
-
-        Assert.Equal(12, projection.Turns.Single().EnemyHealthLost);
-    }
-
-    /// <summary>
-    /// A fight that ended inside an end of turn may have been won by a kill or by a
-    /// flight - a Thieving Hopper leaving on its telegraphed move, a Battleworn Dummy
-    /// leaving on a timer it never telegraphed - and nothing after the step says
-    /// which, so that turn's enemy health lost is unavailable rather than the
-    /// roster's remaining health, the earlier turn keeps its number, and the fight
-    /// still projects. The same holds where an older trace samples the emptied
-    /// roster after the step.
+    /// A fight-ending step samples no roster afterwards, so what it took off the
+    /// enemy is read from the side the sample says the fight ended on, never from
+    /// the verb. Ended on the player's side, every enemy standing before it was
+    /// killed and is credited, whatever it had telegraphed - a Thieving Hopper
+    /// announcing its flight and struck down first, or an enemy taken by the player's
+    /// own end-of-turn effects. Ended on the enemy's side - an ordinary end of turn,
+    /// or a card such as Void Form that ends the turn inside its own play - the enemy
+    /// may have been killed or may have fled, so the turn carries no number; nor does
+    /// one whose sample names no side at all. The earlier turn keeps its number and
+    /// the fight still projects.
     /// </summary>
     [Theory]
-    [InlineData("Escape")]
-    [InlineData("none")]
-    public void LeavesTheTurnAnEnemyMayHaveFledOnWithoutANumber(string intent)
+    [InlineData("PlayCard", "player", 12)]
+    [InlineData("EndTurn", "player", 12)]
+    [InlineData("PlayCard", "enemy", null)]
+    [InlineData("EndTurn", "enemy", null)]
+    [InlineData("PlayCard", null, null)]
+    public void ReadsAFightEndingStepsEnemyHealthLostOffTheSideItEndedOn(string verb, string? endedOnSide, int? expected)
     {
         var start = InCombat(1, 80, 20);
-        start["combat.enemy.0.intent"] = intent;
+        start["combat.enemy.0.intent"] = "Escape";
         var struck = InCombat(1, 80, 12);
-        struck["combat.enemy.0.intent"] = intent;
+        struck["combat.enemy.0.intent"] = "Escape";
         var end = Outside();
         end["combat.outcome"] = "victory";
         end["player.hp"] = "80";
+        if (endedOnSide is not null) end[CombatProjection.EndedOnSideField] = endedOnSide;
 
-        var projection = Project("fled", Trace(
+        var projection = Project("fight-end", Trace(
             Step(-1, "run_start", Outside(), start),
             Step(0, "PlayCard", start, struck, ("card_id", "CARD.STRIKE_IRONCLAD")),
-            Step(1, "EndTurn", struck, end)));
+            Step(1, verb, struck, end, ("card_id", "CARD.VOID_FORM"))));
 
         Assert.Equal("victory", projection.Summary.Outcome);
-        Assert.Null(projection.Turns.Single().EnemyHealthLost);
+        Assert.Equal(expected is { } dealt ? 8 + dealt : null, projection.Turns.Single().EnemyHealthLost);
 
         var secondTurn = InCombat(2, 80, 12);
-        secondTurn["combat.enemy.0.intent"] = intent;
-        var twoTurns = Project("fled-later", Trace(
+        var twoTurns = Project("fight-end-later", Trace(
             Step(-1, "run_start", Outside(), start),
             Step(0, "PlayCard", start, struck, ("card_id", "CARD.STRIKE_IRONCLAD")),
             Step(1, "EndTurn", struck, secondTurn),
-            Step(2, "EndTurn", secondTurn, end)));
+            Step(2, verb, secondTurn, end, ("card_id", "CARD.VOID_FORM"))));
         Assert.Equal(8, twoTurns.Turns[0].EnemyHealthLost);
-        Assert.Null(twoTurns.Turns[1].EnemyHealthLost);
-
-        var emptied = new Dictionary<string, string>(end, StringComparer.Ordinal)
-        {
-            ["combat.in_progress"] = "true",
-            ["combat.outcome"] = "in_progress",
-            ["combat.turn"] = "1",
-            ["combat.enemy_count"] = "0",
-        };
-        var older = Project("fled-older", Trace(
-            Step(-1, "run_start", Outside(), start),
-            Step(0, "EndTurn", start, emptied),
-            Step(1, "EndTurn", emptied, end)));
-        Assert.Null(older.Turns.Single().EnemyHealthLost);
+        Assert.Equal(expected, twoTurns.Turns[1].EnemyHealthLost);
     }
 
     [Fact]
@@ -363,6 +336,7 @@ public class CombatProjectionTests
         var victory = Outside();
         victory["combat.outcome"] = "victory";
         victory["player.hp"] = "80";
+        victory[CombatProjection.EndedOnSideField] = "player";
 
         var projection = Project("blocked", Trace(
             Step(-1, "run_start", Outside(), start),
@@ -486,6 +460,7 @@ public class CombatProjectionTests
         var victory = Outside();
         victory["combat.outcome"] = "victory";
         victory["player.hp"] = "71";
+        victory[CombatProjection.EndedOnSideField] = "player";
         victory["player.potions"] = "empty|empty|empty";
 
         return Trace(
@@ -504,6 +479,7 @@ public class CombatProjectionTests
         var victory = Outside();
         victory["combat.outcome"] = "victory";
         victory["player.hp"] = "80";
+        victory[CombatProjection.EndedOnSideField] = "player";
 
         return Trace(
             Step(-1, "run_start", Outside(), Outside()),

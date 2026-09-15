@@ -191,6 +191,16 @@ public static class CanonicalStateProjection
     /// state, because that state outlives the fight, and asking it would report a
     /// finished fight as an active one - the reading that would let a whole-combat
     /// comparison compute total turns over a fight that had not finished.
+    ///
+    /// One reading of a finished fight is taken, and kept out of the digest: which
+    /// side's turn it ended in, off the combat state the manager still holds in the
+    /// fight's own room. A trace needs it because the step that ended the fight
+    /// samples no roster afterwards, and an enemy leaves a fight alive only during its
+    /// own side's turn - so a fight that ended on the player's side was ended by a
+    /// kill, and one that ended on the enemy's may have been won by a flight. The
+    /// game's save carries no combat state, so a run continued onto the loot screen
+    /// has no such reading and the digest, which both have to agree on, never hashes
+    /// it; <see cref="CanonicalState.OutsideTheDigest"/> owns that line.
     /// </summary>
     private static void ProjectCombat(CanonicalState.Builder builder, RunState run, Player player)
     {
@@ -206,8 +216,13 @@ public static class CanonicalStateProjection
         var combat = player.PlayerCombatState;
         if (manager is not { IsInProgress: true } || combat is null)
         {
+            var outcome = OutcomeOutsideALiveFight(run, player);
             builder.Add("combat.in_progress", false);
-            builder.Add("combat.outcome", OutcomeOutsideALiveFight(run, player));
+            builder.Add("combat.outcome", outcome);
+            if (outcome != "none" && manager?.DebugOnlyGetState() is { } ended)
+            {
+                builder.AddOutsideTheDigest(EndedOnSideField, ended.CurrentSide == CombatSide.Player ? "player" : "enemy");
+            }
             return;
         }
 
@@ -297,6 +312,10 @@ public static class CanonicalStateProjection
     /// off the live roster before the killing action, and refused there rather than
     /// guessed.
     /// </summary>
+    /// <summary>The trace-only field naming the side whose turn a finished fight
+    /// ended in: <c>player</c> or <c>enemy</c>.</summary>
+    public const string EndedOnSideField = ReplayTrace.EndedOnSideField;
+
     private static string OutcomeOutsideALiveFight(RunState run, Player player)
     {
         if (player.Creature is { IsAlive: false }) return "defeat";

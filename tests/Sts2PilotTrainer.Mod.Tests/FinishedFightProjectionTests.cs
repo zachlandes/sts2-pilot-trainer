@@ -59,11 +59,12 @@ public sealed class FinishedFightProjectionTests
     }
 
     /// <summary>
-    /// The killing play's settled reading says the fight was won and nothing else of
-    /// it, though the engine still carries the fight's own state; leaving the room
-    /// takes even the outcome with it. Between the two, the loot screen reads exactly
-    /// as the game's fight-won save restores it: the same room, marked finished, and
-    /// no fight.
+    /// The killing play's settled reading says the fight was won, whose turn it was
+    /// won in, and nothing else of it, though the engine still carries the fight's own
+    /// state; leaving the room takes even the outcome with it. The side is the one
+    /// reading of a finished fight and it stays out of the digest, so between the two
+    /// the loot screen's digest reads exactly as the game's fight-won save restores
+    /// it: the same room, marked finished, and no fight.
     /// </summary>
     [GameFact]
     public void AFinishedFightLeavesOnlyItsOutcomeAndOnlyWhileTheRunStandsInItsRoom()
@@ -73,7 +74,7 @@ public sealed class FinishedFightProjectionTests
             using var driver = new RunDriver(session);
             driver.ImproviseUnrecordedCardSelections();
             EnterTheFirstFight(driver, session);
-            var seq = PlayToVictory(driver, session, firstSeq: 2);
+            var (seq, endedBy) = PlayToVictory(driver, session, firstSeq: 2);
 
             // The engine has not let go of the fight: the projection has.
             var player = session.RunState.Players[0];
@@ -82,10 +83,17 @@ public sealed class FinishedFightProjectionTests
             Assert.False(CombatManager.Instance!.IsInProgress);
             Assert.True(session.RunState.CurrentRoom is CombatRoom { IsPreFinished: true });
 
-            var won = CanonicalStateProjection.Project(session.RunState).Fields;
+            var wonState = CanonicalStateProjection.Project(session.RunState);
+            var won = wonState.Fields;
             Assert.Equal("false", won["combat.in_progress"]);
             Assert.Equal("victory", won["combat.outcome"]);
-            Assert.Equal(["combat.in_progress", "combat.outcome"], CombatFields(won));
+            Assert.Equal(
+                endedBy == ActionVerb.PlayCard ? "player" : "enemy",
+                won[CanonicalStateProjection.EndedOnSideField]);
+            Assert.Equal(["combat.ended_on_side", "combat.in_progress", "combat.outcome"], CombatFields(won));
+            Assert.Equal([CanonicalStateProjection.EndedOnSideField], wonState.OutsideTheDigest);
+            Assert.DoesNotContain(CanonicalStateProjection.EndedOnSideField, wonState.Render(), StringComparison.Ordinal);
+            Assert.Contains("combat.outcome=victory", wonState.Render(), StringComparison.Ordinal);
 
             // The loot taken changes the player and nothing about the fight.
             if (driver.UnclaimedRewardKinds.Contains("gold", StringComparer.Ordinal))
@@ -96,7 +104,7 @@ public sealed class FinishedFightProjectionTests
             if (driver.UnclaimedRewardKinds.Count > 0) driver.Apply(Record(seq++, ActionVerb.SkipRewards));
             var lootTaken = CanonicalStateProjection.Project(session.RunState).Fields;
             Assert.Equal("victory", lootTaken["combat.outcome"]);
-            Assert.Equal(["combat.in_progress", "combat.outcome"], CombatFields(lootTaken));
+            Assert.Equal(["combat.ended_on_side", "combat.in_progress", "combat.outcome"], CombatFields(lootTaken));
 
             // Leaving the room leaves the fight behind entirely, whatever the next
             // room is; a fight the next room deals is that fight, live.
@@ -138,7 +146,7 @@ public sealed class FinishedFightProjectionTests
             var fields = CanonicalStateProjection.Project(session.RunState).Fields;
             Assert.Equal("false", fields["combat.in_progress"]);
             Assert.Equal("defeat", fields["combat.outcome"]);
-            Assert.Equal(["combat.in_progress", "combat.outcome"], CombatFields(fields));
+            Assert.Equal(["combat.ended_on_side", "combat.in_progress", "combat.outcome"], CombatFields(fields));
         });
     }
 
@@ -239,9 +247,12 @@ public sealed class FinishedFightProjectionTests
     /// <summary>Attacks first and ends the turn when nothing can be played, the way
     /// every headless walk here wins the Ironclad's first fight; returns the next
     /// free sequence number.</summary>
-    private static int PlayToVictory(RunDriver driver, GameSession session, int firstSeq)
+    /// <summary>Plays attacks and ends turns until the fight is won; the next free
+    /// sequence number and the verb of the decision the fight ended on.</summary>
+    private static (int Seq, ActionVerb EndedBy) PlayToVictory(RunDriver driver, GameSession session, int firstSeq)
     {
         var seq = firstSeq;
+        var endedBy = ActionVerb.EndTurn;
         for (var turn = 0; turn < 40 && Field(session, "combat.outcome") == "in_progress"; turn++)
         {
             while (Field(session, "combat.outcome") == "in_progress")
@@ -250,16 +261,18 @@ public sealed class FinishedFightProjectionTests
                 var playable = Enumerable.Range(0, hand.Count).Where(i => hand[i].CanPlay(out _, out _)).ToList();
                 var index = playable.FirstOrDefault(i => hand[i].Type == CardType.Attack, playable.Count > 0 ? playable[0] : -1);
                 if (index < 0) break;
+                endedBy = ActionVerb.PlayCard;
                 driver.Apply(Record(seq++, ActionVerb.PlayCard,
                     ("card_id", hand[index].Id.ToString()), ("hand_index", Number(index))));
             }
 
             if (Field(session, "combat.outcome") != "in_progress") break;
+            endedBy = ActionVerb.EndTurn;
             driver.Apply(Record(seq++, ActionVerb.EndTurn));
         }
 
         Assert.Equal("victory", Field(session, "combat.outcome"));
-        return seq;
+        return (seq, endedBy);
     }
 
     private static (int Row, int Column) NextNode(GameSession session)
