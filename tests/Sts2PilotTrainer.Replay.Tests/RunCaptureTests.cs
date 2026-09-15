@@ -304,6 +304,7 @@ public sealed class RunCaptureTests
         Assert.Equal(NativeSource.ContinuousContinuity, resumed.Continuity);
         Assert.Empty(resumed.Refusals);
         Assert.False(Assert.Single(resumed.Discarded).Reload);
+        RecordStableRosterAtRunEnd(resumed);
         resumed.Finish("abandoned");
         var manifest = resumed.ToManifest();
         Assert.False(manifest.Source.Native!.IsRewound);
