@@ -312,25 +312,27 @@ internal static partial class Commands
         var outcome = Arbiter.RunDiscardedBranch(
             manifest, branchIndex, RecordedFightEntry.SuppliedProgressFor(manifest));
         var report = outcome.Report;
-        var capturedCoverage = RunCoverage.Of(branch.Trace);
-        var capturedFloor = capturedCoverage.Floors.First(entry =>
-            entry.EnteredAfterSeq == branch.RollbackToSeq);
-        var capturedFight = capturedCoverage.FightsOn(capturedFloor).First();
+
+        // Where the save the branch left from was a floor arrival, the engine's own
+        // digest of that arrival is on the replay and the branch's has to be it; the
+        // arbiter has already held the branch's samples either end. A save taken
+        // anywhere else has no boundary to hold, and the samples are the whole check.
         var coverage = report.Trace is { } trace ? RunCoverage.Of(trace) : null;
         var floor = coverage?.Floors.FirstOrDefault(entry => entry.EnteredAfterSeq == branch.RollbackToSeq);
-        var fight = floor is null ? null : coverage!.FightsOn(floor).FirstOrDefault();
         var boundary = floor is null
             ? null
             : report.Boundaries.FirstOrDefault(candidate =>
                 candidate.Kind == ReplayBoundary.FloorEntryKind && candidate.Floor == floor.Floor &&
                 candidate.AfterSeq == branch.RollbackToSeq);
-        var passed = report.Status == VerificationStatus.Verified &&
-            fight?.CombatStartSeq == capturedFight.CombatStartSeq &&
-            boundary?.Digest.Source == FactSource.Engine &&
-            string.Equals(boundary.Digest.Value, branch.RollbackToDigest, StringComparison.Ordinal);
+        var arrivalDigestHolds = boundary is null ||
+            (boundary.Digest.Source == FactSource.Engine &&
+             string.Equals(boundary.Digest.Value, branch.RollbackToDigest, StringComparison.Ordinal));
+        var passed = report.Status == VerificationStatus.Verified && arrivalDigestHolds;
         var diagnostic = passed
             ? null
-            : "The discarded decisions did not reproduce a fight from their verified room-entry state.";
+            : arrivalDigestHolds
+                ? "The discarded decisions did not reproduce from the state of the save they left."
+                : "The discarded decisions left a floor arrival whose digest is not the one the engine produced there.";
 
         Console.WriteLine($"manifest : {manifest.RunId}");
         Console.WriteLine($"branch   : {branchIndex}");

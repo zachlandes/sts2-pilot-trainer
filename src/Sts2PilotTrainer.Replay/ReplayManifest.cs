@@ -306,14 +306,29 @@ public sealed record NativeSource
     public IReadOnlyList<UnmappedDecision>? Unmapped { get; init; }
 
     /// <summary>
-    /// Branches the player played after entering a fight and the game's own save
-    /// later rolled back. Kept as captured evidence and excluded from the continued
-    /// run's ordered history; the publication gate replays each branch separately
-    /// through its final captured state.
+    /// Branches the player played and the game's restore of its save later rolled
+    /// back - its own latest save on an ordinary Continue, or an older one on a
+    /// reload. Kept as captured evidence and excluded from the continued run's
+    /// ordered history; the publication gate replays each branch separately through
+    /// its final captured state.
     /// </summary>
     [JsonPropertyName("discarded")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public IReadOnlyList<DiscardedBranch>? Discarded { get; init; }
+
+    /// <summary>
+    /// Where the game saved the run, on the continued history: the decision each
+    /// save holds the state after, in history order. Captured, because the recorder
+    /// watched the game's own save complete. Present, empty included, on every
+    /// recording whose recorder watched for them, and absent from one written before
+    /// that - the validator holds a branch the game's own rollback made to one of
+    /// these where the list is present, and to the one shape an earlier recorder
+    /// could recognise where it is not. The run-start save, taken before the recorder
+    /// can watch, is never listed and is what a rollback to -1 returns to.
+    /// </summary>
+    [JsonPropertyName("save_points")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<SavePoint>? SavePoints { get; init; }
 
     /// <summary>
     /// The fights the player marked as worth attention, in fight order, and absent
@@ -397,23 +412,53 @@ public sealed record FightBookmark
     public required Fact<bool> Bookmarked { get; init; }
 }
 
-/// <summary>A recorded branch removed by the game's observed room-entry rollback.</summary>
+/// <summary>
+/// One save the game took of the run, as the decision it holds the state after.
+///
+/// Keyed by that decision's ordinal and carrying the same ordinal as its evidence,
+/// the way a bookmark carries the fight's end: the fact is that the game's own save
+/// completed there, and the recorder is the only thing that watched it do so.
+/// </summary>
+public sealed record SavePoint
+{
+    /// <summary>The decision the save holds the state after; never -1, because the
+    /// run-start save is taken before the recorder can watch.</summary>
+    [JsonPropertyName("after_seq")]
+    public required int AfterSeq { get; init; }
+
+    /// <summary>Captured, always: the game's own save task completed.</summary>
+    [JsonPropertyName("saved")]
+    public required Fact<bool> Saved { get; init; }
+}
+
+/// <summary>A recorded branch removed by the game's restore of a save.</summary>
 public sealed record DiscardedBranch
 {
-    /// <summary>The action the continued run returned to: a room entry for the game's
-    /// own rollback of a live fight, or any decision - the opening reading's -1
-    /// included - for a reload that rewound the run.</summary>
+    /// <summary>The action the continued run returned to: the decision the game's
+    /// latest save held the state after for the game's own rollback, or any decision
+    /// for a reload that rewound the run; the opening reading's -1 for either where
+    /// the save was the run-start one.</summary>
     [JsonPropertyName("rollback_to_seq")]
     public required int RollbackToSeq { get; init; }
 
     /// <summary>True where a reload rewound the run behind what was recorded rather
-    /// than the game rolling a live fight back to its room entry. The branch is kept
-    /// as what was played before the reload; the validator asks nothing of it that
-    /// only a room-entry rollback can answer, and the recording carrying it is
+    /// than the game returning to its latest save. The branch is kept as what was
+    /// played before the reload; the validator asks nothing of it that only the
+    /// game's own rollback can answer, and the recording carrying it is
     /// <see cref="NativeSource.RewoundContinuity"/>.</summary>
     [JsonPropertyName("reload")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Reload { get; init; }
+
+    /// <summary>The save the game's own rollback returned to, as the branch's own
+    /// record of it. <c>source.native.save_points</c> lists the saves on the
+    /// continued history only, and a later reload that rewound behind this save
+    /// takes it off that list; the branch keeps the save it left from so it can be
+    /// held to it after. Null on a reload's branch, on a return to the run-start
+    /// save, and on a branch written before branches carried one.</summary>
+    [JsonPropertyName("save_point")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public SavePoint? SavePoint { get; init; }
 
     /// <summary>The captured digest which both the journal boundary and resumed run held.</summary>
     [JsonPropertyName("rollback_to_digest")]

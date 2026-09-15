@@ -187,7 +187,7 @@ a public video, and there is none.
 What it carries instead is `source.native.witnessed_run_start`, captured because it is
 a fact about the recorder's own session, and `source.native.continuity`.
 A recorder that joined a run already in progress did not see the run begin, and a resumed recorder must account for the gap between sessions rather than assume nothing happened.
-The recorder's verified mid-fight rollback exception is owned by [the in-game host](in-game-host.md#producing-a-recording-and-checking-it).
+The recorder's exception for the game's own return to its latest save is owned by [the in-game host](in-game-host.md#producing-a-recording-and-checking-it).
 So the manifest is enterable only when the recorder witnessed the run start and its history is whole - `continuous`, or `rewound` by a reload it could place - and publishable only when it is `continuous`, which is the native half of the same rule and not a weaker one; the rewound case is owned by [the in-game host](in-game-host.md#producing-a-recording-and-checking-it).
 
 `./scripts/arbiter validate <manifest> --show-rejections` demonstrates the gate

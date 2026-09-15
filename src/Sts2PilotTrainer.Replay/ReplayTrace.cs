@@ -97,9 +97,10 @@ public sealed record ReplayTrace
     /// entry, where the fight opens again. So every <c>combat.</c> field is dropped
     /// unless the fight is in progress, and nothing else is: what a save carries of
     /// the run - floor, coordinate, health, gold, deck, relics, potions - is kept
-    /// whole. Two readings are compared through <see cref="SameSample"/>; it is never
-    /// digested, so it cannot be mistaken for the complete digest a boundary is
-    /// identified by.
+    /// whole. Two samples are compared through <see cref="SameSample"/>; the same
+    /// filter over the complete canonical fields is digested by
+    /// <see cref="SaveRepresentableDigest"/>, under its own prefix so it cannot be
+    /// mistaken for the complete digest a boundary is identified by.
     /// </summary>
     public static IReadOnlyDictionary<string, string> SaveRepresentable(IReadOnlyDictionary<string, string> sample)
     {
@@ -110,6 +111,36 @@ public sealed record ReplayTrace
                 .Where(field => inProgress || !field.Key.StartsWith("combat.", StringComparison.Ordinal))
                 .ToDictionary(field => field.Key, field => field.Value, StringComparer.Ordinal),
             StringComparer.Ordinal);
+    }
+
+    /// <summary>What a save-representable digest begins with, so no reader can take
+    /// one for a complete digest.</summary>
+    public const string SaveRepresentableDigestPrefix = "sha256-sr:";
+
+    /// <summary>
+    /// The digest of everything in a complete canonical state the game's own save
+    /// can carry: the same filter as <see cref="SaveRepresentable"/>, over every
+    /// projected field rather than the sampled ones, rendered and hashed the way
+    /// <see cref="CanonicalState"/> renders and hashes.
+    ///
+    /// A sample cannot see a random stream's position or the draw order, so two
+    /// readings whose samples agree can still be two moments - an event page turned,
+    /// a stream consumed - and a resume that compared samples alone would read the
+    /// game's rollback of the page as nothing having happened. This is what a
+    /// recorder writes beside each decision so the resume after it can ask the exact
+    /// question: the same state, but for a finished fight's residue.
+    /// </summary>
+    public static string SaveRepresentableDigest(IReadOnlyDictionary<string, string> fields)
+    {
+        var rendering = new System.Text.StringBuilder();
+        foreach (var (key, value) in SaveRepresentable(fields))
+        {
+            rendering.Append(key).Append('=').Append(value).Append('\n');
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(rendering.ToString());
+        return SaveRepresentableDigestPrefix +
+               Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes));
     }
 
     /// <summary>
