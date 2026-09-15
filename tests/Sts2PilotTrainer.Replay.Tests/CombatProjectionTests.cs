@@ -208,6 +208,45 @@ public class CombatProjectionTests
         Assert.Equal(40, projection.Turns.Sum(turn => turn.EnemyHealthLost));
     }
 
+    /// <summary>
+    /// The engine ends a fight once no primary enemy is alive, and a secondary one -
+    /// a minion - may still be standing when it does. The step that ended the fight
+    /// samples nothing of the finished roster, so whether that minion survived is not
+    /// in the trace, and its remaining health is not damage anyone can be credited
+    /// with. Under the older projection the survivor was still sampled and the step
+    /// was refused as a re-indexed roster; it is refused now for the reason that is
+    /// true now, rather than read as a full clear.
+    /// </summary>
+    [Fact]
+    public void RefusesToCreditASecondaryEnemyThatMayHaveOutlivedTheFight()
+    {
+        var before = InCombat(1, 80, 10);
+        before["combat.enemy_count"] = "2";
+        before["combat.enemy.1.model"] = "MONSTER.HATCHLING";
+        before["combat.enemy.1.hp"] = "20";
+        before["combat.enemy.1.powers"] = $"{CombatProjection.SecondaryEnemyPowers[0]}:1";
+
+        var end = Outside();
+        end["combat.outcome"] = "victory";
+        end["player.hp"] = "80";
+
+        var thrown = Assert.Throws<ManifestException>(() => Project("minion", Trace(
+            Step(-1, "run_start", Outside(), before),
+            Step(0, "PlayCard", before, end))));
+
+        Assert.Contains("secondary enemy", thrown.Message, StringComparison.Ordinal);
+        Assert.Contains("MONSTER.HATCHLING", thrown.Message, StringComparison.Ordinal);
+
+        // A primary enemy's powers say nothing about survival: with every enemy
+        // primary, the fight's end is the whole roster's, and each one's remaining
+        // health is what the step dealt.
+        before["combat.enemy.1.powers"] = "POWER.THORNS_POWER:2";
+        var projection = Project("clear", Trace(
+            Step(-1, "run_start", Outside(), before),
+            Step(0, "PlayCard", before, end)));
+        Assert.Equal(30, projection.Turns.Sum(turn => turn.EnemyHealthLost));
+    }
+
     [Fact]
     public void EnemyHealthLostExcludesDamageAbsorbedByBlock()
     {

@@ -258,24 +258,44 @@ public sealed record CombatProjection
     ///
     /// Enemies are matched by index, which is only sound while the roster keeps its
     /// shape. The engine removes a dead enemy from the combat state rather than
-    /// leaving it at zero health, so the killing step's <em>after</em> sample has
-    /// fewer enemies than its <em>before</em>: when they all go, each one's remaining
-    /// health is what the step dealt.
+    /// leaving it at zero health, so a step that kills some of them re-indexes the
+    /// survivors, and a delta taken by index across that is a number about two
+    /// different creatures. Those steps are refused. Attributing damage across a
+    /// changing multi-enemy roster needs something the sampled state does not carry,
+    /// and inventing it here is exactly the plausible-looking wrong answer this
+    /// project is built to refuse.
     ///
-    /// Anything else - a roster that shrinks with survivors left, or one that grows -
-    /// re-indexes the enemies, and a delta taken across that re-indexing is a number
-    /// with no meaning. Those are refused. Attributing damage across a changing
-    /// multi-enemy roster needs something the sampled state does not carry, and
-    /// inventing it here is exactly the plausible-looking wrong answer this project
-    /// is built to refuse.
+    /// The step that ends the fight samples no roster afterwards, because nothing of
+    /// a finished fight is projected. What ended it is the engine's own rule: a fight
+    /// is won once no living enemy is primary, so every primary enemy standing before
+    /// the step is gone after it and its remaining health is what the step dealt. A
+    /// secondary enemy - one carrying a power in <see cref="SecondaryEnemyPowers"/> -
+    /// may still be standing, and whether it is went unsampled with the rest of the
+    /// finished fight, so a fight ended around one is refused rather than credited
+    /// with its health.
     /// </summary>
     private static int EnemyHealthLost(ReplayStep step)
     {
         var before = Int(step.Before, "combat.enemy_count");
-        var after = step.After.TryGetValue("combat.enemy_count", out var raw)
-            ? int.Parse(raw, System.Globalization.CultureInfo.InvariantCulture)
-            : 0;
+        if (!step.After.TryGetValue("combat.enemy_count", out var raw))
+        {
+            var secondary = Enumerable.Range(0, before)
+                .Where(i => IsSecondaryEnemy(step.Before.GetValueOrDefault($"combat.enemy.{i}.powers") ?? string.Empty))
+                .Select(i => step.Before.GetValueOrDefault($"combat.enemy.{i}.model") ?? $"enemy {i}")
+                .ToList();
+            if (secondary.Count > 0)
+            {
+                throw new ManifestException(
+                    $"Step {step.Seq} ({step.Verb}) ends the fight with a secondary enemy in the roster " +
+                    $"({string.Join(", ", secondary)}). The fight ends once no primary enemy is alive, " +
+                    "whether or not a secondary one is, and nothing of the finished fight is sampled, so " +
+                    "whether it survived is not in the trace. Refusing to count its health as damage dealt.");
+            }
 
+            return Enumerable.Range(0, before).Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"));
+        }
+
+        var after = int.Parse(raw, System.Globalization.CultureInfo.InvariantCulture);
         if (after == 0)
         {
             return Enumerable.Range(0, before).Sum(i => Int(step.Before, $"combat.enemy.{i}.hp"));
@@ -306,6 +326,25 @@ public sealed record CombatProjection
 
         return dealt;
     }
+
+    /// <summary>
+    /// The powers whose owner the engine counts as a secondary enemy, by the id the
+    /// projection writes into <c>combat.enemy.{i}.powers</c>.
+    ///
+    /// Duplicated game knowledge, and said so: the engine decides a fight is over by
+    /// asking whether any living enemy is primary, and an enemy is secondary exactly
+    /// while it carries a power whose <c>OwnerIsSecondaryEnemy</c> is set. This
+    /// project cannot read the game, so the set is written here and held to the
+    /// engine's own power models by a test that runs with the game installed
+    /// (<c>FinishedFightProjectionTests</c>); a build that adds one fails there by
+    /// name rather than crediting a survivor's health here.
+    /// </summary>
+    public static readonly IReadOnlyList<string> SecondaryEnemyPowers = ["POWER.MINION_POWER"];
+
+    private static bool IsSecondaryEnemy(string powers) =>
+        powers.Split(CanonicalState.SequenceSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Select(power => power.Split(':')[0])
+            .Any(id => SecondaryEnemyPowers.Contains(id, StringComparer.Ordinal));
 
     /// <summary>Entries present in the first sequence and no longer present in the
     /// second, counting duplicates - two Strikes removed is two removals.</summary>

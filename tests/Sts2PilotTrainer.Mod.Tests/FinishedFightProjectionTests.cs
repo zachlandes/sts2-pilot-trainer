@@ -1,6 +1,7 @@
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rooms;
 using Sts2PilotTrainer.Engine;
 using Sts2PilotTrainer.Replay;
@@ -127,6 +128,30 @@ public sealed class FinishedFightProjectionTests
             Assert.Equal("false", fields["combat.in_progress"]);
             Assert.Equal("defeat", fields["combat.outcome"]);
             Assert.Equal(["combat.in_progress", "combat.outcome"], CombatFields(fields));
+        });
+    }
+
+    /// <summary>
+    /// The fight ends once no living enemy is primary, and an enemy is secondary
+    /// while it carries a power whose <c>OwnerIsSecondaryEnemy</c> is set - so a
+    /// minion can be standing at a win, unsampled with the rest of the finished
+    /// fight. <see cref="CombatProjection.SecondaryEnemyPowers"/> is that set
+    /// transcribed, and this is what holds the transcription to the engine's own
+    /// power models: a build that adds one fails here by name.
+    /// </summary>
+    [GameFact]
+    public void TheComparisonsSecondaryEnemyPowersAreTheEnginesOwn()
+    {
+        WithARun(_ =>
+        {
+            var engine = ModelDb.AllPowers
+                .Where(power => power.OwnerIsSecondaryEnemy)
+                .Select(power => power.Id.ToString())
+                .OrderBy(id => id, StringComparer.Ordinal)
+                .ToList();
+
+            Assert.NotEmpty(engine);
+            Assert.Equal(engine, CombatProjection.SecondaryEnemyPowers.OrderBy(id => id, StringComparer.Ordinal));
         });
     }
 

@@ -121,14 +121,14 @@ public static class ManifestJson
     /// them away; nothing else in the file is read differently, and no digest is
     /// touched - a digest is a hash of the whole state and cannot be migrated, so a
     /// version-6 boundary at a floor arrival with no live fight after a fight is left
-    /// as the older claim it is, which the gate names and
-    /// <c>migrate-manifest --derive-boundaries</c> re-derives. A native source
-    /// declares the oldest format the file was written in, so the validator and the
-    /// gate can say what it predates; where a version-5 file passed through here it
-    /// keeps saying 5. Every kind remembers, in memory only, which version it was
-    /// read from - <see cref="ReplayManifest.ReadFromVersion"/> - so a video
-    /// reconstruction's engine-derived boundaries can be told apart from ones this
-    /// build derived. A native recording migrated from 5 also gains the arrival
+    /// as the older claim it is, marked on the boundary as one hashed under the
+    /// version the file declared (<see cref="ReplayBoundary.Projection"/>), which the
+    /// gate names and <c>migrate-manifest --derive-boundaries</c> re-derives. A native
+    /// source declares the oldest format the file was written in, so the validator
+    /// can say what it predates; where a version-5 file passed through here it keeps
+    /// saying 5. Every kind remembers, in memory only, which version it was read from
+    /// - <see cref="ReplayManifest.ReadFromVersion"/> - which is what a captured
+    /// branch's readings are held against. A native recording migrated from 5 also gains the arrival
     /// checkpoints described on <see cref="MigrateFromVersion5"/>, here, because that
     /// derivation reads the typed manifest.
     /// </summary>
@@ -147,7 +147,7 @@ public static class ManifestJson
         var migrated = JsonSerializer.Deserialize<ReplayManifest>(node.ToJsonString(), Options)
             ?? throw new ManifestException("Manifest deserialized to null.");
         ValidateRequiredMembers(migrated, "Manifest");
-        migrated = FinishedFightResidue.StripExpectations(migrated with { ReadFromVersion = writtenIn });
+        migrated = FinishedFightResidue.ReadFromOlderFormat(migrated with { ReadFromVersion = writtenIn }, writtenIn);
         return migrated.Source.Native is null || writtenIn != OldestMigratedVersion
             ? migrated
             : FloorArrival.WithArrivalCheckpoints(migrated);

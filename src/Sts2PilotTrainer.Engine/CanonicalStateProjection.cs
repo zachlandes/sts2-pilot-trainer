@@ -282,9 +282,20 @@ public static class CanonicalStateProjection
     /// comes from the player, whose health, deck and potions are projected whatever
     /// the room.
     ///
-    /// The <c>ended</c> reading an older projection gave a fight the manager had
-    /// stopped with a non-primary enemy alive is not derivable without the residue,
-    /// and is not given: such a fight's room is marked like any other's.
+    /// <c>victory</c> is the game's own word for that mark and not this projection's.
+    /// On v0.111.0 the combat manager stops in exactly three ways: <c>EndCombatInternal</c>,
+    /// which marks the room, saves the run and raises <c>CombatWon</c>; a pending loss,
+    /// which is the dead player above; and the reset that leaving the room performs.
+    /// The first is taken once no living enemy is primary - a minion is not, so a
+    /// fight is won with one still standing, and the game awards its rewards, its
+    /// progress and its save exactly as it does when the roster is empty. The
+    /// <c>ended</c> reading an older projection gave that fight was its own invention
+    /// over residue the save does not carry: a restore onto the loot screen
+    /// regenerates the encounter's monsters at full health, so what stood at the end
+    /// is not a fact the two hosts can agree on, and no reading is derived from it.
+    /// Which enemies a fight can end around is answered where a comparison needs it,
+    /// off the live roster before the killing action, and refused there rather than
+    /// guessed.
     /// </summary>
     private static string OutcomeOutsideALiveFight(RunState run, Player player)
     {

@@ -20,10 +20,12 @@ namespace Sts2PilotTrainer.Replay;
 /// checkpoint's residue expectations away, because they describe a state format 7
 /// never produces; it cannot take a digest anywhere, because a digest is a hash of
 /// the whole state, so a format-6 boundary digest at a floor arrival with no live
-/// fight after the first fight is a claim in the older unit. <see cref="PredatesThisProjection"/>
-/// says which those are, so the gate can name the cause of a mismatch there and
-/// <c>migrate-manifest --derive-boundaries</c> can re-derive exactly them, and
-/// nothing else, from a verified replay.
+/// fight after the first fight is a claim in the older unit. The reader writes
+/// which projection each digest is a claim in onto the boundary itself, and
+/// <see cref="PredatesThisProjection"/> reads it back from there, so the gate can
+/// name the cause of a mismatch and <c>migrate-manifest --derive-boundaries</c> can
+/// re-derive exactly those digests, and nothing else, from a verified replay -
+/// whether the file was rewritten in the current format in between or not.
 /// </summary>
 public static class FinishedFightResidue
 {
@@ -67,6 +69,21 @@ public static class FinishedFightResidue
                 .ToList(),
         };
 
+    /// <summary>
+    /// A manifest read out of a file written in an older format, as this format reads
+    /// it: its residue expectations taken away, and every boundary digest marked as
+    /// the claim in that older projection it is. The mark is what survives a rewrite
+    /// of the file in the current format, where the file's own version no longer says
+    /// what its digests were hashed under.
+    /// </summary>
+    public static ReplayManifest ReadFromOlderFormat(ReplayManifest manifest, int writtenIn) =>
+        StripExpectations(manifest) with
+        {
+            Boundaries = manifest.Boundaries
+                .Select(boundary => boundary with { Projection = writtenIn })
+                .ToList(),
+        };
+
     private static bool TakenOutsideALiveFight(Checkpoint checkpoint) =>
         checkpoint.Expect.TryGetValue(LiveField, out var live) &&
         string.Equals(live.Value, "false", StringComparison.Ordinal);
@@ -76,19 +93,22 @@ public static class FinishedFightResidue
     /// carried a finished fight, so that this build cannot reproduce it and a
     /// mismatch there says nothing about the run.
     ///
-    /// Which format a manifest was written in is <see cref="ReplayManifest.WrittenIn"/>:
-    /// a native recording's own note, or the version the file declared when it was
-    /// read. Of one written before format 7, exactly the floor arrivals after the
-    /// first fight that opened no fight of their own carried the residue: a combat
-    /// start and a turn start are read inside a live fight, whose projection did not
-    /// change, and so is an arrival the same map move dealt a fight on - declared as
-    /// a combat start at the same action, or read as live by a checkpoint there,
-    /// which is how a history that stops inside its last fight names that fight;
-    /// before the first fight there was nothing to carry.
+    /// Which projection a digest was hashed under is the boundary's own
+    /// <see cref="ReplayBoundary.Projection"/>, and not anything the file says about
+    /// itself: a native recording's note of where its file began outlives the replay
+    /// that re-derived its digests, and a file rewritten in the current format without
+    /// one says nothing of the older digests it still carries. Of a digest produced
+    /// before format 7, exactly the floor arrivals after the first fight that opened
+    /// no fight of their own carried the residue: a combat start and a turn start are
+    /// read inside a live fight, whose projection did not change, and so is an arrival
+    /// the same map move dealt a fight on - declared as a combat start at the same
+    /// action, or read as live by a checkpoint there, which is how a history that
+    /// stops inside its last fight names that fight; before the first fight there was
+    /// nothing to carry.
     /// </summary>
     public static bool PredatesThisProjection(ReplayManifest manifest, ReplayBoundary boundary)
     {
-        if (manifest.WrittenIn >= FirstFormatWithout) return false;
+        if (boundary.Projection >= FirstFormatWithout) return false;
         if (!string.Equals(boundary.Kind, ReplayBoundary.FloorEntryKind, StringComparison.Ordinal)) return false;
 
         var combatStarts = manifest.Boundaries

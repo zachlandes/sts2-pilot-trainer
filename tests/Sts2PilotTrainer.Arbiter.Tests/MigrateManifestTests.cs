@@ -162,8 +162,7 @@ public class MigrateManifestTests
     [GameFact]
     public void AVersionFiveVideoManifestGainsTheVersionAndNoIntegrity()
     {
-        var node = JsonNode.Parse(File.ReadAllText(Arbiter.Manifest))!.AsObject();
-        node["manifest_version"] = ManifestJson.OldestMigratedVersion;
+        var node = AsWrittenIn(JsonNode.Parse(File.ReadAllText(Arbiter.Manifest))!.AsObject(), ManifestJson.OldestMigratedVersion);
         var input = Path.Combine(ScratchDirectory(), "version-five-video.replay.json");
         File.WriteAllText(input, node.ToJsonString() + "\n");
         var outPath = ScratchPath();
@@ -173,8 +172,84 @@ public class MigrateManifestTests
         Assert.Equal(0, result.ExitCode);
         Assert.DoesNotContain("integrity:", result.All, StringComparison.Ordinal);
         Assert.Equal(
-            ManifestJson.Serialize(FinishedFightResidue.StripExpectations(ManifestJson.Load(Arbiter.Manifest))) + "\n",
+            ManifestJson.Serialize(FinishedFightResidue.ReadFromOlderFormat(
+                ManifestJson.Load(Arbiter.Manifest), ManifestJson.OldestMigratedVersion)) + "\n",
             File.ReadAllText(outPath));
+    }
+
+    /// <summary>
+    /// The two directions the file-level reading got wrong, on the video manifest.
+    /// Migrated without a replay, the file is in the current format and still carries
+    /// its format-6 arrival digest, and each boundary says so: the one repair the
+    /// format promises still re-derives exactly that arrival from the verified replay.
+    /// Once it has, every boundary is a claim in this projection, and a digest that
+    /// disagrees at that same arrival is the finding and is refused.
+    /// </summary>
+    [GameFact]
+    public void AnOlderArrivalDigestIsStillRederivedAfterAPlainMigrationAndNeverAgainAfterAReplay()
+    {
+        var committed = ManifestJson.Load(Arbiter.Manifest);
+        var arrival = committed.Boundaries
+            .First(boundary => FinishedFightResidue.PredatesThisProjection(committed, boundary with { Projection = 6 }));
+        var stale = "sha256:" + new string('6', 64);
+
+        var versionSix = Path.Combine(ScratchDirectory(), "version-six-video.replay.json");
+        File.WriteAllText(versionSix, WithDigest(
+            AsWrittenIn(JsonNode.Parse(File.ReadAllText(Arbiter.Manifest))!.AsObject(), ManifestJson.PreviousManifestVersion),
+            arrival, stale).ToJsonString() + "\n");
+
+        var plain = ScratchPath();
+        Assert.Equal(0, Arbiter.Run("migrate-manifest", versionSix, "--out", plain).ExitCode);
+        var rewritten = ManifestJson.Load(plain);
+        Assert.Equal(ReplayManifest.CurrentManifestVersion, rewritten.ManifestVersion);
+        Assert.Null(rewritten.ReadFromVersion);
+        Assert.All(rewritten.Boundaries, boundary => Assert.Equal(ManifestJson.PreviousManifestVersion, boundary.Projection));
+        Assert.Equal(stale, rewritten.BoundaryAt(arrival.Kind, floor: arrival.Floor)!.Digest.Value);
+
+        var derived = ScratchPath();
+        var result = Arbiter.Run("migrate-manifest", plain, "--out", derived, "--derive-boundaries");
+        Assert.True(result.ExitCode == 0, result.All);
+        Assert.Contains($"rederived: {arrival.Describe()}", result.All, StringComparison.Ordinal);
+        var verified = ManifestJson.Load(derived);
+        Assert.All(committed.Boundaries, declared =>
+            Assert.Equal(declared.Digest.Value, verified.BoundaryAt(
+                declared.Kind, fight: declared.Fight, floor: declared.Floor, turn: declared.Turn)!.Digest.Value));
+        Assert.All(verified.Boundaries, boundary => Assert.Equal(CanonicalState.Projection, boundary.Projection));
+
+        var staleAgain = Path.Combine(ScratchDirectory(), "stale-again.replay.json");
+        File.WriteAllText(staleAgain, WithDigest(
+            JsonNode.Parse(File.ReadAllText(derived))!.AsObject(), arrival, stale).ToJsonString() + "\n");
+        var refused = Arbiter.Run("migrate-manifest", staleAgain, "--out", ScratchPath(), "--derive-boundaries");
+        Assert.NotEqual(0, refused.ExitCode);
+        Assert.Contains("Overwriting the older digest would erase the evidence", refused.All, StringComparison.Ordinal);
+        Assert.DoesNotContain("rederived:", refused.All, StringComparison.Ordinal);
+    }
+
+    /// <summary>The manifest as a file of that older version: no boundary of one
+    /// says which projection its digest was hashed under, because the field arrived
+    /// with format 7.</summary>
+    private static JsonObject AsWrittenIn(JsonObject node, int version)
+    {
+        node["manifest_version"] = version;
+        foreach (var boundary in node["boundaries"]!.AsArray())
+        {
+            boundary!.AsObject().Remove("projection");
+        }
+        return node;
+    }
+
+    private static JsonObject WithDigest(JsonObject node, ReplayBoundary boundary, string digest)
+    {
+        foreach (var candidate in node["boundaries"]!.AsArray())
+        {
+            var entry = candidate!.AsObject();
+            if (entry["kind"]!.GetValue<string>() == boundary.Kind &&
+                entry["after_seq"]!.GetValue<int>() == boundary.AfterSeq)
+            {
+                entry["digest"]!.AsObject()["Value"] = digest;
+            }
+        }
+        return node;
     }
 
     /// <summary>
@@ -196,7 +271,7 @@ public class MigrateManifestTests
             Arbiter.RepoRoot, "manifests", "native-9F8CY60C5BK7-20260906-005737.replay.json"));
         var arrival = committed.Boundaries.Single(boundary => boundary.IsFloorEntry && boundary.Floor == 4);
         var fight = committed.Boundaries.First(boundary => boundary.IsCombatStart);
-        Assert.True(FinishedFightResidue.PredatesThisProjection(committed with { ReadFromVersion = 6 }, arrival));
+        Assert.True(FinishedFightResidue.PredatesThisProjection(committed, arrival with { Projection = 6 }));
 
         var stale = "sha256:" + new string('6', 64);
         var input = AVersionSixNativeManifest(arrival, stale);
@@ -215,6 +290,8 @@ public class MigrateManifestTests
             migrated.Boundaries.Select(boundary => (boundary.Describe(), boundary.Digest.Value)));
         Assert.Equal(FactSource.Engine, migrated.Boundaries.Single(boundary => boundary.IsFloorEntry && boundary.Floor == 4).Digest.Source);
         Assert.Equal(FactSource.Captured, migrated.Boundaries.First(boundary => boundary.IsCombatStart).Digest.Source);
+        // Every digest the replay verified is this projection's now, the kept ones included.
+        Assert.All(migrated.Boundaries, boundary => Assert.Equal(CanonicalState.Projection, boundary.Projection));
 
         // A combat start is read inside a live fight, whose projection did not
         // change, so a digest that disagrees there is the finding and is kept.
@@ -232,17 +309,9 @@ public class MigrateManifestTests
     {
         var path = Path.Combine(
             Arbiter.RepoRoot, "manifests", "native-9F8CY60C5BK7-20260906-005737.replay.json");
-        var node = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
-        node["manifest_version"] = ManifestJson.PreviousManifestVersion;
-        foreach (var candidate in node["boundaries"]!.AsArray())
-        {
-            var entry = candidate!.AsObject();
-            if (entry["kind"]!.GetValue<string>() == boundary.Kind &&
-                entry["after_seq"]!.GetValue<int>() == boundary.AfterSeq)
-            {
-                entry["digest"]!.AsObject()["Value"] = digest;
-            }
-        }
+        var node = WithDigest(
+            AsWrittenIn(JsonNode.Parse(File.ReadAllText(path))!.AsObject(), ManifestJson.PreviousManifestVersion),
+            boundary, digest);
 
         var scratch = Path.Combine(ScratchDirectory(), $"version-six-{boundary.Kind}-{boundary.AfterSeq}.replay.json");
         File.WriteAllText(scratch, node.ToJsonString() + "\n");

@@ -157,6 +157,8 @@ now reads exactly as the live run does there - which is what let a Save and Quit
 combat pass publication at all, and what moved every committed boundary digest at such an
 arrival (`FinishedFightResidue` in `Sts2PilotTrainer.Replay` owns the difference and
 `migrate-manifest --derive-boundaries` re-derives exactly those digests).
+Which projection a digest is a claim in is written on the boundary itself, as `projection`: the reader marks every boundary of an older file with the version that file declared, a derive stamps every boundary the replay verified with `CanonicalState.Projection`, and `FinishedFightResidue.PredatesThisProjection` reads that and nothing the file says about itself.
+A file rewritten in the current format without a replay therefore still names the older digests it carries, and a native recording's `migrated_from_version` - which outlives every replay - no longer excuses a disagreement at a digest the replay already verified.
 The rule stays as measured: the floor-snapshot measurement covered arrivals with a live
 fight and nothing else, and a cache is written only for a boundary the measurement covered.
 An arrival without a live fight is still refused by `FloorEntrySnapshotEligibility` - pure,

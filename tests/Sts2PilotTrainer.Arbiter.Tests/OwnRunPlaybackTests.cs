@@ -56,6 +56,12 @@ public sealed class OwnRunPlaybackTests
         document["manifest_version"] = ManifestJson.OldestMigratedVersion;
         native.Remove("integrity");
         native.Remove("migrated_from_version");
+        // A boundary a version-5 recorder wrote says nothing of which projection its
+        // digest was hashed under; the field arrived with format 7.
+        foreach (var boundary in document["boundaries"]!.AsArray())
+        {
+            boundary!.AsObject().Remove("projection");
+        }
 
         var checkpoints = document["checkpoints"]!.AsArray();
         var derived = checkpoints
@@ -86,8 +92,11 @@ public sealed class OwnRunPlaybackTests
     /// <summary>
     /// The recorder's own write of the run reads as the committed copy: the same
     /// checkpoints, the same rows offered, the same route to each, and a manifest the
-    /// validator passes. This is the half of the tripwire that needs no game, and it is
-    /// the half that was missing when the library offered a file the entry refused.
+    /// validator passes. The one thing the reading says of it that the committed copy
+    /// does not is that every boundary digest is a claim in the format the file was
+    /// written in, which is what the file is. This is the half of the tripwire that
+    /// needs no game, and it is the half that was missing when the library offered a
+    /// file the entry refused.
     /// </summary>
     [Theory]
     [MemberData(nameof(Recordings))]
@@ -98,7 +107,15 @@ public sealed class OwnRunPlaybackTests
 
         var validation = ManifestValidator.Validate(written);
         Assert.True(validation.IsValid, validation.Describe());
-        Assert.Equal(ManifestJson.Serialize(committed), ManifestJson.Serialize(written));
+        Assert.All(written.Boundaries, boundary => Assert.Equal(ManifestJson.OldestMigratedVersion, boundary.Projection));
+        Assert.Equal(
+            ManifestJson.Serialize(committed with
+            {
+                Boundaries = committed.Boundaries
+                    .Select(boundary => boundary with { Projection = ManifestJson.OldestMigratedVersion })
+                    .ToList(),
+            }),
+            ManifestJson.Serialize(written));
 
         var expected = RunView.PositionsIn(committed).Select(position => (position.Floor, position.Fight, position.Playable, Route: RetailPlayback.RouteTo(committed, position.AfterSeq).ToString()));
         var actual = RunView.PositionsIn(written).Select(position => (position.Floor, position.Fight, position.Playable, Route: RetailPlayback.RouteTo(written, position.AfterSeq).ToString()));

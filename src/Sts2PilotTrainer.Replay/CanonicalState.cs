@@ -131,6 +131,18 @@ public sealed class CanonicalState
     /// </summary>
     public const char SequenceSeparator = '|';
 
+    /// <summary>
+    /// The manifest format that introduced the canonical form this build projects.
+    ///
+    /// A digest is a hash of the whole projected state, so it means what the
+    /// projection meant when it was taken; every boundary digest names this in
+    /// <see cref="ReplayBoundary.Projection"/> so a reader can tell one this build can
+    /// reproduce from one an older projection produced. Moved with the projection and
+    /// never with the manifest format alone: format 7 changed what a finished fight
+    /// contributes, so that is where the current form began.
+    /// </summary>
+    public const int Projection = 7;
+
     public sealed class Builder
     {
         private readonly SortedDictionary<string, string> _fields = new(StringComparer.Ordinal);

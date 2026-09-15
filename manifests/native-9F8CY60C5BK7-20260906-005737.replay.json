@@ -6290,7 +6290,8 @@
           "action_ordinal": 1,
           "run_clock_ms": 79000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -6303,7 +6304,8 @@
           "action_ordinal": 1,
           "run_clock_ms": 79000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6317,7 +6319,8 @@
           "action_ordinal": 1,
           "run_clock_ms": 79000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6331,7 +6334,8 @@
           "action_ordinal": 5,
           "run_clock_ms": 116000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6345,7 +6349,8 @@
           "action_ordinal": 8,
           "run_clock_ms": 149000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -6358,7 +6363,8 @@
           "action_ordinal": 14,
           "run_clock_ms": 228000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -6371,7 +6377,8 @@
           "action_ordinal": 14,
           "run_clock_ms": 228000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6385,7 +6392,8 @@
           "action_ordinal": 14,
           "run_clock_ms": 228000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6399,7 +6407,8 @@
           "action_ordinal": 18,
           "run_clock_ms": 266000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6413,7 +6422,8 @@
           "action_ordinal": 21,
           "run_clock_ms": 297000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6427,7 +6437,8 @@
           "action_ordinal": 24,
           "run_clock_ms": 362000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -6436,7 +6447,8 @@
       "digest": {
         "Value": "sha256:1a62071ea5b7dac6e84f455e36b278697869dba174b8f29b26d6edbeae1b1d9a",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -6449,7 +6461,8 @@
           "action_ordinal": 32,
           "run_clock_ms": 591000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -6462,7 +6475,8 @@
           "action_ordinal": 32,
           "run_clock_ms": 591000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6476,7 +6490,8 @@
           "action_ordinal": 32,
           "run_clock_ms": 591000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6490,7 +6505,8 @@
           "action_ordinal": 35,
           "run_clock_ms": 630000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6504,7 +6520,8 @@
           "action_ordinal": 39,
           "run_clock_ms": 664000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -6518,7 +6535,8 @@
           "action_ordinal": 42,
           "run_clock_ms": 697000
         }
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -6527,7 +6545,8 @@
       "digest": {
         "Value": "sha256:ddb67770a6ae99d2f391f36863837bbb059231bdc6552687b3a187e5fa5e5e72",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     }
   ]
 }

@@ -140,8 +140,9 @@ public class ManifestJsonTests
     }
 
     /// <summary>
-    /// A version-5 video manifest reads as the current version with only its version changed:
-    /// nothing in it was missing, and the migration invents nothing.
+    /// A version-5 video manifest reads as the current version with its version changed
+    /// and each boundary marked as the format-5 claim its digest is: nothing in it was
+    /// missing, and the migration invents nothing.
     /// </summary>
     [Fact]
     public void ReadsAVersionFiveManifestAsItsCurrentMeaning()
@@ -151,7 +152,9 @@ public class ManifestJsonTests
 
         Assert.Equal(ReplayManifest.CurrentManifestVersion, migrated.ManifestVersion);
         Assert.Null(migrated.Source.Native);
-        Assert.Equal(ManifestJson.Serialize(original), ManifestJson.Serialize(migrated));
+        Assert.Equal(
+            ManifestJson.Serialize(WithBoundariesHashedUnder(original, 5)),
+            ManifestJson.Serialize(migrated));
         Assert.True(ManifestValidator.Validate(migrated).IsValid);
     }
 
@@ -190,8 +193,9 @@ public class ManifestJsonTests
         Assert.Null(migrated.Source.Native.Unmapped);
         Assert.All(migrated.Actions, action => Assert.False(action.Args.ContainsKey("option_key")));
 
-        // Byte-identical everywhere else: re-serialised, only the two fields differ.
-        var expected = ManifestJson.Serialize(original with
+        // Byte-identical everywhere else: re-serialised, only the two fields and
+        // the boundaries' own projection differ.
+        var expected = ManifestJson.Serialize(WithBoundariesHashedUnder(original, 5) with
         {
             Source = original.Source with
             {
@@ -361,24 +365,39 @@ public class ManifestJsonTests
     /// <summary>The version-5 shape of a manifest: the current shape with the version
     /// number it was written under. A native one may or may not state an integrity,
     /// which is the difference the migration reads.</summary>
-    private static string VersionFive(ReplayManifest manifest)
+    private static string VersionFive(ReplayManifest manifest) =>
+        WrittenIn(manifest, ManifestJson.OldestMigratedVersion);
+
+    private static string VersionSix(ReplayManifest manifest) =>
+        WrittenIn(manifest, ManifestJson.PreviousManifestVersion);
+
+    /// <summary>The manifest as a file of that older version: no boundary of one
+    /// says which projection its digest was hashed under, because the field arrived
+    /// with format 7.</summary>
+    private static string WrittenIn(ReplayManifest manifest, int version)
     {
         var document = System.Text.Json.Nodes.JsonNode.Parse(ManifestJson.Serialize(manifest))!.AsObject();
-        document["manifest_version"] = ManifestJson.OldestMigratedVersion;
+        document["manifest_version"] = version;
+        foreach (var boundary in document["boundaries"]!.AsArray())
+        {
+            boundary!.AsObject().Remove("projection");
+        }
         return document.ToJsonString();
     }
 
-    private static string VersionSix(ReplayManifest manifest)
-    {
-        var document = System.Text.Json.Nodes.JsonNode.Parse(ManifestJson.Serialize(manifest))!.AsObject();
-        document["manifest_version"] = ManifestJson.PreviousManifestVersion;
-        return document.ToJsonString();
-    }
+    /// <summary>The manifest with every boundary digest marked as hashed under that
+    /// older projection: what reading such a file produces.</summary>
+    private static ReplayManifest WithBoundariesHashedUnder(ReplayManifest manifest, int version) =>
+        manifest with
+        {
+            Boundaries = manifest.Boundaries.Select(boundary => boundary with { Projection = version }).ToList(),
+        };
 
     /// <summary>
     /// A version-6 video manifest whose checkpoints were all taken inside a live
-    /// fight reads as version 7 with only its version changed: nothing in it
-    /// describes a finished fight, and the migration invents nothing.
+    /// fight reads as version 7 with its version changed and each boundary marked as
+    /// the format-6 claim its digest is: nothing in it describes a finished fight,
+    /// and the migration invents nothing.
     /// </summary>
     [Fact]
     public void ReadsAVersionSixManifestAsItsCurrentMeaning()
@@ -388,8 +407,33 @@ public class ManifestJsonTests
 
         Assert.Equal(ReplayManifest.CurrentManifestVersion, migrated.ManifestVersion);
         Assert.Null(migrated.Source.Native);
-        Assert.Equal(ManifestJson.Serialize(original), ManifestJson.Serialize(migrated));
+        Assert.Equal(
+            ManifestJson.Serialize(WithBoundariesHashedUnder(original, 6)),
+            ManifestJson.Serialize(migrated));
         Assert.True(ManifestValidator.Validate(migrated).IsValid);
+    }
+
+    /// <summary>
+    /// The mark is on the file once it is written in this format, so a file
+    /// <c>migrate-manifest</c> rewrote without replaying still says which of its
+    /// digests are older claims, where its version no longer can; a boundary this
+    /// build wrote says it is this projection's without being asked.
+    /// </summary>
+    [Theory]
+    [InlineData(5)]
+    [InlineData(6)]
+    public void WhichProjectionADigestIsAClaimInSurvivesRewritingTheFileInThisFormat(int writtenIn)
+    {
+        var read = ManifestJson.Deserialize(WrittenIn(Fixtures.ValidManifest(), writtenIn));
+        Assert.All(read.Boundaries, boundary => Assert.Equal(writtenIn, boundary.Projection));
+
+        var rewritten = ManifestJson.Deserialize(ManifestJson.Serialize(read));
+        Assert.Equal(ReplayManifest.CurrentManifestVersion, rewritten.ManifestVersion);
+        Assert.Null(rewritten.ReadFromVersion);
+        Assert.All(rewritten.Boundaries, boundary => Assert.Equal(writtenIn, boundary.Projection));
+
+        var current = ManifestJson.Deserialize(ManifestJson.Serialize(Fixtures.ValidManifest()));
+        Assert.All(current.Boundaries, boundary => Assert.Equal(CanonicalState.Projection, boundary.Projection));
     }
 
     /// <summary>
@@ -455,7 +499,7 @@ public class ManifestJsonTests
             ["combat.player_hp"],
             Assert.Single(migrated.Checkpoints, checkpoint => checkpoint.Id == "a-health-bar-mid-fight").Expect.Keys);
         Assert.Equal(
-            ManifestJson.Serialize(original with { Checkpoints = [] }),
+            ManifestJson.Serialize(WithBoundariesHashedUnder(original, 6) with { Checkpoints = [] }),
             ManifestJson.Serialize(migrated with
             {
                 Checkpoints = [],

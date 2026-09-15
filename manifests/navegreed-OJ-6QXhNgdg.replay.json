@@ -2291,7 +2291,8 @@
       "digest": {
         "Value": "sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -2300,7 +2301,8 @@
       "digest": {
         "Value": "sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -2310,7 +2312,8 @@
       "digest": {
         "Value": "sha256:979ba9de5e67882643dbd3f45b6eee6ae7d7412441e52b760f040e461752baae",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -2320,7 +2323,8 @@
       "digest": {
         "Value": "sha256:3b89b44346feed98b307e766e963cfedcde5f3f374b7872538708eeba0e8191d",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -2330,7 +2334,8 @@
       "digest": {
         "Value": "sha256:0d5ac1edb97be66475a47f88ec37b6e007e604f1b20aaf0ecb3132a43f4ddf72",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -2340,7 +2345,8 @@
       "digest": {
         "Value": "sha256:852887dfe438a6f1d94dacaa005ad6a8a0c713c152ebcfbcdec6c4613835bf78",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -2349,7 +2355,8 @@
       "digest": {
         "Value": "sha256:dbc4a5152e815560cb6f4e3faf86832c067a2c5bc463e4755e75157c1b024b12",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "combat_start",
@@ -2358,7 +2365,8 @@
       "digest": {
         "Value": "sha256:fa88594f872a5b030ea6d844b617229bab35df6465c19dcf04234bd0b6e0f698",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -2367,7 +2375,8 @@
       "digest": {
         "Value": "sha256:fa88594f872a5b030ea6d844b617229bab35df6465c19dcf04234bd0b6e0f698",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -2377,7 +2386,8 @@
       "digest": {
         "Value": "sha256:fa88594f872a5b030ea6d844b617229bab35df6465c19dcf04234bd0b6e0f698",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -2387,7 +2397,8 @@
       "digest": {
         "Value": "sha256:f67cabdc8b8b96b293c28ee1db881769dfc5f2d89f36eab9c76481d2e555e5ac",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -2397,7 +2408,8 @@
       "digest": {
         "Value": "sha256:9726aab4d597cc16b6c68fff9826d20267205f540ef829638236e458b4303fdb",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -2407,7 +2419,8 @@
       "digest": {
         "Value": "sha256:70c458036129a7e5db2276106d83d0e618ee91a5b6795fcf039b734398889d4a",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "turn_start",
@@ -2417,7 +2430,8 @@
       "digest": {
         "Value": "sha256:1ccd5d5d9d1db1dd47ae030c537eeea92d20315fb48b37281292248640ddc00d",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     },
     {
       "kind": "floor_entry",
@@ -2426,7 +2440,8 @@
       "digest": {
         "Value": "sha256:91a17acabebe3611101217df79e3d21cdf743fdae54cd77d9672d36cccea67ea",
         "Source": "Engine"
-      }
+      },
+      "projection": 7
     }
   ]
 }

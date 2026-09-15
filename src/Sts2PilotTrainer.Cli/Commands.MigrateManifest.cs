@@ -28,8 +28,10 @@ internal static partial class Commands
     /// moment a person chose, and still not a reader: it needs the game, it takes
     /// minutes, and it rewrites somebody's evidence. It is also the one repair for a
     /// boundary a format-6 recorder captured with a finished fight in it, which
-    /// <see cref="FinishedFightResidue"/> names: those are re-derived rather than
-    /// held to a digest this projection never produces.
+    /// <see cref="FinishedFightResidue"/> names off the boundary's own projection:
+    /// those are re-derived rather than held to a digest this projection never
+    /// produces, whether the file reaches this command as the format-6 file it was
+    /// or as one this command already rewrote without replaying.
     /// </summary>
     internal static int MigrateManifest(string[] args)
     {
@@ -151,10 +153,13 @@ internal static partial class Commands
         // agree about the digest and say different things about where it came from: a
         // digest captured from a live game names the coordinates somebody would
         // re-check it by, and a derived one is stamped Engine and carries none. Only a
-        // boundary this manifest did not have is taken from the replay.
+        // boundary this manifest did not have is taken from the replay. Every one of
+        // them is now a claim in this projection - the replay reproduced the kept ones
+        // under it - so a later disagreement at any of them is the finding again and
+        // not a digest to re-derive.
         var boundaries = report.Boundaries
             .Select(derived => Matching(manifest.Boundaries, derived) is { } declared && !predating.Contains(declared)
-                ? declared
+                ? declared with { Projection = CanonicalState.Projection }
                 : derived)
             .ToList();
 
@@ -166,7 +171,7 @@ internal static partial class Commands
             var moved = Matching(report.Boundaries, boundary)!.Digest.Value != boundary.Digest.Value;
             Console.WriteLine(
                 $"rederived: {boundary.Describe()} was produced under format " +
-                $"{(FinishedFightResidue.FirstFormatWithout - 1).ToString(System.Globalization.CultureInfo.InvariantCulture)}, " +
+                $"{boundary.Projection.ToString(System.Globalization.CultureInfo.InvariantCulture)}, " +
                 "which could carry the finished fight before it; " +
                 (moved ? "its digest is now the verified replay's" : "the verified replay reproduces it unchanged"));
         }

@@ -33,7 +33,11 @@ public sealed record ReplayManifest
     /// The oldest format this manifest was written in: what a native recording
     /// records of itself in <c>source.native.migrated_from_version</c> across every
     /// migration on disk, or else the version the file declared when it was read.
-    /// What a rule about an older format's readings asks.
+    /// What a rule about an older format's captured readings asks - a discarded
+    /// branch's samples were taken once and are never re-derived. Which projection a
+    /// boundary digest is a claim in is the boundary's own
+    /// <see cref="ReplayBoundary.Projection"/>, because a replay can re-derive that
+    /// and this note would go on saying what the file began as.
     /// </summary>
     [JsonIgnore]
     public int WrittenIn => Source.Native?.MigratedFromVersion ?? ReadFromVersion ?? ManifestVersion;
