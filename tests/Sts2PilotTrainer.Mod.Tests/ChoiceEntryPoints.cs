@@ -180,6 +180,13 @@ internal static class ChoiceEntryPoints
             .Order(StringComparer.Ordinal)
             .ToList();
 
+    /// <summary>Every type the game assembly defines that the runtime could load
+    /// against the vendored stubs - the same set <see cref="MethodsNaming"/> and the
+    /// caller scan read from. Exposed so another game-fact reading (<see cref="SavePoints"/>)
+    /// can ask about types outside the card-selection namespace without loading the
+    /// assembly a second time.</summary>
+    internal static IReadOnlyList<Type> AllLoadedTypes => Loaded.Value.Types;
+
     /// <summary>
     /// Every outermost type with a method body the scan could not read, with how many
     /// of its bodies it could not read: a body whose signature or a call site names a

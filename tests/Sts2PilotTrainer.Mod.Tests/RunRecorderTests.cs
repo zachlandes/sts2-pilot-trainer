@@ -247,6 +247,7 @@ public sealed class RunRecorderTests
     [GameFact]
     public void TheMethodBodiesTheChoiceScanCannotReadAreTheRecordedOnes() =>
         HoldToRecord(UnreadableBodiesRecordPath, ChoiceEntryPoints.UnreadableBodiesRecord(),
+            "CHOICE_ENTRY_POINTS_UPDATE", "./scripts/choice-entry-points.sh --update",
             "The method bodies the choice-entry-point scan cannot read are not the recorded ones. Each is " +
             "a body the funnel check does not see; look at every type that appeared, and if the change is " +
             "the game build's, regenerate the record in the same change");
@@ -263,20 +264,43 @@ public sealed class RunRecorderTests
     [GameFact]
     public void TheTypesThatReachEachChoiceEntryPointAreTheRecordedOnes() =>
         HoldToRecord(EnumerationPath, ChoiceEntryPoints.Enumeration(),
+            "CHOICE_ENTRY_POINTS_UPDATE", "./scripts/choice-entry-points.sh --update",
             "The game types that reach each choice entry point are not the recorded ones. If the game " +
             "build changed, regenerate the list in the same change");
+
+    /// <summary>
+    /// The game's save contract - every <c>SaveManager.SaveRun</c> overload, every
+    /// member that calls each, and every type that subclasses <c>AncientEventModel</c> -
+    /// is the one this build's resume logic and <c>AGENTS.md</c> were written against.
+    ///
+    /// Informational in the same sense as the choice-entry-point enumeration above:
+    /// the set itself is not judged here, only held to a committed record, so a game
+    /// update that moves a save site or changes which ancient events exist shows up as
+    /// a diff in the change that adopts the build, rather than as a save/resume test
+    /// that keeps passing against a set the game no longer has.
+    /// </summary>
+    [GameFact]
+    public void TheGamesSaveContractIsTheRecordedOne() =>
+        HoldToRecord(SavePointsPath, SavePoints.Enumeration(),
+            "SAVE_POINTS_UPDATE", "./scripts/save-points.sh --update",
+            "The game's save contract - which SaveManager.SaveRun overloads exist, who calls each, and which types subclass " +
+            "AncientEventModel - is not the recorded one. If the game build changed, regenerate " +
+            "the list in the same change");
 
     private static string EnumerationPath => Path.Combine(Arbiter.RepoRoot, "scripts", "choice-entry-points.txt");
 
     private static string UnreadableBodiesRecordPath =>
         Path.Combine(Arbiter.RepoRoot, "scripts", "unreadable-choice-scan-bodies.txt");
 
+    private static string SavePointsPath => Path.Combine(Arbiter.RepoRoot, "scripts", "save-points.txt");
+
     /// <summary>Holds a committed record to what this build produces, or rewrites it
-    /// when <c>./scripts/choice-entry-points.sh --update</c> asks; both records are
-    /// written by the one run so neither can be regenerated without the other.</summary>
-    private static void HoldToRecord(string path, string actual, string whenDifferent)
+    /// when the caller's own update script asks; a script's two records, where it has
+    /// two, are written by the one run so neither can be regenerated without the
+    /// other.</summary>
+    private static void HoldToRecord(string path, string actual, string updateEnvVar, string updateCommand, string whenDifferent)
     {
-        if (Environment.GetEnvironmentVariable("CHOICE_ENTRY_POINTS_UPDATE") == "1")
+        if (Environment.GetEnvironmentVariable(updateEnvVar) == "1")
         {
             File.WriteAllText(path, actual);
             return;
@@ -285,7 +309,7 @@ public sealed class RunRecorderTests
         var recorded = File.Exists(path) ? File.ReadAllText(path) : null;
         Assert.True(
             recorded == actual,
-            $"{whenDifferent}:\n\n    ./scripts/choice-entry-points.sh --update\n\n" +
+            $"{whenDifferent}:\n\n    {updateCommand}\n\n" +
             $"Recorded in {path}:\n{recorded ?? "(no file)"}\nThis build:\n{actual}");
     }
 
